@@ -31,23 +31,20 @@ PhysX's SDFConstruction.cu:
 from statistics import mean, stdev
 
 import numpy as np
-
-import warp as wp
-
-from volume_sdf import (
-    create_box_mesh,
-    create_volume_from_mesh,
-    sample_volume_with_fallback,
-    BACKGROUND_VALUE,
-)
 from texture_sdf import (
+    QuantizationMode,
     build_dense_sdf,
     build_sparse_sdf_from_dense,
     create_sparse_sdf_textures,
     sample_sparse_sdf,
-    QuantizationMode,
+)
+from volume_sdf import (
+    create_box_mesh,
+    create_volume_from_mesh,
+    sample_volume_with_fallback,
 )
 
+import warp as wp
 
 # ============================================================================
 # Benchmark Configuration
@@ -95,7 +92,7 @@ def run_benchmark():
         QuantizationMode.UINT8: "UINT8 (1 byte)",
     }
 
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  SDF Resolution: {SDF_RESOLUTION}")
     print(f"  Subgrid Size: {SUBGRID_SIZE}")
     print(f"  Narrow Band: +/-{NARROW_BAND_WORLD} world units")
@@ -115,7 +112,7 @@ def run_benchmark():
 
     # ========== Create Volume SDF ==========
     print("\nCreating NanoVDB volume from mesh...")
-    sparse_volume, coarse_volume, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
+    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
         mesh, narrow_band, margin=margin, max_dims=SDF_RESOLUTION, verbose=True
     )
     print(f"  Volume bounds: [{vol_min_ext}, {vol_max_ext}]")
@@ -137,7 +134,7 @@ def run_benchmark():
     wp.launch(
         sample_volume_with_fallback,
         dim=len(test_pts),
-        inputs=[sparse_volume.id, coarse_volume.id, BACKGROUND_VALUE, sdf_lower, sdf_upper, test_pts_arr, test_results],
+        inputs=[sparse_volume.id, coarse_volume.id, sparse_max_value, sdf_lower, sdf_upper, test_pts_arr, test_results],
         device=device,
     )
     wp.synchronize()
@@ -206,7 +203,7 @@ def run_benchmark():
             inputs=[
                 sparse_volume.id,
                 coarse_volume.id,
-                BACKGROUND_VALUE,
+                sparse_max_value,
                 sdf_lower,
                 sdf_upper,
                 query_points,
@@ -225,7 +222,7 @@ def run_benchmark():
                 inputs=[
                     sparse_volume.id,
                     coarse_volume.id,
-                    BACKGROUND_VALUE,
+                    sparse_max_value,
                     sdf_lower,
                     sdf_upper,
                     query_points,
@@ -283,12 +280,12 @@ def run_benchmark():
     print("BENCHMARK RESULTS")
     print("=" * 80)
 
-    print(f"\nVolume SDF (NanoVDB sparse + coarse):")
+    print("\nVolume SDF (NanoVDB sparse + coarse):")
     print(f"  Time per iteration: {volume_mean * 1000:.3f} +/- {volume_std * 1000:.3f} ms")
     print(f"  Throughput: {NUM_QUERY_POINTS / volume_mean / 1e6:.2f} M samples/sec")
     print(f"  Result stats: min={vol_np.min():.4f}, max={vol_np.max():.4f}, mean={vol_np.mean():.4f}")
 
-    print(f"\nSparse SDF (3D Textures):")
+    print("\nSparse SDF (3D Textures):")
     print(f"  Time per iteration: {sparse_mean * 1000:.3f} +/- {sparse_std * 1000:.3f} ms")
     print(f"  Throughput: {NUM_QUERY_POINTS / sparse_mean / 1e6:.2f} M samples/sec")
     print(f"  Result stats: min={sparse_np.min():.4f}, max={sparse_np.max():.4f}, mean={sparse_np.mean():.4f}")
@@ -306,7 +303,7 @@ def run_benchmark():
     slots_mem = len(sparse_data["subgrid_start_slots"]) * 4
     dense_mem = dense_x * dense_y * dense_z * 4
 
-    print(f"\nMemory Usage:")
+    print("\nMemory Usage:")
     print(f"  Dense SDF (temporary): {dense_mem / 1024:.1f} KB")
     print(f"  Coarse texture: {coarse_mem / 1024:.1f} KB")
     print(f"  Subgrid texture (GPU): {subgrid_mem_texture / 1024:.1f} KB")

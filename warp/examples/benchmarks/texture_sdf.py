@@ -32,11 +32,9 @@ The format uses:
 from __future__ import annotations
 
 import numpy as np
-
-import warp as wp
-
 from volume_sdf import get_distance_to_mesh
 
+import warp as wp
 
 # ============================================================================
 # Sparse SDF Data Structure

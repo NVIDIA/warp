@@ -23,22 +23,37 @@ Or directly: python test_sdf_consistency.py
 """
 
 import numpy as np
-
-import warp as wp
-
-from volume_sdf import (
-    create_box_mesh,
-    create_volume_from_mesh,
-    sample_volume_with_fallback,
-    BACKGROUND_VALUE,
-)
 from texture_sdf import (
+    QuantizationMode,
     build_dense_sdf,
     build_sparse_sdf_from_dense,
     create_sparse_sdf_textures,
     sample_sparse_sdf,
-    QuantizationMode,
 )
+from volume_sdf import (
+    create_box_mesh,
+    create_volume_from_mesh,
+    get_distance_to_mesh,
+    sample_volume_with_fallback,
+)
+
+import warp as wp
+
+# ============================================================================
+# Ground Truth Mesh Query Kernel
+# ============================================================================
+
+
+@wp.kernel
+def compute_mesh_distances(
+    mesh: wp.uint64,
+    query_points: wp.array(dtype=wp.vec3),
+    results: wp.array(dtype=float),
+):
+    """Compute ground truth signed distances using mesh query."""
+    tid = wp.tid()
+    pos = query_points[tid]
+    results[tid] = get_distance_to_mesh(mesh, pos, 10000.0)
 
 
 # ============================================================================
@@ -87,7 +102,7 @@ def setup_test_environment(device: str = "cuda:0"):
     narrow_band = (-TEST_NARROW_BAND, TEST_NARROW_BAND)
 
     # Create Volume SDF first to get its bounds
-    sparse_volume, coarse_volume, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
+    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
         mesh, narrow_band, margin=TEST_MARGIN, max_dims=TEST_RESOLUTION, verbose=False
     )
 
@@ -133,6 +148,7 @@ def setup_test_environment(device: str = "cuda:0"):
         "full_max_ext": max_ext,
         "sdf_lower": sdf_lower,  # For volume sampling
         "sdf_upper": sdf_upper,
+        "sparse_max_value": sparse_max_value,  # Threshold for fallback
         "device": device,
         # Volume SDF
         "sparse_volume": sparse_volume,
@@ -145,14 +161,23 @@ def setup_test_environment(device: str = "cuda:0"):
     }
 
 
-def sample_both_sdfs(env: dict, query_points: np.ndarray):
-    """Sample both SDF representations at the given points."""
+def sample_all_sdfs(env: dict, query_points: np.ndarray):
+    """Sample both SDF representations and ground truth mesh query at the given points."""
     device = env["device"]
     n_points = len(query_points)
 
     query_points_wp = wp.array(query_points.astype(np.float32), dtype=wp.vec3, device=device)
     results_volume = wp.zeros(n_points, dtype=float, device=device)
     results_texture = wp.zeros(n_points, dtype=float, device=device)
+    results_ground_truth = wp.zeros(n_points, dtype=float, device=device)
+
+    # Sample Ground Truth (mesh query)
+    wp.launch(
+        compute_mesh_distances,
+        dim=n_points,
+        inputs=[env["mesh"].id, query_points_wp, results_ground_truth],
+        device=device,
+    )
 
     # Sample Volume SDF
     wp.launch(
@@ -161,7 +186,7 @@ def sample_both_sdfs(env: dict, query_points: np.ndarray):
         inputs=[
             env["sparse_volume"].id,
             env["coarse_volume"].id,
-            BACKGROUND_VALUE,
+            env["sparse_max_value"],
             env["sdf_lower"],
             env["sdf_upper"],
             query_points_wp,
@@ -187,7 +212,7 @@ def sample_both_sdfs(env: dict, query_points: np.ndarray):
 
     wp.synchronize()
 
-    return results_volume.numpy(), results_texture.numpy()
+    return results_ground_truth.numpy(), results_volume.numpy(), results_texture.numpy()
 
 
 # ============================================================================
@@ -196,9 +221,9 @@ def sample_both_sdfs(env: dict, query_points: np.ndarray):
 
 
 def test_sdf_consistency_random_points():
-    """Test that both SDF implementations return similar values for random points."""
+    """Test that both SDF implementations match ground truth mesh query for random points."""
     print("\n" + "=" * 70)
-    print("Test: SDF Consistency - Random Points")
+    print("Test: SDF Accuracy - Random Points vs Ground Truth")
     print("=" * 70)
 
     env = setup_test_environment()
@@ -211,34 +236,46 @@ def test_sdf_consistency_random_points():
         size=(NUM_TEST_POINTS, 3),
     )
 
-    vol_results, tex_results = sample_both_sdfs(env, query_points)
+    gt_results, vol_results, tex_results = sample_all_sdfs(env, query_points)
 
-    # Compute differences
-    diff = np.abs(vol_results - tex_results)
-    max_diff = np.max(diff)
-    mean_diff = np.mean(diff)
-    median_diff = np.median(diff)
+    # Compute differences vs ground truth
+    vol_diff = np.abs(vol_results - gt_results)
+    tex_diff = np.abs(tex_results - gt_results)
+
+    vol_max_diff = np.max(vol_diff)
+    vol_mean_diff = np.mean(vol_diff)
+    tex_max_diff = np.max(tex_diff)
+    tex_mean_diff = np.mean(tex_diff)
 
     print(f"\nResults for {NUM_TEST_POINTS} random points:")
-    print(f"  Volume SDF:  min={vol_results.min():.4f}, max={vol_results.max():.4f}, mean={vol_results.mean():.4f}")
-    print(f"  Texture SDF: min={tex_results.min():.4f}, max={tex_results.max():.4f}, mean={tex_results.mean():.4f}")
-    print(f"\nDifferences:")
-    print(f"  Max diff:    {max_diff:.6f} (threshold: {TOLERANCE_MAX})")
-    print(f"  Mean diff:   {mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
-    print(f"  Median diff: {median_diff:.6f}")
+    print(f"  Ground Truth: min={gt_results.min():.4f}, max={gt_results.max():.4f}, mean={gt_results.mean():.4f}")
+    print(f"  Volume SDF:   min={vol_results.min():.4f}, max={vol_results.max():.4f}, mean={vol_results.mean():.4f}")
+    print(f"  Texture SDF:  min={tex_results.min():.4f}, max={tex_results.max():.4f}, mean={tex_results.mean():.4f}")
+    print("\nVolume SDF vs Ground Truth:")
+    print(f"  Max diff:  {vol_max_diff:.6f} (threshold: {TOLERANCE_MAX})")
+    print(f"  Mean diff: {vol_mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
+    print("\nTexture SDF vs Ground Truth:")
+    print(f"  Max diff:  {tex_max_diff:.6f} (threshold: {TOLERANCE_MAX})")
+    print(f"  Mean diff: {tex_mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
 
-    # Assertions
-    assert max_diff < TOLERANCE_MAX, f"Max difference {max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
-    assert mean_diff < TOLERANCE_MEAN, f"Mean difference {mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    # Assertions - both SDFs should match ground truth
+    assert vol_max_diff < TOLERANCE_MAX, f"Volume max difference {vol_max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
+    assert vol_mean_diff < TOLERANCE_MEAN, (
+        f"Volume mean difference {vol_mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    )
+    assert tex_max_diff < TOLERANCE_MAX, f"Texture max difference {tex_max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
+    assert tex_mean_diff < TOLERANCE_MEAN, (
+        f"Texture mean difference {tex_mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    )
 
     print("\n[PASS] Random points test passed!")
     return True
 
 
 def test_sdf_consistency_surface_points():
-    """Test consistency near the mesh surface where precision matters most."""
+    """Test accuracy near the mesh surface where precision matters most."""
     print("\n" + "=" * 70)
-    print("Test: SDF Consistency - Near-Surface Points")
+    print("Test: SDF Accuracy - Near-Surface Points vs Ground Truth")
     print("=" * 70)
 
     env = setup_test_environment()
@@ -266,31 +303,45 @@ def test_sdf_consistency_surface_points():
 
     query_points = np.vstack(surface_points)
 
-    vol_results, tex_results = sample_both_sdfs(env, query_points)
+    gt_results, vol_results, tex_results = sample_all_sdfs(env, query_points)
 
-    # Compute differences
-    diff = np.abs(vol_results - tex_results)
-    max_diff = np.max(diff)
-    mean_diff = np.mean(diff)
+    # Compute differences vs ground truth
+    vol_diff = np.abs(vol_results - gt_results)
+    tex_diff = np.abs(tex_results - gt_results)
+
+    vol_max_diff = np.max(vol_diff)
+    vol_mean_diff = np.mean(vol_diff)
+    tex_max_diff = np.max(tex_diff)
+    tex_mean_diff = np.mean(tex_diff)
 
     print(f"\nResults for {len(query_points)} near-surface points:")
-    print(f"  Volume SDF:  min={vol_results.min():.4f}, max={vol_results.max():.4f}, mean={vol_results.mean():.4f}")
-    print(f"  Texture SDF: min={tex_results.min():.4f}, max={tex_results.max():.4f}, mean={tex_results.mean():.4f}")
-    print(f"\nDifferences:")
-    print(f"  Max diff:  {max_diff:.6f} (threshold: {TOLERANCE_MAX})")
-    print(f"  Mean diff: {mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
+    print(f"  Ground Truth: min={gt_results.min():.4f}, max={gt_results.max():.4f}")
+    print(f"  Volume SDF:   min={vol_results.min():.4f}, max={vol_results.max():.4f}")
+    print(f"  Texture SDF:  min={tex_results.min():.4f}, max={tex_results.max():.4f}")
+    print("\nVolume SDF vs Ground Truth:")
+    print(f"  Max diff:  {vol_max_diff:.6f} (threshold: {TOLERANCE_MAX})")
+    print(f"  Mean diff: {vol_mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
+    print("\nTexture SDF vs Ground Truth:")
+    print(f"  Max diff:  {tex_max_diff:.6f} (threshold: {TOLERANCE_MAX})")
+    print(f"  Mean diff: {tex_mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
 
-    assert max_diff < TOLERANCE_MAX, f"Max difference {max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
-    assert mean_diff < TOLERANCE_MEAN, f"Mean difference {mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    assert vol_max_diff < TOLERANCE_MAX, f"Volume max difference {vol_max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
+    assert vol_mean_diff < TOLERANCE_MEAN, (
+        f"Volume mean difference {vol_mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    )
+    assert tex_max_diff < TOLERANCE_MAX, f"Texture max difference {tex_max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
+    assert tex_mean_diff < TOLERANCE_MEAN, (
+        f"Texture mean difference {tex_mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    )
 
     print("\n[PASS] Near-surface points test passed!")
     return True
 
 
 def test_sdf_consistency_grid_points():
-    """Test consistency at regular grid points."""
+    """Test accuracy at regular grid points."""
     print("\n" + "=" * 70)
-    print("Test: SDF Consistency - Regular Grid Points")
+    print("Test: SDF Accuracy - Regular Grid Points vs Ground Truth")
     print("=" * 70)
 
     env = setup_test_environment()
@@ -304,31 +355,45 @@ def test_sdf_consistency_grid_points():
     xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
     query_points = np.stack([xx.ravel(), yy.ravel(), zz.ravel()], axis=1)
 
-    vol_results, tex_results = sample_both_sdfs(env, query_points)
+    gt_results, vol_results, tex_results = sample_all_sdfs(env, query_points)
 
-    # Compute differences
-    diff = np.abs(vol_results - tex_results)
-    max_diff = np.max(diff)
-    mean_diff = np.mean(diff)
+    # Compute differences vs ground truth
+    vol_diff = np.abs(vol_results - gt_results)
+    tex_diff = np.abs(tex_results - gt_results)
+
+    vol_max_diff = np.max(vol_diff)
+    vol_mean_diff = np.mean(vol_diff)
+    tex_max_diff = np.max(tex_diff)
+    tex_mean_diff = np.mean(tex_diff)
 
     print(f"\nResults for {len(query_points)} grid points ({n_per_dim}^3):")
-    print(f"  Volume SDF:  min={vol_results.min():.4f}, max={vol_results.max():.4f}, mean={vol_results.mean():.4f}")
-    print(f"  Texture SDF: min={tex_results.min():.4f}, max={tex_results.max():.4f}, mean={tex_results.mean():.4f}")
-    print(f"\nDifferences:")
-    print(f"  Max diff:  {max_diff:.6f} (threshold: {TOLERANCE_MAX})")
-    print(f"  Mean diff: {mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
+    print(f"  Ground Truth: min={gt_results.min():.4f}, max={gt_results.max():.4f}")
+    print(f"  Volume SDF:   min={vol_results.min():.4f}, max={vol_results.max():.4f}")
+    print(f"  Texture SDF:  min={tex_results.min():.4f}, max={tex_results.max():.4f}")
+    print("\nVolume SDF vs Ground Truth:")
+    print(f"  Max diff:  {vol_max_diff:.6f} (threshold: {TOLERANCE_MAX})")
+    print(f"  Mean diff: {vol_mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
+    print("\nTexture SDF vs Ground Truth:")
+    print(f"  Max diff:  {tex_max_diff:.6f} (threshold: {TOLERANCE_MAX})")
+    print(f"  Mean diff: {tex_mean_diff:.6f} (threshold: {TOLERANCE_MEAN})")
 
-    assert max_diff < TOLERANCE_MAX, f"Max difference {max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
-    assert mean_diff < TOLERANCE_MEAN, f"Mean difference {mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    assert vol_max_diff < TOLERANCE_MAX, f"Volume max difference {vol_max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
+    assert vol_mean_diff < TOLERANCE_MEAN, (
+        f"Volume mean difference {vol_mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    )
+    assert tex_max_diff < TOLERANCE_MAX, f"Texture max difference {tex_max_diff:.6f} exceeds tolerance {TOLERANCE_MAX}"
+    assert tex_mean_diff < TOLERANCE_MEAN, (
+        f"Texture mean difference {tex_mean_diff:.6f} exceeds tolerance {TOLERANCE_MEAN}"
+    )
 
     print("\n[PASS] Grid points test passed!")
     return True
 
 
 def test_sdf_consistency_inside_outside():
-    """Test that both SDFs agree on inside/outside classification."""
+    """Test that both SDFs agree with ground truth on inside/outside classification."""
     print("\n" + "=" * 70)
-    print("Test: SDF Consistency - Inside/Outside Agreement")
+    print("Test: SDF Accuracy - Inside/Outside Agreement vs Ground Truth")
     print("=" * 70)
 
     env = setup_test_environment()
@@ -341,61 +406,69 @@ def test_sdf_consistency_inside_outside():
         size=(NUM_TEST_POINTS, 3),
     )
 
-    vol_results, tex_results = sample_both_sdfs(env, query_points)
+    gt_results, vol_results, tex_results = sample_all_sdfs(env, query_points)
 
-    # Check sign agreement (inside = negative, outside = positive)
+    # Check sign agreement with ground truth (inside = negative, outside = positive)
+    gt_inside = gt_results < 0
     vol_inside = vol_results < 0
     tex_inside = tex_results < 0
 
-    agreement = np.sum(vol_inside == tex_inside) / len(query_points)
-    disagreement_count = np.sum(vol_inside != tex_inside)
+    vol_agreement = np.sum(vol_inside == gt_inside) / len(query_points)
+    tex_agreement = np.sum(tex_inside == gt_inside) / len(query_points)
+    vol_disagreement = np.sum(vol_inside != gt_inside)
+    tex_disagreement = np.sum(tex_inside != gt_inside)
 
     print(f"\nInside/Outside classification for {NUM_TEST_POINTS} points:")
-    print(f"  Volume: {np.sum(vol_inside)} inside, {np.sum(~vol_inside)} outside")
-    print(f"  Texture: {np.sum(tex_inside)} inside, {np.sum(~tex_inside)} outside")
-    print(f"  Agreement: {agreement * 100:.2f}% ({disagreement_count} disagreements)")
+    print(f"  Ground Truth: {np.sum(gt_inside)} inside, {np.sum(~gt_inside)} outside")
+    print(f"  Volume SDF:   {np.sum(vol_inside)} inside, {np.sum(~vol_inside)} outside")
+    print(f"  Texture SDF:  {np.sum(tex_inside)} inside, {np.sum(~tex_inside)} outside")
+    print(f"\nVolume vs Ground Truth: {vol_agreement * 100:.2f}% ({vol_disagreement} disagreements)")
+    print(f"Texture vs Ground Truth: {tex_agreement * 100:.2f}% ({tex_disagreement} disagreements)")
 
-    # Allow small disagreement near surface (within tolerance of zero)
-    # Check disagreements are all near zero
-    if disagreement_count > 0:
-        disagree_mask = vol_inside != tex_inside
-        vol_disagree = np.abs(vol_results[disagree_mask])
-        tex_disagree = np.abs(tex_results[disagree_mask])
-        max_disagree_dist = max(np.max(vol_disagree), np.max(tex_disagree))
-        print(f"  Max distance from surface in disagreements: {max_disagree_dist:.6f}")
-
-        # Disagreements should only occur very close to the surface
+    # Check disagreements are all near zero (near surface)
+    if vol_disagreement > 0:
+        disagree_mask = vol_inside != gt_inside
+        max_disagree_dist = np.max(np.abs(gt_results[disagree_mask]))
+        print(f"  Volume max distance from surface in disagreements: {max_disagree_dist:.6f}")
         assert max_disagree_dist < TOLERANCE_MAX, (
-            f"Inside/outside disagreement at distance {max_disagree_dist:.6f} from surface"
+            f"Volume inside/outside disagreement at distance {max_disagree_dist:.6f} from surface"
+        )
+
+    if tex_disagreement > 0:
+        disagree_mask = tex_inside != gt_inside
+        max_disagree_dist = np.max(np.abs(gt_results[disagree_mask]))
+        print(f"  Texture max distance from surface in disagreements: {max_disagree_dist:.6f}")
+        assert max_disagree_dist < TOLERANCE_MAX, (
+            f"Texture inside/outside disagreement at distance {max_disagree_dist:.6f} from surface"
         )
 
     # At least 99% agreement expected
-    assert agreement > 0.99, f"Inside/outside agreement {agreement * 100:.1f}% is below 99%"
+    assert vol_agreement > 0.99, f"Volume inside/outside agreement {vol_agreement * 100:.1f}% is below 99%"
+    assert tex_agreement > 0.99, f"Texture inside/outside agreement {tex_agreement * 100:.1f}% is below 99%"
 
     print("\n[PASS] Inside/outside agreement test passed!")
     return True
 
 
 def test_sdf_consistency_out_of_bounds():
-    """Test that both SDFs handle out-of-bounds queries with extrapolation."""
+    """Test that both SDFs handle out-of-bounds queries with extrapolation vs ground truth."""
     print("\n" + "=" * 70)
-    print("Test: SDF Consistency - Out-of-Bounds Queries")
+    print("Test: SDF Accuracy - Out-of-Bounds Queries vs Ground Truth")
     print("=" * 70)
-    
+
     env = setup_test_environment()
-    
+
     # Generate test points OUTSIDE the SDF domain
     rng = np.random.default_rng(999)
-    
+
     # Get the full bounds
     full_min = env["full_min_ext"]
     full_max = env["full_max_ext"]
-    extent = full_max - full_min
-    
+
     # Generate points outside in various directions
     n_per_direction = NUM_TEST_POINTS // 6
     out_of_bounds_points = []
-    
+
     for axis in range(3):
         for sign in [-1, 1]:
             pts = rng.uniform(low=full_min, high=full_max, size=(n_per_direction, 3))
@@ -405,51 +478,68 @@ def test_sdf_consistency_out_of_bounds():
             else:
                 pts[:, axis] = full_max[axis] + rng.uniform(0.1, 0.5, n_per_direction)
             out_of_bounds_points.append(pts)
-    
+
     query_points = np.vstack(out_of_bounds_points)
-    
-    vol_results, tex_results = sample_both_sdfs(env, query_points)
-    
-    # For out-of-bounds points, both should return positive values
-    # (distance to surface + distance to boundary)
+
+    gt_results, vol_results, tex_results = sample_all_sdfs(env, query_points)
+
+    # For out-of-bounds points, all should return positive values (outside the mesh)
+    gt_positive = np.all(gt_results > 0)
     vol_positive = np.all(vol_results > 0)
     tex_positive = np.all(tex_results > 0)
-    
+
     print(f"\nResults for {len(query_points)} out-of-bounds points:")
-    print(f"  Volume SDF:  min={vol_results.min():.4f}, max={vol_results.max():.4f}, mean={vol_results.mean():.4f}")
-    print(f"  Texture SDF: min={tex_results.min():.4f}, max={tex_results.max():.4f}, mean={tex_results.mean():.4f}")
-    print(f"  All Volume values positive: {vol_positive}")
-    print(f"  All Texture values positive: {tex_positive}")
-    
-    # Compute differences
-    diff = np.abs(vol_results - tex_results)
-    max_diff = np.max(diff)
-    mean_diff = np.mean(diff)
-    
-    # For out-of-bounds, allow slightly larger tolerance since extrapolation 
-    # can differ between implementations
-    oob_tolerance_max = TOLERANCE_MAX * 2
-    oob_tolerance_mean = TOLERANCE_MEAN * 2
-    
-    print(f"\nDifferences:")
-    print(f"  Max diff:  {max_diff:.6f} (threshold: {oob_tolerance_max})")
-    print(f"  Mean diff: {mean_diff:.6f} (threshold: {oob_tolerance_mean})")
-    
+    print(f"  Ground Truth: min={gt_results.min():.4f}, max={gt_results.max():.4f}, mean={gt_results.mean():.4f}")
+    print(f"  Volume SDF:   min={vol_results.min():.4f}, max={vol_results.max():.4f}, mean={vol_results.mean():.4f}")
+    print(f"  Texture SDF:  min={tex_results.min():.4f}, max={tex_results.max():.4f}, mean={tex_results.mean():.4f}")
+    print(f"  All positive: GT={gt_positive}, Volume={vol_positive}, Texture={tex_positive}")
+
+    # Compute differences vs ground truth
+    vol_diff = np.abs(vol_results - gt_results)
+    tex_diff = np.abs(tex_results - gt_results)
+
+    # For out-of-bounds, allow larger tolerance since extrapolation approximates the true distance
+    oob_tolerance_max = TOLERANCE_MAX * 3
+    oob_tolerance_mean = TOLERANCE_MEAN * 3
+
+    vol_max_diff = np.max(vol_diff)
+    vol_mean_diff = np.mean(vol_diff)
+    tex_max_diff = np.max(tex_diff)
+    tex_mean_diff = np.mean(tex_diff)
+
+    print("\nVolume SDF vs Ground Truth:")
+    print(f"  Max diff:  {vol_max_diff:.6f} (threshold: {oob_tolerance_max})")
+    print(f"  Mean diff: {vol_mean_diff:.6f} (threshold: {oob_tolerance_mean})")
+    print("\nTexture SDF vs Ground Truth:")
+    print(f"  Max diff:  {tex_max_diff:.6f} (threshold: {oob_tolerance_max})")
+    print(f"  Mean diff: {tex_mean_diff:.6f} (threshold: {oob_tolerance_mean})")
+
     # All out-of-bounds points should have positive SDF (outside the mesh)
+    assert gt_positive, "Ground truth returned non-positive values for out-of-bounds points"
     assert vol_positive, "Volume SDF returned non-positive values for out-of-bounds points"
     assert tex_positive, "Texture SDF returned non-positive values for out-of-bounds points"
-    
-    assert max_diff < oob_tolerance_max, f"Max difference {max_diff:.6f} exceeds tolerance {oob_tolerance_max}"
-    assert mean_diff < oob_tolerance_mean, f"Mean difference {mean_diff:.6f} exceeds tolerance {oob_tolerance_mean}"
-    
+
+    assert vol_max_diff < oob_tolerance_max, (
+        f"Volume max difference {vol_max_diff:.6f} exceeds tolerance {oob_tolerance_max}"
+    )
+    assert vol_mean_diff < oob_tolerance_mean, (
+        f"Volume mean difference {vol_mean_diff:.6f} exceeds tolerance {oob_tolerance_mean}"
+    )
+    assert tex_max_diff < oob_tolerance_max, (
+        f"Texture max difference {tex_max_diff:.6f} exceeds tolerance {oob_tolerance_max}"
+    )
+    assert tex_mean_diff < oob_tolerance_mean, (
+        f"Texture mean difference {tex_mean_diff:.6f} exceeds tolerance {oob_tolerance_mean}"
+    )
+
     print("\n[PASS] Out-of-bounds test passed!")
     return True
 
 
 def test_sdf_consistency_quantized():
-    """Test that quantized texture SDF still matches volume SDF reasonably."""
+    """Test that quantized texture SDF matches ground truth reasonably."""
     print("\n" + "=" * 70)
-    print("Test: SDF Consistency - Quantized (UINT16) vs Volume")
+    print("Test: SDF Accuracy - Quantized (UINT16) vs Ground Truth")
     print("=" * 70)
 
     device = "cuda:0"
@@ -462,8 +552,9 @@ def test_sdf_consistency_quantized():
 
     narrow_band = (-TEST_NARROW_BAND, TEST_NARROW_BAND)
 
-    # Create Volume SDF first to get its bounds
-    sparse_volume, coarse_volume, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
+    # Create Volume SDF first to get its bounds (we don't actually use volume here,
+    # but we use the same bounds for consistency)
+    _, _, _, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
         mesh, narrow_band, margin=TEST_MARGIN, max_dims=TEST_RESOLUTION, verbose=False
     )
 
@@ -501,29 +592,18 @@ def test_sdf_consistency_quantized():
     query_points = rng.uniform(low=query_min, high=query_max, size=(NUM_TEST_POINTS, 3))
     query_points_wp = wp.array(query_points.astype(np.float32), dtype=wp.vec3, device=device)
 
-    results_volume = wp.zeros(NUM_TEST_POINTS, dtype=float, device=device)
+    results_ground_truth = wp.zeros(NUM_TEST_POINTS, dtype=float, device=device)
     results_texture = wp.zeros(NUM_TEST_POINTS, dtype=float, device=device)
 
-    # Create bounding box vectors for volume sampling
-    sdf_lower = wp.vec3(min_ext[0], min_ext[1], min_ext[2])
-    sdf_upper = wp.vec3(max_ext[0], max_ext[1], max_ext[2])
-
-    # Sample both
+    # Sample ground truth (mesh query)
     wp.launch(
-        sample_volume_with_fallback,
+        compute_mesh_distances,
         dim=NUM_TEST_POINTS,
-        inputs=[
-            sparse_volume.id,
-            coarse_volume.id,
-            BACKGROUND_VALUE,
-            sdf_lower,
-            sdf_upper,
-            query_points_wp,
-            results_volume,
-        ],
+        inputs=[mesh.id, query_points_wp, results_ground_truth],
         device=device,
     )
 
+    # Sample quantized texture SDF
     wp.launch(
         sample_sparse_sdf,
         dim=NUM_TEST_POINTS,
@@ -533,11 +613,11 @@ def test_sdf_consistency_quantized():
 
     wp.synchronize()
 
-    vol_results = results_volume.numpy()
+    gt_results = results_ground_truth.numpy()
     tex_results = results_texture.numpy()
 
-    # Compute differences (allow slightly more tolerance for quantization)
-    diff = np.abs(vol_results - tex_results)
+    # Compute differences vs ground truth
+    diff = np.abs(tex_results - gt_results)
     max_diff = np.max(diff)
     mean_diff = np.mean(diff)
 
@@ -546,9 +626,9 @@ def test_sdf_consistency_quantized():
     quant_tolerance_mean = TOLERANCE_MEAN * 1.5
 
     print(f"\nResults for {NUM_TEST_POINTS} points (UINT16 quantization):")
-    print(f"  Volume SDF:  min={vol_results.min():.4f}, max={vol_results.max():.4f}")
-    print(f"  Texture SDF: min={tex_results.min():.4f}, max={tex_results.max():.4f}")
-    print(f"\nDifferences:")
+    print(f"  Ground Truth:  min={gt_results.min():.4f}, max={gt_results.max():.4f}")
+    print(f"  Texture SDF:   min={tex_results.min():.4f}, max={tex_results.max():.4f}")
+    print("\nTexture SDF (UINT16) vs Ground Truth:")
     print(f"  Max diff:  {max_diff:.6f} (threshold: {quant_tolerance_max})")
     print(f"  Mean diff: {mean_diff:.6f} (threshold: {quant_tolerance_mean})")
 
@@ -569,7 +649,7 @@ def run_all_tests():
     print("\n" + "=" * 70)
     print("SDF CONSISTENCY TEST SUITE")
     print("=" * 70)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  Resolution: {TEST_RESOLUTION}")
     print(f"  Subgrid Size: {TEST_SUBGRID_SIZE}")
     print(f"  Narrow Band: +/-{TEST_NARROW_BAND}")

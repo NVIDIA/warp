@@ -26,6 +26,7 @@ Key features:
 """
 
 import numpy as np
+
 import warp as wp
 
 # Background value for unallocated voxels
@@ -120,10 +121,34 @@ def check_tile_occupied_mesh_kernel(
 
 
 @wp.kernel
+def compute_tile_max_kernel(
+    sdf: wp.uint64,
+    tile_points: wp.array(dtype=wp.vec3i),
+    tile_max_values: wp.array(dtype=float),
+):
+    """
+    Compute the maximum SDF value in each tile.
+    Launch with dim=(num_tiles, 8, 8, 8).
+    """
+    tile_idx, local_x, local_y, local_z = wp.tid()
+
+    tile_origin = tile_points[tile_idx]
+    x_id = tile_origin[0] + local_x
+    y_id = tile_origin[1] + local_y
+    z_id = tile_origin[2] + local_z
+
+    # Read the SDF value at this voxel
+    sdf_value = wp.volume_lookup_f(sdf, x_id, y_id, z_id)
+
+    # Atomic max to find the maximum value in this tile
+    wp.atomic_max(tile_max_values, tile_idx, sdf_value)
+
+
+@wp.kernel
 def sample_volume_with_fallback(
     sparse_volume: wp.uint64,
     coarse_volume: wp.uint64,
-    background_value: float,
+    sparse_max_value: float,
     sdf_lower: wp.vec3,
     sdf_upper: wp.vec3,
     query_points: wp.array(dtype=wp.vec3),
@@ -132,57 +157,61 @@ def sample_volume_with_fallback(
     """
     Sample SDF with coarse fallback and boundary extrapolation.
 
-    Handles three cases (matching sdf_contact.py and PhysX sdfCollision.cuh patterns):
+    Matches the pattern from sdf_contact.py's sample_sdf_extrapolated:
     1. Point inside extent, in narrow band: Returns sparse grid value
     2. Point inside extent, outside narrow band: Returns coarse grid value
-    3. Point outside extent: Returns SDF(clamped) + distance_to_boundary
+    3. Point outside extent: Returns SDF(clamped_boundary) + distance_to_boundary
+
+    The sparse_max_value is the maximum SDF value stored in any sparse tile.
+    If we sample a value greater than this (plus margin), it must be contaminated
+    with background due to tile boundary interpolation, so we fall back to coarse.
 
     This ensures the SDF can be evaluated at ANY point in space with reasonable values.
     """
     tid = wp.tid()
     pos = query_points[tid]
 
-    # Clamp position to SDF bounding box (matching PhysX's PxSdfDistance pattern)
-    clamped_pos = wp.vec3(
-        wp.clamp(pos[0], sdf_lower[0], sdf_upper[0]),
-        wp.clamp(pos[1], sdf_lower[1], sdf_upper[1]),
-        wp.clamp(pos[2], sdf_lower[2], sdf_upper[2]),
+    # Check if point is inside extent
+    inside_extent = (
+        pos[0] >= sdf_lower[0]
+        and pos[0] <= sdf_upper[0]
+        and pos[1] >= sdf_lower[1]
+        and pos[1] <= sdf_upper[1]
+        and pos[2] >= sdf_lower[2]
+        and pos[2] <= sdf_upper[2]
     )
 
-    # Compute distance from query point to clamped point (0 if inside bounds)
-    dist_to_boundary = wp.length(pos - clamped_pos)
+    if inside_extent:
+        # Sample sparse grid
+        sparse_idx = wp.volume_world_to_index(sparse_volume, pos)
+        sparse_dist = wp.volume_sample_f(sparse_volume, sparse_idx, wp.Volume.LINEAR)
 
-    # Sample sparse volume first (high resolution narrow band)
-    sparse_idx = wp.volume_world_to_index(sparse_volume, clamped_pos)
-    sparse_dist = wp.volume_sample_f(sparse_volume, sparse_idx, wp.Volume.LINEAR)
+        # If sparse returns a value > max stored value + margin, it's contaminated
+        # with background (1000) due to tile boundary interpolation. Use coarse.
+        # Add 50% margin to account for interpolation between valid values
+        threshold = sparse_max_value * 1.5
 
-    # Check if sparse value is valid (not near background = tile was allocated)
-    # Values near background indicate we're outside the allocated narrow band tiles
-    # or at a tile boundary with background interpolation artifacts
-    background_threshold = background_value * 0.5
-    
-    sdf_value = sparse_dist
-    
-    if sparse_dist >= background_threshold:
-        # Sparse returned background-like value - fallback to coarse
-        coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
-        sdf_value = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
+        if sparse_dist <= threshold:
+            results[tid] = sparse_dist
+        else:
+            # Fallback to coarse grid
+            coarse_idx = wp.volume_world_to_index(coarse_volume, pos)
+            results[tid] = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
     else:
-        # Sparse value looks valid, but check for tile boundary artifacts
-        # At tile boundaries, interpolation with background can produce values like
-        # 0.7 * true_sdf + 0.3 * 1000 which are way off from the true SDF
-        # We detect this by checking if sparse is suspiciously high
-        # For typical narrow bands of 0.1-0.2, any value > 0.5 warrants a coarse check
-        artifact_threshold = 0.5
-        if sparse_dist > artifact_threshold:
-            coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
-            coarse_dist = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
-            # Use coarse if it's significantly smaller (sparse had artifact)
-            if coarse_dist < sparse_dist - 0.25:
-                sdf_value = coarse_dist
+        # Point is outside extent - project to boundary
+        clamped_pos = wp.vec3(
+            wp.clamp(pos[0], sdf_lower[0], sdf_upper[0]),
+            wp.clamp(pos[1], sdf_lower[1], sdf_upper[1]),
+            wp.clamp(pos[2], sdf_lower[2], sdf_upper[2]),
+        )
+        dist_to_boundary = wp.length(pos - clamped_pos)
 
-    # Add distance to boundary for extrapolation (0 if inside bounds)
-    results[tid] = sdf_value + dist_to_boundary
+        # Sample at the boundary point using coarse grid (more reliable for extrapolation)
+        coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
+        boundary_dist = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
+
+        # Extrapolate: value at boundary + distance to boundary
+        results[tid] = boundary_dist + dist_to_boundary
 
 
 @wp.kernel
@@ -209,7 +238,7 @@ def create_volume_from_mesh(
     margin: float = 0.2,
     max_dims: int = 64,
     verbose: bool = False,
-) -> tuple[wp.Volume, wp.Volume, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[wp.Volume, wp.Volume, float, np.ndarray, np.ndarray, np.ndarray]:
     """
     Create sparse and coarse SDF volumes from a mesh.
 
@@ -225,7 +254,8 @@ def create_volume_from_mesh(
         verbose: Print debug info
 
     Returns:
-        Tuple of (sparse_volume, coarse_volume, min_ext, max_ext, voxel_size)
+        Tuple of (sparse_volume, coarse_volume, sparse_max_value, min_ext, max_ext, voxel_size)
+        - sparse_max_value: Maximum SDF value stored in any sparse tile (for threshold)
     """
     device = mesh.device
 
@@ -299,6 +329,24 @@ def create_volume_from_mesh(
         device=device,
     )
 
+    # Compute max SDF value in sparse tiles (for threshold during sampling)
+    tile_max_values = wp.zeros(num_allocated_tiles, dtype=float, device=device)
+    # Initialize to large negative value for atomic_max
+    tile_max_values.fill_(-1e10)
+
+    wp.launch(
+        compute_tile_max_kernel,
+        dim=(num_allocated_tiles, 8, 8, 8),
+        inputs=[sparse_volume.id, tile_points_wp, tile_max_values],
+        device=device,
+    )
+
+    wp.synchronize()
+    sparse_max_value = float(np.max(tile_max_values.numpy()))
+
+    if verbose:
+        print(f"  Sparse max SDF value: {sparse_max_value:.4f}")
+
     # Create coarse background volume (8x8x8 = one tile)
     coarse_voxel_size = ext / 7  # 8 voxels, 7 intervals
     coarse_tile_points = np.array([[0, 0, 0]], dtype=np.int32)
@@ -325,7 +373,7 @@ def create_volume_from_mesh(
     if verbose:
         print(f"  Coarse voxel size: {coarse_voxel_size}")
 
-    return sparse_volume, coarse_volume, min_ext, max_ext, actual_voxel_size
+    return sparse_volume, coarse_volume, sparse_max_value, min_ext, max_ext, actual_voxel_size
 
 
 def create_box_mesh(center: tuple, half_extents: tuple, device: str) -> wp.Mesh:
