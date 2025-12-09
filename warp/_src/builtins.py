@@ -5682,7 +5682,7 @@ add_builtin(
 
     For each perturbed ray, the method counts how many mesh faces it intersects and
     uses the parity (odd/even) of this count to determine whether the ray exits the
-    mesh (odd → inside, even → outside). A majority vote over all sampled rays is
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
     used to classify the point.
 
     :param id: The mesh identifier
@@ -5724,7 +5724,7 @@ add_builtin(
 
     For each perturbed ray, the method counts how many mesh faces it intersects and
     uses the parity (odd/even) of this count to determine whether the ray exits the
-    mesh (odd → inside, even → outside). A majority vote over all sampled rays is
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
     used to classify the point.
 
     :param id: The mesh identifier
