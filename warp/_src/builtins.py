@@ -6796,7 +6796,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex2d_f",
+    "tex2d_float",
     input_types={"tex": texture2d_t, "u": float, "v": float},
     value_type=float,
     group="Textures",
@@ -6808,7 +6808,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex2d_v2",
+    "tex2d_vec2",
     input_types={"tex": texture2d_t, "u": float, "v": float},
     value_type=vec2f,
     group="Textures",
@@ -6820,7 +6820,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex2d_v3",
+    "tex2d_vec3",
     input_types={"tex": texture2d_t, "u": float, "v": float},
     value_type=vec3f,
     group="Textures",
@@ -6832,7 +6832,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex2d_v4",
+    "tex2d_vec4",
     input_types={"tex": texture2d_t, "u": float, "v": float},
     value_type=vec4f,
     group="Textures",
@@ -6844,7 +6844,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex3d_f",
+    "tex3d_float",
     input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
     value_type=float,
     group="Textures",
@@ -6856,7 +6856,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex3d_v2",
+    "tex3d_vec2",
     input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
     value_type=vec2f,
     group="Textures",
@@ -6868,7 +6868,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex3d_v3",
+    "tex3d_vec3",
     input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
     value_type=vec3f,
     group="Textures",
@@ -6880,7 +6880,7 @@ add_builtin(
 )
 
 add_builtin(
-    "tex3d_v4",
+    "tex3d_vec4",
     input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
     value_type=vec4f,
     group="Textures",

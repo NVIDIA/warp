@@ -45,7 +45,7 @@ def sample_texture2d_f_at_centers(
     u = (wp.float(x) + 0.5) / wp.float(width)
     v = (wp.float(y) + 0.5) / wp.float(height)
 
-    output[tid] = wp.tex2d_f(tex, u, v)
+    output[tid] = wp.tex2d_float(tex, u, v)
 
 
 @wp.kernel
@@ -63,7 +63,7 @@ def sample_texture2d_v4_at_centers(
     u = (wp.float(x) + 0.5) / wp.float(width)
     v = (wp.float(y) + 0.5) / wp.float(height)
 
-    output[tid] = wp.tex2d_v4(tex, u, v)
+    output[tid] = wp.tex2d_vec4(tex, u, v)
 
 
 @wp.kernel
@@ -104,7 +104,7 @@ def sample_texture3d_f_at_centers(
     v = (wp.float(y) + 0.5) / wp.float(height)
     w = (wp.float(z) + 0.5) / wp.float(depth)
 
-    output[tid] = wp.tex3d_f(tex, u, v, w)
+    output[tid] = wp.tex3d_float(tex, u, v, w)
 
 
 @wp.kernel
@@ -125,7 +125,7 @@ def sample_texture3d_v4_at_centers(
     v = (wp.float(y) + 0.5) / wp.float(height)
     ww = (wp.float(z) + 0.5) / wp.float(depth)
 
-    output[tid] = wp.tex3d_v4(tex, u, v, ww)
+    output[tid] = wp.tex3d_vec4(tex, u, v, ww)
 
 
 @wp.kernel
@@ -513,7 +513,7 @@ def sample_texture2d_at_uv(
     """Sample a 2D texture at specified UV coordinates."""
     tid = wp.tid()
     uv = uvs[tid]
-    output[tid] = wp.tex2d_f(tex, uv[0], uv[1])
+    output[tid] = wp.tex2d_float(tex, uv[0], uv[1])
 
 
 @wp.kernel
@@ -525,7 +525,7 @@ def sample_texture3d_at_uvw(
     """Sample a 3D texture at specified UVW coordinates."""
     tid = wp.tid()
     uvw = uvws[tid]
-    output[tid] = wp.tex3d_f(tex, uvw[0], uvw[1], uvw[2])
+    output[tid] = wp.tex3d_float(tex, uvw[0], uvw[1], uvw[2])
 
 
 # ============================================================================

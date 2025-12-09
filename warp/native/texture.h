@@ -109,7 +109,7 @@ CUDA_CALLABLE inline void adj_texture_depth(const texture3d_t& tex, texture3d_t&
 // These use CUDA texture fetch intrinsics on device, return 0 on host
 
 // 2D texture sampling with normalized coordinates [0,1]
-CUDA_CALLABLE inline float tex2d_f(const texture2d_t& tex, float u, float v)
+CUDA_CALLABLE inline float tex2d_float(const texture2d_t& tex, float u, float v)
 {
 #if defined(__CUDA_ARCH__)
     return tex2D<float>(tex.tex, u, v);
@@ -118,7 +118,7 @@ CUDA_CALLABLE inline float tex2d_f(const texture2d_t& tex, float u, float v)
 #endif
 }
 
-CUDA_CALLABLE inline vec2f tex2d_v2(const texture2d_t& tex, float u, float v)
+CUDA_CALLABLE inline vec2f tex2d_vec2(const texture2d_t& tex, float u, float v)
 {
 #if defined(__CUDA_ARCH__)
     float2 val = tex2D<float2>(tex.tex, u, v);
@@ -128,7 +128,7 @@ CUDA_CALLABLE inline vec2f tex2d_v2(const texture2d_t& tex, float u, float v)
 #endif
 }
 
-CUDA_CALLABLE inline vec3f tex2d_v3(const texture2d_t& tex, float u, float v)
+CUDA_CALLABLE inline vec3f tex2d_vec3(const texture2d_t& tex, float u, float v)
 {
 #if defined(__CUDA_ARCH__)
     float4 val = tex2D<float4>(tex.tex, u, v);
@@ -138,7 +138,7 @@ CUDA_CALLABLE inline vec3f tex2d_v3(const texture2d_t& tex, float u, float v)
 #endif
 }
 
-CUDA_CALLABLE inline vec4f tex2d_v4(const texture2d_t& tex, float u, float v)
+CUDA_CALLABLE inline vec4f tex2d_vec4(const texture2d_t& tex, float u, float v)
 {
 #if defined(__CUDA_ARCH__)
     float4 val = tex2D<float4>(tex.tex, u, v);
@@ -149,7 +149,7 @@ CUDA_CALLABLE inline vec4f tex2d_v4(const texture2d_t& tex, float u, float v)
 }
 
 // 3D texture sampling with normalized coordinates [0,1]
-CUDA_CALLABLE inline float tex3d_f(const texture3d_t& tex, float u, float v, float w)
+CUDA_CALLABLE inline float tex3d_float(const texture3d_t& tex, float u, float v, float w)
 {
 #if defined(__CUDA_ARCH__)
     return tex3D<float>(tex.tex, u, v, w);
@@ -158,7 +158,7 @@ CUDA_CALLABLE inline float tex3d_f(const texture3d_t& tex, float u, float v, flo
 #endif
 }
 
-CUDA_CALLABLE inline vec2f tex3d_v2(const texture3d_t& tex, float u, float v, float w)
+CUDA_CALLABLE inline vec2f tex3d_vec2(const texture3d_t& tex, float u, float v, float w)
 {
 #if defined(__CUDA_ARCH__)
     float2 val = tex3D<float2>(tex.tex, u, v, w);
@@ -168,7 +168,7 @@ CUDA_CALLABLE inline vec2f tex3d_v2(const texture3d_t& tex, float u, float v, fl
 #endif
 }
 
-CUDA_CALLABLE inline vec3f tex3d_v3(const texture3d_t& tex, float u, float v, float w)
+CUDA_CALLABLE inline vec3f tex3d_vec3(const texture3d_t& tex, float u, float v, float w)
 {
 #if defined(__CUDA_ARCH__)
     float4 val = tex3D<float4>(tex.tex, u, v, w);
@@ -178,7 +178,7 @@ CUDA_CALLABLE inline vec3f tex3d_v3(const texture3d_t& tex, float u, float v, fl
 #endif
 }
 
-CUDA_CALLABLE inline vec4f tex3d_v4(const texture3d_t& tex, float u, float v, float w)
+CUDA_CALLABLE inline vec4f tex3d_vec4(const texture3d_t& tex, float u, float v, float w)
 {
 #if defined(__CUDA_ARCH__)
     float4 val = tex3D<float4>(tex.tex, u, v, w);
@@ -189,7 +189,7 @@ CUDA_CALLABLE inline vec4f tex3d_v4(const texture3d_t& tex, float u, float v, fl
 }
 
 // Adjoint stubs for texture sampling (non-differentiable for now)
-CUDA_CALLABLE inline void adj_tex2d_f(
+CUDA_CALLABLE inline void adj_tex2d_float(
     const texture2d_t& tex, float u, float v,
     texture2d_t& adj_tex, float& adj_u, float& adj_v,
     float adj_ret)
@@ -197,49 +197,49 @@ CUDA_CALLABLE inline void adj_tex2d_f(
     // Texture sampling is not differentiable in this implementation
 }
 
-CUDA_CALLABLE inline void adj_tex2d_v2(
+CUDA_CALLABLE inline void adj_tex2d_vec2(
     const texture2d_t& tex, float u, float v,
     texture2d_t& adj_tex, float& adj_u, float& adj_v,
     const vec2f& adj_ret)
 {
 }
 
-CUDA_CALLABLE inline void adj_tex2d_v3(
+CUDA_CALLABLE inline void adj_tex2d_vec3(
     const texture2d_t& tex, float u, float v,
     texture2d_t& adj_tex, float& adj_u, float& adj_v,
     const vec3f& adj_ret)
 {
 }
 
-CUDA_CALLABLE inline void adj_tex2d_v4(
+CUDA_CALLABLE inline void adj_tex2d_vec4(
     const texture2d_t& tex, float u, float v,
     texture2d_t& adj_tex, float& adj_u, float& adj_v,
     const vec4f& adj_ret)
 {
 }
 
-CUDA_CALLABLE inline void adj_tex3d_f(
+CUDA_CALLABLE inline void adj_tex3d_float(
     const texture3d_t& tex, float u, float v, float w,
     texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
     float adj_ret)
 {
 }
 
-CUDA_CALLABLE inline void adj_tex3d_v2(
+CUDA_CALLABLE inline void adj_tex3d_vec2(
     const texture3d_t& tex, float u, float v, float w,
     texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
     const vec2f& adj_ret)
 {
 }
 
-CUDA_CALLABLE inline void adj_tex3d_v3(
+CUDA_CALLABLE inline void adj_tex3d_vec3(
     const texture3d_t& tex, float u, float v, float w,
     texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
     const vec3f& adj_ret)
 {
 }
 
-CUDA_CALLABLE inline void adj_tex3d_v4(
+CUDA_CALLABLE inline void adj_tex3d_vec4(
     const texture3d_t& tex, float u, float v, float w,
     texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
     const vec4f& adj_ret)
