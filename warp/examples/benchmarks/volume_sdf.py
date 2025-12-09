@@ -47,7 +47,7 @@ def int_to_vec3f(x: wp.int32, y: wp.int32, z: wp.int32):
 def get_distance_to_mesh(mesh: wp.uint64, point: wp.vec3, max_dist: wp.float32):
     """
     Compute signed distance from point to mesh surface.
-    
+
     Uses winding number for inside/outside determination.
     Returns positive values outside, negative inside.
     """
@@ -73,7 +73,7 @@ def sdf_from_mesh_kernel(
 ):
     """
     Populate SDF volume from triangle mesh.
-    
+
     Launch with dim=(num_tiles, 8, 8, 8) to process all voxels in allocated tiles.
     """
     tile_idx, local_x, local_y, local_z = wp.tid()
@@ -98,7 +98,7 @@ def check_tile_occupied_mesh_kernel(
 ):
     """
     Check which tiles intersect the narrow band around the mesh surface.
-    
+
     A tile is marked occupied if its center is within the threshold distance
     of the surface.
     """
@@ -124,30 +124,65 @@ def sample_volume_with_fallback(
     sparse_volume: wp.uint64,
     coarse_volume: wp.uint64,
     background_value: float,
+    sdf_lower: wp.vec3,
+    sdf_upper: wp.vec3,
     query_points: wp.array(dtype=wp.vec3),
     results: wp.array(dtype=float),
 ):
     """
-    Sample SDF with coarse fallback (matching sdf_contact.py pattern).
-    
-    1. Sample sparse volume first
-    2. If result is near background value, fallback to coarse volume
+    Sample SDF with coarse fallback and boundary extrapolation.
+
+    Handles three cases (matching sdf_contact.py and PhysX sdfCollision.cuh patterns):
+    1. Point inside extent, in narrow band: Returns sparse grid value
+    2. Point inside extent, outside narrow band: Returns coarse grid value
+    3. Point outside extent: Returns SDF(clamped) + distance_to_boundary
+
+    This ensures the SDF can be evaluated at ANY point in space with reasonable values.
     """
     tid = wp.tid()
     pos = query_points[tid]
 
-    # Sample sparse volume
-    sparse_idx = wp.volume_world_to_index(sparse_volume, pos)
+    # Clamp position to SDF bounding box (matching PhysX's PxSdfDistance pattern)
+    clamped_pos = wp.vec3(
+        wp.clamp(pos[0], sdf_lower[0], sdf_upper[0]),
+        wp.clamp(pos[1], sdf_lower[1], sdf_upper[1]),
+        wp.clamp(pos[2], sdf_lower[2], sdf_upper[2]),
+    )
+
+    # Compute distance from query point to clamped point (0 if inside bounds)
+    dist_to_boundary = wp.length(pos - clamped_pos)
+
+    # Sample sparse volume first (high resolution narrow band)
+    sparse_idx = wp.volume_world_to_index(sparse_volume, clamped_pos)
     sparse_dist = wp.volume_sample_f(sparse_volume, sparse_idx, wp.Volume.LINEAR)
 
-    # Check if we got background value (outside narrow band)
+    # Check if sparse value is valid (not near background = tile was allocated)
+    # Values near background indicate we're outside the allocated narrow band tiles
+    # or at a tile boundary with background interpolation artifacts
     background_threshold = background_value * 0.5
+    
+    sdf_value = sparse_dist
+    
     if sparse_dist >= background_threshold:
-        # Fallback to coarse volume
-        coarse_idx = wp.volume_world_to_index(coarse_volume, pos)
-        results[tid] = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
+        # Sparse returned background-like value - fallback to coarse
+        coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
+        sdf_value = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
     else:
-        results[tid] = sparse_dist
+        # Sparse value looks valid, but check for tile boundary artifacts
+        # At tile boundaries, interpolation with background can produce values like
+        # 0.7 * true_sdf + 0.3 * 1000 which are way off from the true SDF
+        # We detect this by checking if sparse is suspiciously high
+        # For typical narrow bands of 0.1-0.2, any value > 0.5 warrants a coarse check
+        artifact_threshold = 0.5
+        if sparse_dist > artifact_threshold:
+            coarse_idx = wp.volume_world_to_index(coarse_volume, clamped_pos)
+            coarse_dist = wp.volume_sample_f(coarse_volume, coarse_idx, wp.Volume.LINEAR)
+            # Use coarse if it's significantly smaller (sparse had artifact)
+            if coarse_dist < sparse_dist - 0.25:
+                sdf_value = coarse_dist
+
+    # Add distance to boundary for extrapolation (0 if inside bounds)
+    results[tid] = sdf_value + dist_to_boundary
 
 
 @wp.kernel
@@ -177,23 +212,23 @@ def create_volume_from_mesh(
 ) -> tuple[wp.Volume, wp.Volume, np.ndarray, np.ndarray, np.ndarray]:
     """
     Create sparse and coarse SDF volumes from a mesh.
-    
+
     This follows the pattern from newton's sdf_utils.py:
     - Sparse volume: High-resolution tiles allocated only in the narrow band
     - Coarse volume: Low-resolution (8x8x8) covering the entire extent
-    
+
     Args:
         mesh: wp.Mesh with support_winding_number=True
         narrow_band_distance: Tuple of (inner, outer) distances, e.g., (-0.1, 0.1)
         margin: Margin to add around mesh bounding box
         max_dims: Maximum grid dimension
         verbose: Print debug info
-        
+
     Returns:
         Tuple of (sparse_volume, coarse_volume, min_ext, max_ext, voxel_size)
     """
     device = mesh.device
-    
+
     # Compute mesh bounds
     points_np = mesh.points.numpy()
     min_ext = np.min(points_np, axis=0) - margin
@@ -216,9 +251,7 @@ def create_volume_from_mesh(
     # Generate all potential tiles
     tile_max = np.around((max_ext - min_ext) / actual_voxel_size).astype(np.int32) // 8
     tiles = np.array(
-        [[i, j, k] for i in range(tile_max[0] + 1) 
-                   for j in range(tile_max[1] + 1) 
-                   for k in range(tile_max[2] + 1)],
+        [[i, j, k] for i in range(tile_max[0] + 1) for j in range(tile_max[1] + 1) for k in range(tile_max[2] + 1)],
         dtype=np.int32,
     )
     tile_points = tiles * 8
@@ -230,10 +263,7 @@ def create_volume_from_mesh(
 
     # Check which tiles intersect narrow band
     tile_radius = np.linalg.norm(4 * actual_voxel_size)
-    threshold = wp.vec2f(
-        narrow_band_distance[0] - tile_radius, 
-        narrow_band_distance[1] + tile_radius
-    )
+    threshold = wp.vec2f(narrow_band_distance[0] - tile_radius, narrow_band_distance[1] + tile_radius)
 
     wp.launch(
         check_tile_occupied_mesh_kernel,
@@ -301,12 +331,12 @@ def create_volume_from_mesh(
 def create_box_mesh(center: tuple, half_extents: tuple, device: str) -> wp.Mesh:
     """
     Create a simple box mesh for testing.
-    
+
     Args:
         center: Box center (x, y, z)
         half_extents: Half-sizes along each axis
         device: Warp device string
-        
+
     Returns:
         wp.Mesh with support_winding_number=True
     """
@@ -314,35 +344,70 @@ def create_box_mesh(center: tuple, half_extents: tuple, device: str) -> wp.Mesh:
     hx, hy, hz = half_extents
 
     # 8 vertices of the box
-    vertices = np.array([
-        [cx - hx, cy - hy, cz - hz],
-        [cx + hx, cy - hy, cz - hz],
-        [cx + hx, cy + hy, cz - hz],
-        [cx - hx, cy + hy, cz - hz],
-        [cx - hx, cy - hy, cz + hz],
-        [cx + hx, cy - hy, cz + hz],
-        [cx + hx, cy + hy, cz + hz],
-        [cx - hx, cy + hy, cz + hz],
-    ], dtype=np.float32)
+    vertices = np.array(
+        [
+            [cx - hx, cy - hy, cz - hz],
+            [cx + hx, cy - hy, cz - hz],
+            [cx + hx, cy + hy, cz - hz],
+            [cx - hx, cy + hy, cz - hz],
+            [cx - hx, cy - hy, cz + hz],
+            [cx + hx, cy - hy, cz + hz],
+            [cx + hx, cy + hy, cz + hz],
+            [cx - hx, cy + hy, cz + hz],
+        ],
+        dtype=np.float32,
+    )
 
     # 12 triangles (counter-clockwise winding for outward normals)
-    indices = np.array([
-        # Front face (Z-)
-        0, 2, 1, 0, 3, 2,
-        # Back face (Z+)
-        4, 5, 6, 4, 6, 7,
-        # Left face (X-)
-        0, 7, 3, 0, 4, 7,
-        # Right face (X+)
-        1, 2, 6, 1, 6, 5,
-        # Bottom face (Y-)
-        0, 1, 5, 0, 5, 4,
-        # Top face (Y+)
-        3, 6, 2, 3, 7, 6,
-    ], dtype=np.int32)
+    indices = np.array(
+        [
+            # Front face (Z-)
+            0,
+            2,
+            1,
+            0,
+            3,
+            2,
+            # Back face (Z+)
+            4,
+            5,
+            6,
+            4,
+            6,
+            7,
+            # Left face (X-)
+            0,
+            7,
+            3,
+            0,
+            4,
+            7,
+            # Right face (X+)
+            1,
+            2,
+            6,
+            1,
+            6,
+            5,
+            # Bottom face (Y-)
+            0,
+            1,
+            5,
+            0,
+            5,
+            4,
+            # Top face (Y+)
+            3,
+            6,
+            2,
+            3,
+            7,
+            6,
+        ],
+        dtype=np.int32,
+    )
 
     points = wp.array(vertices, dtype=wp.vec3, device=device)
     indices_arr = wp.array(indices, dtype=int, device=device)
 
     return wp.Mesh(points=points, indices=indices_arr, support_winding_number=True)
-

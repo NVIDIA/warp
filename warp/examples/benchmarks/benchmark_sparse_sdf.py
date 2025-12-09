@@ -19,7 +19,7 @@ This benchmark creates a signed distance field from a simple box mesh and compar
 1. NanoVDB Volume-based SDF sampling (sparse + coarse with fallback)
 2. Sparse SDF sampling using 3D CUDA textures (coarse + subgrid approach)
 
-The texture-based SDF is built using GPU kernels following the pattern from 
+The texture-based SDF is built using GPU kernels following the pattern from
 PhysX's SDFConstruction.cu:
 1. Build dense SDF grid (one thread per voxel querying mesh distance)
 2. Build background SDF by sampling at subgrid corners
@@ -45,6 +45,7 @@ from texture_sdf import (
     build_sparse_sdf_from_dense,
     create_sparse_sdf_textures,
     sample_sparse_sdf,
+    QuantizationMode,
 )
 
 
@@ -53,11 +54,17 @@ from texture_sdf import (
 # ============================================================================
 
 NUM_QUERY_POINTS = 1024 * 1024  # 1M query points
-SDF_RESOLUTION = 64  # Grid resolution
-SUBGRID_SIZE = 8  # Cells per subgrid block (matches volume tile size)
+SDF_RESOLUTION = 256  # Grid resolution
+SUBGRID_SIZE = 6  # Cells per subgrid block (optimal value from PhysX testing)
 NARROW_BAND_WORLD = 0.1  # Narrow band distance in world units
 ITERATIONS = 100
 WARM_UP = 10
+
+# Quantization mode for subgrid texture data:
+#   QuantizationMode.FLOAT32 - Full precision (4 bytes per sample)
+#   QuantizationMode.UINT16  - 16-bit compression (2 bytes per sample)
+#   QuantizationMode.UINT8   - 8-bit compression (1 byte per sample)
+QUANTIZATION_MODE = QuantizationMode.UINT16
 
 
 # ============================================================================
@@ -81,10 +88,18 @@ def run_benchmark():
     margin = 0.2
     narrow_band = (-NARROW_BAND_WORLD, NARROW_BAND_WORLD)
 
+    # Map quantization mode to readable name
+    quant_names = {
+        QuantizationMode.FLOAT32: "FLOAT32 (4 bytes)",
+        QuantizationMode.UINT16: "UINT16 (2 bytes)",
+        QuantizationMode.UINT8: "UINT8 (1 byte)",
+    }
+
     print(f"\nConfiguration:")
     print(f"  SDF Resolution: {SDF_RESOLUTION}")
     print(f"  Subgrid Size: {SUBGRID_SIZE}")
     print(f"  Narrow Band: +/-{NARROW_BAND_WORLD} world units")
+    print(f"  Quantization: {quant_names.get(QUANTIZATION_MODE, 'Unknown')}")
     print(f"  Query Points: {NUM_QUERY_POINTS:,}")
     print(f"  Iterations: {ITERATIONS}")
     print(f"  Warm-up: {WARM_UP}")
@@ -92,7 +107,7 @@ def run_benchmark():
     # ========== Create Mesh ==========
     print("\nCreating mesh...")
     mesh = create_box_mesh(box_center, box_half_extents, device)
-    
+
     # Compute mesh bounds for dense SDF
     points_np = mesh.points.numpy()
     min_ext = np.min(points_np, axis=0) - margin
@@ -107,17 +122,22 @@ def run_benchmark():
 
     # Verify volume works
     print("\n  Verifying volume sampling...")
-    test_pts = np.array([
-        [0.5, 0.5, 0.5],  # Center (inside)
-        [0.2, 0.5, 0.5],  # Surface
-        [0.1, 0.5, 0.5],  # Outside
-    ], dtype=np.float32)
+    test_pts = np.array(
+        [
+            [0.5, 0.5, 0.5],  # Center (inside)
+            [0.2, 0.5, 0.5],  # Surface
+            [0.1, 0.5, 0.5],  # Outside
+        ],
+        dtype=np.float32,
+    )
     test_pts_arr = wp.array(test_pts, dtype=wp.vec3, device=device)
     test_results = wp.zeros(len(test_pts), dtype=float, device=device)
+    sdf_lower = wp.vec3(vol_min_ext[0], vol_min_ext[1], vol_min_ext[2])
+    sdf_upper = wp.vec3(vol_max_ext[0], vol_max_ext[1], vol_max_ext[2])
     wp.launch(
         sample_volume_with_fallback,
         dim=len(test_pts),
-        inputs=[sparse_volume.id, coarse_volume.id, BACKGROUND_VALUE, test_pts_arr, test_results],
+        inputs=[sparse_volume.id, coarse_volume.id, BACKGROUND_VALUE, sdf_lower, sdf_upper, test_pts_arr, test_results],
         device=device,
     )
     wp.synchronize()
@@ -126,27 +146,34 @@ def run_benchmark():
 
     # ========== Create Texture SDF (GPU-accelerated construction) ==========
     print("\nBuilding texture-based sparse SDF using GPU kernels...")
-    
+
     # Step 1: Build dense SDF from mesh
     print("  Step 1: Building dense SDF from mesh...")
     import time
+
     t0 = time.perf_counter()
-    
-    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(
-        mesh, min_ext, max_ext, SDF_RESOLUTION, device
-    )
+
+    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(mesh, min_ext, max_ext, SDF_RESOLUTION, device)
     wp.synchronize()
     dense_time = time.perf_counter() - t0
     print(f"  Dense SDF build time: {dense_time * 1000:.2f} ms")
-    
+
     # Step 2: Build sparse representation from dense SDF
     print("  Step 2: Building sparse representation...")
     t0 = time.perf_counter()
-    
+
     sparse_data = build_sparse_sdf_from_dense(
-        dense_sdf, dense_x, dense_y, dense_z,
-        cell_size, min_ext, max_ext,
-        SUBGRID_SIZE, NARROW_BAND_WORLD, device
+        dense_sdf,
+        dense_x,
+        dense_y,
+        dense_z,
+        cell_size,
+        min_ext,
+        max_ext,
+        subgrid_size=SUBGRID_SIZE,
+        narrow_band_thickness=NARROW_BAND_WORLD,
+        quantization_mode=QUANTIZATION_MODE,
+        device=device,
     )
     wp.synchronize()
     sparse_build_time = time.perf_counter() - t0
@@ -176,7 +203,15 @@ def run_benchmark():
         wp.launch(
             sample_volume_with_fallback,
             dim=NUM_QUERY_POINTS,
-            inputs=[sparse_volume.id, coarse_volume.id, BACKGROUND_VALUE, query_points, results_volume],
+            inputs=[
+                sparse_volume.id,
+                coarse_volume.id,
+                BACKGROUND_VALUE,
+                sdf_lower,
+                sdf_upper,
+                query_points,
+                results_volume,
+            ],
             device=device,
         )
     wp.synchronize()
@@ -187,7 +222,15 @@ def run_benchmark():
             wp.launch(
                 sample_volume_with_fallback,
                 dim=NUM_QUERY_POINTS,
-                inputs=[sparse_volume.id, coarse_volume.id, BACKGROUND_VALUE, query_points, results_volume],
+                inputs=[
+                    sparse_volume.id,
+                    coarse_volume.id,
+                    BACKGROUND_VALUE,
+                    sdf_lower,
+                    sdf_upper,
+                    query_points,
+                    results_volume,
+                ],
                 device=device,
             )
 
@@ -254,18 +297,23 @@ def run_benchmark():
         speedup = volume_mean / sparse_mean
         print(f"\nSpeedup (Texture vs Volume): {speedup:.2f}x")
 
-    # Memory usage
-    coarse_mem = np.prod(sparse_data["coarse_sdf"].shape) * 4
-    subgrid_mem = np.prod(sparse_data["subgrid_data"].shape) * 4
+    # Memory usage (accounting for quantization mode)
+    # Note: textures are always float32 on GPU, but source data size varies
+    bytes_per_sample = QUANTIZATION_MODE  # FLOAT32=4, UINT16=2, UINT8=1
+    coarse_mem = np.prod(sparse_data["coarse_sdf"].shape) * 4  # Coarse is always float32
+    subgrid_mem_source = np.prod(sparse_data["subgrid_data"].shape) * bytes_per_sample
+    subgrid_mem_texture = np.prod(sparse_data["subgrid_data"].shape) * 4  # GPU texture is float32
     slots_mem = len(sparse_data["subgrid_start_slots"]) * 4
     dense_mem = dense_x * dense_y * dense_z * 4
 
     print(f"\nMemory Usage:")
     print(f"  Dense SDF (temporary): {dense_mem / 1024:.1f} KB")
     print(f"  Coarse texture: {coarse_mem / 1024:.1f} KB")
-    print(f"  Subgrid texture: {subgrid_mem / 1024:.1f} KB")
+    print(f"  Subgrid texture (GPU): {subgrid_mem_texture / 1024:.1f} KB")
+    if QUANTIZATION_MODE != QuantizationMode.FLOAT32:
+        print(f"  Subgrid data (quantized): {subgrid_mem_source / 1024:.1f} KB ({bytes_per_sample} bytes/sample)")
     print(f"  Indirection slots: {slots_mem / 1024:.1f} KB")
-    print(f"  Total (persistent): {(coarse_mem + subgrid_mem + slots_mem) / 1024:.1f} KB")
+    print(f"  Total (persistent): {(coarse_mem + subgrid_mem_texture + slots_mem) / 1024:.1f} KB")
 
     print("\n" + "=" * 80)
 
