@@ -250,7 +250,7 @@ bool wp_texture3d_create(
     copy_params.srcXInBytes = 0;
     copy_params.srcY = 0;
     copy_params.srcZ = 0;
-    copy_params.srcLOAD = 0;
+    copy_params.srcLOD = 0;
     copy_params.srcMemoryType = CU_MEMORYTYPE_HOST;
     copy_params.srcHost = data;
     copy_params.srcPitch = width * bytes_per_texel;
@@ -259,7 +259,7 @@ bool wp_texture3d_create(
     copy_params.dstXInBytes = 0;
     copy_params.dstY = 0;
     copy_params.dstZ = 0;
-    copy_params.dstLOAD = 0;
+    copy_params.dstLOD = 0;
     copy_params.dstMemoryType = CU_MEMORYTYPE_ARRAY;
     copy_params.dstArray = cuda_array;
 

@@ -62,6 +62,8 @@ class SparseSDF:
     coarse_size_y: int
     coarse_size_z: int
     subgrid_size: int
+    subgrid_size_f: float  # float(subgrid_size) - avoids int->float conversion
+    subgrid_samples_f: float  # float(subgrid_size + 1) - samples per subgrid dimension
     fine_to_coarse: float
     # Precomputed inverse texture sizes (avoid divisions in sampling)
     inv_coarse_tex_size_x: float  # 1.0 / (coarse_size_x + 1)
@@ -573,17 +575,16 @@ def populate_subgrid_texture_uint8_kernel(
 
 
 @wp.func
-def apply_subgrid_start(start_slot: wp.uint32, local_f: wp.vec3, subgrid_size: int) -> wp.vec3:
+def apply_subgrid_start(start_slot: wp.uint32, local_f: wp.vec3, subgrid_samples_f: float) -> wp.vec3:
     """Apply subgrid block offset to local coordinates."""
     block_x = float(start_slot & wp.uint32(0x3FF))
     block_y = float((start_slot >> wp.uint32(10)) & wp.uint32(0x3FF))
     block_z = float((start_slot >> wp.uint32(20)) & wp.uint32(0x3FF))
 
-    subgrid_samples = float(subgrid_size + 1)
     return wp.vec3(
-        local_f[0] + block_x * subgrid_samples,
-        local_f[1] + block_y * subgrid_samples,
-        local_f[2] + block_z * subgrid_samples,
+        local_f[0] + block_x * subgrid_samples_f,
+        local_f[1] + block_y * subgrid_samples_f,
+        local_f[2] + block_z * subgrid_samples_f,
     )
 
 
@@ -631,8 +632,8 @@ def sample_sparse_sdf(
     y_base = wp.clamp(int(f[1] * sdf.fine_to_coarse), 0, sdf.coarse_size_y - 1)
     z_base = wp.clamp(int(f[2] * sdf.fine_to_coarse), 0, sdf.coarse_size_z - 1)
 
-    # Look up indirection slot
-    slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+    # Look up indirection slot: (z * sy + y) * sx + x
+    slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
     start_slot = subgrid_start_slots[slot_idx]
 
     sdf_val = float(0.0)
@@ -645,13 +646,16 @@ def sample_sparse_sdf(
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
         sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
     else:
-        # Sample from subgrid texture
-        local_x = wp.clamp(f[0] - float(x_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
-        local_y = wp.clamp(f[1] - float(y_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
-        local_z = wp.clamp(f[2] - float(z_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
+        # Sample from subgrid texture (convert to float once)
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        local_x = wp.clamp(f[0] - fx_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+        local_y = wp.clamp(f[1] - fy_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+        local_z = wp.clamp(f[2] - fz_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
 
         local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
 
         # Cubic texture - use same size for all dimensions
         u = (tex_coords[0] + 0.5) * sdf.inv_subgrid_tex_size
@@ -695,8 +699,8 @@ def sample_sparse_sdf_at(
     y_base = wp.clamp(int(f[1] * sdf.fine_to_coarse), 0, sdf.coarse_size_y - 1)
     z_base = wp.clamp(int(f[2] * sdf.fine_to_coarse), 0, sdf.coarse_size_z - 1)
 
-    # Look up indirection slot
-    slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+    # Look up indirection slot: (z * sy + y) * sx + x = 2 int muls instead of 3
+    slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
     start_slot = subgrid_start_slots[slot_idx]
 
     sdf_val = float(0.0)
@@ -709,13 +713,16 @@ def sample_sparse_sdf_at(
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
         sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
     else:
-        # Sample from subgrid texture
-        local_x = wp.clamp(f[0] - float(x_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
-        local_y = wp.clamp(f[1] - float(y_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
-        local_z = wp.clamp(f[2] - float(z_base * sdf.subgrid_size), 0.0, float(sdf.subgrid_size) + 1.0)
+        # Sample from subgrid texture (use float x_base to avoid int->float)
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        local_x = wp.clamp(f[0] - fx_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+        local_y = wp.clamp(f[1] - fy_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+        local_z = wp.clamp(f[2] - fz_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
 
         local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
 
         u = (tex_coords[0] + 0.5) * sdf.inv_subgrid_tex_size
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
@@ -746,8 +753,8 @@ def sample_texture_at_grid_coords(
     y_base = int(f[1] * sdf.fine_to_coarse)
     z_base = int(f[2] * sdf.fine_to_coarse)
 
-    # Look up indirection slot
-    slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+    # Look up indirection slot: (z * sy + y) * sx + x
+    slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
     start_slot = subgrid_start_slots[slot_idx]
 
     sdf_val = float(0.0)
@@ -760,13 +767,16 @@ def sample_texture_at_grid_coords(
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
         sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
     else:
-        # Sample from subgrid texture
-        local_x = f[0] - float(x_base * sdf.subgrid_size)
-        local_y = f[1] - float(y_base * sdf.subgrid_size)
-        local_z = f[2] - float(z_base * sdf.subgrid_size)
+        # Sample from subgrid texture (convert to float once)
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        local_x = f[0] - fx_base * sdf.subgrid_size_f
+        local_y = f[1] - fy_base * sdf.subgrid_size_f
+        local_z = f[2] - fz_base * sdf.subgrid_size_f
 
         local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
 
         u = (tex_coords[0] + 0.5) * sdf.inv_subgrid_tex_size
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
@@ -803,8 +813,8 @@ def sample_with_precomputed_cell(
         y_base = int(f[1] * sdf.fine_to_coarse)
         z_base = int(f[2] * sdf.fine_to_coarse)
 
-        # Look up indirection slot
-        slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+        # Look up indirection slot: (z * sy + y) * sx + x
+        slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
         start_slot = subgrid_start_slots[slot_idx]
 
     if start_slot == wp.uint32(0xFFFFFFFF):
@@ -815,13 +825,16 @@ def sample_with_precomputed_cell(
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
         return wp.tex3d_float(coarse_texture, u, v, w)
     else:
-        # Sample from subgrid texture
-        local_x = f[0] - float(x_base * sdf.subgrid_size)
-        local_y = f[1] - float(y_base * sdf.subgrid_size)
-        local_z = f[2] - float(z_base * sdf.subgrid_size)
+        # Sample from subgrid texture (convert to float once)
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        local_x = f[0] - fx_base * sdf.subgrid_size_f
+        local_y = f[1] - fy_base * sdf.subgrid_size_f
+        local_z = f[2] - fz_base * sdf.subgrid_size_f
 
         local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_size)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
 
         u = (tex_coords[0] + 0.5) * sdf.inv_subgrid_tex_size
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
@@ -886,17 +899,20 @@ def sample_sparse_sdf_grad(
         y_base = int(f[1] * sdf.fine_to_coarse)
         z_base = int(f[2] * sdf.fine_to_coarse)
 
-        # Look up indirection slot once
-        slot_idx = z_base * sdf.coarse_size_x * sdf.coarse_size_y + y_base * sdf.coarse_size_x + x_base
+        # Look up indirection slot once: (z * sy + y) * sx + x
+        slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
         start_slot = subgrid_start_slots[slot_idx]
 
-        # Compute cell bounds for per-sample checks
-        cell_lower_x = float(x_base * sdf.subgrid_size)
-        cell_lower_y = float(y_base * sdf.subgrid_size)
-        cell_lower_z = float(z_base * sdf.subgrid_size)
-        cell_upper_x = cell_lower_x + float(sdf.subgrid_size)
-        cell_upper_y = cell_lower_y + float(sdf.subgrid_size)
-        cell_upper_z = cell_lower_z + float(sdf.subgrid_size)
+        # Compute cell bounds for per-sample checks (convert to float once, reuse)
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        cell_lower_x = fx_base * sdf.subgrid_size_f
+        cell_lower_y = fy_base * sdf.subgrid_size_f
+        cell_lower_z = fz_base * sdf.subgrid_size_f
+        cell_upper_x = cell_lower_x + sdf.subgrid_size_f
+        cell_upper_y = cell_lower_y + sdf.subgrid_size_f
+        cell_upper_z = cell_lower_z + sdf.subgrid_size_f
 
         # Check each sample point individually - use marker only when needed
         marker = wp.uint32(0xFFFFFFFE)
@@ -1430,6 +1446,8 @@ def create_sparse_sdf_textures(
     sdf_params.coarse_size_y = coarse_y
     sdf_params.coarse_size_z = coarse_z
     sdf_params.subgrid_size = sparse_data["subgrid_size"]
+    sdf_params.subgrid_size_f = float(sparse_data["subgrid_size"])
+    sdf_params.subgrid_samples_f = float(sparse_data["subgrid_size"] + 1)
     sdf_params.fine_to_coarse = 1.0 / sparse_data["subgrid_size"]
 
     # Precomputed inverse texture sizes (avoid divisions in sampling)
