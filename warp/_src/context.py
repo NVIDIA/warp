@@ -53,6 +53,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp._src.config
+from warp._src.codegen import synchronized
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -2251,6 +2252,11 @@ class Module:
 
         return get_deprecated_method(self, "warp.Module", name)
 
+    @synchronized
+    def increment_id(self) -> int:
+        self.cpu_exec_id += 1
+        return self.cpu_exec_id
+
     def register_struct(self, struct):
         self.structs[struct.key] = struct
 
@@ -2781,8 +2787,8 @@ class Module:
 
             if device.is_cpu:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
-                module_handle = f"wp_{self.name}_{self.cpu_exec_id}"
-                self.cpu_exec_id += 1
+                id = self.increment_id()
+                module_handle = f"wp_{self.name}_{id}"
                 runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
                 self.execs[(None, active_block_dim)] = module_exec
