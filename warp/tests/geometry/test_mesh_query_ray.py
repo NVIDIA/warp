@@ -390,22 +390,6 @@ def mesh_query_ray_brutal(
     counts[tid] = int(hit)
 
 
-@wp.kernel
-def mesh_query_ray_count_intersections_kernel(
-    mesh: wp.uint64,
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
-    counts: wp.array(dtype=int),
-):
-    tid = wp.tid()
-
-    p = ray_starts[tid]
-    dir = ray_directions[tid]
-
-    intersection_count = wp.mesh_query_ray_count_intersections(mesh, p, dir)
-    counts[tid] = intersection_count
-
-
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_mesh_query_ray_count_intersections(test, device):
     """Stress test for mesh_query_ray_count_intersections with various ray configurations"""
@@ -526,7 +510,6 @@ def test_mesh_query_ray_count_intersections(test, device):
 
         # Compare results
         counts_brutal_np = counts_brutal.numpy()
-        counts_bvh_np = counts_bvh.numpy()
 
         # Verify they match
         assert_array_equal(counts_bvh, counts_brutal)
