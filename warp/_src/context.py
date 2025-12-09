@@ -4134,6 +4134,48 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
+            # Texture functions
+            self.core.wp_texture2d_create.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_int,  # width
+                ctypes.c_int,  # height
+                ctypes.c_int,  # num_channels
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # address_mode
+                ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
+            ]
+            self.core.wp_texture2d_create.restype = ctypes.c_bool
+
+            self.core.wp_texture2d_destroy.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # tex_handle
+                ctypes.c_uint64,  # array_handle
+            ]
+            self.core.wp_texture2d_destroy.restype = None
+
+            self.core.wp_texture3d_create.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_int,  # width
+                ctypes.c_int,  # height
+                ctypes.c_int,  # depth
+                ctypes.c_int,  # num_channels
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # address_mode
+                ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
+            ]
+            self.core.wp_texture3d_create.restype = ctypes.c_bool
+
+            self.core.wp_texture3d_destroy.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # tex_handle
+                ctypes.c_uint64,  # array_handle
+            ]
+            self.core.wp_texture3d_destroy.restype = None
+
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
                 ctypes.c_int,  # scalar size in bytes
@@ -6180,6 +6222,10 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 return arg_type(value)
             except Exception as e:
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
+
+    elif issubclass(arg_type, ctypes.Structure) and isinstance(value, arg_type):
+        # ctypes Structure types (like texture2d_t, texture3d_t) can be passed directly
+        return value
 
     elif isinstance(value, arg_type):
         try:

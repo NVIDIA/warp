@@ -6748,6 +6748,151 @@ add_builtin(
 
 
 # ---------------------------------
+# Textures
+
+add_builtin(
+    "texture_width",
+    input_types={"tex": texture2d_t},
+    value_type=int32,
+    group="Textures",
+    doc="""Return the width of a 2D texture in pixels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "texture_height",
+    input_types={"tex": texture2d_t},
+    value_type=int32,
+    group="Textures",
+    doc="""Return the height of a 2D texture in pixels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "texture_width",
+    input_types={"tex": texture3d_t},
+    value_type=int32,
+    group="Textures",
+    doc="""Return the width of a 3D texture in pixels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "texture_height",
+    input_types={"tex": texture3d_t},
+    value_type=int32,
+    group="Textures",
+    doc="""Return the height of a 3D texture in pixels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "texture_depth",
+    input_types={"tex": texture3d_t},
+    value_type=int32,
+    group="Textures",
+    doc="""Return the depth of a 3D texture in pixels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex2d_f",
+    input_types={"tex": texture2d_t, "u": float, "v": float},
+    value_type=float,
+    group="Textures",
+    doc="""Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a single float value. Coordinates are in the range [0, 1].
+    The texture must have 1 channel.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex2d_v2",
+    input_types={"tex": texture2d_t, "u": float, "v": float},
+    value_type=vec2f,
+    group="Textures",
+    doc="""Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a vec2f value. Coordinates are in the range [0, 1].
+    The texture must have 2 channels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex2d_v3",
+    input_types={"tex": texture2d_t, "u": float, "v": float},
+    value_type=vec3f,
+    group="Textures",
+    doc="""Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
+    The texture must have 4 channels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex2d_v4",
+    input_types={"tex": texture2d_t, "u": float, "v": float},
+    value_type=vec4f,
+    group="Textures",
+    doc="""Sample a 2D texture at the given normalized UV coordinates.
+
+    Returns a vec4f value. Coordinates are in the range [0, 1].
+    The texture must have 4 channels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex3d_f",
+    input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
+    value_type=float,
+    group="Textures",
+    doc="""Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a single float value. Coordinates are in the range [0, 1].
+    The texture must have 1 channel.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex3d_v2",
+    input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
+    value_type=vec2f,
+    group="Textures",
+    doc="""Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a vec2f value. Coordinates are in the range [0, 1].
+    The texture must have 2 channels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex3d_v3",
+    input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
+    value_type=vec3f,
+    group="Textures",
+    doc="""Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
+    The texture must have 4 channels.""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tex3d_v4",
+    input_types={"tex": texture3d_t, "u": float, "v": float, "w": float},
+    value_type=vec4f,
+    group="Textures",
+    doc="""Sample a 3D texture at the given normalized UVW coordinates.
+
+    Returns a vec4f value. Coordinates are in the range [0, 1].
+    The texture must have 4 channels.""",
+    is_differentiable=False,
+)
+
+
+# ---------------------------------
 # Random
 
 add_builtin(

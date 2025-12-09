@@ -181,6 +181,47 @@ WP_API const char* wp_volume_get_blind_data_info(
     uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count, uint32_t* value_size, char type_str[16]
 );
 
+// Texture2D functions
+// Creates a 2D texture from data. Returns texture handle (combines tex object + array handle).
+// data: pointer to host or device data
+// width, height: texture dimensions
+// num_channels: 1, 2, or 4 (float, float2, float4)
+// filter_mode: 0=nearest, 1=linear
+// address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
+WP_API bool wp_texture2d_create(
+    void* context,
+    int width,
+    int height,
+    int num_channels,
+    int filter_mode,
+    int address_mode,
+    const float* data,
+    uint64_t* tex_handle_out,
+    uint64_t* array_handle_out
+);
+WP_API void wp_texture2d_destroy(void* context, uint64_t tex_handle, uint64_t array_handle);
+
+// Texture3D functions
+// Creates a 3D texture from data. Returns texture handle (combines tex object + array handle).
+// data: pointer to host or device data
+// width, height, depth: texture dimensions
+// num_channels: 1, 2, or 4 (float, float2, float4)
+// filter_mode: 0=nearest, 1=linear
+// address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
+WP_API bool wp_texture3d_create(
+    void* context,
+    int width,
+    int height,
+    int depth,
+    int num_channels,
+    int filter_mode,
+    int address_mode,
+    const float* data,
+    uint64_t* tex_handle_out,
+    uint64_t* array_handle_out
+);
+WP_API void wp_texture3d_destroy(void* context, uint64_t tex_handle, uint64_t array_handle);
+
 WP_API uint64_t wp_marching_cubes_create_device(void* context);
 WP_API void wp_marching_cubes_destroy_device(uint64_t id);
 WP_API int wp_marching_cubes_surface_device(
