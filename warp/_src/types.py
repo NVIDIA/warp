@@ -5647,13 +5647,18 @@ class Texture2D:
     regularly-gridded data. They support bilinear interpolation and
     various addressing modes (wrap, clamp, mirror, border).
 
+    Supports uint8, uint16, and float32 data types. Integer textures are
+    read as normalized floats in the [0, 1] range.
+
     Example:
         >>> import warp as wp
         >>> import numpy as np
-        >>> # Create a 256x256 RGBA texture
+        >>> # Create a 256x256 RGBA float texture
         >>> data = np.random.rand(256, 256, 4).astype(np.float32)
         >>> tex = wp.Texture2D(data, device="cuda:0")
-        >>> # Use tex2d_v4() in a kernel to sample the texture
+        >>> # Create a compressed 8-bit texture
+        >>> data8 = (np.random.rand(256, 256) * 255).astype(np.uint8)
+        >>> tex8 = wp.Texture2D(data8, device="cuda:0")
     """
 
     #: Enum value to specify nearest-neighbor filtering
@@ -5670,11 +5675,29 @@ class Texture2D:
     #: Enum value for border address mode
     BORDER = constant(3)
 
+    #: Data type constants
+    DTYPE_UINT8 = constant(0)
+    DTYPE_UINT16 = constant(1)
+    DTYPE_FLOAT32 = constant(2)
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance._tex_handle = 0
         instance._array_handle = 0
         return instance
+
+    @staticmethod
+    def _numpy_dtype_to_code(dtype):
+        """Convert numpy dtype to internal dtype code."""
+        dtype = np.dtype(dtype)
+        if dtype == np.uint8:
+            return 0  # DTYPE_UINT8
+        elif dtype == np.uint16:
+            return 1  # DTYPE_UINT16
+        elif dtype == np.float32:
+            return 2  # DTYPE_FLOAT32
+        else:
+            raise ValueError(f"Unsupported texture dtype: {dtype}. Supported: uint8, uint16, float32")
 
     def __init__(
         self,
@@ -5682,6 +5705,7 @@ class Texture2D:
         width: int = 0,
         height: int = 0,
         num_channels: int = 4,
+        dtype=np.float32,
         filter_mode: int = 1,
         address_mode: int = 1,
         device=None,
@@ -5693,10 +5717,12 @@ class Texture2D:
                   Shape should be (height, width) for 1-channel,
                   (height, width, 2) for 2-channel, or
                   (height, width, 4) for 4-channel textures.
+                  Supported dtypes: uint8, uint16, float32.
                   If None, width/height/num_channels must be specified.
             width: Texture width (required if data is None).
             height: Texture height (required if data is None).
             num_channels: Number of channels (1, 2, or 4). Default is 4.
+            dtype: Data type (np.uint8, np.uint16, or np.float32). Default is float32.
             filter_mode: Filtering mode - NEAREST (0) or LINEAR (1). Default is LINEAR.
             address_mode: Address mode - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3). Default is CLAMP.
             device: CUDA device to create the texture on.
@@ -5709,6 +5735,8 @@ class Texture2D:
             self._width = width
             self._height = height
             self._num_channels = num_channels
+            self._dtype = np.dtype(dtype)
+            self._dtype_code = self._numpy_dtype_to_code(dtype)
             self._filter_mode = filter_mode
             self._address_mode = address_mode
             self._tex_handle = 0
@@ -5730,11 +5758,14 @@ class Texture2D:
             else:
                 raise ValueError("Data must be 2D or 3D numpy array")
 
-            # Ensure float32
-            if data.dtype != np.float32:
-                data = data.astype(np.float32)
+            # Validate and get dtype code
+            dtype_code = self._numpy_dtype_to_code(data.dtype)
+            dtype = data.dtype
 
-            # Flatten to contiguous float array
+            # Ensure contiguous
+            if not data.flags["C_CONTIGUOUS"]:
+                data = np.ascontiguousarray(data)
+
             data_flat = data.flatten()
         elif is_array(data):
             self.device = data.device
@@ -5751,8 +5782,11 @@ class Texture2D:
             else:
                 raise ValueError("Data must be 2D or 3D array")
 
-            if np_data.dtype != np.float32:
-                np_data = np_data.astype(np.float32)
+            dtype_code = self._numpy_dtype_to_code(np_data.dtype)
+            dtype = np_data.dtype
+
+            if not np_data.flags["C_CONTIGUOUS"]:
+                np_data = np.ascontiguousarray(np_data)
             data_flat = np_data.flatten()
         else:
             raise TypeError("data must be a numpy array or warp array")
@@ -5763,6 +5797,8 @@ class Texture2D:
         self._width = width
         self._height = height
         self._num_channels = num_channels
+        self._dtype = np.dtype(dtype)
+        self._dtype_code = dtype_code
         self._filter_mode = filter_mode
         self._address_mode = address_mode
 
@@ -5770,13 +5806,14 @@ class Texture2D:
         tex_handle = ctypes.c_uint64(0)
         array_handle = ctypes.c_uint64(0)
 
-        data_ptr = data_flat.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
 
         success = self.runtime.core.wp_texture2d_create(
             self.device.context,
             width,
             height,
             num_channels,
+            dtype_code,
             filter_mode,
             address_mode,
             data_ptr,
@@ -5818,6 +5855,11 @@ class Texture2D:
         """Number of channels."""
         return self._num_channels
 
+    @property
+    def dtype(self):
+        """Data type of the texture (uint8, uint16, or float32)."""
+        return self._dtype
+
     def __ctype__(self) -> texture2d_t:
         """Return the ctypes structure for passing to kernels."""
         return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
@@ -5830,13 +5872,18 @@ class Texture3D:
     regularly-gridded volumetric data. They support trilinear interpolation
     and various addressing modes (wrap, clamp, mirror, border).
 
+    Supports uint8, uint16, and float32 data types. Integer textures are
+    read as normalized floats in the [0, 1] range.
+
     Example:
         >>> import warp as wp
         >>> import numpy as np
         >>> # Create a 64x64x64 single-channel 3D texture
         >>> data = np.random.rand(64, 64, 64).astype(np.float32)
         >>> tex = wp.Texture3D(data, device="cuda:0")
-        >>> # Use tex3d_f() in a kernel to sample the texture
+        >>> # Create a compressed 8-bit 3D texture
+        >>> data8 = (np.random.rand(64, 64, 64) * 255).astype(np.uint8)
+        >>> tex8 = wp.Texture3D(data8, device="cuda:0")
     """
 
     #: Enum value to specify nearest-neighbor filtering
@@ -5853,11 +5900,29 @@ class Texture3D:
     #: Enum value for border address mode
     BORDER = constant(3)
 
+    #: Data type constants
+    DTYPE_UINT8 = constant(0)
+    DTYPE_UINT16 = constant(1)
+    DTYPE_FLOAT32 = constant(2)
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance._tex_handle = 0
         instance._array_handle = 0
         return instance
+
+    @staticmethod
+    def _numpy_dtype_to_code(dtype):
+        """Convert numpy dtype to internal dtype code."""
+        dtype = np.dtype(dtype)
+        if dtype == np.uint8:
+            return 0  # DTYPE_UINT8
+        elif dtype == np.uint16:
+            return 1  # DTYPE_UINT16
+        elif dtype == np.float32:
+            return 2  # DTYPE_FLOAT32
+        else:
+            raise ValueError(f"Unsupported texture dtype: {dtype}. Supported: uint8, uint16, float32")
 
     def __init__(
         self,
@@ -5866,6 +5931,7 @@ class Texture3D:
         height: int = 0,
         depth: int = 0,
         num_channels: int = 1,
+        dtype=np.float32,
         filter_mode: int = 1,
         address_mode: int = 1,
         device=None,
@@ -5877,11 +5943,13 @@ class Texture3D:
                   Shape should be (depth, height, width) for 1-channel,
                   (depth, height, width, 2) for 2-channel, or
                   (depth, height, width, 4) for 4-channel textures.
+                  Supported dtypes: uint8, uint16, float32.
                   If None, width/height/depth/num_channels must be specified.
             width: Texture width (required if data is None).
             height: Texture height (required if data is None).
             depth: Texture depth (required if data is None).
             num_channels: Number of channels (1, 2, or 4). Default is 1.
+            dtype: Data type (np.uint8, np.uint16, or np.float32). Default is float32.
             filter_mode: Filtering mode - NEAREST (0) or LINEAR (1). Default is LINEAR.
             address_mode: Address mode - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3). Default is CLAMP.
             device: CUDA device to create the texture on.
@@ -5895,6 +5963,8 @@ class Texture3D:
             self._height = height
             self._depth = depth
             self._num_channels = num_channels
+            self._dtype = np.dtype(dtype)
+            self._dtype_code = self._numpy_dtype_to_code(dtype)
             self._filter_mode = filter_mode
             self._address_mode = address_mode
             self._tex_handle = 0
@@ -5916,11 +5986,14 @@ class Texture3D:
             else:
                 raise ValueError("Data must be 3D or 4D numpy array")
 
-            # Ensure float32
-            if data.dtype != np.float32:
-                data = data.astype(np.float32)
+            # Validate and get dtype code
+            dtype_code = self._numpy_dtype_to_code(data.dtype)
+            dtype = data.dtype
 
-            # Flatten to contiguous float array
+            # Ensure contiguous
+            if not data.flags["C_CONTIGUOUS"]:
+                data = np.ascontiguousarray(data)
+
             data_flat = data.flatten()
         elif is_array(data):
             self.device = data.device
@@ -5937,8 +6010,11 @@ class Texture3D:
             else:
                 raise ValueError("Data must be 3D or 4D array")
 
-            if np_data.dtype != np.float32:
-                np_data = np_data.astype(np.float32)
+            dtype_code = self._numpy_dtype_to_code(np_data.dtype)
+            dtype = np_data.dtype
+
+            if not np_data.flags["C_CONTIGUOUS"]:
+                np_data = np.ascontiguousarray(np_data)
             data_flat = np_data.flatten()
         else:
             raise TypeError("data must be a numpy array or warp array")
@@ -5950,6 +6026,8 @@ class Texture3D:
         self._height = height
         self._depth = depth
         self._num_channels = num_channels
+        self._dtype = np.dtype(dtype)
+        self._dtype_code = dtype_code
         self._filter_mode = filter_mode
         self._address_mode = address_mode
 
@@ -5957,7 +6035,7 @@ class Texture3D:
         tex_handle = ctypes.c_uint64(0)
         array_handle = ctypes.c_uint64(0)
 
-        data_ptr = data_flat.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+        data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
 
         success = self.runtime.core.wp_texture3d_create(
             self.device.context,
@@ -5965,6 +6043,7 @@ class Texture3D:
             height,
             depth,
             num_channels,
+            dtype_code,
             filter_mode,
             address_mode,
             data_ptr,
@@ -6010,6 +6089,11 @@ class Texture3D:
     def num_channels(self) -> int:
         """Number of channels."""
         return self._num_channels
+
+    @property
+    def dtype(self):
+        """Data type of the texture (uint8, uint16, or float32)."""
+        return self._dtype
 
     def __ctype__(self) -> texture3d_t:
         """Return the ctypes structure for passing to kernels."""

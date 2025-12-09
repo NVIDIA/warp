@@ -185,7 +185,8 @@ WP_API const char* wp_volume_get_blind_data_info(
 // Creates a 2D texture from data. Returns texture handle (combines tex object + array handle).
 // data: pointer to host or device data
 // width, height: texture dimensions
-// num_channels: 1, 2, or 4 (float, float2, float4)
+// num_channels: 1, 2, or 4
+// dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
 // address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
 WP_API bool wp_texture2d_create(
@@ -193,9 +194,10 @@ WP_API bool wp_texture2d_create(
     int width,
     int height,
     int num_channels,
+    int dtype,
     int filter_mode,
     int address_mode,
-    const float* data,
+    const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
 );
@@ -205,7 +207,8 @@ WP_API void wp_texture2d_destroy(void* context, uint64_t tex_handle, uint64_t ar
 // Creates a 3D texture from data. Returns texture handle (combines tex object + array handle).
 // data: pointer to host or device data
 // width, height, depth: texture dimensions
-// num_channels: 1, 2, or 4 (float, float2, float4)
+// num_channels: 1, 2, or 4
+// dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
 // address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
 WP_API bool wp_texture3d_create(
@@ -214,9 +217,10 @@ WP_API bool wp_texture3d_create(
     int height,
     int depth,
     int num_channels,
+    int dtype,
     int filter_mode,
     int address_mode,
-    const float* data,
+    const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
 );

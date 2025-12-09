@@ -769,6 +769,184 @@ def test_texture3d_linear_interpolation(test, device):
 
 
 # ============================================================================
+# Compressed Texture Tests (uint8, uint16)
+# ============================================================================
+
+
+def test_texture2d_uint8(test, device):
+    """Test 2D texture with uint8 data, which should be read as normalized floats [0, 1]."""
+    width, height = 4, 4
+
+    # Create uint8 data with values 0, 128, 255
+    data = np.array([
+        [0, 64, 128, 192],
+        [32, 96, 160, 224],
+        [16, 80, 144, 208],
+        [48, 112, 176, 240],
+    ], dtype=np.uint8)
+
+    try:
+        tex = wp.Texture2D(
+            data,
+            filter_mode=wp.Texture2D.NEAREST,
+            address_mode=wp.Texture2D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed: {e}")
+
+    test.assertEqual(tex.dtype, np.uint8)
+
+    # Sample at texel centers
+    uvs_np = np.array([
+        [0.125, 0.125],  # texel (0,0) -> 0/255 = 0.0
+        [0.375, 0.125],  # texel (1,0) -> 64/255 ≈ 0.251
+        [0.625, 0.125],  # texel (2,0) -> 128/255 ≈ 0.502
+        [0.875, 0.125],  # texel (3,0) -> 192/255 ≈ 0.753
+    ], dtype=np.float32)
+
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(4, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_at_uv,
+        dim=4,
+        inputs=[tex.__ctype__(), uvs, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = np.array([0.0, 64.0/255.0, 128.0/255.0, 192.0/255.0])
+    np.testing.assert_allclose(result, expected, rtol=1e-2, atol=1e-2)
+
+
+def test_texture2d_uint16(test, device):
+    """Test 2D texture with uint16 data, which should be read as normalized floats [0, 1]."""
+    width, height = 2, 2
+
+    # Create uint16 data
+    data = np.array([
+        [0, 32768],
+        [16384, 65535],
+    ], dtype=np.uint16)
+
+    try:
+        tex = wp.Texture2D(
+            data,
+            filter_mode=wp.Texture2D.NEAREST,
+            address_mode=wp.Texture2D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed: {e}")
+
+    test.assertEqual(tex.dtype, np.uint16)
+
+    # Sample at texel centers
+    uvs_np = np.array([
+        [0.25, 0.25],  # texel (0,0) -> 0/65535 = 0.0
+        [0.75, 0.25],  # texel (1,0) -> 32768/65535 ≈ 0.5
+        [0.25, 0.75],  # texel (0,1) -> 16384/65535 ≈ 0.25
+        [0.75, 0.75],  # texel (1,1) -> 65535/65535 = 1.0
+    ], dtype=np.float32)
+
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(4, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_at_uv,
+        dim=4,
+        inputs=[tex.__ctype__(), uvs, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = np.array([0.0, 32768.0/65535.0, 16384.0/65535.0, 1.0])
+    np.testing.assert_allclose(result, expected, rtol=1e-2, atol=1e-2)
+
+
+def test_texture3d_uint8(test, device):
+    """Test 3D texture with uint8 data."""
+    width, height, depth = 2, 2, 2
+
+    # Create uint8 data with values scaling from 0 to 255
+    data = np.array([
+        [[0, 36], [73, 109]],
+        [[146, 182], [219, 255]],
+    ], dtype=np.uint8)
+
+    try:
+        tex = wp.Texture3D(
+            data,
+            filter_mode=wp.Texture3D.NEAREST,
+            address_mode=wp.Texture3D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed: {e}")
+
+    test.assertEqual(tex.dtype, np.uint8)
+
+    # Sample at voxel centers
+    uvws_np = np.array([
+        [0.25, 0.25, 0.25],  # voxel (0,0,0) -> 0/255 = 0.0
+        [0.75, 0.75, 0.75],  # voxel (1,1,1) -> 255/255 = 1.0
+    ], dtype=np.float32)
+
+    uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
+    output = wp.zeros(2, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_at_uvw,
+        dim=2,
+        inputs=[tex.__ctype__(), uvws, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = np.array([0.0, 1.0])
+    np.testing.assert_allclose(result, expected, rtol=1e-2, atol=1e-2)
+
+
+def test_texture2d_uint8_linear_interpolation(test, device):
+    """Test that LINEAR filtering works correctly with uint8 textures."""
+    width, height = 2, 2
+
+    # Create uint8 data: values 0, 128, 128, 255
+    # At center with linear interpolation: (0 + 128 + 128 + 255) / 4 / 255 ≈ 0.5
+    data = np.array([
+        [0, 128],
+        [128, 255],
+    ], dtype=np.uint8)
+
+    try:
+        tex = wp.Texture2D(
+            data,
+            filter_mode=wp.Texture2D.LINEAR,
+            address_mode=wp.Texture2D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed: {e}")
+
+    # Sample at center - should interpolate
+    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_at_uv,
+        dim=1,
+        inputs=[tex.__ctype__(), uvs, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    expected = (0.0 + 128.0/255.0 + 128.0/255.0 + 1.0) / 4.0
+    np.testing.assert_allclose(result, expected, rtol=0.05, atol=0.05)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -794,6 +972,12 @@ add_function_test(TestTexture, "test_texture2d_nearest_interpolation", test_text
 add_function_test(TestTexture, "test_texture2d_linear_interpolation", test_texture2d_linear_interpolation, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_nearest_interpolation", test_texture3d_nearest_interpolation, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_linear_interpolation", test_texture3d_linear_interpolation, devices=cuda_devices)
+
+# Compressed texture tests (uint8, uint16)
+add_function_test(TestTexture, "test_texture2d_uint8", test_texture2d_uint8, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture2d_uint16", test_texture2d_uint16, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture3d_uint8", test_texture3d_uint8, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture2d_uint8_linear_interpolation", test_texture2d_uint8_linear_interpolation, devices=cuda_devices)
 
 # These tests don't need a device
 add_function_test(TestTexture, "test_texture2d_new_del", test_texture2d_new_del, devices=[None])

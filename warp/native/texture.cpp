@@ -23,16 +23,46 @@
 // CUDA texture API implementation for Warp
 // This file implements texture creation and destruction for 2D and 3D CUDA textures
 
+// Data type constants (must match Python side)
+#define WP_TEXTURE_DTYPE_UINT8  0
+#define WP_TEXTURE_DTYPE_UINT16 1
+#define WP_TEXTURE_DTYPE_FLOAT32 2
+
 #if WP_ENABLE_CUDA
+
+// Helper function to get CUDA array format from dtype
+static CUarray_format get_cuda_format(int dtype)
+{
+    switch (dtype)
+    {
+    case WP_TEXTURE_DTYPE_UINT8:  return CU_AD_FORMAT_UNSIGNED_INT8;
+    case WP_TEXTURE_DTYPE_UINT16: return CU_AD_FORMAT_UNSIGNED_INT16;
+    case WP_TEXTURE_DTYPE_FLOAT32:
+    default:                      return CU_AD_FORMAT_FLOAT;
+    }
+}
+
+// Helper function to get bytes per channel from dtype
+static int get_bytes_per_channel(int dtype)
+{
+    switch (dtype)
+    {
+    case WP_TEXTURE_DTYPE_UINT8:  return 1;
+    case WP_TEXTURE_DTYPE_UINT16: return 2;
+    case WP_TEXTURE_DTYPE_FLOAT32:
+    default:                      return 4;
+    }
+}
 
 bool wp_texture2d_create(
     void* context,
     int width,
     int height,
     int num_channels,
+    int dtype,
     int filter_mode,
     int address_mode,
-    const float* data,
+    const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out)
 {
@@ -49,7 +79,8 @@ bool wp_texture2d_create(
     ContextGuard guard(context);
 
     // Determine the CUDA array format
-    CUarray_format format = CU_AD_FORMAT_FLOAT;
+    CUarray_format format = get_cuda_format(dtype);
+    int bytes_per_channel = get_bytes_per_channel(dtype);
 
     // Create CUDA array descriptor
     CUDA_ARRAY_DESCRIPTOR arr_desc = {};
@@ -67,7 +98,7 @@ bool wp_texture2d_create(
     }
 
     // Copy data to the array
-    int bytes_per_texel = num_channels * sizeof(float);
+    int bytes_per_texel = num_channels * bytes_per_channel;
     CUDA_MEMCPY2D copy_params = {};
     copy_params.srcXInBytes = 0;
     copy_params.srcY = 0;
@@ -117,8 +148,14 @@ bool wp_texture2d_create(
     // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
-    // Use normalized coordinates [0,1]
+    // Use normalized coordinates [0,1] and normalized read mode for integer types
     tex_desc.flags = CU_TRSF_NORMALIZED_COORDINATES;
+    if (dtype == WP_TEXTURE_DTYPE_UINT8 || dtype == WP_TEXTURE_DTYPE_UINT16)
+    {
+        // Read integer textures as normalized floats [0, 1]
+        tex_desc.flags |= CU_TRSF_READ_AS_INTEGER;
+        tex_desc.flags &= ~CU_TRSF_READ_AS_INTEGER;  // Actually we want normalized reads
+    }
 
     tex_desc.maxAnisotropy = 0;
     tex_desc.mipmapFilterMode = CU_TR_FILTER_MODE_POINT;
@@ -165,9 +202,10 @@ bool wp_texture3d_create(
     int height,
     int depth,
     int num_channels,
+    int dtype,
     int filter_mode,
     int address_mode,
-    const float* data,
+    const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out)
 {
@@ -184,7 +222,8 @@ bool wp_texture3d_create(
     ContextGuard guard(context);
 
     // Determine the CUDA array format
-    CUarray_format format = CU_AD_FORMAT_FLOAT;
+    CUarray_format format = get_cuda_format(dtype);
+    int bytes_per_channel = get_bytes_per_channel(dtype);
 
     // Create CUDA 3D array descriptor
     CUDA_ARRAY3D_DESCRIPTOR arr_desc = {};
@@ -204,7 +243,7 @@ bool wp_texture3d_create(
     }
 
     // Copy data to the 3D array
-    int bytes_per_texel = num_channels * sizeof(float);
+    int bytes_per_texel = num_channels * bytes_per_channel;
     CUDA_MEMCPY3D copy_params = {};
     copy_params.srcXInBytes = 0;
     copy_params.srcY = 0;
@@ -310,9 +349,10 @@ bool wp_texture2d_create(
     int width,
     int height,
     int num_channels,
+    int dtype,
     int filter_mode,
     int address_mode,
-    const float* data,
+    const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out)
 {
@@ -329,9 +369,10 @@ bool wp_texture3d_create(
     int height,
     int depth,
     int num_channels,
+    int dtype,
     int filter_mode,
     int address_mode,
-    const float* data,
+    const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out)
 {

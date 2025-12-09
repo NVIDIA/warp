@@ -4140,6 +4140,7 @@ class Runtime:
                 ctypes.c_int,  # width
                 ctypes.c_int,  # height
                 ctypes.c_int,  # num_channels
+                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
                 ctypes.c_int,  # address_mode
                 ctypes.c_void_p,  # data
@@ -4161,6 +4162,7 @@ class Runtime:
                 ctypes.c_int,  # height
                 ctypes.c_int,  # depth
                 ctypes.c_int,  # num_channels
+                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
                 ctypes.c_int,  # address_mode
                 ctypes.c_void_p,  # data
