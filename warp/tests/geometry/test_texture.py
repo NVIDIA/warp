@@ -253,7 +253,7 @@ def test_texture2d_1channel(test, device):
     wp.launch(
         sample_texture2d_f_at_centers,
         dim=width * height,
-        inputs=[tex.__ctype__(), output, width, height],
+        inputs=[tex, output, width, height],
         device=device,
     )
 
@@ -289,7 +289,7 @@ def test_texture2d_4channel(test, device):
     wp.launch(
         sample_texture2d_v4_at_centers,
         dim=width * height,
-        inputs=[tex.__ctype__(), output, width, height],
+        inputs=[tex, output, width, height],
         device=device,
     )
 
@@ -328,7 +328,7 @@ def test_texture2d_linear_filter(test, device):
     wp.launch(
         sample_texture2d_f_at_centers,
         dim=width * height,
-        inputs=[tex.__ctype__(), output, width, height],
+        inputs=[tex, output, width, height],
         device=device,
     )
 
@@ -354,7 +354,7 @@ def test_texture2d_resolution_query(test, device):
     wp.launch(
         test_texture2d_resolution,
         dim=1,
-        inputs=[tex.__ctype__(), width, height],
+        inputs=[tex, width, height],
         device=device,
     )
 
@@ -384,7 +384,7 @@ def test_texture3d_1channel(test, device):
     wp.launch(
         sample_texture3d_f_at_centers,
         dim=width * height * depth,
-        inputs=[tex.__ctype__(), output, width, height, depth],
+        inputs=[tex, output, width, height, depth],
         device=device,
     )
 
@@ -420,7 +420,7 @@ def test_texture3d_4channel(test, device):
     wp.launch(
         sample_texture3d_v4_at_centers,
         dim=width * height * depth,
-        inputs=[tex.__ctype__(), output, width, height, depth],
+        inputs=[tex, output, width, height, depth],
         device=device,
     )
 
@@ -456,7 +456,7 @@ def test_texture3d_linear_filter(test, device):
     wp.launch(
         sample_texture3d_f_at_centers,
         dim=width * height * depth,
-        inputs=[tex.__ctype__(), output, width, height, depth],
+        inputs=[tex, output, width, height, depth],
         device=device,
     )
 
@@ -482,7 +482,7 @@ def test_texture3d_resolution_query(test, device):
     wp.launch(
         test_texture3d_resolution,
         dim=1,
-        inputs=[tex.__ctype__(), width, height, depth],
+        inputs=[tex, width, height, depth],
         device=device,
     )
 
@@ -566,7 +566,7 @@ def test_texture2d_nearest_interpolation(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=4,
-        inputs=[tex.__ctype__(), uvs, output],
+        inputs=[tex, uvs, output],
         device=device,
     )
 
@@ -583,7 +583,7 @@ def test_texture2d_nearest_interpolation(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=1,
-        inputs=[tex.__ctype__(), uvs_between, output_between],
+        inputs=[tex, uvs_between, output_between],
         device=device,
     )
 
@@ -620,7 +620,7 @@ def test_texture2d_linear_interpolation(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=1,
-        inputs=[tex.__ctype__(), uvs, output],
+        inputs=[tex, uvs, output],
         device=device,
     )
 
@@ -639,7 +639,7 @@ def test_texture2d_linear_interpolation(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=1,
-        inputs=[tex.__ctype__(), uvs_x, output_x],
+        inputs=[tex, uvs_x, output_x],
         device=device,
     )
 
@@ -658,7 +658,7 @@ def test_texture2d_linear_interpolation(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=1,
-        inputs=[tex.__ctype__(), uvs_y, output_y],
+        inputs=[tex, uvs_y, output_y],
         device=device,
     )
 
@@ -705,7 +705,7 @@ def test_texture3d_nearest_interpolation(test, device):
     wp.launch(
         sample_texture3d_at_uvw,
         dim=8,
-        inputs=[tex.__ctype__(), uvws, output],
+        inputs=[tex, uvws, output],
         device=device,
     )
 
@@ -739,7 +739,7 @@ def test_texture3d_linear_interpolation(test, device):
     wp.launch(
         sample_texture3d_at_uvw,
         dim=1,
-        inputs=[tex.__ctype__(), uvws, output],
+        inputs=[tex, uvws, output],
         device=device,
     )
 
@@ -758,7 +758,7 @@ def test_texture3d_linear_interpolation(test, device):
     wp.launch(
         sample_texture3d_at_uvw,
         dim=1,
-        inputs=[tex.__ctype__(), uvws_z, output_z],
+        inputs=[tex, uvws_z, output_z],
         device=device,
     )
 
@@ -811,7 +811,7 @@ def test_texture2d_uint8(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=4,
-        inputs=[tex.__ctype__(), uvs, output],
+        inputs=[tex, uvs, output],
         device=device,
     )
 
@@ -856,7 +856,7 @@ def test_texture2d_uint16(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=4,
-        inputs=[tex.__ctype__(), uvs, output],
+        inputs=[tex, uvs, output],
         device=device,
     )
 
@@ -899,7 +899,7 @@ def test_texture3d_uint8(test, device):
     wp.launch(
         sample_texture3d_at_uvw,
         dim=2,
-        inputs=[tex.__ctype__(), uvws, output],
+        inputs=[tex, uvws, output],
         device=device,
     )
 
@@ -937,7 +937,7 @@ def test_texture2d_uint8_linear_interpolation(test, device):
     wp.launch(
         sample_texture2d_at_uv,
         dim=1,
-        inputs=[tex.__ctype__(), uvs, output],
+        inputs=[tex, uvs, output],
         device=device,
     )
 

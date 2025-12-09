@@ -6225,9 +6225,20 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             except Exception as e:
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
 
-    elif issubclass(arg_type, ctypes.Structure) and isinstance(value, arg_type):
-        # ctypes Structure types (like texture2d_t, texture3d_t) can be passed directly
-        return value
+    elif issubclass(arg_type, ctypes.Structure):
+        # ctypes Structure types (like texture2d_t, texture3d_t)
+        if isinstance(value, arg_type):
+            # Already the correct ctypes structure, pass directly
+            return value
+        # Check if value is a Texture object that needs conversion
+        if arg_type is warp._src.types.texture2d_t and isinstance(value, warp._src.types.Texture2D):
+            return value.__ctype__()
+        if arg_type is warp._src.types.texture3d_t and isinstance(value, warp._src.types.Texture3D):
+            return value.__ctype__()
+        raise RuntimeError(
+            f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects {arg_type.__name__} "
+            f"but got {type(value).__name__}"
+        )
 
     elif isinstance(value, arg_type):
         try:
