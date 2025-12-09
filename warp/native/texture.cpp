@@ -16,6 +16,7 @@
  */
 
 #include "warp.h"
+
 #include "cuda_util.h"
 
 #include <cstring>
@@ -33,24 +34,28 @@
 // Helper function to get CUDA array format from dtype
 static CUarray_format get_cuda_format(int dtype)
 {
-    switch (dtype)
-    {
-    case WP_TEXTURE_DTYPE_UINT8:  return CU_AD_FORMAT_UNSIGNED_INT8;
-    case WP_TEXTURE_DTYPE_UINT16: return CU_AD_FORMAT_UNSIGNED_INT16;
+    switch (dtype) {
+    case WP_TEXTURE_DTYPE_UINT8:
+        return CU_AD_FORMAT_UNSIGNED_INT8;
+    case WP_TEXTURE_DTYPE_UINT16:
+        return CU_AD_FORMAT_UNSIGNED_INT16;
     case WP_TEXTURE_DTYPE_FLOAT32:
-    default:                      return CU_AD_FORMAT_FLOAT;
+    default:
+        return CU_AD_FORMAT_FLOAT;
     }
 }
 
 // Helper function to get bytes per channel from dtype
 static int get_bytes_per_channel(int dtype)
 {
-    switch (dtype)
-    {
-    case WP_TEXTURE_DTYPE_UINT8:  return 1;
-    case WP_TEXTURE_DTYPE_UINT16: return 2;
+    switch (dtype) {
+    case WP_TEXTURE_DTYPE_UINT8:
+        return 1;
+    case WP_TEXTURE_DTYPE_UINT16:
+        return 2;
     case WP_TEXTURE_DTYPE_FLOAT32:
-    default:                      return 4;
+    default:
+        return 4;
     }
 }
 
@@ -64,15 +69,14 @@ bool wp_texture2d_create(
     int address_mode,
     const void* data,
     uint64_t* tex_handle_out,
-    uint64_t* array_handle_out)
+    uint64_t* array_handle_out
+)
 {
-    if (width <= 0 || height <= 0 || data == nullptr)
-    {
+    if (width <= 0 || height <= 0 || data == nullptr) {
         return false;
     }
 
-    if (num_channels != 1 && num_channels != 2 && num_channels != 4)
-    {
+    if (num_channels != 1 && num_channels != 2 && num_channels != 4) {
         return false;
     }
 
@@ -92,8 +96,7 @@ bool wp_texture2d_create(
     // Create the array
     CUarray cuda_array;
     CUresult result = cuArrayCreate_f(&cuda_array, &arr_desc);
-    if (result != CUDA_SUCCESS)
-    {
+    if (result != CUDA_SUCCESS) {
         return false;
     }
 
@@ -115,8 +118,7 @@ bool wp_texture2d_create(
     copy_params.Height = height;
 
     result = cuMemcpy2D_f(&copy_params);
-    if (result != CUDA_SUCCESS)
-    {
+    if (result != CUDA_SUCCESS) {
         cuArrayDestroy_f(cuda_array);
         return false;
     }
@@ -132,13 +134,22 @@ bool wp_texture2d_create(
 
     // Address mode: 0=wrap, 1=clamp, 2=mirror, 3=border
     CUaddress_mode cuda_address_mode;
-    switch (address_mode)
-    {
-    case 0: cuda_address_mode = CU_TR_ADDRESS_MODE_WRAP; break;
-    case 1: cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP; break;
-    case 2: cuda_address_mode = CU_TR_ADDRESS_MODE_MIRROR; break;
-    case 3: cuda_address_mode = CU_TR_ADDRESS_MODE_BORDER; break;
-    default: cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP; break;
+    switch (address_mode) {
+    case 0:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_WRAP;
+        break;
+    case 1:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
+        break;
+    case 2:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_MIRROR;
+        break;
+    case 3:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_BORDER;
+        break;
+    default:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
+        break;
     }
 
     tex_desc.addressMode[0] = cuda_address_mode;
@@ -162,8 +173,7 @@ bool wp_texture2d_create(
     // Create texture object
     CUtexObject tex_object;
     result = cuTexObjectCreate_f(&tex_object, &res_desc, &tex_desc, nullptr);
-    if (result != CUDA_SUCCESS)
-    {
+    if (result != CUDA_SUCCESS) {
         cuArrayDestroy_f(cuda_array);
         return false;
     }
@@ -181,13 +191,11 @@ void wp_texture2d_destroy(void* context, uint64_t tex_handle, uint64_t array_han
 
     ContextGuard guard(context);
 
-    if (tex_handle != 0)
-    {
+    if (tex_handle != 0) {
         cuTexObjectDestroy_f((CUtexObject)tex_handle);
     }
 
-    if (array_handle != 0)
-    {
+    if (array_handle != 0) {
         cuArrayDestroy_f((CUarray)array_handle);
     }
 }
@@ -203,15 +211,14 @@ bool wp_texture3d_create(
     int address_mode,
     const void* data,
     uint64_t* tex_handle_out,
-    uint64_t* array_handle_out)
+    uint64_t* array_handle_out
+)
 {
-    if (width <= 0 || height <= 0 || depth <= 0 || data == nullptr)
-    {
+    if (width <= 0 || height <= 0 || depth <= 0 || data == nullptr) {
         return false;
     }
 
-    if (num_channels != 1 && num_channels != 2 && num_channels != 4)
-    {
+    if (num_channels != 1 && num_channels != 2 && num_channels != 4) {
         return false;
     }
 
@@ -233,8 +240,7 @@ bool wp_texture3d_create(
     // Create the 3D array
     CUarray cuda_array;
     CUresult result = cuArray3DCreate_f(&cuda_array, &arr_desc);
-    if (result != CUDA_SUCCESS)
-    {
+    if (result != CUDA_SUCCESS) {
         return false;
     }
 
@@ -244,7 +250,7 @@ bool wp_texture3d_create(
     copy_params.srcXInBytes = 0;
     copy_params.srcY = 0;
     copy_params.srcZ = 0;
-    copy_params.srcLOD = 0;
+    copy_params.srcLOAD = 0;
     copy_params.srcMemoryType = CU_MEMORYTYPE_HOST;
     copy_params.srcHost = data;
     copy_params.srcPitch = width * bytes_per_texel;
@@ -253,7 +259,7 @@ bool wp_texture3d_create(
     copy_params.dstXInBytes = 0;
     copy_params.dstY = 0;
     copy_params.dstZ = 0;
-    copy_params.dstLOD = 0;
+    copy_params.dstLOAD = 0;
     copy_params.dstMemoryType = CU_MEMORYTYPE_ARRAY;
     copy_params.dstArray = cuda_array;
 
@@ -262,8 +268,7 @@ bool wp_texture3d_create(
     copy_params.Depth = depth;
 
     result = cuMemcpy3D_f(&copy_params);
-    if (result != CUDA_SUCCESS)
-    {
+    if (result != CUDA_SUCCESS) {
         cuArrayDestroy_f(cuda_array);
         return false;
     }
@@ -279,13 +284,22 @@ bool wp_texture3d_create(
 
     // Address mode: 0=wrap, 1=clamp, 2=mirror, 3=border
     CUaddress_mode cuda_address_mode;
-    switch (address_mode)
-    {
-    case 0: cuda_address_mode = CU_TR_ADDRESS_MODE_WRAP; break;
-    case 1: cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP; break;
-    case 2: cuda_address_mode = CU_TR_ADDRESS_MODE_MIRROR; break;
-    case 3: cuda_address_mode = CU_TR_ADDRESS_MODE_BORDER; break;
-    default: cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP; break;
+    switch (address_mode) {
+    case 0:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_WRAP;
+        break;
+    case 1:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
+        break;
+    case 2:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_MIRROR;
+        break;
+    case 3:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_BORDER;
+        break;
+    default:
+        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
+        break;
     }
 
     tex_desc.addressMode[0] = cuda_address_mode;
@@ -307,8 +321,7 @@ bool wp_texture3d_create(
     // Create texture object
     CUtexObject tex_object;
     result = cuTexObjectCreate_f(&tex_object, &res_desc, &tex_desc, nullptr);
-    if (result != CUDA_SUCCESS)
-    {
+    if (result != CUDA_SUCCESS) {
         cuArrayDestroy_f(cuda_array);
         return false;
     }
@@ -326,13 +339,11 @@ void wp_texture3d_destroy(void* context, uint64_t tex_handle, uint64_t array_han
 
     ContextGuard guard(context);
 
-    if (tex_handle != 0)
-    {
+    if (tex_handle != 0) {
         cuTexObjectDestroy_f((CUtexObject)tex_handle);
     }
 
-    if (array_handle != 0)
-    {
+    if (array_handle != 0) {
         cuArrayDestroy_f((CUarray)array_handle);
     }
 }
@@ -350,14 +361,13 @@ bool wp_texture2d_create(
     int address_mode,
     const void* data,
     uint64_t* tex_handle_out,
-    uint64_t* array_handle_out)
+    uint64_t* array_handle_out
+)
 {
     return false;
 }
 
-void wp_texture2d_destroy(void* context, uint64_t tex_handle, uint64_t array_handle)
-{
-}
+void wp_texture2d_destroy(void* context, uint64_t tex_handle, uint64_t array_handle) { }
 
 bool wp_texture3d_create(
     void* context,
@@ -370,13 +380,12 @@ bool wp_texture3d_create(
     int address_mode,
     const void* data,
     uint64_t* tex_handle_out,
-    uint64_t* array_handle_out)
+    uint64_t* array_handle_out
+)
 {
     return false;
 }
 
-void wp_texture3d_destroy(void* context, uint64_t tex_handle, uint64_t array_handle)
-{
-}
+void wp_texture3d_destroy(void* context, uint64_t tex_handle, uint64_t array_handle) { }
 
 #endif  // WP_ENABLE_CUDA

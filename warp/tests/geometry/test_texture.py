@@ -22,7 +22,6 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_devices
 
-
 # ============================================================================
 # 2D Texture Kernels
 # ============================================================================

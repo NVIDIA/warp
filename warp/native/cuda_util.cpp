@@ -754,9 +754,15 @@ CUresult cuMemcpy3D_f(const CUDA_MEMCPY3D* pCopy)
     return pfn_cuMemcpy3D ? pfn_cuMemcpy3D(pCopy) : DRIVER_ENTRY_POINT_ERROR;
 }
 
-CUresult cuTexObjectCreate_f(CUtexObject* pTexObject, const CUDA_RESOURCE_DESC* pResDesc, const CUDA_TEXTURE_DESC* pTexDesc, const CUDA_RESOURCE_VIEW_DESC* pResViewDesc)
+CUresult cuTexObjectCreate_f(
+    CUtexObject* pTexObject,
+    const CUDA_RESOURCE_DESC* pResDesc,
+    const CUDA_TEXTURE_DESC* pTexDesc,
+    const CUDA_RESOURCE_VIEW_DESC* pResViewDesc
+)
 {
-    return pfn_cuTexObjectCreate ? pfn_cuTexObjectCreate(pTexObject, pResDesc, pTexDesc, pResViewDesc) : DRIVER_ENTRY_POINT_ERROR;
+    return pfn_cuTexObjectCreate ? pfn_cuTexObjectCreate(pTexObject, pResDesc, pTexDesc, pResViewDesc)
+                                 : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuTexObjectDestroy_f(CUtexObject texObject)

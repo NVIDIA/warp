@@ -24,7 +24,7 @@ namespace wp {
 // Texture descriptor passed to kernels
 // Contains the CUDA texture object handle and resolution info
 struct texture2d_t {
-    uint64 tex;      // CUtexObject handle
+    uint64 tex;  // CUtexObject handle
     int32 width;
     int32 height;
     int32 num_channels;
@@ -47,7 +47,7 @@ struct texture2d_t {
 };
 
 struct texture3d_t {
-    uint64 tex;      // CUtexObject handle
+    uint64 tex;  // CUtexObject handle
     int32 width;
     int32 height;
     int32 depth;
@@ -73,37 +73,22 @@ struct texture3d_t {
 };
 
 // Resolution query functions
-CUDA_CALLABLE inline int32 texture_width(const texture2d_t& tex)
-{
-    return tex.width;
-}
+CUDA_CALLABLE inline int32 texture_width(const texture2d_t& tex) { return tex.width; }
 
-CUDA_CALLABLE inline int32 texture_height(const texture2d_t& tex)
-{
-    return tex.height;
-}
+CUDA_CALLABLE inline int32 texture_height(const texture2d_t& tex) { return tex.height; }
 
-CUDA_CALLABLE inline int32 texture_width(const texture3d_t& tex)
-{
-    return tex.width;
-}
+CUDA_CALLABLE inline int32 texture_width(const texture3d_t& tex) { return tex.width; }
 
-CUDA_CALLABLE inline int32 texture_height(const texture3d_t& tex)
-{
-    return tex.height;
-}
+CUDA_CALLABLE inline int32 texture_height(const texture3d_t& tex) { return tex.height; }
 
-CUDA_CALLABLE inline int32 texture_depth(const texture3d_t& tex)
-{
-    return tex.depth;
-}
+CUDA_CALLABLE inline int32 texture_depth(const texture3d_t& tex) { return tex.depth; }
 
 // Adjoint stubs for resolution queries (non-differentiable)
-CUDA_CALLABLE inline void adj_texture_width(const texture2d_t& tex, texture2d_t& adj_tex, int32 adj_ret) {}
-CUDA_CALLABLE inline void adj_texture_height(const texture2d_t& tex, texture2d_t& adj_tex, int32 adj_ret) {}
-CUDA_CALLABLE inline void adj_texture_width(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) {}
-CUDA_CALLABLE inline void adj_texture_height(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) {}
-CUDA_CALLABLE inline void adj_texture_depth(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) {}
+CUDA_CALLABLE inline void adj_texture_width(const texture2d_t& tex, texture2d_t& adj_tex, int32 adj_ret) { }
+CUDA_CALLABLE inline void adj_texture_height(const texture2d_t& tex, texture2d_t& adj_tex, int32 adj_ret) { }
+CUDA_CALLABLE inline void adj_texture_width(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) { }
+CUDA_CALLABLE inline void adj_texture_height(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) { }
+CUDA_CALLABLE inline void adj_texture_depth(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) { }
 
 // Texture sampling functions
 // These use CUDA texture fetch intrinsics on device, return 0 on host
@@ -190,61 +175,84 @@ CUDA_CALLABLE inline vec4f tex3d_vec4(const texture3d_t& tex, float u, float v, 
 
 // Adjoint stubs for texture sampling (non-differentiable for now)
 CUDA_CALLABLE inline void adj_tex2d_float(
-    const texture2d_t& tex, float u, float v,
-    texture2d_t& adj_tex, float& adj_u, float& adj_v,
-    float adj_ret)
+    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, float adj_ret
+)
 {
     // Texture sampling is not differentiable in this implementation
 }
 
 CUDA_CALLABLE inline void adj_tex2d_vec2(
-    const texture2d_t& tex, float u, float v,
-    texture2d_t& adj_tex, float& adj_u, float& adj_v,
-    const vec2f& adj_ret)
+    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec2f& adj_ret
+)
 {
 }
 
 CUDA_CALLABLE inline void adj_tex2d_vec3(
-    const texture2d_t& tex, float u, float v,
-    texture2d_t& adj_tex, float& adj_u, float& adj_v,
-    const vec3f& adj_ret)
+    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec3f& adj_ret
+)
 {
 }
 
 CUDA_CALLABLE inline void adj_tex2d_vec4(
-    const texture2d_t& tex, float u, float v,
-    texture2d_t& adj_tex, float& adj_u, float& adj_v,
-    const vec4f& adj_ret)
+    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec4f& adj_ret
+)
 {
 }
 
 CUDA_CALLABLE inline void adj_tex3d_float(
-    const texture3d_t& tex, float u, float v, float w,
-    texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
-    float adj_ret)
+    const texture3d_t& tex,
+    float u,
+    float v,
+    float w,
+    texture3d_t& adj_tex,
+    float& adj_u,
+    float& adj_v,
+    float& adj_w,
+    float adj_ret
+)
 {
 }
 
 CUDA_CALLABLE inline void adj_tex3d_vec2(
-    const texture3d_t& tex, float u, float v, float w,
-    texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
-    const vec2f& adj_ret)
+    const texture3d_t& tex,
+    float u,
+    float v,
+    float w,
+    texture3d_t& adj_tex,
+    float& adj_u,
+    float& adj_v,
+    float& adj_w,
+    const vec2f& adj_ret
+)
 {
 }
 
 CUDA_CALLABLE inline void adj_tex3d_vec3(
-    const texture3d_t& tex, float u, float v, float w,
-    texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
-    const vec3f& adj_ret)
+    const texture3d_t& tex,
+    float u,
+    float v,
+    float w,
+    texture3d_t& adj_tex,
+    float& adj_u,
+    float& adj_v,
+    float& adj_w,
+    const vec3f& adj_ret
+)
 {
 }
 
 CUDA_CALLABLE inline void adj_tex3d_vec4(
-    const texture3d_t& tex, float u, float v, float w,
-    texture3d_t& adj_tex, float& adj_u, float& adj_v, float& adj_w,
-    const vec4f& adj_ret)
+    const texture3d_t& tex,
+    float u,
+    float v,
+    float w,
+    texture3d_t& adj_tex,
+    float& adj_u,
+    float& adj_v,
+    float& adj_w,
+    const vec4f& adj_ret
+)
 {
 }
 
 }  // namespace wp
-
