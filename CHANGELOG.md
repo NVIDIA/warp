@@ -42,7 +42,6 @@
 - Add the following type introspection functions: `wp.types.is_compound`, `wp.types.is_matrix`, `wp.types.is_quaternion`,
   `wp.types.is_struct`, `wp.types.is_tile`, `wp.types.is_transformation`, `wp.types.is_vector`, `wp.types.type_is_array`,
   `wp.types.type_is_compound`, `wp.types.type_is_struct`, and `wp.types.type_is_tile`.
-  - Add helper function `wp.mesh_get_group_root()` to retrieve the subtree root for a given group. 
 - Add a `wp.mesh_query_ray_count_intersections` function that counts all intersections with triangles along the ray ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
 
 ### Removed
