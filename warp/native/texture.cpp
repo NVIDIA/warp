@@ -19,6 +19,7 @@
 
 #include "cuda_util.h"
 
+#include <cstdio>
 #include <cstring>
 
 // CUDA texture API implementation for Warp
@@ -77,6 +78,12 @@ bool wp_texture2d_create(
     }
 
     if (num_channels != 1 && num_channels != 2 && num_channels != 4) {
+        fprintf(
+            stderr,
+            "Warp texture error: Only 1, 2, or 4 channel textures are supported (got %d channels). "
+            "3-channel textures are not supported due to CUDA hardware limitations.\n",
+            num_channels
+        );
         return false;
     }
 
@@ -219,6 +226,12 @@ bool wp_texture3d_create(
     }
 
     if (num_channels != 1 && num_channels != 2 && num_channels != 4) {
+        fprintf(
+            stderr,
+            "Warp texture error: Only 1, 2, or 4 channel textures are supported (got %d channels). "
+            "3-channel textures are not supported due to CUDA hardware limitations.\n",
+            num_channels
+        );
         return false;
     }
 
