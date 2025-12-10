@@ -1723,7 +1723,7 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
 def warn_deprecated_namespace(module_name):
     warn(
         f"The namespace `warp.{'.'.join(module_name.split('.')[1:])}` will soon be removed from the public API. "
-        f"You can still access it from `warp._src.{'.'.join(module_name.split('.')[1:])}` but it might change without prior notice.",
+        f"It can still be accessed from `warp._src.{'.'.join(module_name.split('.')[1:])}` but might be changed or removed without notice.",
         DeprecationWarning,
     )
 
@@ -1732,7 +1732,7 @@ def get_deprecated_method(cls, cls_path, attr_name):
     if hasattr(cls, f"_{attr_name}"):
         warn(
             f"The class method `{cls_path}.{attr_name}` will soon be removed from the public API. "
-            f"You can still access it from `{cls_path}._{attr_name}` but it might change without prior notice.",
+            f"It can still be accessed from `{cls_path}._{attr_name}` but might be changed or removed without notice.",
             DeprecationWarning,
         )
 
@@ -1748,7 +1748,7 @@ def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
         if old_attr_path is None:
             warn(
                 f"The symbol `{attr_path}` will soon be removed from the public API. "
-                f"You can still access it from `{module.__name__}.{attr_name}` but it might change without prior notice.",
+                f"It can still be accessed from `{module.__name__}.{attr_name}` but might be changed or removed without notice.",
                 DeprecationWarning,
             )
         else:
