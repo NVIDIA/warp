@@ -28,14 +28,14 @@ from .topology import SpaceTopology, forward_base_topology
 
 _wp_module_name_ = "warp.fem.space.hexmesh_function_space"
 
-_FACE_ORIENTATION_I = wp.constant(wp.mat(shape=(16, 2), dtype=int)(FACE_ORIENTATION))
-_FACE_TRANSLATION_I = wp.constant(wp.mat(shape=(4, 2), dtype=int)(FACE_TRANSLATION))
+_FACE_ORIENTATION_I = wp.constant(wp.types.matrix(shape=(16, 2), dtype=int)(FACE_ORIENTATION))
+_FACE_TRANSLATION_I = wp.constant(wp.types.matrix(shape=(4, 2), dtype=int)(FACE_TRANSLATION))
 
 # map from shape function vertex indexing to hexmesh vertex indexing
-_CUBE_TO_HEX_VERTEX = wp.constant(wp.vec(length=8, dtype=int)([0, 4, 3, 7, 1, 5, 2, 6]))
+_CUBE_TO_HEX_VERTEX = wp.constant(wp.types.vector(length=8, dtype=int)([0, 4, 3, 7, 1, 5, 2, 6]))
 
 # map from shape function edge indexing to hexmesh edge indexing
-_CUBE_TO_HEX_EDGE = wp.constant(wp.vec(length=12, dtype=int)([0, 4, 2, 6, 3, 1, 7, 5, 8, 11, 9, 10]))
+_CUBE_TO_HEX_EDGE = wp.constant(wp.types.vector(length=12, dtype=int)([0, 4, 2, 6, 3, 1, 7, 5, 8, 11, 9, 10]))
 
 
 @wp.struct

@@ -1311,7 +1311,7 @@ def test_garbage_collection(test, device):
             # since we don't keep references to the previous kernels,
             # they should be garbage-collected and not appear in the module
             k.module.load(device=device)
-            test.assertEqual(len(k.module.live_kernels), 1)
+            test.assertEqual(len(k.module._get_live_kernels()), 1)
 
             # test the kernel
             wp.launch(k, dim=1, inputs=[a])

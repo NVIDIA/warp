@@ -96,7 +96,7 @@ def test_bool_constant(test, device):
     test.assertTrue(compile_constant_value.numpy()[0])
 
 
-vec3bool = wp.vec(length=3, dtype=wp.bool)
+vec3bool = wp.types.vector(length=3, dtype=wp.bool)
 bool_selector_vec = wp.constant(vec3bool([True, False, True]))
 
 
@@ -120,7 +120,7 @@ def test_bool_constant_vec(test, device):
     assert_np_equal(result_array.numpy(), np.full(result_array.shape, 5))
 
 
-mat22bool = wp.mat((2, 2), dtype=wp.bool)
+mat22bool = wp.types.matrix((2, 2), dtype=wp.bool)
 bool_selector_mat = wp.constant(mat22bool([True, False, False, True]))
 
 
@@ -146,17 +146,17 @@ def test_bool_constant_mat(test, device):
     assert_np_equal(result_array.numpy(), np.full(result_array.shape, 9))
 
 
-vec3bool_type = wp._src.types.vector(length=3, dtype=bool)
+vec3bool_type = wp.types.vector(length=3, dtype=bool)
 
 
 @wp.kernel
 def test_bool_vec_anonymous_typing():
     # Zero initialize
-    wp.expect_eq(vec3bool_type(), wp.vector(False, False, False))
+    wp.expect_eq(vec3bool_type(), wp.types.vector(False, False, False))
     # Scalar initialize
-    wp.expect_eq(vec3bool_type(True), wp.vector(True, True, True))
+    wp.expect_eq(vec3bool_type(True), wp.types.vector(True, True, True))
     # Component-wise initialize
-    wp.expect_eq(vec3bool_type(True, False, True), wp.vector(True, False, True))
+    wp.expect_eq(vec3bool_type(True, False, True), wp.types.vector(True, False, True))
 
 
 def test_bool_vec_typing(test, device):
@@ -173,17 +173,17 @@ def test_bool_vec_typing(test, device):
     wp.launch(test_bool_vec_anonymous_typing, (1,), inputs=[], device=device)
 
 
-mat22bool_type = wp._src.types.matrix((2, 2), dtype=bool)
+mat22bool_type = wp.types.matrix((2, 2), dtype=bool)
 
 
 @wp.kernel
 def test_bool_mat_anonymous_typing():
     # Zero initialize
-    wp.expect_eq(mat22bool_type(), wp.matrix(False, False, False, False, shape=(2, 2)))
+    wp.expect_eq(mat22bool_type(), wp.types.matrix(False, False, False, False, shape=(2, 2)))
     # Scalar initialize
-    wp.expect_eq(mat22bool_type(True), wp.matrix(True, True, True, True, shape=(2, 2)))
+    wp.expect_eq(mat22bool_type(True), wp.types.matrix(True, True, True, True, shape=(2, 2)))
     # Component-wise initialize
-    wp.expect_eq(mat22bool_type(True, False, True, False), wp.matrix(True, False, True, False, shape=(2, 2)))
+    wp.expect_eq(mat22bool_type(True, False, True, False), wp.types.matrix(True, False, True, False, shape=(2, 2)))
 
 
 def test_bool_mat_typing(test, device):

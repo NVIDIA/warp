@@ -20,3 +20,14 @@ from warp._src.fem.space import ContravariantFunctionSpace as ContravariantFunct
 from warp._src.fem.space import CovariantFunctionSpace as CovariantFunctionSpace
 
 from . import shape as shape
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import space as _space
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    return get_deprecated_api(_space, "wp.fem", name)

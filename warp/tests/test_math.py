@@ -141,7 +141,7 @@ devices = get_test_devices()
 
 class TestMath(unittest.TestCase):
     def test_vec_type(self):
-        vec5 = wp.vec(length=5, dtype=float)
+        vec5 = wp.types.vector(length=5, dtype=float)
         v = vec5()
         w = vec5()
         a = vec5(1.0)
@@ -166,7 +166,7 @@ class TestMath(unittest.TestCase):
         self.assertEqual(str(v), "[0.0, 1.0, 1.0, 1.0, 1.0]", "vec to string error")
 
     def test_mat_type(self):
-        mat55 = wp.mat(shape=(5, 5), dtype=float)
+        mat55 = wp.types.matrix(shape=(5, 5), dtype=float)
         m1 = mat55()
         m2 = mat55()
 

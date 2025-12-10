@@ -46,7 +46,7 @@ def gradcheck(
     rtol: float = 1e-2,
     raise_exception: bool = True,
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
-    device: wp.context.Devicelike = None,
+    device: wp.context.DeviceLike = None,
     max_blocks: int = 0,
     block_dim: int = 256,
     max_inputs_per_var: int = -1,
@@ -353,11 +353,11 @@ def get_struct_vars(x: wp._src.codegen.StructInstance):
 def infer_device(xs: list):
     # retrieve best matching Warp device for a list of variables
     for x in xs:
-        if isinstance(x, wp.array):
+        if wp._src.types.is_array(x):
             return x.device
-        elif isinstance(x, wp._src.codegen.StructInstance):
+        elif wp._src.types.is_struct(x):
             for var in get_struct_vars(x).values():
-                if isinstance(var, wp.array):
+                if wp._src.types.is_array(var):
                     return var.device
     return wp.get_preferred_device()
 
@@ -673,7 +673,7 @@ def jacobian(
     inputs: Sequence | None = None,
     outputs: Sequence | None = None,
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
-    device: wp.context.Devicelike = None,
+    device: wp.context.DeviceLike = None,
     max_blocks=0,
     block_dim=256,
     max_outputs_per_var=-1,
@@ -808,7 +808,7 @@ def jacobian_fd(
     inputs: Sequence | None = None,
     outputs: Sequence | None = None,
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
-    device: wp.context.Devicelike = None,
+    device: wp.context.DeviceLike = None,
     max_blocks=0,
     block_dim=256,
     max_inputs_per_var=-1,

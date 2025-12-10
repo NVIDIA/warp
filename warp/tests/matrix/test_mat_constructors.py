@@ -254,7 +254,7 @@ def test_diag(test, device, dtype, register_kernels=False):
 def test_anon_constructor_error_shape_arg_missing(test, device):
     @wp.kernel
     def kernel():
-        wp.matrix(1.0, 2.0, 3.0)
+        wp.types.matrix(1.0, 2.0, 3.0)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -266,7 +266,7 @@ def test_anon_constructor_error_shape_arg_missing(test, device):
 def test_anon_constructor_error_shape_mismatch(test, device):
     @wp.kernel
     def kernel():
-        wp.matrix(wp.matrix(shape=(1, 2), dtype=float), shape=(3, 4), dtype=float)
+        wp.types.matrix(wp.types.matrix(shape=(1, 2), dtype=float), shape=(3, 4), dtype=float)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -278,7 +278,7 @@ def test_anon_constructor_error_shape_mismatch(test, device):
 def test_anon_constructor_error_type_mismatch(test, device):
     @wp.kernel
     def kernel():
-        wp.matrix(1.0, shape=(3, 2), dtype=wp.float16)
+        wp.types.matrix(1.0, shape=(3, 2), dtype=wp.float16)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -290,7 +290,7 @@ def test_anon_constructor_error_type_mismatch(test, device):
 def test_anon_constructor_error_invalid_arg_count(test, device):
     @wp.kernel
     def kernel():
-        wp.matrix(1.0, 2.0, 3.0, shape=(2, 2), dtype=float)
+        wp.types.matrix(1.0, 2.0, 3.0, shape=(2, 2), dtype=float)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -502,8 +502,8 @@ def test_matrix_from_vecs_runtime(test, device):
 def test_constructors_explicit_precision():
     # construction for custom matrix types
     eye = wp.identity(dtype=wp.float16, n=2)
-    zeros = wp.matrix(shape=(2, 2), dtype=wp.float16)
-    custom = wp.matrix(wp.float16(0.0), wp.float16(1.0), wp.float16(2.0), wp.float16(3.0), shape=(2, 2))
+    zeros = wp.types.matrix(shape=(2, 2), dtype=wp.float16)
+    custom = wp.types.matrix(wp.float16(0.0), wp.float16(1.0), wp.float16(2.0), wp.float16(3.0), shape=(2, 2))
 
     for i in range(2):
         for j in range(2):
@@ -524,8 +524,8 @@ def test_constructors_explicit_precision():
 def test_constructors_default_precision():
     # construction for default (float) matrix types
     eye = wp.identity(dtype=float, n=2)
-    zeros = wp.matrix(shape=(2, 2), dtype=float)
-    custom = wp.matrix(0.0, 1.0, 2.0, 3.0, shape=(2, 2))
+    zeros = wp.types.matrix(shape=(2, 2), dtype=float)
+    custom = wp.types.matrix(0.0, 1.0, 2.0, 3.0, shape=(2, 2))
 
     for i in range(2):
         for j in range(2):
@@ -547,7 +547,7 @@ CONSTANT_SHAPE_COLS = wp.constant(2)
 # for matrix constructor
 @wp.kernel
 def test_constructors_constant_shape():
-    m = wp.matrix(shape=(CONSTANT_SHAPE_ROWS, CONSTANT_SHAPE_COLS), dtype=float)
+    m = wp.types.matrix(shape=(CONSTANT_SHAPE_ROWS, CONSTANT_SHAPE_COLS), dtype=float)
 
     for i in range(CONSTANT_SHAPE_ROWS):
         for j in range(CONSTANT_SHAPE_COLS):
@@ -609,17 +609,17 @@ def test_matrix_from_vecs():
     wp.expect_eq(m4[1, 2], 6.0)
 
 
-mat32d = wp.mat(shape=(3, 2), dtype=wp.float64)
+mat32d = wp.types.matrix(shape=(3, 2), dtype=wp.float64)
 
 
 @wp.kernel
 def test_matrix_constructor_value_func():
     a = wp.mat22()
-    b = wp.matrix(a, shape=(2, 2))
+    b = wp.types.matrix(a, shape=(2, 2))
     c = mat32d()
     d = mat32d(c, shape=(3, 2))
     e = mat32d(wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0))
-    f = wp.matrix(1.0, 2.0, 3.0, 4.0, shape=(2, 2), dtype=float)
+    f = wp.types.matrix(1.0, 2.0, 3.0, 4.0, shape=(2, 2), dtype=float)
 
 
 def test_quat_constructor(test, device, dtype, register_kernels=False):
@@ -631,10 +631,10 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec4 = wp._src.types.vector(length=4, dtype=wptype)
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
-    quat = wp._src.types.quaternion(dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    quat = wp.types.quaternion(dtype=wptype)
 
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
@@ -765,9 +765,9 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=wptype),
         output: wp.array(dtype=wptype),
     ):
-        m2result = wp.matrix(input[0], shape=(2, 2))
-        m4result = wp.matrix(input[1], shape=(4, 4))
-        m32result = wp.matrix(input[2], shape=(3, 2))
+        m2result = wp.types.matrix(input[0], shape=(2, 2))
+        m4result = wp.types.matrix(input[1], shape=(4, 4))
+        m32result = wp.types.matrix(input[2], shape=(3, 2))
 
         idx = 0
         for i in range(2):
@@ -787,8 +787,8 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
         input: wp.array(dtype=wptype),
         output: wp.array(dtype=wptype),
     ):
-        m2result = wp.matrix(input[0], input[1], input[2], input[3], shape=(2, 2))
-        m4result = wp.matrix(
+        m2result = wp.types.matrix(input[0], input[1], input[2], input[3], shape=(2, 2))
+        m4result = wp.types.matrix(
             input[4],
             input[5],
             input[6],
@@ -807,7 +807,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
             input[19],
             shape=(4, 4),
         )
-        m32result = wp.matrix(input[20], input[21], input[22], input[23], input[24], input[25], shape=(3, 2))
+        m32result = wp.types.matrix(input[20], input[21], input[22], input[23], input[24], input[25], shape=(3, 2))
 
         idx = 0
         for i in range(2):

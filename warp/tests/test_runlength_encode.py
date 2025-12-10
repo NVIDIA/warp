@@ -19,8 +19,8 @@ from functools import partial
 import numpy as np
 
 import warp as wp
-from warp._src.utils import runlength_encode
 from warp.tests.unittest_utils import *
+from warp.utils import runlength_encode
 
 
 def test_runlength_encode_int(test, device, n):

@@ -15,7 +15,17 @@
 
 # isort: skip_file
 
+from warp._src.fem.geometry import DeformedGeometry as DeformedGeometry
+
 from . import closest_point as closest_point
 
-from warp._src.fem.geometry import DeformedGeometry as DeformedGeometry
-from warp._src.fem.geometry import WholeGeometryPartition as WholeGeometryPartition
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import geometry as _geometry
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    return get_deprecated_api(_geometry, "wp.fem", name)

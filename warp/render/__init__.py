@@ -19,4 +19,13 @@ from warp._src.render.render_opengl import OpenGLRenderer as OpenGLRenderer
 
 from warp._src.render.render_usd import UsdRenderer as UsdRenderer
 
-from warp._src.render.utils import bourke_color_map as bourke_color_map
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import render as _render
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    return get_deprecated_api(_render, "wp", name)

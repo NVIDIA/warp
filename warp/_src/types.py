@@ -248,9 +248,9 @@ class BuiltinOpDispatchKind(enum.Enum):
 
 # Caches to significantly improve performance for repeated operations
 # with arguments of the same types.
-_unary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
-_binary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
-_rbinary_builtin_cache: Mapping[str, tuple[warp.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_unary_builtin_cache: Mapping[str, tuple[warp._src.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_binary_builtin_cache: Mapping[str, tuple[warp._src.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
+_rbinary_builtin_cache: Mapping[str, tuple[warp._src.context.BuiltinCallDesc, BuiltinOpDispatchKind]] = {}
 
 
 def _unary_op(self, op, t):
@@ -267,9 +267,9 @@ def _unary_op(self, op, t):
         _unary_builtin_cache[key] = (desc, kind)
 
     if kind == BuiltinOpDispatchKind.DIRECT:
-        return warp.context.call_builtin_from_desc(desc, (self,))
+        return warp._src.context.call_builtin_from_desc(desc, (self,))
 
-    return t(*(warp.context.call_builtin_from_desc(desc, (a,)) for a in self))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a,)) for a in self))
 
 
 def _binary_op(self, op, x, t, cw=True):
@@ -292,12 +292,12 @@ def _binary_op(self, op, x, t, cw=True):
         _binary_builtin_cache[key] = (desc, kind)
 
     if kind == BuiltinOpDispatchKind.DIRECT:
-        return warp.context.call_builtin_from_desc(desc, (self, x))
+        return warp._src.context.call_builtin_from_desc(desc, (self, x))
 
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
-        return t(*(warp.context.call_builtin_from_desc(desc, (a, x)) for a in self))
+        return t(*(warp._src.context.call_builtin_from_desc(desc, (a, x)) for a in self))
 
-    return t(*(warp.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
@@ -320,22 +320,22 @@ def _rbinary_op(self, op, x, t, cw=True):
         _rbinary_builtin_cache[key] = (desc, kind)
 
     if kind == BuiltinOpDispatchKind.DIRECT:
-        return warp.context.call_builtin_from_desc(desc, (x, self))
+        return warp._src.context.call_builtin_from_desc(desc, (x, self))
 
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
-        return t(*(warp.context.call_builtin_from_desc(desc, (x, a)) for a in self))
+        return t(*(warp._src.context.call_builtin_from_desc(desc, (x, a)) for a in self))
 
-    return t(*(warp.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
 
 
 @functools.lru_cache(maxsize=None)
 def vector(length, dtype):
     # canonicalize dtype
-    if dtype == int:
+    if dtype is int:
         dtype = int32
-    elif dtype == float:
+    elif dtype is float:
         dtype = float32
-    elif dtype == builtins.bool:
+    elif dtype is builtins.bool:
         dtype = bool
 
     class vec_t(ctypes.Array):
@@ -365,8 +365,8 @@ def vector(length, dtype):
         # data. This means we need to convert each of the arguments
         # to uint16s containing half float bits before storing them in
         # the array:
-        scalar_import = float_to_half_bits if _wp_scalar_type_ == float16 else lambda x: x
-        scalar_export = half_bits_to_float if _wp_scalar_type_ == float16 else lambda x: x
+        scalar_import = float_to_half_bits if _wp_scalar_type_ is float16 else lambda x: x
+        scalar_export = half_bits_to_float if _wp_scalar_type_ is float16 else lambda x: x
 
         def __init__(self, *args):
             num_args = len(args)
@@ -398,7 +398,7 @@ def vector(length, dtype):
             if isinstance(key, int):
                 return vec_t.scalar_export(super().__getitem__(key))
             elif isinstance(key, slice):
-                if self._wp_scalar_type_ == float16:
+                if self._wp_scalar_type_ is float16:
                     values = tuple(vec_t.scalar_export(x) for x in super().__getitem__(key))
                 else:
                     values = super().__getitem__(key)
@@ -431,7 +431,7 @@ def vector(length, dtype):
                         f"Expected to assign a slice from a sequence of values but got `{type(value).__name__}` instead"
                     ) from None
 
-                if self._wp_scalar_type_ == float16:
+                if self._wp_scalar_type_ is float16:
                     converted = []
                     try:
                         for x in value:
@@ -546,15 +546,15 @@ def matrix(shape, dtype):
     assert len(shape) == 2
 
     # canonicalize dtype
-    if dtype == int:
+    if dtype is int:
         dtype = int32
-    elif dtype == float:
+    elif dtype is float:
         dtype = float32
-    elif dtype == builtins.bool:
+    elif dtype is builtins.bool:
         dtype = bool
 
     class mat_t(ctypes.Array):
-        _length_ = 0 if shape[0] == Any or shape[1] == Any else shape[0] * shape[1]
+        _length_ = 0 if shape[0] is Any or shape[1] is Any else shape[0] * shape[1]
         _shape_ = (0, 0) if _length_ == 0 else shape
 
         if dtype is bool:
@@ -575,16 +575,16 @@ def matrix(shape, dtype):
         _wp_generic_type_hint_ = Matrix
         _wp_constructor_ = "matrix"
 
-        _wp_row_type_ = vector(0 if shape[1] == Any else shape[1], dtype)
-        _wp_col_type_ = vector(0 if shape[0] == Any else shape[0], dtype)
+        _wp_row_type_ = vector(0 if shape[1] is Any else shape[1], dtype)
+        _wp_col_type_ = vector(0 if shape[0] is Any else shape[0], dtype)
 
         # special handling for float16 type: in this case, data is stored
         # as uint16 but it's actually half precision floating point
         # data. This means we need to convert each of the arguments
         # to uint16s containing half float bits before storing them in
         # the array:
-        scalar_import = float_to_half_bits if _wp_scalar_type_ == float16 else lambda x: x
-        scalar_export = half_bits_to_float if _wp_scalar_type_ == float16 else lambda x: x
+        scalar_import = float_to_half_bits if _wp_scalar_type_ is float16 else lambda x: x
+        scalar_export = half_bits_to_float if _wp_scalar_type_ is float16 else lambda x: x
 
         def __init__(self, *args):
             num_args = len(args)
@@ -704,7 +704,7 @@ def matrix(shape, dtype):
             row_start = r * self._shape_[1]
             row_end = row_start + self._shape_[1]
             row_data = super().__getitem__(slice(row_start, row_end))
-            if self._wp_scalar_type_ == float16:
+            if self._wp_scalar_type_ is float16:
                 return self._wp_row_type_(*[mat_t.scalar_export(x) for x in row_data])
             else:
                 return self._wp_row_type_(row_data)
@@ -718,7 +718,7 @@ def matrix(shape, dtype):
             col_end = col_start + self._shape_[0] * self._shape_[1]
             col_step = self._shape_[1]
             col_data = super().__getitem__(slice(col_start, col_end, col_step))
-            if self._wp_scalar_type_ == float16:
+            if self._wp_scalar_type_ is float16:
                 return self._wp_col_type_(*[mat_t.scalar_export(x) for x in col_data])
             else:
                 return self._wp_col_type_(col_data)
@@ -745,7 +745,7 @@ def matrix(shape, dtype):
                     f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
                 ) from None
 
-            if self._wp_scalar_type_ == float16:
+            if self._wp_scalar_type_ is float16:
                 converted = []
                 try:
                     for x in v:
@@ -782,7 +782,7 @@ def matrix(shape, dtype):
                     f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
                 ) from None
 
-            if self._wp_scalar_type_ == float16:
+            if self._wp_scalar_type_ is float16:
                 converted = []
                 try:
                     for x in v:
@@ -966,7 +966,7 @@ def matrix(shape, dtype):
 
 
 def matrix_from_cols(*args: Sequence[Vector]):
-    if not all(type_is_vector(x) for x in args):
+    if not all(is_vector(x) for x in args):
         raise RuntimeError("all arguments are expected to be vectors")
 
     length = args[0]._length_
@@ -993,7 +993,7 @@ def matrix_from_cols(*args: Sequence[Vector]):
 
 
 def matrix_from_rows(*args: Sequence[Vector]):
-    if not all(type_is_vector(x) for x in args):
+    if not all(is_vector(x) for x in args):
         raise RuntimeError("all arguments are expected to be vectors")
 
     length = args[0]._length_
@@ -1891,11 +1891,11 @@ class pointer_t:
 
 
 def type_ctype(dtype):
-    if dtype == float:
+    if dtype is float:
         return ctypes.c_float
-    elif dtype == int:
+    elif dtype is int:
         return ctypes.c_int32
-    elif dtype == bool:
+    elif dtype is bool:
         return ctypes.c_bool
     elif issubclass(dtype, (ctypes.Array, ctypes.Structure)):
         return dtype
@@ -1920,7 +1920,7 @@ def type_length(obj):
 
 
 def type_size(dtype):
-    if dtype == float or dtype == int or isinstance(dtype, warp._src.codegen.Struct):
+    if dtype is float or dtype is int or isinstance(dtype, warp._src.codegen.Struct):
         return 1
     else:
         return dtype._length_
@@ -1947,7 +1947,7 @@ def type_size_in_bytes(dtype: type) -> int:
             size = getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
         elif isinstance(dtype, warp._src.codegen.Struct):
             size = ctypes.sizeof(dtype.ctype)
-        elif dtype == Any:
+        elif dtype is Any:
             raise TypeError("A concrete type is required")
         else:
             raise TypeError(f"Invalid data type: {dtype}")
@@ -1957,40 +1957,40 @@ def type_size_in_bytes(dtype: type) -> int:
 
 
 def type_to_warp(dtype: type) -> type:
-    if dtype == float:
+    if dtype is float:
         return float32
-    elif dtype == int:
+    elif dtype is int:
         return int32
-    elif dtype == builtins.bool:
+    elif dtype is builtins.bool:
         return bool
     else:
         return dtype
 
 
 def type_typestr(dtype: type) -> str:
-    if dtype == bool:
+    if dtype is bool:
         return "|b1"
-    elif dtype == float16:
+    elif dtype is float16:
         return "<f2"
-    elif dtype == float32:
+    elif dtype is float32:
         return "<f4"
-    elif dtype == float64:
+    elif dtype is float64:
         return "<f8"
-    elif dtype == int8:
+    elif dtype is int8:
         return "|i1"
-    elif dtype == uint8:
+    elif dtype is uint8:
         return "|u1"
-    elif dtype == int16:
+    elif dtype is int16:
         return "<i2"
-    elif dtype == uint16:
+    elif dtype is uint16:
         return "<u2"
-    elif dtype == int32:
+    elif dtype is int32:
         return "<i4"
-    elif dtype == uint32:
+    elif dtype is uint32:
         return "<u4"
-    elif dtype == int64:
+    elif dtype is int64:
         return "<i8"
-    elif dtype == uint64:
+    elif dtype is uint64:
         return "<u8"
     elif isinstance(dtype, warp._src.codegen.Struct):
         return f"|V{ctypes.sizeof(dtype.ctype)}"
@@ -2001,27 +2001,27 @@ def type_typestr(dtype: type) -> str:
 
 
 def scalar_short_name(t):
-    if t == float16:
+    if t is float16:
         return "h"
-    elif t == float32:
+    elif t is float32:
         return "f"
-    elif t == float64:
+    elif t is float64:
         return "d"
-    elif t == int8:
+    elif t is int8:
         return "b"
-    elif t == int16:
+    elif t is int16:
         return "s"
-    elif t == int32:
+    elif t is int32:
         return "i"
-    elif t == int64:
+    elif t is int64:
         return "l"
-    elif t == uint8:
+    elif t is uint8:
         return "ub"
-    elif t == uint16:
+    elif t is uint16:
         return "us"
-    elif t == uint32:
+    elif t is uint32:
         return "ui"
-    elif t == uint64:
+    elif t is uint64:
         return "ul"
     return None
 
@@ -2060,11 +2060,11 @@ def type_repr(t) -> str:
         return f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={type_repr(t._wp_scalar_type_)})"
     if t in scalar_types:
         return t.__name__
-    if t == builtins.bool:
+    if t is builtins.bool:
         return "bool"
-    if t == builtins.float:
+    if t is float:
         return "float"
-    if t == builtins.int:
+    if t is int:
         return "int"
 
     name = getattr(t, "__name__", None)
@@ -2075,14 +2075,14 @@ def type_repr(t) -> str:
 
 
 def type_is_int(t):
-    if t == int:
+    if t is int:
         t = int32
 
     return t in int_types
 
 
 def type_is_float(t):
-    if t == float:
+    if t is float:
         t = float32
 
     return t in float_types
@@ -2095,30 +2095,50 @@ def type_is_scalar(t):
 
 # returns True if the passed *type* is a vector
 def type_is_vector(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Vector
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Vector
 
 
 # returns True if the passed *type* is a quaternion
 def type_is_quaternion(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Quaternion
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Quaternion
 
 
 # returns True if the passed *type* is a matrix
 def type_is_matrix(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Matrix
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Matrix
 
 
 # returns True if the passed *type* is a transformation
 def type_is_transformation(t):
-    return getattr(t, "_wp_generic_type_hint_", None) is Transformation
+    return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Transformation
+
+
+def type_is_compound(t):
+    return isinstance(t, type) and hasattr(t, "_wp_generic_type_hint_")
 
 
 value_types = (int, float, builtins.bool, *scalar_and_bool_types)
 
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
-def type_is_value(x: Any) -> builtins.bool:
-    return x in value_types or hasattr(x, "_wp_scalar_type_")
+def type_is_value(t: Any) -> builtins.bool:
+    return t in value_types or type_is_compound(t)
+
+
+def type_is_struct(t: Any) -> builtins.bool:
+    return isinstance(t, warp._src.codegen.Struct)
+
+
+def type_is_array(t: Any) -> builtins.bool:
+    return t in array_types
+
+
+def type_is_tuple(t: Any) -> builtins.bool:
+    return t is tuple_t
+
+
+def type_is_slice(t: Any) -> builtins.bool:
+    return t is slice_t
 
 
 # equivalent of the above but for values
@@ -2134,76 +2154,100 @@ def is_scalar(x: Any) -> builtins.bool:
     return type_is_scalar(type(x))
 
 
+def is_vector(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Vector
+
+
+def is_quaternion(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Quaternion
+
+
+def is_matrix(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Matrix
+
+
+def is_transformation(x):
+    return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Transformation
+
+
+def is_compound(x):
+    return not isinstance(x, type) and hasattr(x, "_wp_generic_type_hint_")
+
+
 def is_value(x: Any) -> builtins.bool:
-    return type_is_value(type(x))
+    return isinstance(x, value_types) or is_compound(x)
 
 
-def is_array(a) -> builtins.bool:
+def is_struct(x) -> builtins.bool:
+    return isinstance(x, warp._src.codegen.StructInstance)
+
+
+def is_array(x) -> builtins.bool:
     """Return true if the passed *instance* is one of the array types."""
-    return isinstance(a, array_types)
+    return isinstance(x, array_types)
 
 
-def is_tuple(t) -> builtins.bool:
-    return isinstance(t, tuple_t)
+def is_tuple(x) -> builtins.bool:
+    return isinstance(x, tuple_t)
 
 
-def is_slice(t) -> builtins.bool:
-    return isinstance(t, slice_t)
+def is_slice(x) -> builtins.bool:
+    return isinstance(x, slice_t)
 
 
-def scalars_equal(a, b, match_generic=False):
+def scalars_equal_generic(a, b, match_generic=True):
     # convert to canonical types
-    if a == float:
+    if a is float:
         a = float32
-    elif a == int:
+    elif a is int:
         a = int32
-    elif a == builtins.bool:
+    elif a is builtins.bool:
         a = bool
 
-    if b == float:
+    if b is float:
         b = float32
-    elif b == int:
+    elif b is int:
         b = int32
-    elif b == builtins.bool:
+    elif b is builtins.bool:
         b = bool
 
     if match_generic:
-        if a == Any or b == Any:
+        if a is Any or b is Any:
             return True
-        if a == Int and b in int_types:
+        if a is Int and b in int_types:
             return True
-        if b == Int and a in int_types:
+        if b is Int and a in int_types:
             return True
-        if a == Int and b == Int:
+        if a is Int and b is Int:
             return True
-        if a == Scalar and b in scalar_and_bool_types:
+        if a is Scalar and b in scalar_and_bool_types:
             return True
-        if b == Scalar and a in scalar_and_bool_types:
+        if b is Scalar and a in scalar_and_bool_types:
             return True
-        if a == Scalar and b == Scalar:
+        if a is Scalar and b is Scalar:
             return True
-        if a == Float and b in float_types:
+        if a is Float and b in float_types:
             return True
-        if b == Float and a in float_types:
+        if b is Float and a in float_types:
             return True
-        if a == Float and b == Float:
+        if a is Float and b is Float:
             return True
 
-    return a == b
+    return a is b
 
 
-def seq_match_ellipsis(a, b, match_generic=False) -> bool:
+def seq_match_ellipsis(a, b) -> bool:
     assert a and a[-1] is Ellipsis and len(a) == 2
 
     # Compare the args against the type being repeated through the ellipsis.
     repeated_arg = a[0]
-    if not all(types_equal(x, repeated_arg, match_generic=match_generic) for x in b):
+    if not all(types_equal_generic(x, repeated_arg) for x in b):
         return False
 
     return True
 
 
-def types_equal(a, b, match_generic=False):
+def types_equal_generic(a, b, match_generic=True):
     if match_generic:
         a_is_seq = True
         a_is_tuple = True
@@ -2236,55 +2280,57 @@ def types_equal(a, b, match_generic=False):
                 # Delegate to comparing all the elements using the standard approach.
                 pass
             elif a_has_ellipsis:
-                return seq_match_ellipsis(a, b, match_generic=match_generic)
+                return seq_match_ellipsis(a, b)
             elif b_has_ellipsis:
-                return seq_match_ellipsis(b, a, match_generic=match_generic)
+                return seq_match_ellipsis(b, a)
 
-            return len(a) == len(b) and all(types_equal(x, y, match_generic=match_generic) for x, y in zip(a, b))
+            return len(a) == len(b) and all(
+                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b)
+            )
         elif a_is_seq or b_is_seq:
             # A sequence can only match to another sequence.
             return False
 
     # convert to canonical types
-    if a == float:
+    if a is float:
         a = float32
-    elif a == int:
+    elif a is int:
         a = int32
-    elif a == builtins.bool:
+    elif a is builtins.bool:
         a = bool
 
-    if b == float:
+    if b is float:
         b = float32
-    elif b == int:
+    elif b is int:
         b = int32
-    elif b == builtins.bool:
+    elif b is builtins.bool:
         b = bool
 
     if getattr(a, "_wp_generic_type_hint_", "a") is getattr(b, "_wp_generic_type_hint_", "b"):
+        if not isinstance(a, type) or not isinstance(b, type):
+            return False
+
         for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
-            if not scalars_equal(p1, p2, match_generic):
+            if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
         return True
 
-    if (
-        is_array(a)
-        and (issubclass(type(a), type(b)) or issubclass(type(b), type(a)))
-        and types_equal(a.dtype, b.dtype, match_generic=match_generic)
-    ):
-        return True
+    if is_array(a) or is_tile(a):
+        return type(a) is type(b) and types_equal_generic(a.dtype, b.dtype, match_generic=match_generic)
 
-    # match NewStructInstance and Struct dtype
-    if getattr(a, "cls", "a") is getattr(b, "cls", "b"):
-        return True
+    if is_slice(a):
+        return type(a) is type(b)
 
-    if is_tile(a) and is_tile(b):
-        return True
+    return scalars_equal_generic(a, b, match_generic=match_generic)
 
-    if is_slice(a) and is_slice(b):
-        return True
 
-    return scalars_equal(a, b, match_generic)
+def scalars_equal(a, b):
+    return scalars_equal_generic(a, b, match_generic=False)
+
+
+def types_equal(a, b):
+    return types_equal_generic(a, b, match_generic=False)
 
 
 def strides_from_shape(shape: tuple, dtype):
@@ -2434,7 +2480,7 @@ class array(Array[DType]):
             strides: Number of bytes in each dimension between successive elements of the array
             ptr: Address of an external memory address to alias (``data`` should be ``None``)
             capacity: Maximum size in bytes of the ``ptr`` allocation (``data`` should be ``None``)
-            device (Devicelike): Device the array lives on
+            device (DeviceLike): Device the array lives on
             copy: Whether the incoming ``data`` will be copied or aliased. Aliasing requires that
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
             deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
@@ -2459,11 +2505,11 @@ class array(Array[DType]):
         self._ref = None
 
         # canonicalize dtype
-        if dtype == int:
+        if dtype is int:
             dtype = int32
-        elif dtype == float:
+        elif dtype is float:
             dtype = float32
-        elif dtype == builtins.bool:
+        elif dtype is builtins.bool:
             dtype = bool
 
         # convert shape to tuple (or leave shape=None if neither shape nor length were specified)
@@ -2535,7 +2581,7 @@ class array(Array[DType]):
             data_dtype = dtype_from_numpy(data_dtype_np)
             data_ptr = desc.get("data")[0]
 
-            if dtype == Any:
+            if dtype is Any:
                 dtype = data_dtype
             else:
                 # Warn if the data type is compatible with the requested dtype
@@ -2664,7 +2710,7 @@ class array(Array[DType]):
             return
 
         # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
-        if dtype == Any:
+        if dtype is Any:
             # infer dtype from data
             try:
                 arr = np.asarray(data)
@@ -3328,7 +3374,7 @@ class array(Array[DType]):
                 # scalar
                 if type(value) in scalar_types:
                     value = value.value
-                if self.dtype == float16:
+                if self.dtype is float16:
                     cvalue = self.dtype._type_(float_to_half_bits(value))
                 else:
                     cvalue = self.dtype._type_(value)
@@ -3791,7 +3837,7 @@ def from_ipc_handle(
         dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_.
         shape: Dimensions of the array.
         strides: Number of bytes in each dimension between successive elements of the array.
-        device (Devicelike): Device to associate with the array.
+        device (DeviceLike): Device to associate with the array.
 
     Returns:
         An array created from the existing memory allocation described by the interprocess memory handle ``handle``.
@@ -3836,11 +3882,11 @@ class fixedarray(array):
         shape: int | tuple[int, ...] | list[int] | None = None,
     ):
         # canonicalize dtype
-        if dtype == int:
+        if dtype is int:
             dtype = int32
-        elif dtype == float:
+        elif dtype is float:
             dtype = float32
-        elif dtype == builtins.bool:
+        elif dtype is builtins.bool:
             dtype = bool
 
         if shape is None:
@@ -3936,7 +3982,7 @@ class noncontiguous_array_base(Array[T]):
                 # scalar
                 if type(value) in scalar_types:
                     value = value.value
-                if self.dtype == float16:
+                if self.dtype is float16:
                     cvalue = self.dtype._type_(float_to_half_bits(value))
                 else:
                     cvalue = self.dtype._type_(value)
@@ -3985,9 +4031,9 @@ class indexedarray(noncontiguous_array_base):
 
         # canonicalize types
         if dtype is not None:
-            if dtype == int:
+            if dtype is int:
                 dtype = int32
-            elif dtype == float:
+            elif dtype is float:
                 dtype = float32
 
         self.data = data
@@ -4203,6 +4249,10 @@ class tile(Tile[DType, Shape]):
     # align tile size to natural boundary, default 16-bytes
     def align(self, bytes):
         return tile.round_up(bytes)
+
+
+def type_is_tile(t):
+    return t is tile
 
 
 def is_tile(t):
@@ -5369,7 +5419,7 @@ class Volume:
             bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type,
               a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): Translation between the index and world spaces.
-            device (Devicelike): The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
+            device (DeviceLike): The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
@@ -5452,7 +5502,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
-            device (Devicelike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device (DeviceLike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         """
         device = warp.get_device(device)
@@ -5468,7 +5518,7 @@ class Volume:
 
         volume = cls(data=None)
         volume.device = device
-        in_world_space = type_scalar_type(tile_points.dtype) == float32
+        in_world_space = type_scalar_type(tile_points.dtype) is float32
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
 
@@ -5555,7 +5605,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
-            device (Devicelike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device (DeviceLike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         Raises:
             RuntimeError: If the ``device`` is not a CUDA device.
@@ -5577,7 +5627,7 @@ class Volume:
 
         volume = cls(data=None)
         volume.device = device
-        in_world_space = type_scalar_type(voxel_points.dtype) == float32
+        in_world_space = type_scalar_type(voxel_points.dtype) is float32
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
 
@@ -5789,7 +5839,7 @@ def type_generic_equal(a, b):
         return False
 
     for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
-        if not scalars_equal(p1, p2, match_generic=False):
+        if not scalars_equal(p1, p2):
             return False
 
     return True
@@ -5815,7 +5865,7 @@ def type_matches_template(arg_type, template_type):
         return types_equal(arg_type, template_type)
 
     # template type is generic, check that the argument type matches
-    if template_type == Any:
+    if template_type is Any:
         return True
     elif is_array(template_type):
         # ensure the argument type is a non-generic array with matching dtype and dimensionality
@@ -5926,7 +5976,7 @@ simple_type_codes = {
 
 
 def get_type_code(arg_type: type) -> str:
-    if arg_type == Any:
+    if arg_type is Any:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"

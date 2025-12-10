@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
 # TODO: Remove after cleaning up the public API.
 
 from warp._src.fem import adaptivity as _adaptivity
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_adaptivity, "wp.fem", name)
+
+
+_warn_deprecated_namespace(__name__)

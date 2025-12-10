@@ -133,7 +133,7 @@ def test_error_invalid_func_return_annotation(test, device):
         arr = func()
 
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"The function `func` returns a fixed-size array whereas it has its return type annotated as `Array\[int32\]`.$",
     ):
         wp.launch(kernel, 1, device=device)

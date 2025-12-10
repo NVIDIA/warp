@@ -22,7 +22,7 @@ from warp._src.fem.types import Coords
 
 _wp_module_name_ = "warp.fem.geometry.element"
 
-_vec1 = wp.vec(length=1, dtype=float)
+_vec1 = wp.types.vector(length=1, dtype=float)
 
 
 class Element(IntEnum):

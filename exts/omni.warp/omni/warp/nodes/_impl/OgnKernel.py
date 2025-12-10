@@ -144,7 +144,7 @@ def infer_kernel_shape(
         ) from e
 
 
-def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
+def compute(db: OgnKernelDatabase, device: wp.Device) -> None:
     """Evaluates the node."""
     db.set_dynamic_attribute_memory_location(
         on_gpu=device.is_cuda,

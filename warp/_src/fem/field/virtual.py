@@ -445,7 +445,7 @@ class LocalAdjointField(SpaceField):
         operator.div_outer: OUTER_GRAD_DOF,
     }
 
-    DofOffsets = wp.vec(length=DOF_TYPE_COUNT, dtype=int)
+    DofOffsets = wp.types.vector(length=DOF_TYPE_COUNT, dtype=int)
 
     @wp.struct
     class EvalArg:

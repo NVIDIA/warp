@@ -236,12 +236,12 @@ class SimpleStruct:
 
 generic_print_types = [*wp._src.types.scalar_types]
 for scalar_type in wp._src.types.scalar_types:
-    generic_print_types.append(wp._src.types.vector(2, scalar_type))
-    generic_print_types.append(wp._src.types.vector(3, scalar_type))
-    generic_print_types.append(wp._src.types.vector(4, scalar_type))
-    generic_print_types.append(wp._src.types.matrix((2, 2), scalar_type))
-    generic_print_types.append(wp._src.types.matrix((3, 3), scalar_type))
-    generic_print_types.append(wp._src.types.matrix((4, 4), scalar_type))
+    generic_print_types.append(wp.types.vector(2, scalar_type))
+    generic_print_types.append(wp.types.vector(3, scalar_type))
+    generic_print_types.append(wp.types.vector(4, scalar_type))
+    generic_print_types.append(wp.types.matrix((2, 2), scalar_type))
+    generic_print_types.append(wp.types.matrix((3, 3), scalar_type))
+    generic_print_types.append(wp.types.matrix((4, 4), scalar_type))
 generic_print_types.append(wp.bool)
 generic_print_types.append(SimpleStruct)
 generic_print_types.append(wp.array(dtype=float))
@@ -272,7 +272,7 @@ def test_print_adjoint(test, device):
 
         for dim in (2, 3, 4):
             # vector
-            vec_type = wp._src.types.vector(dim, scalar_type)
+            vec_type = wp.types.vector(dim, scalar_type)
             vec_data = np.arange(vec_type._length_, dtype=wp.dtype_to_numpy(scalar_type))
             v = vec_type(vec_data)
             adj_v = vec_type(vec_data[::-1])
@@ -290,7 +290,7 @@ def test_print_adjoint(test, device):
                 test.assertRegex(s, rf"{expected_forward}{os.linesep}adj: {expected_adjoint}{os.linesep}")
 
             # matrix
-            mat_type = wp._src.types.matrix((dim, dim), scalar_type)
+            mat_type = wp.types.matrix((dim, dim), scalar_type)
             mat_data = np.arange(mat_type._length_, dtype=wp.dtype_to_numpy(scalar_type))
             m = mat_type(mat_data)
             adj_m = mat_type(mat_data[::-1])

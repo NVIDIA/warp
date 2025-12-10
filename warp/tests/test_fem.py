@@ -24,10 +24,42 @@ import warp as wp
 import warp.fem as fem
 from warp._src.fem.geometry.closest_point import project_on_tet_at_origin, project_on_tri_at_origin
 from warp._src.fem.geometry.element import LinearEdge, Polynomial, Triangle
-from warp._src.fem.space import shape
-from warp.fem import Coords, D, Domain, Field, Sample, curl, div, grad, integrand, make_free_sample, normal
+from warp._src.fem.operator import element_partition_index, node_partition_index
+from warp.fem import (
+    Coords,
+    D,
+    Domain,
+    Field,
+    Sample,
+    ShapeFunction,
+    curl,
+    div,
+    grad,
+    integrand,
+    make_free_sample,
+    normal,
+)
 from warp.fem.cache import dynamic_kernel
 from warp.fem.linalg import inverse_qr, spherical_part, symmetric_eigenvalues_qr, symmetric_part
+from warp.fem.space.shape import (
+    CubeNedelecFirstKindShapeFunctions,
+    CubeNonConformingPolynomialShapeFunctions,
+    CubeRaviartThomasShapeFunctions,
+    CubeSerendipityShapeFunctions,
+    CubeTripolynomialShapeFunctions,
+    SquareBipolynomialShapeFunctions,
+    SquareNedelecFirstKindShapeFunctions,
+    SquareNonConformingPolynomialShapeFunctions,
+    SquareRaviartThomasShapeFunctions,
+    SquareSerendipityShapeFunctions,
+    TetrahedronNedelecFirstKindShapeFunctions,
+    TetrahedronNonConformingPolynomialShapeFunctions,
+    TetrahedronPolynomialShapeFunctions,
+    TetrahedronRaviartThomasShapeFunctions,
+    TriangleNedelecFirstKindShapeFunctions,
+    TriangleNonConformingPolynomialShapeFunctions,
+    TrianglePolynomialShapeFunctions,
+)
 from warp.fem.utils import (
     grid_to_hexes,
     grid_to_quads,
@@ -37,8 +69,8 @@ from warp.fem.utils import (
 from warp.sparse import bsr_set_zero, bsr_zeros
 from warp.tests.unittest_utils import *
 
-vec6f = wp.vec(length=6, dtype=float)
-mat66f = wp.mat(shape=(6, 6), dtype=float)
+vec6f = wp.types.vector(length=6, dtype=float)
+mat66f = wp.types.matrix(shape=(6, 6), dtype=float)
 
 
 @integrand
@@ -226,7 +258,7 @@ def test_interpolate_gradient(test, device):
         jacobian = bsr_zeros(
             rows_of_blocks=point_quadrature.total_point_count(),
             cols_of_blocks=scalar_space.node_count(),
-            block_type=wp.mat(shape=(2, 1), dtype=float),
+            block_type=wp.types.matrix(shape=(2, 1), dtype=float),
         )
         fem.interpolate(
             grad_field,
@@ -1162,7 +1194,7 @@ def _expect_near(a: wp.vec2, b: wp.vec2, tol: float):
         wp.expect_near(a[k], b[k], tol)
 
 
-def test_shape_function_weight(test, shape: shape.ShapeFunction, coord_sampler, CENTER_COORDS):
+def test_shape_function_weight(test, shape: ShapeFunction, coord_sampler, CENTER_COORDS):
     NODE_COUNT = shape.NODES_PER_ELEMENT
     weight_fn = shape.make_element_inner_weight()
     node_coords_fn = shape.make_node_coords_in_element()
@@ -1211,7 +1243,7 @@ def test_shape_function_weight(test, shape: shape.ShapeFunction, coord_sampler, 
     wp.launch(partition_of_unity_test, dim=n_samples, inputs=[])
 
 
-def test_shape_function_trace(test, shape: shape.ShapeFunction, CENTER_COORDS):
+def test_shape_function_trace(test, shape: ShapeFunction, CENTER_COORDS):
     NODE_COUNT = shape.NODES_PER_ELEMENT
     node_coords_fn = shape.make_node_coords_in_element()
 
@@ -1240,7 +1272,7 @@ def test_shape_function_trace(test, shape: shape.ShapeFunction, CENTER_COORDS):
 
 def test_shape_function_gradient(
     test,
-    shape: shape.ShapeFunction,
+    shape: ShapeFunction,
     coord_sampler,
     coord_delta_sampler,
     pure_curl: bool = False,
@@ -1305,9 +1337,9 @@ def test_square_shape_functions(test, device):
         param_delta = wp.normalize(wp.vec2(wp.randf(state), wp.randf(state))) * epsilon
         return param_delta, Coords(param_delta[0], param_delta[1], 0.0)
 
-    Q_1 = shape.SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_1 = SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_2 = SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_3 = SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
     test_shape_function_weight(test, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
@@ -1319,9 +1351,9 @@ def test_square_shape_functions(test, device):
     test_shape_function_gradient(test, Q_2, square_coord_sampler, square_coord_delta_sampler)
     test_shape_function_gradient(test, Q_3, square_coord_sampler, square_coord_delta_sampler)
 
-    Q_1 = shape.SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
-    Q_2 = shape.SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
-    Q_3 = shape.SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_1 = SquareBipolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_2 = SquareBipolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_3 = SquareBipolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
 
     test_shape_function_weight(test, Q_1, square_coord_sampler, SQUARE_CENTER_COORDS)
     test_shape_function_weight(test, Q_2, square_coord_sampler, SQUARE_CENTER_COORDS)
@@ -1330,8 +1362,8 @@ def test_square_shape_functions(test, device):
     test_shape_function_gradient(test, Q_2, square_coord_sampler, square_coord_delta_sampler)
     test_shape_function_gradient(test, Q_3, square_coord_sampler, square_coord_delta_sampler)
 
-    S_2 = shape.SquareSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    S_3 = shape.SquareSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    S_2 = SquareSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    S_3 = SquareSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test, S_2, square_coord_sampler, SQUARE_CENTER_COORDS)
     test_shape_function_weight(test, S_3, square_coord_sampler, SQUARE_CENTER_COORDS)
@@ -1340,9 +1372,9 @@ def test_square_shape_functions(test, device):
     test_shape_function_gradient(test, S_2, square_coord_sampler, square_coord_delta_sampler)
     test_shape_function_gradient(test, S_3, square_coord_sampler, square_coord_delta_sampler)
 
-    P_c1 = shape.SquareNonConformingPolynomialShapeFunctions(degree=1)
-    P_c2 = shape.SquareNonConformingPolynomialShapeFunctions(degree=2)
-    P_c3 = shape.SquareNonConformingPolynomialShapeFunctions(degree=3)
+    P_c1 = SquareNonConformingPolynomialShapeFunctions(degree=1)
+    P_c2 = SquareNonConformingPolynomialShapeFunctions(degree=2)
+    P_c3 = SquareNonConformingPolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_c1, square_coord_sampler, SQUARE_CENTER_COORDS)
     test_shape_function_weight(test, P_c2, square_coord_sampler, SQUARE_CENTER_COORDS)
@@ -1351,9 +1383,9 @@ def test_square_shape_functions(test, device):
     test_shape_function_gradient(test, P_c2, square_coord_sampler, square_coord_delta_sampler)
     test_shape_function_gradient(test, P_c3, square_coord_sampler, square_coord_delta_sampler)
 
-    N1_1 = shape.SquareNedelecFirstKindShapeFunctions(degree=1)
+    N1_1 = SquareNedelecFirstKindShapeFunctions(degree=1)
     test_shape_function_gradient(test, N1_1, square_coord_sampler, square_coord_delta_sampler)
-    RT_1 = shape.SquareRaviartThomasShapeFunctions(degree=1)
+    RT_1 = SquareRaviartThomasShapeFunctions(degree=1)
     test_shape_function_gradient(test, RT_1, square_coord_sampler, square_coord_delta_sampler)
 
     wp.synchronize()
@@ -1372,9 +1404,9 @@ def test_cube_shape_functions(test, device):
         param_delta = wp.normalize(wp.vec3(wp.randf(state), wp.randf(state), wp.randf(state))) * epsilon
         return param_delta, param_delta
 
-    Q_1 = shape.CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_1 = CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_2 = CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    Q_3 = CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
     test_shape_function_weight(test, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
@@ -1386,9 +1418,9 @@ def test_cube_shape_functions(test, device):
     test_shape_function_gradient(test, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
     test_shape_function_gradient(test, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
 
-    Q_1 = shape.CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
-    Q_2 = shape.CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
-    Q_3 = shape.CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_1 = CubeTripolynomialShapeFunctions(degree=1, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_2 = CubeTripolynomialShapeFunctions(degree=2, family=fem.Polynomial.GAUSS_LEGENDRE)
+    Q_3 = CubeTripolynomialShapeFunctions(degree=3, family=fem.Polynomial.GAUSS_LEGENDRE)
 
     test_shape_function_weight(test, Q_1, cube_coord_sampler, CUBE_CENTER_COORDS)
     test_shape_function_weight(test, Q_2, cube_coord_sampler, CUBE_CENTER_COORDS)
@@ -1397,8 +1429,8 @@ def test_cube_shape_functions(test, device):
     test_shape_function_gradient(test, Q_2, cube_coord_sampler, cube_coord_delta_sampler)
     test_shape_function_gradient(test, Q_3, cube_coord_sampler, cube_coord_delta_sampler)
 
-    S_2 = shape.CubeSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
-    S_3 = shape.CubeSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    S_2 = CubeSerendipityShapeFunctions(degree=2, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
+    S_3 = CubeSerendipityShapeFunctions(degree=3, family=fem.Polynomial.LOBATTO_GAUSS_LEGENDRE)
 
     test_shape_function_weight(test, S_2, cube_coord_sampler, CUBE_CENTER_COORDS)
     test_shape_function_weight(test, S_3, cube_coord_sampler, CUBE_CENTER_COORDS)
@@ -1407,9 +1439,9 @@ def test_cube_shape_functions(test, device):
     test_shape_function_gradient(test, S_2, cube_coord_sampler, cube_coord_delta_sampler)
     test_shape_function_gradient(test, S_3, cube_coord_sampler, cube_coord_delta_sampler)
 
-    P_c1 = shape.CubeNonConformingPolynomialShapeFunctions(degree=1)
-    P_c2 = shape.CubeNonConformingPolynomialShapeFunctions(degree=2)
-    P_c3 = shape.CubeNonConformingPolynomialShapeFunctions(degree=3)
+    P_c1 = CubeNonConformingPolynomialShapeFunctions(degree=1)
+    P_c2 = CubeNonConformingPolynomialShapeFunctions(degree=2)
+    P_c3 = CubeNonConformingPolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_c1, cube_coord_sampler, CUBE_CENTER_COORDS)
     test_shape_function_weight(test, P_c2, cube_coord_sampler, CUBE_CENTER_COORDS)
@@ -1418,9 +1450,9 @@ def test_cube_shape_functions(test, device):
     test_shape_function_gradient(test, P_c2, cube_coord_sampler, cube_coord_delta_sampler)
     test_shape_function_gradient(test, P_c3, cube_coord_sampler, cube_coord_delta_sampler)
 
-    N1_1 = shape.CubeNedelecFirstKindShapeFunctions(degree=1)
+    N1_1 = CubeNedelecFirstKindShapeFunctions(degree=1)
     test_shape_function_gradient(test, N1_1, cube_coord_sampler, cube_coord_delta_sampler)
-    RT_1 = shape.CubeRaviartThomasShapeFunctions(degree=1)
+    RT_1 = CubeRaviartThomasShapeFunctions(degree=1)
     test_shape_function_gradient(test, RT_1, cube_coord_sampler, cube_coord_delta_sampler)
 
     wp.synchronize()
@@ -1443,9 +1475,9 @@ def test_tri_shape_functions(test, device):
         b = param_delta[1]
         return param_delta, Coords(-a - b, a, b)
 
-    P_1 = shape.TrianglePolynomialShapeFunctions(degree=1)
-    P_2 = shape.TrianglePolynomialShapeFunctions(degree=2)
-    P_3 = shape.TrianglePolynomialShapeFunctions(degree=3)
+    P_1 = TrianglePolynomialShapeFunctions(degree=1)
+    P_2 = TrianglePolynomialShapeFunctions(degree=2)
+    P_3 = TrianglePolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_1, tri_coord_sampler, TRI_CENTER_COORDS)
     test_shape_function_weight(test, P_2, tri_coord_sampler, TRI_CENTER_COORDS)
@@ -1457,9 +1489,9 @@ def test_tri_shape_functions(test, device):
     test_shape_function_gradient(test, P_2, tri_coord_sampler, tri_coord_delta_sampler)
     test_shape_function_gradient(test, P_3, tri_coord_sampler, tri_coord_delta_sampler)
 
-    P_1d = shape.TriangleNonConformingPolynomialShapeFunctions(degree=1)
-    P_2d = shape.TriangleNonConformingPolynomialShapeFunctions(degree=2)
-    P_3d = shape.TriangleNonConformingPolynomialShapeFunctions(degree=3)
+    P_1d = TriangleNonConformingPolynomialShapeFunctions(degree=1)
+    P_2d = TriangleNonConformingPolynomialShapeFunctions(degree=2)
+    P_3d = TriangleNonConformingPolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_1d, tri_coord_sampler, TRI_CENTER_COORDS)
     test_shape_function_weight(test, P_2d, tri_coord_sampler, TRI_CENTER_COORDS)
@@ -1468,10 +1500,10 @@ def test_tri_shape_functions(test, device):
     test_shape_function_gradient(test, P_2d, tri_coord_sampler, tri_coord_delta_sampler)
     test_shape_function_gradient(test, P_3d, tri_coord_sampler, tri_coord_delta_sampler)
 
-    N1_1 = shape.TriangleNedelecFirstKindShapeFunctions(degree=1)
+    N1_1 = TriangleNedelecFirstKindShapeFunctions(degree=1)
     test_shape_function_gradient(test, N1_1, tri_coord_sampler, tri_coord_delta_sampler, pure_curl=True)
 
-    RT_1 = shape.TriangleNedelecFirstKindShapeFunctions(degree=1)
+    RT_1 = TriangleNedelecFirstKindShapeFunctions(degree=1)
     test_shape_function_gradient(test, RT_1, tri_coord_sampler, tri_coord_delta_sampler, pure_spherical=True)
 
     wp.synchronize()
@@ -1490,9 +1522,9 @@ def test_tet_shape_functions(test, device):
         param_delta = wp.normalize(wp.vec3(wp.randf(state), wp.randf(state), wp.randf(state))) * epsilon
         return param_delta, param_delta
 
-    P_1 = shape.TetrahedronPolynomialShapeFunctions(degree=1)
-    P_2 = shape.TetrahedronPolynomialShapeFunctions(degree=2)
-    P_3 = shape.TetrahedronPolynomialShapeFunctions(degree=3)
+    P_1 = TetrahedronPolynomialShapeFunctions(degree=1)
+    P_2 = TetrahedronPolynomialShapeFunctions(degree=2)
+    P_3 = TetrahedronPolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_1, tet_coord_sampler, TET_CENTER_COORDS)
     test_shape_function_weight(test, P_2, tet_coord_sampler, TET_CENTER_COORDS)
@@ -1504,9 +1536,9 @@ def test_tet_shape_functions(test, device):
     test_shape_function_gradient(test, P_2, tet_coord_sampler, tet_coord_delta_sampler)
     test_shape_function_gradient(test, P_3, tet_coord_sampler, tet_coord_delta_sampler)
 
-    P_1d = shape.TetrahedronNonConformingPolynomialShapeFunctions(degree=1)
-    P_2d = shape.TetrahedronNonConformingPolynomialShapeFunctions(degree=2)
-    P_3d = shape.TetrahedronNonConformingPolynomialShapeFunctions(degree=3)
+    P_1d = TetrahedronNonConformingPolynomialShapeFunctions(degree=1)
+    P_2d = TetrahedronNonConformingPolynomialShapeFunctions(degree=2)
+    P_3d = TetrahedronNonConformingPolynomialShapeFunctions(degree=3)
 
     test_shape_function_weight(test, P_1d, tet_coord_sampler, TET_CENTER_COORDS)
     test_shape_function_weight(test, P_2d, tet_coord_sampler, TET_CENTER_COORDS)
@@ -1515,10 +1547,10 @@ def test_tet_shape_functions(test, device):
     test_shape_function_gradient(test, P_2d, tet_coord_sampler, tet_coord_delta_sampler)
     test_shape_function_gradient(test, P_3d, tet_coord_sampler, tet_coord_delta_sampler)
 
-    N1_1 = shape.TetrahedronNedelecFirstKindShapeFunctions(degree=1)
+    N1_1 = TetrahedronNedelecFirstKindShapeFunctions(degree=1)
     test_shape_function_gradient(test, N1_1, tet_coord_sampler, tet_coord_delta_sampler, pure_curl=True)
 
-    RT_1 = shape.TetrahedronRaviartThomasShapeFunctions(degree=1)
+    RT_1 = TetrahedronRaviartThomasShapeFunctions(degree=1)
     test_shape_function_gradient(test, RT_1, tet_coord_sampler, tet_coord_delta_sampler, pure_spherical=True)
 
     wp.synchronize()
@@ -1766,9 +1798,9 @@ def _value_at_node(domain: fem.Domain, s: fem.Sample, f: fem.Field, values: wp.a
     # lookup at node is ambiguous, check that partition_lookup retains sample on current partition
     s_partition = fem.partition_lookup(domain, domain(s))
     wp.expect_eq(s.element_index, s_partition.element_index)
-    wp.expect_neq(fem.operator.element_partition_index(domain, s.element_index), fem.NULL_ELEMENT_INDEX)
+    wp.expect_neq(element_partition_index(domain, s.element_index), fem.NULL_ELEMENT_INDEX)
 
-    node_index = fem.operator.node_partition_index(f, s.qp_index)
+    node_index = node_partition_index(f, s.qp_index)
     return values[node_index]
 
 

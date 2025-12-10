@@ -491,7 +491,7 @@ class Function:
         if self.defaults:
             # Populate the bound arguments with any default values.
             default_args = {k: v for k, v in self.defaults.items() if k not in bound_args.arguments}
-            warp.codegen.apply_defaults(bound_args, default_args)
+            warp._src.codegen.apply_defaults(bound_args, default_args)
 
         bound_args = tuple(bound_args.arguments.values())
         return call_builtin_from_desc(desc, bound_args)
@@ -523,7 +523,7 @@ class Function:
 def get_builtin_type(return_type: type) -> type:
     # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
     # in the list of hard coded types so it knows it's returning one of them:
-    if hasattr(return_type, "_wp_generic_type_hint_"):
+    if warp._src.types.type_is_compound(return_type):
         return_type_match = tuple(
             x
             for x in generic_vtypes
@@ -1206,7 +1206,7 @@ def kernel(
                 # Reset skip_build flag for all kernels when reusing a module
                 # Previous compilations may have set skip_build=True, which would
                 # prevent building for the new device
-                for existing_kernel in existing_module.live_kernels:
+                for existing_kernel in existing_module._get_live_kernels():
                     existing_kernel.adj.skip_build = False
             else:
                 # This is the first time we've seen this kernel
@@ -1292,7 +1292,7 @@ def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | 
         # ensure this function name corresponds to a kernel
         fn = kernel
         module = get_module(fn.__module__)
-        kernel = module.find_kernel(fn)
+        kernel = module._find_kernel(fn)
         if kernel is None:
             raise RuntimeError(f"Failed to find a kernel named '{fn.__name__}' in module {fn.__module__}")
 
@@ -1467,7 +1467,7 @@ def add_builtin(
         # collect the parent type names of all the generic arguments:
         genericset = set()
         for t in func_arg_types.values():
-            if hasattr(t, "_wp_generic_type_hint_"):
+            if warp._src.types.type_is_compound(t):
                 genericset.add(t._wp_generic_type_hint_)
             elif warp._src.types.type_is_generic_scalar(t):
                 genericset.add(t)
@@ -1507,11 +1507,11 @@ def add_builtin(
             for param in input_types.values():
                 if warp._src.types.type_is_generic_scalar(param):
                     l = (stype,)
-                elif hasattr(param, "_wp_generic_type_hint_"):
+                elif warp._src.types.type_is_compound(param):
                     l = tuple(
                         x
                         for x in consistenttypes[param._wp_generic_type_hint_]
-                        if warp._src.types.types_equal(param, x, match_generic=True)
+                        if warp._src.types.types_equal_generic(param, x)
                     )
                 else:
                     l = (param,)
@@ -1705,7 +1705,7 @@ class ModuleHasher:
         ch = hashlib.sha256()
 
         # hash all non-generic kernels
-        for kernel in module.live_kernels:
+        for kernel in module._get_live_kernels():
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
@@ -1874,7 +1874,7 @@ class ModuleHasher:
             return bytes(value._type_(value.value))
         elif hasattr(value, "_wp_scalar_type_"):
             return bytes(value)
-        elif isinstance(value, warp._src.codegen.StructInstance):
+        elif warp._src.types.is_struct(value):
             return bytes(value._ctype)
         else:
             raise TypeError(f"Invalid constant type: {type(value)}")
@@ -2241,6 +2241,11 @@ class Module:
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
 
+    def __getattr__(self, name):
+        from warp._src.utils import get_deprecated_method  # noqa: PLC0415
+
+        return get_deprecated_method(self, "warp.Module", name)
+
     def register_struct(self, struct):
         self.structs[struct.key] = struct
 
@@ -2258,7 +2263,7 @@ class Module:
         if kernel.adj.has_unresolved_static_expressions:
             self.has_unresolved_static_expressions = True
 
-        self.find_references(kernel.adj)
+        self._find_references(kernel.adj)
 
         # for a reload of module on next launch
         self.mark_modified()
@@ -2321,13 +2326,12 @@ class Module:
         if func.adj.has_unresolved_static_expressions:
             self.has_unresolved_static_expressions = True
 
-        self.find_references(func.adj)
+        self._find_references(func.adj)
 
         # for a reload of module on next launch
         self.mark_modified()
 
-    @property
-    def live_kernels(self):
+    def _get_live_kernels(self):
         # Return a list of kernels that still have references.
         # We return a regular list instead of the WeakSet to avoid undesirable issues
         # if kernels are garbage collected before the caller is done using this list.
@@ -2340,13 +2344,13 @@ class Module:
         return list(self._live_kernels)
 
     # find kernel corresponding to a Python function
-    def find_kernel(self, func):
+    def _find_kernel(self, func):
         qualname = warp._src.codegen.make_full_qualified_name(func)
         return self.kernels.get(qualname)
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
-    def find_references(self, adj):
+    def _find_references(self, adj):
         def add_ref(ref):
             if ref is not self:
                 self.references.add(ref)
@@ -2429,13 +2433,13 @@ class Module:
 
         return module_name_short
 
-    def get_compile_arch(self, device: Device | None = None) -> int | None:
+    def _get_compile_arch(self, device: Device | None = None) -> int | None:
         if device is None:
             device = runtime.get_device()
 
         return device.get_cuda_compile_arch()
 
-    def get_compile_output_name(
+    def _get_compile_output_name(
         self, device: Device | None, output_arch: int | None = None, use_ptx: bool | None = None
     ) -> str:
         """Get the filename to use for the compiled module binary.
@@ -2453,7 +2457,7 @@ class Module:
         if final_arch is None:
             if device:
                 # Infer the architecture from the device
-                final_arch = self.get_compile_arch(device)
+                final_arch = self._get_compile_arch(device)
             else:
                 raise ValueError(
                     "Either 'device' or 'output_arch' must be provided to determine compilation architecture"
@@ -2474,14 +2478,14 @@ class Module:
 
         return output_name
 
-    def get_meta_name(self) -> str:
+    def _get_meta_name(self) -> str:
         """Get the filename to use for the module metadata file.
 
         This is only the filename. It should be used to form a path.
         """
         return f"{self.get_module_identifier()}.meta"
 
-    def compile(
+    def _compile(
         self,
         device: Device | None = None,
         output_dir: str | os.PathLike | None = None,
@@ -2501,10 +2505,10 @@ class Module:
             output_arch: The architecture to compile the module for.
         """
         if output_arch is None:
-            output_arch = self.get_compile_arch(device)  # Will remain at None if device is CPU
+            output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
 
         if output_name is None:
-            output_name = self.get_compile_output_name(device, output_arch, use_ptx)
+            output_name = self._get_compile_output_name(device, output_arch, use_ptx)
 
         builder_options = {
             **self.options,
@@ -2525,7 +2529,7 @@ class Module:
         else:
             output_dir = os.fspath(output_dir)
 
-        meta_path = os.path.join(output_dir, self.get_meta_name())
+        meta_path = os.path.join(output_dir, self._get_meta_name())
 
         build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}"
 
@@ -2626,7 +2630,7 @@ class Module:
         # build meta data
 
         meta = builder.build_meta()
-        output_meta_path = os.path.join(build_dir, self.get_meta_name())
+        output_meta_path = os.path.join(build_dir, self._get_meta_name())
 
         with open(output_meta_path, "w") as meta_file:
             json.dump(meta, meta_file)
@@ -2744,11 +2748,11 @@ class Module:
                 # we will build if binary doesn't exist yet
                 # we will rebuild if we are not caching kernels or if we are tracking array access
 
-                output_name = self.get_compile_output_name(device)
-                output_arch = self.get_compile_arch(device)
+                output_name = self._get_compile_output_name(device)
+                output_arch = self._get_compile_arch(device)
 
                 module_dir = os.path.join(warp._src.config.kernel_cache_dir, module_name_short)
-                meta_path = os.path.join(module_dir, self.get_meta_name())
+                meta_path = os.path.join(module_dir, self._get_meta_name())
                 # final object binary path
                 binary_path = os.path.join(module_dir, output_name)
 
@@ -2758,7 +2762,7 @@ class Module:
                     or warp._src.config.verify_autograd_array_access
                 ):
                     try:
-                        self.compile(device, module_dir, output_name, output_arch)
+                        self._compile(device, module_dir, output_name, output_arch)
                     except Exception as e:
                         module_load_timer.extra_msg = " (error)"
                         raise (e)
@@ -2942,7 +2946,7 @@ class Event:
         return instance
 
     def __init__(
-        self, device: Devicelike = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
+        self, device: DeviceLike = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
     ):
         """Initializes the event on a CUDA device.
 
@@ -3607,7 +3611,7 @@ class Device:
 
 """ Meta-type for arguments that can be resolved to a concrete Device.
 """
-Devicelike = Union[Device, str, None]
+DeviceLike = Union[Device, str, None]
 
 
 class Graph:
@@ -4879,7 +4883,7 @@ class Runtime:
                 raise RuntimeError(f"Failed to load the shared library '{dll_path}'") from e
         return dll
 
-    def get_device(self, ident: Devicelike = None) -> Device:
+    def get_device(self, ident: DeviceLike = None) -> Device:
         # special cases
         if type(ident) is Device:
             return ident
@@ -4895,7 +4899,7 @@ class Runtime:
 
         raise ValueError(f"Invalid device identifier: {ident}")
 
-    def set_default_device(self, ident: Devicelike) -> None:
+    def set_default_device(self, ident: DeviceLike) -> None:
         self.default_device = self.get_device(ident)
 
     def get_current_cuda_device(self) -> Device:
@@ -4986,7 +4990,7 @@ class Runtime:
         del self.context_map[device.context]
         self.cuda_devices.remove(device)
 
-    def verify_cuda_device(self, device: Devicelike = None) -> None:
+    def verify_cuda_device(self, device: DeviceLike = None) -> None:
         if warp._src.config.verify_cuda:
             device = runtime.get_device(device)
             if not device.is_cuda:
@@ -5099,7 +5103,7 @@ def get_preferred_device() -> Device:
         return None
 
 
-def get_device(ident: Devicelike = None) -> Device:
+def get_device(ident: DeviceLike = None) -> Device:
     """Returns the device identified by the argument."""
 
     init()
@@ -5107,7 +5111,7 @@ def get_device(ident: Devicelike = None) -> Device:
     return runtime.get_device(ident)
 
 
-def set_device(ident: Devicelike) -> None:
+def set_device(ident: DeviceLike) -> None:
     """Sets the default device identified by the argument."""
 
     init()
@@ -5144,7 +5148,7 @@ def unmap_cuda_device(alias: str) -> None:
     runtime.unmap_cuda_device(alias)
 
 
-def is_mempool_supported(device: Devicelike) -> bool:
+def is_mempool_supported(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are available on the device.
 
     Parameters:
@@ -5160,7 +5164,7 @@ def is_mempool_supported(device: Devicelike) -> bool:
     return device.is_mempool_supported
 
 
-def is_mempool_enabled(device: Devicelike) -> bool:
+def is_mempool_enabled(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are enabled on the device.
 
     Parameters:
@@ -5176,7 +5180,7 @@ def is_mempool_enabled(device: Devicelike) -> bool:
     return device.is_mempool_enabled
 
 
-def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
+def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:
     """Enable or disable CUDA memory pool allocators on the device.
 
     Pooled allocators are typically faster and allow allocating memory during graph capture.
@@ -5212,7 +5216,7 @@ def set_mempool_enabled(device: Devicelike, enable: bool) -> None:
             raise ValueError("Memory pools are only supported on CUDA devices")
 
 
-def set_mempool_release_threshold(device: Devicelike, threshold: int | float) -> None:
+def set_mempool_release_threshold(device: DeviceLike, threshold: int | float) -> None:
     """Set the CUDA memory pool release threshold on the device.
 
     This is the amount of reserved memory to hold onto before trying to release memory back to the OS.
@@ -5255,7 +5259,7 @@ def set_mempool_release_threshold(device: Devicelike, threshold: int | float) ->
         raise RuntimeError(f"Failed to set memory pool release threshold for device {device}")
 
 
-def get_mempool_release_threshold(device: Devicelike = None) -> int:
+def get_mempool_release_threshold(device: DeviceLike = None) -> int:
     """Get the CUDA memory pool release threshold on the device.
 
     Parameters:
@@ -5284,7 +5288,7 @@ def get_mempool_release_threshold(device: Devicelike = None) -> int:
     return runtime.core.wp_cuda_device_get_mempool_release_threshold(device.ordinal)
 
 
-def get_mempool_used_mem_current(device: Devicelike = None) -> int:
+def get_mempool_used_mem_current(device: DeviceLike = None) -> int:
     """Get the amount of memory from the device's memory pool that is currently in use by the application.
 
     Parameters:
@@ -5313,7 +5317,7 @@ def get_mempool_used_mem_current(device: Devicelike = None) -> int:
     return runtime.core.wp_cuda_device_get_mempool_used_mem_current(device.ordinal)
 
 
-def get_mempool_used_mem_high(device: Devicelike = None) -> int:
+def get_mempool_used_mem_high(device: DeviceLike = None) -> int:
     """Get the application's memory usage high-water mark from the device's CUDA memory pool.
 
     Parameters:
@@ -5342,7 +5346,7 @@ def get_mempool_used_mem_high(device: Devicelike = None) -> int:
     return runtime.core.wp_cuda_device_get_mempool_used_mem_high(device.ordinal)
 
 
-def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
+def is_peer_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
     """Check if `peer_device` can directly access the memory of `target_device` on this system.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
@@ -5363,7 +5367,7 @@ def is_peer_access_supported(target_device: Devicelike, peer_device: Devicelike)
     return bool(runtime.core.wp_cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal))
 
 
-def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
+def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
     """Check if `peer_device` can currently access the memory of `target_device`.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
@@ -5384,7 +5388,7 @@ def is_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike) -
     return bool(runtime.core.wp_cuda_is_peer_access_enabled(target_device.context, peer_device.context))
 
 
-def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
+def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
     """Enable or disable direct access from `peer_device` to the memory of `target_device`.
 
     Enabling peer access can improve the speed of peer-to-peer memory transfers, but can have
@@ -5416,7 +5420,7 @@ def set_peer_access_enabled(target_device: Devicelike, peer_device: Devicelike, 
         raise RuntimeError(f"Failed to {action} peer access from device {peer_device} to device {target_device}")
 
 
-def is_mempool_access_supported(target_device: Devicelike, peer_device: Devicelike) -> bool:
+def is_mempool_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
     """Check if `peer_device` can directly access the memory pool of `target_device`.
 
     If mempool access is possible, it can be managed using :func:`set_mempool_access_enabled()`
@@ -5434,7 +5438,7 @@ def is_mempool_access_supported(target_device: Devicelike, peer_device: Deviceli
     return target_device.is_mempool_supported and is_peer_access_supported(target_device, peer_device)
 
 
-def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike) -> bool:
+def is_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
     """Check if `peer_device` can currently access the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
@@ -5455,7 +5459,7 @@ def is_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike
     return bool(runtime.core.wp_cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
 
 
-def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelike, enable: bool) -> None:
+def set_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
     """Enable or disable access from `peer_device` to the memory pool of `target_device`.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
@@ -5490,7 +5494,7 @@ def set_mempool_access_enabled(target_device: Devicelike, peer_device: Devicelik
         raise RuntimeError(f"Failed to {action} memory pool access from device {peer_device} to device {target_device}")
 
 
-def get_stream(device: Devicelike = None) -> Stream:
+def get_stream(device: DeviceLike = None) -> Stream:
     """Return the stream currently used by the given device.
 
     Args:
@@ -5505,7 +5509,7 @@ def get_stream(device: Devicelike = None) -> Stream:
     return get_device(device).stream
 
 
-def set_stream(stream: Stream, device: Devicelike = None, sync: bool = False) -> None:
+def set_stream(stream: Stream, device: DeviceLike = None, sync: bool = False) -> None:
     """Convenience function for calling :meth:`Device.set_stream` on the given ``device``.
 
     Args:
@@ -5649,7 +5653,7 @@ class RegisteredGLBuffer:
         instance.resource = None
         return instance
 
-    def __init__(self, gl_buffer_id: int, device: Devicelike = None, flags: int = NONE, fallback_to_copy: bool = True):
+    def __init__(self, gl_buffer_id: int, device: DeviceLike = None, flags: int = NONE, fallback_to_copy: bool = True):
         """
         Args:
             gl_buffer_id: The OpenGL buffer id (GLuint).
@@ -5748,7 +5752,7 @@ class RegisteredGLBuffer:
 def zeros(
     shape: int | tuple[int, ...] | list[int] | None = None,
     dtype: type = float,
-    device: Devicelike = None,
+    device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     **kwargs,
@@ -5774,7 +5778,7 @@ def zeros(
 
 
 def zeros_like(
-    src: Array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array
 
@@ -5798,7 +5802,7 @@ def zeros_like(
 def ones(
     shape: int | tuple[int, ...] | list[int] | None = None,
     dtype: type = float,
-    device: Devicelike = None,
+    device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     **kwargs,
@@ -5820,7 +5824,7 @@ def ones(
 
 
 def ones_like(
-    src: Array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Return a one-initialized array with the same type and dimension of another array
 
@@ -5841,7 +5845,7 @@ def full(
     shape: int | tuple[int, ...] | list[int] | None = None,
     value=0,
     dtype=Any,
-    device: Devicelike = None,
+    device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     **kwargs,
@@ -5871,7 +5875,7 @@ def full(
             dtype = warp.bool
         elif value_type in warp._src.types.scalar_types or hasattr(value_type, "_wp_scalar_type_"):
             dtype = value_type
-        elif isinstance(value, warp._src.codegen.StructInstance):
+        elif warp._src.types.is_struct(value):
             dtype = value._cls
         elif hasattr(value, "__len__"):
             # a sequence, assume it's a vector or matrix value
@@ -5906,7 +5910,7 @@ def full(
 def full_like(
     src: Array,
     value: Any,
-    device: Devicelike = None,
+    device: DeviceLike = None,
     requires_grad: bool | None = None,
     pinned: bool | None = None,
 ) -> warp.array:
@@ -5931,7 +5935,7 @@ def full_like(
 
 
 def clone(
-    src: warp.array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: warp.array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Clone an existing array, allocates a copy of the src memory
 
@@ -5955,7 +5959,7 @@ def clone(
 def empty(
     shape: int | tuple[int, ...] | list[int] | None = None,
     dtype=float,
-    device: Devicelike = None,
+    device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     **kwargs,
@@ -5986,7 +5990,7 @@ def empty(
 
 
 def empty_like(
-    src: Array, device: Devicelike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array
 
@@ -6023,7 +6027,7 @@ def from_numpy(
     arr: np.ndarray,
     dtype: type | None = None,
     shape: Sequence[int] | None = None,
-    device: Devicelike | None = None,
+    device: DeviceLike | None = None,
     requires_grad: bool = False,
 ) -> warp.array:
     """Returns a Warp array created from a NumPy array.
@@ -6060,12 +6064,12 @@ def from_numpy(
     )
 
 
-def event_from_ipc_handle(handle, device: Devicelike = None) -> Event:
+def event_from_ipc_handle(handle, device: DeviceLike = None) -> Event:
     """Create an event from an IPC handle.
 
     Args:
         handle: The interprocess event handle for an existing CUDA event.
-        device (Devicelike): Device to associate with the array.
+        device (DeviceLike): Device to associate with the array.
 
     Returns:
         An event created from the interprocess event handle ``handle``.
@@ -6498,7 +6502,7 @@ def launch(
     outputs: Sequence = [],
     adj_inputs: Sequence = [],
     adj_outputs: Sequence = [],
-    device: Devicelike = None,
+    device: DeviceLike = None,
     stream: Stream | None = None,
     adjoint: bool = False,
     record_tape: bool = True,
@@ -6819,7 +6823,7 @@ def synchronize():
         runtime.core.wp_cuda_context_set_current(saved_context)
 
 
-def synchronize_device(device: Devicelike = None):
+def synchronize_device(device: DeviceLike = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified device
 
     This function allows the host application code to ensure that all kernel launches
@@ -6837,7 +6841,7 @@ def synchronize_device(device: Devicelike = None):
         runtime.core.wp_cuda_context_synchronize(device.context)
 
 
-def synchronize_stream(stream_or_device: Stream | Devicelike | None = None):
+def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
 
     This function allows the host application code to ensure that all kernel launches
@@ -7119,14 +7123,14 @@ def compile_aot_module(
         devices = [get_device(device)]
 
     for d in devices:
-        module_object.compile(d, module_dir, use_ptx=use_ptx)
+        module_object._compile(d, module_dir, use_ptx=use_ptx)
 
     if arch:
         if isinstance(arch, str) or not hasattr(arch, "__iter__"):
             arch = [arch]
 
         for arch_value in arch:
-            module_object.compile(None, module_dir, output_arch=arch_value, use_ptx=use_ptx)
+            module_object._compile(None, module_dir, output_arch=arch_value, use_ptx=use_ptx)
 
     if is_cuda_available():
         # restore original context to avoid side effects
@@ -7198,11 +7202,11 @@ def load_aot_module(
     for d in devices:
         # Identify the files in the cache to load
         if arch is None:
-            output_arch = module_object.get_compile_arch(d)
+            output_arch = module_object._get_compile_arch(d)
         else:
             output_arch = arch
 
-        meta_path = os.path.join(module_dir, module_object.get_meta_name())
+        meta_path = os.path.join(module_dir, module_object._get_meta_name())
 
         # Determine candidate binaries to try
         tried_paths = []
@@ -7214,7 +7218,7 @@ def load_aot_module(
 
         for candidate_use_ptx in candidate_flags:
             candidate_path = os.path.join(
-                module_dir, module_object.get_compile_output_name(d, output_arch, candidate_use_ptx)
+                module_dir, module_object._get_compile_output_name(d, output_arch, candidate_use_ptx)
             )
             tried_paths.append(candidate_path)
             if os.path.exists(candidate_path):
@@ -7306,7 +7310,7 @@ def _register_capture(device: Device, stream: Stream, graph: Graph, capture_id: 
 
 
 def capture_begin(
-    device: Devicelike = None,
+    device: DeviceLike = None,
     stream: Stream | None = None,
     force_module_load: bool | None = None,
     external: bool = False,
@@ -7373,7 +7377,7 @@ def capture_begin(
     _register_capture(device, stream, graph, capture_id)
 
 
-def capture_end(device: Devicelike = None, stream: Stream | None = None) -> Graph:
+def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
     """End the capture of a CUDA graph.
 
     Args:
@@ -7438,7 +7442,14 @@ def assert_conditional_graph_support():
         raise RuntimeError("Conditional graph nodes require CUDA driver 12.4+")
 
 
-def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> Graph:
+def is_conditional_graph_supported() -> bool:
+    if runtime is None:
+        init()
+
+    return runtime.toolkit_version >= (12, 4) and runtime.driver_version >= (12, 4)
+
+
+def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
     if stream is not None:
         device = stream.device
     else:
@@ -7464,7 +7475,7 @@ def capture_pause(device: Devicelike = None, stream: Stream | None = None) -> Gr
     return graph
 
 
-def capture_resume(graph: Graph, device: Devicelike = None, stream: Stream | None = None):
+def capture_resume(graph: Graph, device: DeviceLike = None, stream: Stream | None = None):
     if stream is not None:
         device = stream.device
     else:

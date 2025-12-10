@@ -1007,10 +1007,10 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             )
 
     if length is None:
-        raise RuntimeError("could not infer the `length` argument when calling the `wp.vector()` function")
+        raise RuntimeError("could not infer the `length` argument when calling the `wp.types.vector()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.vector()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.vector()` function")
 
     return vector(length=length, dtype=dtype)
 
@@ -1095,7 +1095,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if all(type_is_vector(x) for x in variadic_arg_types):
             warp._src.utils.warn(
-                "the built-in `wp.matrix()` won't support taking column vectors as input "
+                "the built-in `wp.types.matrix()` won't support taking column vectors as input "
                 "in the future. Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
                 DeprecationWarning,
             )
@@ -1129,10 +1129,10 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             )
 
     if shape is None:
-        raise RuntimeError("could not infer the `shape` argument when calling the `wp.matrix()` function")
+        raise RuntimeError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.matrix()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.matrix()` function")
 
     return matrix(shape=shape, dtype=dtype)
 
@@ -1304,7 +1304,7 @@ def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mappi
         return matrix(shape=(4, 4), dtype=Float)
 
     raise RuntimeError(
-        "the built-in `wp.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
+        "the built-in `wp.types.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
         "and 3D scale vector has been removed in favor of `wp.transform_compose()`."
     )
 
@@ -1528,7 +1528,7 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
             )
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.quaternion()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
 
     return quaternion(dtype=dtype)
 
@@ -4273,7 +4273,7 @@ add_builtin(
 def tile_sum_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Scalar, shape=(1,))
+        return tile(dtype=Any, shape=(1,))
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_sum() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -4288,7 +4288,7 @@ def tile_sum_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_sum",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...])},
     value_func=tile_sum_value_func,
     variadic=True,
     doc="""Cooperatively compute the sum of the tile elements using all threads in the block.
@@ -4324,7 +4324,7 @@ add_builtin(
 
 def tile_sum_axis_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=Tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -4361,7 +4361,7 @@ def tile_sum_axis_dispatch_func(arg_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_sum",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...]), "axis": int},
+    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "axis": int},
     value_func=tile_sum_axis_value_func,
     dispatch_func=tile_sum_axis_dispatch_func,
     doc="""Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
@@ -4700,7 +4700,7 @@ add_builtin(
 
 def tile_reduce_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=(1,))
+        return tile(dtype=Any, shape=(1,))
 
     a = arg_types["a"]
 
@@ -4718,7 +4718,7 @@ def tile_reduce_dispatch_func(input_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_reduce",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=Tuple[int, ...])},
     value_func=tile_reduce_value_func,
     native_func="tile_reduce",
     doc="""Apply a custom reduction operator across the tile.
@@ -5104,7 +5104,7 @@ add_builtin(
 # does type propagation for load()
 def tile_unary_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=Tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -5147,7 +5147,7 @@ def tile_unary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=Tuple[int, ...])},
     value_func=tile_unary_map_value_func,
     dispatch_func=tile_unary_map_dispatch_func,
     # variadic=True,
@@ -5187,7 +5187,7 @@ add_builtin(
 
 def tile_binary_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=Tuple[int, ...])
 
     a = arg_types["a"]
     b = arg_types["b"]
@@ -5255,8 +5255,8 @@ add_builtin(
     "tile_map",
     input_types={
         "op": Callable,
-        "a": tile(dtype=Scalar, shape=Tuple[int, ...]),
-        "b": tile(dtype=Scalar, shape=Tuple[int, ...]),
+        "a": tile(dtype=Any, shape=Tuple[int, ...]),
+        "b": tile(dtype=Any, shape=Tuple[int, ...]),
     },
     value_func=tile_binary_map_value_func,
     dispatch_func=tile_binary_map_dispatch_func,
@@ -7644,26 +7644,26 @@ def create_atomic_op_value_func(op: str):
         scalar_type = getattr(arr_type.dtype, "_wp_scalar_type_", arr_type.dtype)
         if op in ("add", "sub"):
             supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16)
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("min", "max"):
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("cas", "exch"):
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("and", "or", "xor"):
             supported_atomic_types = (warp.int32, warp.int64, warp.uint32, warp.uint64)
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32 or [u]int64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"

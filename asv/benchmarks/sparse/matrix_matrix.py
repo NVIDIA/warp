@@ -7,6 +7,8 @@ import warp.fem as fem
 import warp.sparse as wps
 from warp.examples.fem.utils import gen_tetmesh
 
+from ..benchmarks_utils import clear_kernel_cache
+
 
 @fem.integrand
 def grad_field(s: fem.Sample, u: fem.Field):
@@ -44,7 +46,9 @@ class BsrMMFemMatrix:
 
         self._id_mat = wps.bsr_identity(
             self._mat.nrow,
-            block_type=wp.mat(shape=(self._mat.block_shape[0], self._mat.block_shape[0]), dtype=self._mat.scalar_type),
+            block_type=wp.types.matrix(
+                shape=(self._mat.block_shape[0], self._mat.block_shape[0]), dtype=self._mat.scalar_type
+            ),
         )
 
         self._mat_t = self._mat.transpose()
@@ -88,7 +92,7 @@ class BsrMMQuadraticTetmeshMatrix(BsrMMFemMatrix):
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 32
@@ -111,7 +115,7 @@ class BsrMMLinearGridMatrix(BsrMMFemMatrix):
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 64
@@ -133,7 +137,7 @@ class BsrMMDeepDense(BsrMMFemMatrix):
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 1

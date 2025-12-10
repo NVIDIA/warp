@@ -93,7 +93,7 @@ def test_arrays(test, device, dtype):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
     arr_np = randvals(rng, (10, 5), dtype)
     arr = wp.array(arr_np, dtype=wptype, requires_grad=True, device=device)
 
@@ -109,7 +109,7 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_unary(
         inputs: wp.array(dtype=wptype, ndim=2),
@@ -225,7 +225,7 @@ def test_nonzero(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_nonzero(
         inputs: wp.array(dtype=wptype),
@@ -271,7 +271,7 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_binary_ops(
         in1: wp.array(dtype=wptype, ndim=2),
@@ -476,7 +476,7 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_special_funcs(
         inputs: wp.array(dtype=wptype, ndim=2),
@@ -729,7 +729,7 @@ def test_special_funcs_2arg(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_special_funcs_2arg(
         in1: wp.array(dtype=wptype, ndim=2),
@@ -796,7 +796,7 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_float_to_int(
         inputs: wp.array(dtype=wptype, ndim=2),
@@ -852,7 +852,7 @@ def test_interp(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_interp(
         in1: wp.array(dtype=wptype, ndim=2),
@@ -983,7 +983,7 @@ def test_clamp(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-6,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_clamp(
         in1: wp.array(dtype=wptype),

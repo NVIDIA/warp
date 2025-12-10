@@ -39,6 +39,9 @@
 - Add `launch_bounds` parameter to `@wp.kernel` decorator to specify CUDA `__launch_bounds__` attribute for controlling
   thread block occupancy. Can be an integer for `maxThreadsPerBlock` or a tuple of 1-2 integers for
   `(maxThreadsPerBlock, minBlocksPerMultiprocessor)` ([GH-1049](https://github.com/NVIDIA/warp/issues/1049)).
+- Add the following type introspection functions: `wp.types.is_compound`, `wp.types.is_matrix`, `wp.types.is_quaternion`,
+  `wp.types.is_struct`, `wp.types.is_tile`, `wp.types.is_transformation`, `wp.types.is_vector`, `wp.types.type_is_array`,
+  `wp.types.type_is_compound`, `wp.types.type_is_struct`, and `wp.types.type_is_tile`.
 
 ### Removed
 
@@ -46,6 +49,8 @@
 
 - `isfinite()`, `isnan()`, and `isinf()` will no longer take integer inputs, only floating-point arguments
   ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
+- Mark as deprecated all namespaces and symbols that are meant for internal use
+  ([GH-908](https://github.com/NVIDIA/warp/issues/908)).
 
 ### Changed
 

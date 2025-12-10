@@ -13,17 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
-from warp._src.build import clear_kernel_cache as clear_kernel_cache
-
-
 # TODO: Remove after cleaning up the public API.
 
 from warp._src import build as _build
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
     return get_deprecated_api(_build, "wp", name)
+
+
+_warn_deprecated_namespace(__name__)

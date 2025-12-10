@@ -85,8 +85,8 @@ vector_types = []
 matrix_types = []
 for dim in [2, 3, 4]:
     for T in scalar_types:
-        vector_types.append(wp.vec(dim, T))
-        matrix_types.append(wp.mat((dim, dim), T))
+        vector_types.append(wp.types.vector(dim, T))
+        matrix_types.append(wp.types.matrix((dim, dim), T))
 
 # explicitly overload generic kernels to avoid module reloading during tests
 for T in scalar_types:
@@ -895,8 +895,8 @@ def test_ffi_jax_callable_graph_cache(test, device):
 
     clear_jax_callable_graph_cache()
 
-    with wp.jax_experimental.ffi._FFI_REGISTRY_LOCK:
-        for c in wp.jax_experimental.ffi._FFI_CALLABLE_REGISTRY.values():
+    with wp._src.jax_experimental.ffi._FFI_REGISTRY_LOCK:
+        for c in wp._src.jax_experimental.ffi._FFI_CALLABLE_REGISTRY.values():
             test.assertEqual(c.graph_cache_size, 0)
 
     # --- test with a custom default cache limit ---

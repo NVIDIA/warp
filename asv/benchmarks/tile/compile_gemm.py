@@ -15,6 +15,8 @@
 
 import warp as wp
 
+from ..benchmarks_utils import clear_kernel_cache
+
 wp.set_module_options({"enable_backward": False, "block_dim": 64})
 
 # tile size
@@ -55,8 +57,8 @@ class ColdCompileGemmLTO:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
-        wp.build.clear_lto_cache()
+        clear_kernel_cache()
+        wp.clear_lto_cache()
 
     def teardown(self):
         tile_gemm.module.unload()
@@ -74,10 +76,10 @@ class WarmCompileGemmLTO:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
-        wp.build.clear_lto_cache()
+        clear_kernel_cache()
+        wp.clear_lto_cache()
         wp.load_module(device="cuda:0")
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         tile_gemm.module.unload()
 
     def teardown(self):
@@ -85,5 +87,5 @@ class WarmCompileGemmLTO:
 
     def time_cuda_codegen(self):
         wp.load_module(device="cuda:0")
-        wp.build.clear_kernel_cache()
+        clear_kernel_cache()
         tile_gemm.module.unload()

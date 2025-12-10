@@ -19,7 +19,6 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp._src.types import vector_types
 from warp.tests.unittest_utils import *
 
 
@@ -657,10 +656,10 @@ def test_fill_vector(test, device):
     for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
         # vector types
         vector_types = [
-            wp._src.types.vector(2, wptype),
-            wp._src.types.vector(3, wptype),
-            wp._src.types.vector(4, wptype),
-            wp._src.types.vector(5, wptype),
+            wp.types.vector(2, wptype),
+            wp.types.vector(3, wptype),
+            wp.types.vector(4, wptype),
+            wp.types.vector(5, wptype),
         ]
 
         for vec_type in vector_types:
@@ -797,15 +796,15 @@ def test_fill_matrix(test, device):
         # matrix types
         matrix_types = [
             # square matrices
-            wp._src.types.matrix((2, 2), wptype),
-            wp._src.types.matrix((3, 3), wptype),
-            wp._src.types.matrix((4, 4), wptype),
-            wp._src.types.matrix((5, 5), wptype),
+            wp.types.matrix((2, 2), wptype),
+            wp.types.matrix((3, 3), wptype),
+            wp.types.matrix((4, 4), wptype),
+            wp.types.matrix((5, 5), wptype),
             # non-square matrices
-            wp._src.types.matrix((2, 3), wptype),
-            wp._src.types.matrix((3, 2), wptype),
-            wp._src.types.matrix((3, 4), wptype),
-            wp._src.types.matrix((4, 3), wptype),
+            wp.types.matrix((2, 3), wptype),
+            wp.types.matrix((3, 2), wptype),
+            wp.types.matrix((3, 4), wptype),
+            wp.types.matrix((4, 3), wptype),
         ]
 
         for mat_type in matrix_types:
@@ -952,15 +951,15 @@ class FillStruct:
     f4: wp.float32
     f8: wp.float16
     # vector members (make sure to test vectors of float16)
-    v2: wp._src.types.vector(2, wp.int64)
-    v3: wp._src.types.vector(3, wp.float32)
-    v4: wp._src.types.vector(4, wp.float16)
-    v5: wp._src.types.vector(5, wp.uint8)
+    v2: wp.types.vector(2, wp.int64)
+    v3: wp.types.vector(3, wp.float32)
+    v4: wp.types.vector(4, wp.float16)
+    v5: wp.types.vector(5, wp.uint8)
     # matrix members (make sure to test matrices of float16)
-    m2: wp._src.types.matrix((2, 2), wp.float64)
-    m3: wp._src.types.matrix((3, 3), wp.int32)
-    m4: wp._src.types.matrix((4, 4), wp.float16)
-    m5: wp._src.types.matrix((5, 5), wp.int8)
+    m2: wp.types.matrix((2, 2), wp.float64)
+    m3: wp.types.matrix((3, 3), wp.int32)
+    m4: wp.types.matrix((4, 4), wp.float16)
+    m5: wp.types.matrix((5, 5), wp.int8)
     # arrays
     a1: wp.array(dtype=float)
     a2: wp.array2d(dtype=float)
@@ -1227,7 +1226,7 @@ def test_full_vector(test, device):
             npshape = (*shape, veclen)
 
             for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
-                vectype = wp._src.types.vector(veclen, wptype)
+                vectype = wp.types.vector(veclen, wptype)
 
                 # fill with scalar int value and specific dtype
                 fill_value = 42
@@ -1286,7 +1285,7 @@ def test_full_vector(test, device):
             npshape = (*shape, veclen)
 
             for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
-                vectype = wp._src.types.vector(veclen, wptype)
+                vectype = wp.types.vector(veclen, wptype)
 
                 # fill with list and specific dtype
                 a = wp.full(shape, fill_list, dtype=vectype, device=device)
@@ -1317,7 +1316,7 @@ def test_full_vector(test, device):
                 na = a.numpy()
 
                 test.assertEqual(a.shape, shape)
-                test.assertTrue(wp._src.types.types_equal(a.dtype, vectype))
+                test.assertTrue(wp.types.types_equal(a.dtype, vectype))
                 test.assertEqual(na.shape, npshape)
                 test.assertEqual(na.dtype, nptype)
                 assert_np_equal(na, expected)
@@ -1347,15 +1346,15 @@ def test_full_matrix(test, device):
         for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
             matrix_types = [
                 # square matrices
-                wp._src.types.matrix((2, 2), wptype),
-                wp._src.types.matrix((3, 3), wptype),
-                wp._src.types.matrix((4, 4), wptype),
-                wp._src.types.matrix((5, 5), wptype),
+                wp.types.matrix((2, 2), wptype),
+                wp.types.matrix((3, 3), wptype),
+                wp.types.matrix((4, 4), wptype),
+                wp.types.matrix((5, 5), wptype),
                 # non-square matrices
-                wp._src.types.matrix((2, 3), wptype),
-                wp._src.types.matrix((3, 2), wptype),
-                wp._src.types.matrix((3, 4), wptype),
-                wp._src.types.matrix((4, 3), wptype),
+                wp.types.matrix((2, 3), wptype),
+                wp.types.matrix((3, 2), wptype),
+                wp.types.matrix((3, 4), wptype),
+                wp.types.matrix((4, 3), wptype),
             ]
 
             for mattype in matrix_types:
@@ -1438,7 +1437,7 @@ def test_full_matrix(test, device):
                 na = a.numpy()
 
                 test.assertEqual(a.shape, shape)
-                test.assertTrue(wp._src.types.types_equal(a.dtype, mattype))
+                test.assertTrue(wp.types.types_equal(a.dtype, mattype))
                 test.assertEqual(na.shape, npshape)
                 test.assertEqual(na.dtype, nptype)
                 assert_np_equal(na, expected)
@@ -1589,7 +1588,7 @@ def test_ones_vector(test, device):
             npshape = (*shape, veclen)
 
             for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
-                vectype = wp._src.types.vector(veclen, wptype)
+                vectype = wp.types.vector(veclen, wptype)
 
                 a = wp.ones(shape, dtype=vectype, device=device)
                 na = a.numpy()
@@ -1610,15 +1609,15 @@ def test_ones_matrix(test, device):
         for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
             matrix_types = [
                 # square matrices
-                wp._src.types.matrix((2, 2), wptype),
-                wp._src.types.matrix((3, 3), wptype),
-                wp._src.types.matrix((4, 4), wptype),
-                wp._src.types.matrix((5, 5), wptype),
+                wp.types.matrix((2, 2), wptype),
+                wp.types.matrix((3, 3), wptype),
+                wp.types.matrix((4, 4), wptype),
+                wp.types.matrix((5, 5), wptype),
                 # non-square matrices
-                wp._src.types.matrix((2, 3), wptype),
-                wp._src.types.matrix((3, 2), wptype),
-                wp._src.types.matrix((3, 4), wptype),
-                wp._src.types.matrix((4, 3), wptype),
+                wp.types.matrix((2, 3), wptype),
+                wp.types.matrix((3, 2), wptype),
+                wp.types.matrix((3, 4), wptype),
+                wp.types.matrix((4, 3), wptype),
             ]
 
             for mattype in matrix_types:
@@ -1670,7 +1669,7 @@ def test_ones_like_vector(test, device):
             npshape = (*shape, veclen)
 
             for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
-                vectype = wp._src.types.vector(veclen, wptype)
+                vectype = wp.types.vector(veclen, wptype)
 
                 # source array
                 a = wp.zeros(shape, dtype=vectype, device=device)
@@ -1700,15 +1699,15 @@ def test_ones_like_matrix(test, device):
         for nptype, wptype in wp._src.types.np_dtype_to_warp_type.items():
             matrix_types = [
                 # square matrices
-                wp._src.types.matrix((2, 2), wptype),
-                wp._src.types.matrix((3, 3), wptype),
-                wp._src.types.matrix((4, 4), wptype),
-                wp._src.types.matrix((5, 5), wptype),
+                wp.types.matrix((2, 2), wptype),
+                wp.types.matrix((3, 3), wptype),
+                wp.types.matrix((4, 4), wptype),
+                wp.types.matrix((5, 5), wptype),
                 # non-square matrices
-                wp._src.types.matrix((2, 3), wptype),
-                wp._src.types.matrix((3, 2), wptype),
-                wp._src.types.matrix((3, 4), wptype),
-                wp._src.types.matrix((4, 3), wptype),
+                wp.types.matrix((2, 3), wptype),
+                wp.types.matrix((3, 2), wptype),
+                wp.types.matrix((3, 4), wptype),
+                wp.types.matrix((4, 3), wptype),
             ]
 
             for mattype in matrix_types:
@@ -1745,7 +1744,7 @@ def test_round_trip(test, device):
         assert_np_equal(a.numpy(), a_np)
 
         v_np = rng.standard_normal(size=(dim_x, 3)).astype(nptype)
-        v = wp.array(v_np, dtype=wp._src.types.vector(3, wptype), device=device)
+        v = wp.array(v_np, dtype=wp.types.vector(3, wptype), device=device)
 
         assert_np_equal(v.numpy(), v_np)
 
@@ -1762,9 +1761,9 @@ def test_empty_array(test, device):
             # scalar, vector, or matrix
             if ncols > 0:
                 if nrows > 0:
-                    wptype = wp._src.types.matrix((nrows, ncols), wptype)
+                    wptype = wp.types.matrix((nrows, ncols), wptype)
                 else:
-                    wptype = wp._src.types.vector(ncols, wptype)
+                    wptype = wp.types.vector(ncols, wptype)
                 dtype_shape = wptype._shape_
             fill_value = wptype(42)
         else:
@@ -1835,9 +1834,9 @@ def test_empty_from_numpy(test, device):
 
         if ncols > 0:
             if nrows > 0:
-                wptype = wp._src.types.matrix((nrows, ncols), wptype)
+                wptype = wp.types.matrix((nrows, ncols), wptype)
             else:
-                wptype = wp._src.types.vector(ncols, wptype)
+                wptype = wp.types.vector(ncols, wptype)
             dtype_shape = wptype._shape_
 
         npshape = (*shape, *dtype_shape)
@@ -1872,9 +1871,9 @@ def test_empty_from_list(test, device):
     def test_empty_from_data(nrows, ncols, wptype):
         if ncols > 0:
             if nrows > 0:
-                wptype = wp._src.types.matrix((nrows, ncols), wptype)
+                wptype = wp.types.matrix((nrows, ncols), wptype)
             else:
-                wptype = wp._src.types.vector(ncols, wptype)
+                wptype = wp.types.vector(ncols, wptype)
 
         a = wp.array([], dtype=wptype, device=device)
         test.assertEqual(a.size, 0)
@@ -1921,7 +1920,7 @@ def test_to_list_vector(test, device):
 
         for veclen in [2, 3, 4, 5]:
             for wptype in wp._src.types.scalar_types:
-                vectype = wp._src.types.vector(veclen, wptype)
+                vectype = wp.types.vector(veclen, wptype)
                 fill_value = vectype(42)
 
                 a = wp.full(shape, fill_value, dtype=vectype, device=device)
@@ -1940,15 +1939,15 @@ def test_to_list_matrix(test, device):
         for wptype in wp._src.types.scalar_types:
             matrix_types = [
                 # square matrices
-                wp._src.types.matrix((2, 2), wptype),
-                wp._src.types.matrix((3, 3), wptype),
-                wp._src.types.matrix((4, 4), wptype),
-                wp._src.types.matrix((5, 5), wptype),
+                wp.types.matrix((2, 2), wptype),
+                wp.types.matrix((3, 3), wptype),
+                wp.types.matrix((4, 4), wptype),
+                wp.types.matrix((5, 5), wptype),
                 # non-square matrices
-                wp._src.types.matrix((2, 3), wptype),
-                wp._src.types.matrix((3, 2), wptype),
-                wp._src.types.matrix((3, 4), wptype),
-                wp._src.types.matrix((4, 3), wptype),
+                wp.types.matrix((2, 3), wptype),
+                wp.types.matrix((3, 2), wptype),
+                wp.types.matrix((3, 4), wptype),
+                wp.types.matrix((4, 3), wptype),
             ]
 
             for mattype in matrix_types:
@@ -1975,9 +1974,9 @@ def test_to_list_struct(test, device):
         vi: wp.vec2i
         vf: wp.vec3f
         vh: wp.vec4h
-        mi: wp._src.types.matrix((2, 2), int)
-        mf: wp._src.types.matrix((3, 3), float)
-        mh: wp._src.types.matrix((4, 4), wp.float16)
+        mi: wp.types.matrix((2, 2), int)
+        mf: wp.types.matrix((3, 3), float)
+        mh: wp.types.matrix((4, 4), wp.float16)
         inner: Inner
         a1: wp.array(dtype=int)
         a2: wp.array2d(dtype=float)
@@ -2752,7 +2751,7 @@ def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.ar
     wp.atomic_add(z, 0, a)
 
 
-vec9 = wp.vec(length=9, dtype=float)
+vec9 = wp.types.vector(length=9, dtype=float)
 
 
 @wp.kernel
@@ -2902,7 +2901,7 @@ def inplace_add_non_atomic_types(x: wp.array(dtype=Any), y: wp.array(dtype=Any))
     x[i] += y[i]
 
 
-uint16vec3 = wp.vec(length=3, dtype=wp.uint16)
+uint16vec3 = wp.types.vector(length=3, dtype=wp.uint16)
 
 
 def test_array_inplace_non_diff_ops(test, device):
@@ -3687,7 +3686,7 @@ def test_graph_fill_vecmat(test, device):
         strided_arrays = []
         indexed_arrays = []
         indices = wp.array(np.arange(n, dtype=np.int32))
-        for vectype in vector_types:
+        for vectype in wp._src.types.vector_types:
             contiguous_arrays.append(wp.zeros(n, dtype=vectype))
             strided_arrays.append(wp.zeros(n * 2, dtype=vectype)[::2])
             indexed_arrays.append(wp.zeros(n, dtype=vectype)[indices])

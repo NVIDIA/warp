@@ -49,7 +49,7 @@ class HexmeshSideArg:
 
 
 FACE_VERTEX_INDICES = wp.constant(
-    wp.mat(shape=(6, 4), dtype=int)(
+    wp.types.matrix(shape=(6, 4), dtype=int)(
         [
             [0, 4, 7, 3],  # x = 0
             [1, 2, 6, 5],  # x = 1
@@ -62,7 +62,7 @@ FACE_VERTEX_INDICES = wp.constant(
 )
 
 EDGE_VERTEX_INDICES = wp.constant(
-    wp.mat(shape=(12, 2), dtype=int)(
+    wp.types.matrix(shape=(12, 2), dtype=int)(
         [
             [0, 1],
             [1, 2],
@@ -111,7 +111,7 @@ FACE_TRANSLATION = [
 
 # local face coordinate system
 _FACE_COORD_INDICES = wp.constant(
-    wp.mat(shape=(6, 4), dtype=int)(
+    wp.types.matrix(shape=(6, 4), dtype=int)(
         [
             [2, 1, 0, 0],  # 0: z y -x
             [1, 2, 0, 1],  # 1: y z  x-1
@@ -123,8 +123,8 @@ _FACE_COORD_INDICES = wp.constant(
     )
 )
 
-_FACE_ORIENTATION_F = wp.constant(wp.mat(shape=(16, 2), dtype=float)(FACE_ORIENTATION))
-_FACE_TRANSLATION_F = wp.constant(wp.mat(shape=(4, 2), dtype=float)(FACE_TRANSLATION))
+_FACE_ORIENTATION_F = wp.constant(wp.types.matrix(shape=(16, 2), dtype=float)(FACE_ORIENTATION))
+_FACE_TRANSLATION_F = wp.constant(wp.types.matrix(shape=(4, 2), dtype=float)(FACE_TRANSLATION))
 
 
 class Hexmesh(Geometry):

@@ -29,8 +29,8 @@
 - def bundle_get_world_xform(bundle: og.BundleContents, child_idx: int = 0) -> np.ndarray
 - def bundle_has_changed(bundle: og.BundleContents, child_idx: int = 0) -> bool
 - def bundle_have_attrs_changed(bundle: og.BundleContents, attr_names: Sequence[str], child_idx: int = 0) -> bool
-- def device_get_cuda_compute() -> wp.context.Device
-- def from_omni_graph(value: Union[np.ndarray, og.DataWrapper, og.AttributeData, og.DynamicAttributeAccess], dtype: Optional[type] = None, shape: Optional[Sequence[int]] = None, device: Optional[wp.context.Device] = None) -> wp.array
+- def device_get_cuda_compute() -> wp.Device
+- def from_omni_graph(value: Union[np.ndarray, og.DataWrapper, og.AttributeData, og.DynamicAttributeAccess], dtype: Optional[type] = None, shape: Optional[Sequence[int]] = None, device: Optional[wp.Device] = None) -> wp.array
 - def from_omni_graph_ptr(ptr, shape, dtype = None, device = None)
 - def mesh_copy_bundle(dst_bundle: og.BundleContents, src_bundle: og.BundleContents, deep_copy: bool = False, child_idx: int = 0)
 - def mesh_create_bundle(dst_bundle: og.BundleContents, point_count: int, vertex_count: int, face_count: int, xform: Optional[np.ndarray] = None, create_display_color: bool = False, create_normals: bool = False, create_uvs: bool = False, child_idx: int = 0)

@@ -25,7 +25,7 @@ from .geometry import Geometry
 
 _wp_module_name_ = "warp.fem.geometry.deformed_geometry"
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
+_mat32 = wp.types.matrix(shape=(3, 2), dtype=float)
 
 
 class DeformedGeometry(Geometry):

@@ -13,14 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
-from warp._src.jax_experimental.custom_call import jax_kernel as jax_kernel
-
-
 # TODO: Remove after cleaning up the public API.
-
 from warp._src.jax_experimental import custom_call as _custom_call
+from warp._src.jax_experimental.custom_call import jax_kernel as jax_kernel
 
 
 def __getattr__(name):

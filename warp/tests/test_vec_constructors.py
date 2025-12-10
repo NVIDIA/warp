@@ -35,7 +35,7 @@ def getkernel(func, suffix=""):
 def test_anon_constructor_error_length_mismatch(test, device):
     @wp.kernel
     def kernel():
-        wp.vector(wp.vector(length=2, dtype=float), length=3, dtype=float)
+        wp.types.vector(wp.types.vector(length=2, dtype=float), length=3, dtype=float)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -47,7 +47,7 @@ def test_anon_constructor_error_length_mismatch(test, device):
 def test_anon_constructor_error_numeric_arg_missing(test, device):
     @wp.kernel
     def kernel():
-        wp.vector(1.0, 2.0, length=12345)
+        wp.types.vector(1.0, 2.0, length=12345)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -59,7 +59,7 @@ def test_anon_constructor_error_numeric_arg_missing(test, device):
 def test_anon_constructor_error_length_arg_missing(test, device):
     @wp.kernel
     def kernel():
-        wp.vector()
+        wp.types.vector()
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -71,7 +71,7 @@ def test_anon_constructor_error_length_arg_missing(test, device):
 def test_anon_constructor_error_numeric_args_mismatch(test, device):
     @wp.kernel
     def kernel():
-        wp.vector(1.0, 2)
+        wp.types.vector(1.0, 2)
 
     with test.assertRaisesRegex(
         RuntimeError,
@@ -105,23 +105,23 @@ def test_tpl_constructor_error_numeric_args_mismatch(test, device):
 
 def test_casting_constructors(test, device, dtype, register_kernels=False):
     np_type = np.dtype(dtype)
-    wp_type = wp._src.types.np_dtype_to_warp_type[np_type]
-    vec3 = wp._src.types.vector(length=3, dtype=wp_type)
+    wp_type = wp.dtype_from_numpy(np_type)
+    vec3 = wp.types.vector(length=3, dtype=wp_type)
 
     np16 = np.dtype(np.float16)
-    wp16 = wp._src.types.np_dtype_to_warp_type[np16]
+    wp16 = wp.dtype_from_numpy(np16)
 
     np32 = np.dtype(np.float32)
-    wp32 = wp._src.types.np_dtype_to_warp_type[np32]
+    wp32 = wp.dtype_from_numpy(np32)
 
     np64 = np.dtype(np.float64)
-    wp64 = wp._src.types.np_dtype_to_warp_type[np64]
+    wp64 = wp.dtype_from_numpy(np64)
 
     def cast_float16(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp16, ndim=2)):
         tid = wp.tid()
 
         v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
-        v2 = wp.vector(v1, dtype=wp16)
+        v2 = wp.types.vector(v1, dtype=wp16)
 
         b[tid, 0] = v2[0]
         b[tid, 1] = v2[1]
@@ -131,7 +131,7 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
         tid = wp.tid()
 
         v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
-        v2 = wp.vector(v1, dtype=wp32)
+        v2 = wp.types.vector(v1, dtype=wp32)
 
         b[tid, 0] = v2[0]
         b[tid, 1] = v2[1]
@@ -141,7 +141,7 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
         tid = wp.tid()
 
         v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
-        v2 = wp.vector(v1, dtype=wp64)
+        v2 = wp.types.vector(v1, dtype=wp64)
 
         b[tid, 0] = v2[0]
         b[tid, 1] = v2[1]
@@ -209,10 +209,10 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
 @wp.kernel
 def test_vector_constructors_value_func():
     a = wp.vec2()
-    b = wp.vector(a, dtype=wp.float16)
-    c = wp.vector(a)
-    d = wp.vector(a, length=2)
-    e = wp.vector(1.0, 2.0, 3.0, dtype=float)
+    b = wp.types.vector(a, dtype=wp.float16)
+    c = wp.types.vector(a)
+    d = wp.types.vector(a, length=2)
+    e = wp.types.vector(1.0, 2.0, 3.0, dtype=float)
 
 
 # Test matrix constructors using explicit type (float16)
@@ -223,9 +223,9 @@ def test_vector_constructors_value_func():
 @wp.kernel
 def test_vector_constructors_explicit_precision():
     # construction for custom matrix types
-    ones = wp.vector(wp.float16(1.0), length=2)
-    zeros = wp.vector(length=2, dtype=wp.float16)
-    custom = wp.vector(wp.float16(0.0), wp.float16(1.0))
+    ones = wp.types.vector(wp.float16(1.0), length=2)
+    zeros = wp.types.vector(length=2, dtype=wp.float16)
+    custom = wp.types.vector(wp.float16(0.0), wp.float16(1.0))
 
     for i in range(2):
         wp.expect_eq(ones[i], wp.float16(1.0))
@@ -240,9 +240,9 @@ def test_vector_constructors_explicit_precision():
 @wp.kernel
 def test_vector_constructors_default_precision():
     # construction for custom matrix types
-    ones = wp.vector(1.0, length=2)
-    zeros = wp.vector(length=2, dtype=float)
-    custom = wp.vector(0.0, 1.0)
+    ones = wp.types.vector(1.0, length=2)
+    zeros = wp.types.vector(length=2, dtype=float)
+    custom = wp.types.vector(0.0, 1.0)
 
     for i in range(2):
         wp.expect_eq(ones[i], 1.0)
@@ -257,7 +257,7 @@ CONSTANT_LENGTH = wp.constant(10)
 # for vector constructor
 @wp.kernel
 def test_vector_constructors_constant_length():
-    v = wp.vector(length=(CONSTANT_LENGTH), dtype=float)
+    v = wp.types.vector(length=(CONSTANT_LENGTH), dtype=float)
 
     for i in range(CONSTANT_LENGTH):
         v[i] = float(i)

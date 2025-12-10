@@ -142,7 +142,7 @@ def attr_cast_array_to_warp(
     value: Union[np.array, og.DataWrapper],
     dtype: type,
     shape: Sequence[int],
-    device: wp.context.Device,
+    device: wp.Device,
 ) -> wp.array:
     """Casts an attribute array value to its corresponding warp type."""
     if device.is_cpu:
@@ -216,7 +216,7 @@ def from_omni_graph(
     value: Union[np.ndarray, og.DataWrapper, og.AttributeData, og.DynamicAttributeAccess],
     dtype: Optional[type] = None,
     shape: Optional[Sequence[int]] = None,
-    device: Optional[wp.context.Device] = None,
+    device: Optional[wp.Device] = None,
 ) -> wp.array:
     """Casts an OmniGraph array data to its corresponding Warp type."""
 
@@ -224,7 +224,7 @@ def from_omni_graph(
         data: og.DataWrapper,
         dtype: Optional[type],
         shape: Optional[Sequence[int]],
-        device: Optional[wp.context.Device],
+        device: Optional[wp.Device],
     ) -> wp.array:
         if data.gpu_ptr_kind != og.PtrToPtrKind.CPU:
             raise RuntimeError("All pointers must live on the CPU, make sure to set 'cudaPointers' to 'cpu'.")
@@ -281,7 +281,7 @@ def from_omni_graph(
         data: og.AttributeData,
         dtype: Optional[type],
         shape: Optional[Sequence[int]],
-        device: Optional[wp.context.Device],
+        device: Optional[wp.Device],
     ) -> wp.array:
         if data.gpu_valid():
             on_gpu = True

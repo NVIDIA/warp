@@ -529,7 +529,7 @@ def initialize_kernel_module(
     code_provider: str,
     code_str: str,
     code_file: str,
-) -> wp.context.Module:
+) -> wp.Module:
     # Ensure that all output parameters are arrays. Writing to non-array
     # types is not supported as per CUDA's design.
     invalid_attrs = tuple(x.name for x in attr_infos[_ATTR_PORT_TYPE_OUTPUT] if not x.is_array and not x.is_bundle)
@@ -555,7 +555,7 @@ def initialize_kernel_module(
     # Validate the module's contents.
     if not hasattr(kernel_module, "compute"):
         raise RuntimeError("The code must define a kernel function named 'compute'.")
-    if not isinstance(kernel_module.compute, wp._src.context.Kernel):
+    if not isinstance(kernel_module.compute, wp.Kernel):
         raise RuntimeError("The 'compute' function must be decorated with '@wp.kernel'.")
 
     # Configure warp to only compute the forward pass.
@@ -607,7 +607,7 @@ def get_kernel_args(
     attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
     kernel_module: Any,
     kernel_shape: Sequence[int],
-    device: wp.context.Device | None = None,
+    device: wp.Device | None = None,
     config: KernelArgsConfig | None = None,
 ) -> tuple[Any, Any]:
     """Retrieves the in/out argument values to pass to the kernel."""
@@ -684,7 +684,7 @@ def write_output_attrs(
     db_outputs: Any,
     attr_infos: Mapping[og.AttributePortType, tuple[AttributeInfo, ...]],
     kernel_outputs: Any,
-    device: wp.context.Device | None = None,
+    device: wp.Device | None = None,
 ) -> None:
     """Writes the output values to the node's attributes."""
     if device is None:

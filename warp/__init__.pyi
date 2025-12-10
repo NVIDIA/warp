@@ -159,9 +159,6 @@ from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
 
-from warp._src.types import vector as vec
-from warp._src.types import matrix as mat
-
 from warp._src.types import matrix_from_cols as matrix_from_cols
 from warp._src.types import matrix_from_rows as matrix_from_rows
 
@@ -226,9 +223,14 @@ from warp._src.context import capture_if as capture_if
 from warp._src.context import capture_while as capture_while
 from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
 
+from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported
+
+from warp._src.context import DeviceLike as DeviceLike
+from warp._src.context import Device as Device
 from warp._src.context import Kernel as Kernel
 from warp._src.context import Function as Function
 from warp._src.context import Launch as Launch
+from warp._src.context import Module as Module
 
 from warp._src.context import Stream as Stream
 from warp._src.context import get_stream as get_stream
@@ -260,6 +262,11 @@ from warp._src.context import set_mempool_access_enabled as set_mempool_access_e
 from warp._src.context import is_peer_access_supported as is_peer_access_supported
 from warp._src.context import is_peer_access_enabled as is_peer_access_enabled
 from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
+
+from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
+from warp._src.codegen import WarpCodegenError as WarpCodegenError
+from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
+from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
 
 from warp._src.tape import Tape as Tape
 
@@ -323,29 +330,48 @@ from warp._src.build import clear_lto_cache as clear_lto_cache
 from warp._src.builtins import static as static
 
 from warp._src.constants import *
-
 from warp._src.math import *
 
-from warp._src import builtins as builtins
 from warp._src import config as config
+
+from . import types as types
+from . import utils as utils
 
 __version__ = config.version
 
-from . import build as build
-from . import codegen as codegen
-from . import constants as constants
-from . import context as context
-from . import dlpack as dlpack
-from . import fabric as fabric
-from . import jax as jax
-from . import marching_cubes as marching_cubes
-from . import math as math
-from . import paddle as paddle
-from . import sparse as sparse
-from . import tape as tape
-from . import torch as torch
-from . import types as types
-from . import utils as utils
+from warp._src import types as _types
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    if name == "mat":
+        return get_deprecated_api(_types, "warp", "matrix", old_attr_path="warp.mat")
+    elif name == "vec":
+        return get_deprecated_api(_types, "warp", "vector", old_attr_path="warp.vec")
+
+    if name in (
+        "build_dll",
+        "build",
+        "builtins",
+        "codegen",
+        "constants",
+        "context",
+        "dlpack",
+        "fabric",
+        "jax",
+        "marching_cubes",
+        "math",
+        "paddle",
+        "tape",
+        "torch",
+        "types",
+        "utils",
+    ):
+        import importlib  # noqa: PLC0415
+
+        return importlib.import_module(f".{name}", __package__)
+
+    raise AttributeError(f"module 'warp' has no attribute '{name}'")
 
 class vec2h:
     @over
@@ -2974,7 +3000,7 @@ def tile_broadcast(a: Tile[Any, Tuple[int, ...]], shape: Tuple[int, ...]) -> Til
     ...
 
 @over
-def tile_sum(a: Tile[Scalar, Tuple[int, ...]], axis: int32) -> Tile[Scalar, Tuple[int, ...]]:
+def tile_sum(a: Tile[Any, Tuple[int, ...]], axis: int32) -> Tile[Any, Tuple[int, ...]]:
     """Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
 
     :param a: The input tile. Must reside in shared memory.
@@ -3005,7 +3031,7 @@ def tile_sum(a: Tile[Scalar, Tuple[int, ...]], axis: int32) -> Tile[Scalar, Tupl
     ...
 
 @over
-def tile_sum(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
+def tile_sum(a: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[1]]:
     """Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
@@ -3189,7 +3215,7 @@ def tile_argmax(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Int, Tuple[1]]:
     ...
 
 @over
-def tile_reduce(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[1]]:
+def tile_reduce(op: Callable, a: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[1]]:
     """Apply a custom reduction operator across the tile.
 
     This function cooperatively performs a reduction using the provided operator across the tile.
@@ -3390,7 +3416,7 @@ def tile_scan_min_inclusive(a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tu
     ...
 
 @over
-def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Apply a unary function onto the tile.
 
     This function cooperatively applies a unary function to each element of the tile using all threads in the block.
@@ -3422,9 +3448,7 @@ def tile_map(op: Callable, a: Tile[Scalar, Tuple[int, ...]]) -> Tile[Scalar, Tup
     ...
 
 @over
-def tile_map(
-    op: Callable, a: Tile[Scalar, Tuple[int, ...]], b: Tile[Scalar, Tuple[int, ...]]
-) -> Tile[Scalar, Tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Apply a binary function onto the tile.
 
     This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
@@ -5403,7 +5427,7 @@ def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
     ...
 
 @over
-def add(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def add(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Add each element of two tiles together"""
     ...
 
@@ -5433,7 +5457,7 @@ def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[
     ...
 
 @over
-def sub(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def sub(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Subtract each element b from a"""
     ...
 
@@ -5453,7 +5477,7 @@ def bit_and(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, A
     ...
 
 @over
-def bit_and(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def bit_and(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Bitwise AND each element of two tiles together"""
     ...
 
@@ -5473,7 +5497,7 @@ def bit_or(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, An
     ...
 
 @over
-def bit_or(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def bit_or(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Bitwise OR each element of two tiles together"""
     ...
 
@@ -5493,7 +5517,7 @@ def bit_xor(a: Matrix[Any, Any, Int], b: Matrix[Any, Any, Int]) -> Matrix[Any, A
     ...
 
 @over
-def bit_xor(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Scalar, Tuple[int, ...]]:
+def bit_xor(a: Tile[Any, Tuple[int, ...]], b: Tile[Any, Tuple[int, ...]]) -> Tile[Any, Tuple[int, ...]]:
     """Bitwise XOR each element of two tiles together"""
     ...
 
