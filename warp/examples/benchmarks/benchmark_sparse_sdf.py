@@ -430,15 +430,36 @@ def run_benchmark():
     subgrid_mem_texture = np.prod(sparse_data["subgrid_data"].shape) * 4  # GPU texture is float32
     slots_mem = len(sparse_data["subgrid_start_slots"]) * 4
     dense_mem = dense_x * dense_y * dense_z * 4
+    texture_total_mem = coarse_mem + subgrid_mem_texture + slots_mem
+
+    # Get volume memory usage
+    sparse_volume_mem = sparse_volume.get_grid_info().size_in_bytes
+    coarse_volume_mem = coarse_volume.get_grid_info().size_in_bytes
+    volume_total_mem = sparse_volume_mem + coarse_volume_mem
 
     print("\nMemory Usage:")
-    print(f"  Dense SDF (temporary): {dense_mem / 1024:.1f} KB")
-    print(f"  Coarse texture: {coarse_mem / 1024:.1f} KB")
-    print(f"  Subgrid texture (GPU): {subgrid_mem_texture / 1024:.1f} KB")
+    print("\n  NanoVDB Volumes:")
+    print(f"    Sparse volume: {sparse_volume_mem / 1024:.1f} KB")
+    print(f"    Coarse volume: {coarse_volume_mem / 1024:.1f} KB")
+    print(f"    Total: {volume_total_mem / 1024:.1f} KB")
+
+    print("\n  Texture SDF:")
+    print(f"    Dense SDF (temporary): {dense_mem / 1024:.1f} KB")
+    print(f"    Coarse texture: {coarse_mem / 1024:.1f} KB")
+    print(f"    Subgrid texture (GPU): {subgrid_mem_texture / 1024:.1f} KB")
     if QUANTIZATION_MODE != QuantizationMode.FLOAT32:
-        print(f"  Subgrid data (quantized): {subgrid_mem_source / 1024:.1f} KB ({bytes_per_sample} bytes/sample)")
-    print(f"  Indirection slots: {slots_mem / 1024:.1f} KB")
-    print(f"  Total (persistent): {(coarse_mem + subgrid_mem_texture + slots_mem) / 1024:.1f} KB")
+        print(f"    Subgrid data (quantized): {subgrid_mem_source / 1024:.1f} KB ({bytes_per_sample} bytes/sample)")
+    print(f"    Indirection slots: {slots_mem / 1024:.1f} KB")
+    print(f"    Total (persistent): {texture_total_mem / 1024:.1f} KB")
+
+    # Memory ratio comparison
+    if texture_total_mem > 0 and volume_total_mem > 0:
+        memory_ratio = volume_total_mem / texture_total_mem
+        print(f"\n  Memory Ratio (Volume / Texture): {memory_ratio:.2f}x")
+        if memory_ratio > 1:
+            print(f"  Texture SDF uses {(1 - 1 / memory_ratio) * 100:.1f}% less memory")
+        else:
+            print(f"  Volume SDF uses {(1 - memory_ratio) * 100:.1f}% less memory")
 
     print("\n" + "=" * 80)
 
