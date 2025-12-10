@@ -61,6 +61,7 @@
 
 - Fix atomic floating-point min/max operations not returning the old value
   ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
+- Fix a potential OverflowError when slicing arrays with np.int32 strides ([GH-1120](https://github.com/NVIDIA/warp/issues/1120)).
 
 ## [1.10.1] - 2025-12-01
 
