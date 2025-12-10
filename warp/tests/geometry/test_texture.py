@@ -48,6 +48,42 @@ def sample_texture2d_f_at_centers(
 
 
 @wp.kernel
+def sample_texture2d_v2_at_centers(
+    tex: wp.texture2d_t,
+    output: wp.array(dtype=wp.vec2f),
+    width: int,
+    height: int,
+):
+    """Sample a 2-channel 2D texture at texel centers."""
+    tid = wp.tid()
+    x = tid % width
+    y = tid // width
+
+    u = (wp.float(x) + 0.5) / wp.float(width)
+    v = (wp.float(y) + 0.5) / wp.float(height)
+
+    output[tid] = wp.tex2d_vec2(tex, u, v)
+
+
+@wp.kernel
+def sample_texture2d_v3_at_centers(
+    tex: wp.texture2d_t,
+    output: wp.array(dtype=wp.vec3f),
+    width: int,
+    height: int,
+):
+    """Sample a 4-channel 2D texture at texel centers, returning only xyz."""
+    tid = wp.tid()
+    x = tid % width
+    y = tid // width
+
+    u = (wp.float(x) + 0.5) / wp.float(width)
+    v = (wp.float(y) + 0.5) / wp.float(height)
+
+    output[tid] = wp.tex2d_vec3(tex, u, v)
+
+
+@wp.kernel
 def sample_texture2d_v4_at_centers(
     tex: wp.texture2d_t,
     output: wp.array(dtype=wp.vec4f),
@@ -104,6 +140,48 @@ def sample_texture3d_f_at_centers(
     w = (wp.float(z) + 0.5) / wp.float(depth)
 
     output[tid] = wp.tex3d_float(tex, u, v, w)
+
+
+@wp.kernel
+def sample_texture3d_v2_at_centers(
+    tex: wp.texture3d_t,
+    output: wp.array(dtype=wp.vec2f),
+    width: int,
+    height: int,
+    depth: int,
+):
+    """Sample a 2-channel 3D texture at voxel centers."""
+    tid = wp.tid()
+    x = tid % width
+    y = (tid // width) % height
+    z = tid // (width * height)
+
+    u = (wp.float(x) + 0.5) / wp.float(width)
+    v = (wp.float(y) + 0.5) / wp.float(height)
+    ww = (wp.float(z) + 0.5) / wp.float(depth)
+
+    output[tid] = wp.tex3d_vec2(tex, u, v, ww)
+
+
+@wp.kernel
+def sample_texture3d_v3_at_centers(
+    tex: wp.texture3d_t,
+    output: wp.array(dtype=wp.vec3f),
+    width: int,
+    height: int,
+    depth: int,
+):
+    """Sample a 4-channel 3D texture at voxel centers, returning only xyz."""
+    tid = wp.tid()
+    x = tid % width
+    y = (tid // width) % height
+    z = tid // (width * height)
+
+    u = (wp.float(x) + 0.5) / wp.float(width)
+    v = (wp.float(y) + 0.5) / wp.float(height)
+    ww = (wp.float(z) + 0.5) / wp.float(depth)
+
+    output[tid] = wp.tex3d_vec3(tex, u, v, ww)
 
 
 @wp.kernel
@@ -255,6 +333,78 @@ def test_texture2d_1channel(test, device):
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
 
 
+def test_texture2d_2channel(test, device):
+    """Test 2D texture with 2 channels, sampling at texel centers."""
+    width, height = 32, 32
+    num_channels = 2
+
+    # Generate test data
+    data = generate_sin_pattern_2d(width, height, num_channels)
+
+    try:
+        tex = wp.Texture2D(
+            data,
+            filter_mode=wp.Texture2D.NEAREST,
+            address_mode=wp.Texture2D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+
+    # Create output array
+    output = wp.zeros(width * height, dtype=wp.vec2f, device=device)
+
+    # Sample texture at texel centers
+    wp.launch(
+        sample_texture2d_v2_at_centers,
+        dim=width * height,
+        inputs=[tex, output, width, height],
+        device=device,
+    )
+
+    # Compare results
+    expected = data.reshape(-1, 2)
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture2d_vec3(test, device):
+    """Test 2D texture with 4 channels, sampling with tex2d_vec3 (returns only xyz)."""
+    width, height = 32, 32
+    num_channels = 4
+
+    # Generate test data
+    data = generate_sin_pattern_2d(width, height, num_channels)
+
+    try:
+        tex = wp.Texture2D(
+            data,
+            filter_mode=wp.Texture2D.NEAREST,
+            address_mode=wp.Texture2D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+
+    # Create output array
+    output = wp.zeros(width * height, dtype=wp.vec3f, device=device)
+
+    # Sample texture at texel centers
+    wp.launch(
+        sample_texture2d_v3_at_centers,
+        dim=width * height,
+        inputs=[tex, output, width, height],
+        device=device,
+    )
+
+    # Compare results - tex2d_vec3 returns only the first 3 channels
+    expected = data.reshape(-1, 4)[:, :3]
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
 def test_texture2d_4channel(test, device):
     """Test 2D texture with 4 channels, sampling at texel centers."""
     width, height = 32, 32
@@ -381,6 +531,78 @@ def test_texture3d_1channel(test, device):
 
     # Compare results
     expected = data.flatten()
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture3d_2channel(test, device):
+    """Test 3D texture with 2 channels, sampling at voxel centers."""
+    width, height, depth = 8, 8, 8
+    num_channels = 2
+
+    # Generate test data
+    data = generate_sin_pattern_3d(width, height, depth, num_channels)
+
+    try:
+        tex = wp.Texture3D(
+            data,
+            filter_mode=wp.Texture3D.NEAREST,
+            address_mode=wp.Texture3D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+
+    # Create output array
+    output = wp.zeros(width * height * depth, dtype=wp.vec2f, device=device)
+
+    # Sample texture at voxel centers
+    wp.launch(
+        sample_texture3d_v2_at_centers,
+        dim=width * height * depth,
+        inputs=[tex, output, width, height, depth],
+        device=device,
+    )
+
+    # Compare results
+    expected = data.reshape(-1, 2)
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture3d_vec3(test, device):
+    """Test 3D texture with 4 channels, sampling with tex3d_vec3 (returns only xyz)."""
+    width, height, depth = 8, 8, 8
+    num_channels = 4
+
+    # Generate test data
+    data = generate_sin_pattern_3d(width, height, depth, num_channels)
+
+    try:
+        tex = wp.Texture3D(
+            data,
+            filter_mode=wp.Texture3D.NEAREST,
+            address_mode=wp.Texture3D.CLAMP,
+            device=device,
+        )
+    except (RuntimeError, AttributeError) as e:
+        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+
+    # Create output array
+    output = wp.zeros(width * height * depth, dtype=wp.vec3f, device=device)
+
+    # Sample texture at voxel centers
+    wp.launch(
+        sample_texture3d_v3_at_centers,
+        dim=width * height * depth,
+        inputs=[tex, output, width, height, depth],
+        device=device,
+    )
+
+    # Compare results - tex3d_vec3 returns only the first 3 channels
+    expected = data.reshape(-1, 4)[:, :3]
     result = output.numpy()
 
     np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
@@ -1005,10 +1227,14 @@ class TestTexture(unittest.TestCase):
 cuda_devices = get_selected_cuda_test_devices()
 
 add_function_test(TestTexture, "test_texture2d_1channel", test_texture2d_1channel, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture2d_2channel", test_texture2d_2channel, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture2d_vec3", test_texture2d_vec3, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture2d_4channel", test_texture2d_4channel, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture2d_linear_filter", test_texture2d_linear_filter, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture2d_resolution_query", test_texture2d_resolution_query, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_1channel", test_texture3d_1channel, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture3d_2channel", test_texture3d_2channel, devices=cuda_devices)
+add_function_test(TestTexture, "test_texture3d_vec3", test_texture3d_vec3, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_4channel", test_texture3d_4channel, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_linear_filter", test_texture3d_linear_filter, devices=cuda_devices)
 add_function_test(TestTexture, "test_texture3d_resolution_query", test_texture3d_resolution_query, devices=cuda_devices)
