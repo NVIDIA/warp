@@ -416,6 +416,7 @@ def vector(length, dtype):
                         f"but got `{type(value).__name__}` instead"
                     ) from None
             elif isinstance(key, slice):
+                indices = None
                 if is_scalar(value):
                     indices = range(*key.indices(self._length_))
                     for idx in indices:
@@ -446,9 +447,14 @@ def vector(length, dtype):
                 try:
                     return super().__setitem__(key, value)
                 except TypeError:
-                    for x in value:
+                    # ctypes.Array doesn't accept this sequence type (e.g. torch tensors)
+                    # or the sequence has a different size, fall back to element-by-element assignment
+                    if indices is None:
+                        indices = range(*key.indices(self._length_))
+
+                    for idx, x in zip(indices, value):
                         try:
-                            self._type_(x)
+                            super().__setitem__(idx, self._type_(x))
                         except TypeError:
                             raise TypeError(
                                 f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "

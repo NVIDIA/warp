@@ -17,7 +17,7 @@
 # Supports both x86_64 and aarch64
 # This version builds LLVM from source, making it fully self-contained
 
-ARG CUDA_VERSION=13.0.2
+ARG CUDA_VERSION=13.1.0
 ARG MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64:latest
 FROM ${MANYLINUX_IMAGE} AS base
 

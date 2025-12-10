@@ -65,6 +65,38 @@ def set_settings(
         settings.set(k, v)
 
 
+async def wait_for_streaming(
+    context: omni.usd.UsdContext,
+    wait_frames: int = 100,
+) -> None:
+    """Wait for the streaming to finish upon opening a stage."""
+    # Implementation from kit/source/extensions/omni.rtx.tests/omni/rtx/tests/test_common.py
+    max_busy_frame_count = 0
+    while max_busy_frame_count < wait_frames:
+        _, files_loaded, total_files = context.get_stage_loading_status()
+        await omni.kit.app.get_app().next_update_async()
+
+        if files_loaded == 0 and total_files == 0:
+            max_busy_frame_count += 1
+
+    busy_frame_count = 0
+    while True:
+        is_busy = context.get_stage_streaming_status()
+        await omni.kit.app.get_app().next_update_async()
+
+        if not is_busy:
+            break
+
+        busy_frame_count += 1
+        if busy_frame_count >= max_busy_frame_count:
+            raise RuntimeError("failed waiting for stage streaming completion.")
+
+    context.reset_renderer_accumulation()
+
+    for _ in range(wait_frames):
+        await omni.kit.app.get_app().next_update_async()
+
+
 async def open_sample(
     file_name: str,
     enable_fsd: Optional[bool] = None,
@@ -88,38 +120,7 @@ async def open_sample(
     await context.open_stage_async(file_path)
     await omni.kit.app.get_app().next_update_async()
 
-    # Try making the renders more deterministic.
-    set_settings(
-        {
-            "/rtx/ambientOcclusion/enabled": False,
-            "/rtx/directLighting/sampledLighting/enabled": False,
-            "/rtx/ecoMode/enabled": False,
-            "/rtx/indirectDiffuse/enabled": False,
-            "/rtx/post/aa/op": 0,
-            "/rtx/post/tonemap/op": 1,
-            "/rtx/raytracing/lightcache/spatialCache/enabled": False,
-            "/rtx/reflections/enabled": False,
-            "/rtx/rendermode": "RayTracedLighting",
-            "/rtx/shadows/enabled": False,
-        }
-    )
-    await omni.kit.app.get_app().next_update_async()
-
-    # Wait for everything to be loaded.
-    max_wait_update_count = 100
-    for _ in range(max_wait_update_count):
-        _, files_loaded, total_files = context.get_stage_loading_status()
-        if files_loaded == 0 and total_files == 0:
-            break
-
-        await omni.kit.app.get_app().next_update_async()
-
-    context.reset_renderer_accumulation()
-
-    # Wait a bit more just to make sure...
-    extra_update_count = 10
-    for _ in range(extra_update_count):
-        await omni.kit.app.get_app().next_update_async()
+    await wait_for_streaming(context)
 
 
 async def validate_render(
@@ -135,6 +136,7 @@ async def validate_render(
     if update_golden_images:
         file_path = os.path.join(_DATA_PATH, file_name)
         capture_viewport_to_file(viewport, file_path=file_path)
+        await omni.kit.app.get_app().next_update_async()
         return
 
     # Capture the viewport.

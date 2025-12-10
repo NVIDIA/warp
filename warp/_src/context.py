@@ -1085,6 +1085,7 @@ def kernel(
     *,
     enable_backward: bool | None = None,
     module: Module | Literal["unique"] | str | None = None,
+    launch_bounds: tuple[int, ...] | int | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -1113,10 +1114,18 @@ def kernel(
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
+
+        @wp.kernel(launch_bounds=(256, 1))
+        def my_kernel_with_launch_bounds(a: wp.array(dtype=float)):
+            # CUDA __launch_bounds__ will be set to (256, 1)
+            tid = wp.tid()
+            a[tid] = a[tid] * 2.0
+
     Args:
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be generated.
         module: The :class:`warp._src.context.Module` to which the kernel belongs. Alternatively, if a string `"unique"` is provided, the kernel is assigned to a new module named after the kernel name and hash. If None, the module is inferred from the function's module.
+        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`wp.launch() <warp.launch>` must not exceed the ``maxThreadsPerBlock`` value specified here.
 
     Returns:
         The registered kernel.
@@ -1127,6 +1136,9 @@ def kernel(
 
         if enable_backward is not None:
             options["enable_backward"] = enable_backward
+
+        if launch_bounds is not None:
+            options["launch_bounds"] = launch_bounds
 
         # Resolve the module for this kernel
         if module is None:

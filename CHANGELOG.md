@@ -36,6 +36,9 @@
   - New constructor argument: `groups` for per-face group IDs.
   - New query overloads: `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` now accept an optional `root` argument for group-restricted traversal.
   - Add helper function `wp.mesh_get_group_root()` to retrieve the subtree root for a given group.
+- Add `launch_bounds` parameter to `@wp.kernel` decorator to specify CUDA `__launch_bounds__` attribute for controlling
+  thread block occupancy. Can be an integer for `maxThreadsPerBlock` or a tuple of 1-2 integers for
+  `(maxThreadsPerBlock, minBlocksPerMultiprocessor)` ([GH-1049](https://github.com/NVIDIA/warp/issues/1049)).
 
 ### Removed
 
@@ -58,6 +61,8 @@
 
 - Fix atomic floating-point min/max operations not returning the old value
   ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
+- Fix direct initialization and slice assignment of vector, quaternion, and transform types from PyTorch tensors
+  ([GH-1121](https://github.com/NVIDIA/warp/issues/1121)).
 
 ## [1.10.1] - 2025-12-01
 

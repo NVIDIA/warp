@@ -60,36 +60,38 @@ stdoutFailPatterns.exclude = [
 dependencies = [
     "omni.hydra.rtx",
     "omni.kit.test_helpers_gfx",
-    "omni.kit.viewport.utility",
 
     # Additional dependencies that need to be enabled for the extensions above to work.
-    "omni.kit.commands", # Required by `omni.kit.material.library`, `omni.kit.viewport.utility`, and `omni.kit.viewport.window`.
     "omni.kit.manipulator.selection", # Required by `omni.kit.viewport.window`.
     "omni.kit.material.library", # Required by `omni.kit.viewport.window`.
-    "omni.kit.renderer.capture", # Required by `omni.kit.viewport.utility`.
     "omni.kit.viewport.window", # Required by `omni.kit.viewport.utility`.
     "omni.hydra.usdrt_delegate",
 ]
 
 args = [
     "--/app/asyncRendering=false",
+    "--/app/extensions/fsWatcherEnabled=false",
+    "--/app/hydraEngine/skipStatusBarIdle=true",
     "--/app/hydraEngine/waitIdle=true",
     "--/app/omni.warp/kernel_enable_opt_in=false",
     "--/app/renderer/resolution/height=360",
     "--/app/renderer/resolution/width=640",
-    "--/app/isTestRun=1",
+    "--/app/isTestRun=true",
     "--/app/updateOrder/checkForHydraRenderComplete=1000",
+    "--/app/window/hideUi=true",
+    "--/log/flushStandardStreamOutput=true",
     "--/persistent/rtx/modes/pt/enabled=false",
-    "--/persistent/rtx/modes/rt/enabled=true",
-    "--/persistent/rtx/modes/rt2/enabled=false",
+    "--/persistent/rtx/modes/rt/enabled=false",
+    "--/persistent/rtx/modes/rt2/enabled=true",
     "--/renderer/enabled=rtx",
     "--/renderer/active=rtx",
+    "--/renderer/multiGpu/autoEnable=false",
+    "--/renderer/multiGpu/enabled=false",
+    "--/rtx/ecoMode/enabled=false",
     "--/rtx/hydra/materialSyncLoads=true",
     "--/rtx/materialDb/syncLoads=true",
-    "--/rtx/rendermode=RayTracedLighting",
-    "--/rtx-transient/dldenoiser/enabled=false",
-    "--/rtx-transient/dlssg/enabled=false",
-    "--/rtx-transient/post/aa/limitedOps=false",
+    "--/rtx/post/aa/op=4",
+    "--/rtx/rendermode=RealTimePathTracing",
     "--/rtx-transient/resourcemanager/texturestreaming/async=false",
     "--no-window",
 

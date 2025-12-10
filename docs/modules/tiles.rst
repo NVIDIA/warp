@@ -123,6 +123,8 @@ memory to allow random accessing. A thread synchronization must also follow, to 
 Note that shared memory is a limited resource, and so the tile size must be set appropriately to avoid exceeding the hardware limitations.
 Otherwise, kernel compilation may fail.
 
+Note that shared memory tile allocations are guaranteed to be 16-byte aligned.
+
 Example: General Matrix Multiply (GEMM)
 ---------------------------------------
 
