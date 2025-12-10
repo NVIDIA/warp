@@ -37,6 +37,7 @@ from texture_sdf import (
     build_dense_sdf,
     build_sparse_sdf_from_dense,
     create_sparse_sdf_textures,
+    get_quantization_bytes,
     sample_sparse_sdf,
     sample_sparse_sdf_grad,
 )
@@ -423,7 +424,7 @@ def run_benchmark():
 
     # Memory usage (accounting for quantization mode)
     # Note: textures are always float32 on GPU, but source data size varies
-    bytes_per_sample = QUANTIZATION_MODE  # FLOAT32=4, UINT16=2, UINT8=1
+    bytes_per_sample = get_quantization_bytes(QUANTIZATION_MODE)
     coarse_mem = np.prod(sparse_data["coarse_sdf"].shape) * 4  # Coarse is always float32
     subgrid_mem_source = np.prod(sparse_data["subgrid_data"].shape) * bytes_per_sample
     subgrid_mem_texture = np.prod(sparse_data["subgrid_data"].shape) * 4  # GPU texture is float32

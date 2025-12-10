@@ -22,6 +22,8 @@ Run with: python -m pytest test_sdf_consistency.py -v
 Or directly: python test_sdf_consistency.py
 """
 
+import sys
+
 import numpy as np
 from texture_sdf import (
     QuantizationMode,
@@ -699,7 +701,5 @@ def run_all_tests():
 
 
 if __name__ == "__main__":
-    import sys
-
     success = run_all_tests()
     sys.exit(0 if success else 1)

@@ -49,6 +49,29 @@ class QuantizationMode:
     UINT8 = 1  # 8-bit quantization
 
 
+def get_quantization_bytes(mode: int) -> int:
+    """
+    Get the number of bytes per sample for a given quantization mode.
+
+    Args:
+        mode: QuantizationMode value (FLOAT32, UINT16, or UINT8)
+
+    Returns:
+        Number of bytes per sample (4, 2, or 1)
+
+    Raises:
+        ValueError: If mode is not a valid QuantizationMode
+    """
+    bytes_map = {
+        QuantizationMode.FLOAT32: 4,
+        QuantizationMode.UINT16: 2,
+        QuantizationMode.UINT8: 1,
+    }
+    if mode not in bytes_map:
+        raise ValueError(f"Invalid quantization mode: {mode}")
+    return bytes_map[mode]
+
+
 @wp.struct
 class SparseSDF:
     """Parameters for sparse SDF sampling (textures passed separately)."""
