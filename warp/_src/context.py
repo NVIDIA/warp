@@ -2546,7 +2546,7 @@ class Module:
         if opt is None:
             opt = 3  # default to full optimization (ignored for debug builds)
 
-        if opt != 3 and output_arch and runtime.toolkit_version < (12, 9):
+        if opt != 3 and output_arch and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             warp._src.utils.warn(
                 "Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True
             )
@@ -3574,7 +3574,13 @@ class Device:
 
         # Determine automatically: Older drivers may not be able to handle PTX generated using newer CUDA Toolkits,
         # in which case we fall back on generating CUBIN modules
-        return "ptx" if self.runtime.driver_version >= self.runtime.toolkit_version else "cubin"
+        return (
+            "ptx"
+            if self.runtime.driver_version is not None
+            and self.runtime.toolkit_version is not None
+            and self.runtime.driver_version >= self.runtime.toolkit_version
+            else "cubin"
+        )
 
     def get_cuda_compile_arch(self) -> int | None:
         """Get the CUDA architecture to use when compiling code for this device.
@@ -7339,7 +7345,7 @@ def capture_begin(
     """
 
     if force_module_load is None:
-        if runtime.driver_version >= (12, 3):
+        if runtime.driver_version is not None and runtime.driver_version >= (12, 3):
             # Driver versions 12.3 and can compile modules during graph capture
             force_module_load = False
         else:
@@ -7435,8 +7441,11 @@ def assert_conditional_graph_support():
     if runtime is None:
         init()
 
-    if runtime.toolkit_version < (12, 4):
+    if runtime.toolkit_version is None or runtime.toolkit_version < (12, 4):
         raise RuntimeError("Warp must be built with CUDA Toolkit 12.4+ to enable conditional graph nodes")
+
+    if runtime.driver_version is None:
+        raise RuntimeError("Conditional graph nodes require CUDA driver 12.4+, but no CUDA driver was found")
 
     if runtime.driver_version < (12, 4):
         raise RuntimeError("Conditional graph nodes require CUDA driver 12.4+")
@@ -7446,7 +7455,12 @@ def is_conditional_graph_supported() -> bool:
     if runtime is None:
         init()
 
-    return runtime.toolkit_version >= (12, 4) and runtime.driver_version >= (12, 4)
+    return (
+        runtime.toolkit_version is not None
+        and runtime.toolkit_version >= (12, 4)
+        and runtime.driver_version is not None
+        and runtime.driver_version >= (12, 4)
+    )
 
 
 def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
