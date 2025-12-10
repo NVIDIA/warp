@@ -64,6 +64,7 @@
 - Fix direct initialization and slice assignment of vector, quaternion, and transform types from PyTorch tensors
   ([GH-1121](https://github.com/NVIDIA/warp/issues/1121)).
 - Fix a potential OverflowError when slicing arrays with np.int32 strides ([GH-1120](https://github.com/NVIDIA/warp/issues/1120)).
+- Fix a bug in CPU BVH construction when using groups for heterogenous edge cases where some groups have <= leaf size primitives ([GH-1111](https://github.com/NVIDIA/warp/issues/1111)).
 
 ## [1.10.1] - 2025-12-01
 
