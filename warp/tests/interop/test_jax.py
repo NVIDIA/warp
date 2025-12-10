@@ -174,7 +174,7 @@ def test_jax_kernel_basic(test, device, use_ffi=False):
     with jax.default_device(wp.device_to_jax(device)):
         y = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(y)
 
     result = np.asarray(y).reshape((n,))
     expected = 3 * np.arange(n, dtype=np.float32)
@@ -216,7 +216,7 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
             with jax.default_device(wp.device_to_jax(device)):
                 y = f()
 
-            wp.synchronize_device(device)
+            jax.block_until_ready(y)
 
             result = np.asarray(y).reshape((n,))
             expected = 3 * np.arange(n, dtype=np_dtype)
@@ -260,7 +260,7 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
             with jax.default_device(wp.device_to_jax(device)):
                 y = f()
 
-            wp.synchronize_device(device)
+            jax.block_until_ready(y)
 
             result = np.asarray(y).reshape(scalar_shape)
             expected = 3 * np.arange(scalar_len, dtype=np_dtype).reshape(scalar_shape)
@@ -293,7 +293,7 @@ def test_jax_kernel_multiarg(test, device, use_ffi=False):
     with jax.default_device(wp.device_to_jax(device)):
         x, y = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([x, y])
 
     result_x, result_y = np.asarray(x), np.asarray(y)
     expected_x = np.full(n, 3, dtype=np.float32)
@@ -343,7 +343,7 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
         y_1d = f_1d()
         y_2d = f_2d()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([y_1d, y_2d])
 
     result_1d = np.asarray(y_1d).reshape((n - 2,))
     expected_1d = np.arange(n - 2, dtype=np.float32) + 1.0
@@ -518,7 +518,7 @@ def test_ffi_jax_kernel_add(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (y,) = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(y)
 
     result = np.asarray(y)
     expected = np.arange(1, ARRAY_SIZE + 1, dtype=np.float32)
@@ -545,7 +545,7 @@ def test_ffi_jax_kernel_sincos(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         s, c = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([s, c])
 
     result_s = np.asarray(s)
     result_c = np.asarray(c)
@@ -570,10 +570,10 @@ def test_ffi_jax_kernel_diagonal(test, device):
         # launch dimensions determine output size
         return jax_diagonal(launch_dims=4)
 
-    wp.synchronize_device(device)
-
     with jax.default_device(wp.device_to_jax(device)):
         (d,) = f()
+
+    jax.block_until_ready(d)
 
     result = np.asarray(d)
     expected = np.array(
@@ -605,7 +605,7 @@ def test_ffi_jax_kernel_in_out(test, device):
         b = jp.arange(ARRAY_SIZE, dtype=jp.float32)
         b, c = f(a, b)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([b, c])
 
     assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
     assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
@@ -629,7 +629,7 @@ def test_ffi_jax_kernel_scale_vec_constant(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (b,) = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(b)
 
     expected = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
 
@@ -656,7 +656,7 @@ def test_ffi_jax_kernel_scale_vec_static(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (b,) = f(a, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(b)
 
     expected = 3 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
 
@@ -685,7 +685,7 @@ def test_ffi_jax_kernel_launch_dims_default(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (result,) = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(result)
 
     expected = np.full((3, 4), 12, dtype=np.float32)
 
@@ -723,7 +723,7 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         result1, result2 = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([result1, result2])
 
     expected1 = np.full((3, 4), 12, dtype=np.float32)
     expected2 = np.full((4, 3), 12, dtype=np.float32)
@@ -760,7 +760,7 @@ def test_ffi_jax_callable_scale_constant(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         result1, result2 = f()
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([result1, result2])
 
     expected1 = 2 * np.arange(ARRAY_SIZE, dtype=np.float32)
     expected2 = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
@@ -795,7 +795,7 @@ def test_ffi_jax_callable_scale_static(test, device):
         s = 3.0
         result1, result2 = f(a, b, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([result1, result2])
 
     expected1 = 3 * np.arange(ARRAY_SIZE, dtype=np.float32)
     expected2 = 3 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
@@ -820,7 +820,7 @@ def test_ffi_jax_callable_in_out(test, device):
         b = jp.arange(ARRAY_SIZE, dtype=jp.float32)
         b, c = f(a, b)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([b, c])
 
     assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
     assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
@@ -952,7 +952,7 @@ def test_ffi_jax_callable_pmap_mul(test, device):
 
     y = jax.pmap(per_device_func)(x)
 
-    wp.synchronize()
+    jax.block_until_ready(y)
 
     assert_np_equal(np.asarray(y), 2 * np.asarray(x))
 
@@ -987,7 +987,7 @@ def test_ffi_jax_callable_pmap_multi_output(test, device):
 
     out = jax.pmap(per_device_func)(a, b)
 
-    wp.synchronize()
+    jax.block_until_ready(out)
 
     a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
     b_np = np.ones((ndev, per_device), dtype=np.float32)
@@ -1026,7 +1026,7 @@ def test_ffi_jax_callable_pmap_multi_stage(test, device):
 
     combined = jax.pmap(per_device_func)(a, b)
 
-    wp.synchronize()
+    jax.block_until_ready(combined)
 
     a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
     b_np = np.ones((ndev, per_device), dtype=np.float32)
@@ -1088,7 +1088,7 @@ def test_ffi_callback(test, device):
         # call it
         c, d = call(a, b, scale=s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([c, d])
 
     assert_np_equal(c, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
     assert_np_equal(d, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
@@ -1122,7 +1122,7 @@ def test_ffi_jax_kernel_autodiff_simple(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([da, db])
 
     # reference gradients
     # d/da sum((a*s + b)^2) = sum(2*(a*s + b) * s)
@@ -1162,7 +1162,7 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         da, db = jitted_grad(a, b, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([da, db])
 
     a_np = np.arange(n, dtype=np.float32)
     b_np = np.ones(n, dtype=np.float32)
@@ -1202,7 +1202,7 @@ def test_ffi_jax_kernel_autodiff_multi_output(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         da, db = grads(a, b, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([da, db])
 
     a_np = np.arange(n, dtype=np.float32)
     b_np = np.ones(n, dtype=np.float32)
@@ -1239,7 +1239,7 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         da, db = jitted_grad(a, b, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([da, db])
 
     a_np = np.arange(n, dtype=np.float32)
     b_np = np.ones(n, dtype=np.float32)
@@ -1270,7 +1270,7 @@ def test_ffi_jax_kernel_autodiff_2d(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (da,) = jax.grad(loss, argnums=(0,))(a)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(da)
 
     ref = np.ones((n, m), dtype=np.float32)
     assert_np_equal(np.asarray(da), ref)
@@ -1299,7 +1299,7 @@ def test_ffi_jax_kernel_autodiff_vec2(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (da,) = jax.grad(loss, argnums=(0,))(a, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(da)
 
     # d/da sum(a*s) = s
     ref = np.full_like(np.asarray(a), s)
@@ -1334,7 +1334,7 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         (da,) = jax.grad(loss, argnums=(0,))(a, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready(da)
 
     ref = np.full((n // 4, 2, 2), s, dtype=np.float32)
     assert_np_equal(np.asarray(da), ref)
@@ -1362,7 +1362,7 @@ def test_ffi_jax_kernel_autodiff_static_required(test, device):
     with jax.default_device(wp.device_to_jax(device)):
         da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
 
-    wp.synchronize_device(device)
+    jax.block_until_ready([da, db])
 
     a_np = np.arange(n, dtype=np.float32)
     b_np = np.ones(n, dtype=np.float32)
@@ -1392,7 +1392,7 @@ def test_ffi_jax_kernel_autodiff_pmap_triple(test, device):
 
     grads = jax.pmap(jax.grad(per_device_loss))(x)
 
-    wp.synchronize()
+    jax.block_until_ready(grads)
 
     assert_np_equal(np.asarray(grads), np.full((ndev, per_device), 3.0, dtype=np.float32))
 
@@ -1418,7 +1418,7 @@ def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
 
     da, db = jax.pmap(jax.grad(per_dev_loss, argnums=(0, 1)))(a, b)
 
-    wp.synchronize()
+    jax.block_until_ready([da, db])
 
     a_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
     b_np = np.arange(ndev * per_device, dtype=np.float32).reshape((ndev, per_device))
