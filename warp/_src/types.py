@@ -3099,7 +3099,8 @@ class array(Array[DType]):
                 new_shape.append(-((stop - start) // -step))  # ceil division
                 new_strides.append(self.strides[idx] * step)
 
-                ptr_offset += self.strides[idx] * start
+                # cast stride to int to avoid Numpy int32 overflow when adding to large pointer addresses
+                ptr_offset += int(self.strides[idx]) * start
 
             elif isinstance(k, array):
                 # note: index array properties will be checked during indexedarray construction
@@ -3117,7 +3118,8 @@ class array(Array[DType]):
                     raise RuntimeError(f"Invalid indexing in slice: {k}")
                 new_dim -= 1
 
-                ptr_offset += self.strides[idx] * start
+                # cast stride to int to avoid Numpy int32 overflow when adding to large pointer addresses
+                ptr_offset += int(self.strides[idx]) * start
 
         # handle grad
         if self.grad is not None:

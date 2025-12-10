@@ -3708,6 +3708,63 @@ class TestArray(unittest.TestCase):
         instance = wp.array.__new__(wp.array)
         instance.__del__()
 
+    def test_int32_strides_large_ptr(self):
+        """Test that slicing arrays with int32 strides and large pointer addresses works correctly.
+
+        This tests a bug fix where ptr_offset was computed using np.int32 strides, causing
+        overflow when added to a large pointer address (> 2^31 - 1).
+        """
+        # Use a simulated large pointer address that's guaranteed to be > max int32
+        # This is safe because we're only testing pointer arithmetic in __getitem__,
+        # not actually dereferencing the memory
+        simulated_large_ptr = 140138692739072  # ~140 trillion, much larger than max int32 (2^31 - 1)
+
+        # Create array with explicit int32 strides (simulating external source like PyTorch/TensorFlow)
+        # Shape: [1024, 1024, 4], dtype: uint8
+        # Strides: (4096, 4, 1) in bytes
+        int32_strides = (np.int32(4096), np.int32(4), np.int32(1))
+
+        test_array = wp.array(
+            ptr=simulated_large_ptr,
+            dtype=wp.uint8,
+            shape=(1024, 1024, 4),
+            strides=int32_strides,
+            device="cpu",  # Use CPU to avoid GPU memory access issues with simulated ptr
+        )
+
+        # Verify array was created correctly
+        self.assertEqual(test_array.ptr, simulated_large_ptr)
+        self.assertEqual(test_array.shape, (1024, 1024, 4))
+
+        # Test 1: Slice operation - this was causing OverflowError before the fix
+        sliced = test_array[500:600, 500:600, :]
+        expected_ptr = simulated_large_ptr + 500 * 4096 + 500 * 4
+        self.assertEqual(sliced.ptr, expected_ptr)
+        self.assertEqual(sliced.shape, (100, 100, 4))
+
+        # Test 2: Integer indexing (reducing dimensions)
+        indexed = test_array[1023, 1023, :]
+        expected_ptr = simulated_large_ptr + 1023 * 4096 + 1023 * 4
+        self.assertEqual(indexed.ptr, expected_ptr)
+        self.assertEqual(indexed.shape, (4,))
+
+        # Test 3: Mixed slice and integer indexing
+        mixed = test_array[512, 100:200, :]
+        expected_ptr = simulated_large_ptr + 512 * 4096 + 100 * 4
+        self.assertEqual(mixed.ptr, expected_ptr)
+        self.assertEqual(mixed.shape, (100, 4))
+
+        # Test 4: Edge case - maximum valid indices
+        max_indexed = test_array[1023, 1023, 3:]
+        expected_ptr = simulated_large_ptr + 1023 * 4096 + 1023 * 4 + 3 * 1
+        self.assertEqual(max_indexed.ptr, expected_ptr)
+
+        # Test 5: Verify with different slice combinations
+        sliced2 = test_array[0:512, 256:512, 2:4]
+        expected_ptr = simulated_large_ptr + 0 * 4096 + 256 * 4 + 2 * 1
+        self.assertEqual(sliced2.ptr, expected_ptr)
+        self.assertEqual(sliced2.shape, (512, 256, 2))
+
 
 add_function_test(TestArray, "test_shape", test_shape, devices=devices)
 add_function_test(TestArray, "test_negative_shape", test_negative_shape, devices=devices)
