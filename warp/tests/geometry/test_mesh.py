@@ -154,9 +154,10 @@ def test_mesh_query_point(test, device):
         expected_sign = -1.0
         wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
 
+        # Parity-based sign is winding-order agnostic; expect the same sign.
         indices = wp.array(LEFT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
         mesh = wp.Mesh(points=points, indices=indices)
-        expected_sign = 1.0
+        expected_sign = -1.0
         wp.launch(query_point_kernel, dim=1, inputs=[mesh.id, expected_sign], device=device)
 
 
