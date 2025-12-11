@@ -119,9 +119,29 @@ All multi-arch tags work on both x86_64 and aarch64.
 
 ### For NVIDIA Internal Users
 
+**Quick Setup (TL;DR for NVIDIA employees):**
+
+1. Create a classic token at <https://github.com/settings/tokens/new> with `read:packages` scope (don't use unlimited expiration)
+2. Click **"Configure SSO"** next to the token and authorize it for the **NVIDIA** organization
+3. Export the token: `export CR_PAT=ghp_your_token_here`
+4. Login and pull: `echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin`
+
+For more details, see [GitHub's Container Registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+
+**Prerequisites:**
+
+- GitHub account that is a **member of the NVIDIA GitHub organization**
+- GitHub Personal Access Token (PAT) with:
+  - `read:packages` scope
+  - Limited expiration (unlimited expiration tokens cannot be SSO-authorized)
+  - **SSO authorized for the NVIDIA organization**
+
+**To authenticate and pull:**
+
 ```bash
-# Authenticate with your NVIDIA GitHub account (requires personal access token with read:packages scope)
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+# Authenticate with your NVIDIA GitHub account
+# Note: Username can be left as USERNAME
+echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin
 
 # Then pull normally
 docker pull ghcr.io/nvidia/warp-builder:cuda13
@@ -147,11 +167,12 @@ docker buildx build --platform linux/amd64 -t warp-builder:cuda13 -f Dockerfile 
 
 - **Base:** manylinux_2_28 (x86_64) / manylinux_2_34 (aarch64)
 - **CUDA:** Configurable (supports 12.x and 13.x, default 13.1.0)
+  - Installed using NVIDIA's [parse_redist.py](https://github.com/NVIDIA/build-system-archive-import-examples) script to pull only the minimal components needed for building Warp
 - **LLVM:** Compiled from source at `/opt/llvm` (default 21.1.0)
 - **Python:** Managed by uv
 - **Tools:** GCC toolchain (from manylinux base)
 
-> **Note:** The Dockerfile automatically handles component differences between CUDA 12.x and 13.x.
+> **Note:** The Dockerfile automatically handles component differences between CUDA 12.x and 13.x (different components are required for each version).
 
 ## Rebuilding Images
 
@@ -192,7 +213,7 @@ These images contain software components under different licenses:
 - **LLVM/Clang:** Licensed under [Apache License v2.0 with LLVM Exceptions](https://llvm.org/LICENSE.txt)
 
   - License files are included in the image at `/opt/llvm/licenses/`
-  - Source code available at https://github.com/llvm/llvm-project
+  - Source code available at <https://github.com/llvm/llvm-project>
   
 - **Container Image:** Components built and distributed by NVIDIA for use with NVIDIA Warp
 
