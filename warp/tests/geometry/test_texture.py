@@ -304,16 +304,13 @@ def test_texture2d_1channel(test, device):
     # Generate test data
     data = generate_sin_pattern_2d(width, height, num_channels)
 
-    try:
-        # Create texture
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    # Create texture
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height, dtype=float, device=device)
@@ -341,15 +338,12 @@ def test_texture2d_2channel(test, device):
     # Generate test data
     data = generate_sin_pattern_2d(width, height, num_channels)
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height, dtype=wp.vec2f, device=device)
@@ -377,15 +371,12 @@ def test_texture2d_vec3(test, device):
     # Generate test data
     data = generate_sin_pattern_2d(width, height, num_channels)
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height, dtype=wp.vec3f, device=device)
@@ -413,15 +404,12 @@ def test_texture2d_4channel(test, device):
     # Generate test data
     data = generate_sin_pattern_2d(width, height, num_channels)
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height, dtype=wp.vec4f, device=device)
@@ -452,15 +440,12 @@ def test_texture2d_linear_filter(test, device):
     # Generate test data
     data = generate_sin_pattern_2d(width, height, num_channels)
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.LINEAR,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.LINEAR,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height, dtype=float, device=device)
@@ -486,10 +471,7 @@ def test_texture2d_resolution_query(test, device):
 
     data = np.zeros((height, width, 4), dtype=np.float32)
 
-    try:
-        tex = wp.Texture2D(data, device=device)
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture2D(data, device=device)
 
     # Test resolution queries in kernel
     wp.launch(
@@ -508,15 +490,12 @@ def test_texture3d_1channel(test, device):
     # Generate test data
     data = generate_sin_pattern_3d(width, height, depth, num_channels)
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.NEAREST,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.NEAREST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height * depth, dtype=float, device=device)
@@ -544,15 +523,12 @@ def test_texture3d_2channel(test, device):
     # Generate test data
     data = generate_sin_pattern_3d(width, height, depth, num_channels)
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.NEAREST,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.NEAREST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height * depth, dtype=wp.vec2f, device=device)
@@ -580,15 +556,12 @@ def test_texture3d_vec3(test, device):
     # Generate test data
     data = generate_sin_pattern_3d(width, height, depth, num_channels)
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.NEAREST,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.NEAREST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height * depth, dtype=wp.vec3f, device=device)
@@ -616,15 +589,12 @@ def test_texture3d_4channel(test, device):
     # Generate test data
     data = generate_sin_pattern_3d(width, height, depth, num_channels)
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.NEAREST,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.NEAREST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height * depth, dtype=wp.vec4f, device=device)
@@ -652,15 +622,12 @@ def test_texture3d_linear_filter(test, device):
     # Generate test data
     data = generate_sin_pattern_3d(width, height, depth, num_channels)
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.LINEAR,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.LINEAR,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Create output array
     output = wp.zeros(width * height * depth, dtype=float, device=device)
@@ -686,10 +653,7 @@ def test_texture3d_resolution_query(test, device):
 
     data = np.zeros((depth, height, width), dtype=np.float32)
 
-    try:
-        tex = wp.Texture3D(data, device=device)
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed (native library may need rebuild): {e}")
+    tex = wp.Texture3D(data, device=device)
 
     # Test resolution queries in kernel
     wp.launch(
@@ -754,15 +718,12 @@ def test_texture2d_nearest_interpolation(test, device):
     width, height = 2, 2
     data = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Sample at texel centers - should return exact values
     # Texel centers for 2x2 texture: (0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)
@@ -820,15 +781,12 @@ def test_texture2d_linear_interpolation(test, device):
     width, height = 2, 2
     data = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.LINEAR,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.LINEAR,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Sample at the exact center (0.5, 0.5) - should be average of all 4 texels
     # With bilinear interpolation: (0 + 1 + 2 + 3) / 4 = 1.5
@@ -911,15 +869,12 @@ def test_texture3d_nearest_interpolation(test, device):
     # z=0: [[0, 1], [2, 3]]
     # z=1: [[4, 5], [6, 7]]
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.NEAREST,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.NEAREST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Sample at voxel centers
     uvws_np = np.array(
@@ -957,15 +912,12 @@ def test_texture3d_linear_interpolation(test, device):
     width, height, depth = 2, 2, 2
     data = np.arange(8, dtype=np.float32).reshape((2, 2, 2))
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.LINEAR,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.LINEAR,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     # Sample at the center (0.5, 0.5, 0.5) - should be average of all 8 voxels
     # (0 + 1 + 2 + 3 + 4 + 5 + 6 + 7) / 8 = 3.5
@@ -1035,15 +987,12 @@ def test_texture2d_uint8(test, device):
         dtype=np.uint8,
     )
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     test.assertEqual(tex.dtype, np.uint8)
 
@@ -1086,15 +1035,12 @@ def test_texture2d_uint16(test, device):
         dtype=np.uint16,
     )
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.NEAREST,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.NEAREST,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     test.assertEqual(tex.dtype, np.uint16)
 
@@ -1137,15 +1083,12 @@ def test_texture3d_uint8(test, device):
         dtype=np.uint8,
     )
 
-    try:
-        tex = wp.Texture3D(
-            data,
-            filter_mode=wp.Texture3D.NEAREST,
-            address_mode=wp.Texture3D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.NEAREST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
 
     test.assertEqual(tex.dtype, np.uint8)
 
@@ -1187,15 +1130,12 @@ def test_texture2d_uint8_linear_interpolation(test, device):
         dtype=np.uint8,
     )
 
-    try:
-        tex = wp.Texture2D(
-            data,
-            filter_mode=wp.Texture2D.LINEAR,
-            address_mode=wp.Texture2D.CLAMP,
-            device=device,
-        )
-    except (RuntimeError, AttributeError) as e:
-        test.skipTest(f"Texture creation failed: {e}")
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.LINEAR,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
 
     # Sample at center - should interpolate
     uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)

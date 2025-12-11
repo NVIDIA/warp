@@ -1730,6 +1730,54 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 .. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
 
 
+Textures
+########
+
+Warp provides :class:`Texture2D` and :class:`Texture3D` classes for hardware-accelerated texture sampling
+on CUDA devices. Textures support bilinear/trilinear interpolation and various addressing modes
+(wrap, clamp, mirror, border), making them ideal for efficiently sampling regularly-gridded data.
+
+Textures can be created from NumPy arrays or Warp arrays::
+
+    import warp as wp
+    import numpy as np
+
+    # Create a 256x256 RGBA 2D texture
+    data = np.random.rand(256, 256, 4).astype(np.float32)
+    tex2d = wp.Texture2D(data, filter_mode=wp.Texture2D.LINEAR, device="cuda:0")
+
+    # Create a 64x64x64 single-channel 3D texture
+    data3d = np.random.rand(64, 64, 64).astype(np.float32)
+    tex3d = wp.Texture3D(data3d, filter_mode=wp.Texture3D.LINEAR, device="cuda:0")
+
+Textures can be sampled inside kernels using the ``tex2d_*`` and ``tex3d_*`` functions::
+
+    @wp.kernel
+    def sample_texture(
+        tex: wp.Texture2D,
+        uvs: wp.array(dtype=wp.vec2f),
+        output: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        uv = uvs[tid]
+        output[tid] = wp.tex2d_float(tex, uv[0], uv[1])
+
+Supported data types include ``uint8``, ``uint16``, and ``float32``. Integer textures (uint8, uint16)
+are automatically normalized to the [0, 1] range when sampled.
+
+.. autoclass:: Texture2D
+    :members:
+    :undoc-members:
+    :exclude-members: vars
+
+.. autoclass:: Texture3D
+    :members:
+    :undoc-members:
+    :exclude-members: vars
+
+.. seealso:: `Reference <functions.html#textures>`__ for the texture sampling functions available in kernels.
+
+
 Bounding Value Hierarchies (BVH)
 ################################
 
