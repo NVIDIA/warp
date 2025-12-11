@@ -4062,32 +4062,32 @@ def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     ...
 
 @over
-def texture_width(tex: texture2d_t) -> int32:
+def texture_width(tex: Texture2D) -> int32:
     """Return the width of a 2D texture in pixels."""
     ...
 
 @over
-def texture_width(tex: texture3d_t) -> int32:
+def texture_width(tex: Texture3D) -> int32:
     """Return the width of a 3D texture in pixels."""
     ...
 
 @over
-def texture_height(tex: texture2d_t) -> int32:
+def texture_height(tex: Texture2D) -> int32:
     """Return the height of a 2D texture in pixels."""
     ...
 
 @over
-def texture_height(tex: texture3d_t) -> int32:
+def texture_height(tex: Texture3D) -> int32:
     """Return the height of a 3D texture in pixels."""
     ...
 
 @over
-def texture_depth(tex: texture3d_t) -> int32:
+def texture_depth(tex: Texture3D) -> int32:
     """Return the depth of a 3D texture in pixels."""
     ...
 
 @over
-def tex2d_float(tex: texture2d_t, u: float32, v: float32) -> float:
+def tex2d_float(tex: Texture2D, u: float32, v: float32) -> float:
     """Sample a 2D texture at the given normalized UV coordinates.
 
     Returns a single float value. Coordinates are in the range [0, 1].
@@ -4096,7 +4096,7 @@ def tex2d_float(tex: texture2d_t, u: float32, v: float32) -> float:
     ...
 
 @over
-def tex2d_vec2(tex: texture2d_t, u: float32, v: float32) -> vec2f:
+def tex2d_vec2(tex: Texture2D, u: float32, v: float32) -> vec2f:
     """Sample a 2D texture at the given normalized UV coordinates.
 
     Returns a vec2f value. Coordinates are in the range [0, 1].
@@ -4105,7 +4105,7 @@ def tex2d_vec2(tex: texture2d_t, u: float32, v: float32) -> vec2f:
     ...
 
 @over
-def tex2d_vec3(tex: texture2d_t, u: float32, v: float32) -> vec3f:
+def tex2d_vec3(tex: Texture2D, u: float32, v: float32) -> vec3f:
     """Sample a 2D texture at the given normalized UV coordinates.
 
     Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
@@ -4114,7 +4114,7 @@ def tex2d_vec3(tex: texture2d_t, u: float32, v: float32) -> vec3f:
     ...
 
 @over
-def tex2d_vec4(tex: texture2d_t, u: float32, v: float32) -> vec4f:
+def tex2d_vec4(tex: Texture2D, u: float32, v: float32) -> vec4f:
     """Sample a 2D texture at the given normalized UV coordinates.
 
     Returns a vec4f value. Coordinates are in the range [0, 1].
@@ -4123,7 +4123,7 @@ def tex2d_vec4(tex: texture2d_t, u: float32, v: float32) -> vec4f:
     ...
 
 @over
-def tex3d_float(tex: texture3d_t, u: float32, v: float32, w: float32) -> float:
+def tex3d_float(tex: Texture3D, u: float32, v: float32, w: float32) -> float:
     """Sample a 3D texture at the given normalized UVW coordinates.
 
     Returns a single float value. Coordinates are in the range [0, 1].
@@ -4132,7 +4132,7 @@ def tex3d_float(tex: texture3d_t, u: float32, v: float32, w: float32) -> float:
     ...
 
 @over
-def tex3d_vec2(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec2f:
+def tex3d_vec2(tex: Texture3D, u: float32, v: float32, w: float32) -> vec2f:
     """Sample a 3D texture at the given normalized UVW coordinates.
 
     Returns a vec2f value. Coordinates are in the range [0, 1].
@@ -4141,7 +4141,7 @@ def tex3d_vec2(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec2f:
     ...
 
 @over
-def tex3d_vec3(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec3f:
+def tex3d_vec3(tex: Texture3D, u: float32, v: float32, w: float32) -> vec3f:
     """Sample a 3D texture at the given normalized UVW coordinates.
 
     Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
@@ -4150,7 +4150,7 @@ def tex3d_vec3(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec3f:
     ...
 
 @over
-def tex3d_vec4(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec4f:
+def tex3d_vec4(tex: Texture3D, u: float32, v: float32, w: float32) -> vec4f:
     """Sample a 3D texture at the given normalized UVW coordinates.
 
     Returns a vec4f value. Coordinates are in the range [0, 1].

@@ -6318,7 +6318,7 @@ Volumes
 
 Textures
 ---------------
-.. py:function:: texture_width(tex: texture2d_t) -> int32
+.. py:function:: texture_width(tex: Texture2D) -> int32
 
     .. hlist::
        :columns: 8
@@ -6329,7 +6329,7 @@ Textures
     Return the width of a 2D texture in pixels.
 
 
-.. py:function:: texture_width(tex: texture3d_t) -> int32
+.. py:function:: texture_width(tex: Texture3D) -> int32
     :noindex:
     :nocontentsentry:
 
@@ -6342,7 +6342,7 @@ Textures
     Return the width of a 3D texture in pixels.
 
 
-.. py:function:: texture_height(tex: texture2d_t) -> int32
+.. py:function:: texture_height(tex: Texture2D) -> int32
 
     .. hlist::
        :columns: 8
@@ -6353,7 +6353,7 @@ Textures
     Return the height of a 2D texture in pixels.
 
 
-.. py:function:: texture_height(tex: texture3d_t) -> int32
+.. py:function:: texture_height(tex: Texture3D) -> int32
     :noindex:
     :nocontentsentry:
 
@@ -6366,7 +6366,7 @@ Textures
     Return the height of a 3D texture in pixels.
 
 
-.. py:function:: texture_depth(tex: texture3d_t) -> int32
+.. py:function:: texture_depth(tex: Texture3D) -> int32
 
     .. hlist::
        :columns: 8
@@ -6377,7 +6377,7 @@ Textures
     Return the depth of a 3D texture in pixels.
 
 
-.. py:function:: tex2d_float(tex: texture2d_t, u: float32, v: float32) -> float
+.. py:function:: tex2d_float(tex: Texture2D, u: float32, v: float32) -> float
 
     .. hlist::
        :columns: 8
@@ -6391,7 +6391,7 @@ Textures
     The texture must have 1 channel.
 
 
-.. py:function:: tex2d_vec2(tex: texture2d_t, u: float32, v: float32) -> vec2f
+.. py:function:: tex2d_vec2(tex: Texture2D, u: float32, v: float32) -> vec2f
 
     .. hlist::
        :columns: 8
@@ -6405,7 +6405,7 @@ Textures
     The texture must have 2 channels.
 
 
-.. py:function:: tex2d_vec3(tex: texture2d_t, u: float32, v: float32) -> vec3f
+.. py:function:: tex2d_vec3(tex: Texture2D, u: float32, v: float32) -> vec3f
 
     .. hlist::
        :columns: 8
@@ -6419,7 +6419,7 @@ Textures
     The texture must have 4 channels.
 
 
-.. py:function:: tex2d_vec4(tex: texture2d_t, u: float32, v: float32) -> vec4f
+.. py:function:: tex2d_vec4(tex: Texture2D, u: float32, v: float32) -> vec4f
 
     .. hlist::
        :columns: 8
@@ -6433,7 +6433,7 @@ Textures
     The texture must have 4 channels.
 
 
-.. py:function:: tex3d_float(tex: texture3d_t, u: float32, v: float32, w: float32) -> float
+.. py:function:: tex3d_float(tex: Texture3D, u: float32, v: float32, w: float32) -> float
 
     .. hlist::
        :columns: 8
@@ -6447,7 +6447,7 @@ Textures
     The texture must have 1 channel.
 
 
-.. py:function:: tex3d_vec2(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec2f
+.. py:function:: tex3d_vec2(tex: Texture3D, u: float32, v: float32, w: float32) -> vec2f
 
     .. hlist::
        :columns: 8
@@ -6461,7 +6461,7 @@ Textures
     The texture must have 2 channels.
 
 
-.. py:function:: tex3d_vec3(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec3f
+.. py:function:: tex3d_vec3(tex: Texture3D, u: float32, v: float32, w: float32) -> vec3f
 
     .. hlist::
        :columns: 8
@@ -6475,7 +6475,7 @@ Textures
     The texture must have 4 channels.
 
 
-.. py:function:: tex3d_vec4(tex: texture3d_t, u: float32, v: float32, w: float32) -> vec4f
+.. py:function:: tex3d_vec4(tex: Texture3D, u: float32, v: float32, w: float32) -> vec4f
 
     .. hlist::
        :columns: 8
