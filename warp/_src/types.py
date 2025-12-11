@@ -2117,7 +2117,7 @@ def type_is_transformation(t):
     return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Transformation
 
 
-def type_is_compound(t):
+def type_is_composite(t):
     return isinstance(t, type) and hasattr(t, "_wp_generic_type_hint_")
 
 
@@ -2126,7 +2126,7 @@ value_types = (int, float, builtins.bool, *scalar_and_bool_types)
 
 # returns true for all value types (int, float, bool, scalars, vectors, matrices)
 def type_is_value(t: Any) -> builtins.bool:
-    return t in value_types or type_is_compound(t)
+    return t in value_types or type_is_composite(t)
 
 
 def type_is_struct(t: Any) -> builtins.bool:
@@ -2174,12 +2174,12 @@ def is_transformation(x):
     return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Transformation
 
 
-def is_compound(x):
+def is_composite(x):
     return not isinstance(x, type) and hasattr(x, "_wp_generic_type_hint_")
 
 
 def is_value(x: Any) -> builtins.bool:
-    return isinstance(x, value_types) or is_compound(x)
+    return isinstance(x, value_types) or is_composite(x)
 
 
 def is_struct(x) -> builtins.bool:

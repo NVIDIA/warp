@@ -2546,7 +2546,7 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             if hasattr(target_type, "_wp_generic_type_hint_"):
-                # Whole compound type.
+                # Whole composite type.
                 bounds = (0, target_type._shape_[0], 1)
             elif is_array(target_type):
                 raise WarpCodegenTypeError(
@@ -2679,7 +2679,7 @@ class Adjoint:
 
     def eval_indices(adj, target_type, indices):
         nodes = indices
-        if type_is_compound(target_type):
+        if type_is_composite(target_type):
             indices = []
             for dim, node in enumerate(nodes):
                 if isinstance(node, ast.Slice):

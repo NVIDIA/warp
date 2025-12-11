@@ -518,7 +518,7 @@ class Function:
 def get_builtin_type(return_type: type) -> type:
     # The return_type might just be vector_t(length=3,dtype=wp.float32), so we've got to match that
     # in the list of hard coded types so it knows it's returning one of them:
-    if warp._src.types.type_is_compound(return_type):
+    if warp._src.types.type_is_composite(return_type):
         return_type_match = tuple(
             x
             for x in generic_vtypes
@@ -1462,7 +1462,7 @@ def add_builtin(
         # collect the parent type names of all the generic arguments:
         genericset = set()
         for t in func_arg_types.values():
-            if warp._src.types.type_is_compound(t):
+            if warp._src.types.type_is_composite(t):
                 genericset.add(t._wp_generic_type_hint_)
             elif warp._src.types.type_is_generic_scalar(t):
                 genericset.add(t)
@@ -1502,7 +1502,7 @@ def add_builtin(
             for param in input_types.values():
                 if warp._src.types.type_is_generic_scalar(param):
                     l = (stype,)
-                elif warp._src.types.type_is_compound(param):
+                elif warp._src.types.type_is_composite(param):
                     l = tuple(
                         x
                         for x in consistenttypes[param._wp_generic_type_hint_]

@@ -16,7 +16,7 @@
 # isort: skip_file
 
 from warp._src.types import is_array as is_array
-from warp._src.types import is_compound as is_compound
+from warp._src.types import is_composite as is_composite
 from warp._src.types import is_float as is_float
 from warp._src.types import is_int as is_int
 from warp._src.types import is_matrix as is_matrix
@@ -32,7 +32,7 @@ from warp._src.types import quaternion as quaternion
 from warp._src.types import transformation as transformation
 from warp._src.types import type_ctype as type_ctype
 from warp._src.types import type_is_array as type_is_array
-from warp._src.types import type_is_compound as type_is_compound
+from warp._src.types import type_is_composite as type_is_composite
 from warp._src.types import type_is_float as type_is_float
 from warp._src.types import type_is_int as type_is_int
 from warp._src.types import type_is_matrix as type_is_matrix
