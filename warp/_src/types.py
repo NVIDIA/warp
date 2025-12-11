@@ -515,7 +515,7 @@ def vector(length, dtype):
             return f"[{', '.join(map(str, self))}]"
 
         def __repr__(self):
-            return f"{type_repr(self)}([{', '.join(map(repr, self))}])"
+            return f"{type_repr(type(self))}([{', '.join(map(repr, self))}])"
 
         def __eq__(self, other):
             if self._length_ != safe_len(other):
