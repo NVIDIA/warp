@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Optional
 
 import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
@@ -36,7 +36,7 @@ class Integrand:
     It will get transformed to a proper warp.Function by resolving concrete Field types at call time.
     """
 
-    def __init__(self, func: Callable, kernel_options: Optional[Dict[str, Any]] = None):
+    def __init__(self, func: Callable, kernel_options: Optional[dict[str, Any]] = None):
         self.func = func
         self.name = make_full_qualified_name(self.func)
         self.module = wp.get_module(self.func.__module__)
@@ -44,7 +44,7 @@ class Integrand:
         self.kernel_options = {} if kernel_options is None else kernel_options
 
         # Operators for each field argument. This will be populated at first integrate call
-        self.operators: Optional[Dict[str, Set[Operator]]] = None
+        self.operators: Optional[dict[str, set[Operator]]] = None
 
         # Cached kernels for each integrand call
         self.cached_kernels = {}
@@ -70,7 +70,7 @@ class Operator:
         self.field_result = field_result
 
 
-def integrand(func: Optional[Callable] = None, kernel_options: Optional[Dict[str, Any]] = None):
+def integrand(func: Optional[Callable] = None, kernel_options: Optional[dict[str, Any]] = None):
     """Decorator for functions to be integrated (or interpolated) using warp.fem
 
     Args:

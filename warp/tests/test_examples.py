@@ -41,7 +41,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from typing import Any, Dict, Optional, Type
+from typing import Any, Optional
 
 import warp as wp
 import warp.tests.unittest_utils
@@ -55,7 +55,7 @@ from warp.tests.unittest_utils import (
 )
 
 
-def _build_command_line_options(test_options: Dict[str, Any]) -> list:
+def _build_command_line_options(test_options: dict[str, Any]) -> list:
     """Helper function to build command-line options from the test options dictionary."""
     additional_options = []
 
@@ -69,22 +69,13 @@ def _build_command_line_options(test_options: Dict[str, Any]) -> list:
     return additional_options
 
 
-def _merge_options(base_options: Dict[str, Any], device_options: Dict[str, Any]) -> Dict[str, Any]:
-    """Helper function to merge base test options with device-specific test options."""
-    merged_options = base_options.copy()
-
-    #  Update options with device-specific dictionary, overwriting existing keys with the more-specific values
-    merged_options.update(device_options)
-    return merged_options
-
-
 def add_example_test(
-    cls: Type,
+    cls: type,
     name: str,
     devices: Optional[list] = None,
-    test_options: Optional[Dict[str, Any]] = None,
-    test_options_cpu: Optional[Dict[str, Any]] = None,
-    test_options_cuda: Optional[Dict[str, Any]] = None,
+    test_options: Optional[dict[str, Any]] = None,
+    test_options_cpu: Optional[dict[str, Any]] = None,
+    test_options_cuda: Optional[dict[str, Any]] = None,
 ):
     """Registers a Warp example to run on ``devices`` as a TestCase."""
 
@@ -97,9 +88,9 @@ def add_example_test(
 
     def run(test, device):
         if wp.get_device(device).is_cuda:
-            options = _merge_options(test_options, test_options_cuda)
+            options = test_options | test_options_cuda
         else:
-            options = _merge_options(test_options, test_options_cpu)
+            options = test_options | test_options_cpu
 
         # Mark the test as skipped if Torch is not installed but required
         torch_required = options.pop("torch_required", False)

@@ -18,7 +18,8 @@ from __future__ import annotations
 import inspect
 import itertools
 import re
-from typing import Any, Callable, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 import numpy as np
 

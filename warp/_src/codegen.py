@@ -28,7 +28,8 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, ClassVar, Mapping, Sequence, get_args, get_origin
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, ClassVar, get_args, get_origin
 
 import warp._src.config
 from warp._src.types import *
@@ -2550,16 +2551,6 @@ class Adjoint:
 
         return out
 
-    def emit_Index(adj, node):
-        # the ast.Index node appears in 3.7 versions
-        # when performing array slices, e.g.: x = arr[i]
-        # but in version 3.8 and higher it does not appear
-
-        if hasattr(node, "is_adjoint"):
-            node.value.is_adjoint = True
-
-        return adj.eval(node.value)
-
     def eval_indices(adj, target_type, indices):
         nodes = indices
         if type_is_compound(target_type):
@@ -3146,7 +3137,6 @@ class Adjoint:
         ast.Continue: emit_Continue,
         ast.Expr: emit_Expr,
         ast.Call: emit_Call,
-        ast.Index: emit_Index,  # Deprecated in 3.9
         ast.Subscript: emit_Subscript,
         ast.Slice: emit_Slice,
         ast.Assign: emit_Assign,
@@ -3208,10 +3198,8 @@ class Adjoint:
             )
         )
 
-        vars_dict = {}
-        vars_dict.update(adj.func.__globals__)
         # variables captured in closure have precedence over global vars
-        vars_dict.update(closure_vars)
+        vars_dict = adj.func.__globals__ | closure_vars
 
         return vars_dict
 
@@ -3365,10 +3353,8 @@ class Adjoint:
 
         # Replace all constant `len()` expressions with their value.
         if "len" in static_code:
-            len_expr_ctx = vars_dict.copy()
             constant_types = {k: v.type for k, v in adj.symbols.items() if isinstance(v, Var) and v.type is not None}
-            len_expr_ctx.update(constant_types)
-            len_expr_ctx.update({"len": warp._src.types.type_length})
+            len_expr_ctx = vars_dict | constant_types | {"len": warp._src.types.type_length}
 
             # We want to replace the expression code in-place,
             # so reparse it to get the correct column info.
@@ -3886,7 +3872,7 @@ def indent(args, stops=1):
 
 
 # generates a C function name based on the python function name
-def make_full_qualified_name(func: Union[str, Callable]) -> str:
+def make_full_qualified_name(func: str | Callable) -> str:
     if not isinstance(func, str):
         func = func.__qualname__
     return re.sub("[^0-9a-zA-Z_]+", "", func.replace(".", "__"))
@@ -4312,8 +4298,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
 
 def codegen_kernel(kernel, device, options):
     # Update the module's options with the ones defined on the kernel, if any.
-    options = dict(options)
-    options.update(kernel.options)
+    options = options | kernel.options
 
     adj = kernel.adj
 
@@ -4414,8 +4399,7 @@ def codegen_module(kernel, device, options):
         return ""
 
     # Update the module's options with the ones defined on the kernel, if any.
-    options = dict(options)
-    options.update(kernel.options)
+    options = options | kernel.options
 
     template = ""
     template_fmt_args = {

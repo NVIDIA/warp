@@ -15,7 +15,7 @@
 
 
 import gc
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 
@@ -231,7 +231,7 @@ def bsr_cg(
     method: str = "cg",
     M: BsrMatrix = None,
     mv_routine_uses_multiple_cuda_contexts: bool = False,
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """Solves the linear system A x = b using an iterative solver, optionally with diagonal preconditioning
 
     Args:
@@ -250,7 +250,6 @@ def bsr_cg(
 
     Returns:
         Tuple (residual norm, iteration count)
-
     """
 
     if M is not None:
@@ -458,7 +457,7 @@ def bsr_solve_saddle(
     check_every=10,
     quiet=False,
     method: str = "cg",
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """Solves the saddle-point linear system [A B^T; B 0] (x_u; x_p) = (b_u; b_p) using an iterative solver, optionally with diagonal preconditioning
 
     Args:
@@ -475,7 +474,6 @@ def bsr_solve_saddle(
 
     Returns:
         Tuple (residual norm, iteration count)
-
     """
     x = wp.empty(dtype=saddle_system.scalar_type, shape=saddle_system.shape[0], device=saddle_system.device)
     b = wp.empty_like(x)
@@ -613,7 +611,7 @@ class Plot:
         else:
             self._usd_renderer.render_points(name, points, radius=self.default_point_radius)
 
-    def plot(self, options: Optional[Dict[str, Any]] = None, backend: str = "auto"):
+    def plot(self, options: Optional[dict[str, Any]] = None, backend: str = "auto"):
         if options is None:
             options = {}
 
@@ -631,7 +629,7 @@ class Plot:
             except ModuleNotFoundError:
                 wp.utils.warn("pyvista or matplotlib must be installed to visualize solution results")
 
-    def _plot_pyvista(self, options: Dict[str, Any]):
+    def _plot_pyvista(self, options: dict[str, Any]):
         import pyvista  # noqa: PLC0415
 
         grids = {}
@@ -791,7 +789,7 @@ class Plot:
             set_frame_data(frame)
             plotter.update()
 
-    def _plot_matplotlib(self, options: Dict[str, Any]):
+    def _plot_matplotlib(self, options: dict[str, Any]):
         import matplotlib.animation as animation  # noqa: PLC0415
         import matplotlib.pyplot as plt  # noqa: PLC0415
         from matplotlib import cm  # noqa: PLC0415
@@ -891,7 +889,7 @@ class Plot:
         plt.show()
 
     @staticmethod
-    def _get_field_value_range(values, field_options: Dict[str, Any]):
+    def _get_field_value_range(values, field_options: dict[str, Any]):
         value_range = field_options.get("clim", None)
         if value_range is None:
             value_range = (

@@ -43,7 +43,7 @@ Runtime requirements
 
 The following requirements apply when running Warp:
 
-**Python**: Version 3.8 or newer (3.9+ recommended)
+**Python**: Version 3.9 or newer
 
 **Dependencies**: `NumPy <https://numpy.org>`__ (required)
 
@@ -93,7 +93,7 @@ To build Warp from source, you need:
 
 **Core Tools:**
 
-* Python 3.8+
+* Python 3.9+
 * `Git LFS <https://git-lfs.com>`__ (for assets used in tests, examples, and documentation)
 * NumPy
 

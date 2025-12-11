@@ -15,12 +15,8 @@
 
 """Property to pick the source used to infer an attribute's value."""
 
-from typing import (
-    Any,
-    Callable,
-    Sequence,
-    Tuple,
-)
+from collections.abc import Sequence
+from typing import Any, Callable
 
 import omni.ui as ui
 from omni.kit.property.usd.usd_attribute_model import TfTokenAttributeModel
@@ -37,7 +33,7 @@ def get_source_picker_prop_builder(
 
     def fn(ui_prop: UsdPropertyUiEntry, *args):
         class _Model(TfTokenAttributeModel):
-            def _get_allowed_tokens(self, _) -> Tuple[str]:
+            def _get_allowed_tokens(self, _) -> tuple[str]:
                 return tuple(sources)
 
         with ui.HStack(spacing=HORIZONTAL_SPACING):

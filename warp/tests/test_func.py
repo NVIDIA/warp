@@ -15,7 +15,7 @@
 
 import math
 import unittest
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -207,7 +207,7 @@ def test_user_func_with_defaults(test, device):
 
 
 @wp.func
-def user_func_return_multiple_values(a: int, b: float) -> Tuple[int, float]:
+def user_func_return_multiple_values(a: int, b: float) -> tuple[int, float]:
     return a + a, b * b
 
 

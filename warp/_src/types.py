@@ -25,16 +25,14 @@ import struct
 import sys
 import types
 import zlib
+from collections.abc import Mapping, Sequence
 from typing import (
     Any,
     Callable,
     ClassVar,
     Generic,
     Literal,
-    Mapping,
     NamedTuple,
-    Sequence,
-    Tuple,
     TypeVar,
     get_args,
     get_origin,
@@ -53,7 +51,7 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows")
 Cols = TypeVar("Cols")
 DType = TypeVar("DType")
-Shape = TypeVar("Shape", bound=Tuple[int, ...])
+Shape = TypeVar("Shape", bound=tuple[int, ...])
 
 Int = TypeVar("Int")
 Float = TypeVar("Float")
@@ -328,7 +326,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def vector(length, dtype):
     # canonicalize dtype
     if dtype is int:
@@ -541,7 +539,7 @@ def vector(length, dtype):
     return vec_t
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def matrix(shape, dtype):
     assert len(shape) == 2
 
@@ -797,7 +795,7 @@ def matrix(shape, dtype):
             super().__setitem__(slice(col_start, col_end, col_step), v)
 
         def __getitem__(self, key):
-            if isinstance(key, Tuple):
+            if isinstance(key, tuple):
                 # element indexing m[i,j]
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
@@ -846,7 +844,7 @@ def matrix(shape, dtype):
                 raise KeyError(f"Invalid key {key}, expected int or pair of ints")
 
         def __setitem__(self, key, value):
-            if isinstance(key, Tuple):
+            if isinstance(key, tuple):
                 # element indexing m[i,j] = x
                 if len(key) != 2:
                     raise KeyError(f"Invalid key, expected one or two indices, got {len(key)}")
@@ -2035,6 +2033,12 @@ def type_repr(t) -> str:
         return f"{type(t).__name__}(shape={t.shape}, dtype={type_repr(t.dtype)})"
     if is_tuple(t):
         return f"tuple({', '.join(type_repr(x) for x in t.types)})"
+    if get_origin(t) is tuple:
+        # Handle Python 3.9+ native tuple[...] syntax
+        args = get_args(t)
+        if args:
+            return f"tuple({', '.join(type_repr(x) for x in args)})"
+        return "tuple"
     if is_tile(t):
         return f"tile(shape={t.shape}, dtype={type_repr(t.dtype)})"
     if isinstance(t, warp._src.codegen.Struct):
@@ -2255,6 +2259,9 @@ def types_equal_generic(a, b, match_generic=True):
             a = a.types
         elif get_origin(a) is tuple:
             a = get_args(a)
+        elif a is tuple:
+            # Handle bare tuple type (matches any tuple)
+            a = ()
         else:
             a_is_tuple = False
             a_is_seq = isinstance(a, Sequence)
@@ -2265,13 +2272,16 @@ def types_equal_generic(a, b, match_generic=True):
             b = b.types
         elif get_origin(b) is tuple:
             b = get_args(b)
+        elif b is tuple:
+            # Handle bare tuple type (matches any tuple)
+            b = ()
         else:
             b_is_tuple = False
             b_is_seq = isinstance(b, Sequence)
 
         if a_is_seq and b_is_seq:
             if (not a and a_is_tuple) or (not b and b_is_tuple):
-                # We have a bare tuple definition like `Tuple`, which matches to anything.
+                # We have a bare tuple definition like `tuple`, which matches to anything.
                 return True
 
             a_has_ellipsis = a and a[-1] is Ellipsis
@@ -3093,7 +3103,7 @@ class array(Array[DType]):
             key = [key]
         elif isinstance(key, (slice, array)):
             key = [key]
-        elif isinstance(key, Tuple):
+        elif isinstance(key, tuple):
             contains_slice = False
             contains_indices = False
             for k in key:

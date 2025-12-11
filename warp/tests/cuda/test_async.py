@@ -340,10 +340,11 @@ class CopyParams:
 
 def copy_template(test, src_ctor, dst_ctor, src_device, dst_device, n, params: CopyParams):
     # activate the given memory pool configuration
-    with wp.ScopedMempool(src_device, params.src_use_mempool), wp.ScopedMempool(
-        dst_device, params.dst_use_mempool
-    ), wp.ScopedMempoolAccess(dst_device, src_device, params.access_dst_src), wp.ScopedMempoolAccess(
-        src_device, dst_device, params.access_src_dst
+    with (
+        wp.ScopedMempool(src_device, params.src_use_mempool),
+        wp.ScopedMempool(dst_device, params.dst_use_mempool),
+        wp.ScopedMempoolAccess(dst_device, src_device, params.access_dst_src),
+        wp.ScopedMempoolAccess(src_device, dst_device, params.access_src_dst),
     ):
         # make sure the data are different between tests by adding a unique offset
         # this avoids aliasing issues with older memory

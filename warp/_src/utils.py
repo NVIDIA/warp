@@ -1086,9 +1086,7 @@ def map(
             tids=", ".join(tids),
             load_args="\n    ".join(load_args),
         )
-        namespace = {}
-        namespace.update({"wp": wp, "warp": wp, func_name: wp_func, "Any": Any})
-        namespace.update(referenced_modules)
+        namespace = {"wp": wp, "warp": wp, func_name: wp_func, "Any": Any} | referenced_modules
         exec(code, namespace)
 
         kernel = wp.Kernel(namespace["map_kernel"], key="map_kernel", source=code, module=module)
@@ -1639,13 +1637,13 @@ def timing_end(synchronize: bool = True) -> list[TimingResult]:
         if filter == TIMING_KERNEL:
             if name.endswith("forward"):
                 # strip trailing "_cuda_kernel_forward"
-                name = f"forward kernel {name[:-20]}"
+                name = f"forward kernel {name.removesuffix('_cuda_kernel_forward')}"
             else:
                 # strip trailing "_cuda_kernel_backward"
-                name = f"backward kernel {name[:-21]}"
+                name = f"backward kernel {name.removesuffix('_cuda_kernel_backward')}"
         elif filter == TIMING_KERNEL_BUILTIN:
             if name.startswith("wp::"):
-                name = f"builtin kernel {name[4:]}"
+                name = f"builtin kernel {name.removeprefix('wp::')}"
             else:
                 name = f"builtin kernel {name}"
 

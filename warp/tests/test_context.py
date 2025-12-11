@@ -14,20 +14,19 @@
 # limitations under the License.
 
 import unittest
-from typing import List, Tuple
 
 import warp as wp
 
 
 class TestContext(unittest.TestCase):
     def test_context_type_str(self):
-        self.assertEqual(wp._src.context.type_str(List[int]), "List[int]")
-        self.assertEqual(wp._src.context.type_str(List[float]), "List[float]")
+        self.assertEqual(wp._src.context.type_str(list[int]), "list[int]")
+        self.assertEqual(wp._src.context.type_str(list[float]), "list[float]")
 
-        self.assertEqual(wp._src.context.type_str(Tuple[int]), "Tuple[int]")
-        self.assertEqual(wp._src.context.type_str(Tuple[float]), "Tuple[float]")
-        self.assertEqual(wp._src.context.type_str(Tuple[int, float]), "Tuple[int, float]")
-        self.assertEqual(wp._src.context.type_str(Tuple[int, ...]), "Tuple[int, ...]")
+        self.assertEqual(wp._src.context.type_str(tuple[int]), "tuple[int]")
+        self.assertEqual(wp._src.context.type_str(tuple[float]), "tuple[float]")
+        self.assertEqual(wp._src.context.type_str(tuple[int, float]), "tuple[int, float]")
+        self.assertEqual(wp._src.context.type_str(tuple[int, ...]), "tuple[int, ...]")
 
 
 if __name__ == "__main__":

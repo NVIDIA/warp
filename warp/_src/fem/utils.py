@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -87,7 +87,7 @@ def compress_node_indices(
     unique_node_count: wp.array(dtype=int) = None,
     unique_node_indices: wp.array(dtype=int) = None,
     temporary_store: cache.TemporaryStore = None,
-) -> Union[Tuple[cache.Temporary, cache.Temporary], Tuple[cache.Temporary, cache.Temporary, int, cache.Temporary]]:
+) -> Union[tuple[cache.Temporary, cache.Temporary], tuple[cache.Temporary, cache.Temporary, int, cache.Temporary]]:
     """
     Compress an unsorted list of node indices into:
      - the `node_offsets` array, giving for each node the start offset of corresponding indices in sorted_array_indices
@@ -176,7 +176,7 @@ def masked_indices(
     local_to_global: Optional[wp.array] = None,
     global_to_local: Optional[wp.array] = None,
     temporary_store: cache.TemporaryStore = None,
-) -> Tuple[wp.array, wp.array]:
+) -> tuple[wp.array, wp.array]:
     """
     From an array of boolean masks (must be either 0 or 1), returns:
       - Local to global map: The list of indices for which the mask is 1

@@ -157,7 +157,7 @@ def init_kernel_cache(path=None):
             # Add Windows long-path prefix, accounting for UNC shares.
             if cache_root_dir.startswith("\\\\"):
                 # UNC path  \\server\share\…  →  \\?\UNC\server\share\…
-                cache_root_dir = "\\\\?\\UNC\\" + cache_root_dir.lstrip("\\")
+                cache_root_dir = "\\\\?\\UNC\\" + cache_root_dir.removeprefix("\\\\")
             else:
                 # Drive-letter path  C:\…  →  \\?\C:\…
                 cache_root_dir = "\\\\?\\" + cache_root_dir

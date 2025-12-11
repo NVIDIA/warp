@@ -16,7 +16,6 @@
 """Tests for the mesh deformation sample scene."""
 
 import unittest
-from typing import Tuple
 
 import numpy as np
 import omni.graph.core as og
@@ -56,8 +55,8 @@ class TestSampleMeshDeformation(omni.kit.test.AsyncTestCase):
         points_attr = mesh_prim.GetAttribute("points")
 
         async def test_variant(
-            grid_size: Tuple[int, int],
-            grid_dims: Tuple[int, int],
+            grid_size: tuple[int, int],
+            grid_dims: tuple[int, int],
         ) -> None:
             grid_size_attr.set(grid_size)
             grid_dims_attr.set(grid_dims)

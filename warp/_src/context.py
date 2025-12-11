@@ -30,20 +30,15 @@ import platform
 import shutil
 import sys
 import types
-import typing
 import weakref
+from collections.abc import Iterable, Mapping, Sequence
 from copy import copy as shallowcopy
 from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Iterable,
-    List,
     Literal,
-    Mapping,
     NamedTuple,
-    Sequence,
-    Tuple,
     TypeVar,
     Union,
     get_args,
@@ -68,7 +63,7 @@ warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 def create_value_func(type):
     def value_func(arg_types, arg_values):
         hint_origin = getattr(type, "__origin__", None)
-        if hint_origin is not None and issubclass(hint_origin, typing.Tuple):
+        if hint_origin is not None and issubclass(hint_origin, tuple):
             return type.__args__
 
         return type
@@ -86,7 +81,7 @@ def get_function_args(func):
     return argspec.annotations
 
 
-complex_type_hints = (Any, Callable, Tuple)
+complex_type_hints = (Any, Callable, tuple)
 sequence_types = (list, tuple)
 
 function_key_counts: dict[str, int] = {}
@@ -272,10 +267,10 @@ class Function:
         signature_default_param_kind = inspect.Parameter.POSITIONAL_OR_KEYWORD
         for raw_param_name in self.input_types.keys():
             if raw_param_name.startswith("**"):
-                param_name = raw_param_name[2:]
+                param_name = raw_param_name.removeprefix("**")
                 param_kind = inspect.Parameter.VAR_KEYWORD
             elif raw_param_name.startswith("*"):
-                param_name = raw_param_name[1:]
+                param_name = raw_param_name.removeprefix("*")
                 param_kind = inspect.Parameter.VAR_POSITIONAL
 
                 # Once a variadic argument like `*args` is found, any following
@@ -570,7 +565,7 @@ class BuiltinCallDesc(NamedTuple):
     value_type: Any  # Return type.
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def get_builtin_call_desc(
     func: Function,
     param_types: Sequence,
@@ -1780,7 +1775,7 @@ class ModuleHasher:
         ch.update(bytes(func.key, "utf-8"))
 
         # include all concrete and generic overloads
-        overloads: dict[str, Function] = {**func.user_overloads, **func.user_templates}
+        overloads: dict[str, Function] = func.user_overloads | func.user_templates
         for sig in sorted(overloads.keys()):
             ovl = overloads[sig]
 
@@ -2095,8 +2090,7 @@ class ModuleExec:
 
         name = kernel.get_mangled_name()
 
-        options = dict(kernel.module.options)
-        options.update(kernel.options)
+        options = kernel.module.options | kernel.options
 
         if self.device.is_cuda:
             forward_name = name + "_cuda_kernel_forward"
@@ -2401,10 +2395,7 @@ class Module:
             # (only static expressions evaluated at declaration time so far).
             # We need to generate the code for the functions and kernels that have
             # unresolved static expressions and then compute the module hash again.
-            builder_options = {
-                **self.options,
-                "output_arch": None,
-            }
+            builder_options = self.options | {"output_arch": None}
             # build functions, kernels to resolve static expressions
             _ = ModuleBuilder(self, builder_options)
 
@@ -2510,11 +2501,8 @@ class Module:
         if output_name is None:
             output_name = self._get_compile_output_name(device, output_arch, use_ptx)
 
-        builder_options = {
-            **self.options,
-            # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-            "output_arch": output_arch,
-        }
+        # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
+        builder_options = self.options | {"output_arch": output_arch}
         builder = ModuleBuilder(
             self,
             builder_options,
@@ -3649,9 +3637,6 @@ class Graph:
 
 class Runtime:
     def __init__(self):
-        if sys.version_info < (3, 9):
-            warp._src.utils.warn(f"Python 3.9 or newer is recommended for running Warp, detected {sys.version_info}")
-
         if platform.system() == "Darwin" and platform.machine() == "x86_64":
             raise RuntimeError(
                 "Warp no longer supports Intel-based macOS (x86_64). "
@@ -8023,8 +8008,8 @@ def type_str(t):
         return "Callable"
     elif isinstance(t, int):
         return str(t)
-    elif isinstance(t, (List, tuple)):
-        return "Tuple[" + ", ".join(map(type_str, t)) + "]"
+    elif isinstance(t, (list, tuple)):
+        return "tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
         return f"Array[{type_str(t.dtype)}]"
     elif isinstance(t, warp.indexedarray):
@@ -8056,12 +8041,13 @@ def type_str(t):
 
         raise TypeError("Invalid vector or matrix dimensions")
     elif get_origin(t) in (list, tuple):
+        origin = get_origin(t)
         args = get_args(t)
         if args:
-            args_repr = ", ".join(type_str(x) for x in get_args(t))
-            return f"{t._name}[{args_repr}]"
+            args_repr = ", ".join(type_str(x) for x in args)
+            return f"{origin.__name__}[{args_repr}]"
         else:
-            return f"{t._name}"
+            return f"{origin.__name__}"
     elif t is Ellipsis:
         return "..."
     elif warp._src.types.is_tile(t):
@@ -8292,7 +8278,6 @@ def export_stubs(file):  # pragma: no cover
     )
     print("", file=file)
     print("from typing import Any", file=file)
-    print("from typing import Tuple", file=file)
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)

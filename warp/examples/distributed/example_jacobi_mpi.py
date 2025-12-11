@@ -33,7 +33,6 @@ References:
 
 import math
 import sys
-from typing import Tuple
 
 import numpy as np
 from mpi4py import MPI
@@ -84,7 +83,7 @@ def calc_default_device(mpi_comm: "MPI.Comm") -> wp.context.Device:
         return wp.get_device()
 
 
-def calc_decomp_1d(total_points: int, rank: int, total_ranks: int) -> Tuple[int, int]:
+def calc_decomp_1d(total_points: int, rank: int, total_ranks: int) -> tuple[int, int]:
     """Calculate a 1-D decomposition to divide ``total_points`` among ``total_ranks`` domains.
 
     Returns a tuple containing the starting index of the decomposition followed

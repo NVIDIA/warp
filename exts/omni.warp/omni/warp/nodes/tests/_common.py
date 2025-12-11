@@ -18,9 +18,9 @@
 import importlib
 import os
 import tempfile
+from collections.abc import Mapping
 from typing import (
     Any,
-    Mapping,
     Optional,
     Union,
 )

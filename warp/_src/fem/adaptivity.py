@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
@@ -30,7 +30,7 @@ _wp_module_name_ = "warp.fem.adaptivity"
 
 
 def adaptive_nanogrid_from_hierarchy(
-    grids: List[wp.Volume], grading: Optional[str] = None, temporary_store: Optional[cache.TemporaryStore] = None
+    grids: list[wp.Volume], grading: Optional[str] = None, temporary_store: Optional[cache.TemporaryStore] = None
 ) -> AdaptiveNanogrid:
     """
     Constructs a :class:`warp.fem.AdaptiveNanogrid` from a non-overlapping grid hierarchy.
@@ -209,7 +209,7 @@ def enforce_nanogrid_grading(
     level_count: int,
     grading: Optional[str] = None,
     temporary_store: Optional[cache.TemporaryStore] = None,
-) -> Tuple[wp.Volume, wp.array]:
+) -> tuple[wp.Volume, wp.array]:
     """
     Refines an adaptive grid such that if satisfies a grading condition.
 

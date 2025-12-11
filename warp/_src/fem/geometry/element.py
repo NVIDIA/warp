@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from enum import IntEnum
-from typing import List, Tuple
 
 import warp as wp
 from warp._src.fem.polynomial import Polynomial, quadrature_1d
@@ -56,7 +55,7 @@ class PrototypeElement:
         raise NotImplementedError
 
     @staticmethod
-    def instantiate_quadrature(order: int, family: Polynomial) -> Tuple[List[Coords], List[float]]:
+    def instantiate_quadrature(order: int, family: Polynomial) -> tuple[list[Coords], list[float]]:
         """Returns a quadrature of a given order for a prototypical element"""
         raise NotImplementedError
 

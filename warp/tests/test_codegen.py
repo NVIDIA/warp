@@ -15,7 +15,6 @@
 
 import sys
 import unittest
-from typing import Tuple
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -569,14 +568,14 @@ def test_error_return_annotation_mismatch(test, device):
         x = foo_2(123)
 
     @wp.func
-    def foo_3(x: int) -> Tuple[int, int]:
+    def foo_3(x: int) -> tuple[int, int]:
         return (x, 1.23)
 
     def kernel_3_fn():
         _x, _y = foo_3(123)
 
     @wp.func
-    def foo_4(x: int) -> Tuple[int, int, int]:
+    def foo_4(x: int) -> tuple[int, int, int]:
         return (x + x, x * x)
 
     def kernel_4_fn():
@@ -599,7 +598,7 @@ def test_error_return_annotation_mismatch(test, device):
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
         wp.WarpCodegenError,
-        r"The function `foo_3` has its return type annotated as `Tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
+        r"The function `foo_3` has its return type annotated as `tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 

@@ -15,8 +15,6 @@
 
 """Warp kernel creating a grid mesh geometry."""
 
-from typing import Tuple
-
 import warp as wp
 
 #   Helpers
@@ -156,8 +154,8 @@ def grid_create_launch_kernel(
     out_face_vertex_indices: wp.array,
     out_normals: wp.array,
     out_uvs: wp.array,
-    size: Tuple[float, float],
-    dims: Tuple[int, int],
+    size: tuple[float, float],
+    dims: tuple[int, int],
     update_topology: bool = True,
 ):
     """Launches the kernel."""

@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from functools import cached_property
-from typing import Any, Optional, Set, Union
+from typing import Any, Optional, Union
 
 import warp as wp
 import warp._src.fem.cache as cache
@@ -141,7 +141,7 @@ class GeometryDomain:
     element_partition_lookup: wp.Function
     """Device function returning the sample point in the domain's geometry partition corresponding to a world position"""
 
-    def notify_operator_usage(self, ops: Set[Operator]):
+    def notify_operator_usage(self, ops: set[Operator]):
         """Makes the Domain aware that the operators `ops` will be applied"""
         pass
 

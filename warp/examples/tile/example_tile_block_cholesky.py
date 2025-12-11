@@ -22,7 +22,7 @@
 ###########################################################################
 
 import sys
-from functools import lru_cache
+from functools import cache
 
 import numpy as np
 
@@ -31,7 +31,7 @@ import warp as wp
 wp.set_module_options({"enable_backward": False})
 
 
-@lru_cache(maxsize=None)
+@cache
 def create_blocked_cholesky_kernel(block_size: int):
     @wp.kernel
     def blocked_cholesky_kernel(
@@ -119,7 +119,7 @@ def create_blocked_cholesky_kernel(block_size: int):
     return blocked_cholesky_kernel
 
 
-@lru_cache(maxsize=None)
+@cache
 def create_blocked_cholesky_solve_kernel(block_size: int):
     @wp.kernel
     def blocked_cholesky_solve_kernel(
