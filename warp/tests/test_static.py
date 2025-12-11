@@ -16,7 +16,6 @@
 import importlib
 import tempfile
 import unittest
-from typing import Dict, List
 
 import numpy as np
 
@@ -305,7 +304,7 @@ def test_function_lookup(test, device):
             test.assertEqual(outputs_np[i], op_func(float(inputs_np[i][0]), float(inputs_np[i][1])))
 
 
-def count_ssa_occurrences(kernel: wp.Kernel, ssas: List[str]) -> Dict[str, int]:
+def count_ssa_occurrences(kernel: wp.Kernel, ssas: list[str]) -> dict[str, int]:
     # analyze the generated code
     counts = dict.fromkeys(ssas, 0)
     for line in kernel.adj.blocks[0].body_forward:

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Optional
 
 import warp as wp
 from warp._src.fem import cache
@@ -135,7 +135,7 @@ class PointBasisSpace(BasisSpace):
         quadrature: Quadrature,
         kernel_func: Optional[wp.Function] = None,
         kernel_grad_func: Optional[wp.Function] = None,
-        kernel_values: Optional[Dict[str, Any]] = None,
+        kernel_values: Optional[dict[str, Any]] = None,
         distance_space: str = "reference",
         max_nodes_per_element: int = -1,
     ):
@@ -175,12 +175,12 @@ class PointBasisSpace(BasisSpace):
         super().__init__(self._topology)
 
     @property
-    def kernel_values(self) -> Dict[str, Any]:
+    def kernel_values(self) -> dict[str, Any]:
         """Dictionary of additional values to be passed to the kernel function"""
         return self._kernel_values
 
     @kernel_values.setter
-    def kernel_values(self, v: Dict[str, Any]):
+    def kernel_values(self, v: dict[str, Any]):
         self._kernel_values = v
         cache.populate_argument_struct(self._kernel_arg, v, self.kernel_func.func.__name__)
 

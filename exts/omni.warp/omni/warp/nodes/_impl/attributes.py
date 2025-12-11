@@ -20,10 +20,10 @@ import functools
 import inspect
 import math
 import operator
+from collections.abc import Sequence
 from typing import (
     Any,
     Optional,
-    Sequence,
     Union,
 )
 

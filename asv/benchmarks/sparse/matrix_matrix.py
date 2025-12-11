@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
@@ -22,7 +22,7 @@ class BsrMMFemMatrix:
         self._use_graph = use_graph
 
     def build_system(
-        self, space: fem.FunctionSpace, quadrature: Optional[int] = None, block_shape: Optional[Tuple[int, int]] = None
+        self, space: fem.FunctionSpace, quadrature: Optional[int] = None, block_shape: Optional[tuple[int, int]] = None
     ):
         u = fem.make_trial(space)
 

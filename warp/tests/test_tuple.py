@@ -13,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-from typing import Any, Tuple
+from typing import Any
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -84,7 +83,7 @@ def test_builtin_with_multiple_return():
 
 
 @wp.func
-def user_func_with_multiple_return(x: int, y: float) -> Tuple[int, float]:
+def user_func_with_multiple_return(x: int, y: float) -> tuple[int, float]:
     return (x * 123, y * 1.23)
 
 
@@ -109,7 +108,7 @@ def test_user_func_with_multiple_return():
 
 
 @wp.func
-def user_func_with_tuple_arg(values: Tuple[wp.vec3, float]) -> float:
+def user_func_with_tuple_arg(values: tuple[wp.vec3, float]) -> float:
     wp.expect_eq(len(values), 2)
     wp.expect_eq(wp.static(len(values)), 2)
     return wp.length(values[0]) * values[1]
@@ -132,7 +131,7 @@ def test_user_func_with_tuple_arg():
 
 
 @wp.func
-def loop_user_func(values: Tuple[int, int, int]):
+def loop_user_func(values: tuple[int, int, int]):
     out = wp.int32(0)
     for i in range(wp.static(len(values))):
         out += values[i]
@@ -182,7 +181,7 @@ def test_loop_variadic_any():
 
 
 @wp.func
-def loop_variadic_ellipsis_user_func(values: Tuple[int, ...]):
+def loop_variadic_ellipsis_user_func(values: tuple[int, ...]):
     out = wp.int32(0)
     for i in range(wp.static(len(values))):
         out += values[i]
@@ -211,88 +210,89 @@ def test_loop_variadic_ellipsis():
 
 # Test for Python 3.10 tuple type compatibility issue
 # Only define these functions on Python 3.9+ where lowercase tuple is supported
-if sys.version_info >= (3, 9):
+@wp.func
+def complex_tuple_function(scale: float, offset: wp.vec3) -> tuple[float, wp.vec3f, wp.vec3f]:
+    """
+    Function that returns a complex tuple with mixed types.
+    This specifically tests the tuple[float, wp.vec3f, wp.vec3f] case
+    that was problematic on Python 3.10.
+    """
+    # Create some computed values
+    scaled_value = scale * 2.5
+    position = wp.vec3f(offset.x + 1.0, offset.y + 2.0, offset.z + 3.0)
+    velocity = wp.vec3f(scale * 0.1, scale * 0.2, scale * 0.3)
 
-    @wp.func
-    def complex_tuple_function(scale: float, offset: wp.vec3) -> tuple[float, wp.vec3f, wp.vec3f]:
-        """
-        Function that returns a complex tuple with mixed types.
-        This specifically tests the tuple[float, wp.vec3f, wp.vec3f] case
-        that was problematic on Python 3.10.
-        """
-        # Create some computed values
-        scaled_value = scale * 2.5
-        position = wp.vec3f(offset.x + 1.0, offset.y + 2.0, offset.z + 3.0)
-        velocity = wp.vec3f(scale * 0.1, scale * 0.2, scale * 0.3)
+    return (scaled_value, position, velocity)
 
-        return (scaled_value, position, velocity)
 
-    @wp.func
-    def mixed_types_tuple_function() -> tuple[wp.vec3f, wp.vec3f, float, wp.mat33f]:
-        """
-        Function returning mixed types in a tuple.
-        Tests tuple[vec3f, vec3f, float, mat33f] type annotation.
-        """
-        return (
-            wp.vec3f(1.0, 2.0, 3.0),
-            wp.vec3f(4.0, 5.0, 6.0),
-            42.0,
-            wp.mat33f(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
-        )
+@wp.func
+def mixed_types_tuple_function() -> tuple[wp.vec3f, wp.vec3f, float, wp.mat33f]:
+    """
+    Function returning mixed types in a tuple.
+    Tests tuple[vec3f, vec3f, float, mat33f] type annotation.
+    """
+    return (
+        wp.vec3f(1.0, 2.0, 3.0),
+        wp.vec3f(4.0, 5.0, 6.0),
+        42.0,
+        wp.mat33f(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+    )
 
-    @wp.func
-    def homogeneous_tuple_function() -> tuple[wp.vec3f, wp.vec3f, wp.vec3f]:
-        """
-        Function returning fixed-size homogeneous tuple.
-        Tests tuple[wp.vec3f, wp.vec3f, wp.vec3f] type annotation.
-        """
-        return (wp.vec3f(1.0, 2.0, 3.0), wp.vec3f(4.0, 5.0, 6.0), wp.vec3f(7.0, 8.0, 9.0))
 
-    @wp.kernel
-    def test_complex_tuple_functions():
-        """
-        Kernel that tests complex tuple return types that were problematic on Python 3.10.
-        """
-        # Test the main problematic case: tuple[float, wp.vec3f, wp.vec3f]
-        result1 = complex_tuple_function(4.0, wp.vec3(10.0, 20.0, 30.0))
+@wp.func
+def homogeneous_tuple_function() -> tuple[wp.vec3f, wp.vec3f, wp.vec3f]:
+    """
+    Function returning fixed-size homogeneous tuple.
+    Tests tuple[wp.vec3f, wp.vec3f, wp.vec3f] type annotation.
+    """
+    return (wp.vec3f(1.0, 2.0, 3.0), wp.vec3f(4.0, 5.0, 6.0), wp.vec3f(7.0, 8.0, 9.0))
 
-        # Unpack and verify
-        scale_result, pos_result, vel_result = result1
-        wp.expect_near(scale_result, 10.0)  # 4.0 * 2.5
-        wp.expect_eq(pos_result, wp.vec3f(11.0, 22.0, 33.0))
-        wp.expect_eq(vel_result, wp.vec3f(0.4, 0.8, 1.2))
 
-        # Test access by index
-        wp.expect_near(result1[0], 10.0)
-        wp.expect_eq(result1[1], wp.vec3f(11.0, 22.0, 33.0))
-        wp.expect_eq(result1[2], wp.vec3f(0.4, 0.8, 1.2))
+@wp.kernel
+def test_complex_tuple_functions():
+    """
+    Kernel that tests complex tuple return types that were problematic on Python 3.10.
+    """
+    # Test the main problematic case: tuple[float, wp.vec3f, wp.vec3f]
+    result1 = complex_tuple_function(4.0, wp.vec3(10.0, 20.0, 30.0))
 
-        # Test more complex tuple: tuple[vec3f, vec3f, float, mat33f]
-        mixed_result = mixed_types_tuple_function()
-        result_pos, result_vel, result_energy, result_transform = mixed_result
+    # Unpack and verify
+    scale_result, pos_result, vel_result = result1
+    wp.expect_near(scale_result, 10.0)  # 4.0 * 2.5
+    wp.expect_eq(pos_result, wp.vec3f(11.0, 22.0, 33.0))
+    wp.expect_eq(vel_result, wp.vec3f(0.4, 0.8, 1.2))
 
-        # Verify known values
-        wp.expect_eq(result_pos, wp.vec3f(1.0, 2.0, 3.0))
-        wp.expect_eq(result_vel, wp.vec3f(4.0, 5.0, 6.0))
-        wp.expect_eq(result_energy, 42.0)
+    # Test access by index
+    wp.expect_near(result1[0], 10.0)
+    wp.expect_eq(result1[1], wp.vec3f(11.0, 22.0, 33.0))
+    wp.expect_eq(result1[2], wp.vec3f(0.4, 0.8, 1.2))
 
-        # Verify transform matrix is identity
-        wp.expect_eq(result_transform[0, 0], 1.0)
-        wp.expect_eq(result_transform[1, 1], 1.0)
-        wp.expect_eq(result_transform[2, 2], 1.0)
+    # Test more complex tuple: tuple[vec3f, vec3f, float, mat33f]
+    mixed_result = mixed_types_tuple_function()
+    result_pos, result_vel, result_energy, result_transform = mixed_result
 
-        # Test fixed-size homogeneous tuple: tuple[wp.vec3f, wp.vec3f, wp.vec3f]
-        homo_result = homogeneous_tuple_function()
-        wp.expect_eq(len(homo_result), 3)
-        wp.expect_eq(homo_result[0], wp.vec3f(1.0, 2.0, 3.0))
-        wp.expect_eq(homo_result[1], wp.vec3f(4.0, 5.0, 6.0))
-        wp.expect_eq(homo_result[2], wp.vec3f(7.0, 8.0, 9.0))
+    # Verify known values
+    wp.expect_eq(result_pos, wp.vec3f(1.0, 2.0, 3.0))
+    wp.expect_eq(result_vel, wp.vec3f(4.0, 5.0, 6.0))
+    wp.expect_eq(result_energy, 42.0)
 
-        # Test unpacking
-        vec1, vec2, vec3 = homo_result
-        wp.expect_eq(vec1, wp.vec3f(1.0, 2.0, 3.0))
-        wp.expect_eq(vec2, wp.vec3f(4.0, 5.0, 6.0))
-        wp.expect_eq(vec3, wp.vec3f(7.0, 8.0, 9.0))
+    # Verify transform matrix is identity
+    wp.expect_eq(result_transform[0, 0], 1.0)
+    wp.expect_eq(result_transform[1, 1], 1.0)
+    wp.expect_eq(result_transform[2, 2], 1.0)
+
+    # Test fixed-size homogeneous tuple: tuple[wp.vec3f, wp.vec3f, wp.vec3f]
+    homo_result = homogeneous_tuple_function()
+    wp.expect_eq(len(homo_result), 3)
+    wp.expect_eq(homo_result[0], wp.vec3f(1.0, 2.0, 3.0))
+    wp.expect_eq(homo_result[1], wp.vec3f(4.0, 5.0, 6.0))
+    wp.expect_eq(homo_result[2], wp.vec3f(7.0, 8.0, 9.0))
+
+    # Test unpacking
+    vec1, vec2, vec3 = homo_result
+    wp.expect_eq(vec1, wp.vec3f(1.0, 2.0, 3.0))
+    wp.expect_eq(vec2, wp.vec3f(4.0, 5.0, 6.0))
+    wp.expect_eq(vec3, wp.vec3f(7.0, 8.0, 9.0))
 
 
 devices = get_test_devices()
@@ -345,15 +345,13 @@ add_kernel_test(
     dim=1,
     devices=devices,
 )
-# Only register the test for lowercase tuple syntax on Python 3.9+
-if sys.version_info >= (3, 9):
-    add_kernel_test(
-        TestTuple,
-        name="test_complex_tuple_functions",
-        kernel=test_complex_tuple_functions,
-        dim=1,
-        devices=devices,
-    )
+add_kernel_test(
+    TestTuple,
+    name="test_complex_tuple_functions",
+    kernel=test_complex_tuple_functions,
+    dim=1,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

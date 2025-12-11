@@ -28,7 +28,8 @@ import re
 import sys
 import textwrap
 import types
-from typing import Any, Callable, ClassVar, Mapping, Sequence, get_args, get_origin
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, ClassVar, get_args, get_origin
 
 import warp._src.config
 from warp._src.types import *
@@ -2550,16 +2551,6 @@ class Adjoint:
 
         return out
 
-    def emit_Index(adj, node):
-        # the ast.Index node appears in 3.7 versions
-        # when performing array slices, e.g.: x = arr[i]
-        # but in version 3.8 and higher it does not appear
-
-        if hasattr(node, "is_adjoint"):
-            node.value.is_adjoint = True
-
-        return adj.eval(node.value)
-
     def eval_indices(adj, target_type, indices):
         nodes = indices
         if type_is_compound(target_type):
@@ -3146,7 +3137,6 @@ class Adjoint:
         ast.Continue: emit_Continue,
         ast.Expr: emit_Expr,
         ast.Call: emit_Call,
-        ast.Index: emit_Index,  # Deprecated in 3.9
         ast.Subscript: emit_Subscript,
         ast.Slice: emit_Slice,
         ast.Assign: emit_Assign,
@@ -3886,7 +3876,7 @@ def indent(args, stops=1):
 
 
 # generates a C function name based on the python function name
-def make_full_qualified_name(func: Union[str, Callable]) -> str:
+def make_full_qualified_name(func: str | Callable) -> str:
     if not isinstance(func, str):
         func = func.__qualname__
     return re.sub("[^0-9a-zA-Z_]+", "", func.replace(".", "__"))

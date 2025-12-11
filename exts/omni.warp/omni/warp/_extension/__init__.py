@@ -22,8 +22,8 @@ import os
 import subprocess
 import sys
 import webbrowser
+from collections.abc import Sequence
 from contextlib import suppress
-from typing import Sequence
 
 import carb
 import carb.dictionary

@@ -15,7 +15,7 @@
 
 import functools
 import math
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import warp as wp
 import warp._src.sparse as sparse
@@ -57,14 +57,14 @@ class LinearOperator:
 
     """
 
-    def __init__(self, shape: Tuple[int, int], dtype: type, device: wp._src.context.Device, matvec: Callable):
+    def __init__(self, shape: tuple[int, int], dtype: type, device: wp._src.context.Device, matvec: Callable):
         self._shape = shape
         self._dtype = dtype
         self._device = device
         self._matvec = matvec
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         return self._shape
 
     @property
@@ -308,7 +308,7 @@ class TiledDot:
         return self._output[start : start + count, :1]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _create_tiled_dot_kernels(tile_size):
     @wp.kernel
     def block_dot_kernel(
@@ -354,7 +354,7 @@ def cg(
     callback: Optional[Callable] = None,
     check_every=10,
     use_cuda_graph=True,
-) -> Union[Tuple[int, float, float], Tuple[wp.array, wp.array, wp.array]]:
+) -> Union[tuple[int, float, float], tuple[wp.array, wp.array, wp.array]]:
     """Computes an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Gradient algorithm.
 
@@ -479,7 +479,7 @@ def cr(
     callback: Optional[Callable] = None,
     check_every=10,
     use_cuda_graph=True,
-) -> Tuple[int, float, float]:
+) -> tuple[int, float, float]:
     """Computes an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Residual algorithm.
 
@@ -1478,7 +1478,7 @@ def _gmres_solve_least_squares(
         y[i] = yi / Hi[i]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def make_gmres_solve_least_squares_kernel_tiled(K: int):
     @wp.kernel(module="unique")
     def gmres_solve_least_squares_tiled(

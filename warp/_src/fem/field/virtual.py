@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from functools import cached_property
-from typing import Any, ClassVar, Dict, Optional, Set
+from typing import Any, ClassVar, Optional
 
 import warp as wp
 import warp._src.fem.operator as operator
@@ -427,7 +427,7 @@ class LocalAdjointField(SpaceField):
     OUTER_GRAD_DOF = wp.constant(3)
     DOF_TYPE_COUNT = wp.constant(4)
 
-    _OP_DOF_MAP_CONTINUOUS: ClassVar[Dict[operator.Operator, int]] = {
+    _OP_DOF_MAP_CONTINUOUS: ClassVar[dict[operator.Operator, int]] = {
         operator.inner: INNER_DOF,
         operator.outer: INNER_DOF,
         operator.grad: INNER_GRAD_DOF,
@@ -436,7 +436,7 @@ class LocalAdjointField(SpaceField):
         operator.div_outer: OUTER_GRAD_DOF,
     }
 
-    _OP_DOF_MAP_DISCONTINUOUS: ClassVar[Dict[operator.Operator, int]] = {
+    _OP_DOF_MAP_DISCONTINUOUS: ClassVar[dict[operator.Operator, int]] = {
         operator.inner: INNER_DOF,
         operator.outer: OUTER_DOF,
         operator.grad: INNER_GRAD_DOF,
@@ -487,7 +487,7 @@ class LocalAdjointField(SpaceField):
 
         cache.setup_dynamic_attributes(self)
 
-    def notify_operator_usage(self, ops: Set[operator.Operator]):
+    def notify_operator_usage(self, ops: set[operator.Operator]):
         # Rebuild degrees-of-freedom offsets based on used operators
 
         operators_dof_map = (
@@ -687,7 +687,7 @@ def make_linear_dispatch_kernel(
     quadrature: Quadrature,
     accumulate_dtype: type,
     tile_size: int = 1,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction
@@ -887,7 +887,7 @@ def make_bilinear_dispatch_kernel(
     quadrature: Quadrature,
     accumulate_dtype: type,
     tile_size: int = 1,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction

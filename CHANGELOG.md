@@ -45,6 +45,9 @@
 
 ### Removed
 
+- Drop support for Python 3.8. Python 3.9 is now the minimum-supported version
+  ([GH-1019](https://github.com/NVIDIA/warp/issues/1019)).
+
 ### Deprecated
 
 - `isfinite()`, `isnan()`, and `isinf()` will no longer take integer inputs, only floating-point arguments

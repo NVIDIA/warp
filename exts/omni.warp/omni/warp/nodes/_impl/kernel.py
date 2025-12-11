@@ -24,13 +24,12 @@ import json
 import operator
 import os
 import tempfile
+from collections.abc import Mapping, Sequence
 from enum import IntFlag
 from typing import (
     Any,
     Callable,
-    Mapping,
     NamedTuple,
-    Sequence,
 )
 
 import omni.graph.core as og
