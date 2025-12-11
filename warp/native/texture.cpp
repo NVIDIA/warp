@@ -166,9 +166,9 @@ bool wp_texture2d_create(
     // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
-    // Use normalized coordinates [0,1]
-    // For integer textures (uint8/uint16), CUDA returns normalized floats [0,1] by default
-    // (CU_TRSF_READ_AS_INTEGER is NOT set, so reads are normalized automatically)
+    // Use normalized coordinates [0,1] for texture addressing
+    // For uint8/uint16 textures, CUDA automatically normalizes values to [0,1] when sampled
+    // (since CU_TRSF_READ_AS_INTEGER is NOT set). Float32 textures return values as-is.
     tex_desc.flags = CU_TRSF_NORMALIZED_COORDINATES;
 
     tex_desc.maxAnisotropy = 0;
@@ -320,7 +320,9 @@ bool wp_texture3d_create(
     // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
-    // Use normalized coordinates [0,1]
+    // Use normalized coordinates [0,1] for texture addressing
+    // For uint8/uint16 textures, CUDA automatically normalizes values to [0,1] when sampled
+    // (since CU_TRSF_READ_AS_INTEGER is NOT set). Float32 textures return values as-is.
     tex_desc.flags = CU_TRSF_NORMALIZED_COORDINATES;
 
     tex_desc.maxAnisotropy = 0;
