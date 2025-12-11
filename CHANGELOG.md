@@ -63,6 +63,7 @@
   ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
 - Fix direct initialization and slice assignment of vector, quaternion, and transform types from PyTorch tensors
   ([GH-1121](https://github.com/NVIDIA/warp/issues/1121)).
+- Fix zero-padding of tiled reductions in iterative linear solvers.
 
 ## [1.10.1] - 2025-12-01
 

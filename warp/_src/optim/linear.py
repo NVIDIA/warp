@@ -294,7 +294,7 @@ class TiledDot:
             num_blocks = (array_length + self.tile_size - 1) // self.tile_size
             data_in, data_out = data_out, data_in
 
-            self.sum_launch.set_param_at_index(0, data_in)
+            self.sum_launch.set_param_at_index(0, data_in[:, :array_length])
             self.sum_launch.set_param_at_index(1, data_out)
             self.sum_launch.set_dim((column_count, num_blocks, self.tile_size))
             self.sum_launch.launch()
