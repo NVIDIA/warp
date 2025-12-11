@@ -29,7 +29,7 @@ from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_
 
 @wp.kernel
 def sample_texture2d_f_at_centers(
-    tex: wp.texture2d_t,
+    tex: wp.Texture2D,
     output: wp.array(dtype=float),
     width: int,
     height: int,
@@ -49,7 +49,7 @@ def sample_texture2d_f_at_centers(
 
 @wp.kernel
 def sample_texture2d_v2_at_centers(
-    tex: wp.texture2d_t,
+    tex: wp.Texture2D,
     output: wp.array(dtype=wp.vec2f),
     width: int,
     height: int,
@@ -67,7 +67,7 @@ def sample_texture2d_v2_at_centers(
 
 @wp.kernel
 def sample_texture2d_v3_at_centers(
-    tex: wp.texture2d_t,
+    tex: wp.Texture2D,
     output: wp.array(dtype=wp.vec3f),
     width: int,
     height: int,
@@ -85,7 +85,7 @@ def sample_texture2d_v3_at_centers(
 
 @wp.kernel
 def sample_texture2d_v4_at_centers(
-    tex: wp.texture2d_t,
+    tex: wp.Texture2D,
     output: wp.array(dtype=wp.vec4f),
     width: int,
     height: int,
@@ -103,7 +103,7 @@ def sample_texture2d_v4_at_centers(
 
 @wp.kernel
 def test_texture2d_resolution(
-    tex: wp.texture2d_t,
+    tex: wp.Texture2D,
     expected_width: int,
     expected_height: int,
 ):
@@ -122,7 +122,7 @@ def test_texture2d_resolution(
 
 @wp.kernel
 def sample_texture3d_f_at_centers(
-    tex: wp.texture3d_t,
+    tex: wp.Texture3D,
     output: wp.array(dtype=float),
     width: int,
     height: int,
@@ -144,7 +144,7 @@ def sample_texture3d_f_at_centers(
 
 @wp.kernel
 def sample_texture3d_v2_at_centers(
-    tex: wp.texture3d_t,
+    tex: wp.Texture3D,
     output: wp.array(dtype=wp.vec2f),
     width: int,
     height: int,
@@ -165,7 +165,7 @@ def sample_texture3d_v2_at_centers(
 
 @wp.kernel
 def sample_texture3d_v3_at_centers(
-    tex: wp.texture3d_t,
+    tex: wp.Texture3D,
     output: wp.array(dtype=wp.vec3f),
     width: int,
     height: int,
@@ -186,7 +186,7 @@ def sample_texture3d_v3_at_centers(
 
 @wp.kernel
 def sample_texture3d_v4_at_centers(
-    tex: wp.texture3d_t,
+    tex: wp.Texture3D,
     output: wp.array(dtype=wp.vec4f),
     width: int,
     height: int,
@@ -207,7 +207,7 @@ def sample_texture3d_v4_at_centers(
 
 @wp.kernel
 def test_texture3d_resolution(
-    tex: wp.texture3d_t,
+    tex: wp.Texture3D,
     expected_width: int,
     expected_height: int,
     expected_depth: int,
@@ -719,7 +719,7 @@ def test_texture3d_new_del(test, device):
 
 @wp.kernel
 def sample_texture2d_at_uv(
-    tex: wp.texture2d_t,
+    tex: wp.Texture2D,
     uvs: wp.array(dtype=wp.vec2f),
     output: wp.array(dtype=float),
 ):
@@ -731,7 +731,7 @@ def sample_texture2d_at_uv(
 
 @wp.kernel
 def sample_texture3d_at_uvw(
-    tex: wp.texture3d_t,
+    tex: wp.Texture3D,
     uvws: wp.array(dtype=wp.vec3f),
     output: wp.array(dtype=float),
 ):

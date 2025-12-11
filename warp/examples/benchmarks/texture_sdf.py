@@ -624,8 +624,8 @@ def apply_subgrid_sdf_scale(raw_value: float, min_value: float, value_range: flo
 @wp.kernel
 def sample_sparse_sdf(
     sdf: SparseSDF,
-    coarse_texture: wp.texture3d_t,
-    subgrid_texture: wp.texture3d_t,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
     subgrid_start_slots: wp.array(dtype=wp.uint32),
     query_points: wp.array(dtype=wp.vec3),
     results: wp.array(dtype=float),
@@ -696,8 +696,8 @@ def sample_sparse_sdf(
 @wp.func
 def sample_sparse_sdf_at(
     sdf: SparseSDF,
-    coarse_texture: wp.texture3d_t,
-    subgrid_texture: wp.texture3d_t,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
     subgrid_start_slots: wp.array(dtype=wp.uint32),
     local_pos: wp.vec3,
 ) -> float:
@@ -760,8 +760,8 @@ def sample_sparse_sdf_at(
 @wp.func
 def sample_texture_at_grid_coords(
     sdf: SparseSDF,
-    coarse_texture: wp.texture3d_t,
-    subgrid_texture: wp.texture3d_t,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
     subgrid_start_slots: wp.array(dtype=wp.uint32),
     f: wp.vec3,
 ) -> float:
@@ -814,8 +814,8 @@ def sample_texture_at_grid_coords(
 @wp.func
 def sample_with_precomputed_cell(
     sdf: SparseSDF,
-    coarse_texture: wp.texture3d_t,
-    subgrid_texture: wp.texture3d_t,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
     start_slot: wp.uint32,
     subgrid_start_slots: wp.array(dtype=wp.uint32),
     x_base: int,
@@ -870,8 +870,8 @@ def sample_with_precomputed_cell(
 @wp.kernel
 def sample_sparse_sdf_grad(
     sdf: SparseSDF,
-    coarse_texture: wp.texture3d_t,
-    subgrid_texture: wp.texture3d_t,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
     subgrid_start_slots: wp.array(dtype=wp.uint32),
     query_points: wp.array(dtype=wp.vec3),
     results: wp.array(dtype=float),

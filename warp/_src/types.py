@@ -5667,6 +5667,9 @@ class Texture2D:
         >>> tex8 = wp.Texture2D(data8, device="cuda:0")
     """
 
+    # Native C++ type name for code generation
+    _wp_native_name_ = "texture2d_t"
+
     #: Enum value to specify nearest-neighbor filtering
     NEAREST = constant(0)
     #: Enum value to specify bilinear filtering
@@ -5889,6 +5892,9 @@ class Texture3D:
         >>> data8 = (np.random.rand(64, 64, 64) * 255).astype(np.uint8)
         >>> tex8 = wp.Texture3D(data8, device="cuda:0")
     """
+
+    # Native C++ type name for code generation
+    _wp_native_name_ = "texture3d_t"
 
     #: Enum value to specify nearest-neighbor filtering
     NEAREST = constant(0)
@@ -6464,6 +6470,10 @@ def get_type_code(arg_type: type) -> str:
                 return f"m{dim_code0}{dim_code1}{dtype_code}"
             else:
                 raise TypeError("Invalid vector/matrix dimensionality")
+        elif arg_type is Texture2D:
+            return "tex2d"
+        elif arg_type is Texture3D:
+            return "tex3d"
         else:
             # simple type
             type_code = simple_type_codes.get(arg_type)
