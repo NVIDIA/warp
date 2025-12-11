@@ -67,7 +67,7 @@ def set_settings(
 
 async def wait_for_streaming(
     context: omni.usd.UsdContext,
-    wait_frames: int = 100,
+    wait_frames: int = 10,
 ) -> None:
     """Wait for the streaming to finish upon opening a stage."""
     # Implementation from kit/source/extensions/omni.rtx.tests/omni/rtx/tests/test_common.py
