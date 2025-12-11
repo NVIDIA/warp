@@ -255,4 +255,8 @@ CUDA_CALLABLE inline void adj_tex3d_vec4(
 {
 }
 
+// Type aliases for code generation
+using Texture2D = texture2d_t;
+using Texture3D = texture3d_t;
+
 }  // namespace wp
