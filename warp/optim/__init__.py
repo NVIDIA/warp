@@ -18,6 +18,8 @@
 from warp._src.optim.adam import Adam as Adam
 from warp._src.optim.sgd import SGD as SGD
 
+from . import linear as linear
+
 
 # TODO: Remove after cleaning up the public API.
 
