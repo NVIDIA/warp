@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import unittest
+from typing import Any
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -247,6 +248,49 @@ def test_fixedarray_ptr(test, device):
     assert_np_equal(output.numpy(), expected)
 
 
+# Test fixedarray polymorphism with array templates (regression test for array type matching)
+# This test ensures that fixedarray can match array template parameters even when the template
+# has a concrete dtype (not Any), which is essential since fixedarray inherits from array.
+@wp.func
+def array_template_func_concrete(arr: wp.array(ndim=1, dtype=wp.vec2f)):
+    """Function with concrete array template - fixedarray should match"""
+    return arr[0]
+
+
+@wp.func
+def array_template_func_generic(arr: wp.array(ndim=1, dtype=Any)):
+    """Function with generic array template - fixedarray should match"""
+    return arr[0]
+
+
+@wp.kernel
+def test_fixedarray_array_polymorphism():
+    """Test that fixedarray matches array templates with both concrete and generic dtypes"""
+    # Test with concrete dtype (vec2f)
+    fixed_arr_vec2 = wp.zeros(shape=(3,), dtype=wp.vec2f)
+    fixed_arr_vec2[0] = wp.vec2f(1.0, 2.0)
+    result_vec2 = array_template_func_concrete(fixed_arr_vec2)
+    wp.expect_eq(result_vec2, wp.vec2f(1.0, 2.0))
+
+    # Test with generic dtype (Any)
+    fixed_arr_int = wp.zeros(shape=(5,), dtype=int)
+    fixed_arr_int[0] = 42
+    result_int = array_template_func_generic(fixed_arr_int)
+    wp.expect_eq(result_int, 42)
+
+    # Test with float32
+    fixed_arr_float = wp.zeros(shape=(4,), dtype=float)
+    fixed_arr_float[0] = 3.14
+    result_float = array_template_func_generic(fixed_arr_float)
+    wp.expect_eq(result_float, 3.14)
+
+    # Test with vec3f
+    fixed_arr_vec3 = wp.zeros(shape=(2,), dtype=wp.vec3f)
+    fixed_arr_vec3[0] = wp.vec3f(1.0, 2.0, 3.0)
+    result_vec3 = array_template_func_generic(fixed_arr_vec3)
+    wp.expect_eq(result_vec3, wp.vec3f(1.0, 2.0, 3.0))
+
+
 class TestFixedArray(unittest.TestCase):
     pass
 
@@ -267,6 +311,13 @@ add_function_test(TestFixedArray, "test_error_runtime_shape", test_error_runtime
 add_function_test(TestFixedArray, "test_capture_if", test_capture_if, devices=devices)
 add_kernel_test(TestFixedArray, kernel=test_func_struct, name="test_func_struct", dim=1, devices=devices)
 add_function_test(TestFixedArray, "test_fixedarray_ptr", test_fixedarray_ptr, devices=devices)
+add_kernel_test(
+    TestFixedArray,
+    kernel=test_fixedarray_array_polymorphism,
+    name="test_fixedarray_array_polymorphism",
+    dim=1,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
