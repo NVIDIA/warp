@@ -717,6 +717,45 @@ class TestTypes(unittest.TestCase):
             # Expected to fail for non-Warp types, but should be a clean TypeError
             self.assertIn("Unrecognized type", str(e))
 
+    def test_composite_types_repr(self):
+        """Test that repr() works on Warp composite types (vectors, matrices, quaternions, transforms) without errors.
+
+        Specifically tests the fix for the vector __repr__ recursion bug where type_repr(self)
+        was called instead of type_repr(type(self)).
+        """
+        # Test vectors
+        v2 = wp.vec2i(1, 2)
+        v3 = wp.vec3f(1.0, 2.0, 3.0)
+        v4 = wp.vec4d(1.0, 2.0, 3.0, 4.0)
+
+        self.assertEqual(repr(v2), "vec2i([1, 2])")
+        self.assertEqual(repr(v3), "vec3f([1.0, 2.0, 3.0])")
+        self.assertEqual(repr(v4), "vec4d([1.0, 2.0, 3.0, 4.0])")
+
+        # Test matrices
+        m22 = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+        m33 = wp.mat33d([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+
+        # Matrices don't have __repr__ defined, so they use default ctypes.Array repr
+        # Just verify they don't cause recursion errors
+        repr(m22)
+        repr(m33)
+
+        # Test quaternions
+        q = wp.quatf(1.0, 0.0, 0.0, 0.0)
+        # Quaternions also use default ctypes.Array repr
+        repr(q)
+
+        # Test transforms
+        t = wp.transformf((1.0, 2.0, 3.0), (0.0, 0.0, 0.0, 1.0))
+        repr(t)
+
+        # Test that lists of vectors work
+        vec_list = [wp.vec2i(i, i + 1) for i in range(5)]
+        result = repr(vec_list)
+        self.assertIn("vec2i", result)
+        self.assertGreater(len(result), 0)
+
 
 for dtype in wp._src.types.int_types:
     add_function_test(TestTypes, f"test_integers_{dtype.__name__}", test_integers, devices=devices, dtype=dtype)
