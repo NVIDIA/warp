@@ -1344,11 +1344,11 @@ Vector Math
     while the corresponding eigenvalues are returned in ``d``.
 
 
-.. autofunction:: warp.math.norm_l1
-.. autofunction:: warp.math.norm_l2
-.. autofunction:: warp.math.norm_huber
-.. autofunction:: warp.math.norm_pseudo_huber
-.. autofunction:: warp.math.smooth_normalize
+.. autofunction:: warp.norm_l1
+.. autofunction:: warp.norm_l2
+.. autofunction:: warp.norm_huber
+.. autofunction:: warp.norm_pseudo_huber
+.. autofunction:: warp.smooth_normalize
 
 
 Quaternion Math
@@ -1730,10 +1730,10 @@ Transformations
     Compute the inverse of the transformation ``xform``.
 
 
-.. autofunction:: warp.math.transform_from_matrix
-.. autofunction:: warp.math.transform_to_matrix
-.. autofunction:: warp.math.transform_compose
-.. autofunction:: warp.math.transform_decompose
+.. autofunction:: warp.transform_from_matrix
+.. autofunction:: warp.transform_to_matrix
+.. autofunction:: warp.transform_compose
+.. autofunction:: warp.transform_decompose
 
 
 Spatial Math
