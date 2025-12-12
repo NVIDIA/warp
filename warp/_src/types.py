@@ -5871,15 +5871,27 @@ def type_matches_template(arg_type, template_type):
         return False
 
     # if template type is not generic, the argument type must match exactly
+    # (with special handling for array type matching)
     if not type_is_generic(template_type):
+        if is_array(arg_type) and is_array(template_type):
+            # Check array type compatibility: allow subtypes to match parent types
+            # (e.g., fixedarray can match array parameter)
+            if issubclass(type(arg_type), type(template_type)):
+                return (
+                    type_matches_template(arg_type.dtype, template_type.dtype) and arg_type.ndim == template_type.ndim
+                )
         return types_equal(arg_type, template_type)
 
     # template type is generic, check that the argument type matches
     if template_type is Any:
         return True
     elif is_array(template_type):
-        # ensure the argument type is a non-generic array with matching dtype and dimensionality
-        if type(arg_type) is not type(template_type):
+        # Ensure the argument type is a non-generic array with matching dtype and dimensionality
+        if not is_array(arg_type):
+            return False
+        # Check array type compatibility: allow subtypes to match parent types
+        # (e.g., fixedarray can match array parameter)
+        if not issubclass(type(arg_type), type(template_type)):
             return False
         if not type_matches_template(arg_type.dtype, template_type.dtype):
             return False
