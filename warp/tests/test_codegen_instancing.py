@@ -1489,4 +1489,5 @@ add_function_test(TestCodeGenInstancing, func=test_garbage_collection, name="tes
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
+    wp.force_load(max_workers=4)  # test parallel compiling and loading of modules (GH-1086)
     unittest.main(verbosity=2)
