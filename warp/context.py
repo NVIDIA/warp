@@ -22,6 +22,9 @@ from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namesp
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
+    if name == "Devicelike":
+        return get_deprecated_api(_context, "warp", "DeviceLike", old_attr_path="warp.context.Devicelike")
+
     return get_deprecated_api(_context, "wp", name)
 
 
