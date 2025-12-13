@@ -5665,14 +5665,26 @@ add_builtin(
         "face": int,
         "bary_u": float,
         "bary_v": float,
+        "n_sample": int,
+        "perturbation_scale": float,
     },
+    defaults={"n_sample": 1, "perturbation_scale": 0.1},
     value_type=builtins.bool,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
 
-    Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
-    This method is relatively robust, but does increase computational cost.
-    See below for additional sign determination methods.
+    The method will cast multiple rays starting from the query point by applying
+    small random perturbations to a base direction (1, 1, 1). Each perturbation is
+    sampled independently for the x, y, and z dimensions from a uniform distribution
+    in the range [-perturbation_scale, perturbation_scale), and added to the base
+    direction to produce a slightly altered ray direction. This randomization helps
+    avoid degeneracies such as rays intersecting exactly on triangle edges,
+    vertices, or becoming parallel to mesh features.
+
+    For each perturbed ray, the method counts how many mesh faces it intersects and
+    uses the parity (odd/even) of this count to determine whether the ray exits the
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
+    used to classify the point.
 
     :param id: The mesh identifier
     :param point: The point in space to query
@@ -5681,7 +5693,10 @@ add_builtin(
                    Note that mesh must be watertight for this to be robust
     :param face: Returns the index of the closest face
     :param bary_u: Returns the barycentric u coordinate of the closest point
-    :param bary_v: Returns the barycentric v coordinate of the closest point""",
+    :param bary_v: Returns the barycentric v coordinate of the closest point
+    :param n_sample: number of rays to cast. The default is 1. Use a higher value if you notice sign flipping.
+    :param perturbation_scale: scale of the perturbation.
+    """,
     export=False,
     hidden=True,
 )
@@ -5692,18 +5707,33 @@ add_builtin(
         "id": uint64,
         "point": vec3,
         "max_dist": float,
+        "n_sample": int,
+        "perturbation_scale": float,
     },
+    defaults={"n_sample": 1, "perturbation_scale": 0.1},
     value_type=MeshQueryPoint,
     group="Geometry",
     doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
 
-    Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
-    This method is relatively robust, but does increase computational cost.
-    See below for additional sign determination methods.
+    The method will cast multiple rays starting from the query point by applying
+    small random perturbations to a base direction (1, 1, 1). Each perturbation is
+    sampled independently for the x, y, and z dimensions from a uniform distribution
+    in the range [-perturbation_scale, perturbation_scale), and added to the base
+    direction to produce a slightly altered ray direction. This randomization helps
+    avoid degeneracies such as rays intersecting exactly on triangle edges,
+    vertices, or becoming parallel to mesh features.
+
+    For each perturbed ray, the method counts how many mesh faces it intersects and
+    uses the parity (odd/even) of this count to determine whether the ray exits the
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
+    used to classify the point.
 
     :param id: The mesh identifier
     :param point: The point in space to query
-    :param max_dist: Mesh faces above this distance will not be considered by the query""",
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param n_sample: number of rays to cast. The default is 1. Use a higher value if you notice sign flipping.
+    :param perturbation_scale: scale of the perturbation.
+    """,
     require_original_output_arg=True,
     export=False,
 )
@@ -6021,6 +6051,36 @@ add_builtin(
     export=False,
     is_differentiable=False,
 )
+
+add_builtin(
+    "mesh_query_ray_count_intersections",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "root": int,
+    },
+    defaults={"root": -1},
+    value_type=int,
+    group="Geometry",
+    doc="""Count the number of intersections between a ray and a :class:`Mesh`. It returns a integer value representing the number of intersections.
+
+    This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
+    Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
+    traversing to count all intersections along the entire ray.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)""",
+    export=False,
+    is_differentiable=False,
+)
+
 
 add_builtin(
     "mesh_query_aabb",
