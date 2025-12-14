@@ -6956,8 +6956,8 @@ def force_load(
         modules: List of Warp :class:`Module` objects to load. If ``None``,
             load all imported modules that contain Warp code.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
-        max_workers: The maximum number of parallel threads to use for loading modules.
-            If ``None``, Warp determines the default behavior. ``0`` means serial loading.
+        max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
+            If ``None``, ```warp.config.enable_default_parallel_module_load`` determines the default behavior.
     """
     if is_cuda_driver_initialized():
         # save original context to avoid side effects
@@ -6974,8 +6974,10 @@ def force_load(
         modules = user_modules.values()
 
     if max_workers is None:
-        # default to serial loading for now
-        max_workers = 0
+        if warp._src.config.enable_default_parallel_module_load:
+            max_workers = os.cpu_count()
+        else:
+            max_workers = 0
 
     if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
