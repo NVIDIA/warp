@@ -1356,6 +1356,110 @@ def test_tile_construction(test, device):
 
 
 @wp.kernel
+def test_rand_kernel(seed: int, x: wp.array2d(dtype=int), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    rng = wp.rand_init(seed, i * 2 + j)
+    ti = wp.tile_randi(shape=(2, 2), rng=rng)
+    tf = wp.tile_randf(shape=(2, 2), rng=rng)
+    wp.tile_store(x, ti, offset=(i * 2, j * 2))
+    wp.tile_store(y, tf, offset=(i * 2, j * 2))
+
+
+@wp.kernel
+def test_rand_range_kernel(seed: int, x: wp.array2d(dtype=int), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    rng = wp.rand_init(seed, i * 2 + j)
+    ti = wp.tile_randi(shape=(2, 2), rng=rng, min=-5, max=5)
+    tf = wp.tile_randf(shape=(2, 2), rng=rng, min=-5.0, max=5.0)
+    wp.tile_store(x, ti, offset=(i * 2, j * 2))
+    wp.tile_store(y, tf, offset=(i * 2, j * 2))
+
+
+def test_tile_rand(test, device):
+    M = 2
+    N = 2
+    seed = 42
+
+    x = wp.zeros(shape=(M * 2, N * 2), dtype=int, device=device)
+    y = wp.zeros(shape=(M * 2, N * 2), dtype=float, device=device)
+
+    wp.launch_tiled(test_rand_kernel, dim=[M, N], inputs=[seed, x, y], block_dim=TILE_DIM, device=device)
+
+    if device.is_cuda:
+        x_true = np.array(
+            [
+                [798497746, 1803297529, -955788638, 17806966],
+                [1788185933, 1320194893, 2073257406, -2009156320],
+                [-257534450, -1138585923, 1145322783, -321794125],
+                [-2096177388, -1835610841, 1159339128, -652221052],
+            ],
+            dtype=int,
+        )
+        y_true = np.array(
+            [
+                [0.1859147, 0.41986287, 0.7774631, 0.00414598],
+                [0.41634446, 0.3073818, 0.4827178, 0.53220683],
+                [0.9400381, 0.73490226, 0.26666623, 0.9250764],
+                [0.51194566, 0.57261354, 0.26992965, 0.8481429],
+            ],
+            dtype=float,
+        )
+    else:
+        x_true = np.array(
+            [
+                [798497746, -1161279442, -955788638, -592663987],
+                [-169969590, -744808085, -1145120241, -1771839996],
+                [-257534450, 1235698096, 1145322783, -778367504],
+                [-1563301394, 647964157, 1659888992, -215603549],
+            ],
+            dtype=int,
+        )
+        y_true = np.array(
+            [
+                [0.1859147, 0.72961855, 0.7774631, 0.86200964],
+                [0.96042585, 0.8265858, 0.7333809, 0.58746135],
+                [0.9400381, 0.28770834, 0.26666623, 0.81877214],
+                [0.6360155, 0.15086585, 0.386473, 0.94980085],
+            ],
+            dtype=float,
+        )
+
+    assert_np_equal(x.numpy(), x_true, tol=1e-6)
+    assert_np_equal(y.numpy(), y_true, tol=1e-6)
+
+    x = wp.zeros(shape=(M * 2, N * 2), dtype=int, device=device)
+    y = wp.zeros(shape=(M * 2, N * 2), dtype=float, device=device)
+
+    wp.launch_tiled(test_rand_range_kernel, dim=[M, N], inputs=[seed, x, y], block_dim=TILE_DIM, device=device)
+
+    if device.is_cuda:
+        x_true = np.array([[1, 4, 3, 1], [-2, -2, 1, 1], [1, -2, -2, -4], [3, 0, 3, -1]], dtype=int)
+        y_true = np.array(
+            [
+                [-3.140853, -0.80137134, 2.7746308, -4.95854],
+                [-0.83655536, -1.9261819, -0.17282188, 0.32206833],
+                [4.400381, 2.3490226, -2.3333378, 4.2507644],
+                [0.11945665, 0.7261354, -2.3007035, 3.481429],
+            ],
+            dtype=float,
+        )
+    else:
+        x_true = np.array([[1, -1, 3, 4], [1, -4, 0, -5], [1, 1, -2, -3], [-3, 2, -3, 2]], dtype=int)
+        y_true = np.array(
+            [
+                [-3.140853, 2.2961855, 2.7746305, 3.6200962],
+                [4.6042585, 3.2658587, 2.333809, 0.87461376],
+                [4.400381, -2.1229167, -2.3333378, 3.1877213],
+                [1.3601546, -3.4913416, -1.1352701, 4.4980087],
+            ],
+            dtype=float,
+        )
+
+    assert_np_equal(x.numpy(), x_true, tol=1e-6)
+    assert_np_equal(y.numpy(), y_true, tol=1e-6)
+
+
+@wp.kernel
 def test_tile_print_kernel():
     # shared tile
     a = wp.tile_ones(shape=(4, 3), dtype=float, storage="shared")
@@ -1508,6 +1612,7 @@ add_function_test(TestTile, "test_tile_squeeze", test_tile_squeeze, devices=devi
 add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devices)
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_construction", test_tile_construction, devices=devices)
+add_function_test(TestTile, "test_tile_rand", test_tile_rand, devices=devices)
 # add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 # add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)
 # add_function_test(TestTile, "test_tile_astype", test_tile_astype, devices=devices)

@@ -2396,6 +2396,353 @@ add_builtin(
 )
 
 
+def tile_randi_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "rng" not in arg_values:
+        raise TypeError("tile_randi() missing required keyword argument 'rng'")
+
+    if "storage" not in arg_values:
+        raise TypeError("tile_randi() missing required keyword argument 'storage'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    return tile(dtype=int, shape=shape, storage=arg_values["storage"])
+
+
+def tile_randi_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    rng = arg_values["rng"]
+
+    func_args = [rng]
+
+    has_min = "min" in arg_values
+    has_max = "max" in arg_values
+
+    if has_min != has_max:
+        raise KeyError("Both 'min' and 'max' must be provided together")
+
+    if has_min and has_max:
+        min_val = arg_values["min"].constant
+        max_val = arg_values["max"].constant
+
+        if isinstance(min_val, int) and isinstance(max_val, int):
+            func_args.append(min_val)
+            func_args.append(max_val)
+        else:
+            raise TypeError("'min' and 'max' must both be integers")
+
+    template_args = []
+    template_args.extend(shape)
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_randi",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random integers.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random integers with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+        wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[  798497746  1803297529  -955788638    17806966]
+         [ 1788185933  1320194893  2073257406 -2009156320]
+         [ -257534450 -1138585923  1145322783  -321794125]
+         [-2096177388 -1835610841  1159339128  -652221052]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randi",
+    input_types={"shape": int, "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
+    "tile_randi",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "min": int, "max": int, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random integers within a specified range.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param min: Minimum value (inclusive) for random integers
+    :param max: Maximum value (exclusive) for random integers
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random integers in the range [min, max) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+        wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[ 1  4  3  1]
+         [-2 -2  1  1]
+         [ 1 -2 -2 -4]
+         [ 3  0  3 -1]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randi",
+    input_types={"shape": int, "rng": uint32, "min": int, "max": int, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_randf_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "rng" not in arg_values:
+        raise TypeError("tile_randf() missing required keyword argument 'rng'")
+
+    if "storage" not in arg_values:
+        raise TypeError("tile_randf() missing required keyword argument 'storage'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    return tile(dtype=float, shape=shape, storage=arg_values["storage"])
+
+
+def tile_randf_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    rng = arg_values["rng"]
+
+    func_args = [rng]
+
+    has_min = "min" in arg_values
+    has_max = "max" in arg_values
+
+    if has_min != has_max:
+        raise KeyError("Both 'min' and 'max' must be provided together")
+
+    if has_min and has_max:
+        min_val = arg_values["min"].constant
+        max_val = arg_values["max"].constant
+
+        if isinstance(min_val, float) and isinstance(max_val, float):
+            func_args.append(min_val)
+            func_args.append(max_val)
+        else:
+            raise TypeError("'min' and 'max' must both be floats")
+
+    template_args = []
+    template_args.extend(shape)
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_randf",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random floats.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random floats in the range [0, 1) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_kernel(seed: int, x: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
+        wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[0.1859147  0.41986287 0.7774631  0.00414598]
+         [0.41634446 0.3073818  0.4827178  0.53220683]
+         [0.9400381  0.73490226 0.26666623 0.9250764 ]
+         [0.51194566 0.57261354 0.26992965 0.8481429 ]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randf",
+    input_types={"shape": int, "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
+    "tile_randf",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "min": float, "max": float, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random floats within a specified range.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param min: Minimum value (inclusive) for random floats
+    :param max: Maximum value (exclusive) for random floats
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random floats in the range [min, max) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_range_kernel(seed: int, x: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
+        wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[-3.140853   -0.80137134  2.7746308  -4.95854   ]
+         [-0.83655536 -1.9261819  -0.17282188  0.32206833]
+         [ 4.400381    2.3490226  -2.3333378   4.2507644 ]
+         [ 0.11945665  0.7261354  -2.3007035   3.481429  ]]
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randf",
+    input_types={"shape": int, "rng": uint32, "min": float, "max": float, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
