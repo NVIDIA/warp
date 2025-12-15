@@ -17,8 +17,6 @@ import warp as wp
 import warp.fem as fem
 from warp.examples.fem.utils import gen_tetmesh
 
-from ..benchmarks_utils import clear_kernel_cache
-
 # ruff: noqa: RUF059
 
 
@@ -178,7 +176,6 @@ class FemCorotatedElasticityQuadraticTetmesh(FemCorotatedElasticity):
 
     def setup(self, fn: str, assembly: str):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 16
@@ -203,7 +200,6 @@ class FemCorotatedElasticityLinearGrid(FemCorotatedElasticity):
 
     def setup(self, fn: str, assembly: str):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 32
@@ -227,7 +223,6 @@ class FemCorotatedElasticityVeryHighOrder(FemCorotatedElasticity):
 
     def setup(self, fn: str, assembly: str):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 2

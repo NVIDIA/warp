@@ -17,8 +17,6 @@ import numpy as np
 
 import warp as wp
 
-from ..benchmarks_utils import clear_kernel_cache
-
 DT = wp.constant(0.01)
 SOFTENING_SQ = wp.constant(0.1**2)  # Softening factor for numerical stability
 TILE_SIZE = wp.constant(64)
@@ -96,7 +94,6 @@ class TileNBody:
 
     def setup(self):
         wp.init()
-        clear_kernel_cache()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)

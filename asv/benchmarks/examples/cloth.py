@@ -17,8 +17,6 @@ import numpy as np
 
 import warp as wp
 
-from ..benchmarks_utils import clear_kernel_cache
-
 
 @wp.kernel
 def eval_springs(
@@ -103,7 +101,6 @@ class Cloth:
 
     def setup(self, res):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 
