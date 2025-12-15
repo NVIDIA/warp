@@ -79,7 +79,7 @@ if __name__ == "__main__":
     wp.clear_kernel_cache()
 
     # test parallel compiling and loading of modules (GH-1086)
-    wp.config.enable_default_parallel_module_load = True
+    wp.config.parallel_module_load = True
     wp.force_load()
 
     unittest.main(verbosity=2, failfast=True)
