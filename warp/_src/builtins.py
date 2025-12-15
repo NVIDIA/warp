@@ -5646,6 +5646,123 @@ add_builtin(
 )
 
 
+def tile_n_map_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile(dtype=Scalar, shape=tuple[int, ...])
+
+    # Get all the tile arguments from *args
+    args = arg_types.get("args", ())
+
+    # Check that we have at least 3 tiles
+    if len(args) < 3:
+        raise ValueError(f"tile_map() with variadic args requires at least 3 tiles, got {len(args)}")
+
+    # Check all args are tiles
+    for i, arg in enumerate(args):
+        if not is_tile(arg):
+            raise TypeError(f"tile_map() argument {i} in *args must be a tile, got {arg!r}")
+
+    # Get the first tile as reference
+    first_tile = args[0]
+
+    # Check all tiles have the same shape
+    for i, arg in enumerate(args[1:], start=1):
+        if len(arg.shape) != len(first_tile.shape):
+            raise ValueError(
+                f"tile_map() shapes must have the same number of dimensions, got {len(first_tile.shape)} and {len(arg.shape)} for arguments 0 and {i}"
+            )
+
+        for dim_idx in range(len(first_tile.shape)):
+            if arg.shape[dim_idx] != first_tile.shape[dim_idx]:
+                raise ValueError(
+                    f"tile_map() shapes do not match on dimension {dim_idx}, got {first_tile.shape} and {arg.shape} for arguments 0 and {i}"
+                )
+
+    if "op" not in arg_values:
+        raise ValueError("tile_map() with variadic args requires an 'op' argument")
+
+    op = arg_values["op"]
+    # Build list of dtypes from all tiles
+    dtypes = [arg.dtype for arg in args]
+
+    try:
+        overload = op.get_overload(dtypes, {})
+    except KeyError as exc:
+        dtype_strs = ", ".join(type_repr(dt) for dt in dtypes)
+        raise RuntimeError(f"No overload of {op} found for tile element types {dtype_strs}") from exc
+
+    # build the right overload on demand
+    if overload.value_func is None:
+        overload.build(None)
+
+    value_type = overload.value_func(None, None)
+
+    if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+        raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
+
+    return tile(dtype=value_type, shape=first_tile.shape)
+
+
+def tile_n_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    op = arg_values["op"]
+    args = arg_values["args"]
+    dtypes = [arg.type.dtype for arg in args]
+
+    overload = op.get_overload(dtypes, {})
+
+    value_type = overload.value_func(None, None)
+
+    return ((overload, *args), (value_type,))
+
+
+add_builtin(
+    "tile_map",
+    input_types={"op": Callable, "*args": tile(dtype=Scalar, shape=tuple[int, ...])},
+    value_func=tile_n_map_value_func,
+    dispatch_func=tile_n_map_dispatch_func,
+    variadic=True,
+    native_func="tile_map",
+    doc="""Apply a user-defined function to multiple tiles element-wise.
+
+    This function cooperatively applies a user-defined function to corresponding elements of three or more tiles using all threads in the block.
+    All input tiles must have the same dimensions. The operator must accept the same number of arguments as tiles provided.
+
+    :param op: A callable function that accepts N arguments and returns one value, must be a user function
+    :param args: Three or more input tiles with matching dimensions. The operator (or one of its overloads) must be able to accept the tiles' dtypes
+    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.func
+        def weighted_sum(a: float, b: float, c: float):
+            return 0.5 * a + 0.3 * b + 0.2 * c
+
+        @wp.kernel
+        def compute():
+
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(shape=10, dtype=float)
+            c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
+
+            s = wp.tile_map(weighted_sum, a, b, c)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 # ---------------------------------
 # Linear Algebra
 

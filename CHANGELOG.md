@@ -58,6 +58,8 @@
 
 ### Changed
 
+- In addition to unary and binary ops, `wp.tile_map()` can now support user-defined functions with up to 8 input arguments
+  corresponding to 8 input tiles ([GH-1077](https://github.com/NVIDIA/warp/pull/1077)).
 - Improve CUDA compilation performance by enabling the use of
   [precompiled headers](https://docs.nvidia.com/cuda/nvrtc/index.html#automatic-pch). Can be disabled using
   `wp.config.use_precompiled_headers=False` ([GH-595](https://github.com/NVIDIA/warp/issues/595)).

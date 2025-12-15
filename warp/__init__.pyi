@@ -3645,6 +3645,46 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int
     ...
 
 @over
+def tile_map(op: Callable, *args: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
+    """Apply a user-defined function to multiple tiles element-wise.
+
+    This function cooperatively applies a user-defined function to corresponding elements of three or more tiles using all threads in the block.
+    All input tiles must have the same dimensions. The operator must accept the same number of arguments as tiles provided.
+
+    :param op: A callable function that accepts N arguments and returns one value, must be a user function
+    :param args: Three or more input tiles with matching dimensions. The operator (or one of its overloads) must be able to accept the tiles' dtypes
+    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.func
+        def weighted_sum(a: float, b: float, c: float):
+            return 0.5 * a + 0.3 * b + 0.2 * c
+
+        @wp.kernel
+        def compute():
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(shape=10, dtype=float)
+            c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
+
+            s = wp.tile_map(weighted_sum, a, b, c)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)
+
+    """
+    ...
+
+@over
 def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
