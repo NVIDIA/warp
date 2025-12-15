@@ -19,6 +19,8 @@
 
 #include "builtin.h"
 
+#include "rand.h"
+
 #ifdef __clang__
 // disable warnings related to C++17 extensions on CPU JIT builds
 #pragma clang diagnostic push
@@ -2004,6 +2006,102 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_full(T x
 {
     // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
     return x;
+}
+
+// tile initialized with random integers
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng)
+{
+    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randi(rng_tid);
+    }
+
+    return out;
+}
+
+// tile initialized with random integers in range [min, max)
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng, int min, int max)
+{
+    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randi(rng_tid, min, max);
+    }
+
+    return out;
+}
+
+// tile initialized with random floats in range [0, 1)
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng)
+{
+    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randf(rng_tid);
+    }
+
+    return out;
+}
+
+// tile initialized with random floats in range [min, max)
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng, float min, float max)
+{
+    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randf(rng_tid, min, max);
+    }
+
+    return out;
 }
 
 // tile with evenly spaced values
