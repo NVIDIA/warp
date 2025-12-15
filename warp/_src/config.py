@@ -196,8 +196,8 @@ use_precompiled_headers: bool = True
 enable_default_parallel_module_load: bool = False
 """Enable defaulting to compiling and loading of modules in parallel using multiple threads.
 
-When ``True``, ``wp.force_load(max_workers=None)`` will compile and load modules in parallel using a thread pool
-of size equal to the number of logical CPU cores. Otherwise module compilation and loading is done serially.
+When ``True``, ``wp.force_load(max_workers=None)`` will compile and load modules in parallel
+using up to 4 thread. Otherwise module compilation and loading is done serially.
 """
 
 _git_commit_hash: Optional[str] = None

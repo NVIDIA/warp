@@ -6975,7 +6975,7 @@ def force_load(
 
     if max_workers is None:
         if warp._src.config.enable_default_parallel_module_load:
-            max_workers = os.cpu_count()
+            max_workers = min(os.cpu_count(), 4)
         else:
             max_workers = 0
 
