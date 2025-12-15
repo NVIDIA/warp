@@ -379,6 +379,88 @@ def test_tile_binary_map_mixed_types(test, device):
     assert_np_equal(B_wp.grad.numpy(), B_grad)
 
 
+@wp.func
+def tile_n_map_func(x: float, y: float, z: float):
+    return x + y * z
+
+
+@wp.kernel
+def tile_n_map_kernel(
+    x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float), out: wp.array(dtype=float)
+):
+    x_tile = wp.tile_load(x, shape=(TILE_M,))
+    y_tile = wp.tile_load(y, shape=(TILE_M,))
+    z_tile = wp.tile_load(z, shape=(TILE_M,))
+
+    out_tile = wp.tile_map(tile_n_map_func, x_tile, y_tile, z_tile)
+    wp.tile_store(out, out_tile)
+
+
+def test_tile_n_map(test, device):
+    x_np = np.arange(TILE_M, dtype=float)
+    y_np = np.arange(TILE_M, dtype=float)
+    z_np = np.arange(TILE_M, dtype=float) * 2.0
+
+    x = wp.array(x_np, dtype=float, requires_grad=True, device=device)
+    y = wp.array(y_np, dtype=float, requires_grad=True, device=device)
+    z = wp.array(z_np, dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(TILE_M, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(tile_n_map_kernel, dim=1, inputs=[x, y, z], outputs=[out], block_dim=TILE_DIM, device=device)
+
+    out.grad = wp.ones_like(out)
+    tape.backward()
+
+    assert_np_equal(out.numpy(), x_np + y_np * z_np)
+    assert_np_equal(x.grad.numpy(), np.ones(TILE_M, dtype=float))
+    assert_np_equal(y.grad.numpy(), z_np)
+    assert_np_equal(z.grad.numpy(), y_np)
+
+
+@wp.func
+def tile_n_map_func_mixed_types(x: wp.mat33, y: wp.vec3, z: float):
+    return wp.mul(x, y) * z
+
+
+@wp.kernel
+def tile_n_map_kernel_mixed_types(
+    x: wp.array(dtype=wp.mat33), y: wp.array(dtype=wp.vec3), z: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)
+):
+    x_tile = wp.tile_load(x, shape=(TILE_M,))
+    y_tile = wp.tile_load(y, shape=(TILE_M,))
+    z_tile = wp.tile_load(z, shape=(TILE_M,))
+
+    out_tile = wp.tile_map(tile_n_map_func_mixed_types, x_tile, y_tile, z_tile)
+    wp.tile_store(out, out_tile)
+
+
+def test_tile_n_map_mixed_types(test, device):
+    mat = np.ones((3, 3), dtype=float)
+    vec = np.array([1.0, 2.0, 3.0], dtype=float)
+
+    x = wp.full(TILE_M, value=mat, dtype=wp.mat33, requires_grad=True, device=device)
+    y = wp.full(TILE_M, value=vec, dtype=wp.vec3, requires_grad=True, device=device)
+    z = wp.full(TILE_M, value=2.0, dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_n_map_kernel_mixed_types, dim=1, inputs=[x, y, z], outputs=[out], block_dim=TILE_DIM, device=device
+        )
+
+    out.grad = wp.ones_like(out)
+    tape.backward()
+
+    adj_x_np = np.tile(np.tile(vec, (3, 1)), (TILE_M, 1, 1)) * 2.0
+    adj_y_np = np.sum(x.numpy(), axis=1) * 2.0
+
+    assert_np_equal(out.numpy(), np.ones((TILE_M, 3), dtype=float) * 12.0)
+    assert_np_equal(x.grad.numpy(), adj_x_np)
+    assert_np_equal(y.grad.numpy(), adj_y_np)
+    assert_np_equal(z.grad.numpy(), np.full((TILE_M,), fill_value=np.sum(mat @ vec, axis=0), dtype=float))
+
+
 @wp.kernel
 def tile_operators(input: wp.array3d(dtype=float), output: wp.array3d(dtype=float)):
     # output tile index
@@ -1489,6 +1571,8 @@ add_function_test(TestTile, "test_tile_unary_map", test_tile_unary_map, devices=
 add_function_test(TestTile, "test_tile_unary_map_mixed_types", test_tile_unary_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_binary_map", test_tile_binary_map, devices=devices)
 add_function_test(TestTile, "test_tile_binary_map_mixed_types", test_tile_binary_map_mixed_types, devices=devices)
+add_function_test(TestTile, "test_tile_n_map", test_tile_n_map, devices=devices)
+add_function_test(TestTile, "test_tile_n_map_mixed_types", test_tile_n_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
 add_function_test(TestTile, "test_tile_tile", test_tile_tile, devices=get_cuda_test_devices())
