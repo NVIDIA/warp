@@ -18,8 +18,6 @@ import warp.fem as fem
 import warp.sparse as wps
 from warp.examples.fem.utils import gen_tetmesh
 
-from ..benchmarks_utils import clear_kernel_cache
-
 
 @fem.integrand
 def diffusion_form_scalar(s: fem.Sample, u: fem.Field, v: fem.Field):
@@ -77,7 +75,6 @@ class BsrMvQuadraticTetmeshMatrix(BsrMvFemMatrix):
 
     def setup(self):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 32
@@ -100,7 +97,6 @@ class BsrMvLinearGridMatrix(BsrMvFemMatrix):
 
     def setup(self):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 64
@@ -122,7 +118,6 @@ class BsrMvAlmostDense(BsrMvFemMatrix):
 
     def setup(self):
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 2

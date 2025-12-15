@@ -54,7 +54,6 @@ class CompileModule:
 class RunForwardKernel:
     def setup(self):
         wp.init()
-        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         N = (1024, 1024)
@@ -76,7 +75,6 @@ class RunForwardKernel:
 class RunBackwardKernel:
     def setup(self):
         wp.init()
-        clear_kernel_cache()
         wp.load_module(device="cuda:0")
 
         N = (1024, 1024)

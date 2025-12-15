@@ -26,8 +26,6 @@ from numpy.random import default_rng
 import warp as wp
 import warp.examples
 
-from .benchmarks_utils import clear_kernel_cache
-
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
 
@@ -66,7 +64,6 @@ class MeshQuery:
         from pxr import Usd, UsdGeom
 
         wp.init()
-        clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 
@@ -348,7 +345,6 @@ class BvhAABBQuery:
             seed = seed + 1
 
             wp.init()
-            clear_kernel_cache()
             self.device = wp.get_device(device)
             wp.load_module(device=self.device)
 
@@ -526,7 +522,6 @@ class BvhRayQuery:
             seed = seed + 1
 
             wp.init()
-            clear_kernel_cache()
             wp.load_module(device=self.device)
 
             asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))

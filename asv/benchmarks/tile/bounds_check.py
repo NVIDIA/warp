@@ -17,8 +17,6 @@ import numpy as np
 
 import warp as wp
 
-from ..benchmarks_utils import clear_kernel_cache
-
 
 def create_test_kernel(tile_dim: int, bounds_check: bool):
     TILE = tile_dim
@@ -44,7 +42,6 @@ class LoadStore:
 
     def setup(self, bounds_check, size):
         wp.init()
-        clear_kernel_cache()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
