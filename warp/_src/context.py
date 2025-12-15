@@ -7000,6 +7000,7 @@ def load_module(
     device: Device | str | list[Device] | list[str] | None = None,
     recursive: bool = False,
     block_dim: int | None = None,
+    max_workers: int | None = None,
 ):
     """Force a user-defined module to be compiled and loaded.
 
@@ -7026,6 +7027,8 @@ def load_module(
             ``warp.render``, this will also load ``warp.render.utils`` and
             ``warp.render.opengl``.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
+        max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
+            If ``None``, ```warp.config.parallel_module_load`` determines the default behavior.
 
     Raises:
         RuntimeError: If the specified module does not contain any Warp kernels, functions,
@@ -7069,7 +7072,7 @@ def load_module(
             "or has not been imported yet."
         )
 
-    force_load(device=device, modules=modules, block_dim=block_dim)
+    force_load(device=device, modules=modules, block_dim=block_dim, max_workers=max_workers)
 
 
 def _resolve_module(module: Module | types.ModuleType | str) -> Module:
