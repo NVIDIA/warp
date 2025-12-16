@@ -3488,7 +3488,7 @@ class array(Array[DType]):
             return [self.dtype.from_ptr(data + i * stride) for i in range(self.size)]
         else:
             # scalar
-            return list(a.flatten())
+            return a.flatten().tolist()
 
     def to(self, device, requires_grad=None):
         """Returns a Warp array with this array's data moved to the specified device, no-op if already on device."""

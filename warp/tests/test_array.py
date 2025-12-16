@@ -1929,6 +1929,11 @@ def test_to_list_vector(test, device):
                 test.assertEqual(len(l), a.size)
                 test.assertTrue(all(x == fill_value for x in l))
 
+                # Verify that elements are Warp vector instances, not NumPy arrays
+                test.assertIsInstance(l[0], vectype, f"Expected {vectype} instance, got {type(l[0])}")
+                # Verify it's a ctypes.Array (base class for Warp vectors)
+                test.assertIsInstance(l[0], ctypes.Array, "Vector should be a ctypes.Array instance")
+
 
 def test_to_list_matrix(test, device):
     dim = 3
@@ -1958,6 +1963,11 @@ def test_to_list_matrix(test, device):
 
                 test.assertEqual(len(l), a.size)
                 test.assertTrue(all(x == fill_value for x in l))
+
+                # Verify that elements are Warp matrix instances
+                test.assertIsInstance(l[0], mattype, f"Expected {mattype} instance, got {type(l[0])}")
+                # Verify it's a ctypes.Array (base class for Warp matrices)
+                test.assertIsInstance(l[0], ctypes.Array, "Matrix should be a ctypes.Array instance")
 
 
 def test_to_list_struct(test, device):
@@ -2028,6 +2038,37 @@ def test_to_list_struct(test, device):
             test.assertEqual(l[i].a2.ndim, s.a2.ndim)
             test.assertEqual(l[i].a3.dtype, s.a3.dtype)
             test.assertEqual(l[i].a3.ndim, s.a3.ndim)
+
+
+def test_to_list_python_types(test, device):
+    """Test that array.list() returns Python native types, not NumPy types."""
+    # Test integer types
+    a_int32 = wp.full((5,), 42, dtype=wp.int32, device=device)
+    l_int32 = a_int32.list()
+    for elem in l_int32:
+        test.assertIsInstance(elem, int, f"Expected int, got {type(elem)}")
+        test.assertNotIsInstance(elem, np.integer, f"Got NumPy type {type(elem)} instead of Python int")
+
+    # Test float types
+    a_float32 = wp.full((5,), 3.14, dtype=wp.float32, device=device)
+    l_float32 = a_float32.list()
+    for elem in l_float32:
+        test.assertIsInstance(elem, float, f"Expected float, got {type(elem)}")
+        test.assertNotIsInstance(elem, np.floating, f"Got NumPy type {type(elem)} instead of Python float")
+
+    # Test bool type
+    a_bool = wp.full((5,), True, dtype=wp.bool, device=device)
+    l_bool = a_bool.list()
+    for elem in l_bool:
+        test.assertIsInstance(elem, bool, f"Expected bool, got {type(elem)}")
+        test.assertNotIsInstance(elem, np.bool_, f"Got NumPy type {type(elem)} instead of Python bool")
+
+    # Test multiple dimensions
+    a_2d = wp.full((3, 4), 99, dtype=wp.int64, device=device)
+    l_2d = a_2d.list()
+    for elem in l_2d:
+        test.assertIsInstance(elem, int, f"Expected int for 2D array, got {type(elem)}")
+        test.assertNotIsInstance(elem, np.integer, f"Got NumPy type {type(elem)} for 2D array")
 
 
 @wp.kernel
@@ -2902,6 +2943,16 @@ def inplace_add_non_atomic_types(x: wp.array(dtype=Any), y: wp.array(dtype=Any))
 
 
 uint16vec3 = wp.types.vector(length=3, dtype=wp.uint16)
+
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.int8), "y": wp.array(dtype=wp.int8)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.uint8), "y": wp.array(dtype=wp.uint8)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.int16), "y": wp.array(dtype=wp.int16)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.uint16), "y": wp.array(dtype=wp.uint16)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2b), "y": wp.array(dtype=wp.vec2b)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2ub), "y": wp.array(dtype=wp.vec2ub)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2s), "y": wp.array(dtype=wp.vec2s)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2us), "y": wp.array(dtype=wp.vec2us)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=uint16vec3), "y": wp.array(dtype=uint16vec3)})
 
 
 def test_array_inplace_non_diff_ops(test, device):
@@ -3804,6 +3855,7 @@ add_function_test(TestArray, "test_to_list_scalar", test_to_list_scalar, devices
 add_function_test(TestArray, "test_to_list_vector", test_to_list_vector, devices=devices)
 add_function_test(TestArray, "test_to_list_matrix", test_to_list_matrix, devices=devices)
 add_function_test(TestArray, "test_to_list_struct", test_to_list_struct, devices=devices)
+add_function_test(TestArray, "test_to_list_python_types", test_to_list_python_types, devices=devices)
 
 add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
 add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)

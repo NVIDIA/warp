@@ -76,6 +76,8 @@
 - Fix zero-padding of tiled reductions in iterative linear solvers.
 - Fix `RecursionError` when calling `repr()` on vector instances (e.g., `repr(wp.vec2i(42))`)
   ([GH-1124](https://github.com/NVIDIA/warp/issues/1124)).
+- Fix `array.list()` returning NumPy scalar types instead of Python native types (e.g., `numpy.int64` instead of `int`)
+  ([GH-1099](https://github.com/NVIDIA/warp/issues/1099)).
 
 ## [1.10.1] - 2025-12-01
 
