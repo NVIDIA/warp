@@ -193,11 +193,12 @@ use_precompiled_headers: bool = True
 """Enable the use of precompiled headers during kernel compilation.
 """
 
-parallel_module_load: bool = False
-"""Enable defaulting to compiling and loading of modules in parallel using multiple threads.
+load_module_max_workers: Optional[int] = 0
+"""Default number of worker threads for compiling and loading modules in parallel.
 
-When ``True``, ``wp.force_load(max_workers=None)`` will compile and load modules in parallel
-using up to 4 threads. Otherwise module compilation and loading is done serially.
+For ``wp.load_module()`` and ``wp.force_load()``, if the ``max_workers`` parameter is not specified,
+the default number of worker threads is determined by this setting. ``0`` means serial loading.
+If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
 _git_commit_hash: Optional[str] = None

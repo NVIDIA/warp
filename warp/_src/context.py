@@ -6957,7 +6957,7 @@ def force_load(
             load all imported modules that contain Warp code.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
         max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
-            If ``None``, ```warp.config.parallel_module_load`` determines the default behavior.
+            If ``None``, ```warp.config.load_module_max_workers`` determines the default.
     """
     if is_cuda_driver_initialized():
         # save original context to avoid side effects
@@ -6974,10 +6974,11 @@ def force_load(
         modules = user_modules.values()
 
     if max_workers is None:
-        if warp._src.config.parallel_module_load:
+        if warp._src.config.load_module_max_workers is None:
+            # determine a reasonable default
             max_workers = min(os.cpu_count(), 4)
         else:
-            max_workers = 0
+            max_workers = warp._src.config.load_module_max_workers
 
     if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
@@ -7028,7 +7029,7 @@ def load_module(
             ``warp.render.opengl``.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
         max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
-            If ``None``, ```warp.config.parallel_module_load`` determines the default behavior.
+            If ``None``, ```warp.config.load_module_max_workers`` determines the default.
 
     Raises:
         RuntimeError: If the specified module does not contain any Warp kernels, functions,
