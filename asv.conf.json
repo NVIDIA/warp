@@ -9,7 +9,8 @@
     "python -m build --wheel -o {build_cache_dir}"
   ],
   "install_command": [
-    "in-dir={env_dir} python -m pip install {wheel_file}[benchmark]"
+    "in-dir={env_dir} python -m pip install {wheel_file}",
+    "return-code=any in-dir={env_dir} python -m pip install {wheel_file}[benchmark]"
   ],
   "branches": ["main"],
   "dvcs": "git",
