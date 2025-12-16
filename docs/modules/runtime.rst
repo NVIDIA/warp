@@ -1037,6 +1037,63 @@ Inside kernels, the ``start / stop / step`` values of a slice must be **compile-
 expressions.
 
 
+Unpacking
+#########
+
+Python's unpack operator (``*``) can be used in function calls inside kernels to expand vectors, matrices, quaternions, and 1D array slices into individual arguments:
+
+.. code:: python
+
+    @wp.kernel
+    def compute(
+        arr: wp.array(dtype=float),
+    ):
+        # Unpack a 1D array slice into a vector.
+        v1 = wp.vec3(*arr[:3])
+        wp.expect_eq(v1, wp.vec3(1.0, 2.0, 3.0))
+
+        # Unpack a vector into function arguments.
+        v2 = wp.vec2(1.0, 2.0)
+        x2 = wp.max(*v2)
+        wp.expect_eq(x2, 2.0)
+
+        # Build larger vectors by unpacking smaller ones.
+        v3 = wp.vec3(1.0, 2.0, 3.0)
+        v4 = wp.vec4(*v3, 4.0)
+        wp.expect_eq(v4, wp.vec4(1.0, 2.0, 3.0, 4.0))
+
+        # Combine multiple unpacks.
+        v5 = wp.vec2(1.0, 2.0)
+        v6 = wp.vec2(3.0, 4.0)
+        v7 = wp.vec4(*v5, *v6)
+        wp.expect_eq(v7, wp.vec4(1.0, 2.0, 3.0, 4.0))
+
+        # Unpack vector slices.
+        v8 = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v9 = wp.vec2(*v8[1:3])
+        wp.expect_eq(v9, wp.vec2(2.0, 3.0))
+
+        # Unpack matrix rows.
+        m1 = wp.mat33(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
+        m2 = wp.matrix_from_rows(*m1[:2])
+        wp.expect_eq(
+            m2,
+            wp.matrix_from_rows(
+                wp.vec3(1.0, 2.0, 3.0),
+                wp.vec3(4.0, 5.0, 6.0),
+            )
+        )
+
+
+    arr = wp.array((1, 2, 3, 4, 5, 6, 7, 8, 9), dtype=float)
+    wp.launch(compute, dim=1, inputs=(arr,))
+
+
+When unpacking 1D arrays, the slice indices must be **compile-time constants** and non-negative.
+The upper bound is required and negative indices or steps are not allowed since the array
+length is not known at compile time.
+
+
 Type Conversions
 ################
 

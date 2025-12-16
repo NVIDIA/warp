@@ -193,7 +193,7 @@ def test_introspection(test, device):
         test.assertEqual(wp.types.type_is_quaternion(a), kind is Kind.QUATERNION and not is_inst)
         test.assertEqual(wp.types.type_is_transformation(a), kind is Kind.TRANSFORMATION and not is_inst)
         test.assertEqual(
-            wp.types.type_is_compound(a), kind >= Kind.VECTOR and kind <= Kind.TRANSFORMATION and not is_inst
+            wp.types.type_is_composite(a), kind >= Kind.VECTOR and kind <= Kind.TRANSFORMATION and not is_inst
         )
         test.assertEqual(wp.types.type_is_value(a), kind <= Kind.TRANSFORMATION and not is_inst)
         test.assertEqual(wp.types.type_is_struct(a), kind is Kind.STRUCT and not is_inst)
@@ -206,7 +206,7 @@ def test_introspection(test, device):
         test.assertEqual(wp.types.is_vector(a), kind is Kind.VECTOR and is_inst)
         test.assertEqual(wp.types.is_matrix(a), kind is Kind.MATRIX and is_inst)
         test.assertEqual(wp.types.is_quaternion(a), kind is Kind.QUATERNION and is_inst)
-        test.assertEqual(wp.types.is_compound(a), kind >= Kind.VECTOR and kind <= Kind.TRANSFORMATION and is_inst)
+        test.assertEqual(wp.types.is_composite(a), kind >= Kind.VECTOR and kind <= Kind.TRANSFORMATION and is_inst)
         test.assertEqual(wp.types.is_value(a), kind <= Kind.TRANSFORMATION and is_inst)
         test.assertEqual(wp.types.is_struct(a), kind is Kind.STRUCT and is_inst)
         test.assertEqual(wp.types.is_array(a), kind is Kind.ARRAY and is_inst)
