@@ -46,6 +46,7 @@
 - Add support for the unpack operator (`*`) in kernels to expand vectors, matrices, quaternions,
   and 1D array slices into individual arguments, which enables syntax like `wp.vec4(*v3, 1.0)`, `wp.max(*v)`,
   or `wp.vec3i(*arr[:3])` ([GH-1083](https://github.com/NVIDIA/warp/issues/1083)).
+- Add staged graph capture modes with JAX FFI to reduce re-capturing ([GH-1039](https://github.com/NVIDIA/warp/issues/1039)).
 
 ### Removed
 
