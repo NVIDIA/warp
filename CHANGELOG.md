@@ -56,6 +56,8 @@
 
 - Drop support for Python 3.8. Python 3.9 is now the minimum-supported version
   ([GH-1019](https://github.com/NVIDIA/warp/issues/1019)).
+- Remove `graph_compatible` argument from `jax_callable()` (deprecated since 1.8.1), use `graph_mode` instead
+  ([GH-982](https://github.com/NVIDIA/warp/issues/982)).
 
 ### Deprecated
 

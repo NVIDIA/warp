@@ -1369,7 +1369,6 @@ def jax_kernel(
 def jax_callable(
     func: Callable,
     num_outputs: int = 1,
-    graph_compatible: Optional[bool] = None,  # deprecated
     graph_mode: GraphMode = GraphMode.JAX,
     vmap_method: Optional[str] = "broadcast_all",
     output_dims=None,
@@ -1389,8 +1388,6 @@ def jax_callable(
         func: The Python function to call.
         num_outputs: Specify the number of output arguments if greater than 1.
             This must include the number of ``in_out_arguments``.
-        graph_compatible: Whether the function can be called during CUDA graph capture.
-            This argument is deprecated, use ``graph_mode`` instead.
         graph_mode: CUDA graph capture mode.
             ``GraphMode.JAX`` (default): Let JAX capture the graph, which may be used as a subgraph in an enclosing JAX capture.
             ``GraphMode.WARP``: Let Warp capture the graph. Use this mode when the callable cannot be used as a subgraph,
@@ -1422,15 +1419,6 @@ def jax_callable(
     """
 
     check_jax_version()
-
-    if graph_compatible is not None:
-        wp._src.utils.warn(
-            "The `graph_compatible` argument is deprecated, use `graph_mode` instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        if graph_compatible is False:
-            graph_mode = GraphMode.NONE
 
     if graph_cache_max is None:
         graph_cache_max = FfiCallable.default_graph_cache_max
