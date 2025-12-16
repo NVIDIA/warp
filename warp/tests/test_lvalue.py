@@ -221,7 +221,7 @@ def array_call_kernel(foos: wp.array(dtype=wp.uint32)):
 def test_array_call_assign(test, device):
     arr = wp.zeros((10,), dtype=wp.uint32, device=device)
 
-    wp.launch(kernel=array_kernel, dim=(10,), inputs=[arr], device=device)
+    wp.launch(kernel=array_call_kernel, dim=(10,), inputs=[arr], device=device)
 
     assert_np_equal(arr.numpy(), np.ones(10))
 

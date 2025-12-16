@@ -29,9 +29,11 @@ import os
 import platform
 import shutil
 import sys
+import threading
 import types
 import weakref
 from collections.abc import Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy as shallowcopy
 from pathlib import Path
 from typing import (
@@ -51,6 +53,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp._src.config
+from warp._src.codegen import synchronized
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -2249,6 +2252,11 @@ class Module:
 
         return get_deprecated_method(self, "warp.Module", name)
 
+    @synchronized
+    def increment_id(self) -> int:
+        self.cpu_exec_id += 1
+        return self.cpu_exec_id
+
     def register_struct(self, struct):
         self.structs[struct.key] = struct
 
@@ -2528,7 +2536,7 @@ class Module:
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
 
-        build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}"
+        build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}_t{threading.get_ident()}"
 
         # dir may exist from previous attempts / runs / archs
         Path(build_dir).mkdir(parents=True, exist_ok=True)
@@ -2779,8 +2787,8 @@ class Module:
 
             if device.is_cpu:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
-                module_handle = f"wp_{self.name}_{self.cpu_exec_id}"
-                self.cpu_exec_id += 1
+                id = self.increment_id()
+                module_handle = f"wp_{self.name}_{id}"
                 runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
                 self.execs[(None, active_block_dim)] = module_exec
@@ -6928,6 +6936,7 @@ def force_load(
     device: Device | str | list[Device] | list[str] | None = None,
     modules: list[Module] | None = None,
     block_dim: int | None = None,
+    max_workers: int | None = None,
 ):
     """Force user-defined kernels to be compiled and loaded (low-level API).
 
@@ -6947,6 +6956,8 @@ def force_load(
         modules: List of Warp :class:`Module` objects to load. If ``None``,
             load all imported modules that contain Warp code.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
+        max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
+            If ``None``, ```warp.config.load_module_max_workers`` determines the default.
     """
     if is_cuda_driver_initialized():
         # save original context to avoid side effects
@@ -6962,9 +6973,23 @@ def force_load(
     if modules is None:
         modules = user_modules.values()
 
-    for d in devices:
-        for m in modules:
-            m.load(d, block_dim=block_dim)
+    if max_workers is None:
+        if warp._src.config.load_module_max_workers is None:
+            # determine a reasonable default
+            max_workers = min(os.cpu_count(), 4)
+        else:
+            max_workers = warp._src.config.load_module_max_workers
+
+    if max_workers <= 1 or (len(devices) * len(modules)) == 1:
+        # serial loading; avoid the overhead of using a thread pool
+        for d in devices:
+            for m in modules:
+                m.load(d, block_dim=block_dim)
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for d in devices:
+                for m in modules:
+                    executor.submit(m.load, d, block_dim=block_dim)
 
     if is_cuda_available():
         # restore original context to avoid side effects
@@ -6976,6 +7001,7 @@ def load_module(
     device: Device | str | list[Device] | list[str] | None = None,
     recursive: bool = False,
     block_dim: int | None = None,
+    max_workers: int | None = None,
 ):
     """Force a user-defined module to be compiled and loaded.
 
@@ -7002,6 +7028,8 @@ def load_module(
             ``warp.render``, this will also load ``warp.render.utils`` and
             ``warp.render.opengl``.
         block_dim: The number of threads per block (always 1 for ``"cpu"`` devices).
+        max_workers: The maximum number of parallel threads to use for loading modules. ``0`` means serial loading.
+            If ``None``, ```warp.config.load_module_max_workers`` determines the default.
 
     Raises:
         RuntimeError: If the specified module does not contain any Warp kernels, functions,
@@ -7045,7 +7073,7 @@ def load_module(
             "or has not been imported yet."
         )
 
-    force_load(device=device, modules=modules, block_dim=block_dim)
+    force_load(device=device, modules=modules, block_dim=block_dim, max_workers=max_workers)
 
 
 def _resolve_module(module: Module | types.ModuleType | str) -> Module:
