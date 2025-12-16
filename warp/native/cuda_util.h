@@ -72,6 +72,20 @@ CUresult cuDevicePrimaryCtxRetain_f(CUcontext* ctx, CUdevice dev);
 CUresult cuDevicePrimaryCtxRelease_f(CUdevice dev);
 CUresult cuDeviceCanAccessPeer_f(int* can_access, CUdevice dev, CUdevice peer_dev);
 CUresult cuMemGetInfo_f(size_t* free, size_t* total);
+#if CUDA_VERSION >= 12080
+// batched memcpy
+CUresult cuMemcpyBatchAsync_f(
+    CUdeviceptr* dsts,
+    CUdeviceptr* srcs,
+    size_t* sizes,
+    size_t count,
+    CUmemcpyAttributes* attrs,
+    size_t* attrsIdxs,
+    size_t numAttrs,
+    size_t* failIdx,
+    CUstream hStream
+);
+#endif
 CUresult cuCtxGetCurrent_f(CUcontext* ctx);
 CUresult cuCtxSetCurrent_f(CUcontext ctx);
 CUresult cuCtxPushCurrent_f(CUcontext ctx);
