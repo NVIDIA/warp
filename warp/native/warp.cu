@@ -3698,6 +3698,7 @@ size_t wp_cuda_compile_program(
     opts.push_back("--device-as-default-execution-space");
     opts.push_back("--extra-device-vectorization");
     opts.push_back("--restrict");
+    opts.push_back("--diag-suppress=177,550");  // "was declared but never referenced", "was set but never used"
 
     if (num_ltoirs > 0) {
         opts.push_back("-dlto");
