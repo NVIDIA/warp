@@ -21,4 +21,4 @@ from warp._src.jax_experimental.custom_call import jax_kernel as jax_kernel
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_custom_call, "wp.jax_experimental", name)
+    return get_deprecated_api(_custom_call, "warp.jax_experimental", name)

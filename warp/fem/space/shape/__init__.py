@@ -85,4 +85,4 @@ from warp._src.fem.space import shape as _shape
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_shape, "wp.fem.space", name)
+    return get_deprecated_api(_shape, "warp.fem.space", name)

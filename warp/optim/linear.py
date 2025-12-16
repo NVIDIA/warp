@@ -32,4 +32,4 @@ from warp._src.optim import linear as _linear
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_linear, "wp.optim", name)
+    return get_deprecated_api(_linear, "warp.optim", name)

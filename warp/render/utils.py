@@ -20,9 +20,10 @@ from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namesp
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_utils, "wp.render", name)
+    # Use simple getattr since namespace warning is already issued by
+    # _warn_deprecated_namespace. Individual symbol warnings would be
+    # redundant and confusing (suggesting promotion to warp.render)
+    return getattr(_utils, name)
 
 
 _warn_deprecated_namespace(__name__)

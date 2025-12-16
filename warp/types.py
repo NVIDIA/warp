@@ -58,4 +58,4 @@ from warp._src import types as _types
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_types, "wp", name)
+    return get_deprecated_api(_types, "warp", name)

@@ -28,4 +28,4 @@ from warp._src.fem import geometry as _geometry
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_geometry, "wp.fem", name)
+    return get_deprecated_api(_geometry, "warp.fem", name)

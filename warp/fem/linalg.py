@@ -37,4 +37,4 @@ from warp._src.fem import linalg as _linalg
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_linalg, "wp.fem", name)
+    return get_deprecated_api(_linalg, "warp.fem", name)

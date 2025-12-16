@@ -1740,10 +1740,42 @@ def get_deprecated_method(cls, cls_path, attr_name):
 
 
 def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
+    """
+    Get a deprecated API symbol and issue a deprecation warning.
+
+    Args:
+        module: The module containing the symbol
+        namespace: The namespace prefix (e.g., "warp")
+        attr_name: The name of the attribute to retrieve
+        old_attr_path: Optional path for the old symbol location (for renames)
+    """
+    import sys  # noqa: PLC0415
+
+    # Suppress warnings for internal Warp introspection (e.g., codegen's hasattr/getattr checks).
+    # Check if caller (frame 2) is from warp/_src/ and return silently if so.
+    # Only catch ValueError (frame unavailable), not AttributeError (missing attribute must propagate).
+    try:
+        frame = sys._getframe(2)  # Get __getattr__'s immediate caller
+        if "/warp/_src/" in frame.f_code.co_filename or "\\warp\\_src\\" in frame.f_code.co_filename:
+            return getattr(module, attr_name)  # Skip warning, propagate AttributeError if attribute missing
+    except ValueError:
+        pass  # Frame unavailable, proceed with normal warning
+
     if not attr_name.startswith("_"):
         module_name = module.__name__.split(".")[-1]
         attr_path = f"{namespace}.{module_name}.{attr_name}"
-        if old_attr_path is None:
+
+        # Check if symbol exists directly in the namespace (e.g., promoted to warp.Module instead of warp.context.Module)
+        # Use __dict__ check to avoid triggering __getattr__ which could cause recursion
+        namespace_module = sys.modules.get(namespace)
+        if namespace_module is not None and attr_name in getattr(namespace_module, "__dict__", {}):
+            # Symbol has been promoted to the main namespace
+            public_path = f"{namespace}.{attr_name}"
+            warn(
+                f"The symbol `{attr_path}` will soon be removed from the public API. Use `{public_path}` instead.",
+                DeprecationWarning,
+            )
+        elif old_attr_path is None:
             warn(
                 f"The symbol `{attr_path}` will soon be removed from the public API. "
                 f"It can still be accessed from `{module.__name__}.{attr_name}` but might be changed or removed without notice.",
