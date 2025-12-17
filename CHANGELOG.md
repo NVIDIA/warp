@@ -51,6 +51,8 @@
   `max_workers` argument. Use e.g. `wp.force_load(max_workers=4)` to use 4 threads to load all imported modules on all devices.
   The `wp.config.load_module_max_workers` setting determines the default value (currently `0` for serial loading). Set it to
   `None` to let Warp determine a reasonable number (currently `min(os.cpu_count(), 4)`).
+- Add a `wp.mesh_query_ray_count_intersections` function that counts all intersections with triangles along the ray ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
+- Add a `wp.mesh_query_point_sign_parity()` function that uses parity-based ray–triangle intersection counting for more robust sign determination ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
 
 ### Removed
 

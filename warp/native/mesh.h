@@ -22,6 +22,7 @@
 #include "array.h"
 #include "bvh.h"
 #include "intersect.h"
+#include "rand.h"
 #include "solid_angle.h"
 
 #define BVH_DEBUG 0
@@ -127,7 +128,11 @@ CUDA_CALLABLE inline float furthest_distance_to_aabb_sq(const vec3& p, const vec
     return corner_diff_x * corner_diff_x + corner_diff_y * corner_diff_y + corner_diff_z * corner_diff_z;
 }
 
-CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p);
+CUDA_CALLABLE inline int
+mesh_query_ray_count_intersections(uint64_t id, const vec3& start, const vec3& dir, int root = -1);
+CUDA_CALLABLE inline float mesh_query_inside_ray_tracing(uint64_t id, const vec3& p);
+CUDA_CALLABLE inline float
+mesh_query_inside_parity(uint64_t id, const vec3& p, const vec3 base_dir, int n_sample, float perturbation_scale);
 
 // returns true if there is a point (strictly) < distance max_dist
 CUDA_CALLABLE inline bool
@@ -303,7 +308,198 @@ mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, 
         face = min_face;
 
         // determine inside outside using ray-cast parity check
-        inside = mesh_query_inside(id, point);
+        inside = mesh_query_inside_ray_tracing(id, point);
+
+        return true;
+    } else {
+        return false;
+    }
+}
+
+// returns true if there is a point (strictly) < distance max_dist
+CUDA_CALLABLE inline bool mesh_query_point_sign_parity(
+    uint64_t id,
+    const vec3& point,
+    float max_dist,
+    float& inside,
+    int& face,
+    float& u,
+    float& v,
+    int n_sample = 1,
+    float perturbation_scale = 0.1f
+)
+{
+    Mesh mesh = mesh_get(id);
+
+    int stack[BVH_QUERY_STACK_SIZE];
+    stack[0] = *mesh.bvh.root;
+
+    int count = 1;
+
+    float min_dist_sq = max_dist * max_dist;
+    int min_face;
+    float min_v;
+    float min_w;
+
+#if BVH_DEBUG
+    int tests = 0;
+    int secondary_culls = 0;
+
+    std::vector<int> test_history;
+    std::vector<vec3> test_centers;
+    std::vector<vec3> test_extents;
+#endif
+
+    while (count) {
+        const int nodeIndex = stack[--count];
+
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, nodeIndex);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, nodeIndex);
+
+        // re-test distance
+        float node_dist_sq
+            = distance_to_aabb_sq(point, vec3(lower.x, lower.y, lower.z), vec3(upper.x, upper.y, upper.z));
+        if (node_dist_sq > min_dist_sq) {
+#if BVH_DEBUG
+            secondary_culls++;
+#endif
+            continue;
+        }
+
+        const int left_index = lower.i;
+        const int right_index = upper.i;
+
+        if (lower.b) {
+            const int start = left_index;
+            const int end = right_index;
+            // loops through primitives in the leaf
+            for (int primitive_counter = start; primitive_counter < end; primitive_counter++) {
+                int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                int i = mesh.indices[primitive_index * 3 + 0];
+                int j = mesh.indices[primitive_index * 3 + 1];
+                int k = mesh.indices[primitive_index * 3 + 2];
+
+                vec3 p = mesh.points[i];
+                vec3 q = mesh.points[j];
+                vec3 r = mesh.points[k];
+
+                vec3 e0 = q - p;
+                vec3 e1 = r - p;
+                vec3 e2 = r - q;
+                vec3 normal = cross(e0, e1);
+
+                // sliver detection
+                if (length(normal) / (dot(e0, e0) + dot(e1, e1) + dot(e2, e2)) < 1.e-6f)
+                    continue;
+
+                vec2 barycentric = closest_point_to_triangle(p, q, r, point);
+                float u = barycentric[0];
+                float v = barycentric[1];
+                float w = 1.f - u - v;
+                vec3 c = u * p + v * q + w * r;
+
+                float dist_sq = length_sq(c - point);
+
+                if (dist_sq < min_dist_sq) {
+                    min_dist_sq = dist_sq;
+                    min_v = v;
+                    min_w = w;
+                    min_face = primitive_index;
+                }
+            }
+
+#if BVH_DEBUG
+
+            tests++;
+
+            bounds3 b;
+            b = bounds_union(b, p);
+            b = bounds_union(b, q);
+            b = bounds_union(b, r);
+
+            if (distance_to_aabb_sq(point, b.lower, b.upper) < max_dist * max_dist) {
+                // if (dist_sq < max_dist*max_dist)
+                test_history.push_back(left_index);
+                test_centers.push_back(b.center());
+                test_extents.push_back(b.edges());
+            }
+#endif
+
+        } else {
+            BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
+            BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
+
+            BVHPackedNodeHalf right_lower = bvh_load_node(mesh.bvh.node_lowers, right_index);
+            BVHPackedNodeHalf right_upper = bvh_load_node(mesh.bvh.node_uppers, right_index);
+
+            float left_dist_sq = distance_to_aabb_sq(
+                point, vec3(left_lower.x, left_lower.y, left_lower.z), vec3(left_upper.x, left_upper.y, left_upper.z)
+            );
+            float right_dist_sq = distance_to_aabb_sq(
+                point, vec3(right_lower.x, right_lower.y, right_lower.z),
+                vec3(right_upper.x, right_upper.y, right_upper.z)
+            );
+
+            wp::vec2i child_indices;
+            wp::vec2 child_dist;
+            if (left_dist_sq < right_dist_sq) {
+                child_indices = wp::vec2i(right_index, left_index);
+                child_dist = wp::vec2(right_dist_sq, left_dist_sq);
+            } else {
+                child_indices = wp::vec2i(left_index, right_index);
+                child_dist = wp::vec2(left_dist_sq, right_dist_sq);
+            }
+
+            if (child_dist[0] < min_dist_sq)
+                stack[count++] = child_indices[0];
+
+            if (child_dist[1] < min_dist_sq)
+                stack[count++] = child_indices[1];
+        }
+    }
+
+
+#if BVH_DEBUG
+    printf("%d\n", tests);
+
+    static int max_tests = 0;
+    static vec3 max_point;
+    static float max_point_dist = 0.0f;
+    static int max_secondary_culls = 0;
+
+    if (secondary_culls > max_secondary_culls)
+        max_secondary_culls = secondary_culls;
+
+    if (tests > max_tests) {
+        max_tests = tests;
+        max_point = point;
+        max_point_dist = sqrtf(min_dist_sq);
+
+        printf(
+            "max_tests: %d max_point: %f %f %f max_point_dist: %f max_second_culls: %d\n", max_tests, max_point[0],
+            max_point[1], max_point[2], max_point_dist, max_secondary_culls
+        );
+
+        FILE* f = fopen("test_history.txt", "w");
+        for (int i = 0; i < test_history.size(); ++i) {
+            fprintf(
+                f, "%d, %f, %f, %f, %f, %f, %f\n", test_history[i], test_centers[i][0], test_centers[i][1],
+                test_centers[i][2], test_extents[i][0], test_extents[i][1], test_extents[i][2]
+            );
+        }
+
+        fclose(f);
+    }
+#endif
+
+    // check if we found a point, and write outputs
+    if (min_dist_sq < max_dist * max_dist) {
+        u = 1.0f - min_v - min_w;
+        v = min_v;
+        face = min_face;
+
+        // determine inside outside using ray-cast parity check
+        inside = mesh_query_inside_parity(id, point, vec3(1.f, 1.f, 1.f), n_sample, perturbation_scale);
 
         return true;
     } else {
@@ -1164,7 +1360,7 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(
 
         // determine inside outside using ray-cast parity check
         if (!mesh.solid_angle_props) {
-            inside = mesh_query_inside(id, point);
+            inside = mesh_query_inside_ray_tracing(id, point);
         } else {
             float winding_number = mesh_query_winding_number(id, point, accuracy);
             inside = (winding_number > winding_number_threshold) ? -1.0f : 1.0f;
@@ -1244,7 +1440,7 @@ CUDA_CALLABLE inline void adj_mesh_query_furthest_point_no_sign(
     adj_closest_point_to_triangle(p, q, r, point, adj_p, adj_q, adj_r, adj_point, adj_uv);  // Todo for Miles :>
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point(
+CUDA_CALLABLE inline void adj_mesh_query_point_sign_parity(
     uint64_t id,
     const vec3& point,
     float max_dist,
@@ -1252,6 +1448,8 @@ CUDA_CALLABLE inline void adj_mesh_query_point(
     const int& face,
     const float& u,
     const float& v,
+    int n_sample,
+    float perturbation_scale,
     uint64_t adj_id,
     vec3& adj_point,
     float& adj_max_dist,
@@ -1259,6 +1457,8 @@ CUDA_CALLABLE inline void adj_mesh_query_point(
     int& adj_face,
     float& adj_u,
     float& adj_v,
+    int& adj_n_sample,
+    float& adj_perturbation_scale,
     bool& adj_ret
 )
 {
@@ -1349,10 +1549,63 @@ struct mesh_query_point_t {
     float v;
 };
 
+
+CUDA_CALLABLE inline void adj_mesh_query_point(
+    uint64_t id,
+    const vec3& point,
+    float max_dist,
+    const float& inside,
+    const int& face,
+    const float& u,
+    const float& v,
+    uint64_t adj_id,
+    vec3& adj_point,
+    float& adj_max_dist,
+    float& adj_inside,
+    int& adj_face,
+    float& adj_u,
+    float& adj_v,
+    bool& adj_ret
+)
+{
+    adj_mesh_query_point_no_sign(
+        id, point, max_dist, face, u, v, adj_id, adj_point, adj_max_dist, adj_face, adj_u, adj_v, adj_ret
+    );
+}
+
+CUDA_CALLABLE inline void adj_mesh_query_point(
+    uint64_t id,
+    const vec3& point,
+    float max_dist,
+    const mesh_query_point_t& ret,
+    uint64_t adj_id,
+    vec3& adj_point,
+    float& adj_max_dist,
+    mesh_query_point_t& adj_ret
+)
+{
+    adj_mesh_query_point(
+        id, point, max_dist, ret.sign, ret.face, ret.u, ret.v, adj_id, adj_point, adj_max_dist, adj_ret.sign,
+        adj_ret.face, adj_ret.u, adj_ret.v, adj_ret.result
+    );
+}
+
 CUDA_CALLABLE inline mesh_query_point_t mesh_query_point(uint64_t id, const vec3& point, float max_dist)
 {
     mesh_query_point_t query;
     query.result = mesh_query_point(id, point, max_dist, query.sign, query.face, query.u, query.v);
+    return query;
+}
+
+
+CUDA_CALLABLE inline mesh_query_point_t mesh_query_point_sign_parity(
+    uint64_t id, const vec3& point, float max_dist, int n_sample = 1, float perturbation_scale = 0.1f
+)
+{
+    mesh_query_point_t query;
+    query.result = mesh_query_point_sign_parity(
+        id, point, max_dist, query.sign, query.face, query.u, query.v, n_sample, perturbation_scale
+    );
     return query;
 }
 
@@ -1392,20 +1645,25 @@ CUDA_CALLABLE inline mesh_query_point_t mesh_query_point_sign_winding_number(
     return query;
 }
 
-CUDA_CALLABLE inline void adj_mesh_query_point(
+CUDA_CALLABLE inline void adj_mesh_query_point_sign_parity(
     uint64_t id,
     const vec3& point,
     float max_dist,
+    int n_sample,
+    float perturbation_scale,
     const mesh_query_point_t& ret,
     uint64_t adj_id,
     vec3& adj_point,
     float& adj_max_dist,
+    int& adj_n_sample,
+    float& adj_perturbation_scale,
     mesh_query_point_t& adj_ret
 )
 {
-    adj_mesh_query_point(
-        id, point, max_dist, ret.sign, ret.face, ret.u, ret.v, adj_id, adj_point, adj_max_dist, adj_ret.sign,
-        adj_ret.face, adj_ret.u, adj_ret.v, adj_ret.result
+    adj_mesh_query_point_sign_parity(
+        id, point, max_dist, ret.sign, ret.face, ret.u, ret.v, n_sample, perturbation_scale, adj_id, adj_point,
+        adj_max_dist, adj_ret.sign, adj_ret.face, adj_ret.u, adj_ret.v, adj_n_sample, adj_perturbation_scale,
+        adj_ret.result
     );
 }
 
@@ -1512,9 +1770,9 @@ CUDA_CALLABLE inline bool mesh_query_ray(
     float min_u;
     float min_v;
     float min_sign = 1.0f;
+    float temp_t;
     vec3 min_normal;
     const float eps = 1.e-3f;
-    float temp_t = 0.0f;
     bool hit = false;
 
     while (count) {
@@ -1593,7 +1851,7 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
     vec3 rcp_dir = vec3(1.0f / dir[0], 1.0f / dir[1], 1.0f / dir[2]);
 
     const float eps = 1.e-3f;
-    float temp_t = 0.0f;
+    float temp_t;
     bool hit = false;
 
     while (count) {
@@ -1640,6 +1898,67 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
     }
 
     return false;
+}
+
+CUDA_CALLABLE inline int mesh_query_ray_count_intersections(uint64_t id, const vec3& start, const vec3& dir, int root)
+{
+    Mesh mesh = mesh_get(id);
+
+    int stack[BVH_QUERY_STACK_SIZE];
+
+    stack[0] = root == -1 ? *mesh.bvh.root : root;
+    int count = 1;
+
+    vec3 rcp_dir = vec3(1.0f / dir[0], 1.0f / dir[1], 1.0f / dir[2]);
+
+    const float eps = 1.e-3f;
+    int num_hit = 0;
+    float temp_t;
+
+    while (count) {
+        const int node_index = stack[--count];
+
+        BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
+        BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+
+        // todo: switch to robust ray-aabb, or expand bounds in build stage
+        bool hit = intersect_ray_aabb(
+            start, rcp_dir, vec3(lower.x - eps, lower.y - eps, lower.z - eps),
+            vec3(upper.x + eps, upper.y + eps, upper.z + eps), temp_t
+        );
+
+        if (hit) {
+            if (lower.b) {
+                const int start_index = lower.i;
+                const int end_index = upper.i;
+                // loops through primitives in the leaf
+                for (int primitive_counter = start_index; primitive_counter < end_index; primitive_counter++) {
+                    int primitive_index = mesh.bvh.primitive_indices[primitive_counter];
+                    int i = mesh.indices[primitive_index * 3 + 0];
+                    int j = mesh.indices[primitive_index * 3 + 1];
+                    int k = mesh.indices[primitive_index * 3 + 2];
+
+                    vec3 p = mesh.points[i];
+                    vec3 q = mesh.points[j];
+                    vec3 r = mesh.points[k];
+
+                    float temp_t, temp_u, temp_v, temp_sign;
+                    vec3 n;
+
+                    if (intersect_ray_tri_woop(start, dir, p, q, r, temp_t, temp_u, temp_v, temp_sign, &n)) {
+                        if (temp_t >= 0.0f) {
+                            num_hit++;
+                        }
+                    }
+                }
+            } else {
+                stack[count++] = lower.i;
+                stack[count++] = upper.i;
+            }
+        }
+    }
+
+    return num_hit;
 }
 
 template <typename T> CUDA_CALLABLE inline void _swap(T& a, T& b)
@@ -1844,6 +2163,21 @@ CUDA_CALLABLE inline void adj_mesh_query_ray_anyhit(
 {
 }
 
+CUDA_CALLABLE inline void adj_mesh_query_ray_count_intersections(
+    uint64_t id,
+    const vec3& start,
+    const vec3& dir,
+    int root,
+    const int& ret,
+    uint64_t adj_id,
+    vec3& adj_start,
+    vec3& adj_dir,
+    int& adj_root,
+    int& adj_ret
+)
+{
+}
+
 // Stores the result of querying the closest point on a mesh.
 struct mesh_query_ray_t {
     CUDA_CALLABLE mesh_query_ray_t()
@@ -1909,8 +2243,8 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
     );
 }
 
-// determine if a point is inside (ret < 0 ) or outside the mesh (ret > 0)
-CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
+// determine if a point is inside (ret < 0 ) or outside the mesh (ret > 0) using ray tracing
+CUDA_CALLABLE inline float mesh_query_inside_ray_tracing(uint64_t id, const vec3& p)
 {
     float t, u, v, sign;
     vec3 n;
@@ -1928,6 +2262,39 @@ CUDA_CALLABLE inline float mesh_query_inside(uint64_t id, const vec3& p)
     }
 
     if (vote >= 2)
+        return -1.0f;
+    else
+        return 1.0f;
+}
+
+
+// determine if a point is inside (ret < 0 ) or outside the mesh (ret > 0)
+CUDA_CALLABLE inline float
+mesh_query_inside_parity(uint64_t id, const vec3& p, const vec3 base_dir, int n_sample, float perturbation_scale)
+{
+    int vote = 0;
+
+    // deterministic
+    uint32_t rand_state = rand_init(42);
+
+    for (int i = 0; i < n_sample; ++i) {
+
+        vec3 dir;
+        do {
+            dir = base_dir
+                + vec3(
+                      randf(rand_state, -perturbation_scale, perturbation_scale),
+                      randf(rand_state, -perturbation_scale, perturbation_scale),
+                      randf(rand_state, -perturbation_scale, perturbation_scale)
+                );
+        } while (length_sq(dir) < 1e-8f);
+
+        if (mesh_query_ray_count_intersections(id, p, dir) % 2) {
+            vote++;
+        }
+    }
+
+    if (vote * 2 >= n_sample)
         return -1.0f;
     else
         return 1.0f;

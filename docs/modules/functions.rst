@@ -5925,6 +5925,37 @@ Geometry
     :param max_dist: Mesh faces above this distance will not be considered by the query
 
 
+.. py:function:: mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32, perturbation_scale: float32) -> MeshQueryPoint
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+    The method will cast multiple rays starting from the query point by applying
+    small random perturbations to a base direction (1, 1, 1). Each perturbation is
+    sampled independently for the x, y, and z dimensions from a uniform distribution
+    in the range [-perturbation_scale, perturbation_scale), and added to the base
+    direction to produce a slightly altered ray direction. This randomization helps
+    avoid degeneracies such as rays intersecting exactly on triangle edges,
+    vertices, or becoming parallel to mesh features.
+
+    For each perturbed ray, the method counts how many mesh faces it intersects and
+    uses the parity (odd/even) of this count to determine whether the ray exits the
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
+    used to classify the point.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param n_sample: Number of rays to cast (default: 1). Use a higher value if the sign is inaccurate.
+    :param perturbation_scale: Scale of the perturbation.
+    
+
+
 .. py:function:: mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint
 
     .. hlist::
@@ -6043,6 +6074,32 @@ Geometry
     :param start: The start point of the ray
     :param dir: The ray direction (should be normalized)
     :param max_t: The maximum distance along the ray to check for intersections
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+
+
+.. py:function:: mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Count the number of intersections between a ray and a :class:`Mesh`. Returns the number of intersections (with t >= 0) between the ray and the mesh.
+
+    This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
+    Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
+    traversing to count all intersections along the entire ray.
+
+    This function can be used to determine whether the ray origin lies inside a watertight, intersection-free mesh.
+    An odd number of intersections indicates the origin is inside the mesh, while an even number indicates it is outside.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
     :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
 
 
