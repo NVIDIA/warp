@@ -156,6 +156,40 @@ def sample_mesh_query_sign_winding_number(
     wp.expect_eq(query.v, face_v)
 
 
+@wp.kernel
+def sample_mesh_query_sign_parity(
+    mesh: wp.uint64,
+    query_points: wp.array(dtype=wp.vec3),
+    query_faces: wp.array(dtype=int),
+    query_signs: wp.array(dtype=float),
+    query_dist: wp.array(dtype=float),
+):
+    tid = wp.tid()
+
+    face_index = int(0)
+    face_u = float(0.0)
+    face_v = float(0.0)
+    sign = float(0.0)
+
+    max_dist = 10012.0
+
+    p = query_points[tid]
+
+    wp.mesh_query_point_sign_parity(mesh, p, max_dist, sign, face_index, face_u, face_v)
+
+    cp = wp.mesh_eval_position(mesh, face_index, face_u, face_v)
+
+    query_signs[tid] = sign
+    query_faces[tid] = face_index
+    query_dist[tid] = wp.length(cp - p)
+
+    query = wp.mesh_query_point_sign_parity(mesh, p, max_dist)
+    wp.expect_eq(query.sign, sign)
+    wp.expect_eq(query.face, face_index)
+    wp.expect_eq(query.u, face_u)
+    wp.expect_eq(query.v, face_v)
+
+
 @wp.func
 def triangle_closest_point(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3):
     ab = b - a
@@ -348,6 +382,10 @@ def test_mesh_query_point(test, device):
         faces_query_winding_number = wp.zeros(query_count, dtype=int, device=device)
         dist_query_winding_number = wp.zeros(query_count, dtype=float, device=device)
 
+        signs_query_parity = wp.zeros(query_count, dtype=float, device=device)
+        faces_query_parity = wp.zeros(query_count, dtype=int, device=device)
+        dist_query_parity = wp.zeros(query_count, dtype=float, device=device)
+
         signs_brute = wp.zeros(query_count, dtype=float, device=device)
         faces_brute = wp.zeros(query_count, dtype=int, device=device)
         dist_brute = wp.zeros(query_count, dtype=float, device=device)
@@ -387,6 +425,19 @@ def test_mesh_query_point(test, device):
         )
 
         wp.launch(
+            kernel=sample_mesh_query_sign_parity,
+            dim=query_count,
+            inputs=[
+                mesh.id,
+                query_points,
+                faces_query_parity,
+                signs_query_parity,
+                dist_query_parity,
+            ],
+            device=device,
+        )
+
+        wp.launch(
             kernel=sample_mesh_brute,
             dim=query_count,
             inputs=[
@@ -416,6 +467,10 @@ def test_mesh_query_point(test, device):
         faces_query_winding_number = faces_query_winding_number.numpy()
         dist_query_winding_number = dist_query_winding_number.numpy()
 
+        signs_query_parity = signs_query_parity.numpy()
+        faces_query_parity = faces_query_parity.numpy()
+        dist_query_parity = dist_query_parity.numpy()
+
         signs_brute = signs_brute.numpy()
         faces_brute = faces_brute.numpy()
         dist_brute = dist_brute.numpy()
@@ -425,6 +480,7 @@ def test_mesh_query_point(test, device):
         inside_query = [[0.0, 0.0, 0.0]]
         inside_query_normal = [[0.0, 0.0, 0.0]]
         inside_query_winding_number = [[0.0, 0.0, 0.0]]
+        inside_query_parity = [[0.0, 0.0, 0.0]]
         inside_brute = [[0.0, 0.0, 0.0]]
 
         for i in range(query_count):
@@ -437,12 +493,16 @@ def test_mesh_query_point(test, device):
             if signs_query_winding_number[i] < 0.0:
                 inside_query_winding_number.append(query_points[i].tolist())
 
+            if signs_query_parity[i] < 0.0:
+                inside_query_parity.append(query_points[i].tolist())
+
             if signs_brute[i] > math.pi * 2.0:
                 inside_brute.append(query_points[i].tolist())
 
         inside_query = np.array(inside_query)
         inside_query_normal = np.array(inside_query_normal)
         inside_query_winding_number = np.array(inside_query_winding_number)
+        inside_query_parity = np.array(inside_query_parity)
         inside_brute = np.array(inside_brute)
 
         # import warp.render
@@ -462,6 +522,7 @@ def test_mesh_query_point(test, device):
         test.assertTrue(len(inside_query) == len(inside_brute))
         test.assertTrue(len(inside_query_normal) == len(inside_brute))
         test.assertTrue(len(inside_query_winding_number) == len(inside_brute))
+        test.assertTrue(len(inside_query_parity) == len(inside_brute))
 
         tolerance = 1.5e-4
         dist_error = np.max(np.abs(dist_query - dist_brute))
@@ -496,6 +557,18 @@ def test_mesh_query_point(test, device):
         test.assertTrue(
             sign_error < tolerance,
             f"mesh_query_point_sign_winding_number sign_error is {sign_error} which is >= {tolerance}",
+        )
+
+        dist_error = np.max(np.abs(dist_query_parity - dist_brute))
+        sign_error = np.max(np.abs(inside_query_parity - inside_brute))
+
+        test.assertTrue(
+            dist_error < tolerance,
+            f"mesh_query_point_sign_parity dist_error is {dist_error} which is >= {tolerance}",
+        )
+        test.assertTrue(
+            sign_error < tolerance,
+            f"mesh_query_point_sign_parity sign_error is {sign_error} which is >= {tolerance}",
         )
 
 
