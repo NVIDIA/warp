@@ -501,7 +501,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return data.data[i];
         else
-            return T(0);
+            return T {};
     }
 
     inline CUDA_CALLABLE T load_grad(const Coord& coord) const
@@ -510,7 +510,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return data.grad[i];
         else
-            return T(0);
+            return T {};
     }
 
     inline CUDA_CALLABLE void store(const Coord& coord, const T& x) const
@@ -526,7 +526,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return wp::atomic_add(&data.data[i], value);
         else
-            return T(0);
+            return T {};
     }
 
     inline CUDA_CALLABLE T atomic_add_grad(const Coord& coord, const T& grad) const
@@ -535,7 +535,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return wp::atomic_add(&data.grad[i], grad);
         else
-            return T(0);
+            return T {};
     }
 };
 
@@ -607,7 +607,7 @@ template <typename T, typename L> struct tile_register_t {
 
     T data[Layout::NumRegs];
 
-    inline CUDA_CALLABLE tile_register_t(T value = T(0.0))
+    inline CUDA_CALLABLE tile_register_t(T value = T {})
     {
         // zero-initialize by default necessary for tile adjoints
         // need to check if this results in worse codegen
@@ -655,7 +655,7 @@ template <typename T, typename L> struct tile_register_t {
     inline CUDA_CALLABLE void zero()
     {
         for (int i = 0; i < Layout::NumRegs; ++i)
-            data[i] = T(0);
+            data[i] = T {};
     }
 
     // extract a single tile element to a native type
@@ -794,7 +794,7 @@ template <typename Tile> auto tile_register_like(Tile* t = nullptr)
     using T = typename Tile::Type;
     using L = typename Tile::Layout;
 
-    return tile_register_t<T, tile_layout_register_t<typename L::Shape>>(T(0.0));
+    return tile_register_t<T, tile_layout_register_t<typename L::Shape>>(T {});
 }
 
 // helper to construct a register tile from a type and a list of dims
@@ -1200,7 +1200,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     inline CUDA_CALLABLE void zero()
     {
         for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
-            data(i) = T(0);
+            data(i) = T {};
 
         WP_TILE_SYNC();
     }
@@ -1330,7 +1330,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     inline CUDA_CALLABLE void grad_zero()
     {
         for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
-            grad(i) = T(0);
+            grad(i) = T {};
 
         WP_TILE_SYNC();
     }
@@ -1841,7 +1841,7 @@ template <typename T, typename Shape, typename Strides, bool RequiresGrad> inlin
         grad = (T*)tile_shared_storage_t::alloc(size * sizeof(T));
 
         for (int i = WP_TILE_THREAD_IDX; i < size; i += WP_TILE_BLOCK_DIM)
-            grad[i] = T(0);
+            grad[i] = T {};
 
         WP_TILE_SYNC();
     }
@@ -1991,7 +1991,7 @@ inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
 template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_zeros()
 {
     // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
-    return T(0);
+    return T {};
 }
 
 // one-initialized tile
@@ -2186,7 +2186,7 @@ inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indice
         if (compute_index(src, indices, axis, offset_coord, c, i))
             out.data[reg] = src.data[i];
         else
-            out.data[reg] = T(0);
+            out.data[reg] = T {};
     });
 
     return out;
@@ -2331,7 +2331,7 @@ inline CUDA_CALLABLE auto tile_atomic_add_indexed(
         if (compute_index(dest, indices, axis, offset, c, i))
             ret_reg.data[reg] = wp::atomic_add(&dest.data[i], src_reg.data[reg]);
         else
-            ret_reg.data[reg] = T(0);
+            ret_reg.data[reg] = T {};
     });
 
     return ret_reg;
@@ -4492,7 +4492,7 @@ template <typename TileA, typename TileL> inline CUDA_CALLABLE void scalar_chole
 
         // zero out upper triangular portion
         for (int k = j + 1; k < n; ++k) {
-            L.data(tile_coord(j, k)) = T(0.0);
+            L.data(tile_coord(j, k)) = T {};
         }
     }
 }

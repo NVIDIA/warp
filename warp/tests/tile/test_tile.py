@@ -1378,6 +1378,13 @@ class TestStruct:
     y: wp.vec3
 
 
+@wp.struct
+class TestStructWithArray:
+    """Struct with array field for testing tile_zeros with complex types."""
+
+    x: wp.array(dtype=wp.float64)
+
+
 @wp.kernel
 def test_tile_construction_kernel(
     out_zeros: wp.array(dtype=float),
@@ -1387,6 +1394,7 @@ def test_tile_construction_kernel(
     out_full_vecs: wp.array(dtype=wp.vec3),
     out_full_mats: wp.array(dtype=wp.mat33),
     out_full_structs: wp.array(dtype=TestStruct),
+    out_zeros_struct_with_array: wp.array(dtype=TestStructWithArray),
 ):
     zeros = wp.tile_zeros(TILE_M, dtype=float)
     ones = wp.tile_ones(TILE_M, dtype=float)
@@ -1400,6 +1408,8 @@ def test_tile_construction_kernel(
     ts.y = wp.vec3(1.0)
     full_structs = wp.tile_full(TILE_M, value=ts, dtype=TestStruct)
 
+    zeros_struct_with_array = wp.tile_zeros(TILE_M, dtype=TestStructWithArray)
+
     wp.tile_store(out_zeros, zeros)
     wp.tile_store(out_ones, ones)
     wp.tile_store(out_arange, arange)
@@ -1407,6 +1417,7 @@ def test_tile_construction_kernel(
     wp.tile_store(out_full_vecs, full_vecs)
     wp.tile_store(out_full_mats, full_mats)
     wp.tile_store(out_full_structs, full_structs)
+    wp.tile_store(out_zeros_struct_with_array, zeros_struct_with_array)
 
 
 def test_tile_construction(test, device):
@@ -1417,12 +1428,13 @@ def test_tile_construction(test, device):
     full_vecs = wp.empty(TILE_M, dtype=wp.vec3, device=device)
     full_mats = wp.empty(TILE_M, dtype=wp.mat33, device=device)
     full_structs = wp.empty(TILE_M, dtype=TestStruct, device=device)
+    zeros_struct_with_array = wp.empty(TILE_M, dtype=TestStructWithArray, device=device)
 
     wp.launch_tiled(
         test_tile_construction_kernel,
         dim=1,
         inputs=[],
-        outputs=[zeros, ones, arange, full_twos, full_vecs, full_mats, full_structs],
+        outputs=[zeros, ones, arange, full_twos, full_vecs, full_mats, full_structs, zeros_struct_with_array],
         block_dim=TILE_DIM,
         device=device,
     )
@@ -1435,6 +1447,13 @@ def test_tile_construction(test, device):
     assert_np_equal(full_structs.numpy()["x"], np.full(TILE_M, 2.0, dtype=float))
     assert_np_equal(full_structs.numpy()["y"], np.ones((TILE_M, 3), dtype=float))
     assert_np_equal(arange.numpy(), np.arange(TILE_M, dtype=float))
+
+    # Verify struct with array field is zero-initialized
+    # The array field is an array_t with (data, grad, shape, strides, ndim) - all should be zero
+    struct_arr_np = zeros_struct_with_array.numpy()
+    test.assertTrue(np.all(struct_arr_np["x"]["data"] == 0))
+    test.assertTrue(np.all(struct_arr_np["x"]["grad"] == 0))
+    test.assertTrue(np.all(struct_arr_np["x"]["ndim"] == 0))
 
 
 @wp.kernel

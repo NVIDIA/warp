@@ -4172,7 +4172,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
         if is_tile(var.type):
             if var.type.storage == "register":
                 lines += [
-                    f"{var.type.ctype()} {name}(0.0);\n"
+                    f"{var.type.ctype()} {name}{{}};\n"
                 ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
             elif var.type.storage == "shared":
                 lines += [

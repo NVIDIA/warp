@@ -4232,7 +4232,7 @@ class tile(Tile[DType, Shape]):
         from warp._src.codegen import Var  # noqa: PLC0415
 
         if self.storage == "register":
-            return self.ctype() + "(0.0)"
+            return self.ctype() + "{}"
         elif self.storage == "shared":
             if self.owner:
                 # allocate new shared memory tile
