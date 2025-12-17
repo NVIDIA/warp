@@ -987,6 +987,12 @@ class Adjoint:
         adj.skip_reverse_codegen = skip_reverse_codegen
         # Whether this function is used by a kernel that has has the backward pass enabled.
         adj.used_by_backward_kernel = False
+        # Whether to force adjoint code generation regardless of enable_backward setting.
+        # This is used by warp.grad() to ensure the adjoint exists even in forward-only modules.
+        adj.force_adjoint_codegen = False
+        # Whether this function uses warp.grad() calls. Such functions are generated in a
+        # separate pass after adjoints, and don't have their own adjoints generated.
+        adj.uses_grad_call = False
 
         # extract name of source file
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
@@ -1642,7 +1648,11 @@ class Adjoint:
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        if func.is_differentiable and func_args:
+        # Skip reverse call generation for functions that use warp.grad() - they don't have
+        # meaningful adjoints (the gradient of a gradient call is not supported).
+        skip_reverse = not func.is_builtin() and func.adj.uses_grad_call
+
+        if func.is_differentiable and func_args and not skip_reverse:
             adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
@@ -1671,6 +1681,160 @@ class Adjoint:
     def add_builtin_call(adj, func_name, args, min_outputs=None):
         func = warp._src.context.builtin_functions[func_name]
         return adj.add_call(func, args, {}, {}, min_outputs=min_outputs)
+
+    def add_grad_call(adj, func, args, kwargs):
+        """Generate code for calling the gradient of a function via warp.grad().
+
+        This generates inline code in the forward pass that:
+        1. Creates local variables for adjoint inputs (initialized to 0)
+        2. Creates local variable(s) for adjoint output (initialized to 1.0)
+        3. Calls the function's auto-generated adjoint
+        4. Returns the adjoint inputs as a tuple (or single value if 1 input)
+
+        Note:
+            This gradient call is forward-only and does NOT participate in automatic
+            differentiation.
+        """
+        # Resolve the function overload based on argument types
+        arg_types = tuple(get_arg_type(x) for x in args)
+        kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
+        func = adj.resolve_func(func, arg_types, kwarg_types, min_outputs=None)
+
+        if not func.is_differentiable:
+            raise WarpCodegenError(f"Cannot compute gradient of non-differentiable function '{func.key}'")
+
+        # Mark this function as using grad() - it will be generated in a later pass
+        # and won't have its own adjoint generated.
+        # Exception: Custom gradient functions (custom_reverse_mode=True) ARE adjoints,
+        # so they don't need their own adjoints and should be generated in the adjoint pass.
+        if not adj.custom_reverse_mode:
+            adj.uses_grad_call = True
+
+        # Warn if this kernel has backward enabled, since the gradient call
+        # is forward-only and won't participate in automatic differentiation.
+        if adj.used_by_backward_kernel:
+            msg = f'Warning: grad() call for function "{func.key}" is used in a kernel with enable_backward=True. The gradient call does NOT participate in automatic differentiation - gradients will not flow through this call in the backward pass.'
+            print(msg)
+
+        # Ensure the function is built so its adjoint code exists.
+        if not func.is_builtin():
+            # Force adjoint code generation for the function.
+            func.adj.force_adjoint_codegen = True
+
+            # Build the function if not already built
+            if adj.builder is None:
+                func.build(None)
+            elif func not in adj.builder.functions:
+                adj.builder.build_function(func)
+
+        # Get function's input types
+        input_types = func.input_types
+
+        # Bind arguments to function signature
+        bound_args = func.signature.bind(*args, **kwargs)
+        if func.defaults:
+            default_vars = {
+                k: Var(None, type=type(v), constant=v)
+                for k, v in func.defaults.items()
+                if k not in bound_args.arguments and v is not None
+            }
+            apply_defaults(bound_args, default_vars)
+        bound_args = bound_args.arguments
+
+        # Get return type
+        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+        return_type = func.value_func(
+            {k: strip_reference(v) for k, v in bound_arg_types.items()},
+            bound_arg_values,
+        )
+
+        if return_type is None:
+            raise WarpCodegenError(f"Cannot compute gradient of void function '{func.key}'")
+
+        # Load input arguments into variables
+        fwd_args_loaded = [adj.load(bound_args[name]) for name in input_types.keys()]
+
+        # Determine return type structure
+        if isinstance(return_type, Sequence):
+            return_types = list(return_type)
+        else:
+            return_types = [return_type]
+
+        # Determine if we need to include the forward output in the adjoint call.
+        # Builtins with require_original_output_arg=True or multiple outputs need it.
+        # User functions don't include it (unless multiple outputs).
+        include_fwd_output = func.require_original_output_arg or len(return_types) > 1
+
+        # Call the forward function first to get the output value(s)
+        # (needed for adjoint functions that require the original output)
+        fwd_output_vars = []
+        if include_fwd_output:
+            if len(return_types) == 1:
+                # Single return value
+                fwd_out = adj.add_var(return_types[0])
+                fwd_args_str = ", ".join(arg.emit() for arg in fwd_args_loaded)
+                adj.add_forward(f"{fwd_out.emit()} = {func.namespace}{func.native_func}({fwd_args_str});")
+                fwd_output_vars.append(fwd_out)
+            else:
+                # Multiple return values
+                for ret_type in return_types:
+                    fwd_out = adj.add_var(ret_type)
+                    fwd_output_vars.append(fwd_out)
+                fwd_args_str = ", ".join(arg.emit() for arg in fwd_args_loaded)
+                out_args_str = ", ".join(v.emit() for v in fwd_output_vars)
+                adj.add_forward(f"{func.namespace}{func.native_func}({fwd_args_str}, {out_args_str});")
+
+        # Create local variables for adjoint inputs initialized to 0
+        adj_input_vars = []
+        for typ in input_types.values():
+            local_var = adj.add_var(typ)
+            adj.add_forward(f"{local_var.emit()} = {{}};")  # Zero-initialize
+            adj_input_vars.append(local_var)
+
+        # Create local variable(s) for adjoint return initialized to 1.0
+        adj_ret_vars = []
+        for ret_type in return_types:
+            local_var = adj.add_var(ret_type)
+            ctype = Var.type_to_ctype(ret_type)
+            adj.add_forward(f"{local_var.emit()} = {ctype}(1);")
+            adj_ret_vars.append(local_var)
+
+        # Build arguments for calling the adjoint function.
+        # Signature varies:
+        # - Builtins: adj_func(primal_inputs..., primal_output, adj_inputs..., adj_ret)
+        # - User funcs: adj_func(primal_inputs..., adj_inputs..., adj_ret)
+        adj_call_args = []
+        for arg in fwd_args_loaded:
+            adj_call_args.append(arg.emit())
+        if include_fwd_output:
+            for fwd_out in fwd_output_vars:
+                adj_call_args.append(fwd_out.emit())
+        for local_var in adj_input_vars:
+            adj_call_args.append(local_var.emit())
+        for local_var in adj_ret_vars:
+            adj_call_args.append(local_var.emit())
+
+        adj_call_args_str = ", ".join(adj_call_args)
+
+        # Call the function's adjoint (accumulates into local vars)
+        adj.add_forward(f"{func.namespace}adj_{func.native_func}({adj_call_args_str});")
+
+        # Return the accumulated adjoint(s)
+        if len(adj_input_vars) == 1:
+            return adj_input_vars[0]
+        else:
+            # Return as a tuple
+            result_var = adj.add_var(
+                warp._src.types.tuple_t(
+                    types=tuple(input_types.values()),
+                    values=(None,) * len(input_types),
+                )
+            )
+            ctypes_str = ", ".join(Var.type_to_ctype(t) for t in input_types.values())
+            adj_returns = ", ".join(v.emit() for v in adj_input_vars)
+            adj.add_forward(f"{result_var.emit()} = wp::tuple_t<{ctypes_str}>({adj_returns});")
+            return result_var
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
@@ -2610,6 +2774,25 @@ class Adjoint:
                     out = adj.add_constant(obj)
                     return out
 
+        # Check if this is a warp.grad() call
+        if adj.is_grad_expression(func):
+            # warp.grad(some_func) should return a GradWrapper
+            if len(node.args) != 1 or node.keywords:
+                raise WarpCodegenError("grad() expects exactly one function argument")
+
+            target_func = adj.resolve_arg(node.args[0])
+            if not isinstance(target_func, warp._src.context.Function):
+                raise WarpCodegenError(f"grad() expects a Warp function, got {type(target_func).__name__}")
+
+            return warp._src.context.GradWrapper(target_func)
+
+        # Check if we're calling a GradWrapper (result of warp.grad(func))
+        if isinstance(func, warp._src.context.GradWrapper):
+            # Evaluate arguments and generate gradient call
+            args = tuple(adj.resolve_arg(x) for x in node.args)
+            kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
+            return adj.add_grad_call(func.func, args, kwargs)
+
         type_args = {}
 
         if len(path) > 0 and not isinstance(func, warp._src.context.Function):
@@ -2988,6 +3171,12 @@ class Adjoint:
             # symbol name
             name = lhs.id
 
+            # handle GradWrapper specially - just store it in symbols for later use
+            # this allows patterns like: func_handle = warp.grad(square); func_handle(x)
+            if isinstance(rhs, warp._src.context.GradWrapper):
+                adj.symbols[name] = rhs
+                return
+
             # check type matches if symbol already defined
             if name in adj.symbols:
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
@@ -3333,6 +3522,14 @@ class Adjoint:
             isinstance(func, types.FunctionType)
             and func.__module__ == "warp._src.builtins"
             and func.__qualname__ == "static"
+        )
+
+    def is_grad_expression(adj, func):
+        """Check if func is a warp.grad function."""
+        return (
+            isinstance(func, types.FunctionType)
+            and func.__module__ == "warp._src.context"
+            and func.__qualname__ == "grad"
         )
 
     # verify the return type of a wp.static() expression is supported inside a Warp kernel
@@ -4328,7 +4525,16 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         if adj.custom_reverse_mode:
             reverse_body = "\t// user-defined adjoint code\n" + forward_body
         else:
-            if options.get("enable_backward", True) and adj.used_by_backward_kernel:
+            # Generate adjoint code if:
+            # - enable_backward is True and the function is used by a backward kernel, OR
+            # - force_adjoint_codegen is True (set by warp.grad() to ensure adjoint exists)
+            # Note: Functions using warp.grad() won't have their adjoints called anyway
+            # (the reverse call is skipped in add_call), so we can skip generating them.
+            should_generate_adjoint = (
+                options.get("enable_backward", True) and adj.used_by_backward_kernel
+            ) or adj.force_adjoint_codegen
+            should_generate_adjoint = should_generate_adjoint and not adj.uses_grad_call
+            if should_generate_adjoint:
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
                 reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'

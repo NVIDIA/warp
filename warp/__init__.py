@@ -155,6 +155,7 @@ from warp._src.context import func as func
 from warp._src.context import func_grad as func_grad
 from warp._src.context import func_replay as func_replay
 from warp._src.context import func_native as func_native
+from warp._src.context import grad as grad
 from warp._src.context import kernel as kernel
 from warp._src.context import struct as struct
 from warp._src.context import overload as overload
