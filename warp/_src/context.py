@@ -1087,6 +1087,89 @@ def func_replay(forward_fn):
     return wrapper
 
 
+class GradWrapper:
+    """Wrapper returned by warp.grad() that enables function gradient computation in the forward pass.
+
+    When this wrapper is called with the same arguments as the original function,
+    it generates code that computes the gradient of the function's outputs with
+    respect to its inputs, assuming an adjoint return value of 1.0.
+
+    This class should not be instantiated directly. Use ``warp.grad(func)`` instead.
+    """
+
+    def __init__(self, func: Function):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        # This should never be called at Python runtime
+        raise RuntimeError("grad() wrapper can only be called inside Warp kernels and functions.")
+
+    def __repr__(self):
+        return f"GradWrapper({self.func.key})"
+
+
+def grad(func: Callable) -> GradWrapper:
+    """Return a callable that computes the gradient of the given function.
+
+    When called with the same arguments as the original function, returns
+    the gradients for each input.
+
+    Args:
+        func: A Warp function (decorated with ``@wp.func`` or a builtin).
+
+    Returns:
+        A callable that, when called with the function's inputs, returns
+        the gradient(s) for each input. If the function has a single input,
+        returns a single gradient value. If the function has multiple inputs,
+        returns a tuple of gradients.
+
+    Example::
+
+        import warp as wp
+
+
+        @wp.func
+        def square(x: float):
+            return x * x
+
+
+        @wp.kernel
+        def my_kernel(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+            tid = wp.tid()
+            # Compute d(x*x)/d(x) = 2*x
+            grad_x[tid] = wp.grad(square)(x[tid])
+
+
+        # For functions with multiple inputs:
+        @wp.kernel
+        def kernel2(
+            a: wp.array(dtype=float),
+            b: wp.array(dtype=float),
+            grad_a: wp.array(dtype=float),
+            grad_b: wp.array(dtype=float),
+        ):
+            tid = wp.tid()
+            db, da = wp.grad(wp.atan2)(b[tid], a[tid])
+            grad_a[tid] = da
+            grad_b[tid] = db
+
+    Note:
+        When used in a regular Warp function or kernel, ``grad()`` calls
+        are forward-only and do NOT participate in Warp's automatic differentiation.
+        If you use ``grad()`` in a kernel with ``enable_backward=True``, the
+        gradient call will be treated as a constant in the backward pass (no
+        gradients will flow through it).
+
+        However, ``grad()`` **can** be used inside custom gradient functions
+        decorated with ``@warp.func_grad``, which participate in the backward pass.
+
+    """
+    if isinstance(func, Function):
+        return GradWrapper(func)
+
+    raise TypeError(f"grad() expects a Warp function, got {type(func)}")
+
+
 def kernel(
     f: Callable | None = None,
     *,
@@ -2022,26 +2105,38 @@ class ModuleBuilder:
                 source += warp._src.codegen.codegen_struct(struct)
                 visited_structs.add(struct.hash)
 
-        # Two-pass code generation to handle custom gradients:
-        # Pass 1: Generate all forward functions (preserves natural call dependencies)
-        # Pass 2: Generate all reverse/adjoint functions (custom grads before auto-adjoints)
+        # Three-pass code generation:
+        # Pass 1: Forward functions that don't use wp.grad()
+        # Pass 2: All adjoint functions (custom grads before auto-adjoints)
+        # Pass 3: Forward functions that use wp.grad() (these call adjoints, so must come after pass 2)
+        #         Note: Functions using wp.grad() don't have adjoints generated.
 
-        # Pass 1: Forward functions only (including native snippets)
-        source += self._codegen_functions(self.functions.keys(), device, forward_only=True)
+        # Separate functions into those that use grad() and those that don't
+        grad_functions = [f for f in self.functions.keys() if f.adj.uses_grad_call]
+        non_grad_functions = [f for f in self.functions.keys() if not f.adj.uses_grad_call]
+
+        # Pass 1: Forward functions that don't use grad()
+        source += self._codegen_functions(non_grad_functions, device, forward_only=True)
 
         # Pass 2: Reverse/adjoint functions with custom grads sorted before auto-adjoints
         # Build set of functions that ARE custom gradients (decorated with @wp.func_grad)
         # Note: f.custom_grad_func tells us if f HAS a custom gradient, but we need to know
         # which functions ARE custom gradients themselves (i.e., appear as someone's custom_grad_func)
-        custom_grad_set = {f.custom_grad_func for f in self.functions.keys() if f.custom_grad_func is not None}
+        # Note: Functions that use wp.grad() don't have adjoints generated (their reverse calls
+        # are skipped in add_call since the gradient of a gradient call is not supported)
+        custom_grad_set = {f.custom_grad_func for f in non_grad_functions if f.custom_grad_func is not None}
 
         # Separate functions that ARE custom grads from all others, preserving original order
-        custom_grad_functions = [f for f in self.functions.keys() if f in custom_grad_set]
-        other_functions = [f for f in self.functions.keys() if f not in custom_grad_set]
+        custom_grad_functions = [f for f in non_grad_functions if f in custom_grad_set]
+        other_functions = [f for f in non_grad_functions if f not in custom_grad_set]
 
         # Generate adjoints: custom grads first, then other functions
         # This ensures custom grads are defined before any auto-adjoints that call them
         source += self._codegen_functions(custom_grad_functions + other_functions, device, reverse_only=True)
+
+        # Pass 3: Forward functions that use wp.grad()
+        # These must come after pass 2 because they call adjoint functions
+        source += self._codegen_functions(grad_functions, device, forward_only=True)
 
         for kernel in self.kernels:
             source += warp._src.codegen.codegen_kernel(kernel, device=device, options=self.options)

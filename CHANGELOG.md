@@ -51,6 +51,7 @@
   `max_workers` argument. Use e.g. `wp.force_load(max_workers=4)` to use 4 threads to load all imported modules on all devices.
   The `wp.config.load_module_max_workers` setting determines the default value (currently `0` for serial loading). Set it to
   `None` to let Warp determine a reasonable number (currently `min(os.cpu_count(), 4)`).
+- Add `wp.grad()` to get a Warp function's gradient in functions, kernels, and custom gradients ([GH-125](https://github.com/NVIDIA/warp/issues/125))
 
 ### Removed
 
