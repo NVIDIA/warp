@@ -290,11 +290,11 @@ def sample_volume_with_fallback_grad(
 
 def create_volume_from_mesh(
     mesh: wp.Mesh,
-    narrow_band_distance: tuple[float, float],
-    margin: float = 0.2,
+    margin_factor: float = 0.05,
+    narrow_band_factor: float = 0.05,
     max_dims: int = 64,
     verbose: bool = False,
-) -> tuple[wp.Volume, wp.Volume, float, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[wp.Volume, wp.Volume, float, np.ndarray, np.ndarray, np.ndarray, dict]:
     """
     Create sparse and coarse SDF volumes from a mesh.
 
@@ -304,22 +304,40 @@ def create_volume_from_mesh(
 
     Args:
         mesh: wp.Mesh with support_winding_number=True
-        narrow_band_distance: Tuple of (inner, outer) distances, e.g., (-0.1, 0.1)
-        margin: Margin to add around mesh bounding box
+        margin_factor: Fraction of AABB diagonal to add as margin (e.g., 0.05 = 5%)
+        narrow_band_factor: Fraction of AABB diagonal for narrow band thickness (e.g., 0.05 = 5%)
         max_dims: Maximum grid dimension
         verbose: Print debug info
 
     Returns:
-        Tuple of (sparse_volume, coarse_volume, sparse_max_value, min_ext, max_ext, voxel_size)
+        Tuple of (sparse_volume, coarse_volume, sparse_max_value, min_ext, max_ext, voxel_size, metadata)
         - sparse_max_value: Maximum SDF value stored in any sparse tile (for threshold)
+        - metadata: Dictionary with bounds, diagonal, and other info
     """
     device = mesh.device
 
-    # Compute mesh bounds
+    # Extract mesh AABB
     points_np = mesh.points.numpy()
-    min_ext = np.min(points_np, axis=0) - margin
-    max_ext = np.max(points_np, axis=0) + margin
+    mesh_min = np.min(points_np, axis=0)
+    mesh_max = np.max(points_np, axis=0)
+    mesh_extent = mesh_max - mesh_min
+    diagonal_length = float(np.linalg.norm(mesh_extent))
+
+    # Compute margin and narrow band from factors
+    margin = margin_factor * diagonal_length
+    narrow_band_thickness = narrow_band_factor * diagonal_length
+    narrow_band_distance = (-narrow_band_thickness, narrow_band_thickness)
+
+    # Inflate AABB by margin
+    min_ext = mesh_min - margin
+    max_ext = mesh_max + margin
     ext = max_ext - min_ext
+
+    if verbose:
+        print(f"Mesh AABB: [{mesh_min}] to [{mesh_max}]")
+        print(f"Diagonal length: {diagonal_length:.4f}")
+        print(f"Margin ({margin_factor * 100:.1f}%): {margin:.4f}")
+        print(f"Narrow band ({narrow_band_factor * 100:.1f}%): +/-{narrow_band_thickness:.4f}")
 
     # Calculate voxel size
     max_extent = np.max(ext)
@@ -429,7 +447,19 @@ def create_volume_from_mesh(
     if verbose:
         print(f"  Coarse voxel size: {coarse_voxel_size}")
 
-    return sparse_volume, coarse_volume, sparse_max_value, min_ext, max_ext, actual_voxel_size
+    # Build metadata
+    metadata = {
+        "mesh_min": mesh_min,
+        "mesh_max": mesh_max,
+        "diagonal_length": diagonal_length,
+        "margin": margin,
+        "narrow_band_distance": narrow_band_distance,
+        "min_ext": min_ext,
+        "max_ext": max_ext,
+        "voxel_size": actual_voxel_size,
+    }
+
+    return sparse_volume, coarse_volume, sparse_max_value, min_ext, max_ext, actual_voxel_size, metadata
 
 
 def create_box_mesh(center: tuple, half_extents: tuple, device: str) -> wp.Mesh:
@@ -513,5 +543,66 @@ def create_box_mesh(center: tuple, half_extents: tuple, device: str) -> wp.Mesh:
 
     points = wp.array(vertices, dtype=wp.vec3, device=device)
     indices_arr = wp.array(indices, dtype=int, device=device)
+
+    return wp.Mesh(points=points, indices=indices_arr, support_winding_number=True)
+
+
+def create_sphere_mesh(center: tuple, radius: float, device: str, subdivisions: int = 32) -> wp.Mesh:
+    """
+    Create a UV sphere mesh for testing.
+
+    Args:
+        center: Sphere center (x, y, z)
+        radius: Sphere radius
+        device: Warp device string
+        subdivisions: Number of latitude and longitude divisions (higher = smoother)
+
+    Returns:
+        wp.Mesh with support_winding_number=True
+    """
+    cx, cy, cz = center
+    n_lat = subdivisions  # Number of latitude divisions
+    n_lon = subdivisions  # Number of longitude divisions
+
+    vertices = []
+    indices = []
+
+    # Generate vertices
+    for i in range(n_lat + 1):
+        theta = np.pi * i / n_lat  # 0 to pi (top to bottom)
+        sin_theta = np.sin(theta)
+        cos_theta = np.cos(theta)
+
+        for j in range(n_lon + 1):
+            phi = 2.0 * np.pi * j / n_lon  # 0 to 2*pi (around)
+            sin_phi = np.sin(phi)
+            cos_phi = np.cos(phi)
+
+            x = cx + radius * sin_theta * cos_phi
+            y = cy + radius * cos_theta
+            z = cz + radius * sin_theta * sin_phi
+            vertices.append([x, y, z])
+
+    # Generate indices (triangles)
+    for i in range(n_lat):
+        for j in range(n_lon):
+            # Current vertex indices
+            v0 = i * (n_lon + 1) + j
+            v1 = v0 + 1
+            v2 = (i + 1) * (n_lon + 1) + j
+            v3 = v2 + 1
+
+            # Two triangles per quad (counter-clockwise winding for outward normals)
+            # Skip degenerate triangles at poles
+            if i != 0:
+                indices.extend([v0, v2, v1])
+            if i != n_lat - 1:
+                indices.extend([v1, v2, v3])
+
+    vertices_np = np.array(vertices, dtype=np.float32)
+    indices_np = np.array(indices, dtype=np.int32)
+
+    points = wp.array(vertices_np, dtype=wp.vec3, device=device)
+    indices_arr = wp.array(indices_np, dtype=int, device=device)
 
     return wp.Mesh(points=points, indices=indices_arr, support_winding_number=True)

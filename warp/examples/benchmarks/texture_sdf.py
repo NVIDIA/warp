@@ -1484,3 +1484,107 @@ def create_sparse_sdf_textures(
     sdf_params.subgrids_sdf_value_range = sparse_data["subgrids_sdf_value_range"]
 
     return coarse_tex, subgrid_tex, subgrid_slots, sdf_params
+
+
+def create_sparse_sdf_from_mesh(
+    mesh: wp.Mesh,
+    margin_factor: float = 0.05,
+    narrow_band_factor: float = 0.05,
+    resolution: int = 64,
+    subgrid_size: int = 8,
+    error_threshold: float | None = None,
+    quantization_mode: int = QuantizationMode.FLOAT32,
+    verbose: bool = False,
+) -> tuple[wp.Texture3D, wp.Texture3D, wp.array, SparseSDF, dict]:
+    """
+    Create sparse SDF textures from a mesh with automatic AABB extraction.
+
+    This is a convenience function that:
+    1. Extracts the mesh AABB
+    2. Inflates it by margin_factor * diagonal_length
+    3. Computes narrow band thickness as narrow_band_factor * diagonal_length
+    4. Builds the sparse SDF representation
+
+    Args:
+        mesh: Warp mesh with support_winding_number=True
+        margin_factor: Fraction of AABB diagonal to add as margin (e.g., 0.05 = 5%)
+        narrow_band_factor: Fraction of AABB diagonal for narrow band thickness (e.g., 0.05 = 5%)
+        resolution: Maximum grid dimension
+        subgrid_size: Cells per subgrid (typically 8)
+        error_threshold: Skip subgrids where coarse SDF error is below this (None = auto)
+        quantization_mode: QuantizationMode.FLOAT32, UINT16, or UINT8
+        verbose: Print debug info
+
+    Returns:
+        Tuple of (coarse_tex, subgrid_tex, subgrid_slots, sdf_params, metadata)
+        - coarse_tex: Coarse/background 3D texture
+        - subgrid_tex: Sparse subgrid 3D texture
+        - subgrid_slots: Indirection array mapping coarse cells to subgrid blocks
+        - sdf_params: SparseSDF struct with all sampling parameters
+        - metadata: Dictionary with bounds, diagonal, and other info
+    """
+    device = mesh.device
+
+    # Extract mesh AABB
+    points_np = mesh.points.numpy()
+    mesh_min = np.min(points_np, axis=0)
+    mesh_max = np.max(points_np, axis=0)
+    mesh_extent = mesh_max - mesh_min
+    diagonal_length = float(np.linalg.norm(mesh_extent))
+
+    # Compute margin and narrow band from factors
+    margin = margin_factor * diagonal_length
+    narrow_band_thickness = narrow_band_factor * diagonal_length
+
+    # Inflate AABB by margin
+    min_ext = mesh_min - margin
+    max_ext = mesh_max + margin
+
+    if verbose:
+        print(f"Mesh AABB: [{mesh_min}] to [{mesh_max}]")
+        print(f"Diagonal length: {diagonal_length:.4f}")
+        print(f"Margin ({margin_factor * 100:.1f}%): {margin:.4f}")
+        print(f"Narrow band ({narrow_band_factor * 100:.1f}%): {narrow_band_thickness:.4f}")
+        print(f"Inflated AABB: [{min_ext}] to [{max_ext}]")
+
+    # Build dense SDF
+    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(
+        mesh, min_ext, max_ext, resolution, str(device)
+    )
+
+    # Build sparse SDF from dense
+    sparse_data = build_sparse_sdf_from_dense(
+        dense_sdf,
+        dense_x,
+        dense_y,
+        dense_z,
+        cell_size,
+        min_ext,
+        max_ext,
+        subgrid_size=subgrid_size,
+        narrow_band_thickness=narrow_band_thickness,
+        error_threshold=error_threshold,
+        quantization_mode=quantization_mode,
+        device=str(device),
+    )
+
+    # Create GPU textures
+    coarse_tex, subgrid_tex, subgrid_slots, sdf_params = create_sparse_sdf_textures(
+        sparse_data, str(device)
+    )
+
+    # Build metadata
+    metadata = {
+        "mesh_min": mesh_min,
+        "mesh_max": mesh_max,
+        "diagonal_length": diagonal_length,
+        "margin": margin,
+        "narrow_band_thickness": narrow_band_thickness,
+        "min_ext": min_ext,
+        "max_ext": max_ext,
+        "cell_size": cell_size,
+        "num_subgrids": sparse_data["num_subgrids"],
+        "quantization_mode": quantization_mode,
+    }
+
+    return coarse_tex, subgrid_tex, subgrid_slots, sdf_params, metadata

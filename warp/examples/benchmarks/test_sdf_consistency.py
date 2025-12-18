@@ -27,13 +27,11 @@ import sys
 import numpy as np
 from texture_sdf import (
     QuantizationMode,
-    build_dense_sdf,
-    build_sparse_sdf_from_dense,
-    create_sparse_sdf_textures,
+    create_sparse_sdf_from_mesh,
     sample_sparse_sdf,
 )
 from volume_sdf import (
-    create_box_mesh,
+    create_sphere_mesh,
     create_volume_from_mesh,
     get_distance_to_mesh,
     sample_volume_with_fallback,
@@ -73,8 +71,8 @@ def compute_mesh_distances(
 
 TEST_RESOLUTION = 64  # Grid resolution (should be divisible by 8)
 TEST_SUBGRID_SIZE = 8  # Cells per subgrid (gives ~8x8x8 coarse grid for 64^3)
-TEST_NARROW_BAND = 0.15  # Narrow band distance in world units
-TEST_MARGIN = 0.2  # Margin around mesh bounds
+TEST_NARROW_BAND_FACTOR = 0.05  # Narrow band as fraction of AABB diagonal (5%)
+TEST_MARGIN_FACTOR = 0.05  # Margin as fraction of AABB diagonal (5%)
 NUM_TEST_POINTS = 10000  # Number of random test points
 
 # Tolerance for SDF value comparison
@@ -95,43 +93,42 @@ def setup_test_environment(device: str = "cuda:0"):
     """Set up test mesh and both SDF representations."""
     wp.init()
 
-    # Create simple box mesh
-    box_center = (0.5, 0.5, 0.5)
-    box_half_extents = (0.25, 0.25, 0.25)
+    # Create simple sphere mesh
+    sphere_center = (0.5, 0.5, 0.5)
+    sphere_radius = 0.25
+    mesh = create_sphere_mesh(sphere_center, sphere_radius, device, subdivisions=32)
 
-    mesh = create_box_mesh(box_center, box_half_extents, device)
+    # Alternative: Use box mesh instead
+    # from volume_sdf import create_box_mesh
+    # box_center = (0.5, 0.5, 0.5)
+    # box_half_extents = (0.25, 0.25, 0.25)
+    # mesh = create_box_mesh(box_center, box_half_extents, device)
 
-    narrow_band = (-TEST_NARROW_BAND, TEST_NARROW_BAND)
-
-    # Create Volume SDF first to get its bounds
-    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
-        mesh, narrow_band, margin=TEST_MARGIN, max_dims=TEST_RESOLUTION, verbose=False
+    # Create Volume SDF with factor-based sizing
+    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing, vol_meta = create_volume_from_mesh(
+        mesh,
+        margin_factor=TEST_MARGIN_FACTOR,
+        narrow_band_factor=TEST_NARROW_BAND_FACTOR,
+        max_dims=TEST_RESOLUTION,
+        verbose=False,
     )
 
-    # Use the Volume SDF's bounds for the Texture SDF to ensure matching domains
-    min_ext = vol_min_ext
-    max_ext = vol_max_ext
-
-    # Create Texture SDF with matching bounds
-    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(mesh, min_ext, max_ext, TEST_RESOLUTION, device)
-
-    sparse_data = build_sparse_sdf_from_dense(
-        dense_sdf,
-        dense_x,
-        dense_y,
-        dense_z,
-        cell_size,
-        min_ext,
-        max_ext,
+    # Create Texture SDF with factor-based sizing (uses same factors, so bounds should match)
+    coarse_tex, subgrid_tex, subgrid_slots, sdf_params, tex_meta = create_sparse_sdf_from_mesh(
+        mesh,
+        margin_factor=TEST_MARGIN_FACTOR,
+        narrow_band_factor=TEST_NARROW_BAND_FACTOR,
+        resolution=TEST_RESOLUTION,
         subgrid_size=TEST_SUBGRID_SIZE,
-        narrow_band_thickness=TEST_NARROW_BAND,
         quantization_mode=QuantizationMode.FLOAT32,
-        device=device,
+        verbose=False,
     )
-
-    coarse_tex, subgrid_tex, subgrid_slots, sdf_params = create_sparse_sdf_textures(sparse_data, device)
 
     wp.synchronize()
+
+    # Use bounds from volume SDF (they should match texture SDF)
+    min_ext = vol_min_ext
+    max_ext = vol_max_ext
 
     # Use slightly inset bounds for queries to avoid edge interpolation issues
     query_margin = np.max(vol_spacing) * 2  # Stay 2 voxels inside the boundary
@@ -548,45 +545,36 @@ def test_sdf_consistency_quantized():
     wp.init()
 
     # Create mesh
-    box_center = (0.5, 0.5, 0.5)
-    box_half_extents = (0.25, 0.25, 0.25)
-    mesh = create_box_mesh(box_center, box_half_extents, device)
+    sphere_center = (0.5, 0.5, 0.5)
+    sphere_radius = 0.25
+    mesh = create_sphere_mesh(sphere_center, sphere_radius, device, subdivisions=32)
 
-    narrow_band = (-TEST_NARROW_BAND, TEST_NARROW_BAND)
+    # Alternative: Use box mesh instead
+    # from volume_sdf import create_box_mesh
+    # box_center = (0.5, 0.5, 0.5)
+    # box_half_extents = (0.25, 0.25, 0.25)
+    # mesh = create_box_mesh(box_center, box_half_extents, device)
 
-    # Create Volume SDF first to get its bounds (we don't actually use volume here,
-    # but we use the same bounds for consistency)
-    _, _, _, vol_min_ext, vol_max_ext, vol_spacing = create_volume_from_mesh(
-        mesh, narrow_band, margin=TEST_MARGIN, max_dims=TEST_RESOLUTION, verbose=False
-    )
-
-    # Use the Volume SDF's bounds for the Texture SDF
-    min_ext = vol_min_ext
-    max_ext = vol_max_ext
-
-    # Create Texture SDF with UINT16 quantization
-    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(mesh, min_ext, max_ext, TEST_RESOLUTION, device)
-
-    sparse_data = build_sparse_sdf_from_dense(
-        dense_sdf,
-        dense_x,
-        dense_y,
-        dense_z,
-        cell_size,
-        min_ext,
-        max_ext,
+    # Create Texture SDF with UINT16 quantization using factor-based sizing
+    coarse_tex, subgrid_tex, subgrid_slots, sdf_params, tex_meta = create_sparse_sdf_from_mesh(
+        mesh,
+        margin_factor=TEST_MARGIN_FACTOR,
+        narrow_band_factor=TEST_NARROW_BAND_FACTOR,
+        resolution=TEST_RESOLUTION,
         subgrid_size=TEST_SUBGRID_SIZE,
-        narrow_band_thickness=TEST_NARROW_BAND,
         quantization_mode=QuantizationMode.UINT16,
-        device=device,
+        verbose=False,
     )
-
-    coarse_tex, subgrid_tex, subgrid_slots, sdf_params = create_sparse_sdf_textures(sparse_data, device)
 
     wp.synchronize()
 
+    # Get bounds from metadata
+    min_ext = tex_meta["min_ext"]
+    max_ext = tex_meta["max_ext"]
+    cell_size = tex_meta["cell_size"]
+
     # Generate test points with inset bounds to avoid edge issues
-    query_margin = np.max(vol_spacing) * 2
+    query_margin = np.max(cell_size) * 2
     query_min = min_ext + query_margin
     query_max = max_ext - query_margin
 
@@ -654,7 +642,8 @@ def run_all_tests():
     print("\nConfiguration:")
     print(f"  Resolution: {TEST_RESOLUTION}")
     print(f"  Subgrid Size: {TEST_SUBGRID_SIZE}")
-    print(f"  Narrow Band: +/-{TEST_NARROW_BAND}")
+    print(f"  Margin Factor: {TEST_MARGIN_FACTOR * 100:.1f}% of AABB diagonal")
+    print(f"  Narrow Band Factor: {TEST_NARROW_BAND_FACTOR * 100:.1f}% of AABB diagonal")
     print(f"  Test Points: {NUM_TEST_POINTS}")
     print(f"  Tolerance (max): {TOLERANCE_MAX}")
     print(f"  Tolerance (mean): {TOLERANCE_MEAN}")

@@ -34,15 +34,13 @@ from statistics import mean, stdev
 import numpy as np
 from texture_sdf import (
     QuantizationMode,
-    build_dense_sdf,
-    build_sparse_sdf_from_dense,
-    create_sparse_sdf_textures,
+    create_sparse_sdf_from_mesh,
     get_quantization_bytes,
     sample_sparse_sdf,
     sample_sparse_sdf_grad,
 )
 from volume_sdf import (
-    create_box_mesh,
+    create_sphere_mesh,
     create_volume_from_mesh,
     sample_volume_with_fallback,
     sample_volume_with_fallback_grad,
@@ -57,7 +55,8 @@ import warp as wp
 NUM_QUERY_POINTS = 1024 * 1024  # 1M query points
 SDF_RESOLUTION = 256  # Grid resolution
 SUBGRID_SIZE = 6  # Cells per subgrid block (optimal value from PhysX testing)
-NARROW_BAND_WORLD = 0.1  # Narrow band distance in world units
+MARGIN_FACTOR = 0.01  # Margin as fraction of AABB diagonal (1%)
+NARROW_BAND_FACTOR = 0.01  # Narrow band as fraction of AABB diagonal (1%)
 ITERATIONS = 100
 WARM_UP = 10
 
@@ -66,6 +65,68 @@ WARM_UP = 10
 #   QuantizationMode.UINT16  - 16-bit compression (2 bytes per sample)
 #   QuantizationMode.UINT8   - 8-bit compression (1 byte per sample)
 QUANTIZATION_MODE = QuantizationMode.UINT16
+
+# Optional: Path to external mesh file (OBJ format)
+# Set to None to use the default box mesh
+# Example: MESH_FILE = r"C:\Documents\Meshes\RobotArmNanoVDB\Robot_Arm_Input.obj"
+MESH_FILE = None
+# MESH_FILE = r"C:\Documents\Meshes\RobotArmNanoVDB\Robot_Arm_Input.obj"
+
+
+# ============================================================================
+# Mesh Loading Utilities
+# ============================================================================
+
+
+def load_obj_mesh(filepath: str, device: str) -> wp.Mesh:
+    """
+    Load a mesh from an OBJ file.
+
+    Args:
+        filepath: Path to the OBJ file
+        device: Warp device string
+
+    Returns:
+        wp.Mesh with support_winding_number=True
+    """
+    vertices = []
+    faces = []
+
+    with open(filepath) as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            parts = line.split()
+            if not parts:
+                continue
+
+            if parts[0] == "v":
+                # Vertex position
+                vertices.append([float(parts[1]), float(parts[2]), float(parts[3])])
+            elif parts[0] == "f":
+                # Face - handle various formats: v, v/vt, v/vt/vn, v//vn
+                face_verts = []
+                for part in parts[1:]:
+                    # Extract vertex index (before any /)
+                    v_idx = int(part.split("/")[0])
+                    # OBJ indices are 1-based
+                    face_verts.append(v_idx - 1)
+
+                # Triangulate faces with more than 3 vertices (fan triangulation)
+                for i in range(1, len(face_verts) - 1):
+                    faces.extend([face_verts[0], face_verts[i], face_verts[i + 1]])
+
+    vertices_np = np.array(vertices, dtype=np.float32)
+    indices_np = np.array(faces, dtype=np.int32)
+
+    print(f"  Loaded mesh: {len(vertices_np)} vertices, {len(indices_np) // 3} triangles")
+
+    points = wp.array(vertices_np, dtype=wp.vec3, device=device)
+    indices = wp.array(indices_np, dtype=int, device=device)
+
+    return wp.Mesh(points=points, indices=indices, support_winding_number=True)
 
 
 # ============================================================================
@@ -83,12 +144,6 @@ def run_benchmark():
     print("Sparse SDF vs Volume SDF Benchmark")
     print("=" * 80)
 
-    # Configuration
-    box_center = (0.5, 0.5, 0.5)
-    box_half_extents = (0.3, 0.3, 0.3)
-    margin = 0.2
-    narrow_band = (-NARROW_BAND_WORLD, NARROW_BAND_WORLD)
-
     # Map quantization mode to readable name
     quant_names = {
         QuantizationMode.FLOAT32: "FLOAT32 (4 bytes)",
@@ -99,27 +154,46 @@ def run_benchmark():
     print("\nConfiguration:")
     print(f"  SDF Resolution: {SDF_RESOLUTION}")
     print(f"  Subgrid Size: {SUBGRID_SIZE}")
-    print(f"  Narrow Band: +/-{NARROW_BAND_WORLD} world units")
+    print(f"  Margin Factor: {MARGIN_FACTOR * 100:.1f}% of AABB diagonal")
+    print(f"  Narrow Band Factor: {NARROW_BAND_FACTOR * 100:.1f}% of AABB diagonal")
     print(f"  Quantization: {quant_names.get(QUANTIZATION_MODE, 'Unknown')}")
     print(f"  Query Points: {NUM_QUERY_POINTS:,}")
     print(f"  Iterations: {ITERATIONS}")
     print(f"  Warm-up: {WARM_UP}")
+    if MESH_FILE:
+        print(f"  Mesh File: {MESH_FILE}")
+    else:
+        print("  Mesh: Default box mesh")
 
     # ========== Create Mesh ==========
-    print("\nCreating mesh...")
-    mesh = create_box_mesh(box_center, box_half_extents, device)
+    if MESH_FILE:
+        import os
 
-    # Compute mesh bounds for dense SDF
-    points_np = mesh.points.numpy()
-    min_ext = np.min(points_np, axis=0) - margin
-    max_ext = np.max(points_np, axis=0) + margin
+        if not os.path.exists(MESH_FILE):
+            raise FileNotFoundError(f"Mesh file not found: {MESH_FILE}")
+        print(f"\nLoading mesh from file: {MESH_FILE}")
+        mesh = load_obj_mesh(MESH_FILE, device)
+    else:
+        print("\nCreating sphere mesh...")
+        sphere_center = (0.5, 0.5, 0.5)
+        sphere_radius = 0.3
+        mesh = create_sphere_mesh(sphere_center, sphere_radius, device, subdivisions=32)
+        print(f"  Sphere: center={sphere_center}, radius={sphere_radius}")
+
+        # Alternative: Use box mesh instead
+        # from volume_sdf import create_box_mesh
+        # box_center = (0.5, 0.5, 0.5)
+        # box_half_extents = (0.3, 0.3, 0.3)
+        # mesh = create_box_mesh(box_center, box_half_extents, device)
+        # print(f"  Box: center={box_center}, half_extents={box_half_extents}")
 
     # ========== Create Volume SDF ==========
     print("\nCreating NanoVDB volume from mesh...")
-    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, _ = create_volume_from_mesh(
-        mesh, narrow_band, margin=margin, max_dims=SDF_RESOLUTION, verbose=True
+    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, _, vol_meta = create_volume_from_mesh(
+        mesh, margin_factor=MARGIN_FACTOR, narrow_band_factor=NARROW_BAND_FACTOR, max_dims=SDF_RESOLUTION, verbose=True
     )
     print(f"  Volume bounds: [{vol_min_ext}, {vol_max_ext}]")
+    print(f"  Computed narrow band: +/-{vol_meta['narrow_band_distance'][1]:.4f} world units")
 
     # Verify volume works
     print("\n  Verifying volume sampling...")
@@ -148,41 +222,25 @@ def run_benchmark():
 
     # ========== Create Texture SDF (GPU-accelerated construction) ==========
     print("\nBuilding texture-based sparse SDF using GPU kernels...")
-
-    # Step 1: Build dense SDF from mesh
-    print("  Step 1: Building dense SDF from mesh...")
     t0 = time.perf_counter()
 
-    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(mesh, min_ext, max_ext, SDF_RESOLUTION, device)
-    wp.synchronize()
-    dense_time = time.perf_counter() - t0
-    print(f"  Dense SDF build time: {dense_time * 1000:.2f} ms")
-
-    # Step 2: Build sparse representation from dense SDF
-    print("  Step 2: Building sparse representation...")
-    t0 = time.perf_counter()
-
-    sparse_data = build_sparse_sdf_from_dense(
-        dense_sdf,
-        dense_x,
-        dense_y,
-        dense_z,
-        cell_size,
-        min_ext,
-        max_ext,
+    coarse_tex, subgrid_tex, subgrid_slots, sdf_params, tex_meta = create_sparse_sdf_from_mesh(
+        mesh,
+        margin_factor=MARGIN_FACTOR,
+        narrow_band_factor=NARROW_BAND_FACTOR,
+        resolution=SDF_RESOLUTION,
         subgrid_size=SUBGRID_SIZE,
-        narrow_band_thickness=NARROW_BAND_WORLD,
         quantization_mode=QUANTIZATION_MODE,
-        device=device,
+        verbose=True,
     )
     wp.synchronize()
-    sparse_build_time = time.perf_counter() - t0
-    print(f"  Sparse build time: {sparse_build_time * 1000:.2f} ms")
-    print(f"  Total texture SDF construction: {(dense_time + sparse_build_time) * 1000:.2f} ms")
+    tex_build_time = time.perf_counter() - t0
+    print(f"  Total texture SDF construction: {tex_build_time * 1000:.2f} ms")
+    print(f"  Texture bounds: [{tex_meta['min_ext']}, {tex_meta['max_ext']}]")
 
-    print("\nCreating sparse SDF textures...")
-    coarse_tex, subgrid_tex, subgrid_slots, sdf_params = create_sparse_sdf_textures(sparse_data, device)
-    print("  Textures created successfully")
+    # Use volume bounds for query points (should match texture bounds)
+    min_ext = vol_min_ext
+    max_ext = vol_max_ext
 
     # ========== Generate Query Points ==========
     print("\nGenerating query points...")
@@ -425,11 +483,27 @@ def run_benchmark():
     # Memory usage (accounting for quantization mode)
     # Note: textures are always float32 on GPU, but source data size varies
     bytes_per_sample = get_quantization_bytes(QUANTIZATION_MODE)
-    coarse_mem = np.prod(sparse_data["coarse_sdf"].shape) * 4  # Coarse is always float32
-    subgrid_mem_source = np.prod(sparse_data["subgrid_data"].shape) * bytes_per_sample
-    subgrid_mem_texture = np.prod(sparse_data["subgrid_data"].shape) * 4  # GPU texture is float32
-    slots_mem = len(sparse_data["subgrid_start_slots"]) * 4
-    dense_mem = dense_x * dense_y * dense_z * 4
+
+    # Compute coarse texture size from sdf_params
+    coarse_tex_samples = (sdf_params.coarse_size_x + 1) * (sdf_params.coarse_size_y + 1) * (sdf_params.coarse_size_z + 1)
+    coarse_mem = coarse_tex_samples * 4  # float32
+
+    # Compute subgrid texture size from metadata
+    num_subgrids = tex_meta["num_subgrids"]
+    subgrid_samples = (SUBGRID_SIZE + 1) ** 3
+    subgrid_mem_source = num_subgrids * subgrid_samples * bytes_per_sample
+    subgrid_mem_texture = num_subgrids * subgrid_samples * 4  # GPU texture is float32
+
+    # Slots memory
+    total_coarse_cells = sdf_params.coarse_size_x * sdf_params.coarse_size_y * sdf_params.coarse_size_z
+    slots_mem = total_coarse_cells * 4
+
+    # Dense SDF (temporary) - approximate based on resolution
+    cell_size = tex_meta["cell_size"]
+    extent = tex_meta["max_ext"] - tex_meta["min_ext"]
+    dense_dims = (extent / cell_size).astype(int) + 1
+    dense_mem = int(np.prod(dense_dims)) * 4
+
     texture_total_mem = coarse_mem + subgrid_mem_texture + slots_mem
 
     # Get volume memory usage
@@ -446,7 +520,7 @@ def run_benchmark():
     print("\n  Texture SDF:")
     print(f"    Dense SDF (temporary): {dense_mem / 1024:.1f} KB")
     print(f"    Coarse texture: {coarse_mem / 1024:.1f} KB")
-    print(f"    Subgrid texture (GPU): {subgrid_mem_texture / 1024:.1f} KB")
+    print(f"    Subgrid texture (GPU): {subgrid_mem_texture / 1024:.1f} KB ({num_subgrids} subgrids)")
     if QUANTIZATION_MODE != QuantizationMode.FLOAT32:
         print(f"    Subgrid data (quantized): {subgrid_mem_source / 1024:.1f} KB ({bytes_per_sample} bytes/sample)")
     print(f"    Indirection slots: {slots_mem / 1024:.1f} KB")
