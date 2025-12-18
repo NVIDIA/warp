@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2025
 
+- **START: Traversing Sparse Footholds with Terrain Reconstruction**. *R. Yu, Q. Wang, H. Li, Z. Jun, Z. Wang, J. Wu, Q. Zhu*. December 2025. [arXiv:2512.13153](https://arxiv.org/abs/2512.13153)
 - **Gallant: Voxel Grid-based Humanoid Locomotion and Local-navigation across 3D Constrained Terrains**. *Q. Ben, B. Xu, K. Li, F. Jia, W. Zhang, J. Wang, J. Wang, D. Lin, J. Pang*. November 2025. [arXiv:2511.14625](https://arxiv.org/abs/2511.14625)
 - **NeuSpring: Neural Spring Fields for Reconstruction and Simulation of Deformable Objects from Videos**. *Q. Xu, J. Liu, S. Yu, Y. Wang, Y. Zhou, J. Zhou, J. Cui, Y. Ong, H. Zhang*. November 2025. [arXiv:2511.08310](https://arxiv.org/abs/2511.08310)
 - **Improving Long-Range Interactions in Graph Neural Simulators via Hamiltonian Dynamics**. *T. Hoang, A. Trenta, A. Gravina, N. Freymuth, P. Becker, D. Bacciu, G. Neumann*. November 2025. [arXiv:2511.08185](https://arxiv.org/abs/2511.08185)
