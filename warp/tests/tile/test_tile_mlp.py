@@ -63,7 +63,7 @@ def test_multi_layer_nn(test, device):
         NUM_THREADS = 32
 
     dtype = wp.float16
-    npdtype = wp._src.types.warp_type_to_np_dtype[dtype]
+    npdtype = wp.dtype_to_numpy(dtype)
 
     @wp.func
     def relu(x: dtype):
@@ -101,7 +101,7 @@ def test_multi_layer_nn(test, device):
         x = (float(row) / float(IMG_WIDTH) - 0.5) * 2.0
         y = (float(col) / float(IMG_HEIGHT) - 0.5) * 2.0
 
-        local = wp.vector(dtype=dtype, length=DIM_IN)
+        local = wp.types.vector(dtype=dtype, length=DIM_IN)
 
         # construct positional encoding
         for s in range(NUM_FREQ):

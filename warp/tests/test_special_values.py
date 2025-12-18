@@ -152,7 +152,7 @@ def test_nan_scalar(test, device, dtype, register_kernels=False):
 
 
 def test_is_special_vec(test, device, dtype, register_kernels=False):
-    vector_type = wp._src.types.vector(5, dtype)
+    vector_type = wp.types.vector(5, dtype)
 
     def check_special_vec(bool_outputs: wp.array(dtype=wp.bool)):
         zeros_vector = vector_type()
@@ -197,7 +197,7 @@ def test_is_special_vec(test, device, dtype, register_kernels=False):
 
 
 def test_is_special_mat(test, device, dtype, register_kernels=False):
-    mat_type = wp._src.types.matrix((5, 5), dtype)
+    mat_type = wp.types.matrix((5, 5), dtype)
 
     def check_special_mat(bool_outputs: wp.array(dtype=wp.bool)):
         zeros_mat = mat_type()
@@ -242,7 +242,7 @@ def test_is_special_mat(test, device, dtype, register_kernels=False):
 
 
 def test_is_special_quat(test, device, dtype, register_kernels=False):
-    quat_type = wp._src.types.quaternion(dtype)
+    quat_type = wp.types.quaternion(dtype)
 
     def check_special_quat(bool_outputs: wp.array(dtype=wp.bool)):
         zeros_quat = quat_type()

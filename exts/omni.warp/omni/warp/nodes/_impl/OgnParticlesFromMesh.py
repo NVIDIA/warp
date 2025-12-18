@@ -16,7 +16,6 @@
 """Node generating particles inside a mesh."""
 
 import traceback
-from typing import Tuple
 
 import numpy as np
 import omni.graph.core as og
@@ -177,7 +176,7 @@ class InternalState:
 # ------------------------------------------------------------------------------
 
 
-def spawn_particles(db: OgnParticlesFromMeshDatabase) -> Tuple[wp.array, int]:
+def spawn_particles(db: OgnParticlesFromMeshDatabase) -> tuple[wp.array, int]:
     """Spawns the particles by filling the given point positions array."""
     # Initialize an empty array that will hold the particle positions.
     points = wp.empty(db.inputs.maxPoints, dtype=wp.vec3)

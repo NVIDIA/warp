@@ -15,7 +15,7 @@
 
 import functools
 import math
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import warp as wp
 import warp._src.sparse as sparse
@@ -57,14 +57,14 @@ class LinearOperator:
 
     """
 
-    def __init__(self, shape: Tuple[int, int], dtype: type, device: wp._src.context.Device, matvec: Callable):
+    def __init__(self, shape: tuple[int, int], dtype: type, device: wp._src.context.Device, matvec: Callable):
         self._shape = shape
         self._dtype = dtype
         self._device = device
         self._matvec = matvec
 
     @property
-    def shape(self) -> Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         return self._shape
 
     @property
@@ -170,7 +170,7 @@ def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
             A_diag = sparse.bsr_get_diag(A)
             if wp._src.types.type_is_matrix(A.dtype):
                 inv_diag = wp.empty(
-                    shape=A.nrow, dtype=wp.vec(length=A.block_shape[0], dtype=A.scalar_type), device=A.device
+                    shape=A.nrow, dtype=wp.types.vector(length=A.block_shape[0], dtype=A.scalar_type), device=A.device
                 )
                 wp.launch(
                     _extract_inverse_diagonal_blocked,
@@ -294,7 +294,7 @@ class TiledDot:
             num_blocks = (array_length + self.tile_size - 1) // self.tile_size
             data_in, data_out = data_out, data_in
 
-            self.sum_launch.set_param_at_index(0, data_in)
+            self.sum_launch.set_param_at_index(0, data_in[:, :array_length])
             self.sum_launch.set_param_at_index(1, data_out)
             self.sum_launch.set_dim((column_count, num_blocks, self.tile_size))
             self.sum_launch.launch()
@@ -308,7 +308,7 @@ class TiledDot:
         return self._output[start : start + count, :1]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _create_tiled_dot_kernels(tile_size):
     @wp.kernel
     def block_dot_kernel(
@@ -354,7 +354,7 @@ def cg(
     callback: Optional[Callable] = None,
     check_every=10,
     use_cuda_graph=True,
-) -> Union[Tuple[int, float, float], Tuple[wp.array, wp.array, wp.array]]:
+) -> Union[tuple[int, float, float], tuple[wp.array, wp.array, wp.array]]:
     """Computes an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Gradient algorithm.
 
@@ -479,7 +479,7 @@ def cr(
     callback: Optional[Callable] = None,
     check_every=10,
     use_cuda_graph=True,
-) -> Tuple[int, float, float]:
+) -> tuple[int, float, float]:
     """Computes an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Residual algorithm.
 
@@ -1478,7 +1478,7 @@ def _gmres_solve_least_squares(
         y[i] = yi / Hi[i]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def make_gmres_solve_least_squares_kernel_tiled(K: int):
     @wp.kernel(module="unique")
     def gmres_solve_least_squares_tiled(

@@ -76,6 +76,7 @@ static PFN_cuDevicePrimaryCtxRetain_v7000 pfn_cuDevicePrimaryCtxRetain;
 static PFN_cuDevicePrimaryCtxRelease_v11000 pfn_cuDevicePrimaryCtxRelease;
 static PFN_cuDeviceCanAccessPeer_v4000 pfn_cuDeviceCanAccessPeer;
 static PFN_cuMemGetInfo_v3020 pfn_cuMemGetInfo;
+static PFN_cuMemcpyBatchAsync_v12080 pfn_cuMemcpyBatchAsync;
 static PFN_cuCtxGetCurrent_v4000 pfn_cuCtxGetCurrent;
 static PFN_cuCtxSetCurrent_v4000 pfn_cuCtxSetCurrent;
 static PFN_cuCtxPushCurrent_v4000 pfn_cuCtxPushCurrent;
@@ -231,6 +232,10 @@ bool init_cuda_driver()
     get_driver_entry_point("cuDevicePrimaryCtxRelease", 11000, &(void*&)pfn_cuDevicePrimaryCtxRelease);
     get_driver_entry_point("cuDeviceCanAccessPeer", 4000, &(void*&)pfn_cuDeviceCanAccessPeer);
     get_driver_entry_point("cuMemGetInfo", 3020, &(void*&)pfn_cuMemGetInfo);
+#if CUDA_VERSION >= 12080
+    if (driver_version >= 12080)
+        get_driver_entry_point("cuMemcpyBatchAsync", 12080, &(void*&)pfn_cuMemcpyBatchAsync);
+#endif
     get_driver_entry_point("cuCtxSetCurrent", 4000, &(void*&)pfn_cuCtxSetCurrent);
     get_driver_entry_point("cuCtxGetCurrent", 4000, &(void*&)pfn_cuCtxGetCurrent);
     get_driver_entry_point("cuCtxPushCurrent", 4000, &(void*&)pfn_cuCtxPushCurrent);
@@ -448,6 +453,25 @@ CUresult cuMemGetInfo_f(size_t* free, size_t* total)
 {
     return pfn_cuMemGetInfo ? pfn_cuMemGetInfo(free, total) : DRIVER_ENTRY_POINT_ERROR;
 }
+
+#if CUDA_VERSION >= 12080
+CUresult cuMemcpyBatchAsync_f(
+    CUdeviceptr* dsts,
+    CUdeviceptr* srcs,
+    size_t* sizes,
+    size_t count,
+    CUmemcpyAttributes* attrs,
+    size_t* attrsIdxs,
+    size_t numAttrs,
+    size_t* failIdx,
+    CUstream hStream
+)
+{
+    return pfn_cuMemcpyBatchAsync
+        ? pfn_cuMemcpyBatchAsync(dsts, srcs, sizes, count, attrs, attrsIdxs, numAttrs, failIdx, hStream)
+        : DRIVER_ENTRY_POINT_ERROR;
+}
+#endif
 
 CUresult cuCtxGetCurrent_f(CUcontext* ctx)
 {

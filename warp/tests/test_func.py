@@ -15,7 +15,7 @@
 
 import math
 import unittest
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -207,7 +207,7 @@ def test_user_func_with_defaults(test, device):
 
 
 @wp.func
-def user_func_return_multiple_values(a: int, b: float) -> Tuple[int, float]:
+def user_func_return_multiple_values(a: int, b: float) -> tuple[int, float]:
     return a + a, b * b
 
 
@@ -277,6 +277,106 @@ def divide_float64(x: wp.float64):
 @wp.func
 def get_array_len(arr: wp.array(dtype=wp.float32)):
     return len(arr)
+
+
+@wp.func
+def square(x: float):
+    return x * x
+
+
+@wp.func
+def grad_func(x: float):
+    dsquare_dx = wp.grad(square)(x)
+    return x + dsquare_dx
+
+
+@wp.kernel(enable_backward=False)
+def grad_kernel(
+    x: wp.array(dtype=float),
+    y: wp.array(dtype=float),
+    grad_x: wp.array(dtype=float),
+    grad_atan2_y: wp.array(dtype=float),
+    grad_atan2_x: wp.array(dtype=float),
+    z: wp.array(dtype=float),
+):
+    tid = wp.tid()
+
+    grad_x[tid] = wp.grad(square)(x[tid])
+
+    grad_square = wp.grad(square)
+    wp.expect_eq(grad_square(x[tid]), wp.grad(square)(x[tid]))
+
+    grad_x[tid] = grad_square(x[tid])
+
+    b, a = wp.grad(wp.atan2)(y[tid], x[tid])
+    grad_atan2_y[tid] = b
+    grad_atan2_x[tid] = a
+
+    z[tid] = grad_func(x[tid])
+
+
+def test_grad(test, device):
+    """Test that warp.grad() allows computing gradients in forward code."""
+
+    n = 10
+    x_np = np.arange(n, dtype=np.float32)
+    x = wp.array(x_np, dtype=float, device=device)
+    y = wp.ones(n, dtype=float, device=device)
+    grad_x = wp.zeros(n, dtype=float, device=device)
+    grad_atan2_y = wp.zeros(n, dtype=float, device=device)
+    grad_atan2_x = wp.zeros(n, dtype=float, device=device)
+    z = wp.zeros(n, dtype=float, device=device)
+
+    wp.launch(grad_kernel, dim=n, inputs=[x, y, grad_x, grad_atan2_y, grad_atan2_x, z], device=device)
+
+    # Check gradient of square: d(x^2)/dx = 2*x
+    assert_np_equal(grad_x.numpy(), 2.0 * np.arange(n, dtype=np.float32))
+
+    # Check gradients of atan2(y, x) where y=1, x varies:
+    #   d/dy = x / (x^2 + y^2) = x / (x^2 + 1)
+    #   d/dx = -y / (x^2 + y^2) = -1 / (x^2 + 1)
+    expected_grad_atan2_y = x_np / (x_np**2 + 1)
+    expected_grad_atan2_x = -1.0 / (x_np**2 + 1)
+    assert_np_equal(grad_atan2_y.numpy(), expected_grad_atan2_y, tol=1e-5)
+    assert_np_equal(grad_atan2_x.numpy(), expected_grad_atan2_x, tol=1e-5)
+
+    # Check gradient of square called in a custom function
+    assert_np_equal(z.numpy(), 3.0 * x_np)
+
+
+@wp.func
+def safe_sqrt(x: float):
+    return wp.sqrt(x)
+
+
+@wp.func_grad(safe_sqrt)
+def adj_safe_sqrt(x: float, adj_ret: float):
+    # Use wp.grad() inside a custom gradient function
+    if x > 0.0:
+        wp.adjoint[x] += wp.grad(wp.sqrt)(x) * adj_ret
+
+
+@wp.kernel
+def safe_sqrt_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    tid = wp.tid()
+    y[tid] = safe_sqrt(x[tid])
+
+
+def test_grad_in_func_grad(test, device):
+    """Test that warp.grad() can be used inside a @wp.func_grad function."""
+
+    x_np = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float32)
+    x = wp.array(x_np, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros_like(x, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(safe_sqrt_kernel, x.shape, inputs=[x, y], device=device)
+
+    tape.backward(grads={y: wp.array(np.ones(x.shape), dtype=float, device=device)})
+
+    # The gradient of sqrt(x) is 1/(2*sqrt(x)) = 0.5/sqrt(x)
+    expected_grad = 0.5 / np.sqrt(x_np)
+    assert_np_equal(x.grad.numpy(), expected_grad, tol=1e-5)
 
 
 class TestFunc(unittest.TestCase):
@@ -396,7 +496,7 @@ class TestFunc(unittest.TestCase):
         t = wp.transform(*wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
         self.assertSequenceEqual(t, (1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0))
 
-        transformf = wp._src.types.transformation(dtype=float)
+        transformf = wp.types.transformation(dtype=float)
 
         t = wp.transformf((1.0, 2.0, 3.0), (4.0, 5.0, 6.0, 7.0))
         self.assertSequenceEqual(
@@ -494,6 +594,8 @@ add_function_test(
 add_kernel_test(
     TestFunc, kernel=test_return_annotation_none, name="test_return_annotation_none", dim=1, devices=devices
 )
+add_function_test(TestFunc, func=test_grad, name="test_grad", devices=devices)
+add_function_test(TestFunc, func=test_grad_in_func_grad, name="test_grad_in_func_grad", devices=devices)
 
 
 if __name__ == "__main__":

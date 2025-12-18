@@ -30,6 +30,31 @@ import warp.fem as fem
 from warp.examples.fem.example_apic_fluid import divergence_form, solve_incompressibility
 
 
+def bourke_color_map(low, high, v):
+    c = [1.0, 1.0, 1.0]
+
+    if v < low:
+        v = low
+    if v > high:
+        v = high
+    dv = high - low
+
+    if v < (low + 0.25 * dv):
+        c[0] = 0.0
+        c[1] = 4.0 * (v - low) / dv
+    elif v < (low + 0.5 * dv):
+        c[0] = 0.0
+        c[2] = 1.0 + 4.0 * (low + 0.25 * dv - v) / dv
+    elif v < (low + 0.75 * dv):
+        c[0] = 4.0 * (v - low - 0.5 * dv) / dv
+        c[2] = 0.0
+    else:
+        c[1] = 1.0 + 4.0 * (low + 0.75 * dv - v) / dv
+        c[2] = 0.0
+
+    return c
+
+
 @fem.integrand
 def classify_boundary_sides(
     s: fem.Sample,
@@ -260,7 +285,7 @@ class Example:
             indices = np.vstack((indices_beg.flatten(), indices_end.flatten())).T.flatten()
 
             colors = self._speed.numpy()[:, :-1].flatten()
-            colors = [wp.render.bourke_color_map(0.0, 3.0, c) for c in colors]
+            colors = [bourke_color_map(0.0, 3.0, c) for c in colors]
 
             self.renderer.begin_frame(0)
             self.renderer.render_line_list("streamlines", vertices, indices)

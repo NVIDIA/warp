@@ -83,11 +83,11 @@ def test_negation(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp._src.types.vector(length=2, dtype=wptype)
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
-    vec4 = wp._src.types.vector(length=4, dtype=wptype)
-    vec5 = wp._src.types.vector(length=5, dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_negation(
         v2: wp.array(dtype=vec2),
@@ -198,11 +198,11 @@ def test_negation(test, device, dtype, register_kernels=False):
 
 
 def test_subtraction_unsigned(test, device, dtype, register_kernels=False):
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp._src.types.vector(length=2, dtype=wptype)
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
-    vec4 = wp._src.types.vector(length=4, dtype=wptype)
-    vec5 = wp._src.types.vector(length=5, dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_subtraction_unsigned():
         wp.expect_eq(vec2(wptype(3), wptype(4)) - vec2(wptype(1), wptype(2)), vec2(wptype(2), wptype(2)))
@@ -237,11 +237,11 @@ def test_subtraction(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp._src.types.vector(length=2, dtype=wptype)
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
-    vec4 = wp._src.types.vector(length=4, dtype=wptype)
-    vec5 = wp._src.types.vector(length=5, dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_subtraction(
         s2: wp.array(dtype=vec2),
@@ -374,11 +374,11 @@ def test_length(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-7,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp._src.types.vector(length=2, dtype=wptype)
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
-    vec4 = wp._src.types.vector(length=4, dtype=wptype)
-    vec5 = wp._src.types.vector(length=5, dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_length(
         v2: wp.array(dtype=vec2),
@@ -496,11 +496,11 @@ def test_normalize(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec2 = wp._src.types.vector(length=2, dtype=wptype)
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
-    vec4 = wp._src.types.vector(length=4, dtype=wptype)
-    vec5 = wp._src.types.vector(length=5, dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    vec3 = wp.types.vector(length=3, dtype=wptype)
+    vec4 = wp.types.vector(length=4, dtype=wptype)
+    vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_normalize(
         v2: wp.array(dtype=vec2),
@@ -703,8 +703,8 @@ def test_crossproduct(test, device, dtype, register_kernels=False):
         np.float64: 1.0e-8,
     }.get(dtype, 0)
 
-    wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
-    vec3 = wp._src.types.vector(length=3, dtype=wptype)
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec3 = wp.types.vector(length=3, dtype=wptype)
 
     def check_cross(
         s3: wp.array(dtype=vec3),
@@ -790,8 +790,8 @@ def test_crossproduct(test, device, dtype, register_kernels=False):
 
 
 @wp.kernel(module="unique")
-def test_vector_mutation(expected: wp._src.types.vector(length=10, dtype=float)):
-    v = wp.vector(length=10, dtype=float)
+def test_vector_mutation(expected: wp.types.vector(length=10, dtype=float)):
+    v = wp.types.vector(length=10, dtype=float)
 
     # test element indexing
     v[0] = 1.0
@@ -802,11 +802,13 @@ def test_vector_mutation(expected: wp._src.types.vector(length=10, dtype=float))
     wp.expect_eq(v, expected)
 
 
-Vec123 = wp.vec(123, dtype=wp.float16)
+Vec123 = wp.types.vector(123, dtype=wp.float16)
 
 
 @wp.kernel(module="unique")
-def vector_len_kernel(v1: wp.vec2, v2: wp.vec(3, float), v3: wp.vec(Any, float), v4: Vec123, out: wp.array(dtype=int)):
+def vector_len_kernel(
+    v1: wp.vec2, v2: wp.types.vector(3, float), v3: wp.types.vector(Any, float), v4: Vec123, out: wp.array(dtype=int)
+):
     length = wp.static(len(v1))
     wp.expect_eq(len(v1), 2)
     out[0] = len(v1)
@@ -1187,11 +1189,11 @@ def test_vec_indexing_assign(test, device):
 
 
 def test_vec_slicing_assign(test, device):
-    vec0 = wp.vec(0, float)
-    vec1 = wp.vec(1, float)
-    vec2 = wp.vec(2, float)
-    vec3 = wp.vec(3, float)
-    vec4 = wp.vec(4, float)
+    vec0 = wp.types.vector(0, float)
+    vec1 = wp.types.vector(1, float)
+    vec2 = wp.types.vector(2, float)
+    vec3 = wp.types.vector(3, float)
+    vec4 = wp.types.vector(4, float)
 
     @wp.func
     def fn():
@@ -1336,7 +1338,7 @@ devices = get_test_devices()
 
 class TestVec(unittest.TestCase):
     def test_tpl_ops_with_anon(self):
-        vec3i = wp.vec(3, dtype=int)
+        vec3i = wp.types.vector(3, dtype=int)
 
         v = wp.vec3i(1, 2, 3)
         v += vec3i(2, 3, 4)
@@ -1349,7 +1351,7 @@ class TestVec(unittest.TestCase):
         self.assertSequenceEqual(v, (0, 1, 2))
 
 
-vec10 = wp._src.types.vector(length=10, dtype=float)
+vec10 = wp.types.vector(length=10, dtype=float)
 add_kernel_test(
     TestVec,
     test_vector_mutation,

@@ -16,5 +16,17 @@
 # isort: skip_file
 
 from warp._src.optim.adam import Adam as Adam
-
 from warp._src.optim.sgd import SGD as SGD
+
+from . import linear as linear
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src import optim as _optim
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    return get_deprecated_api(_optim, "warp", name)

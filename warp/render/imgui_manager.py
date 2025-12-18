@@ -13,17 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
-from warp._src.render.imgui_manager import ImGuiManager as ImGuiManager
-
-
 # TODO: Remove after cleaning up the public API.
 
 from warp._src.render import imgui_manager as _imgui_manager
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_imgui_manager, "wp.render", name)
+    return get_deprecated_api(_imgui_manager, "warp.render", name)
+
+
+_warn_deprecated_namespace(__name__)

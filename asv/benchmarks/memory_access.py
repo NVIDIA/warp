@@ -45,7 +45,6 @@ class ArrayOfStructures:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
         self.test_array = wp.ones((N, N, N, NUM_COMPONENTS), dtype=float, device=self.device)
@@ -66,7 +65,6 @@ class StructureOfArrays:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
         self.test_array = wp.ones((NUM_COMPONENTS, N, N, N), dtype=float, device=self.device)
@@ -101,7 +99,6 @@ class LoadStoreIJ:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
         self.input_array = wp.ones((8192, 4096), dtype=float, device=self.device)
@@ -131,7 +128,6 @@ class LoadStoreJI:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
         self.input_array = wp.ones((8192, 4096), dtype=float, device=self.device)

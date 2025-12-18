@@ -116,7 +116,7 @@ RUN if [ "$TARGETARCH" = "x86_64" ]; then \
 
 # Configure and build LLVM with Clang
 # This mirrors the configuration in build_llvm.py for Linux x86_64/aarch64
-# Note: Using modern Ninja installed via pip for faster parallel builds
+# Note: Using modern Ninja installed from GitHub releases for faster parallel builds
 RUN cmake \
     -S llvm-project/llvm \
     -B build \
@@ -285,7 +285,7 @@ RUN mkdir -p /opt/llvm/licenses && \
     echo "LLVM is licensed under the Apache License v2.0 with LLVM Exceptions" > /opt/llvm/licenses/README.txt && \
     echo "See: https://llvm.org/LICENSE.txt" >> /opt/llvm/licenses/README.txt
 
-# Get uv from official distroless image
+# Get uv from official image
 FROM ghcr.io/astral-sh/uv:latest AS uv
 
 # Final stage
@@ -295,7 +295,7 @@ ARG CUDA_VERSION
 ARG TARGETARCH
 
 # Copy CUDA installation from builder stage
-# parse_redist.py creates /opt/cuda/linux-{x86_64,sbsa}/ structure
+# parse_redist.py creates /opt/cuda/linux-${TARGETARCH}/ structure (e.g., linux-x86_64, linux-aarch64)
 COPY --from=cuda-installer /opt/cuda/linux-${TARGETARCH} /usr/local/cuda
 
 # Copy LLVM installation from builder stage

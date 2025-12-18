@@ -13,22 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
-from warp._src.context import Device as Device
-from warp._src.context import Devicelike as Devicelike
-from warp._src.context import Module as Module
-from warp._src.context import assert_conditional_graph_support as assert_conditional_graph_support
-from warp._src.context import get_module as get_module
-from warp._src.context import type_str as type_str
-
-
 # TODO: Remove after cleaning up the public API.
 
 from warp._src import context as _context
+from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+    from warp._src.utils import get_deprecated_api, warn  # noqa: PLC0415
 
-    return get_deprecated_api(_context, "wp", name)
+    # Handle special case: Devicelike -> DeviceLike (capital L)
+    # This is both a rename AND a relocation to warp.DeviceLike
+    if name == "Devicelike":
+        warn(
+            "The symbol `warp.context.Devicelike` will soon be removed from the public API. Use `warp.DeviceLike` instead.",
+            DeprecationWarning,
+        )
+        return _context.DeviceLike
+
+    return get_deprecated_api(_context, "warp", name)
+
+
+_warn_deprecated_namespace(__name__)

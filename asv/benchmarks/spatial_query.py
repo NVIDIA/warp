@@ -54,6 +54,23 @@ def sample_mesh_query_no_sign(
         query_closest_points[tid] = cp
 
 
+@wp.kernel
+def sample_mesh_query_signed(
+    mesh: wp.uint64,
+    query_points: wp.array(dtype=wp.vec3),
+    query_d_max: float,
+    query_closest_points: wp.array(dtype=wp.vec3),
+):
+    tid = wp.tid()
+    p = query_points[tid]
+    query = wp.mesh_query_point(mesh, p, query_d_max)
+
+    if query.result:
+        face = query.face
+        cp = wp.vec3(float(face), query.u, query.v)
+        query_closest_points[tid] = cp
+
+
 class MeshQuery:
     params = [[0, 8], ["bunny", "bear", "rocks"]]
     param_names = ["leaf_size", "asset"]
@@ -64,7 +81,6 @@ class MeshQuery:
         from pxr import Usd, UsdGeom
 
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 
@@ -102,20 +118,34 @@ class MeshQuery:
 
         self.query_closest_points = wp.empty_like(self.query_points, device=self.device)
 
-        self.cmd = wp.launch(
+        self.cmd_no_sign = wp.launch(
             sample_mesh_query_no_sign,
             dim=(NUM_QUERY_POINTS,),
             inputs=[self.mesh.id, self.query_points, 1.0e7, self.query_closest_points],
             device=self.device,
             record_cmd=True,
         )
+
+        self.cmd_signed = wp.launch(
+            sample_mesh_query_signed,
+            dim=(NUM_QUERY_POINTS,),
+            inputs=[self.mesh.id, self.query_points, 1.0e7, self.query_closest_points],
+            device=self.device,
+            record_cmd=True,
+        )
         # Warmup
-        self.cmd.launch()
+        self.cmd_no_sign.launch()
+        self.cmd_signed.launch()
         wp.synchronize_device(self.device)
 
     @skip_benchmark_if(USD_AVAILABLE is False)
     def time_mesh_query_closest_point(self, leaf_size, asset):
-        self.cmd.launch()
+        self.cmd_no_sign.launch()
+        wp.synchronize_device(self.device)
+
+    @skip_benchmark_if(USD_AVAILABLE is False)
+    def time_mesh_query_closest_point_signed(self, leaf_size, asset):
+        self.cmd_signed.launch()
         wp.synchronize_device(self.device)
 
 
@@ -346,7 +376,6 @@ class BvhAABBQuery:
             seed = seed + 1
 
             wp.init()
-            wp.build.clear_kernel_cache()
             self.device = wp.get_device(device)
             wp.load_module(device=self.device)
 
@@ -524,7 +553,6 @@ class BvhRayQuery:
             seed = seed + 1
 
             wp.init()
-            wp.build.clear_kernel_cache()
             wp.load_module(device=self.device)
 
             asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))

@@ -1187,7 +1187,7 @@ Vector Math
     .. deprecated:: 1.8
 
 
-.. py:function:: matrix(*args: Scalar, shape: Tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
+.. py:function:: matrix(*args: Scalar, shape: tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
     :noindex:
     :nocontentsentry:
 
@@ -1232,7 +1232,7 @@ Vector Math
     Create an identity matrix with shape=(n,n) with the type given by ``dtype``.
 
 
-.. py:function:: svd3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float], Matrix[3,3,Float]]
+.. py:function:: svd3(A: Matrix[3,3,Float]) -> tuple[Matrix[3,3,Float], Vector[3,Float], Matrix[3,3,Float]]
 
     .. hlist::
        :columns: 8
@@ -1260,7 +1260,7 @@ Vector Math
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
-.. py:function:: svd2(A: Matrix[2,2,Float]) -> Tuple[Matrix[2,2,Float], Vector[2,Float], Matrix[2,2,Float]]
+.. py:function:: svd2(A: Matrix[2,2,Float]) -> tuple[Matrix[2,2,Float], Vector[2,Float], Matrix[2,2,Float]]
 
     .. hlist::
        :columns: 8
@@ -1288,7 +1288,7 @@ Vector Math
     while the left and right basis vectors are returned in ``U`` and ``V``.
 
 
-.. py:function:: qr3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Matrix[3,3,Float]]
+.. py:function:: qr3(A: Matrix[3,3,Float]) -> tuple[Matrix[3,3,Float], Matrix[3,3,Float]]
 
     .. hlist::
        :columns: 8
@@ -1316,7 +1316,7 @@ Vector Math
     while the upper triangular matrix is returned in ``R``.
 
 
-.. py:function:: eig3(A: Matrix[3,3,Float]) -> Tuple[Matrix[3,3,Float], Vector[3,Float]]
+.. py:function:: eig3(A: Matrix[3,3,Float]) -> tuple[Matrix[3,3,Float], Vector[3,Float]]
 
     .. hlist::
        :columns: 8
@@ -1344,11 +1344,11 @@ Vector Math
     while the corresponding eigenvalues are returned in ``d``.
 
 
-.. autofunction:: warp.math.norm_l1
-.. autofunction:: warp.math.norm_l2
-.. autofunction:: warp.math.norm_huber
-.. autofunction:: warp.math.norm_pseudo_huber
-.. autofunction:: warp.math.smooth_normalize
+.. autofunction:: warp.norm_l1
+.. autofunction:: warp.norm_l2
+.. autofunction:: warp.norm_huber
+.. autofunction:: warp.norm_pseudo_huber
+.. autofunction:: warp.smooth_normalize
 
 
 Quaternion Math
@@ -1427,7 +1427,7 @@ Quaternion Math
     Construct a quaternion representing a rotation of angle radians around the given axis.
 
 
-.. py:function:: quat_to_axis_angle(quat: Quaternion[Float]) -> Tuple[Vector[3,Float], Float]
+.. py:function:: quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[3,Float], Float]
 
     .. hlist::
        :columns: 8
@@ -1730,10 +1730,10 @@ Transformations
     Compute the inverse of the transformation ``xform``.
 
 
-.. autofunction:: warp.math.transform_from_matrix
-.. autofunction:: warp.math.transform_to_matrix
-.. autofunction:: warp.math.transform_compose
-.. autofunction:: warp.math.transform_decompose
+.. autofunction:: warp.transform_from_matrix
+.. autofunction:: warp.transform_to_matrix
+.. autofunction:: warp.transform_compose
+.. autofunction:: warp.transform_decompose
 
 
 Spatial Math
@@ -1868,7 +1868,7 @@ Spatial Math
 
 Tile Primitives
 ---------------
-.. py:function:: tile_zeros(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_zeros(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -1884,7 +1884,7 @@ Tile Primitives
     :returns: A zero-initialized tile with shape and data type as specified
 
 
-.. py:function:: tile_ones(shape: Tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -1900,7 +1900,7 @@ Tile Primitives
     :returns: A one-initialized tile with shape and data type as specified
 
 
-.. py:function:: tile_full(shape: Tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -1917,7 +1917,188 @@ Tile Primitives
     :returns: A tile filled with the specified value
 
 
-.. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar,Tuple[int]]
+.. py:function:: tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any,tuple[int, ...]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Generate a tile of random integers.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random integers with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+        wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[  798497746  1803297529  -955788638    17806966]
+         [ 1788185933  1320194893  2073257406 -2009156320]
+         [ -257534450 -1138585923  1145322783  -321794125]
+         [-2096177388 -1835610841  1159339128  -652221052]]
+    
+
+
+.. py:function:: tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any,tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Generate a tile of random integers within a specified range.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param min: Minimum value (inclusive) for random integers
+    :param max: Maximum value (exclusive) for random integers
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random integers in the range [min, max) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+        wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[ 1  4  3  1]
+         [-2 -2  1  1]
+         [ 1 -2 -2 -4]
+         [ 3  0  3 -1]]
+    
+
+
+.. py:function:: tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any,tuple[int, ...]]
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Generate a tile of random floats.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random floats in the range [0, 1) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_kernel(seed: int, x: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
+        wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[0.1859147  0.41986287 0.7774631  0.00414598]
+         [0.41634446 0.3073818  0.4827178  0.53220683]
+         [0.9400381  0.73490226 0.26666623 0.9250764 ]
+         [0.51194566 0.57261354 0.26992965 0.8481429 ]]
+    
+
+
+.. py:function:: tile_randf(shape: tuple[int, ...], rng: uint32, min: float32, max: float32, storage: str) -> Tile[Any,tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Generate a tile of random floats within a specified range.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param min: Minimum value (inclusive) for random floats
+    :param max: Maximum value (exclusive) for random floats
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random floats in the range [min, max) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_range_kernel(seed: int, x: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
+        wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[-3.140853   -0.80137134  2.7746308  -4.95854   ]
+         [-0.83655536 -1.9261819  -0.17282188  0.32206833]
+         [ 4.400381    2.3490226  -2.3333378   4.2507644 ]
+         [ 0.11945665  0.7261354  -2.3007035   3.481429  ]]
+
+    
+
+
+.. py:function:: tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -1938,7 +2119,7 @@ Tile Primitives
     :returns: A tile with ``shape=(n)`` with linearly spaced elements of specified data type
 
 
-.. py:function:: tile_load(a: Array[Any], shape: Tuple[int, ...], offset: Tuple[int, ...], storage: str, bounds_check: bool) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...], storage: str, bounds_check: bool) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -1959,7 +2140,7 @@ Tile Primitives
     :returns: A tile with shape as specified and data type the same as the source array
 
 
-.. py:function:: tile_load_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], shape: Tuple[int, ...], offset: Tuple[int, ...], axis: int32, storage: str) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_load_indexed(a: Array[Any], indices: Tile[int32,tuple[int]], shape: tuple[int, ...], offset: tuple[int, ...], axis: int32, storage: str) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2022,7 +2203,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_store(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool) -> None
+.. py:function:: tile_store(a: Array[Any], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> None
 
     .. hlist::
        :columns: 8
@@ -2041,7 +2222,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_store_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32) -> None
+.. py:function:: tile_store_indexed(a: Array[Any], indices: Tile[int32,tuple[int]], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], axis: int32) -> None
 
     .. hlist::
        :columns: 8
@@ -2109,7 +2290,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_atomic_add(a: Array[Any], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], bounds_check: bool) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_atomic_add(a: Array[Any], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2126,7 +2307,7 @@ Tile Primitives
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
 
 
-.. py:function:: tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,Tuple[int]], t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], axis: int32) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,tuple[int]], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], axis: int32) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2186,7 +2367,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_view(t: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_view(t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], shape: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2201,7 +2382,7 @@ Tile Primitives
     :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions
 
 
-.. py:function:: tile_squeeze(t: Tile[Any,Tuple[int, ...]], axis: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_squeeze(t: Tile[Any,tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2216,7 +2397,7 @@ Tile Primitives
     :returns: The input tile but with all or a subset of the dimensions of length one removed.
 
 
-.. py:function:: tile_reshape(t: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_reshape(t: Tile[Any,tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2231,7 +2412,7 @@ Tile Primitives
     :returns: A tile containing the same data as the input tile, but arranged in a new shape.
 
 
-.. py:function:: tile_astype(t: Tile[Scalar,Tuple[int, ...]], dtype: Scalar) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_astype(t: Tile[Scalar,tuple[int, ...]], dtype: Scalar) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2246,7 +2427,7 @@ Tile Primitives
     :returns: A tile with the same data as the input tile, but with a different data type
 
 
-.. py:function:: tile_assign(dst: Tile[Any,Tuple[int, ...]], src: Tile[Any,Tuple[int, ...]], offset: Tuple[int, ...]) -> None
+.. py:function:: tile_assign(dst: Tile[Any,tuple[int, ...]], src: Tile[Any,tuple[int, ...]], offset: tuple[int, ...]) -> None
 
     .. hlist::
        :columns: 8
@@ -2261,7 +2442,7 @@ Tile Primitives
     :param offset: Offset in the destination tile to write to
 
 
-.. py:function:: untile(a: Tile[Any,Tuple[int, ...]]) -> Any
+.. py:function:: untile(a: Tile[Any,tuple[int, ...]]) -> Any
 
     .. hlist::
        :columns: 8
@@ -2310,7 +2491,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_transpose(a: Tile[Any,Tuple[int, int]]) -> Tile[Any,Tuple[int, int]]
+.. py:function:: tile_transpose(a: Tile[Any,tuple[int, int]]) -> Tile[Any,tuple[int, int]]
 
     .. hlist::
        :columns: 8
@@ -2327,7 +2508,7 @@ Tile Primitives
     :returns: Tile with ``shape=(N,M)``
 
 
-.. py:function:: tile_broadcast(a: Tile[Any,Tuple[int, ...]], shape: Tuple[int, ...]) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: tile_broadcast(a: Tile[Any,tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2345,7 +2526,7 @@ Tile Primitives
     :returns: Tile with broadcast shape
 
 
-.. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_sum(a: Tile[Any,tuple[int, ...]], axis: int32) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2382,7 +2563,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_sum(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+.. py:function:: tile_sum(a: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[1]]
     :noindex:
     :nocontentsentry:
 
@@ -2420,7 +2601,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_sort(keys: Tile[Any,Tuple[int]], values: Tile[Any,Tuple[int]]) -> None
+.. py:function:: tile_sort(keys: Tile[Any,tuple[int]], values: Tile[Any,tuple[int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -2460,7 +2641,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_min(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+.. py:function:: tile_min(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[1]]
 
     .. hlist::
        :columns: 8
@@ -2496,7 +2677,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_argmin(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]
+.. py:function:: tile_argmin(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Int,tuple[1]]
 
     .. hlist::
        :columns: 8
@@ -2532,7 +2713,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_max(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+.. py:function:: tile_max(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[1]]
 
     .. hlist::
        :columns: 8
@@ -2567,7 +2748,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_argmax(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Int,Tuple[1]]
+.. py:function:: tile_argmax(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Int,tuple[1]]
 
     .. hlist::
        :columns: 8
@@ -2602,7 +2783,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[1]]
+.. py:function:: tile_reduce(op: Callable, a: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[1]]
 
     .. hlist::
        :columns: 8
@@ -2639,7 +2820,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_reduce(op: Callable, a: Tile[Scalar,Tuple[int, ...]], axis: int32) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_reduce(op: Callable, a: Tile[Scalar,tuple[int, ...]], axis: int32) -> Tile[Scalar,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -2693,7 +2874,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_scan_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_scan_inclusive(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2727,7 +2908,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_scan_exclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_scan_exclusive(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2761,7 +2942,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_scan_max_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_scan_max_inclusive(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2796,7 +2977,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_scan_min_inclusive(a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_scan_min_inclusive(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2831,7 +3012,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_map(op: Callable, a: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
 
     .. hlist::
        :columns: 8
@@ -2869,7 +3050,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_map(op: Callable, a: Tile[Scalar,Tuple[int, ...]], b: Tile[Scalar,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: tile_map(op: Callable, a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -2912,6 +3093,54 @@ Tile Primitives
         [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)
 
 
+.. py:function:: tile_map(op: Callable, *args: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
+    :noindex:
+    :nocontentsentry:
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Apply a user-defined function to multiple tiles element-wise.
+
+    This function cooperatively applies a user-defined function to corresponding elements of three or more tiles using all threads in the block.
+    All input tiles must have the same dimensions. The operator must accept the same number of arguments as tiles provided.
+
+    :param op: A callable function that accepts N arguments and returns one value, must be a user function
+    :param args: Three or more input tiles with matching dimensions. The operator (or one of its overloads) must be able to accept the tiles' dtypes
+    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.func
+        def weighted_sum(a: float, b: float, c: float):
+            return 0.5 * a + 0.3 * b + 0.2 * c
+
+        @wp.kernel
+        def compute():
+
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(shape=10, dtype=float)
+            c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
+
+            s = wp.tile_map(weighted_sum, a, b, c)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)
+    
+
+
 .. py:function:: tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled
 
     .. hlist::
@@ -2948,7 +3177,7 @@ Tile Primitives
     .. note:: This is an alias for :func:`bvh_query_ray_tiled`.
 
 
-.. py:function:: tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32,Tuple[int]]
+.. py:function:: tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -2987,7 +3216,7 @@ Tile Primitives
     .. note:: This is an alias for :func:`mesh_query_aabb_tiled`.
 
 
-.. py:function:: tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32,Tuple[int]]
+.. py:function:: tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -3008,7 +3237,7 @@ Tile Primitives
     .. note:: This is an alias for :func:`mesh_query_aabb_next_tiled`.
 
 
-.. py:function:: tile_diag_add(a: Tile[Any,Tuple[int, int]], d: Tile[Any,Tuple[int]]) -> Tile[Any,Tuple[int, int]]
+.. py:function:: tile_diag_add(a: Tile[Any,tuple[int, int]], d: Tile[Any,tuple[int]]) -> Tile[Any,tuple[int, int]]
 
     .. hlist::
        :columns: 8
@@ -3018,7 +3247,7 @@ Tile Primitives
     Add a square matrix and a diagonal matrix 'd' represented as a 1D tile
 
 
-.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], out: Tile[Float,Tuple[int, int]], alpha: Float, beta: Float) -> None
+.. py:function:: tile_matmul(a: Tile[Float,tuple[int, int]], b: Tile[Float,tuple[int, int]], out: Tile[Float,tuple[int, int]], alpha: Float, beta: Float) -> None
 
     .. hlist::
        :columns: 8
@@ -3045,7 +3274,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_matmul(a: Tile[Float,Tuple[int, int]], b: Tile[Float,Tuple[int, int]], alpha: Float) -> Tile[Float,Tuple[int, int]]
+.. py:function:: tile_matmul(a: Tile[Float,tuple[int, int]], b: Tile[Float,tuple[int, int]], alpha: Float) -> Tile[Float,tuple[int, int]]
     :noindex:
     :nocontentsentry:
 
@@ -3073,7 +3302,7 @@ Tile Primitives
     
 
 
-.. py:function:: tile_fft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> None
+.. py:function:: tile_fft(inout: Tile[Vector[2,Float],tuple[int, int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -3092,7 +3321,7 @@ Tile Primitives
     :param inout: The input/output tile
 
 
-.. py:function:: tile_ifft(inout: Tile[Vector[2,Float],Tuple[int, int]]) -> None
+.. py:function:: tile_ifft(inout: Tile[Vector[2,Float],tuple[int, int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -3111,7 +3340,7 @@ Tile Primitives
     :param inout: The input/output tile
 
 
-.. py:function:: tile_cholesky(A: Tile[Float,Tuple[int, int]]) -> Tile[Float,Tuple[int, int]]
+.. py:function:: tile_cholesky(A: Tile[Float,tuple[int, int]]) -> Tile[Float,tuple[int, int]]
 
     .. hlist::
        :columns: 8
@@ -3135,7 +3364,7 @@ Tile Primitives
     :returns L: A square, lower triangular, matrix, such that LL^T = A
 
 
-.. py:function:: tile_cholesky_inplace(A: Tile[Float,Tuple[int, int]]) -> None
+.. py:function:: tile_cholesky_inplace(A: Tile[Float,tuple[int, int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -3159,7 +3388,7 @@ Tile Primitives
     :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of A is replaced by L, such that LL^T = A; the upper part is untouched.
 
 
-.. py:function:: tile_cholesky_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
+.. py:function:: tile_cholesky_solve(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> Tile[Float,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -3179,7 +3408,7 @@ Tile Primitives
     :returns x: A tile of the same shape as y such that LL^T x = y
 
 
-.. py:function:: tile_cholesky_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> None
+.. py:function:: tile_cholesky_solve_inplace(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -3199,7 +3428,7 @@ Tile Primitives
     :param y: A 1D or 2D tile of length M that gets overwritten by x where LL^T x = y
 
 
-.. py:function:: tile_lower_solve(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
+.. py:function:: tile_lower_solve(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> Tile[Float,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -3221,7 +3450,7 @@ Tile Primitives
     :returns z: A tile of the same shape as y such that Lz = y
 
 
-.. py:function:: tile_lower_solve_inplace(L: Tile[Float,Tuple[int, int]], y: Tile[Float,Tuple[int]]) -> None
+.. py:function:: tile_lower_solve_inplace(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -3243,7 +3472,7 @@ Tile Primitives
     :param y: A 1D or 2D tile with compatible shape that gets overwritten by z where Lz = y
 
 
-.. py:function:: tile_upper_solve(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) -> Tile[Float,Tuple[int]]
+.. py:function:: tile_upper_solve(U: Tile[Float,tuple[int, int]], z: Tile[Float,tuple[int]]) -> Tile[Float,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -3265,7 +3494,7 @@ Tile Primitives
     :returns x: A tile of the same shape as z such that U x = z
 
 
-.. py:function:: tile_upper_solve_inplace(U: Tile[Float,Tuple[int, int]], z: Tile[Float,Tuple[int]]) -> None
+.. py:function:: tile_upper_solve_inplace(U: Tile[Float,tuple[int, int]], z: Tile[Float,tuple[int]]) -> None
 
     .. hlist::
        :columns: 8
@@ -3347,7 +3576,7 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
-.. py:function:: tid() -> Tuple[int, int]
+.. py:function:: tid() -> tuple[int, int]
     :noindex:
     :nocontentsentry:
 
@@ -3363,7 +3592,7 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
-.. py:function:: tid() -> Tuple[int, int, int]
+.. py:function:: tid() -> tuple[int, int, int]
     :noindex:
     :nocontentsentry:
 
@@ -3379,7 +3608,7 @@ Utility
     This function may not be called from user-defined Warp functions.
 
 
-.. py:function:: tid() -> Tuple[int, int, int, int]
+.. py:function:: tid() -> tuple[int, int, int, int]
     :noindex:
     :nocontentsentry:
 
@@ -5456,7 +5685,7 @@ Utility
     Return the size of the first dimension in an array.
 
 
-.. py:function:: len(a: Tile[Any,Tuple[int, ...]]) -> int
+.. py:function:: len(a: Tile[Any,tuple[int, ...]]) -> int
     :noindex:
     :nocontentsentry:
 
@@ -5468,7 +5697,7 @@ Utility
     Return the number of rows in a tile.
 
 
-.. py:function:: len(a: Tuple) -> int
+.. py:function:: len(a: tuple) -> int
     :noindex:
     :nocontentsentry:
 
@@ -5624,7 +5853,7 @@ Geometry
     :param dir: The ray direction (must be the same for all threads in the block)
 
 
-.. py:function:: bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32,Tuple[int]]
+.. py:function:: bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -5694,6 +5923,37 @@ Geometry
     :param id: The mesh identifier
     :param point: The point in space to query
     :param max_dist: Mesh faces above this distance will not be considered by the query
+
+
+.. py:function:: mesh_query_point_sign_parity(id: uint64, point: vec3f, max_dist: float32, n_sample: int32, perturbation_scale: float32) -> MeshQueryPoint
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+       * Differentiable
+
+    Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+    The method will cast multiple rays starting from the query point by applying
+    small random perturbations to a base direction (1, 1, 1). Each perturbation is
+    sampled independently for the x, y, and z dimensions from a uniform distribution
+    in the range [-perturbation_scale, perturbation_scale), and added to the base
+    direction to produce a slightly altered ray direction. This randomization helps
+    avoid degeneracies such as rays intersecting exactly on triangle edges,
+    vertices, or becoming parallel to mesh features.
+
+    For each perturbed ray, the method counts how many mesh faces it intersects and
+    uses the parity (odd/even) of this count to determine whether the ray exits the
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
+    used to classify the point.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param n_sample: Number of rays to cast (default: 1). Use a higher value if the sign is inaccurate.
+    :param perturbation_scale: Scale of the perturbation.
+    
 
 
 .. py:function:: mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint
@@ -5817,6 +6077,32 @@ Geometry
     :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
 
 
+.. py:function:: mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int
+
+    .. hlist::
+       :columns: 8
+
+       * Kernel
+
+    Count the number of intersections between a ray and a :class:`Mesh`. Returns the number of intersections (with t >= 0) between the ray and the mesh.
+
+    This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
+    Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
+    traversing to count all intersections along the entire ray.
+
+    This function can be used to determine whether the ray origin lies inside a watertight, intersection-free mesh.
+    An odd number of intersections indicates the origin is inside the mesh, while an even number indicates it is outside.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+
+
 .. autoclass:: warp.MeshQueryAABB
    :exclude-members: Var, vars
 .. py:function:: mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB
@@ -5863,7 +6149,7 @@ Geometry
     :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)
 
 
-.. py:function:: mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32,Tuple[int]]
+.. py:function:: mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32,tuple[int]]
 
     .. hlist::
        :columns: 8
@@ -6959,7 +7245,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: add(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: add(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7031,7 +7317,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: sub(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: sub(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7076,7 +7362,7 @@ Operators
        * Python
 
 
-.. py:function:: bit_and(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: bit_and(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7120,7 +7406,7 @@ Operators
        * Python
 
 
-.. py:function:: bit_or(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: bit_or(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7164,7 +7450,7 @@ Operators
        * Python
 
 
-.. py:function:: bit_xor(a: Tile[Any,Tuple[int, ...]], b: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: bit_xor(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7436,7 +7722,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: mul(x: Tile[Any,Tuple[int, ...]], y: Scalar) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: mul(x: Tile[Any,tuple[int, ...]], y: Scalar) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7450,7 +7736,7 @@ Operators
     Multiply each element of a tile by a scalar
 
 
-.. py:function:: mul(x: Scalar, y: Tile[Any,Tuple[int, ...]]) -> Tile[Any,Tuple[int, ...]]
+.. py:function:: mul(x: Scalar, y: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 
@@ -7672,7 +7958,7 @@ Operators
        * Differentiable
 
 
-.. py:function:: neg(x: Tile[Any,Tuple[int, ...]]) -> Tile[Scalar,Tuple[int, ...]]
+.. py:function:: neg(x: Tile[Any,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
     :noindex:
     :nocontentsentry:
 

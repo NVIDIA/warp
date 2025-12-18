@@ -16,7 +16,6 @@
 """Warp kernel exposed as an OmniGraph node."""
 
 import traceback
-from typing import Tuple
 
 import omni.graph.core as og
 import omni.graph.tools.ogn as ogn
@@ -122,7 +121,7 @@ class InternalState(InternalStateBase):
 
 def infer_kernel_shape(
     db: OgnKernelDatabase,
-) -> Tuple[int, ...]:
+) -> tuple[int, ...]:
     """Infers the shape of the kernel."""
     source = db.inputs.dimSource
     if source == EXPLICIT_SOURCE:
@@ -144,7 +143,7 @@ def infer_kernel_shape(
         ) from e
 
 
-def compute(db: OgnKernelDatabase, device: wp.context.Device) -> None:
+def compute(db: OgnKernelDatabase, device: wp.Device) -> None:
     """Evaluates the node."""
     db.set_dynamic_attribute_memory_location(
         on_gpu=device.is_cuda,

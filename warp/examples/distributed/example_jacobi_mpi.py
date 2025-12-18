@@ -33,13 +33,11 @@ References:
 
 import math
 import sys
-from typing import Tuple
 
 import numpy as np
 from mpi4py import MPI
 
 import warp as wp
-from warp.types import warp_type_to_np_dtype
 
 wp.config.quiet = True  # Suppress wp.init() output
 
@@ -85,7 +83,7 @@ def calc_default_device(mpi_comm: "MPI.Comm") -> wp.context.Device:
         return wp.get_device()
 
 
-def calc_decomp_1d(total_points: int, rank: int, total_ranks: int) -> Tuple[int, int]:
+def calc_decomp_1d(total_points: int, rank: int, total_ranks: int) -> tuple[int, int]:
     """Calculate a 1-D decomposition to divide ``total_points`` among ``total_ranks`` domains.
 
     Returns a tuple containing the starting index of the decomposition followed
@@ -386,7 +384,7 @@ class Example:
     def run(self) -> None:
         """Run the Jacobi relaxation on multiple GPUs using MPI and compare with single-GPU results."""
         iter = 0
-        l2_norm = np.array([1.0], dtype=warp_type_to_np_dtype[wptype])
+        l2_norm = np.array([1.0], dtype=wp.dtype_to_numpy(wptype))
 
         start_time = MPI.Wtime()
 

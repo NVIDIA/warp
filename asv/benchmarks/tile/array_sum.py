@@ -57,7 +57,6 @@ class ArraySumSimt:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 
@@ -92,7 +91,6 @@ class ArraySumTile:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 

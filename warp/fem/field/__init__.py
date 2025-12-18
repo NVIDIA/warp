@@ -15,10 +15,18 @@
 
 # isort: skip_file
 
-from . import field as field
-
 from warp._src.fem.field import FieldRestriction as FieldRestriction
-from warp._src.fem.field import GeometryField as GeometryField
-from warp._src.fem.field import SpaceField as SpaceField
+from warp._src.fem.field import LocalTestField as LocalTestField
 from warp._src.fem.field import TestField as TestField
 from warp._src.fem.field import TrialField as TrialField
+
+
+# TODO: Remove after cleaning up the public API.
+
+from warp._src.fem import field as _field
+
+
+def __getattr__(name):
+    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+
+    return get_deprecated_api(_field, "warp.fem", name)

@@ -219,7 +219,7 @@ def generic_fill_v2(a: wp.array(dtype=Any), value: Any):
     a[tid] = value
 
 
-vec3b_type = wp.vec(3, wp.bool)
+vec3b_type = wp.types.vector(3, wp.bool)
 # create explicit overloads to be launched directly
 fill_int = wp.overload(generic_fill_v2, [wp.array(dtype=int), int])
 fill_float = wp.overload(generic_fill_v2, [wp.array(dtype=float), float])
@@ -273,8 +273,8 @@ def test_generic_conditional_setter(test, device):
 
 
 # custom vector/matrix types
-my_vec5 = wp.vec(length=5, dtype=wp.float32)
-my_mat55 = wp.mat(shape=(5, 5), dtype=wp.float32)
+my_vec5 = wp.types.vector(length=5, dtype=wp.float32)
+my_mat55 = wp.types.matrix(shape=(5, 5), dtype=wp.float32)
 
 
 @wp.kernel
@@ -483,8 +483,8 @@ wp.overload(test_generic_struct_construction_kernel, [Bar])
 
 @wp.kernel
 def test_generic_type_as_argument_kernel(a: Any):
-    vec = wp.vector(length=2, dtype=type(a))
-    matrix = wp.identity(n=vec.length, dtype=vec.dtype) * a
+    v = wp.types.vector(length=2, dtype=type(a))
+    matrix = wp.identity(n=v.length, dtype=v.dtype) * a
     wp.expect_eq(wp.trace(matrix), type(a)(2.0) * a)
 
 
@@ -531,37 +531,37 @@ def test_type_attribute_error(test, device):
 
 
 @wp.func
-def vec_int_annotation_func(v: wp.vec(3, wp.Int)) -> wp.Int:
+def vec_int_annotation_func(v: wp.types.vector(3, wp.Int)) -> wp.Int:
     return v[0] + v[1] + v[2]
 
 
 @wp.func
-def vec_float_annotation_func(v: wp.vec(3, wp.Float)) -> wp.Float:
+def vec_float_annotation_func(v: wp.types.vector(3, wp.Float)) -> wp.Float:
     return v[0] + v[1] + v[2]
 
 
 @wp.func
-def vec_scalar_annotation_func(v: wp.vec(3, wp.Scalar)) -> wp.Scalar:
+def vec_scalar_annotation_func(v: wp.types.vector(3, wp.Scalar)) -> wp.Scalar:
     return v[0] + v[1] + v[2]
 
 
 @wp.func
-def mat_int_annotation_func(m: wp.mat((2, 2), wp.Int)) -> wp.Int:
+def mat_int_annotation_func(m: wp.types.matrix((2, 2), wp.Int)) -> wp.Int:
     return m[0, 0] + m[0, 1] + m[1, 0] + m[1, 1]
 
 
 @wp.func
-def mat_float_annotation_func(m: wp.mat((2, 2), wp.Float)) -> wp.Float:
+def mat_float_annotation_func(m: wp.types.matrix((2, 2), wp.Float)) -> wp.Float:
     return m[0, 0] + m[0, 1] + m[1, 0] + m[1, 1]
 
 
 @wp.func
-def mat_scalar_annotation_func(m: wp.mat((2, 2), wp.Scalar)) -> wp.Scalar:
+def mat_scalar_annotation_func(m: wp.types.matrix((2, 2), wp.Scalar)) -> wp.Scalar:
     return m[0, 0] + m[0, 1] + m[1, 0] + m[1, 1]
 
 
-mat22s = wp.mat((2, 2), wp.int16)
-mat22d = wp.mat((2, 2), wp.float64)
+mat22s = wp.types.matrix((2, 2), wp.int16)
+mat22d = wp.types.matrix((2, 2), wp.float64)
 
 
 @wp.kernel

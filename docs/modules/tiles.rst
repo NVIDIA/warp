@@ -204,6 +204,8 @@ Construction
 * :func:`tile_zeros`
 * :func:`tile_ones`
 * :func:`tile_full`
+* :func:`tile_randi`
+* :func:`tile_randf`
 * :func:`tile_arange`
 * :func:`tile`
 * :func:`untile`

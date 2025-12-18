@@ -20,6 +20,7 @@ import json
 import os
 import platform
 import shutil
+import threading
 import time
 from pathlib import Path
 
@@ -52,54 +53,54 @@ def build_cuda(
 ) -> None:
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
-        cu_path_bytes = cu_path.encode("utf-8")
-        program_name_bytes = os.path.basename(cu_path).encode("utf-8")
-        inc_path = os.path.join(warp_home, "native").encode("utf-8")
-        output_path = output_path.encode("utf-8")
+    cu_path_bytes = cu_path.encode("utf-8")
+    program_name_bytes = os.path.basename(cu_path).encode("utf-8")
+    inc_path = os.path.join(warp_home, "native").encode("utf-8")
+    output_path = output_path.encode("utf-8")
 
-        if warp._src.config.llvm_cuda:
-            warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
+    if warp._src.config.llvm_cuda:
+        warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
 
-        else:
-            if ltoirs is None:
-                ltoirs = []
-            if fatbins is None:
-                fatbins = []
+    else:
+        if ltoirs is None:
+            ltoirs = []
+        if fatbins is None:
+            fatbins = []
 
-            link_data = list(ltoirs) + list(fatbins)
-            num_link = len(link_data)
-            arr_link = (ctypes.c_char_p * num_link)(*link_data)
-            arr_link_sizes = (ctypes.c_size_t * num_link)(*[len(l) for l in link_data])
-            link_input_types = [nvJitLink_input_type["ltoir"]] * len(ltoirs) + [nvJitLink_input_type["fatbin"]] * len(
-                fatbins
-            )
-            arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-            kernel_cache_dir_bytes = warp._src.config.kernel_cache_dir.encode("utf-8")
-            err = warp._src.context.runtime.core.wp_cuda_compile_program(
-                src,
-                program_name_bytes,
-                arch,
-                inc_path,
-                0,
-                None,
-                config == "debug",
-                optimization_level,
-                warp._src.config.verbose,
-                verify_fp,
-                fast_math,
-                fuse_fp,
-                lineinfo,
-                compile_time_trace,
-                warp._src.config.use_precompiled_headers,
-                output_path,
-                kernel_cache_dir_bytes,
-                num_link,
-                arr_link,
-                arr_link_sizes,
-                arr_link_input_types,
-            )
-            if err != 0:
-                raise Exception(f"CUDA kernel build failed with error code {err}")
+        link_data = list(ltoirs) + list(fatbins)
+        num_link = len(link_data)
+        arr_link = (ctypes.c_char_p * num_link)(*link_data)
+        arr_link_sizes = (ctypes.c_size_t * num_link)(*[len(l) for l in link_data])
+        link_input_types = [nvJitLink_input_type["ltoir"]] * len(ltoirs) + [nvJitLink_input_type["fatbin"]] * len(
+            fatbins
+        )
+        arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
+        kernel_cache_dir_bytes = warp._src.config.kernel_cache_dir.encode("utf-8")
+        err = warp._src.context.runtime.core.wp_cuda_compile_program(
+            src,
+            program_name_bytes,
+            arch,
+            inc_path,
+            0,
+            None,
+            config == "debug",
+            optimization_level,
+            warp._src.config.verbose,
+            verify_fp,
+            fast_math,
+            fuse_fp,
+            lineinfo,
+            compile_time_trace,
+            warp._src.config.use_precompiled_headers,
+            output_path,
+            kernel_cache_dir_bytes,
+            num_link,
+            arr_link,
+            arr_link_sizes,
+            arr_link_input_types,
+        )
+        if err != 0:
+            raise Exception(f"CUDA kernel build failed with error code {err}")
 
 
 # load PTX or CUBIN as a CUDA runtime module (input type determined by input_path extension)
@@ -113,28 +114,28 @@ def load_cuda(input_path, device):
 def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
-        cpp_path = cpp_path.encode("utf-8")
-        inc_path = os.path.join(warp_home, "native").encode("utf-8")
-        obj_path = obj_path.encode("utf-8")
+    cpp_path = cpp_path.encode("utf-8")
+    inc_path = os.path.join(warp_home, "native").encode("utf-8")
+    obj_path = obj_path.encode("utf-8")
 
-        # Determine enable_tiles_in_stack_memory value
-        enable_tiles_in_stack = warp.config.enable_tiles_in_stack_memory
-        if enable_tiles_in_stack is None:
-            # Default to True on aarch64 (Linux ARM), False otherwise
-            enable_tiles_in_stack = platform.machine() == "aarch64"
+    # Determine enable_tiles_in_stack_memory value
+    enable_tiles_in_stack = warp.config.enable_tiles_in_stack_memory
+    if enable_tiles_in_stack is None:
+        # Default to True on aarch64 (Linux ARM), False otherwise
+        enable_tiles_in_stack = platform.machine() == "aarch64"
 
-        err = warp._src.context.runtime.llvm.wp_compile_cpp(
-            src,
-            cpp_path,
-            inc_path,
-            obj_path,
-            mode == "debug",
-            verify_fp,
-            fuse_fp,
-            enable_tiles_in_stack,
-        )
-        if err != 0:
-            raise Exception(f"CPU kernel build failed with error code {err}")
+    err = warp._src.context.runtime.llvm.wp_compile_cpp(
+        src,
+        cpp_path,
+        inc_path,
+        obj_path,
+        mode == "debug",
+        verify_fp,
+        fuse_fp,
+        enable_tiles_in_stack,
+    )
+    if err != 0:
+        raise Exception(f"CPU kernel build failed with error code {err}")
 
 
 def init_kernel_cache(path=None):
@@ -157,7 +158,7 @@ def init_kernel_cache(path=None):
             # Add Windows long-path prefix, accounting for UNC shares.
             if cache_root_dir.startswith("\\\\"):
                 # UNC path  \\server\share\…  →  \\?\UNC\server\share\…
-                cache_root_dir = "\\\\?\\UNC\\" + cache_root_dir.lstrip("\\")
+                cache_root_dir = "\\\\?\\UNC\\" + cache_root_dir.removeprefix("\\\\")
             else:
                 # Drive-letter path  C:\…  →  \\?\C:\…
                 cache_root_dir = "\\\\?\\" + cache_root_dir
@@ -179,6 +180,9 @@ def clear_kernel_cache() -> None:
 
     is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
+
+    for m in warp._src.context.user_modules.values():
+        m.unload()
 
     for item in os.listdir(warp._src.config.kernel_cache_dir):
         item_path = os.path.join(warp._src.config.kernel_cache_dir, item)
@@ -322,7 +326,7 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
                 return (True, lto_code_data, *[extra_files[ext] for ext in extra_files.keys()])
 
     # Create process-dependent temporary build directory
-    build_dir = f"{lto_dir}_p{os.getpid()}"
+    build_dir = f"{lto_dir}_p{os.getpid()}_t{threading.get_ident()}"
     Path(build_dir).mkdir(parents=True, exist_ok=True)
 
     # Set up temporary paths for the build outputs

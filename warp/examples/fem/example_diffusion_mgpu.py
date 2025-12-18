@@ -20,8 +20,6 @@
 # solve a diffusion PDE over multiple devices
 ###########################################################################
 
-from typing import Tuple
-
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
@@ -64,7 +62,7 @@ class DistributedSystem:
     tmp_buf: wp.array
 
     nrow: int
-    shape = Tuple[int, int]
+    shape = tuple[int, int]
     rank_data = None
 
     def mv_routine(self, x: wp.array, y: wp.array, z: wp.array, alpha=1.0, beta=0.0):

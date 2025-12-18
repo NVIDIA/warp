@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from functools import cached_property
-from typing import ClassVar, Optional, Tuple, Type
+from typing import ClassVar, Optional
 
 import warp as wp
 from warp._src.fem import cache
@@ -112,7 +112,7 @@ class SpaceTopology:
         side_arg: "ElementArg",  # noqa: F821
         topo_arg: "TopologyArg",
         side_index: ElementIndex,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Returns the number of nodes for both the inner and outer cells of a given sides"""
         raise NotImplementedError
 
@@ -493,7 +493,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
         return element_node_sign
 
 
-def forward_base_topology(topology_class: Type[SpaceTopology], geometry: Geometry, *args, **kwargs) -> SpaceTopology:
+def forward_base_topology(topology_class: type[SpaceTopology], geometry: Geometry, *args, **kwargs) -> SpaceTopology:
     """
     If `geometry` is *not* a :class:`DeformedGeometry`, constructs a normal instance of `topology_class` over `geometry`, forwarding additional arguments.
 

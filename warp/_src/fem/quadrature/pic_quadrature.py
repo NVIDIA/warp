@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import warp as wp
 from warp._src.fem.cache import TemporaryStore, borrow_temporary, dynamic_kernel
@@ -48,7 +48,7 @@ class PicQuadrature(Quadrature):
         domain: GeometryDomain,
         positions: Union[
             "wp.array(dtype=wp.vecXd)",
-            Tuple[
+            tuple[
                 "wp.array(dtype=ElementIndex)",
                 "wp.array(dtype=Coords)",
             ],

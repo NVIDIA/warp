@@ -74,6 +74,12 @@ def bvh_query_ray_group(
         bounds_intersected[bounds_nr] = 1
 
 
+@wp.kernel
+def get_group_root(bvh_id: wp.uint64, roots: wp.array(dtype=int)):
+    tid = wp.tid()
+    roots[tid] = wp.bvh_get_group_root(bvh_id, tid)
+
+
 def aabb_overlap(a_lower, a_upper, b_lower, b_upper):
     if (
         a_lower[0] > b_upper[0]
@@ -265,6 +271,38 @@ def test_bvh_query_aabb(test, device):
 
 def test_bvh_query_ray(test, device):
     test_bvh(test, "ray", device)
+
+
+def test_heterogenous_with_sparse_groups(test, device):
+    rng = np.random.default_rng(123)
+
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    num_bounds = 100
+    num_groups = 10
+    lowers = rng.random(size=(num_bounds, 3)) * 5.0
+    uppers = lowers + rng.random(size=(num_bounds, 3)) * 5.0
+
+    device_lowers = wp.array(lowers, dtype=wp.vec3, device=device)
+    device_uppers = wp.array(uppers, dtype=wp.vec3, device=device)
+
+    groups_np = np.repeat(np.arange(num_groups), num_bounds // num_groups).astype(np.int32)
+    # Choose one group to have exactly one primitive
+    index = rng.integers(0, num_bounds - 1, size=1).item()
+    groups_np[index] = 10
+    device_groups = wp.array(groups_np, dtype=int, device=device)
+
+    for constructor in constructors:
+        bvh = wp.Bvh(device_lowers, device_uppers, groups=device_groups, constructor=constructor)
+
+        # Test that all group roots are positive
+        roots = wp.zeros(shape=num_groups + 1, dtype=int, device=device)
+        wp.launch(kernel=get_group_root, dim=num_groups + 1, inputs=[bvh.id, roots], device=device)
+        roots_host = roots.numpy()
+        test.assertTrue(np.all(roots_host >= 0))
 
 
 def test_gh_288(test, device):
@@ -525,6 +563,9 @@ class TestGroupedBvh(unittest.TestCase):
 add_function_test(TestGroupedBvh, "test_grouped_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestGroupedBvh, "test_grouped_bvh_ray", test_bvh_query_ray, devices=devices)
 add_function_test(TestGroupedBvh, "test_grouped_gh_288", test_gh_288, devices=devices)
+add_function_test(
+    TestGroupedBvh, "test_heterogenous_with_sparse_groups", test_heterogenous_with_sparse_groups, devices=devices
+)
 
 add_function_test(
     TestGroupedBvh, "test_grouped_capture_bvh_rebuild", test_capture_bvh_rebuild_grouped, devices=cuda_devices

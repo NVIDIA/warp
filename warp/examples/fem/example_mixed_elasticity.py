@@ -224,7 +224,7 @@ class Example:
                 nh_stress_form,
                 fields={"u_cur": self._u_field, "tau": tau_test},
                 values={"lame": self._lame},
-                output_dtype=wp.vec(length=stress_matrix.block_shape[0], dtype=wp.float64),
+                output_dtype=wp.types.vector(length=stress_matrix.block_shape[0], dtype=wp.float64),
             )
 
             # Assemble system matrix

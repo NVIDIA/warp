@@ -110,7 +110,6 @@ class MeshIntersect:
         wp.init()
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
-        wp.build.clear_kernel_cache()
 
         self.query_count = 1024
         self.has_queried = False

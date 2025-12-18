@@ -15,11 +15,11 @@
 
 """Property to edit the node attributes based on the kernel's parameters."""
 
+from collections.abc import Sequence
 from functools import partial
 from typing import (
     Any,
     Callable,
-    Sequence,
 )
 
 import omni.graph.core as og

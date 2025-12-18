@@ -68,7 +68,7 @@ class ElementBasis(Enum):
     """Raviart-Thomas H(div) shape functions. Should be used with contravariant function space."""
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def make_element_shape_function(
     element: Element,
     degree: int,

@@ -61,7 +61,7 @@ def cube_to_cylinder_grad(x: wp.vec3):
 
         abs_xz = wp.abs(pos_xz)
         xinf_grad = wp.where(
-            abs_xz[0] > abs_xz[2], wp.vec(wp.sign(pos_xz[0]), 0.0, 0.0), wp.vec3(0.0, 0.0, wp.sign(pos_xz[2]))
+            abs_xz[0] > abs_xz[2], wp.types.vector(wp.sign(pos_xz[0]), 0.0, 0.0), wp.vec3(0.0, 0.0, wp.sign(pos_xz[2]))
         )
         grad = dir_grad * wp.max(abs_xz) + wp.outer(dir_xz, xinf_grad)
 

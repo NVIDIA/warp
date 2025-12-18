@@ -31,6 +31,7 @@
   compilation time. Lower levels may improve compile times but reduce run-time performance. It can be configured
   globally, or per-module using `wp.set_module_options({"optimization_level": #})`. Currently it only has an effect
   on GPU modules and only when using CUDA Toolkit 12.9 or newer ([GH-1084](https://github.com/NVIDIA/warp/issues/1084)).
+- Add `wp.tile_randi()` and `wp.tile_randf()` to support generating tiles of random numbers ([GH-1010](https://github.com/NVIDIA/warp/issues/1010))
 - Add `wp.mesh_query_ray_anyhit` for ray any-hit queries ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)).
 - Add support for group-aware construction and queries for `wp.Mesh` ([GH-1097](https://github.com/NVIDIA/warp/issues/1097)):
   - New constructor argument: `groups` for per-face group IDs.
@@ -39,16 +40,39 @@
 - Add `launch_bounds` parameter to `@wp.kernel` decorator to specify CUDA `__launch_bounds__` attribute for controlling
   thread block occupancy. Can be an integer for `maxThreadsPerBlock` or a tuple of 1-2 integers for
   `(maxThreadsPerBlock, minBlocksPerMultiprocessor)` ([GH-1049](https://github.com/NVIDIA/warp/issues/1049)).
+- Add the following type introspection functions: `wp.types.is_composite`, `wp.types.is_matrix`, `wp.types.is_quaternion`,
+  `wp.types.is_struct`, `wp.types.is_tile`, `wp.types.is_transformation`, `wp.types.is_vector`, `wp.types.type_is_array`,
+  `wp.types.type_is_composite`, `wp.types.type_is_struct`, and `wp.types.type_is_tile`.
+- Add support for the unpack operator (`*`) in kernels to expand vectors, matrices, quaternions,
+  and 1D array slices into individual arguments, which enables syntax like `wp.vec4(*v3, 1.0)`, `wp.max(*v)`,
+  or `wp.vec3i(*arr[:3])` ([GH-1083](https://github.com/NVIDIA/warp/issues/1083)).
+- Add staged graph capture modes with JAX FFI to reduce re-capturing ([GH-1039](https://github.com/NVIDIA/warp/issues/1039)).
+- Add support for compiling and loading modules in parallel through `wp.load_module()` and `wp.force_load()`, by providing a
+  `max_workers` argument. Use e.g. `wp.force_load(max_workers=4)` to use 4 threads to load all imported modules on all devices.
+  The `wp.config.load_module_max_workers` setting determines the default value (currently `0` for serial loading). Set it to
+  `None` to let Warp determine a reasonable number (currently `min(os.cpu_count(), 4)`).
+- Add `wp.grad()` to get a Warp function's gradient in functions, kernels, and custom gradients ([GH-125](https://github.com/NVIDIA/warp/issues/125))
+- Add a `wp.mesh_query_ray_count_intersections` function that counts all intersections with triangles along the ray ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
+- Add a `wp.mesh_query_point_sign_parity()` function that uses parity-based ray–triangle intersection counting for more robust sign determination ([GH-938](https://github.com/NVIDIA/warp/issues/938)).
 
 ### Removed
+
+- Drop support for Python 3.8. Python 3.9 is now the minimum-supported version
+  ([GH-1019](https://github.com/NVIDIA/warp/issues/1019)).
+- Remove `graph_compatible` argument from `jax_callable()` (deprecated since 1.8.1), use `graph_mode` instead
+  ([GH-982](https://github.com/NVIDIA/warp/issues/982)).
 
 ### Deprecated
 
 - `isfinite()`, `isnan()`, and `isinf()` will no longer take integer inputs, only floating-point arguments
   ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
+- Mark as deprecated all namespaces and symbols that are meant for internal use
+  ([GH-908](https://github.com/NVIDIA/warp/issues/908)).
 
 ### Changed
 
+- In addition to unary and binary ops, `wp.tile_map()` can now support user-defined functions with up to 8 input arguments
+  corresponding to 8 input tiles ([GH-1077](https://github.com/NVIDIA/warp/pull/1077)).
 - Improve CUDA compilation performance by enabling the use of
   [precompiled headers](https://docs.nvidia.com/cuda/nvrtc/index.html#automatic-pch). Can be disabled using
   `wp.config.use_precompiled_headers=False` ([GH-595](https://github.com/NVIDIA/warp/issues/595)).
@@ -56,6 +80,9 @@
   ([GH-1091](https://github.com/NVIDIA/warp/issues/1091)).
 - Implement kernel caching for `wp.map()` to speed up repeated calls with the same function and similar input arguments ([GH-1108](https://github.com/NVIDIA/warp/issues/1108)).
 - Support converting between vector, matrix, and scalar types in `array.view()` ([GH-1112](https://github.com/NVIDIA/warp/issues/1112)).
+- Suppress CUDA compiler warnings about unused variables generated during kernel compilation
+  to reduce noise when `wp.config.verbose` is enabled or when compilation errors occur
+  ([GH-1129](https://github.com/NVIDIA/warp/issues/1129)).
 
 ### Fixed
 
@@ -63,6 +90,14 @@
   ([GH-1058](https://github.com/NVIDIA/warp/issues/1058)).
 - Fix direct initialization and slice assignment of vector, quaternion, and transform types from PyTorch tensors
   ([GH-1121](https://github.com/NVIDIA/warp/issues/1121)).
+- Fix a potential OverflowError when slicing arrays with np.int32 strides ([GH-1120](https://github.com/NVIDIA/warp/issues/1120)).
+- Fix a bug in CPU BVH construction when using groups for heterogenous edge cases where some groups have <= leaf size primitives ([GH-1111](https://github.com/NVIDIA/warp/issues/1111)).
+- Fix zero-padding of tiled reductions in iterative linear solvers.
+- Fix `RecursionError` when calling `repr()` on vector instances (e.g., `repr(wp.vec2i(42))`)
+  ([GH-1124](https://github.com/NVIDIA/warp/issues/1124)).
+- Fix `array.list()` returning NumPy scalar types instead of Python native types (e.g., `numpy.int64` instead of `int`)
+  ([GH-1099](https://github.com/NVIDIA/warp/issues/1099)).
+- Fix compilation error when calling `wp.tile_zeros()` using a structured data type containing an array ([GH-1128](https://github.com/NVIDIA/warp/issues/1128)).
 
 ## [1.10.1] - 2025-12-01
 

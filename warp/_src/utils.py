@@ -21,6 +21,7 @@ import gc
 import linecache
 import os
 import sys
+import threading
 import time
 import warnings
 from types import ModuleType
@@ -31,7 +32,7 @@ import numpy as np
 import warp as wp
 import warp._src.context
 import warp._src.types
-from warp._src.context import Devicelike
+from warp._src.context import DeviceLike
 from warp._src.types import Array, DType, type_repr, types_equal
 
 _wp_module_name_ = "warp.utils"
@@ -765,7 +766,7 @@ def map(
     out: Array[DType] | list[Array[DType]] | None = None,
     return_kernel: bool = False,
     block_dim: int = 256,
-    device: Devicelike = None,
+    device: DeviceLike = None,
 ) -> Array[DType] | list[Array[DType]] | wp.Kernel:
     """
     Map a function over the elements of one or more arrays.
@@ -844,7 +845,7 @@ def map(
         out (array | list[array] | None): Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
         return_kernel (bool): If True, only return the generated kernel without performing the mapping operation.
         block_dim (int): The block dimension for the kernel launch.
-        device (Devicelike): The device on which to run the kernel.
+        device (DeviceLike): The device on which to run the kernel.
 
     Returns:
         array | list[array] | Kernel:
@@ -1086,9 +1087,7 @@ def map(
             tids=", ".join(tids),
             load_args="\n    ".join(load_args),
         )
-        namespace = {}
-        namespace.update({"wp": wp, "warp": wp, func_name: wp_func, "Any": Any})
-        namespace.update(referenced_modules)
+        namespace = {"wp": wp, "warp": wp, func_name: wp_func, "Any": Any} | referenced_modules
         exec(code, namespace)
 
         kernel = wp.Kernel(namespace["map_kernel"], key="map_kernel", source=code, module=module)
@@ -1246,7 +1245,7 @@ class ScopedDevice:
           the default device on exiting the context.
     """
 
-    def __init__(self, device: Devicelike):
+    def __init__(self, device: DeviceLike):
         """Initializes the context manager with a device.
 
         Args:
@@ -1333,7 +1332,7 @@ TIMING_ALL = 0xFFFFFFFF
 
 # timer utils
 class ScopedTimer:
-    indent = -1
+    thread_local = threading.local()
 
     enabled = True
 
@@ -1390,6 +1389,9 @@ class ScopedTimer:
             if name not in self.dict:
                 self.dict[name] = []
 
+        if not hasattr(ScopedTimer.thread_local, "indent"):
+            ScopedTimer.thread_local.indent = -1
+
     def __enter__(self):
         if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
             warp._src.context.runtime.tape.record_scope_begin(self.name)
@@ -1412,10 +1414,10 @@ class ScopedTimer:
                 self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
 
             if self.print:
-                ScopedTimer.indent += 1
+                ScopedTimer.thread_local.indent += 1
 
                 if warp.config.verbose:
-                    indent = "    " * ScopedTimer.indent
+                    indent = "    " * ScopedTimer.thread_local.indent
                     print(f"{indent}{self.name} ...", flush=True)
 
             self.start = time.perf_counter_ns()
@@ -1450,7 +1452,7 @@ class ScopedTimer:
                 self.dict[self.name].append(self.elapsed)
 
             if self.print:
-                indent = "    " * ScopedTimer.indent
+                indent = "    " * ScopedTimer.thread_local.indent
 
                 if self.timing_results:
                     self.report_func(self.timing_results, indent=indent)
@@ -1461,12 +1463,12 @@ class ScopedTimer:
                 else:
                     print(f"{indent}{self.name} took {self.elapsed:.2f} ms")
 
-                ScopedTimer.indent -= 1
+                ScopedTimer.thread_local.indent -= 1
 
 
 # Allow temporarily enabling/disabling mempool allocators
 class ScopedMempool:
-    def __init__(self, device: Devicelike, enable: bool):
+    def __init__(self, device: DeviceLike, enable: bool):
         self.device = wp.get_device(device)
         self.enable = enable
 
@@ -1480,7 +1482,7 @@ class ScopedMempool:
 
 # Allow temporarily enabling/disabling mempool access
 class ScopedMempoolAccess:
-    def __init__(self, target_device: Devicelike, peer_device: Devicelike, enable: bool):
+    def __init__(self, target_device: DeviceLike, peer_device: DeviceLike, enable: bool):
         self.target_device = target_device
         self.peer_device = peer_device
         self.enable = enable
@@ -1495,7 +1497,7 @@ class ScopedMempoolAccess:
 
 # Allow temporarily enabling/disabling peer access
 class ScopedPeerAccess:
-    def __init__(self, target_device: Devicelike, peer_device: Devicelike, enable: bool):
+    def __init__(self, target_device: DeviceLike, peer_device: DeviceLike, enable: bool):
         self.target_device = target_device
         self.peer_device = peer_device
         self.enable = enable
@@ -1509,7 +1511,7 @@ class ScopedPeerAccess:
 
 
 class ScopedCapture:
-    def __init__(self, device: Devicelike = None, stream=None, force_module_load=None, external=False):
+    def __init__(self, device: DeviceLike = None, stream=None, force_module_load=None, external=False):
         self.device = device
         self.stream = stream
         self.force_module_load = force_module_load
@@ -1639,13 +1641,13 @@ def timing_end(synchronize: bool = True) -> list[TimingResult]:
         if filter == TIMING_KERNEL:
             if name.endswith("forward"):
                 # strip trailing "_cuda_kernel_forward"
-                name = f"forward kernel {name[:-20]}"
+                name = f"forward kernel {name.removesuffix('_cuda_kernel_forward')}"
             else:
                 # strip trailing "_cuda_kernel_backward"
-                name = f"backward kernel {name[:-21]}"
+                name = f"backward kernel {name.removesuffix('_cuda_kernel_backward')}"
         elif filter == TIMING_KERNEL_BUILTIN:
             if name.startswith("wp::"):
-                name = f"builtin kernel {name[4:]}"
+                name = f"builtin kernel {name.removeprefix('wp::')}"
             else:
                 name = f"builtin kernel {name}"
 
@@ -1720,12 +1722,73 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
         print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")
 
 
-def get_deprecated_api(module, namespace, attr_name):
-    # if not attr_name.startswith("__"):
-    #     module_name = module.__name__.split(".")[-1]
-    #     warn(
-    #         f"The symbol `{namespace}.{module_name}.{attr_name}` is internal and will be removed from the public API.",
-    #         DeprecationWarning,
-    #     )
+def warn_deprecated_namespace(module_name):
+    warn(
+        f"The namespace `warp.{'.'.join(module_name.split('.')[1:])}` will soon be removed from the public API. "
+        f"It can still be accessed from `warp._src.{'.'.join(module_name.split('.')[1:])}` but might be changed or removed without notice.",
+        DeprecationWarning,
+    )
+
+
+def get_deprecated_method(cls, cls_path, attr_name):
+    if hasattr(cls, f"_{attr_name}"):
+        warn(
+            f"The class method `{cls_path}.{attr_name}` will soon be removed from the public API. "
+            f"It can still be accessed from `{cls_path}._{attr_name}` but might be changed or removed without notice.",
+            DeprecationWarning,
+        )
+
+        return getattr(cls, f"_{attr_name}")
+
+    raise AttributeError(f"'{cls_path}' has no attribute '{attr_name}'")
+
+
+def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
+    """
+    Get a deprecated API symbol and issue a deprecation warning.
+
+    Args:
+        module: The module containing the symbol
+        namespace: The namespace prefix (e.g., "warp")
+        attr_name: The name of the attribute to retrieve
+        old_attr_path: Optional path for the old symbol location (for renames)
+    """
+    import sys  # noqa: PLC0415
+
+    # Suppress warnings for internal Warp introspection (e.g., codegen's hasattr/getattr checks).
+    # Check if caller (frame 2) is from warp/_src/ and return silently if so.
+    # Only catch ValueError (frame unavailable), not AttributeError (missing attribute must propagate).
+    try:
+        frame = sys._getframe(2)  # Get __getattr__'s immediate caller
+        if "/warp/_src/" in frame.f_code.co_filename or "\\warp\\_src\\" in frame.f_code.co_filename:
+            return getattr(module, attr_name)  # Skip warning, propagate AttributeError if attribute missing
+    except ValueError:
+        pass  # Frame unavailable, proceed with normal warning
+
+    if not attr_name.startswith("_"):
+        module_name = module.__name__.split(".")[-1]
+        attr_path = f"{namespace}.{module_name}.{attr_name}"
+
+        # Check if symbol exists directly in the namespace (e.g., promoted to warp.Module instead of warp.context.Module)
+        # Use __dict__ check to avoid triggering __getattr__ which could cause recursion
+        namespace_module = sys.modules.get(namespace)
+        if namespace_module is not None and attr_name in getattr(namespace_module, "__dict__", {}):
+            # Symbol has been promoted to the main namespace
+            public_path = f"{namespace}.{attr_name}"
+            warn(
+                f"The symbol `{attr_path}` will soon be removed from the public API. Use `{public_path}` instead.",
+                DeprecationWarning,
+            )
+        elif old_attr_path is None:
+            warn(
+                f"The symbol `{attr_path}` will soon be removed from the public API. "
+                f"It can still be accessed from `{module.__name__}.{attr_name}` but might be changed or removed without notice.",
+                DeprecationWarning,
+            )
+        else:
+            warn(
+                f"The symbol `{old_attr_path}` will soon be removed from the public API. Use `{attr_path}` instead.",
+                DeprecationWarning,
+            )
 
     return getattr(module, attr_name)

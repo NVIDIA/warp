@@ -19,6 +19,8 @@
 
 #include "builtin.h"
 
+#include "rand.h"
+
 #ifdef __clang__
 // disable warnings related to C++17 extensions on CPU JIT builds
 #pragma clang diagnostic push
@@ -499,7 +501,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return data.data[i];
         else
-            return T(0);
+            return T {};
     }
 
     inline CUDA_CALLABLE T load_grad(const Coord& coord) const
@@ -508,7 +510,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return data.grad[i];
         else
-            return T(0);
+            return T {};
     }
 
     inline CUDA_CALLABLE void store(const Coord& coord, const T& x) const
@@ -524,7 +526,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return wp::atomic_add(&data.data[i], value);
         else
-            return T(0);
+            return T {};
     }
 
     inline CUDA_CALLABLE T atomic_add_grad(const Coord& coord, const T& grad) const
@@ -533,7 +535,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
         if (index(coord, i))
             return wp::atomic_add(&data.grad[i], grad);
         else
-            return T(0);
+            return T {};
     }
 };
 
@@ -605,7 +607,7 @@ template <typename T, typename L> struct tile_register_t {
 
     T data[Layout::NumRegs];
 
-    inline CUDA_CALLABLE tile_register_t(T value = T(0.0))
+    inline CUDA_CALLABLE tile_register_t(T value = T {})
     {
         // zero-initialize by default necessary for tile adjoints
         // need to check if this results in worse codegen
@@ -653,7 +655,7 @@ template <typename T, typename L> struct tile_register_t {
     inline CUDA_CALLABLE void zero()
     {
         for (int i = 0; i < Layout::NumRegs; ++i)
-            data[i] = T(0);
+            data[i] = T {};
     }
 
     // extract a single tile element to a native type
@@ -792,7 +794,7 @@ template <typename Tile> auto tile_register_like(Tile* t = nullptr)
     using T = typename Tile::Type;
     using L = typename Tile::Layout;
 
-    return tile_register_t<T, tile_layout_register_t<typename L::Shape>>(T(0.0));
+    return tile_register_t<T, tile_layout_register_t<typename L::Shape>>(T {});
 }
 
 // helper to construct a register tile from a type and a list of dims
@@ -1198,7 +1200,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     inline CUDA_CALLABLE void zero()
     {
         for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
-            data(i) = T(0);
+            data(i) = T {};
 
         WP_TILE_SYNC();
     }
@@ -1328,7 +1330,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     inline CUDA_CALLABLE void grad_zero()
     {
         for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM)
-            grad(i) = T(0);
+            grad(i) = T {};
 
         WP_TILE_SYNC();
     }
@@ -1839,7 +1841,7 @@ template <typename T, typename Shape, typename Strides, bool RequiresGrad> inlin
         grad = (T*)tile_shared_storage_t::alloc(size * sizeof(T));
 
         for (int i = WP_TILE_THREAD_IDX; i < size; i += WP_TILE_BLOCK_DIM)
-            grad[i] = T(0);
+            grad[i] = T {};
 
         WP_TILE_SYNC();
     }
@@ -1989,7 +1991,7 @@ inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
 template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_zeros()
 {
     // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
-    return T(0);
+    return T {};
 }
 
 // one-initialized tile
@@ -2004,6 +2006,102 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_full(T x
 {
     // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
     return x;
+}
+
+// tile initialized with random integers
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng)
+{
+    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randi(rng_tid);
+    }
+
+    return out;
+}
+
+// tile initialized with random integers in range [min, max)
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng, int min, int max)
+{
+    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randi(rng_tid, min, max);
+    }
+
+    return out;
+}
+
+// tile initialized with random floats in range [0, 1)
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng)
+{
+    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randf(rng_tid);
+    }
+
+    return out;
+}
+
+// tile initialized with random floats in range [min, max)
+template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng, float min, float max)
+{
+    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    using Layout = typename decltype(out)::Layout;
+
+    uint32 rng_tid = rand_pcg(uint32(WP_TILE_THREAD_IDX) + rng);
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+
+        // handle case where tile size is not
+        // aligned to block dimensions
+        if (!Layout::valid(linear))
+            break;
+
+        out.data[i] = randf(rng_tid, min, max);
+    }
+
+    return out;
 }
 
 // tile with evenly spaced values
@@ -2088,7 +2186,7 @@ inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indice
         if (compute_index(src, indices, axis, offset_coord, c, i))
             out.data[reg] = src.data[i];
         else
-            out.data[reg] = T(0);
+            out.data[reg] = T {};
     });
 
     return out;
@@ -2233,7 +2331,7 @@ inline CUDA_CALLABLE auto tile_atomic_add_indexed(
         if (compute_index(dest, indices, axis, offset, c, i))
             ret_reg.data[reg] = wp::atomic_add(&dest.data[i], src_reg.data[reg]);
         else
-            ret_reg.data[reg] = T(0);
+            ret_reg.data[reg] = T {};
     });
 
     return ret_reg;
@@ -2914,6 +3012,432 @@ adj_tile_map(Fwd op, TileA& a, TileB& b, Adj adj_op, TileA& adj_a, TileB& adj_b,
 
     adj_a.grad_add(adj_a_reg);
     adj_b.grad_add(adj_b_reg);
+}
+
+// ============================================================================
+// Variadic tile_map (N = 3 to 8 tiles) - for user-defined functions only
+// ============================================================================
+
+// N = 3
+template <typename ReturnType, typename Fwd, typename T1, typename T2, typename T3>
+inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3)
+{
+    using Shape = typename T1::Layout::Shape;
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    using Layout = typename decltype(out)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        out.data[i] = op(r1.data[i], r2.data[i], r3.data[i]);
+    return out;
+}
+
+// N = 4
+template <typename ReturnType, typename Fwd, typename T1, typename T2, typename T3, typename T4>
+inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4)
+{
+    using Shape = typename T1::Layout::Shape;
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    using Layout = typename decltype(out)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        out.data[i] = op(r1.data[i], r2.data[i], r3.data[i], r4.data[i]);
+    return out;
+}
+
+// N = 5
+template <typename ReturnType, typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5>
+inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5)
+{
+    using Shape = typename T1::Layout::Shape;
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    using Layout = typename decltype(out)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        out.data[i] = op(r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i]);
+    return out;
+}
+
+// N = 6
+template <
+    typename ReturnType,
+    typename Fwd,
+    typename T1,
+    typename T2,
+    typename T3,
+    typename T4,
+    typename T5,
+    typename T6>
+inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5, T6& t6)
+{
+    using Shape = typename T1::Layout::Shape;
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto r6 = t6.copy_to_register();
+    using Layout = typename decltype(out)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        out.data[i] = op(r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], r6.data[i]);
+    return out;
+}
+
+// N = 7
+template <
+    typename ReturnType,
+    typename Fwd,
+    typename T1,
+    typename T2,
+    typename T3,
+    typename T4,
+    typename T5,
+    typename T6,
+    typename T7>
+inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5, T6& t6, T7& t7)
+{
+    using Shape = typename T1::Layout::Shape;
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto r6 = t6.copy_to_register();
+    auto r7 = t7.copy_to_register();
+    using Layout = typename decltype(out)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        out.data[i] = op(r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], r6.data[i], r7.data[i]);
+    return out;
+}
+
+// N = 8
+template <
+    typename ReturnType,
+    typename Fwd,
+    typename T1,
+    typename T2,
+    typename T3,
+    typename T4,
+    typename T5,
+    typename T6,
+    typename T7,
+    typename T8>
+inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5, T6& t6, T7& t7, T8& t8)
+{
+    using Shape = typename T1::Layout::Shape;
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto r6 = t6.copy_to_register();
+    auto r7 = t7.copy_to_register();
+    auto r8 = t8.copy_to_register();
+    using Layout = typename decltype(out)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        out.data[i]
+            = op(r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], r6.data[i], r7.data[i], r8.data[i]);
+    return out;
+}
+
+// N = 3
+template <typename Fwd, typename T1, typename T2, typename T3, typename Adj, typename AdjTile>
+inline CUDA_CALLABLE void
+adj_tile_map(Fwd op, T1& t1, T2& t2, T3& t3, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, AdjTile& adj_ret)
+{
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto adj_r1 = tile_register_like<T1>();
+    auto adj_r2 = tile_register_like<T2>();
+    auto adj_r3 = tile_register_like<T3>();
+    auto adj_ret_reg = adj_ret.grad_to_register();
+    using Layout = typename decltype(r1)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        adj_op(r1.data[i], r2.data[i], r3.data[i], adj_r1.data[i], adj_r2.data[i], adj_r3.data[i], adj_ret_reg.data[i]);
+    adj_t1.grad_add(adj_r1);
+    adj_t2.grad_add(adj_r2);
+    adj_t3.grad_add(adj_r3);
+}
+
+// N = 4
+template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename Adj, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_map(
+    Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, T4& adj_t4, AdjTile& adj_ret
+)
+{
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto adj_r1 = tile_register_like<T1>();
+    auto adj_r2 = tile_register_like<T2>();
+    auto adj_r3 = tile_register_like<T3>();
+    auto adj_r4 = tile_register_like<T4>();
+    auto adj_ret_reg = adj_ret.grad_to_register();
+    using Layout = typename decltype(r1)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        adj_op(
+            r1.data[i], r2.data[i], r3.data[i], r4.data[i], adj_r1.data[i], adj_r2.data[i], adj_r3.data[i],
+            adj_r4.data[i], adj_ret_reg.data[i]
+        );
+    adj_t1.grad_add(adj_r1);
+    adj_t2.grad_add(adj_r2);
+    adj_t3.grad_add(adj_r3);
+    adj_t4.grad_add(adj_r4);
+}
+
+// N = 5
+template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5, typename Adj, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_map(
+    Fwd op,
+    T1& t1,
+    T2& t2,
+    T3& t3,
+    T4& t4,
+    T5& t5,
+    Adj adj_op,
+    T1& adj_t1,
+    T2& adj_t2,
+    T3& adj_t3,
+    T4& adj_t4,
+    T5& adj_t5,
+    AdjTile& adj_ret
+)
+{
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto adj_r1 = tile_register_like<T1>();
+    auto adj_r2 = tile_register_like<T2>();
+    auto adj_r3 = tile_register_like<T3>();
+    auto adj_r4 = tile_register_like<T4>();
+    auto adj_r5 = tile_register_like<T5>();
+    auto adj_ret_reg = adj_ret.grad_to_register();
+    using Layout = typename decltype(r1)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        adj_op(
+            r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], adj_r1.data[i], adj_r2.data[i], adj_r3.data[i],
+            adj_r4.data[i], adj_r5.data[i], adj_ret_reg.data[i]
+        );
+    adj_t1.grad_add(adj_r1);
+    adj_t2.grad_add(adj_r2);
+    adj_t3.grad_add(adj_r3);
+    adj_t4.grad_add(adj_r4);
+    adj_t5.grad_add(adj_r5);
+}
+
+// N = 6
+template <
+    typename Fwd,
+    typename T1,
+    typename T2,
+    typename T3,
+    typename T4,
+    typename T5,
+    typename T6,
+    typename Adj,
+    typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_map(
+    Fwd op,
+    T1& t1,
+    T2& t2,
+    T3& t3,
+    T4& t4,
+    T5& t5,
+    T6& t6,
+    Adj adj_op,
+    T1& adj_t1,
+    T2& adj_t2,
+    T3& adj_t3,
+    T4& adj_t4,
+    T5& adj_t5,
+    T6& adj_t6,
+    AdjTile& adj_ret
+)
+{
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto r6 = t6.copy_to_register();
+    auto adj_r1 = tile_register_like<T1>();
+    auto adj_r2 = tile_register_like<T2>();
+    auto adj_r3 = tile_register_like<T3>();
+    auto adj_r4 = tile_register_like<T4>();
+    auto adj_r5 = tile_register_like<T5>();
+    auto adj_r6 = tile_register_like<T6>();
+    auto adj_ret_reg = adj_ret.grad_to_register();
+    using Layout = typename decltype(r1)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        adj_op(
+            r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], r6.data[i], adj_r1.data[i], adj_r2.data[i],
+            adj_r3.data[i], adj_r4.data[i], adj_r5.data[i], adj_r6.data[i], adj_ret_reg.data[i]
+        );
+    adj_t1.grad_add(adj_r1);
+    adj_t2.grad_add(adj_r2);
+    adj_t3.grad_add(adj_r3);
+    adj_t4.grad_add(adj_r4);
+    adj_t5.grad_add(adj_r5);
+    adj_t6.grad_add(adj_r6);
+}
+
+// N = 7
+template <
+    typename Fwd,
+    typename T1,
+    typename T2,
+    typename T3,
+    typename T4,
+    typename T5,
+    typename T6,
+    typename T7,
+    typename Adj,
+    typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_map(
+    Fwd op,
+    T1& t1,
+    T2& t2,
+    T3& t3,
+    T4& t4,
+    T5& t5,
+    T6& t6,
+    T7& t7,
+    Adj adj_op,
+    T1& adj_t1,
+    T2& adj_t2,
+    T3& adj_t3,
+    T4& adj_t4,
+    T5& adj_t5,
+    T6& adj_t6,
+    T7& adj_t7,
+    AdjTile& adj_ret
+)
+{
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto r6 = t6.copy_to_register();
+    auto r7 = t7.copy_to_register();
+    auto adj_r1 = tile_register_like<T1>();
+    auto adj_r2 = tile_register_like<T2>();
+    auto adj_r3 = tile_register_like<T3>();
+    auto adj_r4 = tile_register_like<T4>();
+    auto adj_r5 = tile_register_like<T5>();
+    auto adj_r6 = tile_register_like<T6>();
+    auto adj_r7 = tile_register_like<T7>();
+    auto adj_ret_reg = adj_ret.grad_to_register();
+    using Layout = typename decltype(r1)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        adj_op(
+            r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], r6.data[i], r7.data[i], adj_r1.data[i],
+            adj_r2.data[i], adj_r3.data[i], adj_r4.data[i], adj_r5.data[i], adj_r6.data[i], adj_r7.data[i],
+            adj_ret_reg.data[i]
+        );
+    adj_t1.grad_add(adj_r1);
+    adj_t2.grad_add(adj_r2);
+    adj_t3.grad_add(adj_r3);
+    adj_t4.grad_add(adj_r4);
+    adj_t5.grad_add(adj_r5);
+    adj_t6.grad_add(adj_r6);
+    adj_t7.grad_add(adj_r7);
+}
+
+// N = 8
+template <
+    typename Fwd,
+    typename T1,
+    typename T2,
+    typename T3,
+    typename T4,
+    typename T5,
+    typename T6,
+    typename T7,
+    typename T8,
+    typename Adj,
+    typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_map(
+    Fwd op,
+    T1& t1,
+    T2& t2,
+    T3& t3,
+    T4& t4,
+    T5& t5,
+    T6& t6,
+    T7& t7,
+    T8& t8,
+    Adj adj_op,
+    T1& adj_t1,
+    T2& adj_t2,
+    T3& adj_t3,
+    T4& adj_t4,
+    T5& adj_t5,
+    T6& adj_t6,
+    T7& adj_t7,
+    T8& adj_t8,
+    AdjTile& adj_ret
+)
+{
+    auto r1 = t1.copy_to_register();
+    auto r2 = t2.copy_to_register();
+    auto r3 = t3.copy_to_register();
+    auto r4 = t4.copy_to_register();
+    auto r5 = t5.copy_to_register();
+    auto r6 = t6.copy_to_register();
+    auto r7 = t7.copy_to_register();
+    auto r8 = t8.copy_to_register();
+    auto adj_r1 = tile_register_like<T1>();
+    auto adj_r2 = tile_register_like<T2>();
+    auto adj_r3 = tile_register_like<T3>();
+    auto adj_r4 = tile_register_like<T4>();
+    auto adj_r5 = tile_register_like<T5>();
+    auto adj_r6 = tile_register_like<T6>();
+    auto adj_r7 = tile_register_like<T7>();
+    auto adj_r8 = tile_register_like<T8>();
+    auto adj_ret_reg = adj_ret.grad_to_register();
+    using Layout = typename decltype(r1)::Layout;
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i)
+        adj_op(
+            r1.data[i], r2.data[i], r3.data[i], r4.data[i], r5.data[i], r6.data[i], r7.data[i], r8.data[i],
+            adj_r1.data[i], adj_r2.data[i], adj_r3.data[i], adj_r4.data[i], adj_r5.data[i], adj_r6.data[i],
+            adj_r7.data[i], adj_r8.data[i], adj_ret_reg.data[i]
+        );
+    adj_t1.grad_add(adj_r1);
+    adj_t2.grad_add(adj_r2);
+    adj_t3.grad_add(adj_r3);
+    adj_t4.grad_add(adj_r4);
+    adj_t5.grad_add(adj_r5);
+    adj_t6.grad_add(adj_r6);
+    adj_t7.grad_add(adj_r7);
+    adj_t8.grad_add(adj_r8);
 }
 
 // We wrap the operator in a lambda so that we don't have to do overload resolution for things like e.g.: wp.sin()
@@ -3968,7 +4492,7 @@ template <typename TileA, typename TileL> inline CUDA_CALLABLE void scalar_chole
 
         // zero out upper triangular portion
         for (int k = j + 1; k < n; ++k) {
-            L.data(tile_coord(j, k)) = T(0.0);
+            L.data(tile_coord(j, k)) = T {};
         }
     }
 }

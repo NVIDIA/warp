@@ -15,13 +15,12 @@
 
 
 import gc
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 
 import warp as wp
 import warp.fem as fem
-from warp.context import assert_conditional_graph_support
 from warp.optim.linear import LinearOperator, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
 from warp.render import UsdRenderer
 from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed
@@ -232,7 +231,7 @@ def bsr_cg(
     method: str = "cg",
     M: BsrMatrix = None,
     mv_routine_uses_multiple_cuda_contexts: bool = False,
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """Solves the linear system A x = b using an iterative solver, optionally with diagonal preconditioning
 
     Args:
@@ -251,7 +250,6 @@ def bsr_cg(
 
     Returns:
         Tuple (residual norm, iteration count)
-
     """
 
     if M is not None:
@@ -267,13 +265,7 @@ def bsr_cg(
     callback = None
 
     use_cuda_graph = A.device.is_cuda and not wp.config.verify_cuda
-    capturable = use_cuda_graph and not mv_routine_uses_multiple_cuda_contexts
-
-    if capturable:
-        try:
-            assert_conditional_graph_support()
-        except RuntimeError:
-            capturable = False
+    capturable = use_cuda_graph and not mv_routine_uses_multiple_cuda_contexts and wp.is_conditional_graph_supported()
 
     if not quiet:
         if capturable:
@@ -359,8 +351,8 @@ class SaddleSystem(LinearOperator):
         self._B = B
         self._Bt = Bt
 
-        self._u_dtype = wp.vec(length=A.block_shape[0], dtype=A.scalar_type)
-        self._p_dtype = wp.vec(length=B.block_shape[0], dtype=B.scalar_type)
+        self._u_dtype = wp.types.vector(length=A.block_shape[0], dtype=A.scalar_type)
+        self._p_dtype = wp.types.vector(length=B.block_shape[0], dtype=B.scalar_type)
         self._p_byte_offset = A.nrow * wp.types.type_size_in_bytes(self._u_dtype)
 
         saddle_shape = (A.shape[0] + B.shape[0], A.shape[0] + B.shape[0])
@@ -381,7 +373,7 @@ class SaddleSystem(LinearOperator):
         A_diag = bsr_get_diag(A)
 
         schur_block_shape = (B.block_shape[0], B.block_shape[0])
-        schur_dtype = wp.mat(shape=schur_block_shape, dtype=B.scalar_type)
+        schur_dtype = wp.types.matrix(shape=schur_block_shape, dtype=B.scalar_type)
         schur_inv_diag = wp.empty(dtype=schur_dtype, shape=B.nrow, device=self.device)
         wp.launch(
             _compute_schur_inverse_diagonal,
@@ -465,7 +457,7 @@ def bsr_solve_saddle(
     check_every=10,
     quiet=False,
     method: str = "cg",
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """Solves the saddle-point linear system [A B^T; B 0] (x_u; x_p) = (b_u; b_p) using an iterative solver, optionally with diagonal preconditioning
 
     Args:
@@ -482,7 +474,6 @@ def bsr_solve_saddle(
 
     Returns:
         Tuple (residual norm, iteration count)
-
     """
     x = wp.empty(dtype=saddle_system.scalar_type, shape=saddle_system.shape[0], device=saddle_system.device)
     b = wp.empty_like(x)
@@ -542,7 +533,7 @@ def invert_diagonal_bsr_matrix(A: BsrMatrix):
 
     values = A.values
     if not wp.types.type_is_matrix(values.dtype):
-        values = values.view(dtype=wp.mat(shape=(1, 1), dtype=A.scalar_type))
+        values = values.view(dtype=wp.types.matrix(shape=(1, 1), dtype=A.scalar_type))
 
     wp.launch(
         kernel=_block_diagonal_invert,
@@ -620,7 +611,7 @@ class Plot:
         else:
             self._usd_renderer.render_points(name, points, radius=self.default_point_radius)
 
-    def plot(self, options: Optional[Dict[str, Any]] = None, backend: str = "auto"):
+    def plot(self, options: Optional[dict[str, Any]] = None, backend: str = "auto"):
         if options is None:
             options = {}
 
@@ -638,7 +629,7 @@ class Plot:
             except ModuleNotFoundError:
                 wp.utils.warn("pyvista or matplotlib must be installed to visualize solution results")
 
-    def _plot_pyvista(self, options: Dict[str, Any]):
+    def _plot_pyvista(self, options: dict[str, Any]):
         import pyvista  # noqa: PLC0415
 
         grids = {}
@@ -798,7 +789,7 @@ class Plot:
             set_frame_data(frame)
             plotter.update()
 
-    def _plot_matplotlib(self, options: Dict[str, Any]):
+    def _plot_matplotlib(self, options: dict[str, Any]):
         import matplotlib.animation as animation  # noqa: PLC0415
         import matplotlib.pyplot as plt  # noqa: PLC0415
         from matplotlib import cm  # noqa: PLC0415
@@ -898,7 +889,7 @@ class Plot:
         plt.show()
 
     @staticmethod
-    def _get_field_value_range(values, field_options: Dict[str, Any]):
+    def _get_field_value_range(values, field_options: dict[str, Any]):
         value_range = field_options.get("clim", None)
         if value_range is None:
             value_range = (

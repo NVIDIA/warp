@@ -22,10 +22,10 @@ from warp.tests.unittest_utils import *
 @wp.kernel
 def test_vector_constructor_value_func():
     a = wp.vec2()
-    b = wp.vector(a, dtype=wp.float16)
-    c = wp.vector(a)
-    d = wp.vector(a, length=2)
-    e = wp.vector(1.0, length=3)
+    b = wp.types.vector(a, dtype=wp.float16)
+    c = wp.types.vector(a)
+    d = wp.types.vector(a, length=2)
+    e = wp.types.vector(1.0, length=3)
 
 
 # Test matrix constructors using explicit type (float16)
@@ -36,9 +36,9 @@ def test_vector_constructor_value_func():
 @wp.kernel
 def test_constructors_explicit_precision():
     # construction for custom vector types
-    ones = wp.vector(wp.float16(1.0), length=2)
-    zeros = wp.vector(length=2, dtype=wp.float16)
-    custom = wp.vector(wp.float16(0.0), wp.float16(1.0))
+    ones = wp.types.vector(wp.float16(1.0), length=2)
+    zeros = wp.types.vector(length=2, dtype=wp.float16)
+    custom = wp.types.vector(wp.float16(0.0), wp.float16(1.0))
 
     for i in range(2):
         wp.expect_eq(ones[i], wp.float16(1.0))
@@ -53,9 +53,9 @@ def test_constructors_explicit_precision():
 @wp.kernel
 def test_constructors_default_precision():
     # construction for custom vector types
-    ones = wp.vector(1.0, length=2)
-    zeros = wp.vector(length=2, dtype=float)
-    custom = wp.vector(0.0, 1.0)
+    ones = wp.types.vector(1.0, length=2)
+    zeros = wp.types.vector(length=2, dtype=float)
+    custom = wp.types.vector(0.0, 1.0)
 
     for i in range(2):
         wp.expect_eq(ones[i], 1.0)
@@ -77,4 +77,9 @@ add_kernel_test(TestVecLite, test_constructors_default_precision, dim=1, devices
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
+
+    # test parallel compiling and loading of modules (GH-1086)
+    wp.config.load_module_max_workers = None
+    wp.force_load()
+
     unittest.main(verbosity=2, failfast=True)

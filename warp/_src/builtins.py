@@ -18,7 +18,8 @@ from __future__ import annotations
 import builtins
 import functools
 import math
-from typing import Any, Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable
 
 import warp._src.build
 import warp._src.context
@@ -1007,10 +1008,10 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             )
 
     if length is None:
-        raise RuntimeError("could not infer the `length` argument when calling the `wp.vector()` function")
+        raise RuntimeError("could not infer the `length` argument when calling the `wp.types.vector()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.vector()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.vector()` function")
 
     return vector(length=length, dtype=dtype)
 
@@ -1095,7 +1096,7 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
 
         if all(type_is_vector(x) for x in variadic_arg_types):
             warp._src.utils.warn(
-                "the built-in `wp.matrix()` won't support taking column vectors as input "
+                "the built-in `wp.types.matrix()` won't support taking column vectors as input "
                 "in the future. Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
                 DeprecationWarning,
             )
@@ -1129,10 +1130,10 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             )
 
     if shape is None:
-        raise RuntimeError("could not infer the `shape` argument when calling the `wp.matrix()` function")
+        raise RuntimeError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.matrix()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.matrix()` function")
 
     return matrix(shape=shape, dtype=dtype)
 
@@ -1166,7 +1167,7 @@ def matrix_initializer_list_func(args, return_type):
 
 add_builtin(
     "matrix",
-    input_types={"*args": Scalar, "shape": Tuple[int, int], "dtype": Scalar},
+    input_types={"*args": Scalar, "shape": tuple[int, int], "dtype": Scalar},
     defaults={"shape": None, "dtype": None},
     variadic=True,
     value_func=matrix_value_func,
@@ -1304,7 +1305,7 @@ def matrix_transform_value_func(arg_types: Mapping[str, type], arg_values: Mappi
         return matrix(shape=(4, 4), dtype=Float)
 
     raise RuntimeError(
-        "the built-in `wp.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
+        "the built-in `wp.types.matrix()` to construct a 4x4 matrix from a 3D position, quaternion, "
         "and 3D scale vector has been removed in favor of `wp.transform_compose()`."
     )
 
@@ -1528,7 +1529,7 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
             )
 
     if dtype is None:
-        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.quaternion()` function")
+        raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
 
     return quaternion(dtype=dtype)
 
@@ -2175,7 +2176,7 @@ add_builtin(
 def tile_zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     shape = extract_tuple(arg_values["shape"], as_constant=True)
 
@@ -2213,7 +2214,7 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
 
 add_builtin(
     "tile_zeros",
-    input_types={"shape": Tuple[int, ...], "dtype": Any, "storage": str},
+    input_types={"shape": tuple[int, ...], "dtype": Any, "storage": str},
     defaults={"storage": "register", "dtype": float},
     value_func=tile_zeros_value_func,
     dispatch_func=tile_zeros_dispatch_func,
@@ -2248,7 +2249,7 @@ add_builtin(
 def tile_ones_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     shape = extract_tuple(arg_values["shape"], as_constant=True)
 
@@ -2286,7 +2287,7 @@ def tile_ones_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
 
 add_builtin(
     "tile_ones",
-    input_types={"shape": Tuple[int, ...], "dtype": Any, "storage": str},
+    input_types={"shape": tuple[int, ...], "dtype": Any, "storage": str},
     defaults={"storage": "register"},
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
@@ -2319,7 +2320,7 @@ add_builtin(
 def tile_full_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     shape = extract_tuple(arg_values["shape"], as_constant=True)
 
@@ -2363,7 +2364,7 @@ def tile_full_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
 
 add_builtin(
     "tile_full",
-    input_types={"shape": Tuple[int, ...], "value": Any, "dtype": Any, "storage": str},
+    input_types={"shape": tuple[int, ...], "value": Any, "dtype": Any, "storage": str},
     defaults={"storage": "register"},
     value_func=tile_full_value_func,
     dispatch_func=tile_full_dispatch_func,
@@ -2395,10 +2396,357 @@ add_builtin(
 )
 
 
+def tile_randi_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "rng" not in arg_values:
+        raise TypeError("tile_randi() missing required keyword argument 'rng'")
+
+    if "storage" not in arg_values:
+        raise TypeError("tile_randi() missing required keyword argument 'storage'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    return tile(dtype=int, shape=shape, storage=arg_values["storage"])
+
+
+def tile_randi_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    rng = arg_values["rng"]
+
+    func_args = [rng]
+
+    has_min = "min" in arg_values
+    has_max = "max" in arg_values
+
+    if has_min != has_max:
+        raise KeyError("Both 'min' and 'max' must be provided together")
+
+    if has_min and has_max:
+        min_val = arg_values["min"].constant
+        max_val = arg_values["max"].constant
+
+        if isinstance(min_val, int) and isinstance(max_val, int):
+            func_args.append(min_val)
+            func_args.append(max_val)
+        else:
+            raise TypeError("'min' and 'max' must both be integers")
+
+    template_args = []
+    template_args.extend(shape)
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_randi",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random integers.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random integers with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+        wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[  798497746  1803297529  -955788638    17806966]
+         [ 1788185933  1320194893  2073257406 -2009156320]
+         [ -257534450 -1138585923  1145322783  -321794125]
+         [-2096177388 -1835610841  1159339128  -652221052]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randi",
+    input_types={"shape": int, "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
+    "tile_randi",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "min": int, "max": int, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random integers within a specified range.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param min: Minimum value (inclusive) for random integers
+    :param max: Maximum value (exclusive) for random integers
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random integers in the range [min, max) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+        wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[ 1  4  3  1]
+         [-2 -2  1  1]
+         [ 1 -2 -2 -4]
+         [ 3  0  3 -1]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randi",
+    input_types={"shape": int, "rng": uint32, "min": int, "max": int, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randi_value_func,
+    dispatch_func=tile_randi_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_randf_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "rng" not in arg_values:
+        raise TypeError("tile_randf() missing required keyword argument 'rng'")
+
+    if "storage" not in arg_values:
+        raise TypeError("tile_randf() missing required keyword argument 'storage'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    return tile(dtype=float, shape=shape, storage=arg_values["storage"])
+
+
+def tile_randf_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    rng = arg_values["rng"]
+
+    func_args = [rng]
+
+    has_min = "min" in arg_values
+    has_max = "max" in arg_values
+
+    if has_min != has_max:
+        raise KeyError("Both 'min' and 'max' must be provided together")
+
+    if has_min and has_max:
+        min_val = arg_values["min"].constant
+        max_val = arg_values["max"].constant
+
+        if isinstance(min_val, float) and isinstance(max_val, float):
+            func_args.append(min_val)
+            func_args.append(max_val)
+        else:
+            raise TypeError("'min' and 'max' must both be floats")
+
+    template_args = []
+    template_args.extend(shape)
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_randf",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random floats.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random floats in the range [0, 1) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_kernel(seed: int, x: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
+        wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[0.1859147  0.41986287 0.7774631  0.00414598]
+         [0.41634446 0.3073818  0.4827178  0.53220683]
+         [0.9400381  0.73490226 0.26666623 0.9250764 ]
+         [0.51194566 0.57261354 0.26992965 0.8481429 ]]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randf",
+    input_types={"shape": int, "rng": uint32, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+add_builtin(
+    "tile_randf",
+    input_types={"shape": tuple[int, ...], "rng": uint32, "min": float, "max": float, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    doc="""Generate a tile of random floats within a specified range.
+
+    :param shape: Shape of the output tile
+    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param min: Minimum value (inclusive) for random floats
+    :param max: Maximum value (exclusive) for random floats
+    :param storage: The storage location for the tile: ``"register"`` for registers
+      (default) or ``"shared"`` for shared memory.
+    :returns: A tile of random floats in the range [min, max) with the specified shape
+
+    Example:
+
+    .. testcode::
+
+        TILE_M, TILE_N = 2, 2
+        M, N = 2, 2
+        seed = 42
+
+        @wp.kernel
+        def rand_range_kernel(seed: int, x: wp.array2d(dtype=float)):
+            i, j = wp.tid()
+            rng = wp.rand_init(seed, i * TILE_M + j)
+            t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
+            wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+
+        x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=float)
+        wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+        print(x.numpy())
+
+    .. testoutput::
+
+        [[-3.140853   -0.80137134  2.7746308  -4.95854   ]
+         [-0.83655536 -1.9261819  -0.17282188  0.32206833]
+         [ 4.400381    2.3490226  -2.3333378   4.2507644 ]
+         [ 0.11945665  0.7261354  -2.3007035   3.481429  ]]
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_randf",
+    input_types={"shape": int, "rng": uint32, "min": float, "max": float, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_randf_value_func,
+    dispatch_func=tile_randf_dispatch_func,
+    is_differentiable=False,
+    hidden=True,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int])
+        return tile(dtype=Scalar, shape=tuple[int])
 
     if "args" not in arg_values:
         raise TypeError("tile_arange() requires at least one positional argument specifying the range")
@@ -2499,7 +2847,7 @@ add_builtin(
 
 def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -2552,8 +2900,8 @@ add_builtin(
     "tile_load",
     input_types={
         "a": array(dtype=Any),
-        "shape": Tuple[int, ...],
-        "offset": Tuple[int, ...],
+        "shape": tuple[int, ...],
+        "offset": tuple[int, ...],
         "storage": str,
         "bounds_check": builtins.bool,
     },
@@ -2591,7 +2939,7 @@ add_builtin(
 
 def tile_load_indexed_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -2665,9 +3013,9 @@ add_builtin(
     "tile_load_indexed",
     input_types={
         "a": array(dtype=Any),
-        "indices": tile(dtype=int, shape=Tuple[int]),
-        "shape": Tuple[int, ...],
-        "offset": Tuple[int, ...],
+        "indices": tile(dtype=int, shape=tuple[int]),
+        "shape": tuple[int, ...],
+        "offset": tuple[int, ...],
         "axis": int,
         "storage": str,
     },
@@ -2786,8 +3134,8 @@ add_builtin(
     "tile_store",
     input_types={
         "a": array(dtype=Any),
-        "t": tile(dtype=Any, shape=Tuple[int, ...]),
-        "offset": Tuple[int, ...],
+        "t": tile(dtype=Any, shape=tuple[int, ...]),
+        "offset": tuple[int, ...],
         "bounds_check": builtins.bool,
     },
     value_func=tile_store_value_func,
@@ -2813,7 +3161,7 @@ add_builtin(
     "tile_store",
     input_types={
         "a": array(dtype=Any),
-        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "t": tile(dtype=Any, shape=tuple[int, ...]),
         "offset": int,
         "bounds_check": builtins.bool,
     },
@@ -2900,9 +3248,9 @@ add_builtin(
     "tile_store_indexed",
     input_types={
         "a": array(dtype=Any),
-        "indices": tile(dtype=int, shape=Tuple[int]),
-        "t": tile(dtype=Any, shape=Tuple[int, ...]),
-        "offset": Tuple[int, ...],
+        "indices": tile(dtype=int, shape=tuple[int]),
+        "t": tile(dtype=Any, shape=tuple[int, ...]),
+        "offset": tuple[int, ...],
         "axis": int,
     },
     value_func=tile_store_indexed_value_func,
@@ -2976,7 +3324,7 @@ add_builtin(
 def tile_atomic_add_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
     t = arg_types["t"]
@@ -3030,8 +3378,8 @@ add_builtin(
     "tile_atomic_add",
     input_types={
         "a": array(dtype=Any),
-        "t": tile(dtype=Any, shape=Tuple[int, ...]),
-        "offset": Tuple[int, ...],
+        "t": tile(dtype=Any, shape=tuple[int, ...]),
+        "offset": tuple[int, ...],
         "bounds_check": builtins.bool,
     },
     value_func=tile_atomic_add_value_func,
@@ -3055,7 +3403,7 @@ add_builtin(
     "tile_atomic_add",
     input_types={
         "a": array(dtype=Any),
-        "t": tile(dtype=Any, shape=Tuple[int, ...]),
+        "t": tile(dtype=Any, shape=tuple[int, ...]),
         "offset": int,
         "bounds_check": builtins.bool,
     },
@@ -3073,7 +3421,7 @@ add_builtin(
 def tile_atomic_add_indexed_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
     t = arg_types["t"]
@@ -3142,9 +3490,9 @@ add_builtin(
     "tile_atomic_add_indexed",
     input_types={
         "a": array(dtype=Any),
-        "indices": tile(dtype=int, shape=Tuple[int]),
-        "t": tile(dtype=Any, shape=Tuple[int, ...]),
-        "offset": Tuple[int, ...],
+        "indices": tile(dtype=int, shape=tuple[int]),
+        "t": tile(dtype=Any, shape=tuple[int, ...]),
+        "offset": tuple[int, ...],
         "axis": int,
     },
     value_func=tile_atomic_add_indexed_value_func,
@@ -3210,7 +3558,7 @@ add_builtin(
 def tile_view_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
     offset = extract_tuple(arg_values["offset"])
@@ -3262,7 +3610,7 @@ def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
 
 add_builtin(
     "tile_view",
-    input_types={"t": tile(dtype=Any, shape=Tuple[int, ...]), "offset": Tuple[int, ...], "shape": Tuple[int, ...]},
+    input_types={"t": tile(dtype=Any, shape=tuple[int, ...]), "offset": tuple[int, ...], "shape": tuple[int, ...]},
     value_func=tile_view_value_func,
     dispatch_func=tile_view_dispatch_func,
     defaults={"shape": None},
@@ -3282,7 +3630,7 @@ add_builtin(
 def tile_squeeze_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
     shape = tile_type.shape
@@ -3337,7 +3685,7 @@ def tile_squeeze_dispatch_func(arg_types: Mapping[str, type], return_type: Any, 
 
 add_builtin(
     "tile_squeeze",
-    input_types={"t": tile(dtype=Any, shape=Tuple[int, ...]), "axis": Tuple[int, ...]},
+    input_types={"t": tile(dtype=Any, shape=tuple[int, ...]), "axis": tuple[int, ...]},
     defaults={"axis": None},
     value_func=tile_squeeze_value_func,
     dispatch_func=tile_squeeze_dispatch_func,
@@ -3355,7 +3703,7 @@ add_builtin(
 def tile_reshape_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
 
@@ -3419,7 +3767,7 @@ def tile_reshape_dispatch_func(arg_types: Mapping[str, type], return_type: Any, 
 
 add_builtin(
     "tile_reshape",
-    input_types={"t": tile(dtype=Any, shape=Tuple[int, ...]), "shape": Tuple[int, ...]},
+    input_types={"t": tile(dtype=Any, shape=tuple[int, ...]), "shape": tuple[int, ...]},
     value_func=tile_reshape_value_func,
     dispatch_func=tile_reshape_dispatch_func,
     variadic=False,
@@ -3436,7 +3784,7 @@ add_builtin(
 def tile_astype_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
     dtype = arg_values["dtype"]
@@ -3452,7 +3800,7 @@ def tile_astype_dispatch_func(arg_types: Mapping[str, type], return_type: Any, a
 
 add_builtin(
     "tile_astype",
-    input_types={"t": tile(dtype=Scalar, shape=Tuple[int, ...]), "dtype": Scalar},
+    input_types={"t": tile(dtype=Scalar, shape=tuple[int, ...]), "dtype": Scalar},
     value_func=tile_astype_value_func,
     dispatch_func=tile_astype_dispatch_func,
     variadic=False,
@@ -3493,9 +3841,9 @@ def tile_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any,
 add_builtin(
     "tile_assign",
     input_types={
-        "dst": tile(dtype=Any, shape=Tuple[int, ...]),
-        "src": tile(dtype=Any, shape=Tuple[int, ...]),
-        "offset": Tuple[int, ...],
+        "dst": tile(dtype=Any, shape=tuple[int, ...]),
+        "src": tile(dtype=Any, shape=tuple[int, ...]),
+        "offset": tuple[int, ...],
     },
     value_func=tile_assign_value_func,
     dispatch_func=tile_assign_dispatch_func,
@@ -3512,7 +3860,7 @@ add_builtin(
 # handles expressions like tile[i,j] = 1.0
 add_builtin(
     "assign",
-    input_types={"dst": tile(dtype=Any, shape=Tuple[int]), "i": int, "src": Any},
+    input_types={"dst": tile(dtype=Any, shape=tuple[int]), "i": int, "src": Any},
     value_func=tile_assign_value_func,
     group="Tile Primitives",
     export=False,
@@ -3521,7 +3869,7 @@ add_builtin(
 
 add_builtin(
     "assign",
-    input_types={"dst": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "src": Any},
+    input_types={"dst": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "src": Any},
     value_func=tile_assign_value_func,
     group="Tile Primitives",
     export=False,
@@ -3530,7 +3878,7 @@ add_builtin(
 
 add_builtin(
     "assign",
-    input_types={"dst": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "src": Any},
+    input_types={"dst": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "src": Any},
     value_func=tile_assign_value_func,
     group="Tile Primitives",
     export=False,
@@ -3540,7 +3888,7 @@ add_builtin(
 add_builtin(
     "assign",
     input_types={
-        "dst": tile(dtype=Any, shape=Tuple[int, ...]),
+        "dst": tile(dtype=Any, shape=tuple[int, ...]),
         "i": int,
         "j": int,
         "k": int,
@@ -3556,7 +3904,7 @@ add_builtin(
 add_builtin(
     "assign",
     input_types={
-        "dst": tile(dtype=Any, shape=Tuple[int, ...]),
+        "dst": tile(dtype=Any, shape=tuple[int, ...]),
         "i": int,
         "j": int,
         "k": int,
@@ -3573,7 +3921,7 @@ add_builtin(
 add_builtin(
     "assign",
     input_types={
-        "dst": tile(dtype=Any, shape=Tuple[int, int, int, int]),
+        "dst": tile(dtype=Any, shape=tuple[int, int, int, int]),
         "i": int,
         "j": int,
         "k": int,
@@ -3592,7 +3940,7 @@ add_builtin(
 def tile_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple)
+        return tile(dtype=Any, shape=tuple)
 
     if len(arg_types) > 2:
         raise TypeError(f"tile() takes 1 positional argument and 1 optional argument but {len(arg_types)} were given")
@@ -3727,7 +4075,7 @@ def untile_value_func(arg_types, arg_values):
 
 add_builtin(
     "untile",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=untile_value_func,
     variadic=True,
     doc="""Convert a tile back to per-thread values.
@@ -3816,7 +4164,7 @@ def tile_extract_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int]), "i": int},
+    input_types={"a": tile(dtype=Any, shape=tuple[int]), "i": int},
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3835,7 +4183,7 @@ add_builtin(
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int},
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3855,7 +4203,7 @@ add_builtin(
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int},
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3876,7 +4224,7 @@ add_builtin(
 
 add_builtin(
     "tile_extract",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int},
     value_func=tile_extract_value_func,
     variadic=False,
     doc="""Extract a single element from the tile.
@@ -3899,7 +4247,7 @@ add_builtin(
 add_builtin(
     "tile_extract",
     input_types={
-        "a": tile(dtype=Any, shape=Tuple[int, ...]),
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
         "i": int,
         "j": int,
         "k": int,
@@ -3929,7 +4277,7 @@ add_builtin(
 add_builtin(
     "tile_extract",
     input_types={
-        "a": tile(dtype=Any, shape=Tuple[int, int, int, int]),
+        "a": tile(dtype=Any, shape=tuple[int, int, int, int]),
         "i": int,
         "j": int,
         "k": int,
@@ -3974,7 +4322,7 @@ def tile_inplace_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_add_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -3982,7 +4330,7 @@ add_builtin(
 )
 add_builtin(
     "tile_add_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -3990,7 +4338,7 @@ add_builtin(
 )
 add_builtin(
     "tile_add_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -3998,7 +4346,7 @@ add_builtin(
 )
 add_builtin(
     "tile_add_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4007,7 +4355,7 @@ add_builtin(
 
 add_builtin(
     "tile_sub_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4015,7 +4363,7 @@ add_builtin(
 )
 add_builtin(
     "tile_sub_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4023,7 +4371,7 @@ add_builtin(
 )
 add_builtin(
     "tile_sub_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4031,7 +4379,7 @@ add_builtin(
 )
 add_builtin(
     "tile_sub_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4040,7 +4388,7 @@ add_builtin(
 
 add_builtin(
     "tile_bit_and_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4049,7 +4397,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_and_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4058,7 +4406,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_and_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4067,7 +4415,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_and_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4077,7 +4425,7 @@ add_builtin(
 
 add_builtin(
     "tile_bit_or_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4086,7 +4434,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_or_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4095,7 +4443,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_or_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4104,7 +4452,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_or_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4114,7 +4462,7 @@ add_builtin(
 
 add_builtin(
     "tile_bit_xor_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4123,7 +4471,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_xor_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4132,7 +4480,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_xor_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4141,7 +4489,7 @@ add_builtin(
 )
 add_builtin(
     "tile_bit_xor_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
@@ -4153,7 +4501,7 @@ add_builtin(
 def tile_transpose_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, int])
+        return tile(dtype=Any, shape=tuple[int, int])
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_transpose() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -4186,7 +4534,7 @@ def tile_transpose_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_transpose",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, int])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, int])},
     value_func=tile_transpose_value_func,
     variadic=True,
     doc="""Transpose a tile.
@@ -4204,7 +4552,7 @@ add_builtin(
 def tile_broadcast_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     t = arg_types["a"]
 
@@ -4253,7 +4601,7 @@ def tile_broadcast_dispatch_func(arg_types: Mapping[str, type], return_type: Any
 
 add_builtin(
     "tile_broadcast",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "shape": Tuple[int, ...]},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "shape": tuple[int, ...]},
     value_func=tile_broadcast_value_func,
     dispatch_func=tile_broadcast_dispatch_func,
     variadic=False,
@@ -4273,7 +4621,7 @@ add_builtin(
 def tile_sum_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Scalar, shape=(1,))
+        return tile(dtype=Any, shape=(1,))
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_sum() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -4288,7 +4636,7 @@ def tile_sum_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_sum",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_sum_value_func,
     variadic=True,
     doc="""Cooperatively compute the sum of the tile elements using all threads in the block.
@@ -4324,7 +4672,7 @@ add_builtin(
 
 def tile_sum_axis_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -4361,7 +4709,7 @@ def tile_sum_axis_dispatch_func(arg_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_sum",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...]), "axis": int},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "axis": int},
     value_func=tile_sum_axis_value_func,
     dispatch_func=tile_sum_axis_dispatch_func,
     doc="""Cooperatively compute the sum of the tile elements across an axis of the tile using all threads in the block.
@@ -4444,7 +4792,7 @@ def tile_sort_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_sort",
-    input_types={"keys": tile(dtype=Any, shape=Tuple[int]), "values": tile(dtype=Any, shape=Tuple[int])},
+    input_types={"keys": tile(dtype=Any, shape=tuple[int]), "values": tile(dtype=Any, shape=tuple[int])},
     value_func=tile_sort_value_func,
     variadic=True,
     doc="""Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
@@ -4502,7 +4850,7 @@ def tile_min_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_min",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_min_value_func,
     variadic=True,
     doc="""Cooperatively compute the minimum of the tile elements using all threads in the block.
@@ -4556,7 +4904,7 @@ def tile_argmin_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_argmin",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_argmin_value_func,
     variadic=True,
     doc="""Cooperatively compute the index of the minimum element in the tile using all threads in the block.
@@ -4610,7 +4958,7 @@ def tile_max_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_max",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_max_value_func,
     variadic=False,
     doc="""Cooperatively compute the maximum of the tile elements using all threads in the block.
@@ -4663,7 +5011,7 @@ def tile_argmax_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_argmax",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_argmax_value_func,
     variadic=False,
     doc="""Cooperatively compute the index of the maximum element in the tile using all threads in the block.
@@ -4700,7 +5048,7 @@ add_builtin(
 
 def tile_reduce_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=(1,))
+        return tile(dtype=Any, shape=(1,))
 
     a = arg_types["a"]
 
@@ -4718,7 +5066,7 @@ def tile_reduce_dispatch_func(input_types: Mapping[str, type], return_type: Any,
 
 add_builtin(
     "tile_reduce",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_reduce_value_func,
     native_func="tile_reduce",
     doc="""Apply a custom reduction operator across the tile.
@@ -4757,7 +5105,7 @@ add_builtin(
 
 def tile_reduce_axis_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Scalar, shape=tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -4784,7 +5132,7 @@ def tile_reduce_axis_value_func(arg_types, arg_values):
 
 add_builtin(
     "tile_reduce",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...]), "axis": int},
+    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=tuple[int, ...]), "axis": int},
     value_func=tile_reduce_axis_value_func,
     native_func="tile_reduce_axis",
     doc="""Apply a custom reduction operator across a tile axis.
@@ -4839,7 +5187,7 @@ add_builtin(
 def tile_scan_inclusive_value_func(arg_types, arg_values):
     # Return type is the same as input type
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Scalar, shape=tuple[int, ...])
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_scan_inclusive() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -4866,7 +5214,7 @@ def tile_scan_inclusive_dispatch_func(input_types: Mapping[str, type], return_ty
 
 add_builtin(
     "tile_scan_inclusive",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_scan_inclusive_value_func,
     native_func="tile_scan_inclusive",
     doc="""Inclusive scan (prefix sum) across the tile.
@@ -4903,7 +5251,7 @@ add_builtin(
 def tile_scan_exclusive_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Scalar, shape=tuple[int, ...])
 
     if len(arg_types) != 1:
         raise TypeError(f"tile_scan_exclusive() takes exactly 1 positional argument but {len(arg_types)} were given")
@@ -4930,7 +5278,7 @@ def tile_scan_exclusive_dispatch_func(input_types: Mapping[str, type], return_ty
 
 add_builtin(
     "tile_scan_exclusive",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_scan_exclusive_value_func,
     native_func="tile_scan_exclusive",
     doc="""Exclusive scan (prefix sum) across the tile.
@@ -4967,7 +5315,7 @@ add_builtin(
 def tile_scan_max_inclusive_value_func(arg_types, arg_values):
     # Return type is the same as input type
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Scalar, shape=tuple[int, ...])
 
     if len(arg_types) != 1:
         raise TypeError(
@@ -4996,7 +5344,7 @@ def tile_scan_max_inclusive_dispatch_func(input_types: Mapping[str, type], retur
 
 add_builtin(
     "tile_scan_max_inclusive",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_scan_max_inclusive_value_func,
     native_func="tile_scan_max_inclusive",
     doc="""Inclusive max scan across the tile.
@@ -5034,7 +5382,7 @@ add_builtin(
 def tile_scan_min_inclusive_value_func(arg_types, arg_values):
     # Return type is the same as input type
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Scalar, shape=tuple[int, ...])
 
     if len(arg_types) != 1:
         raise TypeError(
@@ -5063,7 +5411,7 @@ def tile_scan_min_inclusive_dispatch_func(input_types: Mapping[str, type], retur
 
 add_builtin(
     "tile_scan_min_inclusive",
-    input_types={"a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Scalar, shape=tuple[int, ...])},
     value_func=tile_scan_min_inclusive_value_func,
     native_func="tile_scan_min_inclusive",
     doc="""Inclusive min scan across the tile.
@@ -5104,7 +5452,7 @@ add_builtin(
 # does type propagation for load()
 def tile_unary_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
 
@@ -5147,7 +5495,7 @@ def tile_unary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "a": tile(dtype=Scalar, shape=Tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_unary_map_value_func,
     dispatch_func=tile_unary_map_dispatch_func,
     # variadic=True,
@@ -5187,7 +5535,7 @@ add_builtin(
 
 def tile_binary_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     a = arg_types["a"]
     b = arg_types["b"]
@@ -5255,8 +5603,8 @@ add_builtin(
     "tile_map",
     input_types={
         "op": Callable,
-        "a": tile(dtype=Scalar, shape=Tuple[int, ...]),
-        "b": tile(dtype=Scalar, shape=Tuple[int, ...]),
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "b": tile(dtype=Any, shape=tuple[int, ...]),
     },
     value_func=tile_binary_map_value_func,
     dispatch_func=tile_binary_map_dispatch_func,
@@ -5293,6 +5641,123 @@ add_builtin(
     .. code-block:: text
 
         [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_n_map_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile(dtype=Scalar, shape=tuple[int, ...])
+
+    # Get all the tile arguments from *args
+    args = arg_types.get("args", ())
+
+    # Check that we have at least 3 tiles
+    if len(args) < 3:
+        raise ValueError(f"tile_map() with variadic args requires at least 3 tiles, got {len(args)}")
+
+    # Check all args are tiles
+    for i, arg in enumerate(args):
+        if not is_tile(arg):
+            raise TypeError(f"tile_map() argument {i} in *args must be a tile, got {arg!r}")
+
+    # Get the first tile as reference
+    first_tile = args[0]
+
+    # Check all tiles have the same shape
+    for i, arg in enumerate(args[1:], start=1):
+        if len(arg.shape) != len(first_tile.shape):
+            raise ValueError(
+                f"tile_map() shapes must have the same number of dimensions, got {len(first_tile.shape)} and {len(arg.shape)} for arguments 0 and {i}"
+            )
+
+        for dim_idx in range(len(first_tile.shape)):
+            if arg.shape[dim_idx] != first_tile.shape[dim_idx]:
+                raise ValueError(
+                    f"tile_map() shapes do not match on dimension {dim_idx}, got {first_tile.shape} and {arg.shape} for arguments 0 and {i}"
+                )
+
+    if "op" not in arg_values:
+        raise ValueError("tile_map() with variadic args requires an 'op' argument")
+
+    op = arg_values["op"]
+    # Build list of dtypes from all tiles
+    dtypes = [arg.dtype for arg in args]
+
+    try:
+        overload = op.get_overload(dtypes, {})
+    except KeyError as exc:
+        dtype_strs = ", ".join(type_repr(dt) for dt in dtypes)
+        raise RuntimeError(f"No overload of {op} found for tile element types {dtype_strs}") from exc
+
+    # build the right overload on demand
+    if overload.value_func is None:
+        overload.build(None)
+
+    value_type = overload.value_func(None, None)
+
+    if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+        raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
+
+    return tile(dtype=value_type, shape=first_tile.shape)
+
+
+def tile_n_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    op = arg_values["op"]
+    args = arg_values["args"]
+    dtypes = [arg.type.dtype for arg in args]
+
+    overload = op.get_overload(dtypes, {})
+
+    value_type = overload.value_func(None, None)
+
+    return ((overload, *args), (value_type,))
+
+
+add_builtin(
+    "tile_map",
+    input_types={"op": Callable, "*args": tile(dtype=Scalar, shape=tuple[int, ...])},
+    value_func=tile_n_map_value_func,
+    dispatch_func=tile_n_map_dispatch_func,
+    variadic=True,
+    native_func="tile_map",
+    doc="""Apply a user-defined function to multiple tiles element-wise.
+
+    This function cooperatively applies a user-defined function to corresponding elements of three or more tiles using all threads in the block.
+    All input tiles must have the same dimensions. The operator must accept the same number of arguments as tiles provided.
+
+    :param op: A callable function that accepts N arguments and returns one value, must be a user function
+    :param args: Three or more input tiles with matching dimensions. The operator (or one of its overloads) must be able to accept the tiles' dtypes
+    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+
+    Example:
+
+    .. code-block:: python
+
+        @wp.func
+        def weighted_sum(a: float, b: float, c: float):
+            return 0.5 * a + 0.3 * b + 0.2 * c
+
+        @wp.kernel
+        def compute():
+
+            a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+            b = wp.tile_ones(shape=10, dtype=float)
+            c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
+
+            s = wp.tile_map(weighted_sum, a, b, c)
+
+            print(s)
+
+        wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)
+    """,
     group="Tile Primitives",
     export=False,
 )
@@ -5521,7 +5986,7 @@ add_builtin(
 
 def bvh_query_next_tiled_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=int, shape=Tuple[int])
+        return tile(dtype=int, shape=tuple[int])
 
     # Return a register tile of ints with shape (block_dim,)
     block_dim = warp._src.codegen.options.get("block_dim", 256)
@@ -5703,6 +6168,89 @@ add_builtin(
     :param id: The mesh identifier
     :param point: The point in space to query
     :param max_dist: Mesh faces above this distance will not be considered by the query""",
+    require_original_output_arg=True,
+    export=False,
+)
+
+add_builtin(
+    "mesh_query_point_sign_parity",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "inside": float,
+        "face": int,
+        "bary_u": float,
+        "bary_v": float,
+        "n_sample": int,
+        "perturbation_scale": float,
+    },
+    defaults={"n_sample": 1, "perturbation_scale": 0.1},
+    value_type=builtins.bool,
+    group="Geometry",
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space. Returns ``True`` if a point < ``max_dist`` is found.
+
+    The method will cast multiple rays starting from the query point by applying
+    small random perturbations to a base direction (1, 1, 1). Each perturbation is
+    sampled independently for the x, y, and z dimensions from a uniform distribution
+    in the range [-perturbation_scale, perturbation_scale), and added to the base
+    direction to produce a slightly altered ray direction. This randomization helps
+    avoid degeneracies such as rays intersecting exactly on triangle edges,
+    vertices, or becoming parallel to mesh features.
+
+    For each perturbed ray, the method counts how many mesh faces it intersects and
+    uses the parity (odd/even) of this count to determine whether the ray exits the
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
+    used to classify the point.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param inside: Returns a value < 0 if query point is inside the mesh, >=0 otherwise.
+                   Note that mesh must be watertight for this to be robust
+    :param face: Returns the index of the closest face
+    :param bary_u: Returns the barycentric u coordinate of the closest point
+    :param bary_v: Returns the barycentric v coordinate of the closest point
+    :param n_sample: Number of rays to cast (default: 1). Use a higher value if the sign is inaccurate.
+    :param perturbation_scale: Scale of the perturbation.
+    """,
+    export=False,
+    hidden=True,
+)
+
+add_builtin(
+    "mesh_query_point_sign_parity",
+    input_types={
+        "id": uint64,
+        "point": vec3,
+        "max_dist": float,
+        "n_sample": int,
+        "perturbation_scale": float,
+    },
+    defaults={"n_sample": 1, "perturbation_scale": 0.1},
+    value_type=MeshQueryPoint,
+    group="Geometry",
+    doc="""Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+
+    The method will cast multiple rays starting from the query point by applying
+    small random perturbations to a base direction (1, 1, 1). Each perturbation is
+    sampled independently for the x, y, and z dimensions from a uniform distribution
+    in the range [-perturbation_scale, perturbation_scale), and added to the base
+    direction to produce a slightly altered ray direction. This randomization helps
+    avoid degeneracies such as rays intersecting exactly on triangle edges,
+    vertices, or becoming parallel to mesh features.
+
+    For each perturbed ray, the method counts how many mesh faces it intersects and
+    uses the parity (odd/even) of this count to determine whether the ray exits the
+    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
+    used to classify the point.
+
+    :param id: The mesh identifier
+    :param point: The point in space to query
+    :param max_dist: Mesh faces above this distance will not be considered by the query
+    :param n_sample: Number of rays to cast (default: 1). Use a higher value if the sign is inaccurate.
+    :param perturbation_scale: Scale of the perturbation.
+    """,
     require_original_output_arg=True,
     export=False,
 )
@@ -6022,6 +6570,39 @@ add_builtin(
 )
 
 add_builtin(
+    "mesh_query_ray_count_intersections",
+    input_types={
+        "id": uint64,
+        "start": vec3,
+        "dir": vec3,
+        "root": int,
+    },
+    defaults={"root": -1},
+    value_type=int,
+    group="Geometry",
+    doc="""Count the number of intersections between a ray and a :class:`Mesh`. Returns the number of intersections (with t >= 0) between the ray and the mesh.
+
+    This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
+    Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
+    traversing to count all intersections along the entire ray.
+
+    This function can be used to determine whether the ray origin lies inside a watertight, intersection-free mesh.
+    An odd number of intersections indicates the origin is inside the mesh, while an even number indicates it is outside.
+
+    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+    If ``root`` is -1 (default), traversal starts at the mesh's global root.
+
+    :param id: The mesh identifier
+    :param start: The start point of the ray
+    :param dir: The ray direction (should be normalized)
+    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)""",
+    export=False,
+    is_differentiable=False,
+)
+
+
+add_builtin(
     "mesh_query_aabb",
     input_types={"id": uint64, "low": vec3, "high": vec3},
     value_type=MeshQueryAABB,
@@ -6070,7 +6651,7 @@ add_builtin(
 
 def mesh_query_aabb_next_tiled_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=int, shape=Tuple[int])
+        return tile(dtype=int, shape=tuple[int])
 
     # Return a register tile of ints with shape (block_dim,)
     block_dim = warp._src.codegen.options.get("block_dim", 256)
@@ -7440,7 +8021,7 @@ def array_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
 
 add_builtin(
     "array",
-    input_types={"ptr": warp.uint64, "shape": Tuple[int, ...], "dtype": Any},
+    input_types={"ptr": warp.uint64, "shape": tuple[int, ...], "dtype": Any},
     value_func=array_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=array_dispatch_func,
@@ -7482,7 +8063,7 @@ def zeros_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
 
 add_builtin(
     "zeros",
-    input_types={"shape": Tuple[int, ...], "dtype": Any},
+    input_types={"shape": tuple[int, ...], "dtype": Any},
     value_func=zeros_value_func,
     export_func=lambda input_types: {},
     dispatch_func=zeros_dispatch_func,
@@ -7789,26 +8370,26 @@ def create_atomic_op_value_func(op: str):
         scalar_type = getattr(arr_type.dtype, "_wp_scalar_type_", arr_type.dtype)
         if op in ("add", "sub"):
             supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16)
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("min", "max"):
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("cas", "exch"):
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in SUPPORTED_ATOMIC_TYPES):
+            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("and", "or", "xor"):
             supported_atomic_types = (warp.int32, warp.int64, warp.uint32, warp.uint64)
-            if not any(types_equal(scalar_type, x, match_generic=True) for x in supported_atomic_types):
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
                     f"atomic_{op}() operations only work on arrays with [u]int32 or [u]int64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
@@ -9875,7 +10456,7 @@ add_builtin(
 # Tile operators
 def tile_unary_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=Tuple[int, ...])
+        return tile(dtype=Scalar, shape=tuple[int, ...])
 
     t = arg_types["x"]
 
@@ -9887,7 +10468,7 @@ def tile_unary_value_func(arg_types, arg_values):
 
 def tile_scalar_mul_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     x = arg_types["x"]
     y = arg_types["y"]
@@ -9909,7 +10490,7 @@ def tile_scalar_mul_value_func(arg_types, arg_values):
 
 add_builtin(
     "neg",
-    input_types={"x": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"x": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_unary_value_func,
     doc="Negate each element of a tile",
     export=False,
@@ -9919,7 +10500,7 @@ add_builtin(
 
 add_builtin(
     "add",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_binary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -9931,7 +10512,7 @@ add_builtin(
 
 add_builtin(
     "sub",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_binary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -9943,7 +10524,7 @@ add_builtin(
 
 add_builtin(
     "bit_and",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_binary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -9956,7 +10537,7 @@ add_builtin(
 
 add_builtin(
     "bit_or",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_binary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -9969,7 +10550,7 @@ add_builtin(
 
 add_builtin(
     "bit_xor",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_binary_map_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
@@ -9983,7 +10564,7 @@ add_builtin(
 
 add_builtin(
     "mul",
-    input_types={"x": tile(dtype=Any, shape=Tuple[int, ...]), "y": Scalar},
+    input_types={"x": tile(dtype=Any, shape=tuple[int, ...]), "y": Scalar},
     value_func=tile_scalar_mul_value_func,
     doc="Multiply each element of a tile by a scalar",
     export=False,
@@ -9993,7 +10574,7 @@ add_builtin(
 
 add_builtin(
     "mul",
-    input_types={"x": Scalar, "y": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"x": Scalar, "y": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_scalar_mul_value_func,
     doc="Multiply each element of a tile by a scalar",
     export=False,
@@ -10019,7 +10600,7 @@ def tile_inplace_dispatch_func(input_types: Mapping[str, type], return_type: Any
 
 add_builtin(
     "add_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_type=None,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
@@ -10031,7 +10612,7 @@ add_builtin(
 
 add_builtin(
     "sub_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_type=None,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
@@ -10043,7 +10624,7 @@ add_builtin(
 
 add_builtin(
     "bit_and_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_type=None,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
@@ -10056,7 +10637,7 @@ add_builtin(
 
 add_builtin(
     "bit_or_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_type=None,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
@@ -10069,7 +10650,7 @@ add_builtin(
 
 add_builtin(
     "bit_xor_inplace",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...]), "b": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_type=None,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
@@ -10082,7 +10663,7 @@ add_builtin(
 
 def tile_diag_add_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Any, shape=Tuple[int, int])
+        return tile(dtype=Any, shape=tuple[int, int])
 
     a = arg_types["a"]
     d = arg_types["d"]
@@ -10134,7 +10715,7 @@ def tile_diag_add_lto_dispatch_func(
 
 add_builtin(
     "tile_diag_add",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, int]), "d": tile(dtype=Any, shape=Tuple[int])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, int]), "d": tile(dtype=Any, shape=tuple[int])},
     value_func=tile_diag_add_value_func,
     lto_dispatch_func=tile_diag_add_lto_dispatch_func,
     native_func="tile_diag_add",
@@ -10178,7 +10759,7 @@ def tile_matmul_out_value_func(arg_types, arg_values):
 def tile_matmul_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
-        return tile(dtype=Float, shape=Tuple[int, int])
+        return tile(dtype=Float, shape=tuple[int, int])
 
     a = arg_types["a"]
     b = arg_types["b"]
@@ -10320,9 +10901,9 @@ def tile_matmul_lto_dispatch_func(
 add_builtin(
     "tile_matmul",
     input_types={
-        "a": tile(dtype=Float, shape=Tuple[int, int]),
-        "b": tile(dtype=Float, shape=Tuple[int, int]),
-        "out": tile(dtype=Float, shape=Tuple[int, int]),
+        "a": tile(dtype=Float, shape=tuple[int, int]),
+        "b": tile(dtype=Float, shape=tuple[int, int]),
+        "out": tile(dtype=Float, shape=tuple[int, int]),
         "alpha": Float,
         "beta": Float,
     },
@@ -10354,8 +10935,8 @@ add_builtin(
 add_builtin(
     "tile_matmul",
     input_types={
-        "a": tile(dtype=Float, shape=Tuple[int, int]),
-        "b": tile(dtype=Float, shape=Tuple[int, int]),
+        "a": tile(dtype=Float, shape=tuple[int, int]),
+        "b": tile(dtype=Float, shape=tuple[int, int]),
         "alpha": Float,
     },
     defaults={"alpha": 1.0},
@@ -10470,7 +11051,7 @@ def tile_fft_generic_lto_dispatch_func(
 
 add_builtin(
     "tile_fft",
-    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=Tuple[int, int])},
+    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
     value_func=tile_fft_generic_value_func,
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
@@ -10492,7 +11073,7 @@ add_builtin(
 
 add_builtin(
     "tile_ifft",
-    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=Tuple[int, int])},
+    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
     value_func=tile_fft_generic_value_func,
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
@@ -10531,7 +11112,7 @@ def _tile_cholesky_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=Tuple[int, int])
+        return tile(dtype=Float, shape=tuple[int, int])
 
     if len(arg_types) != 1:
         raise TypeError("tile_cholesky() requires 1 positional args")
@@ -10639,7 +11220,7 @@ def tile_cholesky_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_cholesky",
-    input_types={"A": tile(dtype=Float, shape=Tuple[int, int])},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
     value_func=tile_cholesky_generic_value_func,
     lto_dispatch_func=tile_cholesky_generic_lto_dispatch_func,
     variadic=True,
@@ -10667,7 +11248,7 @@ add_builtin(
 
 add_builtin(
     "tile_cholesky_inplace",
-    input_types={"A": tile(dtype=Float, shape=Tuple[int, int])},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
     value_func=tile_cholesky_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
@@ -10697,7 +11278,7 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=Tuple[int])
+        return tile(dtype=Float, shape=tuple[int])
 
     if len(arg_types) != 2:
         raise TypeError("tile_cholesky_solve() requires exactly 2 positional args")
@@ -10833,7 +11414,7 @@ def tile_cholesky_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_cholesky_solve",
-    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
     value_func=tile_cholesky_solve_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_generic_lto_dispatch_func,
     variadic=True,
@@ -10857,7 +11438,7 @@ add_builtin(
 
 add_builtin(
     "tile_cholesky_solve_inplace",
-    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
     value_func=tile_cholesky_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
@@ -10883,7 +11464,7 @@ def _tile_lower_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=Tuple[int])
+        return tile(dtype=Float, shape=tuple[int])
 
     if len(arg_types) != 2:
         raise TypeError("tile_lower_solve() requires exactly 2 positional args")
@@ -11019,7 +11600,7 @@ def tile_lower_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_lower_solve",
-    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
     value_func=tile_lower_solve_generic_value_func,
     lto_dispatch_func=tile_lower_solve_generic_lto_dispatch_func,
     variadic=True,
@@ -11045,7 +11626,7 @@ add_builtin(
 
 add_builtin(
     "tile_lower_solve_inplace",
-    input_types={"L": tile(dtype=Float, shape=Tuple[int, int]), "y": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
     value_func=tile_lower_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_lower_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
@@ -11073,7 +11654,7 @@ def _tile_upper_solve_generic_value_func(inplace: bool, arg_types, arg_values):
     if arg_types is None:
         if inplace:
             return None
-        return tile(dtype=Float, shape=Tuple[int])
+        return tile(dtype=Float, shape=tuple[int])
 
     if len(arg_types) != 2:
         raise TypeError("tile_upper_solve() requires exactly 2 positional args")
@@ -11209,7 +11790,7 @@ def tile_upper_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_upper_solve",
-    input_types={"U": tile(dtype=Float, shape=Tuple[int, int]), "z": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"U": tile(dtype=Float, shape=tuple[int, int]), "z": tile(dtype=Float, shape=tuple[int])},
     value_func=tile_upper_solve_generic_value_func,
     lto_dispatch_func=tile_upper_solve_generic_lto_dispatch_func,
     variadic=True,
@@ -11235,7 +11816,7 @@ add_builtin(
 
 add_builtin(
     "tile_upper_solve_inplace",
-    input_types={"U": tile(dtype=Float, shape=Tuple[int, int]), "z": tile(dtype=Float, shape=Tuple[int])},
+    input_types={"U": tile(dtype=Float, shape=tuple[int, int]), "z": tile(dtype=Float, shape=tuple[int])},
     value_func=tile_upper_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_upper_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
@@ -11345,7 +11926,7 @@ add_builtin(
 
 add_builtin(
     "len",
-    input_types={"a": tile(dtype=Any, shape=Tuple[int, ...])},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=static_len_value_func,
     doc="Return the number of rows in a tile.",
     group="Utility",
@@ -11464,7 +12045,7 @@ def tuple_extract_dispatch_func(input_types: Mapping[str, type], return_type: An
 
 add_builtin(
     "extract",
-    input_types={"a": Tuple, "i": int},
+    input_types={"a": tuple, "i": int},
     value_func=tuple_extract_value_func,
     dispatch_func=tuple_extract_dispatch_func,
     group="Utility",
@@ -11475,7 +12056,7 @@ add_builtin(
 
 add_builtin(
     "len",
-    input_types={"a": Tuple},
+    input_types={"a": tuple},
     value_func=static_len_value_func,
     doc="Return the number of elements in a tuple.",
     group="Utility",

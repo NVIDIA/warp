@@ -15,9 +15,9 @@
 
 """Helpers to author OmniGraph bundles."""
 
+from collections.abc import Sequence
 from typing import (
     Optional,
-    Sequence,
 )
 
 import numpy as np

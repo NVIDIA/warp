@@ -19,7 +19,7 @@ import ctypes
 import sys
 import time
 from collections import defaultdict
-from typing import List, Union
+from typing import Union
 
 import numpy as np
 
@@ -29,7 +29,7 @@ from .utils import tab10_color_map
 
 _wp_module_name_ = "warp.render.render_opengl"
 
-Mat44 = Union[List[float], List[List[float]], np.ndarray]
+Mat44 = Union[list[float], list[list[float]], np.ndarray]
 
 
 wp.set_module_options({"enable_backward": False})
@@ -1032,7 +1032,7 @@ class OpenGLRenderer:
             enable_backface_culling (bool): Whether to enable backface culling.
             enable_mouse_interaction (bool): Whether to enable mouse interaction.
             enable_keyboard_interaction (bool): Whether to enable keyboard interaction.
-            device (Devicelike): Where to store the internal data.
+            device (DeviceLike): Where to store the internal data.
             use_legacy_opengl (bool | None): Whether to use a legacy OpenGL implementation that is more compatible with macOS. If ``None``, it will be automatically detected based on the operating system.
 
         Note:

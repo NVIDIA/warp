@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from functools import cached_property
-from typing import Any, ClassVar, Dict, Optional, Set
+from typing import Any, ClassVar, Optional
 
 import warp as wp
 from warp._src.codegen import Struct
@@ -35,6 +35,7 @@ from warp._src.types import (
     type_size,
     type_to_warp,
     types_equal,
+    types_equal_generic,
 )
 
 _wp_module_name_ = "warp.fem.field.field"
@@ -117,7 +118,7 @@ class FieldLike:
         """Polynomial degree of the field is applicable, or hint for determination of interpolation order"""
         raise NotImplementedError()
 
-    def notify_operator_usage(self, ops: Set[Operator]):
+    def notify_operator_usage(self, ops: set[Operator]):
         """Makes the Domain aware that the operators `ops` will be applied"""
         pass
 
@@ -310,7 +311,7 @@ class ImplicitField(GeometryField):
         self,
         domain: GeometryDomain,
         func: wp.Function,
-        values: Optional[Dict[str, Any]] = None,
+        values: Optional[dict[str, Any]] = None,
         grad_func: Optional[wp.Function] = None,
         div_func: Optional[wp.Function] = None,
         degree=0,
@@ -326,11 +327,11 @@ class ImplicitField(GeometryField):
         self._div_func = div_func
 
         argspec = integrand(func.func).argspec
-        arg_types = {**argspec.annotations}  # make a mutable copy
+        arg_types = argspec.annotations.copy()
 
         try:
             first_arg_type = arg_types.pop(argspec.args[0])
-            if types_equal(first_arg_type, wp.vec(length=domain.geometry.dimension, dtype=float), match_generic=True):
+            if types_equal_generic(first_arg_type, wp.types.vector(length=domain.geometry.dimension, dtype=float)):
                 self._qp_based = False
             elif type_to_warp(first_arg_type) == wp.int32:
                 self._qp_based = True

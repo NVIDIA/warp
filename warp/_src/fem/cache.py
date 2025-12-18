@@ -19,7 +19,7 @@ import hashlib
 import pickle
 import re
 import weakref
-from typing import Any, Callable, ClassVar, Dict, Optional, Tuple, Union
+from typing import Any, Callable, ClassVar, Optional, Union
 
 import warp as wp
 from warp._src.codegen import Struct, StructInstance, get_annotations
@@ -37,7 +37,7 @@ _func_cache = {}
 _key_re = re.compile("[^0-9a-zA-Z_]+")
 
 
-def _make_key(obj, suffix: Any, options: Optional[Dict[str, Any]] = None):
+def _make_key(obj, suffix: Any, options: Optional[dict[str, Any]] = None):
     sorted_opts = tuple(sorted(options.items())) if options is not None else ()
     key = (
         obj.__module__,
@@ -125,7 +125,7 @@ def dynamic_func(suffix: Any, code_transformers=None, allow_overloads=False):
 def get_kernel(
     func,
     suffix: Any,
-    kernel_options: Dict[str, Any],
+    kernel_options: dict[str, Any],
     allow_overloads=False,
 ):
     key = _make_key(func, suffix, kernel_options)
@@ -135,14 +135,13 @@ def get_kernel(
         kernel_key = _native_key(func, key)
         module_name = f"{func.__module__}.dyn.{kernel_key}"
         module = wp.get_module(module_name)
-        module.options = dict(wp.get_module(func.__module__).options)
-        module.options.update(kernel_options)
+        module.options = wp.get_module(func.__module__).options | kernel_options
         _kernel_cache[cache_key] = wp.Kernel(func=func, key=kernel_key, module=module, options=kernel_options)
 
     return _kernel_cache[cache_key]
 
 
-def dynamic_kernel(suffix: Any, kernel_options: Optional[Dict[str, Any]] = None, allow_overloads=False):
+def dynamic_kernel(suffix: Any, kernel_options: Optional[dict[str, Any]] = None, allow_overloads=False):
     if kernel_options is None:
         kernel_options = {}
 
@@ -176,7 +175,7 @@ def dynamic_struct(suffix: Any):
     return wrap_struct
 
 
-def get_argument_struct(arg_types: Dict[str, type]):
+def get_argument_struct(arg_types: dict[str, type]):
     class Args:
         pass
 
@@ -195,7 +194,7 @@ def get_argument_struct(arg_types: Dict[str, type]):
     return get_struct(Args, suffix=suffix)
 
 
-def populate_argument_struct(value_struct: StructInstance, values: Optional[Dict[str, Any]], func_name: str):
+def populate_argument_struct(value_struct: StructInstance, values: Optional[dict[str, Any]], func_name: str):
     if values is None:
         values = {}
 
@@ -225,7 +224,7 @@ def populate_argument_struct(value_struct: StructInstance, values: Optional[Dict
 class ExpandStarredArgumentStruct(ast.NodeTransformer):
     def __init__(
         self,
-        structs: Dict[str, Struct],
+        structs: dict[str, Struct],
     ):
         self._structs = structs
 
@@ -284,12 +283,12 @@ def get_integrand_kernel(
     integrand: Integrand,
     suffix: str,
     kernel_fn: Optional[Callable] = None,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
     code_transformers=None,
     FieldStruct=None,
     ValueStruct=None,
-) -> Tuple[wp.Kernel, StructInstance, StructInstance]:
-    options = {**integrand.module.options, **integrand.kernel_options}
+) -> tuple[wp.Kernel, StructInstance, StructInstance]:
+    options = integrand.module.options | integrand.kernel_options
     if kernel_options is not None:
         options.update(kernel_options)
 
@@ -359,7 +358,7 @@ def cached_arg_value(func: Callable):
 def setup_dynamic_attributes(
     obj,
     cls: Optional[type] = None,
-    constructors: Optional[Dict[str, Callable]] = None,
+    constructors: Optional[dict[str, Callable]] = None,
     key: Optional[str] = None,
 ):
     if cls is None:
@@ -397,7 +396,7 @@ _cached_mat_types = {}
 def cached_vec_type(length, dtype):
     key = (length, dtype)
     if key not in _cached_vec_types:
-        _cached_vec_types[key] = wp.vec(length=length, dtype=dtype)
+        _cached_vec_types[key] = wp.types.vector(length=length, dtype=dtype)
 
     return _cached_vec_types[key]
 
@@ -405,7 +404,7 @@ def cached_vec_type(length, dtype):
 def cached_mat_type(shape, dtype):
     key = (*shape, dtype)
     if key not in _cached_mat_types:
-        _cached_mat_types[key] = wp.mat(shape=shape, dtype=dtype)
+        _cached_mat_types[key] = wp.types.matrix(shape=shape, dtype=dtype)
 
     return _cached_mat_types[key]
 
@@ -623,7 +622,7 @@ def set_default_temporary_store(temporary_store: Optional[TemporaryStore]):
 
 def borrow_temporary(
     temporary_store: Optional[TemporaryStore],
-    shape: Union[int, Tuple[int]],
+    shape: Union[int, tuple[int]],
     dtype: type,
     pinned: bool = False,
     requires_grad: bool = False,

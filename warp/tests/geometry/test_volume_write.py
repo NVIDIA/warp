@@ -172,8 +172,8 @@ def test_volume_allocation(test, device):
         device=device,
     )
 
-    assert wp._src.types.types_equal(volume_a.dtype, wp.float32)
-    assert wp._src.types.types_equal(volume_b.dtype, wp.float32)
+    assert wp.types.types_equal(volume_a.dtype, wp.float32)
+    assert wp.types.types_equal(volume_b.dtype, wp.float32)
 
     points = wp.array(points_ref, dtype=wp.vec3, device=device)
     values_a = wp.empty(num_points, dtype=wp.float32, device=device)
@@ -211,8 +211,8 @@ def test_volume_allocate_by_tiles_f(test, device):
     volume_a = wp.Volume.allocate_by_tiles(points_is_d, voxel_size, background_value, translation, device=device)
     volume_b = wp.Volume.allocate_by_tiles(points_ws_d, voxel_size, background_value, translation, device=device)
 
-    assert wp._src.types.types_equal(volume_a.dtype, wp.float32)
-    assert wp._src.types.types_equal(volume_b.dtype, wp.float32)
+    assert wp.types.types_equal(volume_a.dtype, wp.float32)
+    assert wp.types.types_equal(volume_b.dtype, wp.float32)
 
     values_a = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
     values_b = wp.empty(num_tiles * 512, dtype=wp.float32, device=device)
@@ -243,7 +243,7 @@ def test_volume_allocate_by_tiles_v(test, device):
     points_d = wp.array(points_is, dtype=wp.int32, device=device)
     volume = wp.Volume.allocate_by_tiles(points_d, 0.1, wp.vec3(1, 2, 3), device=device)
 
-    assert wp._src.types.types_equal(volume.dtype, wp.vec3)
+    assert wp.types.types_equal(volume.dtype, wp.vec3)
 
     values = wp.empty(len(points_d) * 512, dtype=wp.vec3, device=device)
 

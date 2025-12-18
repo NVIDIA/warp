@@ -30,7 +30,7 @@ def getkernel(func, suffix=""):
 
 
 def test_atomic_cas(test, device, dtype, register_kernels=False):
-    warp_type = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    warp_type = wp.dtype_from_numpy(np.dtype(dtype))
     n = 100
     counter = wp.array([0], dtype=warp_type, device=device)
     lock = wp.array([0], dtype=warp_type, device=device)
@@ -84,7 +84,7 @@ def test_atomic_cas(test, device, dtype, register_kernels=False):
 
 
 def test_atomic_cas_2d(test, device, dtype, register_kernels=False):
-    warp_type = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    warp_type = wp.dtype_from_numpy(np.dtype(dtype))
     n = 100
     counter = wp.array([0], dtype=warp_type, device=device)
     lock = wp.zeros(shape=(1, 1), dtype=warp_type, device=device)
@@ -138,7 +138,7 @@ def test_atomic_cas_2d(test, device, dtype, register_kernels=False):
 
 
 def test_atomic_cas_3d(test, device, dtype, register_kernels=False):
-    warp_type = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    warp_type = wp.dtype_from_numpy(np.dtype(dtype))
     n = 100
     counter = wp.array([0], dtype=warp_type, device=device)
     lock = wp.zeros(shape=(1, 1, 1), dtype=warp_type, device=device)
@@ -228,7 +228,7 @@ def create_spinlock_test_4d(dtype):
 
 
 def test_atomic_cas_4d(test, device, dtype, register_kernels=False):
-    warp_type = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
+    warp_type = wp.dtype_from_numpy(np.dtype(dtype))
     n = 100
     counter = wp.array([0], dtype=warp_type, device=device)
     lock = wp.zeros(shape=(1, 1, 1, 1), dtype=warp_type, device=device)

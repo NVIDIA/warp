@@ -15,7 +15,6 @@
 
 import sys
 import unittest
-from typing import Tuple
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -477,7 +476,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
 
     inputs = wp.array([1.0, 2.0, 3.0], dtype=float, device=device)
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"Error mutating a constant my_constant inside a dynamic loop, use the following syntax\: pi = float\(3\.141\) to declare a dynamic variable",
     ):
         wp.launch(dynamic_loop_kernel, dim=1, inputs=[3, inputs], device=device)
@@ -569,14 +568,14 @@ def test_error_return_annotation_mismatch(test, device):
         x = foo_2(123)
 
     @wp.func
-    def foo_3(x: int) -> Tuple[int, int]:
+    def foo_3(x: int) -> tuple[int, int]:
         return (x, 1.23)
 
     def kernel_3_fn():
         _x, _y = foo_3(123)
 
     @wp.func
-    def foo_4(x: int) -> Tuple[int, int, int]:
+    def foo_4(x: int) -> tuple[int, int, int]:
         return (x + x, x * x)
 
     def kernel_4_fn():
@@ -584,28 +583,28 @@ def test_error_return_annotation_mismatch(test, device):
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"The function `foo_1` has its return type annotated as `int16` but the code returns a value of type `int8`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_2_fn)
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"The function `foo_2` has its return type annotated as `int` but the code returns 2 values.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_3_fn)
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
-        r"The function `foo_3` has its return type annotated as `Tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
+        wp.WarpCodegenError,
+        r"The function `foo_3` has its return type annotated as `tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
     kernel = wp.Kernel(func=kernel_4_fn)
     with test.assertRaisesRegex(
-        wp._src.codegen.WarpCodegenError,
+        wp.WarpCodegenError,
         r"The function `foo_4` has its return type annotated as a tuple of 3 elements but the code returns 2 values.",
     ):
         wp.launch(kernel, dim=1, device=device)

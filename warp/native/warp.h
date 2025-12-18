@@ -69,6 +69,9 @@ WP_API bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* 
 WP_API bool
 wp_memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t n, void* stream = WP_CURRENT_STREAM);
 
+WP_API bool
+wp_memcpy_batch(void* context, void** dsts, void** srcs, size_t* sizes, size_t count, void* stream = WP_CURRENT_STREAM);
+
 WP_API void wp_memset_host(void* dest, int value, size_t n);
 WP_API void wp_memset_device(void* context, void* dest, int value, size_t n);
 
@@ -480,6 +483,15 @@ WP_API bool wp_cuda_graph_pause_capture(void* context, void* stream, void** grap
 WP_API bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph);
 WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph);
 WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph);
+
+WP_API void* wp_cuda_graph_insert_memcpy(void* context, void* stream, void* dst, void* src, size_t size, int kind);
+WP_API bool wp_cuda_graph_insert_memcpy_batch(
+    void* context, void* stream, void** dsts, void** srcs, size_t* sizes, int* kinds, int count, void** nodes_ret
+);
+WP_API bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst, void* src, size_t size, int kind);
+WP_API bool wp_cuda_graph_update_memcpy_batch(
+    void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
+);
 
 WP_API size_t wp_cuda_compile_program(
     const char* cuda_src,

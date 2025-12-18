@@ -184,7 +184,7 @@ class BasisSpace:
     @property
     def weight_gradient_type(self):
         if self.value is ShapeFunction.Value.Scalar:
-            return wp.vec(length=self.geometry.cell_dimension, dtype=float)
+            return wp.types.vector(length=self.geometry.cell_dimension, dtype=float)
 
         return cache.cached_mat_type(
             shape=(self.geometry.cell_dimension, self.geometry.cell_dimension),

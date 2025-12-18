@@ -1,3 +1,18 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import warp as wp
 import warp.fem as fem
 import warp.sparse as wps
@@ -60,7 +75,6 @@ class BsrMvQuadraticTetmeshMatrix(BsrMvFemMatrix):
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 32
@@ -83,7 +97,6 @@ class BsrMvLinearGridMatrix(BsrMvFemMatrix):
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 64
@@ -105,7 +118,6 @@ class BsrMvAlmostDense(BsrMvFemMatrix):
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         res = 2

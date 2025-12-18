@@ -645,17 +645,17 @@ In addition, it's possible to directly create *anonymously* typed instances of t
     def compute( ... ):
 
         # zero initialize vector of 5 doubles:
-        v = wp.vector(dtype=wp.float64, length=5)
+        v = wp.types.vector(dtype=wp.float64, length=5)
 
         # scalar initialize a vector of 5 doubles to the same value:
-        v = wp.vector(wp.float64(1.0), length=5)
+        v = wp.types.vector(wp.float64(1.0), length=5)
 
         # component-wise initialize a vector of 5 doubles
-        v = wp.vector(wp.float64(1.0),
-                      wp.float64(2.0),
-                      wp.float64(3.0),
-                      wp.float64(4.0),
-                      wp.float64(5.0))
+        v = wp.types.vector(wp.float64(1.0),
+                            wp.float64(2.0),
+                            wp.float64(3.0),
+                            wp.float64(4.0),
+                            wp.float64(5.0))
 
 
 These can be used with all the standard vector arithmetic operators, e.g.: ``+``, ``-``, scalar multiplication, and can also be transformed using matrices with compatible dimensions, potentially returning vectors with a different length.
@@ -736,14 +736,14 @@ It's also possible to directly create anonymously typed instances inside kernels
         ...
 
         # create a 3x2 half precision matrix from components (row major ordering):
-        m = wp.matrix(
+        m = wp.types.matrix(
             wp.float16(1.0), wp.float16(2.0),
             wp.float16(1.0), wp.float16(2.0),
             wp.float16(1.0), wp.float16(2.0),
             shape=(3,2))
 
         # zero initialize a 3x2 half precision matrix:
-        m = wp.matrix(wp.float16(0.0),shape=(3,2))
+        m = wp.types.matrix(wp.float16(0.0),shape=(3,2))
 
         # create a 5x5 double precision identity matrix:
         m = wp.identity(n=5, dtype=wp.float64)
@@ -1035,6 +1035,63 @@ Negative indices are wrapped around, such that ``-1`` refers to the last element
 
 Inside kernels, the ``start / stop / step`` values of a slice must be **compile-time constants**.  Simple element indexing (``v[i]``, ``m[i, j]``) may use run-time
 expressions.
+
+
+Unpacking
+#########
+
+Python's unpack operator (``*``) can be used in function calls inside kernels to expand vectors, matrices, quaternions, and 1D array slices into individual arguments:
+
+.. code:: python
+
+    @wp.kernel
+    def compute(
+        arr: wp.array(dtype=float),
+    ):
+        # Unpack a 1D array slice into a vector.
+        v1 = wp.vec3(*arr[:3])
+        wp.expect_eq(v1, wp.vec3(1.0, 2.0, 3.0))
+
+        # Unpack a vector into function arguments.
+        v2 = wp.vec2(1.0, 2.0)
+        x2 = wp.max(*v2)
+        wp.expect_eq(x2, 2.0)
+
+        # Build larger vectors by unpacking smaller ones.
+        v3 = wp.vec3(1.0, 2.0, 3.0)
+        v4 = wp.vec4(*v3, 4.0)
+        wp.expect_eq(v4, wp.vec4(1.0, 2.0, 3.0, 4.0))
+
+        # Combine multiple unpacks.
+        v5 = wp.vec2(1.0, 2.0)
+        v6 = wp.vec2(3.0, 4.0)
+        v7 = wp.vec4(*v5, *v6)
+        wp.expect_eq(v7, wp.vec4(1.0, 2.0, 3.0, 4.0))
+
+        # Unpack vector slices.
+        v8 = wp.vec4(1.0, 2.0, 3.0, 4.0)
+        v9 = wp.vec2(*v8[1:3])
+        wp.expect_eq(v9, wp.vec2(2.0, 3.0))
+
+        # Unpack matrix rows.
+        m1 = wp.mat33(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
+        m2 = wp.matrix_from_rows(*m1[:2])
+        wp.expect_eq(
+            m2,
+            wp.matrix_from_rows(
+                wp.vec3(1.0, 2.0, 3.0),
+                wp.vec3(4.0, 5.0, 6.0),
+            )
+        )
+
+
+    arr = wp.array((1, 2, 3, 4, 5, 6, 7, 8, 9), dtype=float)
+    wp.launch(compute, dim=1, inputs=(arr,))
+
+
+When unpacking 1D arrays, the slice indices must be **compile-time constants** and non-negative.
+The upper bound is required and negative indices or steps are not allowed since the array
+length is not known at compile time.
 
 
 Type Conversions
@@ -1975,8 +2032,8 @@ Some basic requirements for using IPC include:
   The ``wp.ScopedMempool`` context manager is useful for temporarily disabling
   memory pools for the purpose of allocating arrays that can be shared using IPC.
 
-Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.context.Device.is_ipc_supported>`
-attribute of the :class:`Device <warp.context.Device>`. If the Warp library has
+Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.Device.is_ipc_supported>`
+attribute of the :class:`Device <warp.Device>`. If the Warp library has
 been compiled with CUDA 11, this device attribute will be ``None`` to indicate
 that IPC support could not be determined using the CUDA API.
 

@@ -359,7 +359,7 @@ def bsr_zeros(
     rows_of_blocks: int,
     cols_of_blocks: int,
     block_type: BlockType,
-    device: wp._src.context.Devicelike = None,
+    device: wp._src.context.DeviceLike = None,
 ) -> BsrMatrix:
     """Construct and return an empty BSR or CSR matrix with the given shape.
 
@@ -646,7 +646,7 @@ def bsr_from_triplets(
     """
 
     if values.ndim == 3:
-        block_type = wp.mat(shape=values.shape[1:], dtype=values.dtype)
+        block_type = wp.types.matrix(shape=values.shape[1:], dtype=values.dtype)
     else:
         block_type = values.dtype
 
@@ -1077,7 +1077,7 @@ def bsr_copy(
     if block_shape == (1, 1):
         block_type = scalar_type
     else:
-        block_type = wp.mat(shape=block_shape, dtype=scalar_type)
+        block_type = wp.types.matrix(shape=block_shape, dtype=scalar_type)
 
     copy = bsr_zeros(
         rows_of_blocks=A.nrow,
@@ -1213,7 +1213,7 @@ def bsr_transposed(A: BsrMatrixOrExpression) -> BsrMatrix:
     if A.block_shape == (1, 1):
         block_type = A.values.dtype
     else:
-        block_type = wp.mat(shape=A.block_shape[::-1], dtype=A.scalar_type)
+        block_type = wp.types.matrix(shape=A.block_shape[::-1], dtype=A.scalar_type)
 
     transposed = bsr_zeros(
         rows_of_blocks=A.ncol,
@@ -1393,7 +1393,7 @@ def bsr_diag(
 
         block_type = type(diag)
         if not type_is_matrix(block_type) and len(getattr(diag, "shape", ())) == 2:
-            block_type = wp.mat(shape=diag.shape, dtype=diag.dtype)
+            block_type = wp.types.matrix(shape=diag.shape, dtype=diag.dtype)
 
     A = bsr_zeros(rows_of_blocks, cols_of_blocks, block_type=block_type, device=device)
     if is_array(diag):
@@ -1422,7 +1422,7 @@ def bsr_set_identity(A: BsrMatrix, rows_of_blocks: int | None = None) -> None:
 def bsr_identity(
     rows_of_blocks: int,
     block_type: BlockType[Rows, Rows, Scalar],
-    device: wp._src.context.Devicelike = None,
+    device: wp._src.context.DeviceLike = None,
 ) -> BsrMatrix[BlockType[Rows, Rows, Scalar]]:
     """Create and return a square identity matrix.
 
@@ -1921,10 +1921,10 @@ def _bsr_mm_compute_values(
 def make_bsr_mm_compute_values_tiled_outer(subblock_rows, subblock_cols, block_depth, scalar_type, tile_size):
     from warp._src.fem.cache import dynamic_func, dynamic_kernel  # noqa: PLC0415
 
-    mm_type = wp.mat(dtype=scalar_type, shape=(subblock_rows, subblock_cols))
+    mm_type = wp.types.matrix(dtype=scalar_type, shape=(subblock_rows, subblock_cols))
 
-    x_col_vec_t = wp.vec(dtype=scalar_type, length=subblock_rows)
-    y_row_vec_t = wp.vec(dtype=scalar_type, length=subblock_cols)
+    x_col_vec_t = wp.types.vector(dtype=scalar_type, length=subblock_rows)
+    y_row_vec_t = wp.types.vector(dtype=scalar_type, length=subblock_cols)
 
     suffix = (subblock_rows, subblock_cols, block_depth, tile_size, scalar_type.__name__)
 
@@ -2133,7 +2133,7 @@ def bsr_mm(
         if z_block_shape == (1, 1):
             z_block_type = x.scalar_type
         else:
-            z_block_type = wp.mat(shape=z_block_shape, dtype=x.scalar_type)
+            z_block_type = wp.types.matrix(shape=z_block_shape, dtype=x.scalar_type)
         z = bsr_zeros(x.nrow, y.ncol, block_type=z_block_type, device=x.values.device)
         z.values.requires_grad = x.requires_grad or y.requires_grad
         beta = 0.0
@@ -2402,7 +2402,7 @@ def bsr_mm(
     if (type_is_matrix(x.values.dtype) or type_is_matrix(y.values.dtype)) and not (type_is_matrix(z.values.dtype)):
         # Result block type is scalar, but operands are matrices
         # Cast result to (1x1) matrix to perform multiplication
-        mm_values = z.values.view(wp.mat(shape=(1, 1), dtype=z.scalar_type))
+        mm_values = z.values.view(wp.types.matrix(shape=(1, 1), dtype=z.scalar_type))
     else:
         mm_values = z.values
 
@@ -2636,7 +2636,7 @@ def bsr_mv(
     if y is None:
         # If no output array is provided, allocate one for convenience
         y_vec_len = block_shape[0]
-        y_dtype = A.scalar_type if y_vec_len == 1 else wp.vec(length=y_vec_len, dtype=A.scalar_type)
+        y_dtype = A.scalar_type if y_vec_len == 1 else wp.types.vector(length=y_vec_len, dtype=A.scalar_type)
         y = wp.empty(shape=(nrow,), device=A.values.device, dtype=y_dtype, requires_grad=x.requires_grad)
         beta = 0.0
 

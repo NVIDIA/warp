@@ -21,7 +21,6 @@ matrix multiplication.
 
 from itertools import product
 from statistics import mean, stdev
-from typing import List
 
 import numpy as np
 import torch
@@ -76,7 +75,7 @@ def benchmark_torch(A: torch.Tensor, B: torch.Tensor, warm_up: int, iterations: 
     return mean(timing_results), stdev(timing_results)
 
 
-def benchmark_warp(A: wp.array, B: wp.array, config: List[int], warm_up: int, iterations: int):
+def benchmark_warp(A: wp.array, B: wp.array, config: list[int], warm_up: int, iterations: int):
     TILE_M = config[0]
     TILE_N = config[1]
     TILE_K = config[2]

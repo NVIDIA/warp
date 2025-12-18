@@ -18,17 +18,8 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp._src.context import assert_conditional_graph_support
 from warp.optim.linear import bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
-
-
-def check_conditional_graph_support():
-    try:
-        assert_conditional_graph_support()
-    except RuntimeError:
-        return False
-    return True
 
 
 def _check_linear_solve(test, A, b, func, *args, **kwargs):
@@ -40,7 +31,7 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
     test.assertLessEqual(err, atol)
 
     # Test with capturable graph
-    if A.device.is_cuda and check_conditional_graph_support():
+    if A.device.is_cuda and wp.is_conditional_graph_supported():
         x.zero_()
         with wp.ScopedDevice(A.device):
             with wp.ScopedCapture() as capture:

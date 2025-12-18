@@ -25,7 +25,7 @@ from .element import Element
 
 _wp_module_name_ = "warp.fem.geometry.geometry"
 
-_mat32 = wp.mat(shape=(3, 2), dtype=float)
+_mat32 = wp.types.matrix(shape=(3, 2), dtype=float)
 
 _NULL_BVH_ID = wp.uint64(0)
 _COORD_LOOKUP_ITERATIONS = 24
@@ -307,7 +307,7 @@ class Geometry:
     def _make_cell_normal(self):
         cell_dim = self.reference_cell().prototype.dimension
         geo_dim = self.dimension
-        normal_vec = wp.vec(length=geo_dim, dtype=float)
+        normal_vec = wp.types.vector(length=geo_dim, dtype=float)
 
         @cache.dynamic_func(suffix=self.name)
         def zero_normal(args: self.CellArg, s: Sample):

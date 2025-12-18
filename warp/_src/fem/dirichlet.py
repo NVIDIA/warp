@@ -39,7 +39,7 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Opti
             ptr=projector_values.ptr,
             capacity=projector_values.capacity,
             device=projector_values.device,
-            dtype=wp.mat(shape=projector_matrix.block_shape, dtype=projector_matrix.scalar_type),
+            dtype=wp.types.matrix(shape=projector_matrix.block_shape, dtype=projector_matrix.scalar_type),
             shape=projector_values.shape[0],
         )
 
@@ -62,7 +62,7 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Opti
                 ptr=fixed_value.ptr,
                 capacity=fixed_value.capacity,
                 device=fixed_value.device,
-                dtype=wp.vec(length=projector_matrix.block_shape[0], dtype=projector_matrix.scalar_type),
+                dtype=wp.types.vector(length=projector_matrix.block_shape[0], dtype=projector_matrix.scalar_type),
                 shape=fixed_value.shape[0],
             )
 

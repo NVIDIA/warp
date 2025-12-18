@@ -13,17 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# isort: skip_file
-
-from warp._src.jax import get_jax_device as get_jax_device
-
-
 # TODO: Remove after cleaning up the public API.
-
 from warp._src import jax as _jax
 
 
 def __getattr__(name):
     from warp._src.utils import get_deprecated_api  # noqa: PLC0415
 
-    return get_deprecated_api(_jax, "wp", name)
+    return get_deprecated_api(_jax, "warp", name)

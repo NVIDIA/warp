@@ -42,7 +42,6 @@ class Gemm256:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         self.device = wp.get_device("cuda:0")
 
         # Parameters found by auto-tuning for a 256x256 GEMM
@@ -83,7 +82,6 @@ class Gemm1024:
 
     def setup(self):
         wp.init()
-        wp.build.clear_kernel_cache()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
         self.device = wp.get_device("cuda:0")
 

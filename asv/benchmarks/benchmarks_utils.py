@@ -13,16 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import build as _build
-from warp._src.utils import warn_deprecated_namespace as _warn_deprecated_namespace
+import warp as wp
 
 
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+def clear_kernel_cache():
+    if hasattr(wp, "clear_kernel_cache"):
+        return wp.clear_kernel_cache()
 
-    return get_deprecated_api(_build, "warp", name)
-
-
-_warn_deprecated_namespace(__name__)
+    # Fallback when benchmarking older versions of Warp that didn't have
+    # `clear_kernel_cache` exposed to the root namespace.
+    return wp.build.clear_kernel_cache()

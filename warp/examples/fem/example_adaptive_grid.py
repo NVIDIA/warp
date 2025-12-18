@@ -117,9 +117,7 @@ class Example:
         refinement = fem.ImplicitField(
             domain=fem.Cells(fem.Nanogrid(sim_vol)), func=refinement_field, values={"volume": collider.id}
         )
-        self._geo = fem.adaptivity.adaptive_nanogrid_from_field(
-            sim_vol, level_count, refinement_field=refinement, grading="face"
-        )
+        self._geo = fem.adaptive_nanogrid_from_field(sim_vol, level_count, refinement_field=refinement, grading="face")
 
         # Function spaces for velocity, pressure (RTk / Pk-1 or Pk / Pk-1)
         u_space = fem.make_polynomial_space(

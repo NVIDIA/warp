@@ -16,7 +16,7 @@
 import ast
 import inspect
 import textwrap
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
 
 import warp as wp
 import warp._src.fem.operator as operator
@@ -116,7 +116,7 @@ class IntegrandVisitor(ast.NodeTransformer):
     def __init__(
         self,
         integrand: Integrand,
-        field_info: Dict[str, FieldInfo],
+        field_info: dict[str, FieldInfo],
     ):
         self._integrand = integrand
         self._field_symbols = field_info.copy()
@@ -124,7 +124,7 @@ class IntegrandVisitor(ast.NodeTransformer):
         self._field_arg_annotation_nodes = {}
 
     @staticmethod
-    def _build_field_info(integrand: Integrand, field_args: Dict[str, FieldLike]):
+    def _build_field_info(integrand: Integrand, field_args: dict[str, FieldLike]):
         def get_concrete_type(field: Union[FieldLike, Domain]):
             if isinstance(field, FieldLike):
                 return field.ElementEvalArg
@@ -211,9 +211,9 @@ class IntegrandVisitor(ast.NodeTransformer):
 
         return self.generic_visit(node)
 
-    def _get_callee_field_args(self, callee: Integrand, args: List[ast.AST]):
+    def _get_callee_field_args(self, callee: Integrand, args: list[ast.AST]):
         # Get field types for call site arguments
-        call_site_field_args: List[IntegrandVisitor.FieldInfo] = []
+        call_site_field_args: list[IntegrandVisitor.FieldInfo] = []
         for arg in args:
             field_info = self._get_field_info(arg)
             if field_info is not None:
@@ -243,7 +243,7 @@ class IntegrandVisitor(ast.NodeTransformer):
 
 
 class IntegrandOperatorParser(IntegrandVisitor):
-    def __init__(self, integrand: Integrand, field_info: Dict[str, IntegrandVisitor.FieldInfo], callback: Callable):
+    def __init__(self, integrand: Integrand, field_info: dict[str, IntegrandVisitor.FieldInfo], callback: Callable):
         super().__init__(integrand, field_info)
         self._operator_callback = callback
 
@@ -253,7 +253,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
         self._operator_callback(field_info, operator)
 
     def _process_integrand_call(
-        self, call: ast.Call, callee: Integrand, callee_field_args: Dict[str, IntegrandVisitor.FieldInfo]
+        self, call: ast.Call, callee: Integrand, callee_field_args: dict[str, IntegrandVisitor.FieldInfo]
     ):
         callee_field_args = self._get_callee_field_args(callee, call.args)
         callee_parser = IntegrandOperatorParser(callee, callee_field_args, callback=self._operator_callback)
@@ -266,7 +266,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
 
     @staticmethod
     def apply(
-        integrand: Integrand, field_args: Dict[str, FieldLike], operator_callback: Optional[Callable] = None
+        integrand: Integrand, field_args: dict[str, FieldLike], operator_callback: Optional[Callable] = None
     ) -> wp.Function:
         field_info = IntegrandVisitor._build_field_info(integrand, field_args)
         IntegrandOperatorParser(integrand, field_info, callback=operator_callback)._apply()
@@ -304,7 +304,7 @@ class IntegrandTransformer(IntegrandVisitor):
             call.args[0] = ast.Attribute(value=call.args[0], attr=operator.attr)
 
     def _process_integrand_call(
-        self, call: ast.Call, callee: Integrand, callee_field_args: Dict[str, IntegrandVisitor.FieldInfo]
+        self, call: ast.Call, callee: Integrand, callee_field_args: dict[str, IntegrandVisitor.FieldInfo]
     ):
         callee_field_args = self._get_callee_field_args(callee, call.args)
         transformer = IntegrandTransformer(callee, callee_field_args)
@@ -321,8 +321,7 @@ class IntegrandTransformer(IntegrandVisitor):
 
         # Specialize field argument types
         argspec = self._integrand.argspec
-        annotations = argspec.annotations.copy()
-        annotations.update({name: f.concrete_type for name, f in field_info.items()})
+        annotations = argspec.annotations | {name: f.concrete_type for name, f in field_info.items()}
 
         suffix = "_".join([f.field.name for f in field_info.values()])
         func = cache.get_integrand_function(
@@ -338,14 +337,14 @@ class IntegrandTransformer(IntegrandVisitor):
         return func
 
     @staticmethod
-    def apply(integrand: Integrand, field_args: Dict[str, FieldLike]) -> wp.Function:
+    def apply(integrand: Integrand, field_args: dict[str, FieldLike]) -> wp.Function:
         field_info = IntegrandVisitor._build_field_info(integrand, field_args)
         return IntegrandTransformer(integrand, field_info)._apply()
 
 
 class IntegrandArguments(NamedTuple):
-    field_args: Dict[str, Union[FieldLike, GeometryDomain]]
-    value_args: Dict[str, Any]
+    field_args: dict[str, Union[FieldLike, GeometryDomain]]
+    value_args: dict[str, Any]
     domain_name: str
     sample_name: str
     test_name: str
@@ -354,7 +353,7 @@ class IntegrandArguments(NamedTuple):
 
 def _parse_integrand_arguments(
     integrand: Integrand,
-    fields: Dict[str, FieldLike],
+    fields: dict[str, FieldLike],
 ):
     # parse argument types
     field_args = {}
@@ -418,7 +417,7 @@ def _check_field_compat(integrand: Integrand, arguments: IntegrandArguments, dom
                 )
 
 
-def _find_integrand_operators(integrand: Integrand, field_args: Dict[str, FieldLike]):
+def _find_integrand_operators(integrand: Integrand, field_args: dict[str, FieldLike]):
     if integrand.operators is None:
         # Integrands operator dictionary does not depend on concrete field type,
         # so only needs to be built once per integrand
@@ -449,13 +448,13 @@ def _check_domain_operators(integrand: Integrand, domain: GeometryDomain, domain
 
 def _notify_operator_usage(
     integrand: Integrand,
-    field_args: Dict[str, FieldLike],
+    field_args: dict[str, FieldLike],
 ):
     for arg, field in field_args.items():
         field.notify_operator_usage(integrand.operators.get(arg, set()))
 
 
-def _gen_field_struct(field_args: Dict[str, FieldLike]):
+def _gen_field_struct(field_args: dict[str, FieldLike]):
     class Fields:
         pass
 
@@ -488,7 +487,7 @@ def _get_test_arg():
 class PassFieldArgsToIntegrand(ast.NodeTransformer):
     def __init__(
         self,
-        arg_names: List[str],
+        arg_names: list[str],
         parsed_args: IntegrandArguments,
         integrand_func: wp.Function,
         func_name: str = "integrand_func",
@@ -519,7 +518,7 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
     class _FieldWrappers:
         pass
 
-    def _register_integrand_field_wrappers(self, integrand_func: wp.Function, fields: Dict[str, FieldLike]):
+    def _register_integrand_field_wrappers(self, integrand_func: wp.Function, fields: dict[str, FieldLike]):
         # Mechanism to pass the geometry argument only once to the root kernel
         # Field wrappers are used to forward it to all fields in nested integrand calls
         field_wrappers = PassFieldArgsToIntegrand._FieldWrappers()
@@ -1093,7 +1092,7 @@ def _generate_integrate_kernel(
     trial: Optional[TrialField],
     output_dtype: type,
     accumulate_dtype: type,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
 ) -> wp.Kernel:
     output_dtype = type_scalar_type(output_dtype)
 
@@ -1221,8 +1220,8 @@ def _generate_auxiliary_kernels(
     trial: Optional[TrialField],
     accumulate_dtype: type,
     device,
-    kernel_options: Optional[Dict[str, Any]] = None,
-) -> List[Tuple[wp.Kernel, int]]:
+    kernel_options: Optional[dict[str, Any]] = None,
+) -> list[tuple[wp.Kernel, int]]:
     if test is None or not isinstance(test, LocalTestField):
         return ()
 
@@ -1266,21 +1265,21 @@ def _as_2d_array(array, shape, dtype):
 def _launch_integrate_kernel(
     integrand: Integrand,
     kernel: wp.Kernel,
-    auxiliary_kernels: List[Tuple[wp.Kernel, int]],
+    auxiliary_kernels: list[tuple[wp.Kernel, int]],
     field_arg_values: StructInstance,
     value_struct_values: StructInstance,
     domain: GeometryDomain,
     quadrature: Quadrature,
     test: Optional[TestField],
     trial: Optional[TrialField],
-    fields: Dict[str, FieldLike],
-    values: Dict[str, Any],
+    fields: dict[str, FieldLike],
+    values: dict[str, Any],
     accumulate_dtype: type,
     temporary_store: Optional[cache.TemporaryStore],
     output_dtype: type,
     output: Optional[Union[wp.array, BsrMatrix]],
     add_to_output: bool,
-    bsr_options: Optional[Dict[str, Any]],
+    bsr_options: Optional[dict[str, Any]],
     device,
 ):
     # Set-up launch arguments
@@ -1664,7 +1663,7 @@ _NODE_OPERATORS = {
 
 
 def _pick_assembly_strategy(
-    assembly: Optional[str], operators: Dict[str, Set[Operator]], arguments: IntegrandArguments
+    assembly: Optional[str], operators: dict[str, set[Operator]], arguments: IntegrandArguments
 ):
     if assembly is not None:
         if assembly not in ("generic", "nodal", "dispatch"):
@@ -1683,17 +1682,17 @@ def integrate(
     integrand: Integrand,
     domain: Optional[GeometryDomain] = None,
     quadrature: Optional[Quadrature] = None,
-    fields: Optional[Dict[str, FieldLike]] = None,
-    values: Optional[Dict[str, Any]] = None,
+    fields: Optional[dict[str, FieldLike]] = None,
+    values: Optional[dict[str, Any]] = None,
     accumulate_dtype: type = wp.float64,
     output_dtype: Optional[type] = None,
     output: Optional[Union[BsrMatrix, wp.array]] = None,
     device=None,
     temporary_store: Optional[cache.TemporaryStore] = None,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
     assembly: Optional[str] = None,
     add: bool = False,
-    bsr_options: Optional[Dict[str, Any]] = None,
+    bsr_options: Optional[dict[str, Any]] = None,
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
@@ -2416,7 +2415,7 @@ def _generate_interpolate_kernel(
     quadrature: Optional[Quadrature],
     reduction: str,
     arguments: IntegrandArguments,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
 ) -> wp.Kernel:
     _notify_operator_usage(integrand, arguments.field_args)
 
@@ -2605,10 +2604,10 @@ def _launch_interpolate_kernel(
     reduction: str,
     dim: int,
     trial: Optional[TrialField],
-    fields: Dict[str, FieldLike],
-    values: Dict[str, Any],
+    fields: dict[str, FieldLike],
+    values: dict[str, Any],
     temporary_store: Optional[cache.TemporaryStore],
-    bsr_options: Optional[Dict[str, Any]],
+    bsr_options: Optional[dict[str, Any]],
     device,
 ) -> wp.Kernel:
     # Set-up launch arguments
@@ -2771,13 +2770,13 @@ def interpolate(
     quadrature: Optional[Quadrature] = None,
     dim: Optional[int] = None,
     domain: Optional[GeometryDomain] = None,
-    fields: Optional[Dict[str, FieldLike]] = None,
-    values: Optional[Dict[str, Any]] = None,
+    fields: Optional[dict[str, FieldLike]] = None,
+    values: Optional[dict[str, Any]] = None,
     reduction: str = "weighted_average",
     device=None,
-    kernel_options: Optional[Dict[str, Any]] = None,
+    kernel_options: Optional[dict[str, Any]] = None,
     temporary_store: Optional[cache.TemporaryStore] = None,
-    bsr_options: Optional[Dict[str, Any]] = None,
+    bsr_options: Optional[dict[str, Any]] = None,
 ):
     """
     Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field, raw warp array, or sparse matrix.

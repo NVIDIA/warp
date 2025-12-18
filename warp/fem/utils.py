@@ -23,10 +23,19 @@ from warp._src.fem.utils import grid_to_hexes as grid_to_hexes
 
 # TODO: Remove after cleaning up the public API.
 
+from warp._src.fem import linalg as _fem_linalg
 from warp._src.fem import utils as _utils
 
 
 def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
+    from warp._src.utils import get_deprecated_api, warn  # noqa: PLC0415
 
-    return get_deprecated_api(_utils, "wp.fem", name)
+    # Symbols that have been moved to warp.fem.linalg
+    if name in ("array_axpy", "inverse_qr", "symmetric_eigenvalues_qr"):
+        warn(
+            f"The symbol `warp.fem.utils.{name}` will soon be removed from the public API. Use `warp.fem.linalg.{name}` instead.",
+            DeprecationWarning,
+        )
+        return getattr(_fem_linalg, name)
+
+    return get_deprecated_api(_utils, "warp.fem", name)

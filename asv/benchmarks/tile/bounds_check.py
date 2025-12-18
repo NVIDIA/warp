@@ -42,7 +42,6 @@ class LoadStore:
 
     def setup(self, bounds_check, size):
         wp.init()
-        wp.build.clear_kernel_cache()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
