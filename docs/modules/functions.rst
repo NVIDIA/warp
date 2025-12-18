@@ -6691,20 +6691,6 @@ Textures
     The texture must have 2 channels.
 
 
-.. py:function:: tex2d_vec3(tex: Texture2D, u: float32, v: float32) -> vec3f
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-
-    Sample a 2D texture at the given normalized UV coordinates.
-
-    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
-    The texture must have 4 channels.
-
-
 .. py:function:: tex2d_vec4(tex: Texture2D, u: float32, v: float32) -> vec4f
 
     .. hlist::
@@ -6745,20 +6731,6 @@ Textures
 
     Returns a vec2f value. Coordinates are in the range [0, 1].
     The texture must have 2 channels.
-
-
-.. py:function:: tex3d_vec3(tex: Texture3D, u: float32, v: float32, w: float32) -> vec3f
-
-    .. hlist::
-       :columns: 8
-
-       * Kernel
-       * Python
-
-    Sample a 3D texture at the given normalized UVW coordinates.
-
-    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
-    The texture must have 4 channels.
 
 
 .. py:function:: tex3d_vec4(tex: Texture3D, u: float32, v: float32, w: float32) -> vec4f

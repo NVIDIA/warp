@@ -1076,11 +1076,9 @@ WP_API void wp_builtin_texture_height_Texture3D(Texture3D tex, int32* ret) { *re
 WP_API void wp_builtin_texture_depth_Texture3D(Texture3D tex, int32* ret) { *ret = wp::texture_depth(tex); }
 WP_API void wp_builtin_tex2d_float_Texture2D_float32_float32(Texture2D tex, float32 u, float32 v, float* ret) { *ret = wp::tex2d_float(tex, u, v); }
 WP_API void wp_builtin_tex2d_vec2_Texture2D_float32_float32(Texture2D tex, float32 u, float32 v, vec2f* ret) { *ret = wp::tex2d_vec2(tex, u, v); }
-WP_API void wp_builtin_tex2d_vec3_Texture2D_float32_float32(Texture2D tex, float32 u, float32 v, vec3f* ret) { *ret = wp::tex2d_vec3(tex, u, v); }
 WP_API void wp_builtin_tex2d_vec4_Texture2D_float32_float32(Texture2D tex, float32 u, float32 v, vec4f* ret) { *ret = wp::tex2d_vec4(tex, u, v); }
 WP_API void wp_builtin_tex3d_float_Texture3D_float32_float32_float32(Texture3D tex, float32 u, float32 v, float32 w, float* ret) { *ret = wp::tex3d_float(tex, u, v, w); }
 WP_API void wp_builtin_tex3d_vec2_Texture3D_float32_float32_float32(Texture3D tex, float32 u, float32 v, float32 w, vec2f* ret) { *ret = wp::tex3d_vec2(tex, u, v, w); }
-WP_API void wp_builtin_tex3d_vec3_Texture3D_float32_float32_float32(Texture3D tex, float32 u, float32 v, float32 w, vec3f* ret) { *ret = wp::tex3d_vec3(tex, u, v, w); }
 WP_API void wp_builtin_tex3d_vec4_Texture3D_float32_float32_float32(Texture3D tex, float32 u, float32 v, float32 w, vec4f* ret) { *ret = wp::tex3d_vec4(tex, u, v, w); }
 WP_API void wp_builtin_rand_init_int32(int32 seed, uint32* ret) { *ret = wp::rand_init(seed); }
 WP_API void wp_builtin_rand_init_int32_int32(int32 seed, int32 offset, uint32* ret) { *ret = wp::rand_init(seed, offset); }

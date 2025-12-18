@@ -7401,18 +7401,6 @@ add_builtin(
 )
 
 add_builtin(
-    "tex2d_vec3",
-    input_types={"tex": Texture2D, "u": float, "v": float},
-    value_type=vec3f,
-    group="Textures",
-    doc="""Sample a 2D texture at the given normalized UV coordinates.
-
-    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
-    The texture must have 4 channels.""",
-    is_differentiable=False,
-)
-
-add_builtin(
     "tex2d_vec4",
     input_types={"tex": Texture2D, "u": float, "v": float},
     value_type=vec4f,
@@ -7445,18 +7433,6 @@ add_builtin(
 
     Returns a vec2f value. Coordinates are in the range [0, 1].
     The texture must have 2 channels.""",
-    is_differentiable=False,
-)
-
-add_builtin(
-    "tex3d_vec3",
-    input_types={"tex": Texture3D, "u": float, "v": float, "w": float},
-    value_type=vec3f,
-    group="Textures",
-    doc="""Sample a 3D texture at the given normalized UVW coordinates.
-
-    Returns a vec3f value (from the first 3 channels). Coordinates are in the range [0, 1].
-    The texture must have 4 channels.""",
     is_differentiable=False,
 )
 

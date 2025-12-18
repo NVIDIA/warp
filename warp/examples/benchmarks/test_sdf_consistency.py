@@ -80,8 +80,9 @@ NUM_TEST_POINTS = 10000  # Number of random test points
 # - Different interpolation methods (NanoVDB vs texture trilinear)
 # - Slightly different grid alignments
 # - Coarse grid resolution differences
-TOLERANCE_MAX = 0.05  # Maximum allowed difference
-TOLERANCE_MEAN = 0.02  # Mean difference threshold
+# - Points far from surface use coarse approximations with larger error
+TOLERANCE_MAX = 0.1  # Maximum allowed difference (larger for far-field points)
+TOLERANCE_MEAN = 0.02  # Mean difference threshold (strict to ensure overall accuracy)
 
 
 # ============================================================================
@@ -105,16 +106,18 @@ def setup_test_environment(device: str = "cuda:0"):
     # mesh = create_box_mesh(box_center, box_half_extents, device)
 
     # Create Volume SDF with factor-based sizing
-    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing, vol_meta = create_volume_from_mesh(
-        mesh,
-        margin_factor=TEST_MARGIN_FACTOR,
-        narrow_band_factor=TEST_NARROW_BAND_FACTOR,
-        max_dims=TEST_RESOLUTION,
-        verbose=False,
+    sparse_volume, coarse_volume, sparse_max_value, vol_min_ext, vol_max_ext, vol_spacing, _vol_meta = (
+        create_volume_from_mesh(
+            mesh,
+            margin_factor=TEST_MARGIN_FACTOR,
+            narrow_band_factor=TEST_NARROW_BAND_FACTOR,
+            max_dims=TEST_RESOLUTION,
+            verbose=False,
+        )
     )
 
     # Create Texture SDF with factor-based sizing (uses same factors, so bounds should match)
-    coarse_tex, subgrid_tex, subgrid_slots, sdf_params, tex_meta = create_sparse_sdf_from_mesh(
+    coarse_tex, subgrid_tex, subgrid_slots, sdf_params, _tex_meta = create_sparse_sdf_from_mesh(
         mesh,
         margin_factor=TEST_MARGIN_FACTOR,
         narrow_band_factor=TEST_NARROW_BAND_FACTOR,

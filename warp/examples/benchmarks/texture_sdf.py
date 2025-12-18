@@ -1548,9 +1548,7 @@ def create_sparse_sdf_from_mesh(
         print(f"Inflated AABB: [{min_ext}] to [{max_ext}]")
 
     # Build dense SDF
-    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(
-        mesh, min_ext, max_ext, resolution, str(device)
-    )
+    dense_sdf, dense_x, dense_y, dense_z, cell_size = build_dense_sdf(mesh, min_ext, max_ext, resolution, str(device))
 
     # Build sparse SDF from dense
     sparse_data = build_sparse_sdf_from_dense(
@@ -1569,9 +1567,7 @@ def create_sparse_sdf_from_mesh(
     )
 
     # Create GPU textures
-    coarse_tex, subgrid_tex, subgrid_slots, sdf_params = create_sparse_sdf_textures(
-        sparse_data, str(device)
-    )
+    coarse_tex, subgrid_tex, subgrid_slots, sdf_params = create_sparse_sdf_textures(sparse_data, str(device))
 
     # Build metadata
     metadata = {

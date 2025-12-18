@@ -113,16 +113,6 @@ CUDA_CALLABLE inline vec2f tex2d_vec2(const texture2d_t& tex, float u, float v)
 #endif
 }
 
-CUDA_CALLABLE inline vec3f tex2d_vec3(const texture2d_t& tex, float u, float v)
-{
-#if defined(__CUDA_ARCH__)
-    float4 val = tex2D<float4>(tex.tex, u, v);
-    return vec3f(val.x, val.y, val.z);
-#else
-    return vec3f(0.0f, 0.0f, 0.0f);
-#endif
-}
-
 CUDA_CALLABLE inline vec4f tex2d_vec4(const texture2d_t& tex, float u, float v)
 {
 #if defined(__CUDA_ARCH__)
@@ -153,16 +143,6 @@ CUDA_CALLABLE inline vec2f tex3d_vec2(const texture3d_t& tex, float u, float v, 
 #endif
 }
 
-CUDA_CALLABLE inline vec3f tex3d_vec3(const texture3d_t& tex, float u, float v, float w)
-{
-#if defined(__CUDA_ARCH__)
-    float4 val = tex3D<float4>(tex.tex, u, v, w);
-    return vec3f(val.x, val.y, val.z);
-#else
-    return vec3f(0.0f, 0.0f, 0.0f);
-#endif
-}
-
 CUDA_CALLABLE inline vec4f tex3d_vec4(const texture3d_t& tex, float u, float v, float w)
 {
 #if defined(__CUDA_ARCH__)
@@ -183,12 +163,6 @@ CUDA_CALLABLE inline void adj_tex2d_float(
 
 CUDA_CALLABLE inline void adj_tex2d_vec2(
     const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec2f& adj_ret
-)
-{
-}
-
-CUDA_CALLABLE inline void adj_tex2d_vec3(
-    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec3f& adj_ret
 )
 {
 }
@@ -223,20 +197,6 @@ CUDA_CALLABLE inline void adj_tex3d_vec2(
     float& adj_v,
     float& adj_w,
     const vec2f& adj_ret
-)
-{
-}
-
-CUDA_CALLABLE inline void adj_tex3d_vec3(
-    const texture3d_t& tex,
-    float u,
-    float v,
-    float w,
-    texture3d_t& adj_tex,
-    float& adj_u,
-    float& adj_v,
-    float& adj_w,
-    const vec3f& adj_ret
 )
 {
 }

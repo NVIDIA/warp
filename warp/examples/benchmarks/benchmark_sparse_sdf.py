@@ -28,6 +28,7 @@ PhysX's SDFConstruction.cu:
 5. Populate subgrid textures from dense SDF
 """
 
+import os
 import time
 from statistics import mean, stdev
 
@@ -167,8 +168,6 @@ def run_benchmark():
 
     # ========== Create Mesh ==========
     if MESH_FILE:
-        import os
-
         if not os.path.exists(MESH_FILE):
             raise FileNotFoundError(f"Mesh file not found: {MESH_FILE}")
         print(f"\nLoading mesh from file: {MESH_FILE}")
@@ -485,7 +484,9 @@ def run_benchmark():
     bytes_per_sample = get_quantization_bytes(QUANTIZATION_MODE)
 
     # Compute coarse texture size from sdf_params
-    coarse_tex_samples = (sdf_params.coarse_size_x + 1) * (sdf_params.coarse_size_y + 1) * (sdf_params.coarse_size_z + 1)
+    coarse_tex_samples = (
+        (sdf_params.coarse_size_x + 1) * (sdf_params.coarse_size_y + 1) * (sdf_params.coarse_size_z + 1)
+    )
     coarse_mem = coarse_tex_samples * 4  # float32
 
     # Compute subgrid texture size from metadata
