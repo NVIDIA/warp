@@ -10926,6 +10926,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
             req_smem_bytes *= 2
 
         # generate the LTO
+        assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
             N,
@@ -11306,10 +11307,11 @@ def _tile_lower_solve_generic_lto_dispatch_func(
             req_smem_bytes += z.type.size * type_size_in_bytes(L.type.dtype)
 
         # generate the LTO
+        assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
-            N,
             NRHS,
+            1,
             solver,
             solver_enum,
             side_enum,
@@ -11496,10 +11498,11 @@ def _tile_upper_solve_generic_lto_dispatch_func(
             req_smem_bytes += x.type.size * type_size_in_bytes(U.type.dtype)
 
         # generate the LTO
+        assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
-            N,
             NRHS,
+            1,
             solver,
             solver_enum,
             side_enum,

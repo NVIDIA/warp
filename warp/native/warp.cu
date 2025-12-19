@@ -4072,7 +4072,7 @@ bool wp_cuda_compile_solver(
     int arch,
     int M,
     int N,
-    int NRHS,
+    int K,
     int function,
     int side,
     int diag,
@@ -4094,7 +4094,7 @@ bool wp_cuda_compile_solver(
 
     cusolverdxDescriptor h { 0 };
     CHECK_CUSOLVER(cusolverdxCreateDescriptor(&h));
-    std::array<long long int, 3> size = { M, N, NRHS };
+    std::array<long long int, 3> size = { M, N, K };
     CHECK_CUSOLVER(
         cusolverdxSetOperatorInt64s(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_SIZE, size.size(), size.data())
     );
