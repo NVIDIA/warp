@@ -201,7 +201,7 @@ class Texture2D:
 
         if data is None:
             # Just store dimensions for lazy creation
-            self.device = warp.get_device(device)
+            self.device = warp._src.context.get_device(device)
             self._width = width
             self._height = height
             self._num_channels = num_channels
@@ -215,7 +215,7 @@ class Texture2D:
 
         # Get device and extract data
         if isinstance(data, np.ndarray):
-            self.device = warp.get_device(device)
+            self.device = warp._src.context.get_device(device)
 
             # Determine dimensions from numpy array shape
             if data.ndim == 2:
@@ -236,7 +236,7 @@ class Texture2D:
 
             data_flat = data.flatten()
         elif is_array(data):
-            self.device = data.device if device is None else warp.get_device(device)
+            self.device = data.device if device is None else warp._src.context.get_device(device)
 
             # Copy to numpy for now (could optimize later)
             np_data = data.numpy()
@@ -345,6 +345,8 @@ class Texture2D:
 
     def __ctype__(self) -> texture2d_t:
         """Return the ctypes structure for passing to kernels."""
+        if self._tex_handle == 0:
+            raise RuntimeError("Texture was created with data=None but never initialized. Cannot be used in kernels.")
         return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
 
 
@@ -456,7 +458,7 @@ class Texture3D:
 
         if data is None:
             # Just store dimensions for lazy creation
-            self.device = warp.get_device(device)
+            self.device = warp._src.context.get_device(device)
             self._width = width
             self._height = height
             self._depth = depth
@@ -471,7 +473,7 @@ class Texture3D:
 
         # Get device and extract data
         if isinstance(data, np.ndarray):
-            self.device = warp.get_device(device)
+            self.device = warp._src.context.get_device(device)
 
             # Determine dimensions from numpy array shape
             if data.ndim == 3:
@@ -492,7 +494,7 @@ class Texture3D:
 
             data_flat = data.flatten()
         elif is_array(data):
-            self.device = data.device if device is None else warp.get_device(device)
+            self.device = data.device if device is None else warp._src.context.get_device(device)
 
             # Copy to numpy for now (could optimize later)
             np_data = data.numpy()
@@ -609,4 +611,6 @@ class Texture3D:
 
     def __ctype__(self) -> texture3d_t:
         """Return the ctypes structure for passing to kernels."""
+        if self._tex_handle == 0:
+            raise RuntimeError("Texture was created with data=None but never initialized. Cannot be used in kernels.")
         return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)

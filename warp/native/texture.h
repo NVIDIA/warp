@@ -164,8 +164,9 @@ inline bool cpu_in_bounds_3d(int x, int y, int z, int w, int h, int d)
 // Fetch a single texel value (normalized to [0,1] for uint types, as-is for float)
 inline float cpu_fetch_texel_2d(const cpu_texture2d_data* tex, int x, int y, int channel)
 {
-    if (!cpu_in_bounds_2d(x, y, tex->width, tex->height)) {
-        return 0.0f;  // Border mode returns 0
+    // Border mode and invalid channels return 0
+    if (!cpu_in_bounds_2d(x, y, tex->width, tex->height) || channel < 0 || channel >= tex->num_channels) {
+        return 0.0f;
     }
 
     int idx = (y * tex->width + x) * tex->num_channels + channel;
@@ -183,8 +184,10 @@ inline float cpu_fetch_texel_2d(const cpu_texture2d_data* tex, int x, int y, int
 
 inline float cpu_fetch_texel_3d(const cpu_texture3d_data* tex, int x, int y, int z, int channel)
 {
-    if (!cpu_in_bounds_3d(x, y, z, tex->width, tex->height, tex->depth)) {
-        return 0.0f;  // Border mode returns 0
+    // Border mode and invalid channels return 0
+    if (!cpu_in_bounds_3d(x, y, z, tex->width, tex->height, tex->depth) || channel < 0
+        || channel >= tex->num_channels) {
+        return 0.0f;
     }
 
     int idx = ((z * tex->height + y) * tex->width + x) * tex->num_channels + channel;
