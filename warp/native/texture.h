@@ -72,108 +72,155 @@ struct texture3d_t {
     }
 };
 
-// Resolution query functions
-CUDA_CALLABLE inline int32 texture_width(const texture2d_t& tex) { return tex.width; }
-
-CUDA_CALLABLE inline int32 texture_height(const texture2d_t& tex) { return tex.height; }
-
-CUDA_CALLABLE inline int32 texture_width(const texture3d_t& tex) { return tex.width; }
-
-CUDA_CALLABLE inline int32 texture_height(const texture3d_t& tex) { return tex.height; }
-
-CUDA_CALLABLE inline int32 texture_depth(const texture3d_t& tex) { return tex.depth; }
-
-// Adjoint stubs for resolution queries (non-differentiable)
-CUDA_CALLABLE inline void adj_texture_width(const texture2d_t& tex, texture2d_t& adj_tex, int32 adj_ret) { }
-CUDA_CALLABLE inline void adj_texture_height(const texture2d_t& tex, texture2d_t& adj_tex, int32 adj_ret) { }
-CUDA_CALLABLE inline void adj_texture_width(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) { }
-CUDA_CALLABLE inline void adj_texture_height(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) { }
-CUDA_CALLABLE inline void adj_texture_depth(const texture3d_t& tex, texture3d_t& adj_tex, int32 adj_ret) { }
-
 // Texture sampling functions
 // These use CUDA texture fetch intrinsics on device, return 0 on host
 
-// 2D texture sampling with normalized coordinates [0,1]
-CUDA_CALLABLE inline float tex2d_float(const texture2d_t& tex, float u, float v)
-{
+// Helper to convert CUDA types to Warp types
+template <typename T>
+struct texture_sample_helper;
+
+template <>
+struct texture_sample_helper<float> {
+    static CUDA_CALLABLE float sample_2d(const texture2d_t& tex, float u, float v)
+    {
 #if defined(__CUDA_ARCH__)
-    return tex2D<float>(tex.tex, u, v);
+        return tex2D<float>(tex.tex, u, v);
 #else
-    return 0.0f;
+        return 0.0f;
 #endif
+    }
+
+    static CUDA_CALLABLE float sample_3d(const texture3d_t& tex, float u, float v, float w)
+    {
+#if defined(__CUDA_ARCH__)
+        return tex3D<float>(tex.tex, u, v, w);
+#else
+        return 0.0f;
+#endif
+    }
+
+    static CUDA_CALLABLE float zero() { return 0.0f; }
+};
+
+template <>
+struct texture_sample_helper<vec2f> {
+    static CUDA_CALLABLE vec2f sample_2d(const texture2d_t& tex, float u, float v)
+    {
+#if defined(__CUDA_ARCH__)
+        float2 val = tex2D<float2>(tex.tex, u, v);
+        return vec2f(val.x, val.y);
+#else
+        return vec2f(0.0f, 0.0f);
+#endif
+    }
+
+    static CUDA_CALLABLE vec2f sample_3d(const texture3d_t& tex, float u, float v, float w)
+    {
+#if defined(__CUDA_ARCH__)
+        float2 val = tex3D<float2>(tex.tex, u, v, w);
+        return vec2f(val.x, val.y);
+#else
+        return vec2f(0.0f, 0.0f);
+#endif
+    }
+
+    static CUDA_CALLABLE vec2f zero() { return vec2f(0.0f, 0.0f); }
+};
+
+template <>
+struct texture_sample_helper<vec4f> {
+    static CUDA_CALLABLE vec4f sample_2d(const texture2d_t& tex, float u, float v)
+    {
+#if defined(__CUDA_ARCH__)
+        float4 val = tex2D<float4>(tex.tex, u, v);
+        return vec4f(val.x, val.y, val.z, val.w);
+#else
+        return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+#endif
+    }
+
+    static CUDA_CALLABLE vec4f sample_3d(const texture3d_t& tex, float u, float v, float w)
+    {
+#if defined(__CUDA_ARCH__)
+        float4 val = tex3D<float4>(tex.tex, u, v, w);
+        return vec4f(val.x, val.y, val.z, val.w);
+#else
+        return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+#endif
+    }
+
+    static CUDA_CALLABLE vec4f zero() { return vec4f(0.0f, 0.0f, 0.0f, 0.0f); }
+};
+
+// 2D texture sampling with vec2 coordinates
+template <typename T>
+CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv)
+{
+    return texture_sample_helper<T>::sample_2d(tex, uv[0], uv[1]);
 }
 
-CUDA_CALLABLE inline vec2f tex2d_vec2(const texture2d_t& tex, float u, float v)
+// 2D texture sampling with separate u, v coordinates
+template <typename T>
+CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v)
 {
-#if defined(__CUDA_ARCH__)
-    float2 val = tex2D<float2>(tex.tex, u, v);
-    return vec2f(val.x, val.y);
-#else
-    return vec2f(0.0f, 0.0f);
-#endif
+    return texture_sample_helper<T>::sample_2d(tex, u, v);
 }
 
-CUDA_CALLABLE inline vec4f tex2d_vec4(const texture2d_t& tex, float u, float v)
+// 3D texture sampling with vec3 coordinates
+template <typename T>
+CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw)
 {
-#if defined(__CUDA_ARCH__)
-    float4 val = tex2D<float4>(tex.tex, u, v);
-    return vec4f(val.x, val.y, val.z, val.w);
-#else
-    return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
-#endif
+    return texture_sample_helper<T>::sample_3d(tex, uvw[0], uvw[1], uvw[2]);
 }
 
-// 3D texture sampling with normalized coordinates [0,1]
-CUDA_CALLABLE inline float tex3d_float(const texture3d_t& tex, float u, float v, float w)
+// 3D texture sampling with separate u, v, w coordinates
+template <typename T>
+CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w)
 {
-#if defined(__CUDA_ARCH__)
-    return tex3D<float>(tex.tex, u, v, w);
-#else
-    return 0.0f;
-#endif
-}
-
-CUDA_CALLABLE inline vec2f tex3d_vec2(const texture3d_t& tex, float u, float v, float w)
-{
-#if defined(__CUDA_ARCH__)
-    float2 val = tex3D<float2>(tex.tex, u, v, w);
-    return vec2f(val.x, val.y);
-#else
-    return vec2f(0.0f, 0.0f);
-#endif
-}
-
-CUDA_CALLABLE inline vec4f tex3d_vec4(const texture3d_t& tex, float u, float v, float w)
-{
-#if defined(__CUDA_ARCH__)
-    float4 val = tex3D<float4>(tex.tex, u, v, w);
-    return vec4f(val.x, val.y, val.z, val.w);
-#else
-    return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
-#endif
+    return texture_sample_helper<T>::sample_3d(tex, u, v, w);
 }
 
 // Adjoint stubs for texture sampling (non-differentiable for now)
-CUDA_CALLABLE inline void adj_tex2d_float(
-    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, float adj_ret
+template <typename T>
+CUDA_CALLABLE void adj_texture_sample(
+    const texture2d_t& tex,
+    const vec2f& uv,
+    texture2d_t& adj_tex,
+    vec2f& adj_uv,
+    const T& adj_ret
 )
 {
     // Texture sampling is not differentiable in this implementation
 }
 
-CUDA_CALLABLE inline void adj_tex2d_vec2(
-    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec2f& adj_ret
+template <typename T>
+CUDA_CALLABLE void adj_texture_sample(
+    const texture2d_t& tex,
+    float u,
+    float v,
+    texture2d_t& adj_tex,
+    float& adj_u,
+    float& adj_v,
+    const T& adj_ret
 )
 {
+    // Texture sampling is not differentiable in this implementation
 }
 
-CUDA_CALLABLE inline void adj_tex2d_vec4(
-    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const vec4f& adj_ret
+template <typename T>
+CUDA_CALLABLE void adj_texture_sample(
+    const texture3d_t& tex,
+    const vec3f& uvw,
+    texture3d_t& adj_tex,
+    vec3f& adj_uvw,
+    const T& adj_ret
 )
 {
+    // Texture sampling is not differentiable in this implementation
 }
 
-CUDA_CALLABLE inline void adj_tex3d_float(
+template <typename T>
+CUDA_CALLABLE void adj_texture_sample(
     const texture3d_t& tex,
     float u,
     float v,
@@ -182,37 +229,10 @@ CUDA_CALLABLE inline void adj_tex3d_float(
     float& adj_u,
     float& adj_v,
     float& adj_w,
-    float adj_ret
+    const T& adj_ret
 )
 {
-}
-
-CUDA_CALLABLE inline void adj_tex3d_vec2(
-    const texture3d_t& tex,
-    float u,
-    float v,
-    float w,
-    texture3d_t& adj_tex,
-    float& adj_u,
-    float& adj_v,
-    float& adj_w,
-    const vec2f& adj_ret
-)
-{
-}
-
-CUDA_CALLABLE inline void adj_tex3d_vec4(
-    const texture3d_t& tex,
-    float u,
-    float v,
-    float w,
-    texture3d_t& adj_tex,
-    float& adj_u,
-    float& adj_v,
-    float& adj_w,
-    const vec4f& adj_ret
-)
-{
+    // Texture sampling is not differentiable in this implementation
 }
 
 // Type aliases for code generation

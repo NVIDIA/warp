@@ -1807,7 +1807,7 @@ Textures can be created from NumPy arrays or Warp arrays::
     data3d = np.random.rand(64, 64, 64).astype(np.float32)
     tex3d = wp.Texture3D(data3d, filter_mode=wp.Texture3D.LINEAR, device="cuda:0")
 
-Textures can be sampled inside kernels using the ``tex2d_*`` and ``tex3d_*`` functions::
+Textures can be sampled inside kernels using the ``texture_sample()`` function::
 
     @wp.kernel
     def sample_texture(
@@ -1817,7 +1817,7 @@ Textures can be sampled inside kernels using the ``tex2d_*`` and ``tex3d_*`` fun
     ):
         tid = wp.tid()
         uv = uvs[tid]
-        output[tid] = wp.tex2d_float(tex, uv[0], uv[1])
+        output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
 Supported data types include ``uint8``, ``uint16``, and ``float32``. Integer textures (uint8, uint16)
 are automatically normalized to the [0, 1] range when sampled.

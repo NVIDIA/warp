@@ -5726,8 +5726,16 @@ class Texture2D:
     # Native C++ type name for code generation
     _wp_native_name_ = "texture2d_t"
 
+    from warp._src.codegen import Var  # noqa: PLC0415
+
+    #: Member attributes available during code-gen (e.g.: w = tex.width)
+    vars: ClassVar[dict[str, Var]] = {
+        "width": Var("width", int32),
+        "height": Var("height", int32),
+    }
+
     #: Enum value to specify nearest-neighbor filtering
-    NEAREST = constant(0)
+    CLOSEST = constant(0)
     #: Enum value to specify bilinear filtering
     LINEAR = constant(1)
 
@@ -5952,8 +5960,17 @@ class Texture3D:
     # Native C++ type name for code generation
     _wp_native_name_ = "texture3d_t"
 
+    from warp._src.codegen import Var  # noqa: PLC0415
+
+    #: Member attributes available during code-gen (e.g.: w = tex.width)
+    vars: ClassVar[dict[str, Var]] = {
+        "width": Var("width", int32),
+        "height": Var("height", int32),
+        "depth": Var("depth", int32),
+    }
+
     #: Enum value to specify nearest-neighbor filtering
-    NEAREST = constant(0)
+    CLOSEST = constant(0)
     #: Enum value to specify trilinear filtering
     LINEAR = constant(1)
 

@@ -44,7 +44,7 @@ def sample_texture2d_f_at_centers(
     u = (wp.float(x) + 0.5) / wp.float(width)
     v = (wp.float(y) + 0.5) / wp.float(height)
 
-    output[tid] = wp.tex2d_float(tex, u, v)
+    output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=float)
 
 
 @wp.kernel
@@ -62,7 +62,7 @@ def sample_texture2d_v2_at_centers(
     u = (wp.float(x) + 0.5) / wp.float(width)
     v = (wp.float(y) + 0.5) / wp.float(height)
 
-    output[tid] = wp.tex2d_vec2(tex, u, v)
+    output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec2f)
 
 
 @wp.kernel
@@ -80,7 +80,7 @@ def sample_texture2d_v4_at_centers(
     u = (wp.float(x) + 0.5) / wp.float(width)
     v = (wp.float(y) + 0.5) / wp.float(height)
 
-    output[tid] = wp.tex2d_vec4(tex, u, v)
+    output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec4f)
 
 
 @wp.kernel
@@ -89,9 +89,9 @@ def test_texture2d_resolution(
     expected_width: int,
     expected_height: int,
 ):
-    """Test resolution query functions for 2D texture."""
-    w = wp.texture_width(tex)
-    h = wp.texture_height(tex)
+    """Test resolution query using texture.width and texture.height."""
+    w = tex.width
+    h = tex.height
 
     wp.expect_eq(w, expected_width)
     wp.expect_eq(h, expected_height)
@@ -119,9 +119,9 @@ def sample_texture3d_f_at_centers(
     # Compute normalized coordinates at voxel centers
     u = (wp.float(x) + 0.5) / wp.float(width)
     v = (wp.float(y) + 0.5) / wp.float(height)
-    w = (wp.float(z) + 0.5) / wp.float(depth)
+    ww = (wp.float(z) + 0.5) / wp.float(depth)
 
-    output[tid] = wp.tex3d_float(tex, u, v, w)
+    output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=float)
 
 
 @wp.kernel
@@ -142,7 +142,7 @@ def sample_texture3d_v2_at_centers(
     v = (wp.float(y) + 0.5) / wp.float(height)
     ww = (wp.float(z) + 0.5) / wp.float(depth)
 
-    output[tid] = wp.tex3d_vec2(tex, u, v, ww)
+    output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=wp.vec2f)
 
 
 @wp.kernel
@@ -163,7 +163,7 @@ def sample_texture3d_v4_at_centers(
     v = (wp.float(y) + 0.5) / wp.float(height)
     ww = (wp.float(z) + 0.5) / wp.float(depth)
 
-    output[tid] = wp.tex3d_vec4(tex, u, v, ww)
+    output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=wp.vec4f)
 
 
 @wp.kernel
@@ -173,10 +173,10 @@ def test_texture3d_resolution(
     expected_height: int,
     expected_depth: int,
 ):
-    """Test resolution query functions for 3D texture."""
-    w = wp.texture_width(tex)
-    h = wp.texture_height(tex)
-    d = wp.texture_depth(tex)
+    """Test resolution query using texture.width, texture.height, texture.depth."""
+    w = tex.width
+    h = tex.height
+    d = tex.depth
 
     wp.expect_eq(w, expected_width)
     wp.expect_eq(h, expected_height)
@@ -268,7 +268,7 @@ def test_texture2d_1channel(test, device):
     # Create texture
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.NEAREST,
+        filter_mode=wp.Texture2D.CLOSEST,
         address_mode=wp.Texture2D.CLAMP,
         device=device,
     )
@@ -301,7 +301,7 @@ def test_texture2d_2channel(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.NEAREST,
+        filter_mode=wp.Texture2D.CLOSEST,
         address_mode=wp.Texture2D.CLAMP,
         device=device,
     )
@@ -334,7 +334,7 @@ def test_texture2d_4channel(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.NEAREST,
+        filter_mode=wp.Texture2D.CLOSEST,
         address_mode=wp.Texture2D.CLAMP,
         device=device,
     )
@@ -420,7 +420,7 @@ def test_texture3d_1channel(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.NEAREST,
+        filter_mode=wp.Texture3D.CLOSEST,
         address_mode=wp.Texture3D.CLAMP,
         device=device,
     )
@@ -453,7 +453,7 @@ def test_texture3d_2channel(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.NEAREST,
+        filter_mode=wp.Texture3D.CLOSEST,
         address_mode=wp.Texture3D.CLAMP,
         device=device,
     )
@@ -486,7 +486,7 @@ def test_texture3d_4channel(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.NEAREST,
+        filter_mode=wp.Texture3D.CLOSEST,
         address_mode=wp.Texture3D.CLAMP,
         device=device,
     )
@@ -585,7 +585,7 @@ def sample_texture2d_at_uv(
     """Sample a 2D texture at specified UV coordinates."""
     tid = wp.tid()
     uv = uvs[tid]
-    output[tid] = wp.tex2d_float(tex, uv[0], uv[1])
+    output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
 
 @wp.kernel
@@ -597,7 +597,7 @@ def sample_texture3d_at_uvw(
     """Sample a 3D texture at specified UVW coordinates."""
     tid = wp.tid()
     uvw = uvws[tid]
-    output[tid] = wp.tex3d_float(tex, uvw[0], uvw[1], uvw[2])
+    output[tid] = wp.texture_sample(tex, uvw, dtype=float)
 
 
 # ============================================================================
@@ -615,7 +615,7 @@ def test_texture2d_nearest_interpolation(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.NEAREST,
+        filter_mode=wp.Texture2D.CLOSEST,
         address_mode=wp.Texture2D.CLAMP,
         device=device,
     )
@@ -766,7 +766,7 @@ def test_texture3d_nearest_interpolation(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.NEAREST,
+        filter_mode=wp.Texture3D.CLOSEST,
         address_mode=wp.Texture3D.CLAMP,
         device=device,
     )
@@ -884,7 +884,7 @@ def test_texture2d_uint8(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.NEAREST,
+        filter_mode=wp.Texture2D.CLOSEST,
         address_mode=wp.Texture2D.CLAMP,
         device=device,
     )
@@ -932,7 +932,7 @@ def test_texture2d_uint16(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.NEAREST,
+        filter_mode=wp.Texture2D.CLOSEST,
         address_mode=wp.Texture2D.CLAMP,
         device=device,
     )
@@ -980,7 +980,7 @@ def test_texture3d_uint8(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.NEAREST,
+        filter_mode=wp.Texture3D.CLOSEST,
         address_mode=wp.Texture3D.CLAMP,
         device=device,
     )

@@ -667,7 +667,7 @@ def sample_sparse_sdf(
         u = (coarse_f[0] + 0.5) * sdf.inv_coarse_tex_size_x
         v = (coarse_f[1] + 0.5) * sdf.inv_coarse_tex_size_y
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
-        sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
+        sdf_val = wp.texture_sample(coarse_texture, wp.vec3f(u, v, w), dtype=float)
     else:
         # Sample from subgrid texture (convert to float once)
         fx_base = float(x_base)
@@ -685,7 +685,7 @@ def sample_sparse_sdf(
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
         w = (tex_coords[2] + 0.5) * sdf.inv_subgrid_tex_size
 
-        raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
+        raw_val = wp.texture_sample(subgrid_texture, wp.vec3f(u, v, w), dtype=float)
 
         # Apply quantization scale (no-op for float32 where range=1.0, min=0.0)
         sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
@@ -734,7 +734,7 @@ def sample_sparse_sdf_at(
         u = (coarse_f[0] + 0.5) * sdf.inv_coarse_tex_size_x
         v = (coarse_f[1] + 0.5) * sdf.inv_coarse_tex_size_y
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
-        sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
+        sdf_val = wp.texture_sample(coarse_texture, wp.vec3f(u, v, w), dtype=float)
     else:
         # Sample from subgrid texture (use float x_base to avoid int->float)
         fx_base = float(x_base)
@@ -751,7 +751,7 @@ def sample_sparse_sdf_at(
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
         w = (tex_coords[2] + 0.5) * sdf.inv_subgrid_tex_size
 
-        raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
+        raw_val = wp.texture_sample(subgrid_texture, wp.vec3f(u, v, w), dtype=float)
         sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
 
     return sdf_val + diff_mag
@@ -788,7 +788,7 @@ def sample_texture_at_grid_coords(
         u = (coarse_f[0] + 0.5) * sdf.inv_coarse_tex_size_x
         v = (coarse_f[1] + 0.5) * sdf.inv_coarse_tex_size_y
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
-        sdf_val = wp.tex3d_float(coarse_texture, u, v, w)
+        sdf_val = wp.texture_sample(coarse_texture, wp.vec3f(u, v, w), dtype=float)
     else:
         # Sample from subgrid texture (convert to float once)
         fx_base = float(x_base)
@@ -805,7 +805,7 @@ def sample_texture_at_grid_coords(
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
         w = (tex_coords[2] + 0.5) * sdf.inv_subgrid_tex_size
 
-        raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
+        raw_val = wp.texture_sample(subgrid_texture, wp.vec3f(u, v, w), dtype=float)
         sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
 
     return sdf_val
@@ -846,7 +846,7 @@ def sample_with_precomputed_cell(
         u = (coarse_f[0] + 0.5) * sdf.inv_coarse_tex_size_x
         v = (coarse_f[1] + 0.5) * sdf.inv_coarse_tex_size_y
         w = (coarse_f[2] + 0.5) * sdf.inv_coarse_tex_size_z
-        return wp.tex3d_float(coarse_texture, u, v, w)
+        return wp.texture_sample(coarse_texture, wp.vec3f(u, v, w), dtype=float)
     else:
         # Sample from subgrid texture (convert to float once)
         fx_base = float(x_base)
@@ -863,7 +863,7 @@ def sample_with_precomputed_cell(
         v = (tex_coords[1] + 0.5) * sdf.inv_subgrid_tex_size
         w = (tex_coords[2] + 0.5) * sdf.inv_subgrid_tex_size
 
-        raw_val = wp.tex3d_float(subgrid_texture, u, v, w)
+        raw_val = wp.texture_sample(subgrid_texture, wp.vec3f(u, v, w), dtype=float)
         return apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
 
 
