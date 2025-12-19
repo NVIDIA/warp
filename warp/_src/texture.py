@@ -19,9 +19,12 @@ from __future__ import annotations
 
 import ctypes
 import enum
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from warp._src.codegen import Var
 
 from warp._src.types import array, float32, int32, is_array, uint8, uint16
 
@@ -120,12 +123,12 @@ class Texture2D:
     # Native C++ type name for code generation
     _wp_native_name_ = "texture2d_t"
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
     #: Member attributes available during code-gen (e.g.: w = tex.width)
     vars: ClassVar[dict[str, Var]] = {
-        "width": Var("width", int32),
-        "height": Var("height", int32),
+        "width": _Var("width", int32),
+        "height": _Var("height", int32),
     }
 
     def __new__(cls, *args, **kwargs):
@@ -372,13 +375,13 @@ class Texture3D:
     # Native C++ type name for code generation
     _wp_native_name_ = "texture3d_t"
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
     #: Member attributes available during code-gen (e.g.: w = tex.width)
     vars: ClassVar[dict[str, Var]] = {
-        "width": Var("width", int32),
-        "height": Var("height", int32),
-        "depth": Var("depth", int32),
+        "width": _Var("width", int32),
+        "height": _Var("height", int32),
+        "depth": _Var("depth", int32),
     }
 
     def __new__(cls, *args, **kwargs):
