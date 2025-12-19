@@ -7340,9 +7340,7 @@ def _is_texture_type_supported(dtype):
 
 def _check_texture_type_is_supported(dtype):
     if not _is_texture_type_supported(dtype):
-        raise RuntimeError(
-            f"unsupported texture type `{type_repr(dtype)}`. Supported types: float, vec2f, vec4f"
-        )
+        raise RuntimeError(f"unsupported texture type `{type_repr(dtype)}`. Supported types: float, vec2f, vec4f")
 
 
 def texture_sample_2d_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):

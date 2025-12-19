@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for 2D and 3D texture functionality."""
+"""Unit tests for 2D and 3D texture functionality on both CPU and CUDA devices."""
 
 import unittest
 
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_devices
+from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_devices, get_test_devices
 
 # ============================================================================
 # 2D Texture Kernels
@@ -1049,6 +1049,166 @@ def test_texture2d_uint8_linear_interpolation(test, device):
     np.testing.assert_allclose(result, expected, rtol=0.05, atol=0.05)
 
 
+def test_texture3d_uint16(test, device):
+    """Test 3D texture with uint16 data."""
+    width, height, depth = 2, 2, 2
+
+    # Create uint16 data with values scaling from 0 to 65535
+    data = np.array(
+        [
+            [[0, 9362], [18725, 28087]],
+            [[37449, 46811], [56174, 65535]],
+        ],
+        dtype=np.uint16,
+    )
+
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.CLOSEST,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
+
+    test.assertEqual(tex.dtype, np.uint16)
+
+    # Sample at voxel centers
+    uvws_np = np.array(
+        [
+            [0.25, 0.25, 0.25],  # voxel (0,0,0) -> 0/65535 = 0.0
+            [0.75, 0.75, 0.75],  # voxel (1,1,1) -> 65535/65535 = 1.0
+        ],
+        dtype=np.float32,
+    )
+
+    uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
+    output = wp.zeros(2, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_at_uvw,
+        dim=2,
+        inputs=[tex, uvws, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = np.array([0.0, 1.0])
+    np.testing.assert_allclose(result, expected, rtol=1e-2, atol=1e-2)
+
+
+def test_texture3d_uint8_linear_interpolation(test, device):
+    """Test that LINEAR filtering works correctly with uint8 3D textures."""
+    width, height, depth = 2, 2, 2
+
+    # Create uint8 data: corners 0 and 255, others in between
+    data = np.array(
+        [
+            [[0, 36], [73, 109]],
+            [[146, 182], [219, 255]],
+        ],
+        dtype=np.uint8,
+    )
+
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.LINEAR,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
+
+    # Sample at center - should interpolate all 8 voxels
+    uvws_np = np.array([[0.5, 0.5, 0.5]], dtype=np.float32)
+    uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_at_uvw,
+        dim=1,
+        inputs=[tex, uvws, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # Expected is average of all normalized values
+    expected = np.mean(data.astype(np.float32).flatten() / 255.0)
+    np.testing.assert_allclose(result, expected, rtol=0.05, atol=0.05)
+
+
+def test_texture2d_uint16_linear_interpolation(test, device):
+    """Test that LINEAR filtering works correctly with uint16 textures."""
+    width, height = 2, 2
+
+    # Create uint16 data
+    data = np.array(
+        [
+            [0, 32768],
+            [32768, 65535],
+        ],
+        dtype=np.uint16,
+    )
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.Texture2D.LINEAR,
+        address_mode=wp.Texture2D.CLAMP,
+        device=device,
+    )
+
+    # Sample at center - should interpolate
+    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_at_uv,
+        dim=1,
+        inputs=[tex, uvs, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # Expected is average of all normalized values
+    expected = np.mean(data.astype(np.float32).flatten() / 65535.0)
+    np.testing.assert_allclose(result, expected, rtol=0.05, atol=0.05)
+
+
+def test_texture3d_uint16_linear_interpolation(test, device):
+    """Test that LINEAR filtering works correctly with uint16 3D textures."""
+    width, height, depth = 2, 2, 2
+
+    # Create uint16 data
+    data = np.array(
+        [
+            [[0, 9362], [18725, 28087]],
+            [[37449, 46811], [56174, 65535]],
+        ],
+        dtype=np.uint16,
+    )
+
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.Texture3D.LINEAR,
+        address_mode=wp.Texture3D.CLAMP,
+        device=device,
+    )
+
+    # Sample at center - should interpolate all 8 voxels
+    uvws_np = np.array([[0.5, 0.5, 0.5]], dtype=np.float32)
+    uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_at_uvw,
+        dim=1,
+        inputs=[tex, uvws, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # Expected is average of all normalized values
+    expected = np.mean(data.astype(np.float32).flatten() / 65535.0)
+    np.testing.assert_allclose(result, expected, rtol=0.05, atol=0.05)
+
+
 # ============================================================================
 # Test Class
 # ============================================================================
@@ -1058,43 +1218,64 @@ class TestTexture(unittest.TestCase):
     pass
 
 
-# Register tests - textures only work on CUDA devices
+# Register tests - textures work on both CPU and CUDA devices
 cuda_devices = get_selected_cuda_test_devices()
+all_devices = get_test_devices()
 
-add_function_test(TestTexture, "test_texture2d_1channel", test_texture2d_1channel, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_2channel", test_texture2d_2channel, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_4channel", test_texture2d_4channel, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_linear_filter", test_texture2d_linear_filter, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_resolution_query", test_texture2d_resolution_query, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_1channel", test_texture3d_1channel, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_2channel", test_texture3d_2channel, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_4channel", test_texture3d_4channel, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_linear_filter", test_texture3d_linear_filter, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_resolution_query", test_texture3d_resolution_query, devices=cuda_devices)
+# Core texture tests - run on all devices (CPU + CUDA)
+add_function_test(TestTexture, "test_texture2d_1channel", test_texture2d_1channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture2d_2channel", test_texture2d_2channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture2d_4channel", test_texture2d_4channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture2d_linear_filter", test_texture2d_linear_filter, devices=all_devices)
+add_function_test(TestTexture, "test_texture2d_resolution_query", test_texture2d_resolution_query, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_1channel", test_texture3d_1channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_2channel", test_texture3d_2channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_4channel", test_texture3d_4channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_linear_filter", test_texture3d_linear_filter, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_resolution_query", test_texture3d_resolution_query, devices=all_devices)
 
-# Interpolation tests
+# Interpolation tests - run on all devices
 add_function_test(
-    TestTexture, "test_texture2d_nearest_interpolation", test_texture2d_nearest_interpolation, devices=cuda_devices
+    TestTexture, "test_texture2d_nearest_interpolation", test_texture2d_nearest_interpolation, devices=all_devices
 )
 add_function_test(
-    TestTexture, "test_texture2d_linear_interpolation", test_texture2d_linear_interpolation, devices=cuda_devices
+    TestTexture, "test_texture2d_linear_interpolation", test_texture2d_linear_interpolation, devices=all_devices
 )
 add_function_test(
-    TestTexture, "test_texture3d_nearest_interpolation", test_texture3d_nearest_interpolation, devices=cuda_devices
+    TestTexture, "test_texture3d_nearest_interpolation", test_texture3d_nearest_interpolation, devices=all_devices
 )
 add_function_test(
-    TestTexture, "test_texture3d_linear_interpolation", test_texture3d_linear_interpolation, devices=cuda_devices
+    TestTexture, "test_texture3d_linear_interpolation", test_texture3d_linear_interpolation, devices=all_devices
 )
 
-# Compressed texture tests (uint8, uint16)
-add_function_test(TestTexture, "test_texture2d_uint8", test_texture2d_uint8, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture2d_uint16", test_texture2d_uint16, devices=cuda_devices)
-add_function_test(TestTexture, "test_texture3d_uint8", test_texture3d_uint8, devices=cuda_devices)
+# Compressed texture tests (uint8, uint16) - run on all devices
+add_function_test(TestTexture, "test_texture2d_uint8", test_texture2d_uint8, devices=all_devices)
+add_function_test(TestTexture, "test_texture2d_uint16", test_texture2d_uint16, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_uint8", test_texture3d_uint8, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_uint16", test_texture3d_uint16, devices=all_devices)
 add_function_test(
     TestTexture,
     "test_texture2d_uint8_linear_interpolation",
     test_texture2d_uint8_linear_interpolation,
-    devices=cuda_devices,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_uint16_linear_interpolation",
+    test_texture2d_uint16_linear_interpolation,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_uint8_linear_interpolation",
+    test_texture3d_uint8_linear_interpolation,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_uint16_linear_interpolation",
+    test_texture3d_uint16_linear_interpolation,
+    devices=all_devices,
 )
 
 # These tests don't need a device

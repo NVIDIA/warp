@@ -5703,10 +5703,11 @@ class texture3d_t(ctypes.Structure):
 
 
 class Texture2D:
-    """Class representing a 2D CUDA texture.
+    """Class representing a 2D texture.
 
     Textures provide hardware-accelerated filtering and addressing for
-    regularly-gridded data. They support bilinear interpolation and
+    regularly-gridded data on CUDA devices. On CPU, software-based
+    filtering and addressing is used. Supports bilinear interpolation and
     various addressing modes (wrap, clamp, mirror, border).
 
     Supports uint8, uint16, and float32 data types. Integer textures are
@@ -5715,9 +5716,11 @@ class Texture2D:
     Example:
         >>> import warp as wp
         >>> import numpy as np
-        >>> # Create a 256x256 RGBA float texture
+        >>> # Create a 256x256 RGBA float texture on GPU
         >>> data = np.random.rand(256, 256, 4).astype(np.float32)
         >>> tex = wp.Texture2D(data, device="cuda:0")
+        >>> # Create a texture on CPU
+        >>> tex_cpu = wp.Texture2D(data, device="cpu")
         >>> # Create a compressed 8-bit texture
         >>> data8 = (np.random.rand(256, 256) * 255).astype(np.uint8)
         >>> tex8 = wp.Texture2D(data8, device="cuda:0")
@@ -5810,7 +5813,7 @@ class Texture2D:
             dtype: Data type (uint8, uint16, or float32). Default is float32.
             filter_mode: Filtering mode - CLOSEST (0) or LINEAR (1). Default is LINEAR.
             address_mode: Address mode - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3). Default is CLAMP.
-            device: CUDA device to create the texture on.
+            device: Device to create the texture on (CPU or CUDA).
         """
         self.runtime = warp._src.context.runtime
 
@@ -5828,11 +5831,9 @@ class Texture2D:
             self._array_handle = 0
             return
 
-        # Get device
+        # Get device and extract data
         if isinstance(data, np.ndarray):
             self.device = warp.get_device(device)
-            if not self.device.is_cuda:
-                raise RuntimeError("Texture2D requires a CUDA device")
 
             # Determine dimensions from numpy array shape
             if data.ndim == 2:
@@ -5853,9 +5854,7 @@ class Texture2D:
 
             data_flat = data.flatten()
         elif is_array(data):
-            self.device = data.device
-            if not self.device.is_cuda:
-                raise RuntimeError("Texture2D requires a CUDA device")
+            self.device = data.device if device is None else warp.get_device(device)
 
             # Copy to numpy for now (could optimize later)
             np_data = data.numpy()
@@ -5893,18 +5892,32 @@ class Texture2D:
 
         data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
 
-        success = self.runtime.core.wp_texture2d_create(
-            self.device.context,
-            width,
-            height,
-            num_channels,
-            dtype_code,
-            filter_mode,
-            address_mode,
-            data_ptr,
-            ctypes.byref(tex_handle),
-            ctypes.byref(array_handle),
-        )
+        if self.device.is_cuda:
+            # Create CUDA texture
+            success = self.runtime.core.wp_texture2d_create_device(
+                self.device.context,
+                width,
+                height,
+                num_channels,
+                dtype_code,
+                filter_mode,
+                address_mode,
+                data_ptr,
+                ctypes.byref(tex_handle),
+                ctypes.byref(array_handle),
+            )
+        else:
+            # Create CPU texture
+            success = self.runtime.core.wp_texture2d_create_host(
+                width,
+                height,
+                num_channels,
+                dtype_code,
+                filter_mode,
+                address_mode,
+                data_ptr,
+                ctypes.byref(tex_handle),
+            )
 
         if not success:
             raise RuntimeError("Failed to create Texture2D")
@@ -5917,8 +5930,13 @@ class Texture2D:
             return
 
         try:
-            with self.device.context_guard:
-                self.runtime.core.wp_texture2d_destroy(self.device.context, self._tex_handle, self._array_handle)
+            if self.device.is_cuda:
+                with self.device.context_guard:
+                    self.runtime.core.wp_texture2d_destroy_device(
+                        self.device.context, self._tex_handle, self._array_handle
+                    )
+            else:
+                self.runtime.core.wp_texture2d_destroy_host(self._tex_handle)
         except (TypeError, AttributeError):
             # Suppress errors during shutdown
             pass
@@ -5949,10 +5967,11 @@ class Texture2D:
 
 
 class Texture3D:
-    """Class representing a 3D CUDA texture.
+    """Class representing a 3D texture.
 
     Textures provide hardware-accelerated filtering and addressing for
-    regularly-gridded volumetric data. They support trilinear interpolation
+    regularly-gridded volumetric data on CUDA devices. On CPU, software-based
+    filtering and addressing is used. Supports trilinear interpolation
     and various addressing modes (wrap, clamp, mirror, border).
 
     Supports uint8, uint16, and float32 data types. Integer textures are
@@ -5961,9 +5980,11 @@ class Texture3D:
     Example:
         >>> import warp as wp
         >>> import numpy as np
-        >>> # Create a 64x64x64 single-channel 3D texture
+        >>> # Create a 64x64x64 single-channel 3D texture on GPU
         >>> data = np.random.rand(64, 64, 64).astype(np.float32)
         >>> tex = wp.Texture3D(data, device="cuda:0")
+        >>> # Create a texture on CPU
+        >>> tex_cpu = wp.Texture3D(data, device="cpu")
         >>> # Create a compressed 8-bit 3D texture
         >>> data8 = (np.random.rand(64, 64, 64) * 255).astype(np.uint8)
         >>> tex8 = wp.Texture3D(data8, device="cuda:0")
@@ -6059,7 +6080,7 @@ class Texture3D:
             dtype: Data type (uint8, uint16, or float32). Default is float32.
             filter_mode: Filtering mode - CLOSEST (0) or LINEAR (1). Default is LINEAR.
             address_mode: Address mode - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3). Default is CLAMP.
-            device: CUDA device to create the texture on.
+            device: Device to create the texture on (CPU or CUDA).
         """
         self.runtime = warp._src.context.runtime
 
@@ -6078,11 +6099,9 @@ class Texture3D:
             self._array_handle = 0
             return
 
-        # Get device
+        # Get device and extract data
         if isinstance(data, np.ndarray):
             self.device = warp.get_device(device)
-            if not self.device.is_cuda:
-                raise RuntimeError("Texture3D requires a CUDA device")
 
             # Determine dimensions from numpy array shape
             if data.ndim == 3:
@@ -6103,9 +6122,7 @@ class Texture3D:
 
             data_flat = data.flatten()
         elif is_array(data):
-            self.device = data.device
-            if not self.device.is_cuda:
-                raise RuntimeError("Texture3D requires a CUDA device")
+            self.device = data.device if device is None else warp.get_device(device)
 
             # Copy to numpy for now (could optimize later)
             np_data = data.numpy()
@@ -6144,19 +6161,34 @@ class Texture3D:
 
         data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
 
-        success = self.runtime.core.wp_texture3d_create(
-            self.device.context,
-            width,
-            height,
-            depth,
-            num_channels,
-            dtype_code,
-            filter_mode,
-            address_mode,
-            data_ptr,
-            ctypes.byref(tex_handle),
-            ctypes.byref(array_handle),
-        )
+        if self.device.is_cuda:
+            # Create CUDA texture
+            success = self.runtime.core.wp_texture3d_create_device(
+                self.device.context,
+                width,
+                height,
+                depth,
+                num_channels,
+                dtype_code,
+                filter_mode,
+                address_mode,
+                data_ptr,
+                ctypes.byref(tex_handle),
+                ctypes.byref(array_handle),
+            )
+        else:
+            # Create CPU texture
+            success = self.runtime.core.wp_texture3d_create_host(
+                width,
+                height,
+                depth,
+                num_channels,
+                dtype_code,
+                filter_mode,
+                address_mode,
+                data_ptr,
+                ctypes.byref(tex_handle),
+            )
 
         if not success:
             raise RuntimeError("Failed to create Texture3D")
@@ -6169,8 +6201,13 @@ class Texture3D:
             return
 
         try:
-            with self.device.context_guard:
-                self.runtime.core.wp_texture3d_destroy(self.device.context, self._tex_handle, self._array_handle)
+            if self.device.is_cuda:
+                with self.device.context_guard:
+                    self.runtime.core.wp_texture3d_destroy_device(
+                        self.device.context, self._tex_handle, self._array_handle
+                    )
+            else:
+                self.runtime.core.wp_texture3d_destroy_host(self._tex_handle)
         except (TypeError, AttributeError):
             # Suppress errors during shutdown
             pass

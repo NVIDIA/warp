@@ -4263,8 +4263,8 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
-            # Texture functions
-            self.core.wp_texture2d_create.argtypes = [
+            # Texture functions (device - CUDA)
+            self.core.wp_texture2d_create_device.argtypes = [
                 ctypes.c_void_p,  # context
                 ctypes.c_int,  # width
                 ctypes.c_int,  # height
@@ -4276,16 +4276,16 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
                 ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
             ]
-            self.core.wp_texture2d_create.restype = ctypes.c_bool
+            self.core.wp_texture2d_create_device.restype = ctypes.c_bool
 
-            self.core.wp_texture2d_destroy.argtypes = [
+            self.core.wp_texture2d_destroy_device.argtypes = [
                 ctypes.c_void_p,  # context
                 ctypes.c_uint64,  # tex_handle
                 ctypes.c_uint64,  # array_handle
             ]
-            self.core.wp_texture2d_destroy.restype = None
+            self.core.wp_texture2d_destroy_device.restype = None
 
-            self.core.wp_texture3d_create.argtypes = [
+            self.core.wp_texture3d_create_device.argtypes = [
                 ctypes.c_void_p,  # context
                 ctypes.c_int,  # width
                 ctypes.c_int,  # height
@@ -4298,14 +4298,50 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
                 ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
             ]
-            self.core.wp_texture3d_create.restype = ctypes.c_bool
+            self.core.wp_texture3d_create_device.restype = ctypes.c_bool
 
-            self.core.wp_texture3d_destroy.argtypes = [
+            self.core.wp_texture3d_destroy_device.argtypes = [
                 ctypes.c_void_p,  # context
                 ctypes.c_uint64,  # tex_handle
                 ctypes.c_uint64,  # array_handle
             ]
-            self.core.wp_texture3d_destroy.restype = None
+            self.core.wp_texture3d_destroy_device.restype = None
+
+            # Texture functions (host - CPU)
+            self.core.wp_texture2d_create_host.argtypes = [
+                ctypes.c_int,  # width
+                ctypes.c_int,  # height
+                ctypes.c_int,  # num_channels
+                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # address_mode
+                ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+            ]
+            self.core.wp_texture2d_create_host.restype = ctypes.c_bool
+
+            self.core.wp_texture2d_destroy_host.argtypes = [
+                ctypes.c_uint64,  # tex_handle
+            ]
+            self.core.wp_texture2d_destroy_host.restype = None
+
+            self.core.wp_texture3d_create_host.argtypes = [
+                ctypes.c_int,  # width
+                ctypes.c_int,  # height
+                ctypes.c_int,  # depth
+                ctypes.c_int,  # num_channels
+                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # address_mode
+                ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+            ]
+            self.core.wp_texture3d_create_host.restype = ctypes.c_bool
+
+            self.core.wp_texture3d_destroy_host.argtypes = [
+                ctypes.c_uint64,  # tex_handle
+            ]
+            self.core.wp_texture3d_destroy_host.restype = None
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
