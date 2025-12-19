@@ -4341,81 +4341,57 @@ def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     ...
 
 @over
-def texture_width(tex: Texture2D) -> int32:
-    """Return the width of a 2D texture in pixels."""
-    ...
+def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any) -> Any:
+    """Sample the 2D texture at the given normalized UV coordinates.
 
-@over
-def texture_width(tex: Texture3D) -> int32:
-    """Return the width of a 3D texture in pixels."""
-    ...
+    :param tex: The 2D texture to sample.
+    :param uv: Normalized UV coordinates as a vec2f in the range [0, 1].
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
 
-@over
-def texture_height(tex: Texture2D) -> int32:
-    """Return the height of a 2D texture in pixels."""
-    ...
-
-@over
-def texture_height(tex: Texture3D) -> int32:
-    """Return the height of a 3D texture in pixels."""
-    ...
-
-@over
-def texture_depth(tex: Texture3D) -> int32:
-    """Return the depth of a 3D texture in pixels."""
-    ...
-
-@over
-def tex2d_float(tex: Texture2D, u: float32, v: float32) -> float:
-    """Sample a 2D texture at the given normalized UV coordinates.
-
-    Returns a single float value. Coordinates are in the range [0, 1].
-    The texture must have 1 channel.
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
     """
     ...
 
 @over
-def tex2d_vec2(tex: Texture2D, u: float32, v: float32) -> vec2f:
-    """Sample a 2D texture at the given normalized UV coordinates.
+def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any) -> Any:
+    """Sample the 2D texture at the given normalized UV coordinates.
 
-    Returns a vec2f value. Coordinates are in the range [0, 1].
-    The texture must have 2 channels.
+    :param tex: The 2D texture to sample.
+    :param u: Normalized U coordinate in the range [0, 1].
+    :param v: Normalized V coordinate in the range [0, 1].
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
     """
     ...
 
 @over
-def tex2d_vec4(tex: Texture2D, u: float32, v: float32) -> vec4f:
-    """Sample a 2D texture at the given normalized UV coordinates.
+def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any) -> Any:
+    """Sample the 3D texture at the given normalized UVW coordinates.
 
-    Returns a vec4f value. Coordinates are in the range [0, 1].
-    The texture must have 4 channels.
+    :param tex: The 3D texture to sample.
+    :param uvw: Normalized UVW coordinates as a vec3f in the range [0, 1].
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
     """
     ...
 
 @over
-def tex3d_float(tex: Texture3D, u: float32, v: float32, w: float32) -> float:
-    """Sample a 3D texture at the given normalized UVW coordinates.
+def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any) -> Any:
+    """Sample the 3D texture at the given normalized UVW coordinates.
 
-    Returns a single float value. Coordinates are in the range [0, 1].
-    The texture must have 1 channel.
-    """
-    ...
+    :param tex: The 3D texture to sample.
+    :param u: Normalized U coordinate in the range [0, 1].
+    :param v: Normalized V coordinate in the range [0, 1].
+    :param w: Normalized W coordinate in the range [0, 1].
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
 
-@over
-def tex3d_vec2(tex: Texture3D, u: float32, v: float32, w: float32) -> vec2f:
-    """Sample a 3D texture at the given normalized UVW coordinates.
-
-    Returns a vec2f value. Coordinates are in the range [0, 1].
-    The texture must have 2 channels.
-    """
-    ...
-
-@over
-def tex3d_vec4(tex: Texture3D, u: float32, v: float32, w: float32) -> vec4f:
-    """Sample a 3D texture at the given normalized UVW coordinates.
-
-    Returns a vec4f value. Coordinates are in the range [0, 1].
-    The texture must have 4 channels.
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
     """
     ...
 
