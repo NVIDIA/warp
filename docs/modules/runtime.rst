@@ -1801,11 +1801,11 @@ Textures can be created from NumPy arrays or Warp arrays::
 
     # Create a 256x256 RGBA 2D texture
     data = np.random.rand(256, 256, 4).astype(np.float32)
-    tex2d = wp.Texture2D(data, filter_mode=wp.Texture2D.LINEAR, device="cuda:0")
+    tex2d = wp.Texture2D(data, filter_mode=wp.TextureFilterMode.LINEAR, device="cuda:0")
 
     # Create a 64x64x64 single-channel 3D texture
     data3d = np.random.rand(64, 64, 64).astype(np.float32)
-    tex3d = wp.Texture3D(data3d, filter_mode=wp.Texture3D.LINEAR, device="cuda:0")
+    tex3d = wp.Texture3D(data3d, filter_mode=wp.TextureFilterMode.LINEAR, device="cuda:0")
 
 Textures can be sampled inside kernels using the ``texture_sample()`` function::
 

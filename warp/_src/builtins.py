@@ -7377,7 +7377,7 @@ add_builtin(
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
-    Filtering mode is :attr:`warp.Texture2D.CLOSEST` or :attr:`warp.Texture2D.LINEAR`.""",
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
     is_differentiable=False,
 )
 
@@ -7398,7 +7398,7 @@ add_builtin(
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
-    Filtering mode is :attr:`warp.Texture2D.CLOSEST` or :attr:`warp.Texture2D.LINEAR`.""",
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
     is_differentiable=False,
 )
 
@@ -7437,7 +7437,7 @@ add_builtin(
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
-    Filtering mode is :attr:`warp.Texture3D.CLOSEST` or :attr:`warp.Texture3D.LINEAR`.""",
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
     is_differentiable=False,
 )
 
@@ -7459,7 +7459,7 @@ add_builtin(
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
-    Filtering mode is :attr:`warp.Texture3D.CLOSEST` or :attr:`warp.Texture3D.LINEAR`.""",
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
     is_differentiable=False,
 )
 

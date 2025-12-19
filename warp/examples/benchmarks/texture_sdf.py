@@ -1430,15 +1430,15 @@ def create_sparse_sdf_textures(
     """
     coarse_tex = wp.Texture3D(
         sparse_data["coarse_sdf"],
-        filter_mode=wp.Texture3D.LINEAR,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
     subgrid_tex = wp.Texture3D(
         sparse_data["subgrid_data"],
-        filter_mode=wp.Texture3D.LINEAR,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 

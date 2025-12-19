@@ -18,14 +18,37 @@
 from __future__ import annotations
 
 import ctypes
+import enum
 from typing import ClassVar
 
 import numpy as np
 
-from warp._src.types import array, constant, float32, int32, is_array, uint8, uint16
+from warp._src.types import array, float32, int32, is_array, uint8, uint16
 
 # Note: warp._src.context.runtime is accessed lazily via self.runtime = warp._src.context.runtime
 # in __init__ methods to avoid circular imports
+
+
+class TextureFilterMode(enum.IntEnum):
+    """Filter modes for texture sampling."""
+
+    #: Nearest-neighbor (point) filtering
+    CLOSEST = 0
+    #: Bilinear/trilinear filtering
+    LINEAR = 1
+
+
+class TextureAddressMode(enum.IntEnum):
+    """Address modes for texture coordinates outside [0, 1]."""
+
+    #: Wrap coordinates (tile the texture)
+    WRAP = 0
+    #: Clamp coordinates to [0, 1]
+    CLAMP = 1
+    #: Mirror coordinates at boundaries
+    MIRROR = 2
+    #: Return 0 for coordinates outside [0, 1]
+    BORDER = 3
 
 
 class texture2d_t(ctypes.Structure):
@@ -104,20 +127,6 @@ class Texture2D:
         "width": Var("width", int32),
         "height": Var("height", int32),
     }
-
-    #: Enum value to specify nearest-neighbor filtering
-    CLOSEST = constant(0)
-    #: Enum value to specify bilinear filtering
-    LINEAR = constant(1)
-
-    #: Enum value for wrap address mode
-    WRAP = constant(0)
-    #: Enum value for clamp address mode
-    CLAMP = constant(1)
-    #: Enum value for mirror address mode
-    MIRROR = constant(2)
-    #: Enum value for border address mode
-    BORDER = constant(3)
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -371,20 +380,6 @@ class Texture3D:
         "height": Var("height", int32),
         "depth": Var("depth", int32),
     }
-
-    #: Enum value to specify nearest-neighbor filtering
-    CLOSEST = constant(0)
-    #: Enum value to specify trilinear filtering
-    LINEAR = constant(1)
-
-    #: Enum value for wrap address mode
-    WRAP = constant(0)
-    #: Enum value for clamp address mode
-    CLAMP = constant(1)
-    #: Enum value for mirror address mode
-    MIRROR = constant(2)
-    #: Enum value for border address mode
-    BORDER = constant(3)
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)

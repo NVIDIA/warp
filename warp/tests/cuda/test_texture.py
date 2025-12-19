@@ -268,8 +268,8 @@ def test_texture2d_1channel(test, device):
     # Create texture
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.CLOSEST,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -301,8 +301,8 @@ def test_texture2d_2channel(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.CLOSEST,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -334,8 +334,8 @@ def test_texture2d_4channel(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.CLOSEST,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -370,8 +370,8 @@ def test_texture2d_linear_filter(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.LINEAR,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -420,8 +420,8 @@ def test_texture3d_1channel(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.CLOSEST,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -453,8 +453,8 @@ def test_texture3d_2channel(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.CLOSEST,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -486,8 +486,8 @@ def test_texture3d_4channel(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.CLOSEST,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -519,8 +519,8 @@ def test_texture3d_linear_filter(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.LINEAR,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -615,8 +615,8 @@ def test_texture2d_nearest_interpolation(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.CLOSEST,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -678,8 +678,8 @@ def test_texture2d_linear_interpolation(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.LINEAR,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -766,8 +766,8 @@ def test_texture3d_nearest_interpolation(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.CLOSEST,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -809,8 +809,8 @@ def test_texture3d_linear_interpolation(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.LINEAR,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -884,8 +884,8 @@ def test_texture2d_uint8(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.CLOSEST,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -932,8 +932,8 @@ def test_texture2d_uint16(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.CLOSEST,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -980,8 +980,8 @@ def test_texture3d_uint8(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.CLOSEST,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -1027,8 +1027,8 @@ def test_texture2d_uint8_linear_interpolation(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.LINEAR,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -1064,8 +1064,8 @@ def test_texture3d_uint16(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.CLOSEST,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -1110,8 +1110,8 @@ def test_texture3d_uint8_linear_interpolation(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.LINEAR,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -1148,8 +1148,8 @@ def test_texture2d_uint16_linear_interpolation(test, device):
 
     tex = wp.Texture2D(
         data,
-        filter_mode=wp.Texture2D.LINEAR,
-        address_mode=wp.Texture2D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
@@ -1186,8 +1186,8 @@ def test_texture3d_uint16_linear_interpolation(test, device):
 
     tex = wp.Texture3D(
         data,
-        filter_mode=wp.Texture3D.LINEAR,
-        address_mode=wp.Texture3D.CLAMP,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
         device=device,
     )
 
