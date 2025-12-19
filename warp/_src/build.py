@@ -461,7 +461,7 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
 def build_lto_solver(
     M,
     N,
-    NRHS,
+    K,
     solver,
     solver_enum,
     side_enum,
@@ -488,7 +488,7 @@ def build_lto_solver(
     a_arrangement = cusolverdx_arrangement_map(alayout)
     b_arrangement = cusolverdx_arrangement_map(blayout)
 
-    lto_symbol = f"{solver}_{M}_{N}_{NRHS}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode}"
+    lto_symbol = f"{solver}_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode}"
 
     def compile_lto_solver(temp_paths):
         # compile LTO
@@ -502,7 +502,7 @@ def build_lto_solver(
             arch,
             M,
             N,
-            NRHS,
+            K,
             solver_enum,
             side_enum,
             diag_enum,
