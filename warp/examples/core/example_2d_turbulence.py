@@ -32,6 +32,8 @@ wp.set_module_options({"enable_backward": False})
 # Length and resolution of the flow domain
 N_GRID = 512
 L = 2 * np.pi
+DT = 0.001
+RE = 500.0
 
 # FFT compile-time tile constants
 TILE_M = 1
@@ -369,12 +371,11 @@ class Example:
     def __init__(
         self,
         quiet=False,
-        N=512,
-        Re=500.0,
-        dt=0.001,
-        L=2.0 * np.pi,
+        N=N_GRID,
+        Re=RE,
+        dt=DT,
+        L=L,
         initial_condition="decaying",
-        seed=42,
         save_every=500,
         output_dir="output",
     ):
@@ -387,7 +388,6 @@ class Example:
             dt: Time step size
             L: Physical domain size (default 2*pi for periodic)
             initial_condition: "decaying" or "taylor_green"
-            seed: Random seed for reproducible initial conditions
             save_every: Save data every N steps (0 to disable)
             output_dir: Directory for output files
         """
@@ -434,7 +434,6 @@ class Example:
 
     def _init_fields(self, initial_condition):
         """TBD"""
-        # Set random seed for reproducibility
 
         # Grid coordinates (same for x and y on square grid)
         coords = np.linspace(0, self.L, self.N, endpoint=False)
@@ -688,7 +687,6 @@ if __name__ == "__main__":
         help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppress iteration output.")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducible initial conditions.")
 
     args = parser.parse_known_args()[0]
 
@@ -699,7 +697,6 @@ if __name__ == "__main__":
             Re=args.Re,
             dt=args.dt,
             initial_condition=args.initial_condition,
-            seed=args.seed,
             save_every=args.save_every,
             output_dir=args.output_dir,
         )
