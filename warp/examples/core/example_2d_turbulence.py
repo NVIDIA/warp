@@ -491,7 +491,8 @@ class Example:
         wp.launch_tiled(
             fft_kernel,
             dim=[self.N, 1],
-            inputs=[input_arr, self.fft_temp_in],
+            inputs=[input_arr],
+            outputs=[self.fft_temp_in],
             block_dim=BLOCK_DIM,
         )
 
@@ -507,7 +508,8 @@ class Example:
         wp.launch_tiled(
             fft_kernel,
             dim=[self.N, 1],
-            inputs=[self.fft_temp_out, output_arr],
+            inputs=[self.fft_temp_out],
+            outputs=[output_arr],
             block_dim=BLOCK_DIM,
         )
 
