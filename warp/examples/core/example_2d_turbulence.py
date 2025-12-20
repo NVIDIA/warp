@@ -44,7 +44,7 @@ BLOCK_DIM = TILE_N // 2
 # and decaying turbulence initial conditions are implemented.
 # -----------------------------------------------------------------------------
 def random_phase_field(k):
-    """Taken from https://github.com/marinlauber/2D-Turbulence-Python
+    """From https://github.com/marinlauber/2D-Turbulence-Python under MIT license
 
     Given an array of wavenumber, generates a random phase field in the 2-D domain
 
@@ -83,7 +83,7 @@ def random_phase_field(k):
 
 
 def energy_spectrum(k, s=3, kp=12):
-    """Taken from https://github.com/marinlauber/2D-Turbulence-Python under MIT license
+    """From https://github.com/marinlauber/2D-Turbulence-Python under MIT license
 
     Returns energy contained in a wavenumber array k based on a pre-defined energy spectrum
 
