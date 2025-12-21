@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import Optional as _Optional
 
 _wp_module_name_ = "warp.config"
 
@@ -59,7 +59,7 @@ Note: Debug mode may impact performance.
 This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
-optimization_level: Optional[int] = None
+optimization_level: _Optional[int] = None
 """Optimization level for Warp kernels.
 
 Args:
@@ -96,7 +96,7 @@ Note: Enabling this may significantly increase kernel compilation time.
 cache_kernels: bool = True
 """Enable kernel caching between application launches."""
 
-kernel_cache_dir: Optional[str] = None
+kernel_cache_dir: _Optional[str] = None
 """Directory path for storing compiled kernel cache.
 
 If ``None``, the path is determined in the following order:
@@ -107,14 +107,14 @@ If ``None``, the path is determined in the following order:
 Note: Subdirectories prefixed with ``wp_`` will be created in this location.
 """
 
-cuda_output: Optional[str] = None
+cuda_output: _Optional[str] = None
 """Preferred CUDA output format for kernel compilation.
 
 Args:
     cuda_output: One of {``None``, ``"ptx"``, ``"cubin"``}. If ``None``, format is auto-determined.
 """
 
-ptx_target_arch: Optional[int] = None
+ptx_target_arch: _Optional[int] = None
 """Target architecture version for PTX generation, e.g., ``ptx_target_arch = 75``.
 
 If ``None``, the architecture is determined by devices present in the system.
@@ -177,7 +177,7 @@ if each nested loop is below the ``max_unroll`` threshold.
 This setting can be overridden at the module level by setting the ``"max_unroll"`` module option.
 """
 
-enable_tiles_in_stack_memory: Optional[bool] = None
+enable_tiles_in_stack_memory: _Optional[bool] = None
 """Use stack memory instead of static memory for tile allocations on the CPU.
 
 Static memory in kernels is not well supported on some architectures (notably AArch64). We work
@@ -193,7 +193,7 @@ use_precompiled_headers: bool = True
 """Enable the use of precompiled headers during kernel compilation.
 """
 
-load_module_max_workers: Optional[int] = 0
+load_module_max_workers: _Optional[int] = 0
 """Default number of worker threads for compiling and loading modules in parallel.
 
 For ``wp.load_module()`` and ``wp.force_load()``, if the ``max_workers`` parameter is not specified,
@@ -201,7 +201,7 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
-_git_commit_hash: Optional[str] = None
+_git_commit_hash: _Optional[str] = None
 """Git commit hash associated with the Warp installation.
 
 Set automatically by CI, do not modify.

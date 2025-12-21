@@ -52,7 +52,7 @@ import numpy as np
 import warp
 import warp._src.build
 import warp._src.codegen
-import warp._src.config
+import warp.config
 from warp._src.codegen import synchronized
 from warp._src.types import Array, launch_bounds_t, type_repr
 
@@ -797,7 +797,7 @@ class Kernel:
             return ovl
 
         # Log that we're creating a new overload (will trigger module hash change and recompilation)
-        if warp._src.config.verbose:
+        if warp.config.verbose:
             print(f"[Kernel.add_overload] Creating new overload for {self.key}: {sig}")
 
         arg_names = list(self.adj.arg_types.keys())
@@ -1266,7 +1266,7 @@ def kernel(
             # This can happen when the same kernel is compiled for multiple devices
             existing_module = user_modules.get(k.module.name)
             if existing_module is not None:
-                if warp._src.config.verbose:
+                if warp.config.verbose:
                     print(f"[wp.kernel] Reusing existing unique module: {k.module.name}")
 
                 # The kernel must already exist in the module (same hash means same content)
@@ -1282,7 +1282,7 @@ def kernel(
                 # This ensures that when ModuleHasher updates the kernel hash during compilation
                 # (e.g., resolving static expressions), the same object is used for launching.
                 # If we returned the new kernel object, it would have a stale hash.
-                if warp._src.config.verbose:
+                if warp.config.verbose:
                     # Show number of overloads if this is a generic kernel
                     overload_info = ""
                     if existing_kernel_same_key.is_generic:
@@ -1302,7 +1302,7 @@ def kernel(
                 # This is the first time we've seen this kernel
                 # Register the new unique module in the global registry
                 user_modules[k.module.name] = k.module
-                if warp._src.config.verbose:
+                if warp.config.verbose:
                     print(f"[wp.kernel] Created new unique module: {k.module.name}")
 
         k = functools.update_wrapper(k, f)
@@ -1802,7 +1802,7 @@ class ModuleHasher:
                         old_hash = ovl.hash
                         ovl.hash = self.hash_kernel(ovl)
                         # Only log hash changes when old hash was not None (unexpected changes)
-                        if warp._src.config.verbose and old_hash is not None and old_hash != ovl.hash:
+                        if warp.config.verbose and old_hash is not None and old_hash != ovl.hash:
                             old_str = old_hash.hex()[:8]
                             new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
                             print(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
@@ -1811,7 +1811,7 @@ class ModuleHasher:
                     old_hash = kernel.hash
                     kernel.hash = self.hash_kernel(kernel)
                     # Only log hash changes when old hash was not None (unexpected changes)
-                    if warp._src.config.verbose and old_hash is not None and old_hash != kernel.hash:
+                    if warp.config.verbose and old_hash is not None and old_hash != kernel.hash:
                         old_str = old_hash.hex()[:8]
                         new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
                         print(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
@@ -1826,17 +1826,17 @@ class ModuleHasher:
             ch.update(bytes(s, "utf-8"))
 
         # ensure to trigger recompilation if flags affecting kernel compilation are changed
-        if warp._src.config.verify_fp:
+        if warp.config.verify_fp:
             ch.update(bytes("verify_fp", "utf-8"))
 
         # line directives, e.g. for Nsight Compute
-        ch.update(bytes(ctypes.c_int(warp._src.config.line_directives)))
+        ch.update(bytes(ctypes.c_int(warp.config.line_directives)))
 
         # whether to use `assign_copy` instead of `assign_inplace`
-        ch.update(bytes(ctypes.c_int(warp._src.config.enable_vector_component_overwrites)))
+        ch.update(bytes(ctypes.c_int(warp.config.enable_vector_component_overwrites)))
 
         # build config
-        ch.update(bytes(warp._src.config.mode, "utf-8"))
+        ch.update(bytes(warp.config.mode, "utf-8"))
 
         # save the module hash
         self.module_hash = ch.digest()
@@ -2318,16 +2318,16 @@ class Module:
         self.has_unresolved_static_expressions = False
 
         self.options = {
-            "max_unroll": warp._src.config.max_unroll,
-            "enable_backward": warp._src.config.enable_backward,
+            "max_unroll": warp.config.max_unroll,
+            "enable_backward": warp.config.enable_backward,
             "fast_math": False,
             "fuse_fp": True,
-            "lineinfo": warp._src.config.lineinfo,
+            "lineinfo": warp.config.lineinfo,
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
             "optimization_level": None,
             "block_dim": 256,
-            "compile_time_trace": warp._src.config.compile_time_trace,
+            "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
         }
 
@@ -2625,7 +2625,7 @@ class Module:
         module_name_short = self.get_module_identifier()
 
         if output_dir is None:
-            output_dir = os.path.join(warp._src.config.kernel_cache_dir, f"{module_name_short}")
+            output_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name_short}")
         else:
             output_dir = os.fspath(output_dir)
 
@@ -2636,11 +2636,11 @@ class Module:
         # dir may exist from previous attempts / runs / archs
         Path(build_dir).mkdir(parents=True, exist_ok=True)
 
-        mode = self.options["mode"] if self.options["mode"] is not None else warp._src.config.mode
+        mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
         opt = (
             self.options["optimization_level"]
             if self.options["optimization_level"] is not None
-            else warp._src.config.optimization_level
+            else warp.config.optimization_level
         )
 
         if opt is None:
@@ -2666,13 +2666,13 @@ class Module:
                 output_path = os.path.join(build_dir, output_name)
 
                 # build object code
-                with warp.ScopedTimer("Compile x86", active=warp._src.config.verbose):
+                with warp.ScopedTimer("Compile x86", active=warp.config.verbose):
                     warp._src.build.build_cpu(
                         output_path,
                         source_code_path,
                         mode=mode,
                         fast_math=self.options["fast_math"],
-                        verify_fp=warp._src.config.verify_fp,
+                        verify_fp=warp.config.verify_fp,
                         fuse_fp=self.options["fuse_fp"],
                     )
 
@@ -2700,7 +2700,7 @@ class Module:
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
                     f"Compile CUDA (arch={builder_options['output_arch']}, mode={mode}, block_dim={self.options['block_dim']})",
-                    active=warp._src.config.verbose,
+                    active=warp.config.verbose,
                 ):
                     warp._src.build.build_cuda(
                         source_code_path,
@@ -2708,7 +2708,7 @@ class Module:
                         output_path,
                         config=mode,
                         optimization_level=opt,
-                        verify_fp=warp._src.config.verify_fp,
+                        verify_fp=warp.config.verify_fp,
                         fast_math=self.options["fast_math"],
                         fuse_fp=self.options["fuse_fp"],
                         lineinfo=self.options["lineinfo"],
@@ -2802,7 +2802,7 @@ class Module:
             if self.options["strip_hash"] or (exec.module_hash == current_hash):
                 return exec
             # else: Hash mismatch means module changed, need to recompile
-            if warp._src.config.verbose:
+            if warp.config.verbose:
                 old_str = exec.module_hash.hex()[:8] if exec.module_hash else "None"
                 new_str = current_hash.hex()[:8] if current_hash else "None"
                 print(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
@@ -2822,10 +2822,10 @@ class Module:
             else f"Module {self.name} load on device '{device}'"
         )
 
-        if warp._src.config.verbose:
+        if warp.config.verbose:
             module_load_timer_name += f" (block_dim={active_block_dim})"
 
-        with warp.ScopedTimer(module_load_timer_name, active=not warp._src.config.quiet) as module_load_timer:
+        with warp.ScopedTimer(module_load_timer_name, active=not warp.config.quiet) as module_load_timer:
             # -----------------------------------------------------------
             # Determine binary path and build if necessary
 
@@ -2851,15 +2851,15 @@ class Module:
                 output_name = self._get_compile_output_name(device)
                 output_arch = self._get_compile_arch(device)
 
-                module_dir = os.path.join(warp._src.config.kernel_cache_dir, module_name_short)
+                module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
                 meta_path = os.path.join(module_dir, self._get_meta_name())
                 # final object binary path
                 binary_path = os.path.join(module_dir, output_name)
 
                 if (
                     not os.path.exists(binary_path)
-                    or not warp._src.config.cache_kernels
-                    or warp._src.config.verify_autograd_array_access
+                    or not warp.config.cache_kernels
+                    or warp.config.verify_autograd_array_access
                 ):
                     try:
                         self._compile(device, module_dir, output_name, output_arch)
@@ -2917,7 +2917,7 @@ class Module:
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
         module_exec = self.execs.get((device.context, self.options["block_dim"]))
         if module_exec is not None:
-            if warp._src.config.verbose:
+            if warp.config.verbose:
                 kernel_hash_str = kernel.hash.hex()[:8] if kernel.hash else "None"
                 print(f"[Module.get_kernel_hooks] Looking up kernel: {kernel.key} (hash: {kernel_hash_str})")
             return module_exec.get_kernel_hooks(kernel)
@@ -3391,7 +3391,7 @@ class Device:
                 self.is_ipc_supported = bool(ipc_support_api_query) if ipc_support_api_query >= 0 else None
             else:
                 self.is_ipc_supported = False
-            if warp._src.config.enable_mempools_at_init:
+            if warp.config.enable_mempools_at_init:
                 # enable if supported
                 self.is_mempool_enabled = self.is_mempool_supported
             else:
@@ -3662,7 +3662,7 @@ class Device:
 
         # Use provided preference or fall back to global config
         if preferred_cuda_output is None:
-            preferred_cuda_output = warp._src.config.cuda_output
+            preferred_cuda_output = warp.config.cuda_output
 
         if preferred_cuda_output is not None:
             # Caller specified a preference, use it if supported
@@ -3705,8 +3705,8 @@ class Device:
 
         if self.get_cuda_output_format() == "ptx":
             # use the default PTX arch if the device supports it
-            if warp._src.config.ptx_target_arch is not None:
-                output_arch = min(self.arch, warp._src.config.ptx_target_arch)
+            if warp.config.ptx_target_arch is not None:
+                output_arch = min(self.arch, warp.config.ptx_target_arch)
             else:
                 output_arch = min(self.arch, runtime.default_ptx_arch)
         else:
@@ -3788,10 +3788,10 @@ class Runtime:
                 clang_version_ptr = self.llvm.wp_warp_clang_version()
                 if clang_version_ptr:
                     clang_version = clang_version_ptr.decode("utf-8")
-                    if clang_version != warp._src.config.version:
+                    if clang_version != warp.config.version:
                         warp._src.utils.warn(
                             f"Version mismatch detected in warp-clang library.\n"
-                            f"  Expected Warp version: {warp._src.config.version}\n"
+                            f"  Expected Warp version: {warp.config.version}\n"
                             f"  Loaded warp-clang library version: {clang_version}\n"
                             f"  This may occur due to environment variables or multiple Warp installations."
                         )
@@ -4735,7 +4735,7 @@ class Runtime:
             raise RuntimeError(f"Setting C-types for {warp_lib} failed. It may need rebuilding.") from e
 
         # Initialize with version verification
-        error = self.core.wp_init(warp._src.config.version.encode("utf-8"))
+        error = self.core.wp_init(warp.config.version.encode("utf-8"))
 
         if error != 0:
             raise Exception("Warp initialization failed")
@@ -4846,20 +4846,20 @@ class Runtime:
             self.default_ptx_arch = None
 
         # initialize kernel cache
-        warp._src.build.init_kernel_cache(warp._src.config.kernel_cache_dir)
+        warp._src.build.init_kernel_cache(warp.config.kernel_cache_dir)
 
         # global tape
         self.tape = None
 
         # print device and version information
-        if not warp._src.config.quiet:
+        if not warp.config.quiet:
             greeting = []
 
-            greeting.append(f"Warp {warp._src.config.version} initialized:")
+            greeting.append(f"Warp {warp.config.version} initialized:")
 
             # Add git commit hash to greeting if available
-            if warp._src.config._git_commit_hash is not None:
-                greeting.append(f"   Git commit: {warp._src.config._git_commit_hash}")
+            if warp.config._git_commit_hash is not None:
+                greeting.append(f"   Git commit: {warp.config._git_commit_hash}")
 
             if cuda_device_count > 0:
                 # print CUDA version info
@@ -4935,7 +4935,7 @@ class Runtime:
                         alias_str = f'"{self.cuda_devices[i].alias}"'
                         greeting.append(f"     {alias_str:10s} : {access_matrix[i]}")
             greeting.append("   Kernel cache:")
-            greeting.append(f"     {warp._src.config.kernel_cache_dir}")
+            greeting.append(f"     {warp.config.kernel_cache_dir}")
 
             print("\n".join(greeting))
 
@@ -5147,7 +5147,7 @@ class Runtime:
         self.cuda_devices.remove(device)
 
     def verify_cuda_device(self, device: DeviceLike = None) -> None:
-        if warp._src.config.verify_cuda:
+        if warp.config.verify_cuda:
             device = runtime.get_device(device)
             if not device.is_cuda:
                 return
@@ -6708,7 +6708,7 @@ def launch(
         raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
 
     # debugging aid
-    if warp._src.config.print_launches:
+    if warp.config.print_launches:
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
     # construct launch bounds
@@ -6889,7 +6889,7 @@ def launch(
         )
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
-        if warp._src.config.verify_autograd_array_access:
+        if warp.config.verify_autograd_array_access:
             runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
 
@@ -7069,11 +7069,11 @@ def force_load(
         modules = user_modules.values()
 
     if max_workers is None:
-        if warp._src.config.load_module_max_workers is None:
+        if warp.config.load_module_max_workers is None:
             # determine a reasonable default
             max_workers = min(os.cpu_count(), 4)
         else:
-            max_workers = warp._src.config.load_module_max_workers
+            max_workers = warp.config.load_module_max_workers
 
     if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
@@ -7371,7 +7371,7 @@ def load_aot_module(
         module_object.options["strip_hash"] = strip_hash
 
     if module_dir is None:
-        module_dir = os.path.join(warp._src.config.kernel_cache_dir, module_object.get_module_identifier())
+        module_dir = os.path.join(warp.config.kernel_cache_dir, module_object.get_module_identifier())
     else:
         module_dir = os.fspath(module_dir)
 
@@ -7519,9 +7519,9 @@ def capture_begin(
             # Driver versions 12.3 and can compile modules during graph capture
             force_module_load = False
         else:
-            force_module_load = warp._src.config.enable_graph_capture_module_load_by_default
+            force_module_load = warp.config.enable_graph_capture_module_load_by_default
 
-    if warp._src.config.verify_cuda:
+    if warp.config.verify_cuda:
         raise RuntimeError("Cannot use CUDA error verification during graph capture")
 
     if stream is not None:
@@ -8166,7 +8166,7 @@ def copy(
                 ),
                 arrays=[dest, src],
             )
-            if warp._src.config.verify_autograd_array_access:
+            if warp.config.verify_autograd_array_access:
                 dest.mark_write()
                 src.mark_read()
 

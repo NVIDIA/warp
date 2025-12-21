@@ -37,7 +37,7 @@ class TestVersion(unittest.TestCase):
 
     def test_dll_versions_match_python_version(self):
         """Test that native library versions match Python package version exactly."""
-        python_version = wp._src.config.version
+        python_version = wp.config.version
         warp_version = get_warp_version()
         warp_clang_version = get_warp_clang_version()
 

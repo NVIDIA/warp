@@ -334,8 +334,7 @@ from warp._src.builtins import static as static
 from warp._src.constants import *
 from warp._src.math import *
 
-from warp._src import config as config
-
+from . import config as config
 from . import types as types
 from . import utils as utils
 

@@ -30,7 +30,7 @@ def read_version_md(path: Path) -> str:
 
 
 def read_config_py_version(path: Path) -> str:
-    """Read version from warp/_src/config.py."""
+    """Read version from warp/config.py."""
     with open(path) as f:
         content = f.read()
     
@@ -64,7 +64,7 @@ def check_version_consistency(base_path: Path, verbose: bool = False) -> bool:
         True if all versions match, False otherwise.
     """
     version_md_path = base_path / "VERSION.md"
-    config_py_path = base_path / "warp" / "_src" / "config.py"
+    config_py_path = base_path / "warp" / "config.py"
     version_h_path = base_path / "warp" / "native" / "version.h"
     
     # Check that all files exist
@@ -113,7 +113,7 @@ def check_version_consistency(base_path: Path, verbose: bool = False) -> bool:
             print(f"✓ All versions consistent: {version_md}")
         return True
     else:
-        print("\nPlease ensure VERSION.md, warp/_src/config.py, and warp/native/version.h all contain the same version.")
+        print("\nPlease ensure VERSION.md, warp/config.py, and warp/native/version.h all contain the same version.")
         print("After updating VERSION.md, run 'uv run build_lib.py' to regenerate version.h and update config.py.")
         return False
 

@@ -419,8 +419,7 @@ from warp._src.constants import *
 
 # category: Submodules
 
-from warp._src import config as config
-
+from . import config as config
 from . import types as types
 from . import utils as utils
 
