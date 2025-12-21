@@ -37,7 +37,7 @@ import sys
 
 import build_llvm
 import warp._src.build_dll as build_dll
-import warp._src.config as config
+import warp.config as config
 from warp._src.context import export_builtins
 
 
@@ -64,7 +64,7 @@ def handle_ci_nightly_build(base_path: str) -> str | None:
 
     # Paths
     version_file = os.path.join(base_path, "VERSION.md")
-    config_file = os.path.join(base_path, "warp", "_src", "config.py")
+    config_file = os.path.join(base_path, "warp", "config.py")
 
     # Read base version
     with open(version_file) as f:
