@@ -82,9 +82,6 @@ Data type conversion utilities are also available for convenience:
 To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy` 
 or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor directly.
 
-.. autofunction:: warp.from_numpy
-.. autofunction:: warp.dtype_from_numpy
-.. autofunction:: warp.dtype_to_numpy
 
 .. _pytorch-interop:
 
@@ -107,17 +104,12 @@ These helper functions allow the conversion of Warp arrays to/from PyTorch tenso
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.
 
-.. autofunction:: warp.from_torch
-.. autofunction:: warp.to_torch
-.. autofunction:: warp.device_from_torch
-.. autofunction:: warp.device_to_torch
-.. autofunction:: warp.dtype_from_torch
-.. autofunction:: warp.dtype_to_torch
 
 To convert a PyTorch CUDA stream to a Warp CUDA stream and vice versa, Warp provides the following functions:
 
-.. autofunction:: warp.stream_from_torch
-.. autofunction:: warp.stream_to_torch
+* :func:`warp.stream_from_torch`
+* :func:`warp.stream_to_torch`
+
 
 Example: Optimization using ``warp.from_torch()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -909,12 +901,6 @@ Internally these use the DLPack protocol to exchange data in a zero-copy way wit
 
 It may be preferable to use the :ref:`DLPack` protocol directly for better performance and control over stream synchronization .
 
-.. autofunction:: warp.from_jax
-.. autofunction:: warp.to_jax
-.. autofunction:: warp.device_from_jax
-.. autofunction:: warp.device_to_jax
-.. autofunction:: warp.dtype_from_jax
-.. autofunction:: warp.dtype_to_jax
 
 
 .. _jax-ffi:
@@ -946,7 +932,6 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
 
     print(f())
 
-.. autofunction:: warp.jax_experimental.jax_kernel
 
 
 Input and Output Semantics
@@ -1407,7 +1392,6 @@ just focus on the differences:
 
 See `example_jax_callable.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
 
-.. autofunction:: warp.jax_experimental.jax_callable
 
 Generic JAX FFI Callbacks
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1499,7 +1483,6 @@ but it can be used when other utilities like :func:`jax_kernel() <warp.jax_exper
 
 See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
 
-.. autofunction:: warp.jax_experimental.register_ffi_callback
 
 Distributed Computation
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -1670,8 +1653,6 @@ This may be a good choice in situations like these:
 - Warp and the external framework are using the same CUDA stream.
 - Another synchronization mechanism is already in place.
 
-.. autofunction:: warp.from_dlpack
-.. autofunction:: warp.to_dlpack
 
 .. _paddle-interop:
 
@@ -1692,16 +1673,11 @@ These helper functions allow the conversion of Warp arrays to/from Paddle tensor
 At the same time, if available, gradient arrays and tensors are converted to/from Paddle autograd tensors, allowing the use of Warp arrays
 in Paddle autograd computations.
 
-.. autofunction:: warp.from_paddle
-.. autofunction:: warp.to_paddle
-.. autofunction:: warp.device_from_paddle
-.. autofunction:: warp.device_to_paddle
-.. autofunction:: warp.dtype_from_paddle
-.. autofunction:: warp.dtype_to_paddle
 
 To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provides the following function:
 
-.. autofunction:: warp.stream_from_paddle
+* :func:`warp.stream_from_paddle`
+
 
 Example: Optimization using ``warp.from_paddle()``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

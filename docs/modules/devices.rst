@@ -22,14 +22,9 @@ It is possible to explicitly target a specific device with each Warp API call us
     This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.
     It makes interoperability easy because GPU resources like memory can be shared with Warp.
 
-.. autoclass:: warp.Device
-    :members:
 
 Warp also provides functions that can be used to query the available devices on the system:
 
-.. autofunction:: get_devices
-.. autofunction:: get_cuda_devices
-.. autofunction:: get_cuda_device_count
 
 Default Device
 --------------
@@ -80,9 +75,6 @@ It is still possible to specify a different device in individual API calls, like
     wp.copy(b, a)
     wp.copy(c, a)
 
-.. autofunction:: set_device
-.. autofunction:: get_device
-.. autofunction:: get_preferred_device
 
 Scoped Devices
 --------------
@@ -107,7 +99,6 @@ They can be arbitrarily nested and restore the previous default device on exit::
         # launch on "cuda:0"
         wp.launch(kernel, dim=b.size, inputs=[b])
 
-.. autoclass:: ScopedDevice
 
 Example: Using ``wp.ScopedDevice`` with multiple GPUs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -195,8 +186,6 @@ Warp allows synchronizing the host with outstanding asynchronous operations on a
 :func:`wp.synchronize_device() <synchronize_device>` offers more fine-grained synchronization than
 :func:`wp.synchronize() <synchronize>`, as the latter waits for *all* devices to complete their work.
 
-.. autofunction:: synchronize_device
-.. autofunction:: synchronize
 
 Custom CUDA Contexts
 --------------------
@@ -225,8 +214,6 @@ In either case, mapping the custom CUDA context allows us to target the context 
         a = wp.zeros(n)
         wp.launch(kernel, dim=a.size, inputs=[a])
 
-.. autofunction:: map_cuda_device
-.. autofunction:: unmap_cuda_device
 
 .. _peer_access:
 
@@ -277,6 +264,3 @@ It's possible to temporarily enable or disable peer access using a scoped manage
     Peer access does not accelerate memory transfers between arrays allocated using the :ref:`stream-ordered memory pool allocators<mempool_allocators>` introduced in Warp 0.14.0.
     To accelerate memory pool transfers, :ref:`memory pool access<mempool_access>` should be enabled instead.
 
-.. autofunction:: warp.is_peer_access_supported
-.. autofunction:: warp.is_peer_access_enabled
-.. autofunction:: warp.set_peer_access_enabled

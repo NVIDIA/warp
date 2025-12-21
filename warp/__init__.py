@@ -118,7 +118,7 @@ from warp._src.types import transformf as transformf
 from warp._src.types import transformd as transformd
 
 
-# category: Spatial Math
+# category: Spatial Vectors and Matrices
 
 from warp._src.types import spatial_vector as spatial_vector
 from warp._src.types import spatial_vectorh as spatial_vectorh
@@ -166,7 +166,7 @@ from warp._src.types import indexedarray3d as indexedarray3d
 from warp._src.types import indexedarray4d as indexedarray4d
 
 
-# category: Geometries
+# category: Spatial Acceleration
 
 from warp._src.types import Bvh as Bvh
 from warp._src.types import Mesh as Mesh
@@ -181,6 +181,17 @@ from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
 
 
+# category: Runtime
+
+from warp._src.context import init as init
+
+from warp._src.context import is_cpu_available as is_cpu_available
+from warp._src.context import is_cuda_available as is_cuda_available
+
+from warp._src.build import clear_kernel_cache as clear_kernel_cache
+from warp._src.build import clear_lto_cache as clear_lto_cache
+
+
 # category: Kernel Programming
 
 from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
@@ -190,7 +201,6 @@ from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
 from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
 from warp._src.codegen import WarpCodegenValueError as WarpCodegenValueError
 
-from warp._src.context import init as init
 from warp._src.context import func as func
 from warp._src.context import func_grad as func_grad
 from warp._src.context import func_replay as func_replay
@@ -221,8 +231,6 @@ from warp._src.context import synchronize as synchronize
 from warp._src.context import Device as Device
 from warp._src.utils import ScopedDevice as ScopedDevice
 
-from warp._src.context import is_cpu_available as is_cpu_available
-from warp._src.context import is_cuda_available as is_cuda_available
 from warp._src.context import is_device_available as is_device_available
 
 from warp._src.context import get_devices as get_devices
@@ -318,12 +326,6 @@ from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
 from warp._src.tape import Tape as Tape
 
 
-# category: Caching
-
-from warp._src.build import clear_kernel_cache as clear_kernel_cache
-from warp._src.build import clear_lto_cache as clear_lto_cache
-
-
 # category: DLPack Interop
 
 from warp._src.dlpack import from_dlpack as from_dlpack
@@ -338,7 +340,7 @@ from warp._src.fabric import indexedfabricarray as indexedfabricarray
 from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
 
 
-# category: IPC Interop
+# category: CUDA IPC Interop
 
 from warp._src.types import from_ipc_handle as from_ipc_handle
 from warp._src.context import event_from_ipc_handle as event_from_ipc_handle
@@ -427,7 +429,6 @@ from . import utils as utils
 # category: Misc
 
 from warp._src.math import *
-
 from warp._src.marching_cubes import MarchingCubes as MarchingCubes
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 

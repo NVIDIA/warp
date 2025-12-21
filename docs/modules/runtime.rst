@@ -6,7 +6,7 @@ Python Reference
 This section describes the Warp Python runtime API, how to manage memory, launch kernels, and high-level functionality
 for dealing with objects such as meshes and volumes. The APIs described in this section are intended to be used at
 the *Python Scope* and run inside the CPython interpreter. For a comprehensive list of functions available at
-the *Kernel Scope*, please see the :doc:`functions` section.
+the *Kernel Scope*, please see the :doc:`/language_reference/builtins` section.
 
 Kernels
 -------
@@ -56,12 +56,6 @@ The location of the kernel cache is printed when Warp is initialized.
 :func:`wp.clear_kernel_cache() <clear_kernel_cache>` can be used to clear the kernel cache of previously
 generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.
 
-.. autofunction:: kernel
-
-.. autofunction:: launch
-.. autofunction:: launch_tiled
-    
-.. autofunction:: clear_kernel_cache
 
 .. _Runtime Kernel Creation:
 
@@ -91,10 +85,6 @@ Additionally, :class:`Launch` objects can also be used to reduce the overhead of
 .. note::
     Kernels launched via :class:`Launch` objects currently do not get recorded onto the :class:`Tape`.
 
-.. autoclass:: Launch
-    :members:
-    :undoc-members:
-    :exclude-members: __init__
 
 .. _Arrays:
 
@@ -180,10 +170,6 @@ When indexing an array with an array of integers, the result is an :ref:`indexed
     <class 'warp._src.types.indexedarray'> (3,)
     [1 3 5]
 
-.. autoclass:: array
-    :members:
-    :undoc-members:
-    :exclude-members: vars
 
 Multi-dimensional Arrays
 ########################
@@ -216,16 +202,17 @@ the function also declares the expected array dimension. Currently, only single-
 
 The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:
 
-.. autofunction:: zeros
-.. autofunction:: zeros_like
-.. autofunction:: ones
-.. autofunction:: ones_like
-.. autofunction:: full
-.. autofunction:: full_like
-.. autofunction:: empty
-.. autofunction:: empty_like
-.. autofunction:: copy
-.. autofunction:: clone
+* :func:`warp.zeros`
+* :func:`warp.zeros_like`
+* :func:`warp.ones`
+* :func:`warp.ones_like`
+* :func:`warp.full`
+* :func:`warp.full_like`
+* :func:`warp.empty`
+* :func:`warp.empty_like`
+* :func:`warp.copy`
+* :func:`warp.clone`
+
 
 
 .. _Indexed_Arrays:
@@ -236,10 +223,6 @@ Indexed Arrays
 An indexed array is a lightweight view into an existing :class:`warp.array` instance that references elements
 through an explicit integer index list, thus allowing to run kernels on an arbitrary subset of data without any copy.
 
-.. autoclass:: indexedarray
-    :members:
-    :undoc-members:
-    :exclude-members: vars
 
 
 Creating an Indexed Array
@@ -287,10 +270,11 @@ The resulting view keeps the ``dtype`` of the source and has a shape given by th
 
 Alternative constructors are available for convenience:
 
-.. autofunction:: indexedarray1d
-.. autofunction:: indexedarray2d
-.. autofunction:: indexedarray3d
-.. autofunction:: indexedarray4d
+* :func:`warp.indexedarray1d`
+* :func:`warp.indexedarray2d`
+* :func:`warp.indexedarray3d`
+* :func:`warp.indexedarray4d`
+
 
 
 Interoperability With Other Frameworks
@@ -557,7 +541,7 @@ Vectors
 #######
 
 Warp provides built-in math and geometry types for common simulation and graphics problems.
-A full reference for operators and functions for these types is available in the :doc:`/modules/functions`.
+A full reference for operators and functions for these types is available in the :doc:`/language_reference/builtins`.
 
 Warp supports vectors of numbers with an arbitrary length/numeric type. The built-in concrete types are as follows:
 
@@ -1257,7 +1241,6 @@ Mapping Functions
 
 The :func:`wp.map()` function can be used to apply a function to each element of an array.
 
-.. autofunction:: warp.map
 
 Streams
 -------
@@ -1266,16 +1249,6 @@ A CUDA stream is a sequence of operations that execute in order on the GPU.
 Operations from different streams may run concurrently and may be interleaved by the device scheduler.
 See the :ref:`Streams documentation <streams>` for more information on using streams.
 
-.. autoclass:: Stream
-    :members:
-    :exclude-members: cached_event
-
-.. autofunction:: get_stream
-.. autofunction:: set_stream
-.. autofunction:: wait_stream
-.. autofunction:: synchronize_stream
-
-.. autoclass:: ScopedStream
 
 Events
 ------
@@ -1286,14 +1259,6 @@ information on how to use events for cross-stream synchronization
 or the :ref:`CUDA Events Timing documentation <cuda_events_profiling>` for
 information on how to use events for measuring GPU performance.
 
-.. autoclass:: Event
-    :members:
-    :exclude-members: Flags
-
-.. autofunction:: record_event
-.. autofunction:: wait_event
-.. autofunction:: synchronize_event
-.. autofunction:: get_event_elapsed_time
 
 .. _graphs:
 
@@ -1561,20 +1526,6 @@ The ``while_body`` callback will be executed as long as the condition is non-zer
     :func:`wp.capture_if <capture_if>` and :func:`wp.capture_while <capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
 
 
-
-Graph API Reference
-###################
-
-.. autofunction:: capture_begin
-.. autofunction:: capture_end
-.. autofunction:: capture_launch
-.. autofunction:: capture_if
-.. autofunction:: capture_while
-.. autofunction:: capture_debug_dot_print
-
-.. autoclass:: ScopedCapture
-    :members:
-
 Spatial Computing Primitives
 ----------------------------
 
@@ -1639,9 +1590,6 @@ structure and ensure that queries work correctly.
 .. note::
     Updating Mesh topology (indices) at runtime is not currently supported. Users should instead recreate a new Mesh object.
 
-.. autoclass:: Mesh
-    :members:
-    :exclude-members: vars, Var
 
 Hash Grids
 ##########
@@ -1696,8 +1644,6 @@ and :func:`wp.hash_grid_query_next() <hash_grid_query_next>` as follows:
     check/compute the distance twice.
 
 
-.. autoclass:: HashGrid
-    :members:
 
 Volumes
 #######
@@ -1780,9 +1726,6 @@ The coordinates of all indexable voxels can be recovered using :func:`get_voxels
 NanoVDB grids may also contain embedded *blind* data arrays; those can be accessed with the 
 :func:`feature_array() <warp.Volume.feature_array>` function.
 
-.. autoclass:: Volume
-    :members:
-    :undoc-members:
 
 .. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
 
@@ -1809,8 +1752,6 @@ The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object 
 
     bvh = wp.Bvh(device_lowers, device_uppers)
 
-.. autoclass:: Bvh
-    :members:
 
 Example: BVH Ray Traversal
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1945,8 +1886,6 @@ file using the :class:`warp.render.UsdRenderer`.
 
 See :github:`warp/examples/core/example_marching_cubes.py` for a usage example.
 
-.. autoclass:: MarchingCubes
-    :members:
 
 Profiling
 ---------
@@ -1966,8 +1905,6 @@ This results in a printout at runtime to the standard output stream like:
 
 See :doc:`../profiling` documentation for more information.
 
-.. autoclass:: warp.ScopedTimer
-    :noindex:
 
 Interprocess Communication (IPC)
 --------------------------------
@@ -2007,9 +1944,6 @@ process can use this information to import the original event by calling
 
 
 
-.. autofunction:: from_ipc_handle
-
-.. autofunction:: event_from_ipc_handle
 
 LTO Cache
 ---------
@@ -2020,18 +1954,3 @@ solver configuration, and is otherwise independent of the kernel in which its co
 is called. Therefore, LTOs are stored in a cache that is independent of a given module's kernel cache,
 and will remain cached even if :func:`wp.clear_kernel_cache() <clear_kernel_cache>` is called.
 :func:`wp.clear_lto_cache() <clear_lto_cache>` can be used to clear the LTO cache.
-
-.. autofunction:: clear_lto_cache
-
-Module Management
------------------
-
-.. autofunction:: warp.load_module
-
-.. autofunction:: warp.force_load
-
-.. autofunction:: warp.compile_aot_module
-
-.. autofunction:: warp.load_aot_module
-
-.. autofunction:: warp.get_cuda_supported_archs

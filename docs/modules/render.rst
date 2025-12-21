@@ -12,11 +12,7 @@ The ``OpenGLRenderer`` provides an interactive renderer to play back animations 
 whereas more sophisticated rendering can be achieved with the help of the ``UsdRenderer``, which allows exporting the scene to
 a USD file that can then be rendered in an external 3D application or renderer of your choice.
 
-.. autoclass:: UsdRenderer
-    :members:
 
-.. autoclass:: OpenGLRenderer
-    :members:
 
 CUDA Graphics Interface
 -----------------------
@@ -28,5 +24,3 @@ See the `CUDA documentation on OpenGL Interoperability <https://docs.nvidia.com/
 
 .. currentmodule:: warp
 
-.. autoclass:: RegisteredGLBuffer
-    :members:

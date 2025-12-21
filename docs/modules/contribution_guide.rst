@@ -242,8 +242,8 @@ The ``-quick`` flag skip running the `doctest tests <https://www.sphinx-doc.org/
 which take some time to run. If your changes modify core library functionality, it can be a good idea to run ``build_docs.py``
 without the ``-quick`` flag to ensure that the documentation code snippets are still up to date.
 
-Running ``build_docs.py`` also regenerates both the stub file (``warp/__init__.pyi``) and the reStructuredText file for the
-:doc:`functions` page. After building the documentation, it is recommended to run a ``git status`` to
+Running ``build_docs.py`` also regenerates both the stub file (``warp/__init__.pyi``) and the reStructuredText files for the
+reference pages. After building the documentation, it is recommended to run a ``git status`` to
 check if your changes have modified these files. If so, please commit the modified files to your branch.
 
 .. _pull-requests:

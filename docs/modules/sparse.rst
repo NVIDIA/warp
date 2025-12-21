@@ -220,14 +220,15 @@ Kernel-level utilities
 
 The following Warp functions are available for use in kernels:
 
-.. autofunction:: warp.sparse.bsr_row_index
+* :func:`warp.sparse.bsr_row_index`.
+* :func:`warp.sparse.bsr_block_index`.
 
-.. autofunction:: warp.sparse.bsr_block_index
+
 
 Reference
 ~~~~~~~~~
-.. automodule:: warp.sparse
-    :members:
+
+See :doc:`../api_reference/warp_sparse`.
 
 
 .. _iterative-linear-solvers:
@@ -253,5 +254,4 @@ Warp provides several iterative linear solvers with optional preconditioning:
 
 .. note:: While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays. Custom operators can be implemented using the :class:`LinearOperator` interface.
 
-.. automodule:: warp.optim.linear
-    :members:
+See :doc:`../api_reference/warp_optim_linear`.

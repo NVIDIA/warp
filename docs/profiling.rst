@@ -463,14 +463,3 @@ profiler (e.g. ``chrome://tracing/`` or ``edge://tracing/``) or the `Perfetto UI
 
 For more information about profiling the compilation process, see the NVIDIA Developer blog post
 `Optimizing Compile Times for CUDA C++ <https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/>`__.
-
-Profiling API Reference
------------------------
-
-.. autoclass:: warp.ScopedTimer
-
-.. autoclass:: warp.TimingResult
-
-.. autofunction:: warp.timing_begin
-.. autofunction:: warp.timing_end
-.. autofunction:: warp.timing_print

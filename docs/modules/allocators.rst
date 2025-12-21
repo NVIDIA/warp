@@ -110,9 +110,6 @@ By default, Warp will enable memory pools on startup if they are supported, whic
 Most Warp code should continue to function with or without mempool allocators, with the exception of memory allocations
 during graph capture, which will raise an exception if memory pools are not enabled.
 
-.. autofunction:: warp.is_mempool_supported
-.. autofunction:: warp.is_mempool_enabled
-.. autofunction:: warp.set_mempool_enabled
 
 Querying Memory Usage
 ~~~~~~~~~~~~~~~~~~~~~
@@ -123,8 +120,6 @@ This can be different from the amount of memory reserved for the pool itself.
 Similarly, the high-water mark of used memory can be queried using
 :func:`wp.get_mempool_used_mem_high() <warp.get_mempool_used_mem_high>`.
 
-.. autofunction:: warp.get_mempool_used_mem_current
-.. autofunction:: warp.get_mempool_used_mem_high
 
 Allocation Performance
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -191,8 +186,6 @@ Threshold values between 0 and 1 are interpreted as fractions of available memor
 
 This is a simple optimization that can improve the performance of programs without modifying the existing code in any way.
 
-.. autofunction:: warp.get_mempool_release_threshold
-.. autofunction:: warp.set_mempool_release_threshold
 
 Graph Allocations
 ~~~~~~~~~~~~~~~~~
@@ -246,9 +239,6 @@ For memory allocated using default CUDA allocators, we can enable CUDA :ref:`pee
 
 Because enabling memory pool access can have drawbacks, Warp does not automatically enable it, even if it's supported.  Programs that don't require copying data between GPUs are therefore not affected in any way.
 
-.. autofunction:: warp.is_mempool_access_supported
-.. autofunction:: warp.is_mempool_access_enabled
-.. autofunction:: warp.set_mempool_access_enabled
 
 Limitations
 ~~~~~~~~~~~

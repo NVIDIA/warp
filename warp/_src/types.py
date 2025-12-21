@@ -27,6 +27,7 @@ import types
 import zlib
 from collections.abc import Mapping, Sequence
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
@@ -75,9 +76,13 @@ class Transformation(Generic[Float]):
 
 
 class Array(Generic[DType]):
-    device: warp._src.context.Device | None
-    dtype: type
-    size: int
+    # Type annotations are guarded to prevent Sphinx from documenting them
+    # as inherited attributes, which would conflict with the docstring
+    # attributes in the `array` subclass.
+    if TYPE_CHECKING:
+        device: warp._src.context.Device | None
+        dtype: type
+        size: int
 
     def __add__(self, other) -> array:
         return warp.map(warp.add, self, other)  # type: ignore
@@ -3874,10 +3879,6 @@ class fixedarray(array):
 
     Only used during codegen, and for type hints, but otherwise not intended to be used
     at the Python scope.
-
-    Attributes:
-        dtype (DType): The data type of the array.
-        shape (tuple[int]): Dimensions of the array.
     """
 
     def __init__(
