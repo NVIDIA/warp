@@ -34,8 +34,6 @@ After the backward pass has completed, the gradients with respect to the inputs 
 Note that gradients are accumulated on the participating buffers, so if you wish to reuse the same buffers for multiple
 backward passes you should first zero the gradients using :meth:`Tape.zero()`.
 
-.. autoclass:: Tape
-    :members:
 
 Array Overwrites
 ################
@@ -789,31 +787,6 @@ Warp provides utility functions to evaluate the partial Jacobian matrices for in
 :func:`jacobian_fd` computes the Jacobian matrix of a kernel or a function using finite differences.
 :func:`gradcheck` compares the Jacobian matrices computed by the autodiff engine and finite differences to measure the accuracy of the gradients.
 :func:`jacobian_plot` visualizes the Jacobian matrices returned by the :func:`jacobian` and :func:`jacobian_fd` functions.
-
-``warp.autograd.gradcheck``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: gradcheck
-
-``warp.autograd.gradcheck_tape``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: gradcheck_tape
-
-``warp.autograd.jacobian``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: jacobian
-
-``warp.autograd.jacobian_fd``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: jacobian_fd
-
-``warp.autograd.jacobian_plot``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: jacobian_plot
 
 
 Example usage

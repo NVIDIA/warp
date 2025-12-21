@@ -81,7 +81,7 @@ Inside the kernel, we retrieve the *thread index* of each thread using the :func
     i = wp.tid()
 
 The full list of built-in functions that may be called in Warp kernels is
-documented in the :doc:`/modules/functions`.
+documented in the :doc:`/language_reference/builtins`.
 
 Kernels can be launched with 1D, 2D, 3D, or 4D grids of threads.
 To launch a 2D grid of threads to process a 1024x1024 image, we could write::
@@ -284,8 +284,8 @@ Python Scope vs. Kernel Scope API
 Some of the Warp API can only be called from the Python scope (i.e. outside of Warp user functions and kernels),
 while others can only be called from the kernel scope.
 
-The Python-scope API is documented in the :doc:`/modules/runtime`,
-while the kernel-scope API is documented in the :doc:`/modules/functions`.
+The Python-scope API is documented in the :doc:`/api_reference/warp`,
+while the kernel-scope API is documented in the :doc:`/language_reference/builtins`.
 Generally, the kernel-scope API can also be used in the Python scope.
 
 Not all of the Python language is supported inside the kernel scope. Some features haven't been implemented yet, while

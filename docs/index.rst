@@ -383,7 +383,6 @@ Full Table of Contents
     :caption: Core Reference
    
     modules/runtime
-    modules/functions
    
 .. toctree::
     :maxdepth: 2
@@ -392,6 +391,25 @@ Full Table of Contents
     modules/sparse
     modules/fem
     modules/render
+
+.. toctree::
+    :caption: API Reference
+
+    api_reference/warp
+    api_reference/warp_autograd
+    api_reference/warp_config
+    api_reference/warp_fem
+    api_reference/warp_jax_experimental
+    api_reference/warp_optim
+    api_reference/warp_render
+    api_reference/warp_sparse
+    api_reference/warp_types
+    api_reference/warp_utils
+
+.. toctree::
+    :caption: Language Reference
+
+    language_reference/builtins
 
 .. toctree::
     :hidden:

@@ -235,6 +235,57 @@ though this is a lot less significant when :ref:`mempool_allocators` are in use.
 To overcome this issue, a :class:`.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
 either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
 
+.. _Fields:
+
+Fields
+------
+
+Fields represent functions defined over a geometry. The following field types are available:
+
+- :class:`.DiscreteField`: A field defined by interpolating values at the nodes of a function space.
+- :class:`.ImplicitField`: A field wrapping an arbitrary function.
+- :class:`.UniformField`: A constant field with the same value everywhere.
+- :class:`.NonconformingField`: A wrapper for evaluating fields defined on a different geometry.
+- :class:`.GeometryField`: A field representing the deformation of a geometry.
+
+Fields can be evaluated at a :class:`.Sample` using the call operator, e.g., ``u(s)`` evaluates field ``u`` at sample ``s``.
+
+Additionally, test and trial fields (:class:`.field.TestField` and :class:`.field.TrialField`) are created using
+:func:`.make_test` and :func:`.make_trial` for building linear and bilinear forms.
+
+.. _Operators:
+
+Operators
+---------
+
+The following operators are available for use within integrands:
+
+**Field operators:**
+
+- :func:`.grad`: Gradient of a field.
+- :func:`.div`: Divergence of a vector field.
+- :func:`.curl`: Curl of a vector field.
+- :func:`.D`: Generic derivative operator.
+
+**Domain operators:**
+
+- :func:`.position`: World position at a sample (same as calling ``domain(s)``).
+- :func:`.normal`: Normal vector at a sample on a boundary.
+- :func:`.measure`: Integration measure (area or volume element).
+- :func:`.measure_ratio`: Ratio of measures between a domain and its reference element.
+- :func:`.deformation_gradient`: Deformation gradient of the domain.
+
+**Discontinuous Galerkin operators** (for use on interior sides):
+
+- :func:`.inner`: Value on the inner side of an interface.
+- :func:`.outer`: Value on the outer side of an interface.
+- :func:`.average`: Average of values across an interface.
+- :func:`.jump`: Jump of values across an interface.
+- :func:`.grad_average`: Average of gradients across an interface.
+- :func:`.grad_jump`: Jump of gradients across an interface.
+- :func:`.grad_outer`: Gradient on the outer side of an interface.
+- :func:`.div_outer`: Divergence on the outer side of an interface.
+
 Visualization
 -------------
 
@@ -277,398 +328,3 @@ This can be used to visualize discrete fields in VTK-aware viewers such as ``pyv
    plotter = pyvista.Plotter()
    plotter.add_mesh(grid)
    plotter.show()
-
-
-
-.. _Operators:
-
-Operators
----------
-
-Domain operators
-^^^^^^^^^^^^^^^^
-.. autofunction:: position(domain: Domain, s: Sample)
-.. autofunction:: normal(domain: Domain, s: Sample)
-.. autofunction:: measure(domain: Domain, s: Sample)
-.. autofunction:: measure_ratio(domain: Domain, s: Sample)
-.. autofunction:: deformation_gradient(domain: Domain, s: Sample)
-
-.. autofunction:: lookup(domain: Domain, x: wp.vec3, max_dist: float = 0.0, guess: fem.Sample = None, filter_array: wp.array = None, filter_target: Any=None)
-.. autofunction:: partition_lookup(domain: Domain, x: wp.vec3, max_dist: float = 0.0)
-.. autofunction:: element_closest_point(domain: Domain, element_index: int, x: wp.vec3)
-.. autofunction:: element_coordinates(domain: Domain, element_index: int, x: wp.vec3)
-
-.. autofunction:: cells(domain: Domain)
-.. autofunction:: to_inner_cell(domain: Domain, s:Sample)
-.. autofunction:: to_outer_cell(domain: Domain, s:Sample)
-.. autofunction:: to_cell_side(domain: Domain, s:Sample, side_index: ElementIndex)
-
-Field operators
-^^^^^^^^^^^^^^^
-.. autofunction:: degree(f: Field)
-.. autofunction:: inner(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: outer(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: grad(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: grad_outer(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: div(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: div_outer(f: Field, s: Sample, node_index_in_elt: int|None = None)
-
-.. autofunction:: D(f: Field, s: Sample)
-.. autofunction:: curl(f: Field, s: Sample)
-.. autofunction:: jump(f: Field, s: Sample)
-.. autofunction:: average(f: Field, s: Sample)
-.. autofunction:: grad_jump(f: Field, s: Sample)
-.. autofunction:: grad_average(f: Field, s: Sample)
-
-.. autofunction:: node_count(f: Field, s: Sample)
-.. autofunction:: at_node(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: node_index(f: Field, s: Sample, node_index_in_elt: int|None = None)
-
-.. autofunction:: node_inner_weight(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: node_outer_weight(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: node_inner_weight_gradient(f: Field, s: Sample, node_index_in_elt: int|None = None)
-.. autofunction:: node_outer_weight_gradient(f: Field, s: Sample, node_index_in_elt: int|None = None)
-
-Integration and interpolation
------------------------------
-
-.. autofunction:: integrate
-.. autofunction:: interpolate
-
-.. autodecorator:: integrand
-
-.. autoclass:: Sample
-   :no-members:
-   :no-special-members:
-   
-   .. py:attribute:: element_index
-      :type: ElementIndex
-
-      Index in the geometry of the the sample point is in
-   
-   .. py:attribute:: element_coords
-      :type: Coords
-
-      Coordinates of the sample point in the element
-   
-   .. py:attribute:: qp_index
-      :type: QuadraturePointIndex
-
-      If the sample corresponds to a quadrature point, its index
-   
-   .. py:attribute:: qp_weight
-      :type: float
-
-      If the sample corresponds to a quadrature point, its weight
-
-.. autoclass:: Field 
-   :no-members:
-   :no-special-members:
-
-.. autoclass:: Domain 
-   :no-members:
-   :no-special-members:
-
-.. autoclass:: Integrand
-   :no-members:
-   :no-special-members:
-
-.. autofunction:: make_free_sample
-
-.. py:type:: ElementIndex
-   :canonical: int
-   :no-index:
-
-   Type representing the index of an element in the geometry
-
-.. py:type:: QuadraturePointIndex
-   :canonical: int
-   :no-index:
-
-   Type representing the index of a quadrature point
-
-.. py:type:: Coords
-   :canonical: wp.vec3f
-
-   Type representing coordinates within elements
-
-.. py:data:: NULL_ELEMENT_INDEX
-   :type: ElementIndex
-
-   Constant indicating an invalid element index
-
-
-.. py:data:: NULL_QP_INDEX
-   :type: QuadraturePointIndex
-   
-   Constant indicating an invalid quadrature point index
-
-.. py:data:: OUTSIDE
-   :type: float
-
-   Constant indicating an invalid element coordinate
-
-Geometry
---------
-
-.. autoclass:: Grid2D
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Trimesh2D
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Trimesh3D
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Quadmesh2D
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Quadmesh3D
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Grid3D
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Tetmesh
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Hexmesh
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Nanogrid
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: AdaptiveNanogrid
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: LinearGeometryPartition
-   :no-members:
-
-.. autoclass:: ExplicitGeometryPartition
-   :no-members:
-
-.. autoclass:: Cells
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Sides
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: BoundarySides
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: FrontierSides
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Subdomain
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: Element
-   :members:
-
-.. autoclass:: ElementKind
-   :members:
-
-.. autoclass:: Polynomial
-   :members:
-
-.. autoclass:: RegularQuadrature
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: NodalQuadrature
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: ExplicitQuadrature
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: PicQuadrature
-   :show-inheritance:
-   :no-members:
-
-Function Spaces
----------------
-
-.. autofunction:: make_polynomial_space
-
-.. autofunction:: make_polynomial_basis_space
-.. autofunction:: make_element_shape_function
-.. autofunction:: make_element_based_space_topology
-
-.. autofunction:: make_collocated_function_space
-.. autofunction:: make_covariant_function_space
-.. autofunction:: make_contravariant_function_space
-
-.. autofunction:: make_space_partition
-
-.. autofunction:: make_space_restriction
-
-.. autoclass:: ElementBasis
-   :members:
-
-.. autoclass:: SymmetricTensorMapper
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: SkewSymmetricTensorMapper
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: PointBasisSpace
-   :show-inheritance:
-   :no-members:
-
-.. autoclass:: ShapeBasisSpace
-   :show-inheritance:
-   :no-members:
-   :members: shape
-
-.. py:type:: NodeIndex
-   :canonical: int
-   :no-index:
-
-   Type representing the index of a node in a function space
-
-.. py:data:: NULL_NODE_INDEX
-   :type: NodeIndex
-
-   Constant indicating an invalid node index
-
-.. _Fields:
-
-Fields
-------
-
-.. autofunction:: make_test
-
-.. autofunction:: make_trial
-
-.. autofunction:: make_discrete_field
-
-.. autoclass:: ImplicitField
-   :show-inheritance:
-   :no-members:
-   :members: values
-
-.. autoclass:: UniformField
-   :show-inheritance:
-   :no-members:
-   :members: value
-
-.. autoclass:: NonconformingField
-   :show-inheritance:
-   :no-members:
-
-.. autofunction:: make_restriction
-
-Boundary Conditions
--------------------
-
-.. autofunction:: normalize_dirichlet_projector
-
-.. autofunction:: project_linear_system
-
-.. autofunction:: project_system_matrix
-
-.. autofunction:: project_system_rhs
-
-Adaptivity
-----------
-
-.. autofunction:: adaptive_nanogrid_from_hierarchy
-
-.. autofunction:: adaptive_nanogrid_from_field
-
-Memory Management
------------------
-
-.. autofunction:: set_default_temporary_store
-
-.. autofunction:: borrow_temporary
-
-.. autofunction:: borrow_temporary_like
-
-
-Interfaces
-----------
-
-Interface classes are not meant to be constructed directly, but can be derived from extend the built-in functionality.
-
-.. autoclass:: Geometry
-   :no-members:
-   :members: cell_count, side_count, boundary_side_count, build_bvh, update_bvh
-
-.. autoclass:: GeometryPartition
-   :no-members:
-   :members: cell_count, side_count, boundary_side_count, frontier_side_count, geometry
-
-.. autoclass:: GeometryDomain
-   :no-members:
-   :members: element_kind, dimension, element_count, geometry, geometry_partition
-
-.. autoclass:: Quadrature
-   :no-members:
-   :members: domain, total_point_count
-
-.. autoclass:: FunctionSpace
-   :no-members:
-   :members: dtype, topology, basis, geometry, dimension, degree, trace, make_field
-
-.. autoclass:: SpaceTopology
-   :no-members:
-   :members: dimension, geometry, node_count, element_node_indices, trace
-
-.. autoclass:: BasisSpace
-   :no-members:
-   :members: topology, geometry, node_positions
-
-.. autoclass:: ShapeFunction
-   :no-members:
-
-.. autoclass:: SpacePartition
-   :no-members:
-   :members: node_count, owned_node_count, interior_node_count, space_node_indices, space_topology, geo_partition
-
-.. autoclass:: SpaceRestriction
-   :no-members:
-   :members: node_count, space_partition, space_topology, domain
-
-.. autoclass:: DofMapper
-   :no-members:
-
-.. autoclass:: FieldLike
-   :no-members:
-
-.. autoclass:: DiscreteField
-   :show-inheritance:
-   :no-members:
-   :members: dof_values
-
-.. autoclass:: GeometryField
-   :show-inheritance:
-   :no-members:
-   :members: trace, make_deformed_geometry
-
-.. autoclass:: TemporaryStore
-   :no-members:
-   :members: clear
-
-.. autoclass:: Temporary
-   :no-members:
-   :members: array, detach, release

@@ -182,6 +182,7 @@ class Function:
         self.input_types = {}
         self.export = export
         self.doc = doc
+        self.__doc__ = doc  # necessary for autodoc/autosummary
         self.group = group
         self.module = module
         self.variadic = variadic  # function can take arbitrary number of inputs, e.g.: printf()
@@ -1707,23 +1708,6 @@ def register_api_function(
     """
     function.group = group
     function.hidden = hidden
-
-    # Update the docstring to mark these functions as being available from kernels and Python's runtime.
-    assert function.__doc__.startswith("\n")
-    leading_space_count = sum(1 for _ in itertools.takewhile(str.isspace, function.__doc__[1:]))
-    assert leading_space_count % 4 == 0
-    indent_level = leading_space_count // 4
-    indent = "    "
-    function.__doc__ = (
-        f"\n"
-        f"{indent * indent_level}.. hlist::\n"
-        f"{indent * (indent_level + 1)}:columns: 8\n"
-        f"\n"
-        f"{indent * (indent_level + 1)}* Kernel\n"
-        f"{indent * (indent_level + 1)}* Python\n"
-        f"{indent * (indent_level + 1)}* Differentiable\n"
-        f"{function.__doc__}"
-    )
 
     builtin_functions[function.key] = function
 
