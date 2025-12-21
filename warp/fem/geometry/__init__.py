@@ -17,8 +17,6 @@
 
 from warp._src.fem.geometry import DeformedGeometry as DeformedGeometry
 
-from . import closest_point as closest_point
-
 
 # TODO: Remove after cleaning up the public API.
 

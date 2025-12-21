@@ -144,7 +144,6 @@ from . import cache as cache
 from . import field as field
 from . import geometry as geometry
 from . import linalg as linalg
-from . import operator as operator
 from . import polynomial as polynomial
 from . import space as space
 from . import utils as utils
