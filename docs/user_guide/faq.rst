@@ -54,8 +54,8 @@ consistently good behavior from kernels that is close to native code.
 Examples of unsupported concepts that don't map well to the GPU are
 dynamic types, list comprehensions, exceptions, garbage collection, etc.
 
-When should I call ``wp.synchronize()``?
-----------------------------------------
+When should I call :func:`wp.synchronize() <synchronize>`?
+----------------------------------------------------------
 
 One of the common sources of confusion for new users is when calls to
 :func:`wp.synchronize() <warp.synchronize>` are necessary. The answer is "almost never"!
@@ -104,7 +104,7 @@ gradient at :math:`x=0`, rather they have what is known as a
 *subgradient*, which is formally the convex hull of directional
 derivatives at that point. The way that Warp (and most
 auto-differentiation frameworks) handles these points is to pick an
-arbitrary gradient from this set, e.g.: for ``wp.abs()``, it will
+arbitrary gradient from this set, e.g.: for :func:`wp.abs() <abs>`, it will
 arbitrarily choose the gradient to be 1.0 at the origin. You can find
 the implementation for these functions in
 `warp/native/builtin.h <https://github.com/NVIDIA/warp/blob/main/warp/native/builtin.h>`_.

@@ -111,8 +111,8 @@ To convert a PyTorch CUDA stream to a Warp CUDA stream and vice versa, Warp prov
 * :func:`warp.stream_to_torch`
 
 
-Example: Optimization using ``warp.from_torch()``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using :func:`warp.from_torch`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example usage of minimizing a loss function over an array of 2D points written in Warp via PyTorch's Adam optimizer
 using :func:`warp.from_torch` is as follows:
@@ -153,8 +153,8 @@ using :func:`warp.from_torch` is as follows:
         wp.launch(loss, dim=len(xs), inputs=[wp_xs], outputs=[wp_l], device=wp_xs.device)
         print(f"{i}\tloss: {l.item()}")
 
-Example: Optimization using ``warp.to_torch``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using :func:`warp.to_torch`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_torch` to convert them to PyTorch tensors.
 Here, we revisit the same example from above where now only a single conversion to a PyTorch tensor is needed to supply Adam with the optimization variables:
@@ -286,7 +286,7 @@ we recommend using PyTorch version 2.3.0+, which has improvements that address t
 .. _pytorch-custom-ops-example:
 
 Example: Optimization using PyTorch custom operators (PyTorch >= 2.4.0)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PyTorch 2.4+ introduced `custom operators <https://pytorch.org/tutorials/advanced/python_custom_ops.html#python-custom-ops-tutorial>`_ to replace 
 PyTorch autograd functions. These treat arbitrary Python functions (including Warp calls) as opaque callables, which prevents
@@ -429,9 +429,9 @@ Try converting the arrays only once and reuse them:
 
 If reusing arrays is not possible (e.g., a new PyTorch tensor is constructed on every iteration), passing ``return_ctype=True``
 to :func:`wp.from_torch() <warp.from_torch>` should yield better performance.
-Setting this argument to ``True`` avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.
-This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``,
-but cannot be used in other places that require a ``wp.array``.
+Setting this argument to ``True`` avoids constructing a :class:`wp.array <warp.array>` object and instead returns a low-level array descriptor.
+This descriptor is a simple C structure that can be passed to Warp kernels instead of a :class:`wp.array <warp.array>`,
+but cannot be used in other places that require a :class:`wp.array <warp.array>`.
 
 .. code:: python
 
@@ -493,7 +493,7 @@ PyTorch employs a deferred allocation strategy for gradient tensors. When you cr
 PyTorch does not immediately allocate memory for the gradient. Instead, gradients are allocated on-demand during
 the backward pass.
 
-However, when ``wp.from_torch()`` encounters a tensor with ``requires_grad=True`` but no allocated gradient,
+However, when :func:`wp.from_torch() <from_torch>` encounters a tensor with ``requires_grad=True`` but no allocated gradient,
 it forces the gradient to be allocated immediately. This creates overhead that can significantly impact performance.
 
 When PyTorch later discovers that an external
@@ -627,7 +627,7 @@ There are three approaches to avoid this synchronization overhead, depending on 
 
 **Solution A: Disable Gradient Tracking in wp.from_torch()**
 
-The simplest solution is to pass ``requires_grad=False`` to ``wp.from_torch()``, preventing Warp from
+The simplest solution is to pass ``requires_grad=False`` to :func:`wp.from_torch() <from_torch>`, preventing Warp from
 auto-allocating gradients:
 
 .. code:: python
@@ -1142,7 +1142,7 @@ Vector and Matrix Arrays
 
 Arrays of Warp vector and matrix types are supported.
 Since JAX does not have corresponding data types, the components are packed into extra inner dimensions of JAX arrays.
-For example, a Warp array of ``wp.vec3`` will have a JAX array shape of (..., 3) and a Warp array of ``wp.mat22`` will
+For example, a Warp array of :class:`wp.vec3 <vec3>` will have a JAX array shape of (..., 3) and a Warp array of :class:`wp.mat22 <mat22>` will
 have a JAX array shape of (..., 2, 2)::
 
     @wp.kernel
@@ -1167,8 +1167,8 @@ have a JAX array shape of (..., 2, 2)::
         d, e, f = vecmat_kernel(a, b, c)
 
 It's important to recognize that the Warp and JAX array shapes are different for vector and matrix types.
-In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of ``wp.float32``, ``wp.vec3``, and
-``wp.mat22``, respectively. In JAX, ``a`` is a one-dimensional array with length n, ``b`` is a two-dimensional array
+In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of :class:`wp.float32 <float32>`, :class:`wp.vec3 <vec3>`, and
+:class:`wp.mat22 <mat22>`, respectively. In JAX, ``a`` is a one-dimensional array with length n, ``b`` is a two-dimensional array
 with shape (n, 3), and ``c`` is a three-dimensional array with shape (n, 2, 2).
 
 When specifying custom output dimensions, it's possible to use either convention. The following calls are equivalent::
@@ -1679,8 +1679,8 @@ To convert a Paddle CUDA stream to a Warp CUDA stream and vice versa, Warp provi
 * :func:`warp.stream_from_paddle`
 
 
-Example: Optimization using ``warp.from_paddle()``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using :func:`warp.from_paddle`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example usage of minimizing a loss function over an array of 2D points written in Warp via Paddle's Adam optimizer
 using :func:`warp.from_paddle` is as follows::
@@ -1723,8 +1723,8 @@ using :func:`warp.from_paddle` is as follows::
         wp.launch(loss, dim=len(xs), inputs=[wp_xs], outputs=[wp_l], device=wp_xs.device)
         print(f"{i}\tloss: {l.item()}")
 
-Example: Optimization using ``warp.to_paddle``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Optimization using :func:`warp.to_paddle`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Less code is needed when we declare the optimization variables directly in Warp and use :func:`warp.to_paddle` to convert them to Paddle tensors.
 Here, we revisit the same example from above where now only a single conversion to a Paddle tensor is needed to supply Adam with the optimization variables::
@@ -1794,8 +1794,8 @@ Try converting the arrays only once and reuse them:
 
 If reusing arrays is not possible (e.g., a new Paddle tensor is constructed on every iteration), passing ``return_ctype=True`` to
 :func:`wp.from_paddle() <warp.from_paddle>` should yield faster performance.
-Setting this argument to ``True`` avoids constructing a ``wp.array`` object and instead returns a low-level array descriptor.
-This descriptor is a simple C structure that can be passed to Warp kernels instead of a ``wp.array``, but cannot be used in other places that require a ``wp.array``.
+Setting this argument to ``True`` avoids constructing a :class:`wp.array <warp.array>` object and instead returns a low-level array descriptor.
+This descriptor is a simple C structure that can be passed to Warp kernels instead of a :class:`wp.array <warp.array>`, but cannot be used in other places that require a :class:`wp.array <warp.array>`.
 
 .. code:: python
 
@@ -1836,7 +1836,7 @@ Sample output:
      5990 ms  from_paddle(..., return_ctype=True)
     35167 ms  direct from paddle
 
-The default ``wp.from_paddle()`` conversion is the slowest.
+The default :func:`wp.from_paddle() <from_paddle>` conversion is the slowest.
 Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.
 Passing Paddle tensors to Warp kernels directly falls somewhere in between.
 It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of Paddle tensors adds overhead because they are initialized on-demand.

@@ -59,7 +59,7 @@ Debug Mode Compilation
 In debug mode, Warp kernels will perform the following additional checks:
 
 * Raise an assertion if there is an array access outside the defined shape.
-* Warn if :func:`wp.tid() <tid>` will return an overflowed value on large grids.
+* Warn if :func:`wp.tid() <warp._src.lang.tid>` will return an overflowed value on large grids.
 * (GPU-only) Warn if the CUDA grid dimensions have been capped due to an overflowed number of blocks.
 * (GPU-only) Generate line-number information for device code.
 
@@ -153,7 +153,7 @@ Generated Code
 
 Occasionally, it can be useful to inspect the generated code for debugging or profiling.
 The generated code for kernels is stored in a central cache location in the user's home directory by default.
-The cache location is printed at startup when ``wp.init()`` is called, for example:
+The cache location is printed at startup when :func:`wp.init() <warp.init>` is called, for example:
 
 .. code-block:: text
 

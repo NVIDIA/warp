@@ -10,7 +10,7 @@ Kernel Launches
 ~~~~~~~~~~~~~~~
 
 Kernels launched on a CUDA device are asynchronous with respect to the host (CPU Python thread).  Launching a kernel schedules
-its execution on the CUDA device, but the :func:`wp.launch() <launch>` function can return before the kernel execution
+its execution on the CUDA device, but the :func:`wp.launch() <warp.launch>` function can return before the kernel execution
 completes.  This allows us to run some CPU computations while the CUDA kernel is executing, which is an
 easy way to introduce parallelism into our programs.
 
@@ -32,7 +32,7 @@ Kernels launched on different CUDA devices can execute concurrently.  This can b
     # do CPU work while kernels are running on both GPUs
     do_cpu_work()
 
-Launching kernels on the CPU is currently a synchronous operation.  In other words, :func:`wp.launch() <launch>` will return only after the kernel has finished executing on the CPU.  To run a CUDA kernel and a CPU kernel concurrently, the CUDA kernel should be launched first:
+Launching kernels on the CPU is currently a synchronous operation.  In other words, :func:`wp.launch() <warp.launch>` will return only after the kernel has finished executing on the CPU.  To run a CUDA kernel and a CPU kernel concurrently, the CUDA kernel should be launched first:
 
 .. code:: python
 
@@ -161,14 +161,14 @@ All kernel launches and memory operations issued on that device are placed on th
 Creating Streams
 ~~~~~~~~~~~~~~~~
 
-A stream is tied to a particular CUDA device.  New streams can be created using the :class:`wp.Stream <Stream>` constructor:
+A stream is tied to a particular CUDA device.  New streams can be created using the :class:`wp.Stream <warp.Stream>` constructor:
 
 .. code:: python
 
     s1 = wp.Stream("cuda:0")  # create a stream on a specific CUDA device
     s2 = wp.Stream()          # create a stream on the default device
 
-If the device parameter is omitted, the default device will be used, which can be managed using :class:`wp.ScopedDevice <ScopedDevice>`.
+If the device parameter is omitted, the default device will be used, which can be managed using :class:`wp.ScopedDevice <warp.ScopedDevice>`.
 
 For interoperation with external code, it is possible to pass a CUDA stream handle to wrap an external stream:
 
@@ -178,12 +178,12 @@ For interoperation with external code, it is possible to pass a CUDA stream hand
 
 The ``cuda_stream`` argument must be a native stream handle (``cudaStream_t`` or ``CUstream``) passed as a Python integer.
 This mechanism is used internally for sharing streams with external frameworks like PyTorch or DLPack.  The caller is responsible for ensuring
-that the external stream does not get destroyed while it is referenced by a ``wp.Stream`` object.
+that the external stream does not get destroyed while it is referenced by a :class:`wp.Stream <warp.Stream>` object.
 
 Using Streams
 ~~~~~~~~~~~~~
 
-Use :class:`wp.ScopedStream <ScopedStream>` to temporarily change the current stream on a device and schedule a sequence of operations on that stream:
+Use :class:`wp.ScopedStream <warp.ScopedStream>` to temporarily change the current stream on a device and schedule a sequence of operations on that stream:
 
 .. code:: python
 
@@ -195,7 +195,7 @@ Use :class:`wp.ScopedStream <ScopedStream>` to temporarily change the current st
         wp.launch(kernel, dim=n, inputs=[a])
         wp.copy(b, a)
 
-Since streams are tied to a particular device, :class:`wp.ScopedStream <ScopedStream>` subsumes the functionality of :class:`wp.ScopedDevice <ScopedDevice>`.  That's why we don't need to explicitly specify the ``device`` argument to each of the calls.
+Since streams are tied to a particular device, :class:`wp.ScopedStream <warp.ScopedStream>` subsumes the functionality of :class:`wp.ScopedDevice <warp.ScopedDevice>`.  That's why we don't need to explicitly specify the ``device`` argument to each of the calls.
 
 An important benefit of streams is that they can be used to overlap compute and data transfer operations on the same device,
 which can improve the overall throughput of a program by doing those operations in parallel.
@@ -218,33 +218,33 @@ which can improve the overall throughput of a program by doing those operations 
         with wp.ScopedStream(transfer_stream)
             wp.copy(b, c)
 
-The :func:`wp.get_stream() <get_stream>` function can be used to get the current stream on a device:
+The :func:`wp.get_stream() <warp.get_stream>` function can be used to get the current stream on a device:
 
 .. code:: python
 
     s1 = wp.get_stream("cuda:0")  # get the current stream on a specific device
     s2 = wp.get_stream()          # get the current stream on the default device
 
-The :func:`wp.set_stream() <set_stream>` function can be used to set the current stream on a device:
+The :func:`wp.set_stream() <warp.set_stream>` function can be used to set the current stream on a device:
 
 .. code:: python
 
     wp.set_stream(stream, device="cuda:0")  # set the stream on a specific device
     wp.set_stream(stream)                   # set the stream on the default device
 
-In general, we recommend using :class:`wp.ScopedStream <ScopedStream>` rather than :func:`wp.set_stream() <set_stream>`.
+In general, we recommend using :class:`wp.ScopedStream <warp.ScopedStream>` rather than :func:`wp.set_stream() <warp.set_stream>`.
 
 Synchronization
 ~~~~~~~~~~~~~~~
 
-:func:`wp.synchronize_stream() <synchronize_stream>` can be used to block the host thread until the given stream completes:
+:func:`wp.synchronize_stream() <warp.synchronize_stream>` can be used to block the host thread until the given stream completes:
 
 .. code:: python
 
     wp.synchronize_stream(stream)
 
 In a program that uses multiple streams, this gives a more fine-grained level of control over synchronization behavior
-than :func:`wp.synchronize_device() <synchronize_device>`, which synchronizes all streams on the device.
+than :func:`wp.synchronize_device() <warp.synchronize_device>`, which synchronizes all streams on the device.
 For example, if a program has multiple compute and transfer streams, the host might only want to wait for one transfer stream
 to complete, without waiting for the other streams.  By synchronizing only one stream, we allow the others to continue running
 concurrently with the host thread.
@@ -254,7 +254,7 @@ concurrently with the host thread.
 Events
 ~~~~~~
 
-Functions like :func:`wp.synchronize_device() <synchronize_device>` or :func:`wp.synchronize_stream() <synchronize_stream>` block the CPU thread until work completes on a CUDA device, but they're not intended to synchronize multiple CUDA streams with each other.
+Functions like :func:`wp.synchronize_device() <warp.synchronize_device>` or :func:`wp.synchronize_stream() <warp.synchronize_stream>` block the CPU thread until work completes on a CUDA device, but they're not intended to synchronize multiple CUDA streams with each other.
 
 CUDA events provide a mechanism for device-side synchronization between streams.
 This kind of synchronization does not block the host thread, but it allows one stream to wait for work on another stream
@@ -296,7 +296,7 @@ The :meth:`Stream.wait_stream` method combines the acts of recording and waiting
 
     stream2.wait_stream(stream1)
 
-Warp also provides global functions :func:`wp.record_event() <record_event>`, :func:`wp.wait_event() <wait_event>`, and :func:`wp.wait_stream() <wait_stream>` which operate on the current
+Warp also provides global functions :func:`wp.record_event() <warp.record_event>`, :func:`wp.wait_event() <warp.wait_event>`, and :func:`wp.wait_stream() <warp.wait_stream>` which operate on the current
 stream of the default device:
 
 .. code:: python
@@ -305,7 +305,7 @@ stream of the default device:
     wp.wait_event(event)    # make the current stream wait for an event
     wp.wait_stream(stream)  # make the current stream wait for another stream
 
-These variants are convenient to use inside of :class:`wp.ScopedStream <ScopedStream>` and :class:`wp.ScopedDevice <ScopedDevice>` managers.
+These variants are convenient to use inside of :class:`wp.ScopedStream <warp.ScopedStream>` and :class:`wp.ScopedDevice <warp.ScopedDevice>` managers.
 
 Here is a more complete example with a producer stream that copies data into an array and a consumer stream
 that uses the array in a kernel:
@@ -339,7 +339,7 @@ that uses the array in a kernel:
             # consume the array in a kernel
             wp.launch(kernel, dim=a.size, inputs=[a])
 
-The function :func:`wp.synchronize_event() <synchronize_event>` can be used to block the host thread until a recorded event completes.  This is useful when the host wants to wait for a specific synchronization point on a stream, while allowing subsequent stream operations to continue executing asynchronously.
+The function :func:`wp.synchronize_event() <warp.synchronize_event>` can be used to block the host thread until a recorded event completes.  This is useful when the host wants to wait for a specific synchronization point on a stream, while allowing subsequent stream operations to continue executing asynchronously.
 
 .. code:: python
 
@@ -379,8 +379,8 @@ Querying Stream and Event Status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :attr:`Stream.is_complete` and :attr:`Event.is_complete` attributes can be used to query the status of a stream or
-event. These queries do not block the host thread unlike :func:`wp.synchronize_stream() <synchronize_stream>` and
-:func:`wp.synchronize_event() <synchronize_event>`.
+event. These queries do not block the host thread unlike :func:`wp.synchronize_stream() <warp.synchronize_stream>` and
+:func:`wp.synchronize_event() <warp.synchronize_event>`.
 
 These attributes are useful for running operations on the CPU while waiting for GPU operations to complete:
 
@@ -428,15 +428,15 @@ which means that no explicit synchronization is required.  The reason for this i
 for debugging purposes, so it's nice not to worry about synchronization.
 
 The drawback of this approach is that the CUDA default stream (and any methods that use it) cannot be used during graph capture.
-The regular :func:`wp.copy() <copy>` function should be used to capture readback operations in a graph.
+The regular :func:`wp.copy() <warp.copy>` function should be used to capture readback operations in a graph.
 
 
 Explicit Streams Arguments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Several Warp functions accept optional ``stream`` arguments.  This allows directly specifying the stream without
-using a :class:`wp.ScopedStream <ScopedStream>` manager.  There are benefits and drawbacks to both approaches, which will be discussed below.
-Functions that accept stream arguments directly include :func:`wp.launch() <launch>`, :func:`wp.capture_launch() <capture_launch>`, and :func:`wp.copy() <copy>`.
+using a :class:`wp.ScopedStream <warp.ScopedStream>` manager.  There are benefits and drawbacks to both approaches, which will be discussed below.
+Functions that accept stream arguments directly include :func:`wp.launch() <warp.launch>`, :func:`wp.capture_launch() <warp.capture_launch>`, and :func:`wp.copy() <warp.copy>`.
 
 To launch a kernel on a specific stream:
 
@@ -453,10 +453,10 @@ To launch a graph on a specific stream:
 
     wp.capture_launch(graph, stream=my_stream)
 
-For both kernel and graph launches, specifying the stream directly can be faster than using :class:`wp.ScopedStream <ScopedStream>`.
-While :class:`wp.ScopedStream <ScopedStream>` is useful for scheduling a sequence of operations on a specific stream, there is some overhead
+For both kernel and graph launches, specifying the stream directly can be faster than using :class:`wp.ScopedStream <warp.ScopedStream>`.
+While :class:`wp.ScopedStream <warp.ScopedStream>` is useful for scheduling a sequence of operations on a specific stream, there is some overhead
 in setting and restoring the current stream on the device.  This overhead is negligible for larger workloads,
-but performance-sensitive code may benefit from specifying the stream directly instead of using :class:`wp.ScopedStream <ScopedStream>`, especially
+but performance-sensitive code may benefit from specifying the stream directly instead of using :class:`wp.ScopedStream <warp.ScopedStream>`, especially
 for a single kernel or graph launch.
 
 In addition to these performance considerations, specifying the stream directly can be useful when copying arrays between
@@ -599,9 +599,9 @@ The solution is to synchronize the streams, which can be done like this:
 
     wp.launch(kernel, dim=a.size, inputs=[a], stream=s)
 
-The :class:`wp.ScopedStream <ScopedStream>` manager is designed to alleviate this common problem.  It synchronizes the new stream with the
-previous stream on the device.  Its behavior is equivalent to inserting the ``wait_stream()`` call as shown above.
-With :class:`wp.ScopedStream <ScopedStream>`, we don't need to explicitly sync the new stream with the previous stream:
+The :class:`wp.ScopedStream <warp.ScopedStream>` manager is designed to alleviate this common problem.  It synchronizes the new stream with the
+previous stream on the device.  Its behavior is equivalent to inserting the :meth:`Stream.wait_stream` call as shown above.
+With :class:`wp.ScopedStream <warp.ScopedStream>`, we don't need to explicitly sync the new stream with the previous stream:
 
 .. code:: python
 
@@ -612,12 +612,12 @@ With :class:`wp.ScopedStream <ScopedStream>`, we don't need to explicitly sync t
     with wp.ScopedStream(s):
         wp.launch(kernel, dim=a.size, inputs=[a])
 
-This makes :class:`wp.ScopedStream <ScopedStream>` the recommended way of getting started with streams in Warp.  Using explicit stream arguments
+This makes :class:`wp.ScopedStream <warp.ScopedStream>` the recommended way of getting started with streams in Warp.  Using explicit stream arguments
 might be slightly more performant, but it requires more attention to stream synchronization mechanics.
 If you are a stream novice, consider the following trajectory for integrating streams into your Warp programs:
 
 - Level 1:  Don't.  You don't need to use streams to use Warp.  Avoiding streams is a perfectly valid and respectable way to live.  Many interesting and sophisticated algorithms can be developed without fancy stream juggling.  Often it's better to focus on solving a problem in a simple and elegant way, unencumbered by the vagaries of low-level stream management.
-- Level 2:  Use :class:`wp.ScopedStream <ScopedStream>`.  It helps to avoid some common hard-to-catch issues.  There's a little bit of overhead, but it should be negligible if the GPU workloads are large enough.  Consider adding streams into your program as a form of targeted optimization, especially if some areas like memory transfers ("feeding the beast") are a known bottleneck.  Streams are great for overlapping memory transfers with compute workloads.
+- Level 2:  Use :class:`wp.ScopedStream <warp.ScopedStream>`.  It helps to avoid some common hard-to-catch issues.  There's a little bit of overhead, but it should be negligible if the GPU workloads are large enough.  Consider adding streams into your program as a form of targeted optimization, especially if some areas like memory transfers ("feeding the beast") are a known bottleneck.  Streams are great for overlapping memory transfers with compute workloads.
 - Level 3:  Use explicit stream arguments for kernel launches, array copying, etc.  This will be the most performant approach that can get you close to the speed of light.  You will need to take care of all stream synchronization yourself, but the results can be rewarding in the benchmarks.
 
 .. _synchronization_guidance:
@@ -641,18 +641,18 @@ Host-side Synchronization
 Host-side synchronization blocks the host thread (Python) until GPU work completes.  This is necessary when
 you are waiting for some GPU work to complete so that you can access the results on the CPU.
 
-:func:`wp.synchronize() <synchronize>` is the most heavy-handed synchronization function, since it synchronizes all the devices in the system.  It is almost never the right function to call if performance is important.  However, it can sometimes be useful when debugging synchronization-related issues.
+:func:`wp.synchronize() <warp.synchronize>` is the most heavy-handed synchronization function, since it synchronizes all the devices in the system.  It is almost never the right function to call if performance is important.  However, it can sometimes be useful when debugging synchronization-related issues.
 
-:func:`wp.synchronize_device(device) <synchronize_device>` synchronizes a single device, which is generally better and faster.  This synchronizes all the streams on the specified device, including streams created by Warp and those created by any other framework.
+:func:`wp.synchronize_device(device) <warp.synchronize_device>` synchronizes a single device, which is generally better and faster.  This synchronizes all the streams on the specified device, including streams created by Warp and those created by any other framework.
 
-:func:`wp.synchronize_stream(stream) <synchronize_stream>` synchronizes a single stream, which is better still.  If the program uses multiple streams, you can wait for a specific one to finish without waiting for the others.  This is handy if you have a readback stream that is copying data from the GPU to the CPU.  You can wait for the transfer to complete and start processing it on the CPU while other streams are still chugging along on the GPU, in parallel with the host code.
+:func:`wp.synchronize_stream(stream) <warp.synchronize_stream>` synchronizes a single stream, which is better still.  If the program uses multiple streams, you can wait for a specific one to finish without waiting for the others.  This is handy if you have a readback stream that is copying data from the GPU to the CPU.  You can wait for the transfer to complete and start processing it on the CPU while other streams are still chugging along on the GPU, in parallel with the host code.
 
-:func:`wp.synchronize_event(event) <synchronize_event>` is the most specific host synchronization function.  It blocks the host until an event previously recorded on a CUDA stream completes.  This can be used to wait for a specific stream synchronization point to be reached, while allowing subsequent operations on that stream to continue asynchronously.
+:func:`wp.synchronize_event(event) <warp.synchronize_event>` is the most specific host synchronization function.  It blocks the host until an event previously recorded on a CUDA stream completes.  This can be used to wait for a specific stream synchronization point to be reached, while allowing subsequent operations on that stream to continue asynchronously.
 
 Device-side Synchronization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Device-side synchronization uses CUDA events to make one stream wait for a synchronization point recorded on another stream (:func:`wp.record_event() <record_event>`, :func:`wp.wait_event() <wait_event>`, :func:`wp.wait_stream() <wait_stream>`).
+Device-side synchronization uses CUDA events to make one stream wait for a synchronization point recorded on another stream (:func:`wp.record_event() <warp.record_event>`, :func:`wp.wait_event() <warp.wait_event>`, :func:`wp.wait_stream() <warp.wait_stream>`).
 
 These functions don't block the host thread, so the CPU can stay busy doing useful work, like preparing the next batch of data
 to feed the beast.  Events can be used to synchronize streams on the same device or even different CUDA devices, so you can

@@ -8,7 +8,7 @@ Basics
 Initialization
 --------------
 
-When calling a Warp function like :func:`wp.launch() <launch>` for the first time,
+When calling a Warp function like :func:`wp.launch() <warp.launch>` for the first time,
 Warp will initialize itself and will print some startup information
 about the compute devices available, driver versions, and the location for any
 generated kernel code, e.g.:
@@ -27,7 +27,7 @@ generated kernel code, e.g.:
         /home/nvidia/.cache/warp/1.2.0
 
 
-It's also possible to explicitly initialize Warp with the ``wp.init()`` method::
+It's also possible to explicitly initialize Warp with the :func:`wp.init() <warp.init>` method::
 
     import warp as wp
 
@@ -75,7 +75,7 @@ To launch a kernel with 1024 threads, we use :func:`wp.launch() <warp.launch>`::
               inputs=[a, b, c],     # parameters
               device="cuda")        # execution device
 
-Inside the kernel, we retrieve the *thread index* of each thread using the :func:`wp.tid() <tid>` built-in function::
+Inside the kernel, we retrieve the *thread index* of each thread using the :func:`wp.tid() <warp._src.lang.tid>` built-in function::
 
     # get thread index
     i = wp.tid()
@@ -88,7 +88,7 @@ To launch a 2D grid of threads to process a 1024x1024 image, we could write::
 
     wp.launch(kernel=compute_image, dim=(1024, 1024), inputs=[img], device="cuda")
 
-We retrieve a 2D thread index inside the kernel by using multiple assignment when calling :func:`wp.tid() <tid>`:
+We retrieve a 2D thread index inside the kernel by using multiple assignment when calling :func:`wp.tid() <warp._src.lang.tid>`:
 
 .. code-block:: python
 
@@ -100,11 +100,11 @@ We retrieve a 2D thread index inside the kernel by using multiple assignment whe
 Arrays
 ------
 
-Memory allocations are exposed via the :class:`wp.array <array>` type.
+Memory allocations are exposed via the :class:`wp.array <warp.array>` type.
 Arrays are multidimensional containers of fixed size that can store homogeneous
 elements of any Warp data type either in host (CPU) or device (GPU) memory.
 All arrays have an associated data type, which can be a scalar data type
-(e.g. ``wp.float``, ``wp.int``) or a composite data type (e.g. ``wp.vec3``, ``wp.matrix33``).
+(e.g. ``float``, ``int``) or a composite data type (e.g. :class:`wp.vec3 <warp.vec3>`, :class:`wp.mat33 <warp.mat33>`).
 :ref:`Data_Types` lists all of Warp's built-in data types.
 
 Arrays can be allocated similar to NumPy and PyTorch::
@@ -121,7 +121,7 @@ Arrays can be allocated similar to NumPy and PyTorch::
     v = wp.from_numpy(a, dtype=wp.vec3, device="cuda")
 
 Arrays up to four dimensions are supported. The aliases
-``wp.array2d``, ``wp.array3d``, ``wp.array4d`` are useful when typing kernel
+:func:`wp.array2d <warp.array2d>`, :func:`wp.array3d <warp.array3d>`, :func:`wp.array4d <warp.array4d>` are useful when typing kernel
 arguments:
 
 .. code-block:: python
@@ -175,7 +175,7 @@ Please see the :ref:`Arrays Reference <Arrays>` for more details.
 User Functions
 --------------
 
-Users can write their own functions to be called from Warp kernels using the ``@wp.func`` decorator, for example::
+Users can write their own functions to be called from Warp kernels using the :func:`@wp.func <warp.func>` decorator, for example::
 
     @wp.func
     def square(x: float):
@@ -184,15 +184,15 @@ Users can write their own functions to be called from Warp kernels using the ``@
 Kernels can call user functions defined in the same module or defined in a different module.
 As the example shows, return type hints for user functions are **optional**.
 
-While ``@wp.func`` is primarily for functions that are called from kernels, they can also be called directly
+While :func:`@wp.func <warp.func>` is primarily for functions that are called from kernels, they can also be called directly
 from Python. This is an experimental feature with an important distinction: functions called from kernels are compiled by Warp,
 while functions called from Python are executed by the native Python interpreter.
-This means that any code inside a ``@wp.func`` that is intended to be called from Python must be
+This means that any code inside a :func:`@wp.func <warp.func>` that is intended to be called from Python must be
 compatible with the standard Python interpreter (e.g., it cannot use Warp's tile API).
 See :ref:`Python Scope vs. Kernel Scope API <python-scope-vs-kernel-scope-api>` for more details.
 
 Anything that can be done in a Warp kernel can also be done in a user function **with the exception**
-of :func:`wp.tid() <tid>`. The thread index can be passed in through the arguments of a user function if it is required.
+of :func:`wp.tid() <warp._src.lang.tid>`. The thread index can be passed in through the arguments of a user function if it is required.
 
 Functions can accept arrays and structs as inputs:
 
@@ -261,7 +261,7 @@ custom replay functions, and custom native functions.
 User Structs
 --------------
 
-Users can define their own structures using the ``@wp.struct`` decorator, for example::
+Users can define their own structures using the :func:`@wp.struct <warp.struct>` decorator, for example::
 
     @wp.struct
     class MyStruct:
@@ -273,7 +273,7 @@ Users can define their own structures using the ``@wp.struct`` decorator, for ex
 
 As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
 
-Structs may be used as a ``dtype`` for ``wp.arrays`` and may be passed to kernels directly as arguments.
+Structs may be used as a ``dtype`` for :class:`wp.array <warp.array>` and may be passed to kernels directly as arguments.
 See :ref:`Structs Reference <Structs>` for more details on structs.
 
 .. _python-scope-vs-kernel-scope-api:

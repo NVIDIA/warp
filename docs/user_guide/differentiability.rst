@@ -100,7 +100,7 @@ Both frameworks only require the user to explicitly allocate the tensor ``x``: `
 
 ``x`` and ``y`` are explicitly allocated up front. Note that we could have written
 ``wp.launch(kernel_func, x.shape, inputs=[x,y])``, but sometimes it is useful to keep track of which 
-arrays are being read from/written to by using the ``inputs`` and ``outputs`` arguments in ``wp.launch()`` 
+arrays are being read from/written to by using the ``inputs`` and ``outputs`` arguments in :func:`wp.launch() <warp.launch>`
 (in fact it is essential to do so when :ref:`visualizing computation graphs<visualizing_computation_graphs>`).
 If gradients and prior values of ``x`` aren't needed, we can instead write:
 
@@ -131,17 +131,17 @@ In such cases, it can be helpful to set ``wp.config.verify_autograd_array_access
 detect array overwrites. :ref:`Read more here<array_overwrite_tracking>`.
 
 .. note::
-    Though in-place operations such as ``x[tid] += 1.0`` and ``wp.atomic_add()`` are technically overwrite operations,
+    Though in-place operations such as ``x[tid] += 1.0`` and :func:`wp.atomic_add() <warp._src.lang.atomic_add>` are technically overwrite operations,
     the Warp graph specifically accommodates adjoint accumulation in these cases. :ref:`Read more here<in_place_math>`.
 
 Copying is Differentiable
 #########################
 
-:func:`wp.copy() <copy>`, :func:`wp.clone() <clone>`, and :meth:`array.assign()` are differentiable functions and can
+:func:`wp.copy() <warp.copy>`, :func:`wp.clone() <clone>`, and :meth:`array.assign` are differentiable functions and can
 participate in the computation graph recorded on the tape. Consider the following examples and their
 PyTorch equivalents (for comparison):
 
-``wp.copy()``:
+:func:`wp.copy() <warp.copy>`:
 
 .. testcode::
 
@@ -178,7 +178,7 @@ Equivalently, in PyTorch::
     print(x.grad)
     # tensor([2., 2., 2.])
 
-``wp.clone()``:
+:func:`wp.clone() <clone>`:
 
 .. testcode::
 
@@ -211,7 +211,7 @@ In PyTorch::
 .. note:: In PyTorch, one may clone a tensor x and detach it from the current computation graph by calling
     ``x.clone().detach()``. The equivalent in Warp is ``wp.clone(x, requires_grad=False)``.
 
-``array.assign()``:
+:meth:`array.assign`:
 
 .. testcode::
 
@@ -232,13 +232,13 @@ In PyTorch::
 
     [2. 2. 2.]
 
-.. note:: ``array.assign()`` is equivalent to ``wp.copy()`` with an additional step that wraps the source array in a Warp array if it is not already a Warp array.
+.. note:: :meth:`array.assign` is equivalent to :func:`wp.copy() <warp.copy>` with an additional step that wraps the source array in a Warp array if it is not already a Warp array.
 
 Jacobians
 #########
 
 To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`, we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`. The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
-In Warp, instead of passing a scalar loss buffer to the ``tape.backward()`` method, we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}` having the same type::
+In Warp, instead of passing a scalar loss buffer to the :meth:`tape.backward()` method, we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}` having the same type::
 
     # compute the Jacobian for a function of single output
     jacobian = np.empty((output_dim, input_dim), dtype=np.float32)
@@ -422,7 +422,7 @@ Now, the output of the above code is:
 Example 2: Custom Replay Function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the following, we increment an array index in each thread via :func:`wp.atomic_add() <atomic_add>` and compute
+In the following, we increment an array index in each thread via :func:`wp.atomic_add() <warp._src.lang.atomic_add>` and compute
 the square root of an input array at the incremented index:
 
 .. testcode::
@@ -465,9 +465,9 @@ The output of the above code is:
      2.828427 ]
     input.grad:  [4. 0. 0. 0. 0. 0. 0. 0.]
 
-The gradient of the input is incorrect because the backward pass involving the atomic operation ``wp.atomic_add()`` does not know which thread ID corresponds
+The gradient of the input is incorrect because the backward pass involving the atomic operation :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not know which thread ID corresponds
 to which input value.
-The index returned by the adjoint of ``wp.atomic_add()`` is always zero so that the gradient is the first entry of the input array,
+The index returned by the adjoint of :func:`wp.atomic_add() <warp._src.lang.atomic_add>` is always zero so that the gradient is the first entry of the input array,
 i.e. :math:`\frac{1}{2\sqrt{1}} = 0.5`, is accumulated ``dim`` times (hence ``input.grad[0] == 4.0`` and all other entries zero).
 
 To fix this, we define a new Warp function ``reversible_increment()`` with a custom *replay* definition that stores the thread ID in a separate array:
@@ -560,8 +560,8 @@ for the input array:
 Custom Native Functions
 #######################
 
-Users may insert native C++/CUDA code in Warp kernels using ``@func_native`` decorated functions.
-These accept native code as strings that get compiled after code generation, and are called within ``@wp.kernel`` functions.
+Users may insert native C++/CUDA code in Warp kernels using :func:`@wp.func_native <warp.func_native>` decorated functions.
+These accept native code as strings that get compiled after code generation, and are called within :func:`@wp.kernel <warp.kernel>` functions.
 For example:
 
 .. testcode::
@@ -612,8 +612,8 @@ Notice the use of shared memory here: The Warp library does not expose shared me
 readily accept the above snippet. This means CUDA features not exposed in Warp are still accessible in Warp scripts.
 Warp kernels meant for the CPU won't be able to leverage CUDA features of course, but this same mechanism supports pure C++ snippets as well.
 
-Please bear in mind the following: the thread index in your snippet should be computed in a ``@wp.kernel`` and passed to your snippet,
-as in the above example. This means your ``@wp.func_native`` function signature should include the variables used in your snippet, 
+Please bear in mind the following: the thread index in your snippet should be computed in a :func:`@wp.kernel <warp.kernel>` and passed to your snippet,
+as in the above example. This means your :func:`@wp.func_native <warp.func_native>` function signature should include the variables used in your snippet, 
 as well as a thread index of type ``int``. The function body itself should be stubbed with ``...`` (the snippet will be inserted during compilation).
 
 Should you wish to record your native function on the tape and then subsequently rewind the tape, you must include an adjoint snippet
@@ -1228,7 +1228,7 @@ This code produces incorrect gradients instead of ``[4. 4. 4.]``:
     [32.  8.  2.]
 
 We can fix the latter case by switching to a static loop (e.g. replacing ``range(iters)`` with ``range(3)``). Static loops are
-automatically unrolled if the number of loop iterations is less than or equal to the ``max_unroll`` parameter set in ``wp.config`` 
+automatically unrolled if the number of loop iterations is less than or equal to the ``max_unroll`` parameter set in :const:`wp.config <config>`
 or at the module level with ``wp.set_module_options({"max_unroll": N})``, and so intermediate values in the loop are individually stored.
 But in scenarios where this is not possible, you may consider allocating additional memory to store intermediate values in the dynamic loop.
 For example, we can fix the above case like so:

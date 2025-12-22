@@ -51,9 +51,9 @@ Type Inference
 ~~~~~~~~~~~~~~
 
 When a generic kernel is being launched, Warp infers the concrete types from the arguments.
-:func:`wp.launch() <launch>` handles generic kernels without any special syntax, but we should be mindful of the data types passed as arguments to make sure that the correct types are inferred:
+:func:`wp.launch() <warp.launch>` handles generic kernels without any special syntax, but we should be mindful of the data types passed as arguments to make sure that the correct types are inferred:
 
-* Scalars can be passed as regular Python numeric values (e.g., ``42`` or ``0.5``).  Python integers are interpreted as ``wp.int32`` and Python floating point values are interpreted as ``wp.float32``.  To specify a different data type and to avoid ambiguity, Warp data types should be used instead (e.g., ``wp.int64(42)`` or ``wp.float16(0.5)``).
+* Scalars can be passed as regular Python numeric values (e.g., ``42`` or ``0.5``).  Python integers are interpreted as :class:`wp.int32 <int32>` and Python floating point values are interpreted as :class:`wp.float32 <float32>`. To specify a different data type and to avoid ambiguity, Warp data types should be used instead (e.g., ``wp.int64(42)`` or ``wp.float16(0.5)``).
 * Vectors and matrices should be passed as Warp types rather than tuples or lists (e.g., ``wp.vec3f(1.0, 2.0, 3.0)`` or ``wp.mat22h([[1.0, 0.0], [0.0, 1.0]])``).
 * Warp arrays and structs can be passed normally.
 
@@ -222,7 +222,7 @@ Consider the following generic function:
     def triple(x: Any):
         return 3 * x
 
-Using numeric literals like ``3`` is problematic in generic expressions due to Warp's strict typing rules.  Operands in arithmetic expressions must have the same data types, but integer literals are always treated as ``wp.int32``.  This function will fail to compile if ``x`` has a data type other than ``wp.int32``, which means that it's not generic at all.
+Using numeric literals like ``3`` is problematic in generic expressions due to Warp's strict typing rules.  Operands in arithmetic expressions must have the same data types, but integer literals are always treated as :class:`wp.int32 <int32>`. This function will fail to compile if ``x`` has a data type other than :class:`wp.int32 <int32>`, which means that it's not generic at all.
 
 The ``type()`` operator comes to the rescue here.  The ``type()`` operator returns the type of its argument, which is handy in generic functions or kernels where the data types are not known in advance.  We can rewrite the function like this to make it work with a wider range of types:
 
@@ -248,7 +248,7 @@ The ``type()`` operator is useful for type conversions in Warp kernels and funct
     wp.launch(arange, dim=n, inputs=[ai])
     wp.launch(arange, dim=n, inputs=[af])
 
-``wp.tid()`` returns an integer, but the value gets converted to the array's data type before storing it in the array.  Alternatively, we could write our ``arange()`` kernel like this:
+:func:`wp.tid() <warp._src.lang.tid>` returns an integer, but the value gets converted to the array's data type before storing it in the array. Alternatively, we could write our ``arange()`` kernel like this:
 
 .. code:: python
 

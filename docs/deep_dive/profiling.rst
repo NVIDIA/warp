@@ -4,7 +4,7 @@ Profiling
 ScopedTimer
 -----------
 
-``wp.ScopedTimer`` objects can be used to gain some basic insight into the performance of Warp applications:
+:class:`wp.ScopedTimer <ScopedTimer>` objects can be used to gain some basic insight into the performance of Warp applications:
 
 .. code:: python
 
@@ -39,7 +39,7 @@ The only required argument for the ``ScopedTimer`` constructor is a string label
 
 By default, ``ScopedTimer`` measures the elapsed time on the CPU and does not introduce any CUDA synchronization.  Since most CUDA operations are asynchronous, the result does not include the time spent executing kernels and memory transfers on the CUDA device.  It's still a useful measurement, because it shows how long it took to schedule the CUDA operations on the CPU.
 
-To get the total amount of time including the device executions time, create the ``ScopedTimer`` with the ``synchronize=True`` flag.  This is equivalent to calling ``wp.synchronize()`` before and after the timed section of code.  Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.  Synchronizing at the end ensures that all timed work finishes before stopping the timer.  With the example above, the result might look like this:
+To get the total amount of time including the device executions time, create the ``ScopedTimer`` with the ``synchronize=True`` flag.  This is equivalent to calling :func:`wp.synchronize() <synchronize>` before and after the timed section of code.  Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.  Synchronizing at the end ensures that all timed work finishes before stopping the timer.  With the example above, the result might look like this:
 
 .. code:: console
 
@@ -93,17 +93,17 @@ CUDA Activity Profiling
     :widths: 25 50
     :header-rows: 0
 
-    * - ``wp.TIMING_KERNEL``
-      - Warp kernels (this includes all kernels written in Python as ``@wp.kernel``)
-    * - ``wp.TIMING_KERNEL_BUILTIN``
+    * - :const:`wp.TIMING_KERNEL <TIMING_KERNEL>`
+      - Warp kernels (this includes all kernels written in Python as :func:`@wp.kernel <warp.kernel>`)
+    * - :const:`wp.TIMING_KERNEL_BUILTIN <TIMING_KERNEL_BUILTIN>`
       - Builtin kernels (this includes kernels used by the Warp library under the hood)
-    * - ``wp.TIMING_MEMCPY``
+    * - :const:`wp.TIMING_MEMCPY <TIMING_MEMCPY>`
       - CUDA memory transfers (host-to-device, device-to-host, device-to-device, and peer-to-peer)
-    * - ``wp.TIMING_MEMSET``
-      - CUDA memset operations (e.g., zeroing out memory in ``wp.zeros()``)
-    * - ``wp.TIMING_GRAPH``
+    * - :const:`wp.TIMING_MEMSET <TIMING_MEMSET>`
+      - CUDA memset operations (e.g., zeroing out memory in :func:`wp.zeros() <warp.zeros>`)
+    * - :const:`wp.TIMING_GRAPH <TIMING_GRAPH>`
       - CUDA graph launches
-    * - ``wp.TIMING_ALL``
+    * - :const:`wp.TIMING_ALL <TIMING_ALL>`
       - Combines all of the above for convenience.
 
 When a non-zero ``cuda_filter`` is specified, Warp will inject CUDA events for timing purposes and report the results when the ``ScopeTimer`` finishes.  This adds some overhead to the code, so should be used only during profiling.
@@ -152,7 +152,7 @@ This adds additional information to the output:
         4.312096 ms |       5 | cuda:1
     Demo took 0.92 ms
 
-The first section is the `CUDA timeline`, which lists all captured activities in issue order.  We see a `memset` on device ``cuda:0``, which corresponds to clearing the memory in ``wp.zeros()``.  This is followed by three launches of the ``inc_loop`` kernel on ``cuda:0`` and a memory transfer from device to host issued by ``wp.copy()``.  The remaining entries repeat similar operations on device ``cuda:1``.
+The first section is the `CUDA timeline`, which lists all captured activities in issue order.  We see a `memset` on device ``cuda:0``, which corresponds to clearing the memory in :func:`wp.zeros() <warp.zeros>`.  This is followed by three launches of the ``inc_loop`` kernel on ``cuda:0`` and a memory transfer from device to host issued by :func:`wp.copy() <warp.copy>`.  The remaining entries repeat similar operations on device ``cuda:1``.
 
 The next section is the `CUDA activity summary`, which reports the cumulative time taken by each activity type.  Here, the `memsets`, kernel launches, and memory transfer operations are grouped together.  This is a good way to see where time is being spent overall.  The `memsets` are quite fast.  The ``inc_loop`` kernel launches took about three milliseconds of combined GPU time.  The memory transfers took the longest, over four milliseconds.
 

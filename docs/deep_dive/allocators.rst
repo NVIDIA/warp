@@ -25,7 +25,7 @@ Whenever you create an array, the memory needs to be allocated on the device:
 
 Each of the calls above allocates a block of device memory large enough to hold the array and optionally initializes the contents with
 the specified values.
-:func:`wp.empty() <empty>` is the only function that does not initialize the contents in any way, it just allocates the memory.
+:func:`wp.empty() <warp.empty>` is the only function that does not initialize the contents in any way, it just allocates the memory.
 
 Memory pool allocators grab a block of memory from a larger pool of reserved memory, which is generally faster than asking
 the operating system for a brand new chunk of storage.  This is an important benefit of these pooled allocators—they are faster.
@@ -67,7 +67,7 @@ an array on that device, it will be allocated using the mempool allocator.  If y
 pools are supported but were not enabled on startup.  If you see ``mempool not supported``, it means that memory pools can't be used
 on this device.
 
-There is a configuration flag that controls whether memory pools should be automatically enabled during ``wp.init()``:
+There is a configuration flag that controls whether memory pools should be automatically enabled during :func:`wp.init() <warp.init>`:
 
 .. code:: python
 
@@ -77,9 +77,9 @@ There is a configuration flag that controls whether memory pools should be autom
 
     wp.init()
 
-The flag defaults to ``True``, but can be set to ``False`` if desired.  Changing this configuration flag after ``wp.init()`` is called has no effect.
+The flag defaults to ``True``, but can be set to ``False`` if desired.  Changing this configuration flag after :func:`wp.init() <warp.init>` is called has no effect.
 
-After ``wp.init()``, you can check if the memory pool is enabled on each device like this:
+After :func:`wp.init() <warp.init>`, you can check if the memory pool is enabled on each device like this:
 
 .. code:: python
 
@@ -201,7 +201,7 @@ Mempool allocators can be used in CUDA graphs, which means that you can capture 
 
     print(a)
 
-Capturing allocations is similar to capturing other operations like kernel launches or memory copies.  During capture, the operations don't actually execute, but are recorded.  To execute the captured operations, we must launch the graph using :func:`wp.capture_launch() <capture_launch>`.  This is important to keep in mind if you want to use an array that was allocated during graph capture.  The array doesn't actually exist until the captured graph is launched.  In the snippet above, we would get an error if we tried to print the array before calling :func:`wp.capture_launch() <capture_launch>`.
+Capturing allocations is similar to capturing other operations like kernel launches or memory copies.  During capture, the operations don't actually execute, but are recorded.  To execute the captured operations, we must launch the graph using :func:`wp.capture_launch() <warp.capture_launch>`.  This is important to keep in mind if you want to use an array that was allocated during graph capture.  The array doesn't actually exist until the captured graph is launched.  In the snippet above, we would get an error if we tried to print the array before calling :func:`wp.capture_launch() <warp.capture_launch>`.
 
 More generally, the ability to allocate memory during graph capture greatly increases the range of code that can be captured in a graph.  This includes any code that creates temporary allocations.  CUDA graphs can be used to re-run operations with minimal CPU overhead, which can yield dramatic performance improvements.
 
@@ -235,7 +235,7 @@ It's possible to temporarily enable or disable memory pool access using a scoped
         wp.copy(a1, a0)
 
 Note that memory pool access only applies to memory allocated using mempool allocators.
-For memory allocated using default CUDA allocators, we can enable CUDA :ref:`peer access<peer_access>` using :func:`wp.set_peer_access_enabled() <set_peer_access_enabled>` to get similar benefits.
+For memory allocated using default CUDA allocators, we can enable CUDA :ref:`peer access<peer_access>` using :func:`wp.set_peer_access_enabled() <warp.set_peer_access_enabled>` to get similar benefits.
 
 Because enabling memory pool access can have drawbacks, Warp does not automatically enable it, even if it's supported.  Programs that don't require copying data between GPUs are therefore not affected in any way.
 
