@@ -14,3 +14,6 @@ reviews:
   path_filters: ["!tools/ci/packman/**", "!tools/ci/repoman/**"]
 chat:
   auto_reply: true
+issue_enrichment:
+  auto_enrich:
+    enabled: false
