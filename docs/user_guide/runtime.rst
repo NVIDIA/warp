@@ -1,5 +1,5 @@
-Python Reference
-================
+Runtime
+=======
 
 .. currentmodule:: warp
 
@@ -1903,7 +1903,7 @@ This results in a printout at runtime to the standard output stream like:
 
     grid build took 0.06 ms
 
-See :doc:`../profiling` documentation for more information.
+See :doc:`../deep_dive/profiling` documentation for more information.
 
 
 Interprocess Communication (IPC)
@@ -1916,7 +1916,7 @@ Some basic requirements for using IPC include:
 
 * Linux operating system (note however that integrated devices like NVIDIA
   Jetson do not support CUDA IPC)
-* The array must be allocated on a GPU device using the default memory allocator (see :doc:`allocators`)
+* The array must be allocated on a GPU device using the default memory allocator (see :doc:`../deep_dive/allocators`)
 
   The ``wp.ScopedMempool`` context manager is useful for temporarily disabling
   memory pools for the purpose of allocating arrays that can be shared using IPC.

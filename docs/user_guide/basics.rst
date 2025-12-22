@@ -138,7 +138,7 @@ arguments:
 
 By default, Warp arrays that are initialized from external data (e.g.: NumPy, Lists, Tuples) will create a copy the data in new memory for the
 device specified. However, it is possible for arrays to alias external memory using the ``copy=False`` parameter to the
-array constructor provided the input is contiguous and on the same device. See the :doc:`/modules/interoperability`
+array constructor provided the input is contiguous and on the same device. See the :doc:`/user_guide/interoperability`
 section for more details on sharing memory with external frameworks.
 
 To read GPU array data back to CPU memory we can use :func:`array.numpy`::
@@ -255,7 +255,7 @@ determine the tile argument type:
 
 See :ref:`Generic Functions` for details on using ``typing.Any`` in user function signatures.
 
-See :doc:`modules/differentiability` for details on how to define custom gradient functions,
+See :doc:`differentiability` for details on how to define custom gradient functions,
 custom replay functions, and custom native functions.
 
 User Structs
@@ -305,7 +305,7 @@ The result is then cached between application restarts for fast startup times.
 Note that compilation is triggered on the first kernel launch for that module.
 Any kernels registered in the module with :func:`@wp.kernel <warp.kernel>` will be included in the shared library.
 
-.. image:: ./img/compiler_pipeline.svg
+.. image:: ../img/compiler_pipeline.svg
 
 By default, status messages will be printed out after each module has been loaded indicating basic information:
 
@@ -345,7 +345,7 @@ much less time to load the module since code compilation is skipped:
         /home/nvidia/.cache/warp/1.10.0.dev0
     Module __main__ 0b0ecab load on device 'cuda:0' took 30.98 ms  (cached)
 
-For more information, see the :doc:`codegen` section.
+For more information, see the :doc:`../deep_dive/codegen` section.
 
 Language Details
 ----------------
@@ -373,7 +373,7 @@ All kernel parameters must be annotated with the appropriate type, for example::
                       c: float):
 
 For convenience, ``typing.Any`` may be used in place of concrete types
-appearing in function signatures. See the :doc:`/modules/generics` documentation
+appearing in function signatures. See the :doc:`/user_guide/generics` documentation
 for more information. A generic version of the above kernel could look like::
 
     from typing import Any

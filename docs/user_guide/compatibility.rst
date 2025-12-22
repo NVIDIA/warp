@@ -235,7 +235,7 @@ and operating systems.
 API
 ~~~
 
-Warp's **public API** consists of symbols that are documented in the :doc:`API reference </modules/runtime>`
+Warp's **public API** consists of symbols that are documented in the :doc:`API reference </user_guide/runtime>`
 and accessible without underscore prefixes (e.g., ``warp.function_name()``, ``warp.fem.ClassName``).
 
 The public API is designed to be stable and backward compatible. Changes follow the deprecation

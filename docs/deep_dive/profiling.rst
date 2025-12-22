@@ -64,13 +64,13 @@ The package allows you to insert custom NVTX ranges into your code (``nvtx.annot
 
 Here is what the demo code looks like in Nsight Systems (click to enlarge the image):
 
-.. image:: ./img/profiling_nosync.png
+.. image:: ../img/profiling_nosync.png
     :width: 95%
     :align: center
 
 There are a few noteworthy observations we can make from this capture.  Scheduling and launching the work on the CPU takes about half a millisecond, as shown in the `NVTX / Start & End` row.  This time also includes the allocation of arrays on both CUDA devices.  We can see that the execution on each device is asynchronous with respect to the host, since CUDA operations start running before the yellow `Demo` NVTX range finishes.  We can also see that the operations on different CUDA devices execute concurrently, including kernels and memory transfers.  The kernels run faster on the first CUDA device (RTX 4090) than the second device (RTX 3090).  Memory transfers take about the same time on each device.  Using pinned CPU arrays for the transfer destinations allows the transfers to run asynchronously without involving the CPU.
 
-Check out the :doc:`concurrency documentation <modules/concurrency>` for more information about asynchronous operations.
+Check out the :doc:`concurrency documentation <concurrency>` for more information about asynchronous operations.
 
 Note that synchronization was not enabled in this run, so the NVTX range only spans the CPU operations used to schedule the CUDA work.  When synchronization is enabled, the timer will wait for all CUDA work to complete, so the NVTX range will span the synchronization of both devices:
 
@@ -79,7 +79,7 @@ Note that synchronization was not enabled in this run, so the NVTX range only sp
     with wp.ScopedTimer("Demo", use_nvtx=True, color="yellow", synchronize=True):
         ...
 
-.. image:: ./img/profiling_sync.png
+.. image:: ../img/profiling_sync.png
     :width: 95%
     :align: center
 
@@ -394,7 +394,7 @@ report in the UI:
 
 The following screenshot shows the Python/SASS correlation view from the Nsight Compute report (click to enlarge):
 
-.. image:: ./img/nsight_compute_python_vs_sass.png
+.. image:: ../img/nsight_compute_python_vs_sass.png
     :width: 95%
     :align: center
 

@@ -1,5 +1,5 @@
-warp.render
-===========
+Rendering
+=========
 
 .. currentmodule:: warp.render
 

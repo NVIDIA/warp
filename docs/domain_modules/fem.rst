@@ -1,5 +1,5 @@
-warp.fem
-========
+FEM Toolkit
+===========
 
 .. currentmodule:: warp.fem
 .. py:currentmodule:: warp.fem

@@ -320,14 +320,14 @@ Contributing
 ------------
 
 Contributions and pull requests from the community are welcome.
-Please see the :doc:`modules/contribution_guide` for more information on contributing to the development of Warp.
+Please see the :doc:`user_guide/contribution_guide` for more information on contributing to the development of Warp.
 
 Publications & Citation
 -----------------------
 
 Research Using Warp
 ^^^^^^^^^^^^^^^^^^^
-:doc:`/publications` lists academic and research publications that leverage the capabilities of Warp.
+:doc:`/user_guide/publications` lists academic and research publications that leverage the capabilities of Warp.
 We encourage you to add your own published work using Warp to this list.
 
 Citing Warp
@@ -351,46 +351,41 @@ Full Table of Contents
 
 .. toctree::
     :maxdepth: 2
-    :caption: User's Guide
+    :caption: User Guide
 
-    installation
-    basics
-    modules/devices
-    modules/differentiability
-    modules/generics
-    modules/tiles
-    modules/interoperability
-    configuration
-    debugging
-    limitations
-    modules/contribution_guide
-    publications
-    compatibility
-    faq
-    changelog
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Advanced Topics
-
-    codegen
-    modules/allocators
-    modules/concurrency
-    profiling
+    user_guide/installation
+    user_guide/basics
+    user_guide/runtime
+    user_guide/devices
+    user_guide/differentiability
+    user_guide/generics
+    user_guide/tiles
+    user_guide/interoperability
+    user_guide/configuration
+    user_guide/debugging
+    user_guide/limitations
+    user_guide/contribution_guide
+    user_guide/publications
+    user_guide/compatibility
+    user_guide/faq
+    user_guide/changelog
 
 .. toctree::
     :maxdepth: 2
-    :caption: Core Reference
-   
-    modules/runtime
-   
+    :caption: Deep Dive
+
+    deep_dive/codegen
+    deep_dive/allocators
+    deep_dive/concurrency
+    deep_dive/profiling
+
 .. toctree::
     :maxdepth: 2
-    :caption: Simulation Reference
-   
-    modules/sparse
-    modules/fem
-    modules/render
+    :caption: Domain Modules
+
+    domain_modules/sparse
+    domain_modules/fem
+    domain_modules/render
 
 .. toctree::
     :caption: API Reference

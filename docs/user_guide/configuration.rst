@@ -30,7 +30,7 @@ For example, the location of the user kernel cache can be changed with:
 
     wp.init()
 
-See :doc:`api_reference/warp_config` for a complete list of global settings.
+See :doc:`../api_reference/warp_config` for a complete list of global settings.
 
 .. _module-settings:
 

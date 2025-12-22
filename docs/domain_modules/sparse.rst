@@ -1,5 +1,5 @@
-warp.sparse
-===============================
+Sparse Matrices
+===============
 
 .. currentmodule:: warp.sparse
 
