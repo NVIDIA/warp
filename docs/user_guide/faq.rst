@@ -93,7 +93,7 @@ are being performed back to CPU asynchronously, e.g.:
     a2 = cpu_array_2.numpy()
     a3 = cpu_array_3.numpy()
 
-For more information about asynchronous operations, please refer to the :doc:`concurrency documentation <modules/concurrency>`
+For more information about asynchronous operations, please refer to the :doc:`concurrency documentation <../deep_dive/concurrency>`
 and :ref:`synchronization guidance <synchronization_guidance>`.
 
 What happens when you differentiate a function like ``wp.abs(x)``?
@@ -120,7 +120,7 @@ Yes! Since version ``0.4.0`` we support allocating, launching, and
 copying between multiple GPUs in a single process. We follow the naming
 conventions of PyTorch and use aliases such as ``cuda:0``, ``cuda:1``,
 ``cpu`` to identify individual devices. For more information, see the
-:doc:`modules/devices` documentation.
+:doc:`devices` documentation.
 
 Warp applications can also be parallelized over multiple GPUs using
 `mpi4py <https://github.com/mpi4py/mpi4py>`__. Warp arrays on the GPU may be

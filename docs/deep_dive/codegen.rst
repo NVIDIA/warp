@@ -1271,7 +1271,7 @@ in the file ``wp___main__/wp___main__.cu``. Therefore, ``strip_hash=True`` can a
 .. important::
 
     Not all modules can be compiled successfully with hashing disabled. Name collisions can occur when
-    hashes are removed from the function names, particularly when using :doc:`Generics <modules/generics>`, which can
+    hashes are removed from the function names, particularly when using :doc:`Generics <../user_guide/generics>`, which can
     result in multiple versions of the same function or kernel.
 
 Only use ``strip_hash=True`` when your module has a single version of each function and kernel.
