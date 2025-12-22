@@ -23,14 +23,14 @@ Kernels and User Functions
 
 * Strings cannot be passed into kernels.
 * Short-circuit evaluation is not supported
-* :func:`wp.atomic_add() <atomic_add>` does not support ``wp.float16`` on GPUs with compute capability below 7.0.
+* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` on GPUs with compute capability below 7.0.
   On such devices, the function will return ``0.0`` without modifying the target memory.
-* :func:`wp.tid() <tid>` cannot be called from user functions.
-* Modifying the value of a :class:`wp.constant() <constant>` during runtime will not trigger
+* :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
+* Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
-  (e.g. through a :func:`wp.launch() <launch>` or a ``wp.load_module()``).
-* A :class:`wp.constant() <constant>` can suffer precision loss if used with ``wp.float64``
-  as it is initially assigned to a ``wp.float32`` variable in the generated code.
+  (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <load_module>`).
+* A :class:`wp.constant() <warp.constant>` can suffer precision loss if used with :class:`wp.float64 <float64>`
+  as it is initially assigned to a :class:`wp.float32 <float32>` variable in the generated code.
 * Python ``IntFlag`` values behave like raw integers in Warp kernels: bitwise negation (``~``)
   produces the integer negation, not a masked combination of flags as in standard Python ``IntFlag`` behavior.
 

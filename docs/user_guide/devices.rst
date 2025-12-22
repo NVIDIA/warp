@@ -100,8 +100,8 @@ They can be arbitrarily nested and restore the previous default device on exit::
         wp.launch(kernel, dim=b.size, inputs=[b])
 
 
-Example: Using ``wp.ScopedDevice`` with multiple GPUs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example: Using :class:`wp.ScopedDevice <ScopedDevice>` with multiple GPUs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following example shows how to allocate arrays and launch kernels on all available CUDA devices.
 

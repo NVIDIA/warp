@@ -194,10 +194,10 @@ Output:
 The reason why arrays cannot be captured is because they exist on a particular device and contain pointers to the device memory, which would make the kernel not portable across different devices.  Arrays should always be passed as kernel inputs.
 
 
-Usage of ``wp.constant()``
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Usage of :func:`wp.constant() <warp.constant>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In older versions of Warp, ``wp.constant()`` was required to declare constants that can be used in a kernel.  This is no longer necessary, but the old syntax is still supported for backward compatibility.  ``wp.constant()`` can still be used to check if a value can be referenced in a kernel:
+In older versions of Warp, :func:`wp.constant() <warp.constant>` was required to declare constants that can be used in a kernel. This is no longer necessary, but the old syntax is still supported for backward compatibility. :func:`wp.constant() <warp.constant>` can still be used to check if a value can be referenced in a kernel:
 
 .. code:: python
 
@@ -210,7 +210,7 @@ In older versions of Warp, ``wp.constant()`` was required to declare constants t
         tid = wp.tid()
         a[tid] = x * v
 
-In this snippet, a ``TypeError`` will be raised when declaring the array with ``wp.constant()``.  If ``wp.constant()`` was omitted, the error would be raised later during code generation, which might be slightly harder to debug.
+In this snippet, a ``TypeError`` will be raised when declaring the array with :func:`wp.constant() <warp.constant>`. If :func:`wp.constant() <warp.constant>` was omitted, the error would be raised later during code generation, which might be slightly harder to debug.
 
 
 Updating Constants
@@ -287,12 +287,12 @@ We often encounter situations where a kernel needs to be specialized for a given
 With static expressions, we can write Python expressions to be evaluated at the time of declaring a Warp function or kernel.
 
 ``wp.static(...)`` expressions allow the user to run arbitrary Python code at the time the Warp function or kernel containing the expression is defined.
-:func:`wp.static(expr) <static>` accepts a Python expression and replaces it with the result.
+:func:`wp.static(expr) <warp.static>` accepts a Python expression and replaces it with the result.
 Note that the expression can only access variables that can be evaluated at the time the expression is declared.
 This includes global variables and variables captured in a closure in which the Warp function or kernel is defined.
 Additionally, Warp constants from within the kernel or function can be accessed, such as the constant iteration variable for static for-loops (i.e. when the range is known at the time of code generation).
 
-The result from ``wp.static()`` must be a non-null value of one of the following types:
+The result from :func:`wp.static() <warp.static>` must be a non-null value of one of the following types:
 
 - A Warp function
 - A string
@@ -334,7 +334,7 @@ The static expressions are evaluated at the time of when the :func:`@wp.kernel <
 Example: Static Conditionals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If/else/elif conditions that are constant can be eliminated from the generated code by using ``wp.static()`` inside the branch condition to yield a constant boolean.
+If/else/elif conditions that are constant can be eliminated from the generated code by using :func:`wp.static() <warp.static>` inside the branch condition to yield a constant boolean.
 This can provide improved performance by avoiding branching and can be useful for generating specialized kernels:
 
 .. code:: python
@@ -360,7 +360,7 @@ The global variable ``available_colors`` is known at the time of declaring the k
 Example: Static Loop Unrolling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Static expressions can be used to unroll for-loops during code generation. We place ``wp.static()`` expressions inside the loop's ``range`` to yield static for-loops that can be unrolled. The iteration variable becomes a constant and can therefore be accessed from within a static expression in the loop body:
+Static expressions can be used to unroll for-loops during code generation. We place :func:`wp.static() <warp.static>` expressions inside the loop's ``range`` to yield static for-loops that can be unrolled. The iteration variable becomes a constant and can therefore be accessed from within a static expression in the loop body:
 
 .. code:: python
 
@@ -449,7 +449,7 @@ The above program uses a static expression to select the right function given th
 Example: Static Length Query
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Python's built-in function ``len()`` can also be evaluated statically for types with fixed length, such as vectors, quaternions, and matrices, and can be wrapped into ``wp.static()`` calls to initialize other constructs:
+Python's built-in function ``len()`` can also be evaluated statically for types with fixed length, such as vectors, quaternions, and matrices, and can be wrapped into :func:`wp.static() <warp.static>` calls to initialize other constructs:
 
 .. code:: python
 
@@ -734,7 +734,7 @@ Output:
 Function Closures
 ~~~~~~~~~~~~~~~~~
 
-Warp functions (``@wp.func``) also support closures, just like kernels:
+Warp functions (:func:`@wp.func <warp.func>`) also support closures, just like kernels:
 
 .. code:: python
 
@@ -1124,7 +1124,7 @@ This prints:
 
 This might be surprising, but creating a similar program in pure Python would lead to the same results.  Because of late binding, the captured loop variable ``i`` is not evaluated until the kernels are launched.  At that moment, the value of ``i`` is 2 and we see the same output from each kernel.
 
-In Warp, ``wp.static()`` can be used to get around this problem:
+In Warp, :func:`wp.static() <warp.static>` can be used to get around this problem:
 
 .. code:: python
 
@@ -1142,7 +1142,7 @@ In Warp, ``wp.static()`` can be used to get around this problem:
 
     wp.synchronize_device()
 
-Warp replaces the call to ``wp.static()`` with the value of the expression passed as its argument.  The expression is evaluated immediately at the time of kernel definition.  This is similar to static binding used by languages like C++, which means that all variables referenced by the static expression must already be defined.
+Warp replaces the call to :func:`wp.static() <warp.static>` with the value of the expression passed as its argument.  The expression is evaluated immediately at the time of kernel definition.  This is similar to static binding used by languages like C++, which means that all variables referenced by the static expression must already be defined.
 
 To further illustrate the difference between the default late binding behavior and static expressions, consider this program:
 

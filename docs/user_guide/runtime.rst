@@ -22,7 +22,7 @@ The following example shows a simple kernel that adds two arrays together::
         tid = wp.tid()
         c[tid] = a[tid] + b[tid]
 
-Kernels are launched with the :func:`wp.launch() <launch>` function on a specific device (CPU/GPU)::
+Kernels are launched with the :func:`wp.launch() <warp.launch>` function on a specific device (CPU/GPU)::
 
     wp.launch(add_kernel, dim=1024, inputs=[a, b], outputs=[c], device="cuda")
 
@@ -53,7 +53,7 @@ C++/CUDA as an intermediate representation.
 To avoid excessive runtime recompilation of kernel code, these files are stored in a cache directory
 named with a module-dependent hash to allow for the reuse of previously compiled modules.
 The location of the kernel cache is printed when Warp is initialized.
-:func:`wp.clear_kernel_cache() <clear_kernel_cache>` can be used to clear the kernel cache of previously
+:func:`wp.clear_kernel_cache() <warp.clear_kernel_cache>` can be used to clear the kernel cache of previously
 generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.
 
 
@@ -69,17 +69,17 @@ Launch Objects
 ##############
 
 :class:`Launch` objects are one way to reduce the overhead of launching a kernel multiple times.
-:class:`Launch` objects are returned from calling :func:`wp.launch() <launch>` with ``record_cmd=True``.
+:class:`Launch` objects are returned from calling :func:`wp.launch() <warp.launch>` with ``record_cmd=True``.
 This stores the results of various overhead operations that are needed to launch a kernel
-but defers the actual kernel launch until the :func:`Launch.launch() <Launch.launch>` method is called.
+but defers the actual kernel launch until the :meth:`Launch.launch` method is called.
 
 In contrast to :ref:`graphs`, :class:`Launch` objects only record the launch of a single kernel
 and do not reduce the driver overhead of preparing the kernel for execution on a GPU.
 On the other hand, :class:`Launch` objects do not have the storage and initialization
 overheads of CUDA graphs and also allow for the modification of launch
-dimensions with :func:`Launch.set_dim() <Launch.set_dim>` and
-kernel parameters with functions such as :func:`Launch.set_params() <Launch.set_params>` and
-:func:`Launch.set_param_by_name() <Launch.set_param_by_name>`.
+dimensions with :meth:`Launch.set_dim` and
+kernel parameters with functions such as :meth:`Launch.set_params` and
+:meth:`Launch.set_param_by_name`.
 Additionally, :class:`Launch` objects can also be used to reduce the overhead of launching kernels running on the CPU.
 
 .. note::
@@ -143,7 +143,7 @@ Arrays can be moved between devices using :meth:`array.to`::
     # allocate and copy to GPU
     device_array = host_array.to("cuda")
 
-Additionally, data can be copied between arrays in different memory spaces using :func:`wp.copy() <warp.copy()>`::
+Additionally, data can be copied between arrays in different memory spaces using :func:`wp.copy() <warp.copy>`::
 
     src_array = wp.array(a, dtype=float, device="cpu")
     dest_array = wp.empty_like(host_array)
@@ -186,7 +186,7 @@ e.g. to pass a 2D array to a kernel the number of dims is specified using the ``
     @wp.kernel
     def test(input: wp.array(dtype=float, ndim=2)):
 
-Type-hint helpers are provided for common array sizes, e.g.: ``array2d()``, ``array3d()``, which are equivalent to calling ``array(..., ndim=2)``, etc.
+Type-hint helpers are provided for common array sizes, e.g.: :func:`wp.array2d <warp.array2d>`, :func:`wp.array3d <warp.array3d>`, which are equivalent to calling ``array(..., ndim=2)``, etc.
 To index a multi-dimensional array, use the following kernel syntax::
 
     # returns a float from the 2d array
@@ -197,21 +197,21 @@ To create an array slice, use the following syntax, where the number of indices 
     # returns an 1d array slice representing a row of the 2d array
     row = input[i]
 
-Slice operators can be concatenated, e.g.: ``s = array[i][j][k]``. Slices can be passed to ``wp.func`` user functions provided
+Slice operators can be concatenated, e.g.: ``s = array[i][j][k]``. Slices can be passed to :func:`wp.func <warp.func>` user functions provided
 the function also declares the expected array dimension. Currently, only single-index slicing is supported.
 
 The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:
 
-* :func:`warp.zeros`
-* :func:`warp.zeros_like`
-* :func:`warp.ones`
-* :func:`warp.ones_like`
-* :func:`warp.full`
-* :func:`warp.full_like`
-* :func:`warp.empty`
-* :func:`warp.empty_like`
-* :func:`warp.copy`
-* :func:`warp.clone`
+* :func:`wp.zeros() <warp.zeros>`
+* :func:`wp.zeros_like() <warp.zeros_like>`
+* :func:`wp.ones() <warp.ones>`
+* :func:`wp.ones_like() <warp.ones_like>`
+* :func:`wp.full() <warp.full>`
+* :func:`wp.full_like() <warp.full_like>`
+* :func:`wp.empty() <warp.empty>`
+* :func:`wp.empty_like() <warp.empty_like>`
+* :func:`wp.copy() <warp.copy>`
+* :func:`wp.clone() <warp.clone>`
 
 
 
@@ -228,7 +228,7 @@ through an explicit integer index list, thus allowing to run kernels on an arbit
 Creating an Indexed Array
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Pass the *data* array together with a list of ``wp.int32`` index arrays, one for each dimension:
+Pass the *data* array together with a list of :class:`wp.int32 <warp.int32>` index arrays, one for each dimension:
 
 .. testcode::
 
@@ -281,7 +281,7 @@ Interoperability With Other Frameworks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Frameworks such as PyTorch or JAX do not have a concept equivalent to
-Warp's indexed arrays. Converting an ``wp.indexedarray`` directly therefore
+Warp's indexed arrays. Converting an :class:`wp.indexedarray <warp.indexedarray>` directly therefore
 raises an exception. Two common workarounds are:
 
 1. Make a contiguous copy and share that::
@@ -533,7 +533,7 @@ The following scalar storage types are supported for array structures:
 | float64 | double-precision float |
 +---------+------------------------+
 
-Warp supports ``float`` and ``int`` as aliases for ``wp.float32`` and ``wp.int32`` respectively.
+Warp supports ``float`` and ``int`` as aliases for :class:`wp.float32 <warp.float32>` and :class:`wp.int32 <warp.int32>` respectively.
 
 .. _vec:
 
@@ -843,7 +843,7 @@ You can also create identity transforms and anonymously typed instances inside a
 Structs
 #######
 
-Users can define custom structure types using the ``@wp.struct`` decorator as follows::
+Users can define custom structure types using the :func:`@wp.struct <warp.struct>` decorator as follows::
 
     @wp.struct
     class MyStruct:
@@ -1086,7 +1086,7 @@ The user is responsible for ensuring types for most arithmetic operators match, 
 This can be surprising for users that are accustomed to C-style conversions but avoids a class of common bugs that result from implicit conversions.
 
 Users should explicitly cast variables to compatible types using constructors like
-``int()``, ``float()``, ``wp.float16()``, ``wp.uint8()``, etc.
+``int()``, ``float()``, :class:`wp.float16() <warp.float16>`, :class:`wp.uint8() <warp.uint8>`, etc.
 
 .. note::
 
@@ -1122,7 +1122,7 @@ A Warp kernel can access Python variables defined outside of the kernel, which a
         elif t == TYPE_CAPSULE:
             print("capsule")
 
-Note that using ``wp.constant()`` is no longer required, but it performs some type checking and can serve as a reminder that the variables are meant to be used as Warp constants.
+Note that using :func:`wp.constant() <warp.constant>` is no longer required, but it performs some type checking and can serve as a reminder that the variables are meant to be used as Warp constants.
 
 The behavior is simple and intuitive when the referenced Python variables never change. For details and more complex scenarios, refer to :ref:`External References and Constants<external_references>`. The :ref:`Code Generation<code_generation>` section contains additional information and tips for advanced usage.
 
@@ -1132,7 +1132,7 @@ Predefined Constants
 For convenience, Warp has a number of predefined mathematical constants that
 may be used both inside and outside Warp kernels.
 The constants in the following table also have lowercase versions defined,
-e.g. ``wp.E`` and ``wp.e`` are equivalent.
+e.g. :const:`wp.E <warp.E>` and :const:`wp.e <warp.e>` are equivalent.
 
 ================ =========================
 Name             Value
@@ -1150,14 +1150,14 @@ wp.INF           math.inf
 wp.NAN           float('nan')
 ================ =========================
 
-The ``wp.NAN`` constant may only be used with floating-point types.
-Comparisons involving ``wp.NAN`` follow the IEEE 754 standard,
+The :const:`wp.NAN <warp.NAN>` constant may only be used with floating-point types.
+Comparisons involving :const:`wp.NAN <warp.NAN>` follow the IEEE 754 standard,
 e.g. ``wp.float32(wp.NAN) == wp.float32(wp.NAN)`` returns ``False``.
-The :func:`wp.isnan() <isnan>` built-in function can be used to determine whether a
+The :func:`wp.isnan() <warp.isnan>` built-in function can be used to determine whether a
 value is a NaN (or if a vector, matrix, or quaternion contains a NaN entry).
 
 The following example shows how positive and negative infinity
-can be used with floating-point types in Warp using the ``wp.inf`` constant:
+can be used with floating-point types in Warp using the :const:`wp.inf <warp.inf>` constant:
 
 .. code-block:: python
 
@@ -1230,7 +1230,7 @@ Arithmetic Operators
 
 
 Since Warp does not perform implicit type conversions, operands should have compatible data types.
-Users should use type constructors such as ``float()``, ``int()``, ``wp.int64()``, etc. to cast variables
+Users should use type constructors such as ``float()``, ``int()``, :class:`wp.int64() <warp.int64>`, etc. to cast variables
 to the correct type.
 
 The multiplication expression ``a * b`` can also be used to perform matrix multiplication
@@ -1269,8 +1269,8 @@ Launching kernels from Python introduces significant additional overhead compare
 To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_
 to allow recording large batches of kernels and replaying them with very little CPU overhead.
 
-To record a series of kernel launches use the :func:`wp.capture_begin() <capture_begin>` and
-:func:`wp.capture_end() <capture_end>` API as follows:
+To record a series of kernel launches use the :func:`wp.capture_begin() <warp.capture_begin>` and
+:func:`wp.capture_end() <warp.capture_end>` API as follows:
 
 .. code:: python
 
@@ -1286,15 +1286,15 @@ To record a series of kernel launches use the :func:`wp.capture_begin() <capture
         graph = wp.capture_end(device="cuda")
 
 We strongly recommend the use of the try-finally pattern when capturing graphs because the `finally`
-statement will ensure :func:`wp.capture_end <capture_end>` gets called, even if an exception occurs during
+statement will ensure :func:`wp.capture_end <warp.capture_end>` gets called, even if an exception occurs during
 capture, which would otherwise trap the stream in a capturing state.
 
 Once a graph has been constructed it can be executed: ::
 
     wp.capture_launch(graph)
 
-The :class:`wp.ScopedCapture <ScopedCapture>` context manager can be used to simplify the code and
-ensure that :func:`wp.capture_end <capture_end>` is called regardless of exceptions:
+The :class:`wp.ScopedCapture <warp.ScopedCapture>` context manager can be used to simplify the code and
+ensure that :func:`wp.capture_end <warp.capture_end>` is called regardless of exceptions:
 
 .. code:: python
 
@@ -1314,7 +1314,7 @@ Conditional Execution
 
 CUDA 12.4+ supports conditional graph nodes that enable dynamic control flow in CUDA graphs.
 
-:func:`wp.capture_if <capture_if>` creates a dynamic branch based on a condition. The condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
+:func:`wp.capture_if <warp.capture_if>` creates a dynamic branch based on a condition. The condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
 
 .. code:: python
 
@@ -1451,9 +1451,9 @@ Here is an example that uses Python callback functions. These callbacks will be 
 
     wp.synchronize_device()
 
-When using Python callback functions, any extra keyword arguments to :func:`wp.capture_if <capture_if>` are forwarded to the callbacks.
+When using Python callback functions, any extra keyword arguments to :func:`wp.capture_if <warp.capture_if>` are forwarded to the callbacks.
 
-:func:`wp.capture_while <capture_while>` creates a dynamic loop based on a condition. Similarly to :func:`wp.capture_if <capture_if>`, the condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
+:func:`wp.capture_while <warp.capture_while>` creates a dynamic loop based on a condition. Similarly to :func:`wp.capture_if <warp.capture_if>`, the condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
 
 .. code:: python
 
@@ -1523,7 +1523,7 @@ The ``while_body`` callback will be executed as long as the condition is non-zer
     Due to a current CUDA limitation, graphs with conditional nodes cannot be used as child graphs. It means that it's not possible to create nested conditional constructs using previously captured graphs. If nesting is required, using Python callback functions is the way to go.
 
 .. note::
-    :func:`wp.capture_if <capture_if>` and :func:`wp.capture_while <capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
+    :func:`wp.capture_if <warp.capture_if>` and :func:`wp.capture_while <warp.capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
 
 
 Spatial Computing Primitives
@@ -1537,7 +1537,7 @@ scratch, while providing high-performance on the GPU.
 
 .. caution::
     **Object Lifetime Management**: Spatial computing primitives
-    (e.g. :class:`wp.HashGrid <HashGrid>`, :class:`wp.Bvh <Bvh>`, etc.) must remain in scope.
+    (e.g. :class:`wp.HashGrid <warp.HashGrid>`, :class:`wp.Bvh <warp.Bvh>`, etc.) must remain in scope.
     These acceleration data structures are identified by their ``id`` attribute when passed to kernels, 
     but if the Python object is garbage collected, the memory allocated for the primitive may be
     freed, causing crashes and undefined behavior.
@@ -1547,7 +1547,7 @@ scratch, while providing high-performance on the GPU.
 Meshes
 ######
 
-Warp provides a :class:`wp.Mesh <Mesh>` class to manage triangle mesh data. To create a mesh, users provide a points, indices and optionally a velocity array::
+Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data. To create a mesh, users provide a points, indices and optionally a velocity array::
 
     mesh = wp.Mesh(points, indices, velocities)
 
@@ -1602,9 +1602,9 @@ To support spatial neighbor queries Warp provides a ``HashGrid`` object that may
 
     grid.build(points=p, radius=r)
 
-``p`` is an array of ``wp.vec3`` point positions, and ``r`` is the radius to use when building the grid.
-Neighbors can then be iterated over inside the kernel code using :func:`wp.hash_grid_query() <hash_grid_query>`
-and :func:`wp.hash_grid_query_next() <hash_grid_query_next>` as follows:
+``p`` is an array of :class:`wp.vec3 <warp.vec3>` point positions, and ``r`` is the radius to use when building the grid.
+Neighbors can then be iterated over inside the kernel code using :func:`wp.hash_grid_query() <warp.hash_grid_query>`
+and :func:`wp.hash_grid_query_next() <warp.hash_grid_query_next>` as follows:
 
 .. code:: python
 
@@ -1727,17 +1727,17 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 :func:`feature_array() <warp.Volume.feature_array>` function.
 
 
-.. seealso:: `Reference <functions.html#volumes>`__ for the volume functions available in kernels.
+.. seealso:: `Built-Ins <../language_reference/builtins.html#volumes>`__ for the volume functions available in kernels.
 
 
 Bounding Value Hierarchies (BVH)
 ################################
 
-The :class:`wp.Bvh <Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
-to determine which parts are intersected by a ray using :func:`bvh_query_ray` and which parts overlap
-with a certain bounding volume using :func:`bvh_query_aabb`.
+The :class:`wp.Bvh <warp.Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
+to determine which parts are intersected by a ray using :func:`wp.bvh_query_ray <warp._src.lang.bvh_query_ray>` and which parts overlap
+with a certain bounding volume using :func:`wp.bvh_query_aabb() <warp._src.lang.bvh_query_aabb>`.
 
-The following snippet demonstrates how to create a :class:`wp.Bvh <Bvh>` object from 100 random bounding volumes:
+The following snippet demonstrates how to create a :class:`wp.Bvh <warp.Bvh>` object from 100 random bounding volumes:
 
 .. code:: python
 
@@ -1786,11 +1786,11 @@ An example of performing a ray traversal on the data structure is as follows:
         device="cuda:0",
     )
 
-The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`uint64`
-identifier of the :class:`wp.Bvh <Bvh>` object, parameters describing the ray, and an array to store the results.
-In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <bvh_query_ray>` is called once to obtain an object that is stored in the
+The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`wp.uint64 <warp.uint64>`
+identifier of the :class:`wp.Bvh <warp.Bvh>` object, parameters describing the ray, and an array to store the results.
+In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <warp._src.lang.bvh_query_ray>` is called once to obtain an object that is stored in the
 variable ``query``. An integer is also allocated as ``bounds_nr`` to store the volume index of the traversal.
-A while statement is used for the actual traversal using :func:`wp.bvh_query_next() <bvh_query_next>`,
+A while statement is used for the actual traversal using :func:`wp.bvh_query_next() <warp._src.lang.bvh_query_next>`,
 which returns ``True`` as long as there are intersecting bounds.
 
 Example: BVH Volume Traversal
@@ -1829,14 +1829,14 @@ a specified bounding box.
     )
 
 The kernel is nearly identical to the ray-traversal example, except we obtain ``query`` using
-:func:`wp.bvh_query_aabb() <bvh_query_aabb>`.
+:func:`wp.bvh_query_aabb() <warp._src.lang.bvh_query_aabb>`.
 
 .. _object lifetime pitfall:
 
 Object Lifetime Pitfall
 #######################
 
-When working with spatial computing primitives like :class:`wp.HashGrid <HashGrid>` and :class:`wp.Bvh <Bvh>`,
+When working with spatial computing primitives like :class:`wp.HashGrid <warp.HashGrid>` and :class:`wp.Bvh <warp.Bvh>`,
 it's crucial to understand how Python's garbage collection interacts with these objects.
 The following example demonstrate a common mistake and how to avoid it.
 
@@ -1863,7 +1863,7 @@ The following example demonstrate a common mistake and how to avoid it.
     
     wp.launch(my_kernel, dim=10, inputs=[grid_ids_array])
 
-**Why This Happens**: When you only store the ``id`` attribute (which is a ``wp.uint64`` pointer), 
+**Why This Happens**: When you only store the ``id`` attribute (which is a :class:`wp.uint64 <warp.uint64>` pointer),
 Python's garbage collector may free the original object if no other references exist. This leads to 
 undefined behavior when the kernel tries to access the freed memory.
 
@@ -1874,13 +1874,13 @@ undefined behavior when the kernel tries to access the freed memory.
 3. **Creating objects as temporary variables** that get overwritten
 
 Always maintain references to spatial computing primitive objects
-(like :class:`wp.HashGrid <HashGrid>`, :class:`wp.Bvh <Bvh>`, etc.) rather than just their ID values.
+(like :class:`wp.HashGrid <warp.HashGrid>`, :class:`wp.Bvh <warp.Bvh>`, etc.) rather than just their ID values.
 This is especially important in loops, functions, and temporary variables where object scope might be unclear.
 
 Marching Cubes
 --------------
 
-The :class:`wp.MarchingCubes <MarchingCubes>` class can be used to extract a 2-D mesh approximating an
+The :class:`wp.MarchingCubes <warp.MarchingCubes>` class can be used to extract a 2-D mesh approximating an
 isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
 file using the :class:`warp.render.UsdRenderer`.
 
@@ -1890,7 +1890,7 @@ See :github:`warp/examples/core/example_marching_cubes.py` for a usage example.
 Profiling
 ---------
 
-``wp.ScopedTimer`` objects can be used to gain some basic insight into the performance of Warp applications:
+:class:`wp.ScopedTimer <warp.ScopedTimer>` objects can be used to gain some basic insight into the performance of Warp applications:
 
 .. code:: python
 
@@ -1918,7 +1918,7 @@ Some basic requirements for using IPC include:
   Jetson do not support CUDA IPC)
 * The array must be allocated on a GPU device using the default memory allocator (see :doc:`../deep_dive/allocators`)
 
-  The ``wp.ScopedMempool`` context manager is useful for temporarily disabling
+  The :class:`wp.ScopedMempool <warp.ScopedMempool>` context manager is useful for temporarily disabling
   memory pools for the purpose of allocating arrays that can be shared using IPC.
 
 Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.Device.is_ipc_supported>`
@@ -1952,5 +1952,5 @@ LTO Cache
 Warp caches these to speed up kernel compilation. Each LTO file maps to a specific Linear Algebra
 solver configuration, and is otherwise independent of the kernel in which its corresponding routine
 is called. Therefore, LTOs are stored in a cache that is independent of a given module's kernel cache,
-and will remain cached even if :func:`wp.clear_kernel_cache() <clear_kernel_cache>` is called.
-:func:`wp.clear_lto_cache() <clear_lto_cache>` can be used to clear the LTO cache.
+and will remain cached even if :func:`wp.clear_kernel_cache() <warp.clear_kernel_cache>` is called.
+:func:`wp.clear_lto_cache() <warp.clear_lto_cache>` can be used to clear the LTO cache.

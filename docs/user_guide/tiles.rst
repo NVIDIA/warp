@@ -13,7 +13,8 @@ Requirements
 ------------
 
 Tile-based operations are fully supported on versions of Warp built against the CUDA 12 runtime.
-Most linear-algebra tile operations like :func:`tile_cholesky`, :func:`tile_fft`, and :func:`tile_matmul`
+Most linear-algebra tile operations like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
+:func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`
 require Warp to be built with the MathDx library, which is not supported on CUDA 11.
 See `Building with MathDx`_ for more details when building the Warp locally with support for
 linear-algebra tile operations.
@@ -247,7 +248,7 @@ Tiles and SIMT Code
 
 Traditionally, Warp kernels are primarily written in the SIMT programming model, where each thread's execution happens independently. 
 Tiles, on the other hand, allow threads to work **cooperatively** to perform operations.
-Warp exposes the :func:`warp.tile`, and :func:`warp.untile` methods to convert data between per-thread value types and
+Warp exposes the :func:`warp.tile <warp._src.lang.tile>`, and :func:`warp.untile <warp._src.lang.untile>` methods to convert data between per-thread value types and
 the equivalent tile representation. For example:
 
 .. code:: python
@@ -269,9 +270,9 @@ the equivalent tile representation. For example:
     # launch as regular SIMT kernel
     wp.launch(compute, dim=[N], inputs=[], block_dim=TILE_THREADS)
 
-In this example, we have launched a regular SIMT grid with ``N`` logical threads using ``wp.launch()``.
-The kernel performs some per-thread computations and then converts the scalar ``x`` value into a tile object using :func:`warp.tile`.
-This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block (as set by the ``block_dim`` argument in ``wp.launch()``),
+In this example, we have launched a regular SIMT grid with ``N`` logical threads using :func:`wp.launch() <warp.launch>`.
+The kernel performs some per-thread computations and then converts the scalar ``x`` value into a tile object using :func:`warp.tile <warp._src.lang.tile>`.
+This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block (as set by the ``block_dim`` argument in :func:`wp.launch() <warp.launch>`),
 which implies that each thread in the block is assigned to a particular tile element.
 From here, the tile can be used in other regular cooperative operations such as reductions, GEMMs, etc.
 
@@ -280,7 +281,7 @@ Similarly, we can `untile` tile objects back to their per-thread scalar equivale
 .. Note:: All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.
 
 Extra consideration is needed when using tiles in SIMT kernels that are meant to run on both the GPU and the CPU.
-On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels using ``wp.tile()``. Consider the following example:
+On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels using :func:`wp.tile() <warp._src.lang.tile>`. Consider the following example:
 
 .. testcode::
     :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
@@ -310,7 +311,7 @@ On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels 
 
     [ 6  0  0  0 22  0  0  0 38  0  0  0]
 
-Here, we launch ``N=12`` logical threads. The tile size is 4, so there are three blocks in total that are created with ``wp.tile()``.
+Here, we launch ``N=12`` logical threads. The tile size is 4, so there are three blocks in total that are created with :func:`wp.tile() <warp._src.lang.tile>`.
 The tile reduction operation stores the block's sum in the first thread of the block, so we see 6, 22, and 38 stored at indices 0, 4, and 8.
 If we instead launch this kernel on the CPU, we get the following output:
 
@@ -318,9 +319,9 @@ If we instead launch this kernel on the CPU, we get the following output:
 
     [ 0  1  2  3  4  5  6  7  8  9 10 11]
 
-When launching on the CPU, ``block_dim`` is set to 1, so the tile generated with ``wp.tile()`` has a size of 1, and the reduction of each tile simply returns the value of the tile.
+When launching on the CPU, ``block_dim`` is set to 1, so the tile generated with :func:`wp.tile() <warp._src.lang.tile>` has a size of 1, and the reduction of each tile simply returns the value of the tile.
 So if you are designing a kernel that is meant to get the same result running on the GPU or the CPU, it should be designed to be independent of the value of ``block_dim``.
-For instance, if we want a full array reduction that works consistently across devices, we can use ``wp.tile_atomic_add()`` to accumulate results from all blocks:
+For instance, if we want a full array reduction that works consistently across devices, we can use :func:`wp.tile_atomic_add() <warp._src.lang.tile_atomic_add>` to accumulate results from all blocks:
 
 .. testcode::
 
@@ -354,7 +355,7 @@ For instance, if we want a full array reduction that works consistently across d
 Type Preservation
 ^^^^^^^^^^^^^^^^^
 
-:func:`warp.tile` includes the optional parameter ``preserve_type``, which is ``False`` by default.
+:func:`warp.tile <warp._src.lang.tile>` includes the optional parameter ``preserve_type``, which is ``False`` by default.
 When ``preserve_type`` is ``False``, this function expands non-scalar inputs into a multi-dimensional tile.
 Vectors are expanded into a 2D tile of scalar values with shape ``(length(vector), block_dim)``,
 while matrices are expanded into a 3D tile of scalar values with shape ``(rows, cols, block_dim)``.
@@ -399,7 +400,7 @@ Example: Using tiles to accelerate array-wide reductions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Prior to the addition of tile support in Warp, array-wide reductions were commonly performed in a single kernel
-using a built-in atomic function like :func:`wp.atomic_add() <warp.atomic_add>`.
+using a built-in atomic function like :func:`wp.atomic_add() <warp._src.lang.atomic_add>`.
 This could be very inefficient when compared to optimized mechanisms like
 `cub::BlockReduce <https://nvidia.github.io/cccl/cub/api/classcub_1_1BlockReduce.html>`__.
 Consider the following sum-of-squares reduction on an array:
@@ -430,9 +431,9 @@ Consider the following sum-of-squares reduction on an array:
 
 The above kernel in Warp 1.6.1 runs in about 27.5 ms on an RTX 3090 GPU.
 We can use tiles to accelerate this reduction by first creating a tile from the scalar ``local_val``
-and then using :func:`wp.tile_sum() <warp.tile_sum>` to cooperatively compute
+and then using :func:`wp.tile_sum() <warp._src.lang.tile_sum>` to cooperatively compute
 the tile sum using shared memory. We can then accumulate the result of the reduced
-tile into global memory using :func:`wp.tile_atomic_add() <warp.tile_atomic_add>`:
+tile into global memory using :func:`wp.tile_atomic_add() <warp._src.lang.tile_atomic_add>`:
 
 .. code-block:: python
 

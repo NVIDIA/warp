@@ -3,13 +3,13 @@ Rendering
 
 .. currentmodule:: warp.render
 
-The ``warp.render`` module provides a set of renderers that can be used for visualizing scenes involving shapes of various types.
+The :mod:`warp.render` module provides a set of renderers that can be used for visualizing scenes involving shapes of various types.
 
 Standalone Renderers
 --------------------
 
-The ``OpenGLRenderer`` provides an interactive renderer to play back animations in real time and is mostly intended for debugging,
-whereas more sophisticated rendering can be achieved with the help of the ``UsdRenderer``, which allows exporting the scene to
+The :class:`OpenGLRenderer <warp.render.OpenGLRenderer>` provides an interactive renderer to play back animations in real time and is mostly intended for debugging,
+whereas more sophisticated rendering can be achieved with the help of the :class:`UsdRenderer <warp.render.UsdRenderer>`, which allows exporting the scene to
 a USD file that can then be rendered in an external 3D application or renderer of your choice.
 
 

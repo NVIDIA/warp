@@ -1116,7 +1116,7 @@ def grad(func: Callable) -> GradWrapper:
     the gradients for each input.
 
     Args:
-        func: A Warp function (decorated with ``@wp.func`` or a builtin).
+        func: A Warp function (decorated with :func:`@wp.func <warp.func>` or a builtin).
 
     Returns:
         A callable that, when called with the function's inputs, returns
@@ -6655,7 +6655,7 @@ def launch(
     Kernel launches are asynchronous with respect to the calling Python thread.
 
     Args:
-        kernel: The name of a Warp kernel function, decorated with the ``@wp.kernel`` decorator
+        kernel: The name of a Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator
         dim: The number of threads to launch the kernel, can be an integer or a
           sequence of integers with a maximum of 4 dimensions.
         inputs: The input parameters to the kernel (optional)

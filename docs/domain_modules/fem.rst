@@ -41,7 +41,7 @@ However, they accept a few special parameters:
   - :class:`.Field` designates an abstract field, which will be replaced at call time by the actual field type such as a discrete field, :class:`.field.TestField` or :class:`.field.TrialField` defined over some :class:`.FunctionSpace`,
     an :class:`.ImplicitField` wrapping an arbitrary function, or any other of the available :ref:`Fields`.
     A field `u` can then be evaluated at a given sample `s` using the usual call operator as ``u(s)``.
-    Several other operators are available, such as the gradient :func:`.grad`; see the :ref:`Operators` section.
+    Several other operators are available, such as the gradient :obj:`.grad`; see the :ref:`Operators` section.
   - :class:`.Domain` designates an abstract integration domain. Evaluating a domain at a sample `s` as ``domain(s)`` yields the corresponding world position, 
     and several operators are also provided domains, for example evaluating the normal at a given sample: ::
     
@@ -169,11 +169,11 @@ It is also possible to define the deformation field from an :class:`ImplicitFiel
 Particle-based quadrature and position lookups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The global :func:`.lookup` and :func:`.partition_lookup` operators allow generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
+The global :obj:`.lookup` and :obj:`.partition_lookup` operators allow generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
 the ``example_streamlines.py`` example for generating 3D streamlines by tracing through a velocity field.
 
 .. note::
-   Non-grid-based geometry types require building a Bounding Volume Hierarchy (BVH) acceleration structure for :func:`.lookup` and similar operators to be functional.
+   Non-grid-based geometry types require building a Bounding Volume Hierarchy (BVH) acceleration structure for :obj:`.lookup` and similar operators to be functional.
    This can be done by calling :meth:`.Geometry.build_bvh` or passing ``build_bvh=True`` to the geometry constructor. 
    In case the geometry vertex positions are later modified, the BVH can be refit using :meth:`.Geometry.update_bvh`.
 
@@ -195,7 +195,7 @@ This is leveraged by the ``example_nonconforming_contact.py`` to simulate contac
 
 .. note::
    The mapping between the different geometries is position based, so a :class:`.NonconformingField` is not able to accurately capture discontinuous function spaces.
-   Moreover, the integration domain must support the :func:`.lookup` operator (see :ref:`lookups`).
+   Moreover, the integration domain must support the :obj:`.lookup` operator (see :ref:`lookups`).
 
 Partitioning
 ^^^^^^^^^^^^
@@ -262,34 +262,34 @@ The following operators are available for use within integrands:
 
 **Field operators:**
 
-- :func:`.grad`: Gradient of a field.
-- :func:`.div`: Divergence of a vector field.
-- :func:`.curl`: Curl of a vector field.
-- :func:`.D`: Generic derivative operator.
+- :obj:`.grad`: Gradient of a field.
+- :obj:`.div`: Divergence of a vector field.
+- :obj:`.curl`: Curl of a vector field.
+- :obj:`.D`: Generic derivative operator.
 
 **Domain operators:**
 
-- :func:`.position`: World position at a sample (same as calling ``domain(s)``).
-- :func:`.normal`: Normal vector at a sample on a boundary.
-- :func:`.measure`: Integration measure (area or volume element).
-- :func:`.measure_ratio`: Ratio of measures between a domain and its reference element.
-- :func:`.deformation_gradient`: Deformation gradient of the domain.
+- :obj:`.position`: World position at a sample (same as calling ``domain(s)``).
+- :obj:`.normal`: Normal vector at a sample on a boundary.
+- :obj:`.measure`: Integration measure (area or volume element).
+- :obj:`.measure_ratio`: Ratio of measures between a domain and its reference element.
+- :obj:`.deformation_gradient`: Deformation gradient of the domain.
 
 **Discontinuous Galerkin operators** (for use on interior sides):
 
-- :func:`.inner`: Value on the inner side of an interface.
-- :func:`.outer`: Value on the outer side of an interface.
-- :func:`.average`: Average of values across an interface.
-- :func:`.jump`: Jump of values across an interface.
-- :func:`.grad_average`: Average of gradients across an interface.
-- :func:`.grad_jump`: Jump of gradients across an interface.
-- :func:`.grad_outer`: Gradient on the outer side of an interface.
-- :func:`.div_outer`: Divergence on the outer side of an interface.
+- :obj:`.inner`: Value on the inner side of an interface.
+- :obj:`.outer`: Value on the outer side of an interface.
+- :obj:`.average`: Average of values across an interface.
+- :obj:`.jump`: Jump of values across an interface.
+- :obj:`.grad_average`: Average of gradients across an interface.
+- :obj:`.grad_jump`: Jump of gradients across an interface.
+- :obj:`.grad_outer`: Gradient on the outer side of an interface.
+- :obj:`.div_outer`: Divergence on the outer side of an interface.
 
 Visualization
 -------------
 
-Most functions spaces define a :meth:`.FunctionSpace.cells_to_vtk` method that returns a list of VTK-compatible cell types and node indices.
+Most function spaces define a ``vtk_cells`` method that returns a list of VTK-compatible cell types and node indices.
 This can be used to visualize discrete fields in VTK-aware viewers such as ``pyvista``, for instance::
 
    import numpy as np
