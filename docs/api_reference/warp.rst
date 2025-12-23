@@ -140,8 +140,8 @@ Transformations
    transformh
    transform_expand
 
-Spatial Math
-------------
+Spatial Vectors and Matrices
+----------------------------
 
 .. autosummary::
    :nosignatures:
@@ -195,8 +195,8 @@ Indexed Arrays
    indexedarray3d
    indexedarray4d
 
-Geometries
-----------
+Spatial Acceleration
+--------------------
 
 .. autosummary::
    :nosignatures:
@@ -401,8 +401,8 @@ Fabric Interop
    fabricarrayarray
    indexedfabricarrayarray
 
-IPC Interop
------------
+CUDA IPC Interop
+----------------
 
 .. autosummary::
    :nosignatures:
