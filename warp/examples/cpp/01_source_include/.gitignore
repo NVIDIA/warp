@@ -1,0 +1,14 @@
+# Compiled executable
+01_source_include
+01_source_include.exe
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# CMake build directory
+build/
+
+# Generated Warp source code
+generated/

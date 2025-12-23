@@ -653,6 +653,24 @@ linux-x86_64 asv:
     - asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA 2>&1 || (asv compare --split $COMPARE_REF $CI_COMMIT_SHA 2>&1 && exit 2)
   allow_failure: True
 
+# Ensure cpp examples compile and run
+linux-x86_64 cpp examples test:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:12.9.1-ubuntu24.04
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .basic_test_changes_rules
+  before_script:
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - ls -lh warp/bin/*.so  # Verify binaries exist
+  script:
+    - cd warp/examples/cpp
+    - bash test_examples.sh
+
 # ==============================================================================
 # Child pipelines
 #
