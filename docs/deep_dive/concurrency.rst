@@ -211,11 +211,11 @@ which can improve the overall throughput of a program by doing those operations 
         transfer_stream = wp.Stream()
 
         # asynchronous kernel launch on a stream
-        with wp.ScopedStream(compute_stream)
+        with wp.ScopedStream(compute_stream):
             wp.launch(kernel, dim=a.size, inputs=[a])
 
         # asynchronous host-to-device copy on another stream
-        with wp.ScopedStream(transfer_stream)
+        with wp.ScopedStream(transfer_stream):
             wp.copy(b, c)
 
 The :func:`wp.get_stream() <warp.get_stream>` function can be used to get the current stream on a device:
@@ -319,7 +319,7 @@ that uses the array in a kernel:
         producer_stream = wp.Stream()
         consumer_stream = wp.Stream()
 
-        with wp.ScopedStream(producer_stream)
+        with wp.ScopedStream(producer_stream):
             # asynchronous host-to-device copy
             wp.copy(a, b)
 
@@ -329,7 +329,7 @@ that uses the array in a kernel:
             # do some unrelated work in the producer stream
             do_other_producer_work()
 
-        with wp.ScopedStream(consumer_stream)
+        with wp.ScopedStream(consumer_stream):
             # do some unrelated work in the consumer stream
             do_other_consumer_work()
 
@@ -560,7 +560,7 @@ If the example is modified so that both streams have the same priority, the outp
     elapsed_lo = 5.112832
     elapsed_hi = 5.114880
 
-Finally, if we reverse the stream priorities so that ``stream_lo`` has a
+Finally, if we reverse the stream priorities so that ``stream_lo`` has
 a priority of -1 and ``stream_hi`` has a priority of 0, we get::
 
     elapsed_lo = 2.621440
