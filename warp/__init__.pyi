@@ -2616,6 +2616,11 @@ def tile_zeros(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tu
     ...
 
 @over
+def tile_zeros(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
+    ...
+
+@over
 def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
@@ -2625,6 +2630,11 @@ def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tup
       (default) or ``"shared"`` for shared memory.
     :returns: A one-initialized tile with shape and data type as specified
     """
+    ...
+
+@over
+def tile_ones(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2638,6 +2648,11 @@ def tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str) -> T
       (default) or ``"shared"`` for shared memory.
     :returns: A tile filled with the specified value
     """
+    ...
+
+@over
+def tile_full(shape: int32, value: Any, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2677,6 +2692,11 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
          [-2096177388 -1835610841  1159339128  -652221052]]
 
     """
+    ...
+
+@over
+def tile_randi(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2721,6 +2741,11 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, stor
     ...
 
 @over
+def tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
+    ...
+
+@over
 def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
@@ -2757,6 +2782,11 @@ def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
          [0.51194566 0.57261354 0.26992965 0.8481429 ]]
 
     """
+    ...
+
+@over
+def tile_randf(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2804,6 +2834,11 @@ def tile_randf(
     ...
 
 @over
+def tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
+    ...
+
+@over
 def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tuple[int]]:
     """Generate a tile of linearly spaced elements.
 
@@ -2836,6 +2871,13 @@ def tile_load(
     :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
     :returns: A tile with shape as specified and data type the same as the source array
     """
+    ...
+
+@over
+def tile_load(
+    a: Array[Any], shape: int32, offset: int32, storage: str, bounds_check: bool
+) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2920,6 +2962,11 @@ def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, 
     ...
 
 @over
+def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool):
+    """ """
+    ...
+
+@over
 def tile_store_indexed(
     a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], axis: int32
 ):
@@ -2996,6 +3043,13 @@ def tile_atomic_add(
     :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
     """
+    ...
+
+@over
+def tile_atomic_add(
+    a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool
+) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -3109,6 +3163,44 @@ def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]]
     ...
 
 @over
+def tile(x: Any, preserve_type: bool) -> Tile[Any, tuple]:
+    """Construct a new tile from per-thread kernel values.
+
+    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
+
+    * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
+    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
+    * If the input value is a vector, and ``preserve_type=True``, then the resulting tile has ``dtype=vector`` and ``shape=(block_dim,)``
+    * If the input value is a matrix, then the resulting tile has ``shape=(rows, cols, block_dim)``
+    * If the input value is a matrix, and ``preserve_type=True``, then the resulting tile has ``dtype=matrix`` and ``shape=(block_dim,)``
+
+    :param x: A per-thread local value, e.g. scalar, vector, or matrix.
+    :param preserve_type: If true, the tile will have the same data type as the input value.
+    :returns: If ``preserve_type=True``, a tile of type ``x.type`` of length ``block_dim``. Otherwise, an N-dimensional tile such that the first N-1 dimensions match the shape of ``x`` and the final dimension is of size ``block_dim``.
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+            t = wp.tile(i * 2)
+            print(t)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)
+
+
+    """
+    ...
+
+@over
 def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
     """Convert a tile back to per-thread values.
 
@@ -3149,6 +3241,107 @@ def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
         8
         ...
 
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :returns: The value of the element at the specified tile location with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension, or vector index
+    :returns: The value of the element at the specified tile location with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension, or first matrix index
+    :param k: Coordinate of element on the third dimension, or vector index, or second matrix index
+    :returns: The value of the element at the specified tile location with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension, or first matrix index
+    :param l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension
+    :param l: Coordinate of element on the fourth dimension, or first matrix index
+    :param m: Vector index, or second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(
+    a: Tile[Any, tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32
+) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension
+    :param l: Coordinate of element on the fourth dimension
+    :param m: Vector index, or first matrix index
+    :param n: Second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile
     """
     ...
 
@@ -4741,6 +4934,21 @@ def where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any:
 @over
 def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
     """Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+@over
+def array(ptr: uint64, shape: tuple[int, ...], dtype: Any):
+    """ """
+    ...
+
+@over
+def zeros(shape: tuple[int, ...], dtype: Any):
+    """ """
+    ...
+
+@over
+def zeros(shape: int32, dtype: Any):
+    """ """
     ...
 
 @over
