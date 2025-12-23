@@ -1,6 +1,6 @@
 [package]
 # Semantic Versioning is used: https://semver.org/
-version = "1.11.0-rc.2"
+version = "1.11.0-rc.3"
 authors = ["NVIDIA"]
 title = "Warp"
 description="Warp OmniGraph Nodes and Sample Scenes"
