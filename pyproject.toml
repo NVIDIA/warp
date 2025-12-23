@@ -83,6 +83,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["warp*"]
+exclude = ["warp.examples.cpp*"]
 
 [tool.setuptools.dynamic]
 version = { file = ["VERSION.md"] }
