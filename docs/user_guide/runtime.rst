@@ -1547,7 +1547,7 @@ scratch, while providing high-performance on the GPU.
 Meshes
 ######
 
-Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data. To create a mesh, users provide a points, indices and optionally a velocity array::
+Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data. To create a mesh, users provide points, indices, and optionally a velocity array::
 
     mesh = wp.Mesh(points, indices, velocities)
 
@@ -1730,8 +1730,8 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 .. seealso:: `Built-Ins <../language_reference/builtins.html#volumes>`__ for the volume functions available in kernels.
 
 
-Bounding Value Hierarchies (BVH)
-################################
+Bounding Volume Hierarchies (BVH)
+#################################
 
 The :class:`wp.Bvh <warp.Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
 to determine which parts are intersected by a ray using :func:`wp.bvh_query_ray <warp._src.lang.bvh_query_ray>` and which parts overlap
