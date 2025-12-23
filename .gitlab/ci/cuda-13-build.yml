@@ -1,0 +1,226 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ==============================================================================
+# Warp+CUDA 13 Build and Testing Child Pipeline
+#
+# This child pipeline is used to build Warp when the library is built with the
+# CUDA 13 Toolkit (release mode). No testing until GitLab runners have CUDA 13
+# drivers.
+#
+# This pipeline can be triggered from the main GitLab pipeline under specific
+# circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
+# trigger conditions. It is not automatically run in merge request pipelines.
+# ==============================================================================
+
+include:
+  - /.gitlab/ci/common.yml
+  - project: "omniverse/warp-gitlab-ci"
+    ref: "ershi/gitlab-ci-updates"
+    file: "/.gitlab/ci/cuda-13-build.yml"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - build
+  - quality
+  - package
+  - deploy
+
+# ==============================================================================
+# Build Jobs
+# ==============================================================================
+
+linux-aarch64 build:
+  stage: build
+  image: quay.io/pypa/manylinux_2_34_aarch64:latest
+  extends:
+    - .lnx-aarch64-cpu-medium
+    - .save_warp_bin_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - yum update -y && yum install curl wget -y
+    - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+    - tools/packman/packman pull --platform linux-aarch64 --include-tag cuda-13 deps/cuda-toolkit-deps.packman.xml
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run build_lib.py --cuda_path $CUDA
+    - mkdir -p warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
+
+windows-x86_64 build:
+  stage: build
+  extends:
+    - .save_warp_bin_artifact
+    - .runner-build-windows-x86_64
+  before_script:
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - Move-Item -Path $env:PACKMAN_CONFIG_FILE -Destination "$env:CI_PROJECT_DIR\tools\packman\config.packman.xml" -Force
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-13"
+    - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
+    - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
+  script:
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
+
+# ==============================================================================
+# Linting and Code Quality Jobs
+#
+# The jobs here are meant to assist with code quality analysis.
+# They can run immediately without waiting for the build jobs to complete.
+# ==============================================================================
+
+check un-namespaced symbols linux-x86_64:
+  stage: quality
+  image: python:3.12-bullseye
+  needs:
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 cuda 13 build
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  script:
+    - |
+      echo "Checking for un-namespaced symbols..."
+      LIBRARIES_TO_CHECK="warp/bin/linux-x86_64/warp.so warp/bin/linux-x86_64/warp-clang.so"
+      found_symbols=""
+
+      for lib in $LIBRARIES_TO_CHECK; do
+        echo "--> Checking $lib"
+        if [ ! -f "$lib" ]; then
+          echo "ERROR: $lib not found"
+          found_symbols="true"
+          continue
+        fi
+        output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
+        
+        if [ -n "$output" ]; then
+          echo "ERROR: Found un-namespaced symbols in $lib:"
+          echo "$output"
+          found_symbols="true"
+        fi
+      done
+
+      if [ -n "$found_symbols" ]; then
+        echo "FAIL: Un-namespaced symbols detected. Please prefix them with 'wp_' or '_wp_'."
+        exit 1
+      fi
+
+      echo "SUCCESS: All symbols are correctly namespaced."
+
+# ==============================================================================
+# Packaging Jobs
+# ==============================================================================
+
+# Creates wheel files for PyPI
+# Note that compared to the job in .gitlab-ci.yml, there is no aarch64 job
+# due to problems building a debug binary
+create pypi wheels:
+  stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs:
+    - linux-aarch64 build
+    - windows-x86_64 build
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-x86_64 cuda 13 build
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+  script:
+    - printf '%s+cu13\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu13
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64 -C--build-option=-Mmanylinux_2_28
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+  artifacts:
+    name: $PARENT_COMMIT_REF_SLUG-$PARENT_COMMIT_SHORT_SHA
+    expose_as: "Python Wheels"
+    paths:
+      - "dist/"
+    when: always
+
+# ==============================================================================
+# Deployment Jobs
+#
+# This section currently contains jobs that publish files to the internal
+# GitLab service.
+# ==============================================================================
+
+publish wheels to gitlab pypi registry:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $PARENT_COMMIT_BRANCH =~ /release-.*/ || $PARENT_COMMIT_TAG
+      when: manual
+      allow_failure: true
+  script:
+    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist/*
+
+# Uploads the wheels to the internal GitLab package registry in the Warp project
+# Generated files will be in a branch/tag-specific folder
+publish wheels to gitlab package registry:
+  stage: deploy
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $PARENT_COMMIT_TAG
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - |
+      for file in $(find . -name '*.whl'); do
+          filename=$(basename -- "$file")
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
+      done
+    - echo "See the published files at $CI_PROJECT_URL/-/packages"
+
+publish wheels to github release:
+  stage: deploy
+  image: ubuntu:22.04
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $PARENT_COMMIT_TAG
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${HOME}/conda"
+    - source "${HOME}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - conda install gh --channel conda-forge
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - gh release upload $PARENT_COMMIT_TAG ./dist/*.whl
