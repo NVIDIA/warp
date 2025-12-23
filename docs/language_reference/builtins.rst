@@ -69,6 +69,7 @@ Tile Primitives
    :toctree: _generated
    :template: builtins.rst
 
+   tile
    tile_arange
    tile_argmax
    tile_argmin
@@ -85,6 +86,7 @@ Tile Primitives
    tile_cholesky_solve
    tile_cholesky_solve_inplace
    tile_diag_add
+   tile_extract
    tile_fft
    tile_full
    tile_ifft
@@ -162,6 +164,7 @@ Utility
    :toctree: _generated
    :template: builtins.rst
 
+   array
    block_dim
    breakpoint
    cast
@@ -172,6 +175,7 @@ Utility
    select
    tid
    where
+   zeros
 
 Volumes
 -------
