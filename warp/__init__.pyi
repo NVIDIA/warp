@@ -172,6 +172,14 @@ from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
 
+from warp._src.context import init as init
+
+from warp._src.context import is_cpu_available as is_cpu_available
+from warp._src.context import is_cuda_available as is_cuda_available
+
+from warp._src.build import clear_kernel_cache as clear_kernel_cache
+from warp._src.build import clear_lto_cache as clear_lto_cache
+
 from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
 from warp._src.codegen import WarpCodegenError as WarpCodegenError
 from warp._src.codegen import WarpCodegenIndexError as WarpCodegenIndexError
@@ -179,7 +187,6 @@ from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
 from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
 from warp._src.codegen import WarpCodegenValueError as WarpCodegenValueError
 
-from warp._src.context import init as init
 from warp._src.context import func as func
 from warp._src.context import func_grad as func_grad
 from warp._src.context import func_replay as func_replay
@@ -204,8 +211,6 @@ from warp._src.context import synchronize as synchronize
 from warp._src.context import Device as Device
 from warp._src.utils import ScopedDevice as ScopedDevice
 
-from warp._src.context import is_cpu_available as is_cpu_available
-from warp._src.context import is_cuda_available as is_cuda_available
 from warp._src.context import is_device_available as is_device_available
 
 from warp._src.context import get_devices as get_devices
@@ -280,9 +285,6 @@ from warp._src.context import is_peer_access_enabled as is_peer_access_enabled
 from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
 
 from warp._src.tape import Tape as Tape
-
-from warp._src.build import clear_kernel_cache as clear_kernel_cache
-from warp._src.build import clear_lto_cache as clear_lto_cache
 
 from warp._src.dlpack import from_dlpack as from_dlpack
 from warp._src.dlpack import to_dlpack as to_dlpack
