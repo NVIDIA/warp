@@ -137,6 +137,9 @@ def add_example_test(
             if warp.tests.unittest_utils.coverage_branch:
                 command.append("--branch")
 
+            # Only measure warp package to avoid NumPy 2.4+ "cannot load module more than once" error
+            command.extend(["--source", "warp"])
+
         else:
             command = [sys.executable]
 
