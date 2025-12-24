@@ -98,6 +98,8 @@
 - Fix `array.list()` returning NumPy scalar types instead of Python native types (e.g., `numpy.int64` instead of `int`)
   ([GH-1099](https://github.com/NVIDIA/warp/issues/1099)).
 - Fix compilation error when calling `wp.tile_zeros()` using a structured data type containing an array ([GH-1128](https://github.com/NVIDIA/warp/issues/1128)).
+- Fix `wp.optim.SGD` kernel parameter order causing incorrect momentum and weight decay behavior
+  ([GH-1143](https://github.com/NVIDIA/warp/issues/1143)).
 
 ## [1.10.1] - 2025-12-01
 
