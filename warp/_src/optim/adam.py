@@ -81,9 +81,30 @@ def adam_step_kernel_half(
 
 
 class Adam:
-    """An implementation of the Adam Optimizer
-    It is designed to mimic Pytorch's version.
-    https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam
+    """Adaptive Moment Estimation (Adam) optimizer.
+
+    Adam is an adaptive learning rate optimization algorithm that computes
+    individual learning rates for different parameters from estimates of first
+    and second moments of the gradients. This implementation is designed for
+    GPU-accelerated parameter updates using Warp kernels.
+
+    The algorithm maintains exponential moving averages of the gradient (first
+    moment) and the squared gradient (second moment), using bias correction to
+    account for their initialization at zero.
+
+    The interface is similar to `PyTorch's torch.optim.Adam
+    <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html>`_.
+
+    Args:
+        params: List of :class:`warp.array` objects to optimize. Can be ``None``
+            and set later via :meth:`set_params`. Supported dtypes are
+            :class:`warp.float16`, :class:`warp.float32`, and :class:`warp.vec3`.
+        lr: Learning rate (step size).
+        betas: Coefficients for computing running averages of gradient and its
+            square. Tuple of two floats ``(beta1, beta2)`` where ``beta1`` is the
+            exponential decay rate for the first moment and ``beta2`` is the decay
+            rate for the second moment.
+        eps: Small constant added to denominator for numerical stability.
     """
 
     def __init__(self, params=None, lr=0.001, betas=(0.9, 0.999), eps=1e-08):
