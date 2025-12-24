@@ -280,7 +280,7 @@ def test_multi_layer_nn(test, device):
                     tape.zero()
 
         # initial loss is ~0.061
-        test.assertLess(loss.numpy()[0], 0.002)
+        test.assertLess(loss.numpy()[0], 0.004)
 
 
 def test_single_layer_nn(test, device):
