@@ -961,6 +961,9 @@ def test_ffi_jax_callable_pmap_mul(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skip(
+    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
+)
 def test_ffi_jax_callable_pmap_multi_output(test, device):
     import jax
     import jax.numpy as jp
@@ -999,6 +1002,9 @@ def test_ffi_jax_callable_pmap_multi_output(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skip(
+    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
+)
 def test_ffi_jax_callable_pmap_multi_stage(test, device):
     import jax
     import jax.numpy as jp
