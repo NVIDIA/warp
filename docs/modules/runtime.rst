@@ -1871,8 +1871,8 @@ a specified bounding box.
         bounds_nr = wp.int32(0)
 
         while wp.bvh_query_next(query, bounds_nr):
-            # The volume with index bounds_nr is fully contained
-            # in the (lower,upper) bounding box
+            # The volume with index bounds_nr overlaps with
+            # the (lower,upper) bounding box
             bounds_intersected[bounds_nr] = True
 
 
