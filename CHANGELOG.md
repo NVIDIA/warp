@@ -68,6 +68,8 @@
   ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
 - Mark as deprecated all namespaces and symbols that are meant for internal use
   ([GH-908](https://github.com/NVIDIA/warp/issues/908)).
+- Deprecate `warp.render.UsdRenderer.update_body_transforms()` which references
+  non-existent attributes and is non-functional.
 
 ### Changed
 

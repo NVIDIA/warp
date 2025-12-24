@@ -15,9 +15,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 import warp as wp
+from warp._src.utils import warn
+
+if TYPE_CHECKING:
+    from pxr import Usd
 
 _wp_module_name_ = "warp.render.render_usd"
 
@@ -79,18 +85,32 @@ def _compute_segment_xform(pos0, pos1):
 
 
 class UsdRenderer:
-    """A USD renderer"""
+    """USD-based renderer for creating 3D visualizations and animations.
 
-    def __init__(self, stage, up_axis="Y", fps=60, scaling=1.0):
-        """Construct a UsdRenderer object.
+    This renderer writes geometric primitives, meshes, and point clouds to
+    Universal Scene Description (USD) files, which can be viewed in USD-compatible
+    applications such as USDView, applications built with the Omniverse Kit SDK,
+    or Blender. It supports time-varying animations by recording geometry at
+    different time codes.
 
-        Args:
-            model: A simulation model
-            stage (str/Usd.Stage): A USD stage (either in memory or on disk)
-            up_axis (str): The upfacing axis of the stage
-            fps: The number of frames per second to use in the USD file
-            scaling: Scaling factor to use for the entities in the scene
-        """
+    The renderer provides methods to visualize geometric shapes (spheres, boxes,
+    capsules, cylinders, cones), custom meshes, line primitives, and point clouds.
+    All geometry is organized under a root transform that can be scaled uniformly.
+
+    Note:
+        Requires USD to be installed. Install ``usd-core`` (``pip install usd-core``)
+        or ``usd-exchange`` (``pip install usd-exchange``) on Linux aarch64 systems
+        where ``usd-core`` is not available.
+
+    Args:
+        stage: A USD stage (either a file path or a ``Usd.Stage`` object).
+            If a string path is provided, a new USD stage will be created at that location.
+        up_axis: The upfacing axis of the stage. Can be ``"X"``, ``"Y"``, or ``"Z"``.
+        fps: The number of frames per second for animation playback.
+        scaling: Uniform scaling factor applied to all entities in the scene.
+    """
+
+    def __init__(self, stage: str | Usd.Stage, up_axis: str = "Y", fps: int = 60, scaling: float = 1.0):
         try:
             from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux  # noqa: PLC0415
         except ImportError as e:
@@ -912,6 +932,19 @@ class UsdRenderer:
         return instancer.GetPath()
 
     def update_body_transforms(self, body_q):
+        """Update body transforms (deprecated).
+
+        .. deprecated:: 1.11
+            This method references non-existent attributes (`self.model` and `self.body_names`)
+            and will be removed in a future release.
+        """
+        warn(
+            "UsdRenderer.update_body_transforms() is deprecated and non-functional. "
+            "It references attributes that do not exist (self.model, self.body_names) "
+            "and will be removed in a future release.",
+            category=DeprecationWarning,
+        )
+        # Original broken code preserved for now
         from pxr import Sdf, UsdGeom  # noqa: PLC0415
 
         if isinstance(body_q, wp.array):
