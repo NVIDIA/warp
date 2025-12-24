@@ -323,10 +323,10 @@ class SquareBipolynomialShapeFunctions(SquareShapeFunction):
 
 
 class SquareSerendipityShapeFunctions(SquareShapeFunction):
-    """
-    Serendipity element ~ tensor product space without interior nodes
-    Side shape functions are usual Lagrange shape functions times a linear function in the normal direction
-    Corner shape functions are bilinear shape functions times a function of (x^{d-1} + y^{d-1})
+    """Serendipity element: a tensor product space without interior nodes.
+
+    Side shape functions are usual Lagrange shape functions times a linear function in the normal direction.
+    Corner shape functions are bilinear shape functions times a function of (x^{d-1} + y^{d-1}).
     """
 
     def __init__(self, degree: int, family: Polynomial):

@@ -55,6 +55,7 @@ class SGD:
 
     This optimizer implements gradient descent with support for momentum,
     Nesterov accelerated gradient, and weight decay (L2 regularization).
+
     The interface is similar to `PyTorch's torch.optim.SGD
     <https://pytorch.org/docs/stable/generated/torch.optim.SGD.html>`_.
 
