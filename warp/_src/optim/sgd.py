@@ -25,9 +25,9 @@ def sgd_step_kernel(
     g: wp.array(dtype=Any),
     b: wp.array(dtype=Any),
     lr: float,
-    weight_decay: float,
     momentum: float,
     damping: float,
+    weight_decay: float,
     nesterov: int,
     t: int,
     params: wp.array(dtype=Any),
@@ -119,10 +119,5 @@ class SGD:
         assert params.dtype == g.dtype
         assert params.dtype == b.dtype
         assert params.shape == g.shape
-        kernel_inputs = [g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params]
-        wp.launch(
-            kernel=sgd_step_kernel,
-            dim=len(params),
-            inputs=kernel_inputs,
-            device=params.device,
-        )
+        kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
+        wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)
