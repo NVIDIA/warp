@@ -970,7 +970,7 @@ publish wheels to github release:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
-    - .ipp_lnx_x86_64_cpu_micro
+    - .ipp_lnx_x86_64_cpu_medium
   artifacts:
     paths:
       - public
