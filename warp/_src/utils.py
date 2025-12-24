@@ -1332,7 +1332,7 @@ TIMING_ALL = 0xFFFFFFFF
 
 # timer utils
 class ScopedTimer:
-    thread_local = threading.local()
+    _thread_local = threading.local()
 
     enabled = True
 
@@ -1389,8 +1389,8 @@ class ScopedTimer:
             if name not in self.dict:
                 self.dict[name] = []
 
-        if not hasattr(ScopedTimer.thread_local, "indent"):
-            ScopedTimer.thread_local.indent = -1
+        if not hasattr(ScopedTimer._thread_local, "indent"):
+            ScopedTimer._thread_local.indent = -1
 
     def __enter__(self):
         if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
@@ -1414,10 +1414,10 @@ class ScopedTimer:
                 self.nvtx_range_id = nvtx.start_range(self.name, color=self.color)
 
             if self.print:
-                ScopedTimer.thread_local.indent += 1
+                ScopedTimer._thread_local.indent += 1
 
                 if warp.config.verbose:
-                    indent = "    " * ScopedTimer.thread_local.indent
+                    indent = "    " * ScopedTimer._thread_local.indent
                     print(f"{indent}{self.name} ...", flush=True)
 
             self.start = time.perf_counter_ns()
@@ -1452,7 +1452,7 @@ class ScopedTimer:
                 self.dict[self.name].append(self.elapsed)
 
             if self.print:
-                indent = "    " * ScopedTimer.thread_local.indent
+                indent = "    " * ScopedTimer._thread_local.indent
 
                 if self.timing_results:
                     self.report_func(self.timing_results, indent=indent)
@@ -1463,7 +1463,7 @@ class ScopedTimer:
                 else:
                     print(f"{indent}{self.name} took {self.elapsed:.2f} ms")
 
-                ScopedTimer.thread_local.indent -= 1
+                ScopedTimer._thread_local.indent -= 1
 
 
 # Allow temporarily enabling/disabling mempool allocators
