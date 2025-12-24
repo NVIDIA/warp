@@ -1101,13 +1101,20 @@ class OpenGLRenderer:
 
         self._title = title
 
-        self.window = pyglet.window.Window(
-            width=screen_width, height=screen_height, caption=title, resizable=True, vsync=vsync, visible=not headless
-        )
         if headless is None:
             self.headless = pyglet.options.get("headless", False)
         else:
             self.headless = headless
+
+        self.window = pyglet.window.Window(
+            width=screen_width,
+            height=screen_height,
+            caption=title,
+            resizable=True,
+            vsync=vsync,
+            visible=not self.headless,
+        )
+
         self.app = pyglet.app
 
         # making window current opengl rendering context
@@ -1208,7 +1215,7 @@ class OpenGLRenderer:
         self._frame_fbo = None
         self._frame_pbo = None
 
-        if not headless:
+        if not self.headless:
             self.window.push_handlers(on_draw=self._draw)
             self.window.push_handlers(on_resize=self._window_resize_callback)
             self.window.push_handlers(on_key_press=self._key_press_callback)
@@ -1431,7 +1438,7 @@ class OpenGLRenderer:
             width=400,
         )
 
-        if not headless:
+        if not self.headless:
             # set up our own event handling so we can synchronously render frames
             # by calling update() in a loop
             from pyglet.window import Window  # noqa: PLC0415

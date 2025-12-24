@@ -102,6 +102,8 @@
 - Fix compilation error when calling `wp.tile_zeros()` using a structured data type containing an array ([GH-1128](https://github.com/NVIDIA/warp/issues/1128)).
 - Fix `wp.optim.SGD` kernel parameter order causing incorrect momentum and weight decay behavior
   ([GH-1143](https://github.com/NVIDIA/warp/issues/1143)).
+- Fix `warp.render.OpenGLRenderer` window visibility when `headless` parameter is not provided but
+  `pyglet.options["headless"]` is set to `True`. The window is now correctly created as non-visible in this case.
 
 ## [1.10.1] - 2025-12-01
 
