@@ -334,10 +334,14 @@ def test_dlpack_torch_to_warp_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
     import torch
 
-    with torch.device(wp.device_to_torch(device)):
-        t = torch.arange(N, dtype=torch.float32)
+    torch_device = torch.device(wp.device_to_torch(device))
+    t = torch.arange(N, dtype=torch.float32, device=torch_device)
 
-        # pass tensor directly
+    if torch_device.type == "cuda":
+        with torch.cuda.device(torch_device):
+            # pass tensor directly
+            a = wp.from_dlpack(t)
+    else:
         a = wp.from_dlpack(t)
 
     item_size = wp.types.type_size_in_bytes(a.dtype)
