@@ -359,7 +359,7 @@ def bsr_zeros(
     rows_of_blocks: int,
     cols_of_blocks: int,
     block_type: BlockType,
-    device: wp._src.context.DeviceLike = None,
+    device: wp.DeviceLike = None,
 ) -> BsrMatrix:
     """Construct and return an empty BSR or CSR matrix with the given shape.
 
@@ -1422,7 +1422,7 @@ def bsr_set_identity(A: BsrMatrix, rows_of_blocks: int | None = None) -> None:
 def bsr_identity(
     rows_of_blocks: int,
     block_type: BlockType[Rows, Rows, Scalar],
-    device: wp._src.context.DeviceLike = None,
+    device: wp.DeviceLike = None,
 ) -> BsrMatrix[BlockType[Rows, Rows, Scalar]]:
     """Create and return a square identity matrix.
 

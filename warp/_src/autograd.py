@@ -47,7 +47,7 @@ def gradcheck(
     rtol: float = 1e-2,
     raise_exception: bool = True,
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
-    device: wp.context.DeviceLike = None,
+    device: wp.DeviceLike = None,
     max_blocks: int = 0,
     block_dim: int = 256,
     max_inputs_per_var: int = -1,
@@ -76,7 +76,7 @@ def gradcheck(
         Structs arguments are not yet supported by this function to compute Jacobians.
 
     Args:
-        function: The Warp kernel function, decorated with the ``@wp.kernel`` decorator, or any function that involves Warp kernel launches.
+        function: The Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator, or any function that involves Warp kernel launches.
         dim: The number of threads to launch the kernel, can be an integer, or a Tuple of ints. Only required if the function is a Warp kernel.
         inputs: List of input variables.
         outputs: List of output variables. Only required if the function is a Warp kernel.
@@ -464,7 +464,7 @@ def jacobian_plot(
 
     Args:
         jacobians: A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
-        kernel: The Warp kernel function, decorated with the ``@wp.kernel`` decorator, or a :class:`FunctionMetadata` instance with the kernel/function attributes.
+        kernel: The Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator, or a :class:`FunctionMetadata` instance with the kernel/function attributes.
         inputs: List of input variables.
         show_plot: If True, displays the plot via ``plt.show()``.
         show_colorbar: If True, displays a colorbar next to the plot (or a colorbar next to every submatrix if ).
@@ -674,7 +674,7 @@ def jacobian(
     inputs: Sequence | None = None,
     outputs: Sequence | None = None,
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
-    device: wp.context.DeviceLike = None,
+    device: wp.DeviceLike = None,
     max_blocks=0,
     block_dim=256,
     max_outputs_per_var=-1,
@@ -684,7 +684,7 @@ def jacobian(
     """
     Computes the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
 
-    The input function can be either a Warp kernel (e.g. a function decorated by ``@wp.kernel``) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
+    The input function can be either a Warp kernel (e.g. a function decorated by :func:`@wp.kernel <warp.kernel>`) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
 
     In case ``function`` is a Warp kernel, its adjoint kernel is launched with the given inputs and outputs, as well as the provided ``dim``,
     ``max_blocks``, and ``block_dim`` arguments (see :func:`warp.launch` for more details).
@@ -694,7 +694,7 @@ def jacobian(
 
         Only Warp arrays with ``requires_grad=True`` are considered for the Jacobian computation.
 
-        Function arguments of type :ref:`Struct <structs>` are not yet supported.
+        Function arguments of type :func:`wp.struct <warp.struct>` are not yet supported.
 
     Args:
         function: The Warp kernel function, or a regular Python function that returns a Warp array or a list of Warp arrays.
@@ -809,7 +809,7 @@ def jacobian_fd(
     inputs: Sequence | None = None,
     outputs: Sequence | None = None,
     input_output_mask: list[tuple[str | int, str | int]] | None = None,
-    device: wp.context.DeviceLike = None,
+    device: wp.DeviceLike = None,
     max_blocks=0,
     block_dim=256,
     max_inputs_per_var=-1,
@@ -821,7 +821,7 @@ def jacobian_fd(
     Computes the finite-difference Jacobian of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
     The method uses a central difference scheme to approximate the Jacobian.
 
-    The input function can be either a Warp kernel (e.g. a function decorated by ``@wp.kernel``) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
+    The input function can be either a Warp kernel (e.g. a function decorated by :func:`@wp.kernel <warp.kernel>`) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
 
     The function is launched multiple times in forward-only mode with the given inputs. If ``function`` is a Warp kernel, the provided inputs and outputs,
     as well as the other parameters ``dim``, ``max_blocks``, and ``block_dim`` are provided to the kernel launch (see :func:`warp.launch`).
@@ -831,7 +831,7 @@ def jacobian_fd(
 
         Only Warp arrays with ``requires_grad=True`` are considered for the Jacobian computation.
 
-        Function arguments of type :ref:`Struct <structs>` are not yet supported.
+        Function arguments of type :func:`wp.struct <warp.struct>` are not yet supported.
 
     Args:
         function: The Warp kernel function, or a regular Python function that returns a Warp array or a list of Warp arrays.

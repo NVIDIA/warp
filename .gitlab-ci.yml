@@ -970,7 +970,7 @@ publish wheels to github release:
   image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
   needs: [linux-x86_64 build]
   extends:
-    - .ipp_lnx_x86_64_cpu_micro
+    - .ipp_lnx_x86_64_cpu_medium
   artifacts:
     paths:
       - public
@@ -993,7 +993,8 @@ merge request docs:
   artifacts:
     paths:
       - warp/__init__.pyi
-      - docs/modules/functions.rst
+      - docs/api_reference
+      - docs/language_reference
       - public
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -1004,7 +1005,7 @@ merge request docs:
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
 
-# Merge requests: Ensure that exports.h, __init__.pyi, functions.rst have been
+# Merge requests: Ensure that exports.h, __init__.pyi, and docs reference files have been
 # manually added to the MR if they are changed
 check generated files:
   stage: deploy
@@ -1025,7 +1026,8 @@ check generated files:
       - warp/native/exports.h
       - warp/native/version.h
       - warp/__init__.pyi
-      - docs/modules/functions.rst
+      - docs/api_reference
+      - docs/language_reference
   before_script:
     - apt-get update -q
     - apt-get install -y -q --no-install-recommends git
@@ -1034,7 +1036,7 @@ check generated files:
     - uv run tools/ci/publishing/check_version_consistency.py --verbose
     # Check that generated documentation files are committed
     - >
-      git diff --exit-code warp/__init__.pyi docs/modules/functions.rst ||
+      git diff --exit-code warp/__init__.pyi docs/api_reference docs/language_reference ||
       (echo "Please run build_docs.py (or download from $CI_JOB_URL/artifacts/browse) and add modified files to your merge request." && false)
     # Check that generated native files are committed
     - >

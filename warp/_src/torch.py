@@ -24,7 +24,7 @@ _wp_module_name_ = "warp.torch"
 
 
 # return the warp device corresponding to a torch device
-def device_from_torch(torch_device) -> warp._src.context.Device:
+def device_from_torch(torch_device) -> warp.Device:
     """Return the Warp device corresponding to a Torch device.
 
     Args:
@@ -57,11 +57,11 @@ def device_from_torch(torch_device) -> warp._src.context.Device:
             raise
 
 
-def device_to_torch(warp_device: warp._src.context.DeviceLike) -> str:
+def device_to_torch(warp_device: warp.DeviceLike) -> str:
     """Return the Torch device string corresponding to a Warp device.
 
     Args:
-        warp_device: An identifier that can be resolved to a :class:`warp._src.context.Device`.
+        warp_device: An identifier that can be resolved to a :class:`warp.Device`.
 
     Raises:
         RuntimeError: The Warp device is not compatible with PyTorch.

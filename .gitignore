@@ -15,6 +15,7 @@ warp_lang.egg-info
 /build
 /dist
 /docs/_build
+/docs/**/_generated
 
 # IDE and editor files
 .idea/

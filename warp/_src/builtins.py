@@ -2240,7 +2240,6 @@ add_builtin(
     dispatch_func=tile_zeros_dispatch_func,
     variadic=False,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2311,7 +2310,6 @@ add_builtin(
     value_func=tile_ones_value_func,
     dispatch_func=tile_ones_dispatch_func,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2390,7 +2388,6 @@ add_builtin(
     value_func=tile_full_value_func,
     dispatch_func=tile_full_dispatch_func,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2503,7 +2500,6 @@ add_builtin(
     value_func=tile_randi_value_func,
     dispatch_func=tile_randi_dispatch_func,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2563,7 +2559,6 @@ add_builtin(
     value_func=tile_randi_value_func,
     dispatch_func=tile_randi_dispatch_func,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2676,7 +2671,6 @@ add_builtin(
     value_func=tile_randf_value_func,
     dispatch_func=tile_randf_dispatch_func,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2737,7 +2731,6 @@ add_builtin(
     value_func=tile_randf_value_func,
     dispatch_func=tile_randf_dispatch_func,
     is_differentiable=False,
-    hidden=True,
     group="Tile Primitives",
     export=False,
 )
@@ -2932,7 +2925,6 @@ add_builtin(
     dispatch_func=tile_load_tuple_dispatch_func,
     defaults={"offset": None, "storage": "register", "bounds_check": True},
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -3171,7 +3163,6 @@ add_builtin(
     variadic=False,
     skip_replay=True,
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -3413,7 +3404,6 @@ add_builtin(
     variadic=False,
     skip_replay=True,
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -4041,7 +4031,6 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    hidden=True,
 )
 
 
@@ -4177,7 +4166,6 @@ add_builtin(
     :param i: Coordinate of element on first dimension
     :returns: The value of the element at the specified tile location with the same data type as the input tile""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -4197,7 +4185,6 @@ add_builtin(
     :param j: Coordinate of element on the second dimension, or vector index
     :returns: The value of the element at the specified tile location with the same data type as the input tile""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -4218,7 +4205,6 @@ add_builtin(
     :param k: Coordinate of element on the third dimension, or vector index, or second matrix index
     :returns: The value of the element at the specified tile location with the same data type as the input tile""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -4240,7 +4226,6 @@ add_builtin(
     :param l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
     :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -4270,7 +4255,6 @@ add_builtin(
     :param m: Vector index, or second matrix index
     :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -4302,7 +4286,6 @@ add_builtin(
     :param n: Second matrix index
     :returns: The value of the element at the specified tile location, with the same data type as the input tile""",
     group="Tile Primitives",
-    hidden=True,
     export=False,
 )
 
@@ -7882,7 +7865,6 @@ add_builtin(
     dispatch_func=array_dispatch_func,
     native_func="array_t",
     group="Utility",
-    hidden=True,
     export=False,
     is_differentiable=False,
 )
@@ -7926,7 +7908,6 @@ add_builtin(
     group="Utility",
     export=False,
     is_differentiable=False,
-    hidden=True,  # Unhide once we can document both a built-in and a Python scope function sharing the same name.
 )
 
 add_builtin(
@@ -7939,7 +7920,6 @@ add_builtin(
     group="Utility",
     export=False,
     is_differentiable=False,
-    hidden=True,  # Unhide once we can document both a built-in and a Python scope function sharing the same name.
 )
 
 

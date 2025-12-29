@@ -32,7 +32,7 @@ import types
 from collections.abc import Mapping, Sequence
 from typing import Any, Callable, ClassVar, get_args, get_origin
 
-import warp._src.config
+import warp.config
 from warp._src.types import *
 
 _wp_module_name_ = "warp.codegen"
@@ -798,7 +798,7 @@ class Var:
             return
 
         # detect if we are writing to an array after reading from it within the same kernel
-        if self.is_read and warp._src.config.verify_autograd_array_access:
+        if self.is_read and warp.config.verify_autograd_array_access:
             if "kernel_name" and "filename" and "lineno" in kwargs:
                 print(
                     f"Warning: Array passed to argument {self.label} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
@@ -1337,11 +1337,11 @@ class Adjoint:
 
         # lineinfo is enabled by default in debug mode regardless of the builder option, don't want to unnecessarily
         # emit line directives in generated code if it's not being compiled with line information
-        build_mode = val if (val := adj.builder_options.get("mode")) is not None else warp._src.config.mode
+        build_mode = val if (val := adj.builder_options.get("mode")) is not None else warp.config.mode
 
         lineinfo_enabled = adj.builder_options.get("lineinfo", False) or build_mode == "debug"
 
-        if relative_lineno is not None and lineinfo_enabled and warp._src.config.line_directives:
+        if relative_lineno is not None and lineinfo_enabled and warp.config.line_directives:
             is_comment = statement.strip().startswith("//")
             if not is_comment:
                 line = relative_lineno + adj.fun_lineno
@@ -2322,7 +2322,7 @@ class Adjoint:
     def emit_BinOp(adj, node):
         # evaluate binary operator arguments
 
-        if warp._src.config.verify_autograd_array_access:
+        if warp.config.verify_autograd_array_access:
             # array overwrite tracking: in-place operators are a special case
             # x[tid] = x[tid] + 1 is a read followed by a write, but we only want to record the write
             # so we save the current arg read flags and restore them after lhs eval
@@ -2333,7 +2333,7 @@ class Adjoint:
         # evaluate lhs binary operator argument
         left = adj.eval(node.left)
 
-        if warp._src.config.verify_autograd_array_access:
+        if warp.config.verify_autograd_array_access:
             # restore arg read flags
             for i, arg in enumerate(adj.args):
                 arg.is_read = is_read_states[i]
@@ -2379,7 +2379,7 @@ class Adjoint:
             var2 = adj.symbols[sym]
 
             if var1 != var2:
-                if warp._src.config.verbose and not adj.custom_reverse_mode:
+                if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source_lines[adj.lineno]
                     msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}\n'
@@ -2496,7 +2496,7 @@ class Adjoint:
             if "max_unroll" in adj.builder_options:
                 max_unroll = adj.builder_options["max_unroll"]
             else:
-                max_unroll = warp._src.config.max_unroll
+                max_unroll = warp.config.max_unroll
 
             ok_to_unroll = True
 
@@ -2515,7 +2515,7 @@ class Adjoint:
             # Always unroll if the loop contains static expressions
             if contains_static:
                 # Forced unrolling for loops with static expressions regardless of max_unroll
-                if warp._src.config.verbose and max_iters > max_unroll:
+                if warp.config.verbose and max_iters > max_unroll:
                     print(
                         f"Notice: Forcing unroll of loop with {max_iters} iterations because it contains wp.static expressions."
                     )
@@ -2523,14 +2523,14 @@ class Adjoint:
 
             # Apply max_unroll check only for regular loops (no static expressions)
             if max_iters > max_unroll:
-                if warp._src.config.verbose:
+                if warp.config.verbose:
                     print(
                         f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
                     )
                 ok_to_unroll = False
 
             elif adj.contains_break(loop.body):
-                if warp._src.config.verbose:
+                if warp.config.verbose:
                     print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
                 ok_to_unroll = False
 
@@ -2738,7 +2738,7 @@ class Adjoint:
 
         if is_array(target_type):
             builtin_name = "address"
-            if warp._src.config.verify_autograd_array_access:
+            if warp.config.verify_autograd_array_access:
                 target.mark_read()
         else:
             builtin_name = "extract"
@@ -2853,7 +2853,7 @@ class Adjoint:
 
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
 
-        if warp._src.config.verify_autograd_array_access:
+        if warp.config.verify_autograd_array_access:
             # Extract the types and values passed as arguments to the function call.
             arg_types = tuple(get_arg_type(x) for x in args)
             kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
@@ -2905,7 +2905,7 @@ class Adjoint:
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
 
-                if warp._src.config.verify_autograd_array_access:
+                if warp.config.verify_autograd_array_access:
                     target.mark_read()
 
             else:
@@ -2927,7 +2927,7 @@ class Adjoint:
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
 
-                if warp._src.config.verify_autograd_array_access:
+                if warp.config.verify_autograd_array_access:
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
                     out.parent = target
 
@@ -3112,7 +3112,7 @@ class Adjoint:
             if is_array(target_type):
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
 
-                if warp._src.config.verify_autograd_array_access:
+                if warp.config.verify_autograd_array_access:
                     kernel_name = adj.fun_name
                     filename = adj.filename
                     lineno = adj.lineno + adj.fun_lineno
@@ -3143,7 +3143,7 @@ class Adjoint:
                     attr = adj.add_builtin_call("indexref", [target, *indices])
                     adj.add_builtin_call("store", [attr, rhs])
 
-                    if warp._src.config.verbose and not adj.custom_reverse_mode:
+                    if warp.config.verbose and not adj.custom_reverse_mode:
                         lineno = adj.lineno + adj.fun_lineno
                         line = adj.source_lines[adj.lineno]
                         node_source = adj.get_node_source(lhs.value)
@@ -3151,7 +3151,7 @@ class Adjoint:
                             f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                         )
                 else:
-                    if warp._src.config.enable_vector_component_overwrites:
+                    if warp.config.enable_vector_component_overwrites:
                         out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
 
                         # re-point target symbol to out var
@@ -3208,7 +3208,7 @@ class Adjoint:
                     attr = adj.add_builtin_call("indexref", [aggregate, index])
                     adj.add_builtin_call("store", [attr, rhs])
                 else:
-                    if warp._src.config.enable_vector_component_overwrites:
+                    if warp.config.enable_vector_component_overwrites:
                         out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
 
                         # re-point target symbol to out var
@@ -3238,7 +3238,7 @@ class Adjoint:
                 else:
                     adj.add_builtin_call("assign", [attr, rhs])
 
-                if warp._src.config.verbose and not adj.custom_reverse_mode:
+                if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source_lines[adj.lineno]
                     msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
@@ -3323,34 +3323,34 @@ class Adjoint:
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("atomic_add", [target, *indices, rhs])
 
-                    if warp._src.config.verify_autograd_array_access:
+                    if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.Sub):
                     adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
 
-                    if warp._src.config.verify_autograd_array_access:
+                    if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitAnd):
                     adj.add_builtin_call("atomic_and", [target, *indices, rhs])
 
-                    if warp._src.config.verify_autograd_array_access:
+                    if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitOr):
                     adj.add_builtin_call("atomic_or", [target, *indices, rhs])
 
-                    if warp._src.config.verify_autograd_array_access:
+                    if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
 
-                    if warp._src.config.verify_autograd_array_access:
+                    if warp.config.verify_autograd_array_access:
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
-                    if warp._src.config.verbose:
+                    if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
                     make_new_assign_statement()
                     return
@@ -3372,7 +3372,7 @@ class Adjoint:
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("bit_xor_inplace", [target, *indices, rhs])
                 else:
-                    if warp._src.config.verbose:
+                    if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
                     make_new_assign_statement()
                     return
@@ -3389,7 +3389,7 @@ class Adjoint:
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("tile_bit_xor_inplace", [target, *indices, rhs])
                 else:
-                    if warp._src.config.verbose:
+                    if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
                     make_new_assign_statement()
                     return
@@ -3712,7 +3712,7 @@ class Adjoint:
             value = eval(code_to_eval, vars_dict)
             if isinstance(value, (enum.IntEnum, enum.IntFlag)):
                 value = int(value)
-            if warp._src.config.verbose:
+            if warp.config.verbose:
                 print(f"Evaluated static command: {static_code} = {value}")
         except NameError as e:
             raise WarpCodegenError(

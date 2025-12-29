@@ -36,24 +36,10 @@ FabricArray = Generic[DType]
 IndexedFabricArray = Generic[DType]
 Tile = Generic[DType, Shape]
 
-from warp._src.types import array as array
-from warp._src.types import array1d as array1d
-from warp._src.types import array2d as array2d
-from warp._src.types import array3d as array3d
-from warp._src.types import array4d as array4d
-from warp._src.types import constant as constant
-from warp._src.types import from_ptr as from_ptr
-from warp._src.types import fixedarray as fixedarray
-from warp._src.types import indexedarray as indexedarray
-from warp._src.types import indexedarray1d as indexedarray1d
-from warp._src.types import indexedarray2d as indexedarray2d
-from warp._src.types import indexedarray3d as indexedarray3d
-from warp._src.types import indexedarray4d as indexedarray4d
-from warp._src.fabric import fabricarray as fabricarray
-from warp._src.fabric import fabricarrayarray as fabricarrayarray
-from warp._src.fabric import indexedfabricarray as indexedfabricarray
-from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
-from warp._src.types import tile as tile
+from warp._src.types import Int as Int
+from warp._src.types import Float as Float
+from warp._src.types import Scalar as Scalar
+from warp._src.context import DeviceLike as DeviceLike
 
 from warp._src.types import bool as bool
 from warp._src.types import int8 as int8
@@ -122,6 +108,9 @@ from warp._src.types import mat44h as mat44h
 from warp._src.types import mat44f as mat44f
 from warp._src.types import mat44d as mat44d
 
+from warp._src.types import matrix_from_cols as matrix_from_cols
+from warp._src.types import matrix_from_rows as matrix_from_rows
+
 from warp._src.types import quat as quat
 from warp._src.types import quath as quath
 from warp._src.types import quatf as quatf
@@ -142,9 +131,34 @@ from warp._src.types import spatial_matrixh as spatial_matrixh
 from warp._src.types import spatial_matrixf as spatial_matrixf
 from warp._src.types import spatial_matrixd as spatial_matrixd
 
-from warp._src.types import Int as Int
-from warp._src.types import Float as Float
-from warp._src.types import Scalar as Scalar
+from warp._src.types import array as array
+from warp._src.types import array1d as array1d
+from warp._src.types import array2d as array2d
+from warp._src.types import array3d as array3d
+from warp._src.types import array4d as array4d
+
+from warp._src.types import fixedarray as fixedarray
+
+from warp._src.types import tile as tile
+
+from warp._src.types import from_ptr as from_ptr
+
+from warp._src.context import zeros as zeros
+from warp._src.context import zeros_like as zeros_like
+from warp._src.context import ones as ones
+from warp._src.context import ones_like as ones_like
+from warp._src.context import full as full
+from warp._src.context import full_like as full_like
+from warp._src.context import clone as clone
+from warp._src.context import empty as empty
+from warp._src.context import empty_like as empty_like
+from warp._src.context import copy as copy
+
+from warp._src.types import indexedarray as indexedarray
+from warp._src.types import indexedarray1d as indexedarray1d
+from warp._src.types import indexedarray2d as indexedarray2d
+from warp._src.types import indexedarray3d as indexedarray3d
+from warp._src.types import indexedarray4d as indexedarray4d
 
 from warp._src.types import Bvh as Bvh
 from warp._src.types import Mesh as Mesh
@@ -158,15 +172,21 @@ from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
 
-from warp._src.types import matrix_from_cols as matrix_from_cols
-from warp._src.types import matrix_from_rows as matrix_from_rows
-
-from warp._src.types import dtype_from_numpy as dtype_from_numpy
-from warp._src.types import dtype_to_numpy as dtype_to_numpy
-
-from warp._src.types import from_ipc_handle as from_ipc_handle
-
 from warp._src.context import init as init
+
+from warp._src.context import is_cpu_available as is_cpu_available
+from warp._src.context import is_cuda_available as is_cuda_available
+
+from warp._src.build import clear_kernel_cache as clear_kernel_cache
+from warp._src.build import clear_lto_cache as clear_lto_cache
+
+from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
+from warp._src.codegen import WarpCodegenError as WarpCodegenError
+from warp._src.codegen import WarpCodegenIndexError as WarpCodegenIndexError
+from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
+from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
+from warp._src.codegen import WarpCodegenValueError as WarpCodegenValueError
+
 from warp._src.context import func as func
 from warp._src.context import func_grad as func_grad
 from warp._src.context import func_replay as func_replay
@@ -175,64 +195,42 @@ from warp._src.context import grad as grad
 from warp._src.context import kernel as kernel
 from warp._src.context import struct as struct
 from warp._src.context import overload as overload
+from warp._src.types import constant as constant
+from warp._src.utils import map as map
+from warp._src.builtins import static as static
 
-from warp._src.context import is_cpu_available as is_cpu_available
-from warp._src.context import is_cuda_available as is_cuda_available
-from warp._src.context import is_device_available as is_device_available
-from warp._src.context import get_cuda_supported_archs as get_cuda_supported_archs
-from warp._src.context import get_devices as get_devices
-from warp._src.context import get_preferred_device as get_preferred_device
-from warp._src.context import get_cuda_devices as get_cuda_devices
-from warp._src.context import get_cuda_device_count as get_cuda_device_count
-from warp._src.context import get_cuda_device as get_cuda_device
-from warp._src.context import map_cuda_device as map_cuda_device
-from warp._src.context import unmap_cuda_device as unmap_cuda_device
-from warp._src.context import get_device as get_device
-from warp._src.context import set_device as set_device
-from warp._src.context import synchronize_device as synchronize_device
-
-from warp._src.context import zeros as zeros
-from warp._src.context import zeros_like as zeros_like
-from warp._src.context import ones as ones
-from warp._src.context import ones_like as ones_like
-from warp._src.context import full as full
-from warp._src.context import full_like as full_like
-from warp._src.context import clone as clone
-from warp._src.context import empty as empty
-from warp._src.context import empty_like as empty_like
-from warp._src.context import copy as copy
-from warp._src.context import from_numpy as from_numpy
-
-from warp._src.context import launch as launch
-from warp._src.context import launch_tiled as launch_tiled
-from warp._src.context import synchronize as synchronize
-from warp._src.context import compile_aot_module as compile_aot_module
-from warp._src.context import force_load as force_load
-from warp._src.context import load_module as load_module
-from warp._src.context import load_aot_module as load_aot_module
-from warp._src.context import event_from_ipc_handle as event_from_ipc_handle
-
-from warp._src.context import set_module_options as set_module_options
-from warp._src.context import get_module_options as get_module_options
-from warp._src.context import get_module as get_module
-
-from warp._src.context import capture_begin as capture_begin
-from warp._src.context import capture_end as capture_end
-from warp._src.context import capture_launch as capture_launch
-from warp._src.context import capture_if as capture_if
-from warp._src.context import capture_while as capture_while
-from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
-
-from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported
-
-from warp._src.context import DeviceLike as DeviceLike
-from warp._src.context import Device as Device
 from warp._src.context import Kernel as Kernel
 from warp._src.context import Function as Function
 from warp._src.context import Launch as Launch
 from warp._src.context import Module as Module
 
+from warp._src.context import launch as launch
+from warp._src.context import launch_tiled as launch_tiled
+from warp._src.context import synchronize as synchronize
+
+from warp._src.context import Device as Device
+from warp._src.utils import ScopedDevice as ScopedDevice
+
+from warp._src.context import is_device_available as is_device_available
+
+from warp._src.context import get_devices as get_devices
+from warp._src.context import get_preferred_device as get_preferred_device
+from warp._src.context import get_cuda_devices as get_cuda_devices
+from warp._src.context import get_cuda_device_count as get_cuda_device_count
+from warp._src.context import get_cuda_device as get_cuda_device
+from warp._src.context import get_cuda_supported_archs as get_cuda_supported_archs
+
+from warp._src.context import map_cuda_device as map_cuda_device
+from warp._src.context import unmap_cuda_device as unmap_cuda_device
+
+from warp._src.context import get_device as get_device
+from warp._src.context import set_device as set_device
+
+from warp._src.context import synchronize_device as synchronize_device
+
 from warp._src.context import Stream as Stream
+from warp._src.utils import ScopedStream as ScopedStream
+
 from warp._src.context import get_stream as get_stream
 from warp._src.context import set_stream as set_stream
 from warp._src.context import wait_stream as wait_stream
@@ -244,7 +242,30 @@ from warp._src.context import wait_event as wait_event
 from warp._src.context import synchronize_event as synchronize_event
 from warp._src.context import get_event_elapsed_time as get_event_elapsed_time
 
-from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
+from warp._src.context import set_module_options as set_module_options
+from warp._src.context import get_module_options as get_module_options
+
+from warp._src.context import get_module as get_module
+from warp._src.context import force_load as force_load
+from warp._src.context import load_module as load_module
+
+from warp._src.context import compile_aot_module as compile_aot_module
+from warp._src.context import load_aot_module as load_aot_module
+
+from warp._src.utils import ScopedCapture as ScopedCapture
+
+from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported
+
+from warp._src.context import capture_begin as capture_begin
+from warp._src.context import capture_end as capture_end
+from warp._src.context import capture_launch as capture_launch
+from warp._src.context import capture_if as capture_if
+from warp._src.context import capture_while as capture_while
+from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
+
+from warp._src.utils import ScopedMempool as ScopedMempool
+from warp._src.utils import ScopedMempoolAccess as ScopedMempoolAccess
+from warp._src.utils import ScopedPeerAccess as ScopedPeerAccess
 
 from warp._src.context import is_mempool_supported as is_mempool_supported
 from warp._src.context import is_mempool_enabled as is_mempool_enabled
@@ -263,25 +284,49 @@ from warp._src.context import is_peer_access_supported as is_peer_access_support
 from warp._src.context import is_peer_access_enabled as is_peer_access_enabled
 from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
 
-from warp._src.codegen import WarpCodegenAttributeError as WarpCodegenAttributeError
-from warp._src.codegen import WarpCodegenError as WarpCodegenError
-from warp._src.codegen import WarpCodegenIndexError as WarpCodegenIndexError
-from warp._src.codegen import WarpCodegenKeyError as WarpCodegenKeyError
-from warp._src.codegen import WarpCodegenTypeError as WarpCodegenTypeError
-from warp._src.codegen import WarpCodegenValueError as WarpCodegenValueError
-
 from warp._src.tape import Tape as Tape
 
-from warp._src.utils import ScopedTimer as ScopedTimer
-from warp._src.utils import ScopedDevice as ScopedDevice
-from warp._src.utils import ScopedStream as ScopedStream
-from warp._src.utils import ScopedMempool as ScopedMempool
-from warp._src.utils import ScopedMempoolAccess as ScopedMempoolAccess
-from warp._src.utils import ScopedPeerAccess as ScopedPeerAccess
-from warp._src.utils import ScopedCapture as ScopedCapture
+from warp._src.dlpack import from_dlpack as from_dlpack
+from warp._src.dlpack import to_dlpack as to_dlpack
 
-from warp._src.utils import transform_expand as transform_expand
-from warp._src.utils import quat_between_vectors as quat_between_vectors
+from warp._src.fabric import fabricarray as fabricarray
+from warp._src.fabric import fabricarrayarray as fabricarrayarray
+from warp._src.fabric import indexedfabricarray as indexedfabricarray
+from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
+
+from warp._src.types import from_ipc_handle as from_ipc_handle
+from warp._src.context import event_from_ipc_handle as event_from_ipc_handle
+
+from warp._src.jax import from_jax as from_jax
+from warp._src.jax import to_jax as to_jax
+from warp._src.jax import dtype_from_jax as dtype_from_jax
+from warp._src.jax import dtype_to_jax as dtype_to_jax
+from warp._src.jax import device_from_jax as device_from_jax
+from warp._src.jax import device_to_jax as device_to_jax
+
+from warp._src.types import dtype_from_numpy as dtype_from_numpy
+from warp._src.types import dtype_to_numpy as dtype_to_numpy
+
+from warp._src.context import from_numpy as from_numpy
+
+from warp._src.paddle import from_paddle as from_paddle
+from warp._src.paddle import to_paddle as to_paddle
+from warp._src.paddle import dtype_from_paddle as dtype_from_paddle
+from warp._src.paddle import dtype_to_paddle as dtype_to_paddle
+from warp._src.paddle import device_from_paddle as device_from_paddle
+from warp._src.paddle import device_to_paddle as device_to_paddle
+from warp._src.paddle import stream_from_paddle as stream_from_paddle
+
+from warp._src.torch import from_torch as from_torch
+from warp._src.torch import to_torch as to_torch
+from warp._src.torch import dtype_from_torch as dtype_from_torch
+from warp._src.torch import dtype_to_torch as dtype_to_torch
+from warp._src.torch import device_from_torch as device_from_torch
+from warp._src.torch import device_to_torch as device_to_torch
+from warp._src.torch import stream_from_torch as stream_from_torch
+from warp._src.torch import stream_to_torch as stream_to_torch
+
+from warp._src.utils import ScopedTimer as ScopedTimer
 
 from warp._src.utils import TimingResult as TimingResult
 from warp._src.utils import timing_begin as timing_begin
@@ -295,49 +340,19 @@ from warp._src.utils import TIMING_MEMSET as TIMING_MEMSET
 from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
 
-from warp._src.utils import map as map
+from warp._src.utils import transform_expand as transform_expand
 
-from warp._src.marching_cubes import MarchingCubes as MarchingCubes
-
-from warp._src.torch import from_torch as from_torch
-from warp._src.torch import to_torch as to_torch
-from warp._src.torch import dtype_from_torch as dtype_from_torch
-from warp._src.torch import dtype_to_torch as dtype_to_torch
-from warp._src.torch import device_from_torch as device_from_torch
-from warp._src.torch import device_to_torch as device_to_torch
-from warp._src.torch import stream_from_torch as stream_from_torch
-from warp._src.torch import stream_to_torch as stream_to_torch
-
-from warp._src.jax import from_jax as from_jax
-from warp._src.jax import to_jax as to_jax
-from warp._src.jax import dtype_from_jax as dtype_from_jax
-from warp._src.jax import dtype_to_jax as dtype_to_jax
-from warp._src.jax import device_from_jax as device_from_jax
-from warp._src.jax import device_to_jax as device_to_jax
-
-from warp._src.dlpack import from_dlpack as from_dlpack
-from warp._src.dlpack import to_dlpack as to_dlpack
-
-from warp._src.paddle import from_paddle as from_paddle
-from warp._src.paddle import to_paddle as to_paddle
-from warp._src.paddle import dtype_from_paddle as dtype_from_paddle
-from warp._src.paddle import dtype_to_paddle as dtype_to_paddle
-from warp._src.paddle import device_from_paddle as device_from_paddle
-from warp._src.paddle import device_to_paddle as device_to_paddle
-from warp._src.paddle import stream_from_paddle as stream_from_paddle
-
-from warp._src.build import clear_kernel_cache as clear_kernel_cache
-from warp._src.build import clear_lto_cache as clear_lto_cache
-
-from warp._src.builtins import static as static
+from warp._src.utils import quat_between_vectors as quat_between_vectors
 
 from warp._src.constants import *
-from warp._src.math import *
 
-from warp._src import config as config
-
+from . import config as config
 from . import types as types
 from . import utils as utils
+
+from warp._src.math import *
+from warp._src.marching_cubes import MarchingCubes as MarchingCubes
+from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 
 __version__ = config.version
 
@@ -2603,6 +2618,11 @@ def tile_zeros(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tu
     ...
 
 @over
+def tile_zeros(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
+    ...
+
+@over
 def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
@@ -2612,6 +2632,11 @@ def tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tup
       (default) or ``"shared"`` for shared memory.
     :returns: A one-initialized tile with shape and data type as specified
     """
+    ...
+
+@over
+def tile_ones(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2625,6 +2650,11 @@ def tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str) -> T
       (default) or ``"shared"`` for shared memory.
     :returns: A tile filled with the specified value
     """
+    ...
+
+@over
+def tile_full(shape: int32, value: Any, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2664,6 +2694,11 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
          [-2096177388 -1835610841  1159339128  -652221052]]
 
     """
+    ...
+
+@over
+def tile_randi(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2708,6 +2743,11 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, stor
     ...
 
 @over
+def tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
+    ...
+
+@over
 def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
@@ -2744,6 +2784,11 @@ def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
          [0.51194566 0.57261354 0.26992965 0.8481429 ]]
 
     """
+    ...
+
+@over
+def tile_randf(shape: int32, rng: uint32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2791,6 +2836,11 @@ def tile_randf(
     ...
 
 @over
+def tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """ """
+    ...
+
+@over
 def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tuple[int]]:
     """Generate a tile of linearly spaced elements.
 
@@ -2823,6 +2873,13 @@ def tile_load(
     :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
     :returns: A tile with shape as specified and data type the same as the source array
     """
+    ...
+
+@over
+def tile_load(
+    a: Array[Any], shape: int32, offset: int32, storage: str, bounds_check: bool
+) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -2907,6 +2964,11 @@ def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, 
     ...
 
 @over
+def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool):
+    """ """
+    ...
+
+@over
 def tile_store_indexed(
     a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], axis: int32
 ):
@@ -2983,6 +3045,13 @@ def tile_atomic_add(
     :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
     :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements
     """
+    ...
+
+@over
+def tile_atomic_add(
+    a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool
+) -> Tile[Any, tuple[int, ...]]:
+    """ """
     ...
 
 @over
@@ -3096,6 +3165,44 @@ def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]]
     ...
 
 @over
+def tile(x: Any, preserve_type: bool) -> Tile[Any, tuple]:
+    """Construct a new tile from per-thread kernel values.
+
+    This function converts values computed using scalar kernel code to a tile representation for input into collective operations.
+
+    * If the input value is a scalar, then the resulting tile has ``shape=(block_dim,)``
+    * If the input value is a vector, then the resulting tile has ``shape=(length(vector), block_dim)``
+    * If the input value is a vector, and ``preserve_type=True``, then the resulting tile has ``dtype=vector`` and ``shape=(block_dim,)``
+    * If the input value is a matrix, then the resulting tile has ``shape=(rows, cols, block_dim)``
+    * If the input value is a matrix, and ``preserve_type=True``, then the resulting tile has ``dtype=matrix`` and ``shape=(block_dim,)``
+
+    :param x: A per-thread local value, e.g. scalar, vector, or matrix.
+    :param preserve_type: If true, the tile will have the same data type as the input value.
+    :returns: If ``preserve_type=True``, a tile of type ``x.type`` of length ``block_dim``. Otherwise, an N-dimensional tile such that the first N-1 dimensions match the shape of ``x`` and the final dimension is of size ``block_dim``.
+
+    This example shows how to create a linear sequence from thread variables:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def compute():
+            i = wp.tid()
+            t = wp.tile(i * 2)
+            print(t)
+
+        wp.launch(compute, dim=16, inputs=[], block_dim=16)
+
+    Prints:
+
+    .. code-block:: text
+
+        [0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30] = tile(shape=(16), storage=register)
+
+
+    """
+    ...
+
+@over
 def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
     """Convert a tile back to per-thread values.
 
@@ -3136,6 +3243,107 @@ def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
         8
         ...
 
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int]], i: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :returns: The value of the element at the specified tile location with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension, or vector index
+    :returns: The value of the element at the specified tile location with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension, or first matrix index
+    :param k: Coordinate of element on the third dimension, or vector index, or second matrix index
+    :returns: The value of the element at the specified tile location with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension, or first matrix index
+    :param l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension
+    :param l: Coordinate of element on the fourth dimension, or first matrix index
+    :param m: Vector index, or second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile
+    """
+    ...
+
+@over
+def tile_extract(
+    a: Tile[Any, tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32
+) -> Any:
+    """Extract a single element from the tile.
+
+    This function will extract an element from the tile and broadcast its value to all threads in the block.
+
+    Note that this may incur additional synchronization if the source tile is a register tile.
+
+    :param a: Tile to extract the element from
+    :param i: Coordinate of element on first dimension
+    :param j: Coordinate of element on the second dimension
+    :param k: Coordinate of element on the third dimension
+    :param l: Coordinate of element on the fourth dimension
+    :param m: Vector index, or first matrix index
+    :param n: Second matrix index
+    :returns: The value of the element at the specified tile location, with the same data type as the input tile
     """
     ...
 
@@ -4728,6 +4936,21 @@ def where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any:
 @over
 def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
     """Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``."""
+    ...
+
+@over
+def array(ptr: uint64, shape: tuple[int, ...], dtype: Any):
+    """ """
+    ...
+
+@over
+def zeros(shape: tuple[int, ...], dtype: Any):
+    """ """
+    ...
+
+@over
+def zeros(shape: int32, dtype: Any):
+    """ """
     ...
 
 @over

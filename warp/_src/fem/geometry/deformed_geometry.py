@@ -53,7 +53,7 @@ class DeformedGeometry(Geometry):
         "side_coordinates": lambda obj: obj._make_side_coordinates(),
     }
 
-    def __init__(self, field: "wp.fem.field.GeometryField", relative: bool = True, build_bvh: bool = False):
+    def __init__(self, field: "wp.fem.GeometryField", relative: bool = True, build_bvh: bool = False):
         """Constructs a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
         The deformation field does not need to be isoparameteric.
 

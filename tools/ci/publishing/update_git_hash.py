@@ -117,7 +117,7 @@ if __name__ == "__main__":
     here = os.path.dirname(__file__)
     root_path = os.path.abspath(os.path.join(here, "..", "..", ".."))
     
-    config_file = args.config_file if args.config_file else os.path.join(root_path, "warp", "_src", "config.py")
+    config_file = args.config_file if args.config_file else os.path.join(root_path, "warp", "config.py")
     
     git_hash = get_git_hash()
     if git_hash:

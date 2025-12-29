@@ -18,8 +18,11 @@ import logging
 import os
 import shutil
 
+import docs.generate_reference
 import warp  # ensure all API functions are loaded  # noqa: F401
-from warp._src.context import export_functions_rst, export_stubs
+from warp._src.context import export_stubs
+
+docs.generate_reference.install_mock_modules()
 
 parser = argparse.ArgumentParser(description="Warp Sphinx Documentation Builder")
 parser.add_argument("--quick", action="store_true", help="Only build docs, skipping doctest tests of code blocks.")
@@ -76,8 +79,8 @@ def build_sphinx_docs(source_dir, output_dir, builder="html"):
             shutil.rmtree(output_dir)
 
         # sphinx-build -W -b html source_dir output_dir
-        logger.debug(f"Running sphinx-build -W -b {builder} {source_dir} {output_dir}")
-        result = build_main(["-W", "-b", builder, source_dir, output_dir])
+        logger.debug(f"Running sphinx-build -W -j auto -b {builder} {source_dir} {output_dir}")
+        result = build_main(["-W", "-j", "auto", "-b", builder, source_dir, output_dir])
         if result != 0:
             raise RuntimeError(f"Sphinx build failed with exit code {result}")
 
@@ -102,8 +105,7 @@ with open(os.path.join(base_path, "warp", "__init__.pyi"), "w") as stub_file:
 format_file_with_ruff(os.path.join(base_path, "warp", "__init__.pyi"))
 
 logger.info("Generating function reference documentation")
-with open(os.path.join(base_path, "docs", "modules", "functions.rst"), "w") as function_ref:
-    export_functions_rst(function_ref)
+docs.generate_reference.run()
 
 source_dir = os.path.join(base_path, "docs")
 

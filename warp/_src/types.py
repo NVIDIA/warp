@@ -27,6 +27,7 @@ import types
 import zlib
 from collections.abc import Mapping, Sequence
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
@@ -75,9 +76,13 @@ class Transformation(Generic[Float]):
 
 
 class Array(Generic[DType]):
-    device: warp._src.context.Device | None
-    dtype: type
-    size: int
+    # Type annotations are guarded to prevent Sphinx from documenting them
+    # as inherited attributes, which would conflict with the docstring
+    # attributes in the `array` subclass.
+    if TYPE_CHECKING:
+        device: warp._src.context.Device | None
+        dtype: type
+        size: int
 
     def __add__(self, other) -> array:
         return warp.map(warp.add, self, other)  # type: ignore
@@ -3874,10 +3879,6 @@ class fixedarray(array):
 
     Only used during codegen, and for type hints, but otherwise not intended to be used
     at the Python scope.
-
-    Attributes:
-        dtype (DType): The data type of the array.
-        shape (tuple[int]): Dimensions of the array.
     """
 
     def __init__(
@@ -4507,12 +4508,12 @@ class Bvh:
 
 
 class Mesh:
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
-    vars: ClassVar[dict[str, Var]] = {
-        "points": Var("points", array(dtype=vec3)),
-        "velocities": Var("velocities", array(dtype=vec3)),
-        "indices": Var("indices", array(dtype=int32)),
+    vars: ClassVar[dict[str, _Var]] = {
+        "points": _Var("points", array(dtype=vec3)),
+        "velocities": _Var("velocities", array(dtype=vec3)),
+        "indices": _Var("indices", array(dtype=int32)),
     }
 
     def __new__(cls, *args, **kwargs):
@@ -5681,16 +5682,16 @@ class MeshQueryPoint:
         and :func:`mesh_query_point_sign_winding_number`.
     """
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
     _wp_native_name_ = "mesh_query_point_t"
 
-    vars: ClassVar[dict[str, Var]] = {
-        "result": Var("result", bool),
-        "sign": Var("sign", float32),
-        "face": Var("face", int32),
-        "u": Var("u", float32),
-        "v": Var("v", float32),
+    vars: ClassVar[dict[str, _Var]] = {
+        "result": _Var("result", bool),
+        "sign": _Var("sign", float32),
+        "face": _Var("face", int32),
+        "u": _Var("u", float32),
+        "v": _Var("v", float32),
     }
 
 
@@ -5712,18 +5713,18 @@ class MeshQueryRay:
         :func:`mesh_query_ray`.
     """
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
     _wp_native_name_ = "mesh_query_ray_t"
 
-    vars: ClassVar[dict[str, Var]] = {
-        "result": Var("result", bool),
-        "sign": Var("sign", float32),
-        "face": Var("face", int32),
-        "t": Var("t", float32),
-        "u": Var("u", float32),
-        "v": Var("v", float32),
-        "normal": Var("normal", vec3),
+    vars: ClassVar[dict[str, _Var]] = {
+        "result": _Var("result", bool),
+        "sign": _Var("sign", float32),
+        "face": _Var("face", int32),
+        "t": _Var("t", float32),
+        "u": _Var("u", float32),
+        "v": _Var("v", float32),
+        "normal": _Var("normal", vec3),
     }
 
 
