@@ -248,9 +248,10 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
                     const int start = left_index;
                     const int end = right_index;
 
-                    if (bvh.leaf_size == 1) {
-                        // Optimization: when leaf_size == 1, the primitive bounds match the node bounds
-                        // so we can skip the per-primitive intersection test
+                    if (end - start == 1) {
+                        // Optimization: when a leaf contains exactly one primitive, the node bounds
+                        // are identical to the primitive bounds, so we can skip the per-primitive
+                        // intersection test and directly add the result
                         int primitive_index = bvh.primitive_indices[start];
                         int pos = atomicAdd(&query.result_counter_shared_mem[0], 1);
                         if (pos < mesh_query_aabb_thread_block_t::result_buffer_capacity)
