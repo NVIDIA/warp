@@ -1,12 +1,16 @@
 {{ fullname | escape | underline}}
+{% for overload in wp_overloads %}
 
-.. function:: {{ fullname }}({{ wp_args }}) -> {{ wp_return_type }}
+.. function:: {{ fullname }}({{ overload.args }}) -> {{ overload.return_type }}
+{% if not loop.first %}   :noindex:
+{% endif %}
 
    .. hlist::
       :columns: 8
 
       * Kernel
-{% if wp_is_exported       %}      * Python{% endif %}
-{% if wp_is_differentiable %}      * Differentiable{% endif %}
+{% if overload.is_exported       %}      * Python{% endif %}
+{% if overload.is_differentiable %}      * Differentiable{% endif %}
 
-   {{ wp_doc }}
+   {{ overload.doc }}
+{% endfor %}
