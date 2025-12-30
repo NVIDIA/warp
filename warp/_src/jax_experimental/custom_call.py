@@ -35,14 +35,23 @@ _registered_kernel_to_id = {}
 def jax_kernel(kernel, launch_dims=None, quiet=False):
     """Create a Jax primitive from a Warp kernel.
 
-    NOTE: This is an experimental feature under development.
+    .. deprecated:: 1.10.0
+        This version of ``jax_kernel()`` is deprecated for JAX >= 0.5.0 and is not supported
+        with JAX >= 0.8.0. Use :func:`warp.jax_experimental.ffi.jax_kernel` instead, which
+        is the default implementation as of Warp 1.10.
+
+    This implementation requires JAX version 0.4.25 - 0.7.x. For JAX 0.8.0 and later,
+    use the FFI-based implementation at :func:`warp.jax_experimental.ffi.jax_kernel`.
 
     Args:
         kernel: The Warp kernel to be wrapped.
-        launch_dims: Optional. Specify the kernel launch dimensions. If None,
+        launch_dims: Specify the kernel launch dimensions. If ``None``,
                      dimensions are inferred from the shape of the first argument.
                      This option when set will specify the output dimensions.
-        quiet: Optional. If True, suppress deprecation warnings with newer JAX versions.
+        quiet: If ``True``, suppress deprecation warnings with newer JAX versions.
+
+    Raises:
+        RuntimeError: If JAX version is < 0.4.25 or >= 0.8.0.
 
     Limitations:
         - All kernel arguments must be contiguous arrays.

@@ -1,16 +1,24 @@
 warp.jax_experimental
 =====================
 
+.. automodule:: warp.jax_experimental
+   :no-members:
+
 .. currentmodule:: warp.jax_experimental
 
-Submodules
-----------
-
 .. toctree::
-   :maxdepth: 1
+   :hidden:
 
-   warp.jax_experimental.custom_call <warp_jax_experimental_custom_call>
-   warp.jax_experimental.ffi <warp_jax_experimental_ffi>
+   warp_jax_experimental_custom_call
+   warp_jax_experimental_ffi
+
+Additional Submodules
+---------------------
+
+These modules must be explicitly imported (e.g., ``import warp.jax_experimental.custom_call``).
+
+- :mod:`warp.jax_experimental.custom_call`
+- :mod:`warp.jax_experimental.ffi`
 
 API
 ---

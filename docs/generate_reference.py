@@ -34,22 +34,27 @@ import functools
 import importlib
 import inspect
 import json
+import logging
 import operator
 import pkgutil
 import shutil
 import subprocess
 import sys
 from bisect import bisect
+from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import IntEnum
 from importlib.abc import Loader, MetaPathFinder
 from importlib.machinery import ModuleSpec
 from pathlib import Path
 from string import digits
-from types import ModuleType, NoneType
+from types import ModuleType
 from typing import Callable, TypeVar, get_origin
 
 import warp as wp
+
+logger = logging.getLogger(__name__)
 
 # Configuration
 # -----------------------------------------------------------------------------
@@ -79,6 +84,13 @@ TOCTREE_DIR = "_generated"  # Sub-folder inside OUTPUT_DIR.
 # Where this script generates the .rst file for each module.
 API_REF_DIR = "api_reference"
 BUILTINS_REF_DIR = "language_reference"
+
+# Module prefixes to skip during documentation generation.
+SKIP = (
+    "warp._src",
+    "warp.examples",
+    "warp.tests",
+)
 
 
 # Mock Dependencies
@@ -153,7 +165,7 @@ VALUE_TYPES = (
     float,
     set,
     Mapping,
-    NoneType,
+    type(None),  # NoneType is only available in types module from Python 3.10+
     Sequence,
     *wp._src.types.scalar_types,
     *wp._src.types.vector_types,
@@ -239,7 +251,7 @@ def split_trailing_digits(
     if len(base) == len(symbol):
         return (symbol, -1)
 
-    return (base, int(symbol[len(base) :]))
+    return (base, int(symbol.removeprefix(base)))
 
 
 def sort_symbols(
@@ -304,6 +316,12 @@ def get_symbols_per_category(
     for i, line in enumerate(code.split("\n")):
         if line.startswith("# category: "):
             category = line[12:].strip()
+            # Validate that we don't have more than one level of nesting
+            if category.count(">") > 1:
+                raise ValueError(
+                    f"Category '{category}' in {underlying_module.__file__} has multiple levels of nesting. "
+                    f"Only single-level nesting is supported (e.g., 'Parent > Child')."
+                )
             categories.append(category)
             categories_loc.append(i)
 
@@ -354,6 +372,151 @@ def get_symbols_per_category(
     return symbols_per_category
 
 
+@dataclass
+class Category:
+    """Represents a documentation category with its symbols and hierarchy information."""
+
+    full_name: str  # Full category name (e.g., "Data Types > Scalars")
+    display_name: str  # Display name (e.g., "Scalars")
+    parent: str | None  # Parent name (e.g., "Data Types") or None for top-level
+    symbols: tuple[str, ...]  # Symbols in this category
+    is_subcategory: bool  # Whether this is a subcategory
+
+
+@dataclass
+class ParentHeader:
+    """Represents a parent section header (without content, just the title)."""
+
+    name: str  # Parent name (e.g., "Data Types")
+
+
+def build_category_structure(
+    symbols_per_category: Mapping[str, tuple[str, ...]],
+) -> dict[str | None, list[Category]]:
+    """Build a hierarchical category structure from flat category mapping.
+
+    Returns a dict mapping parent names (or None for top-level) to lists of Category objects.
+    """
+    structure: dict[str | None, list[Category]] = defaultdict(list)
+
+    for full_name, symbols in symbols_per_category.items():
+        if ">" in full_name:
+            # Subcategory: "Parent > Child"
+            parent, child = full_name.split(">", 1)
+            parent = parent.strip()
+            child = child.strip()
+            structure[parent].append(
+                Category(
+                    full_name=full_name,
+                    display_name=child,
+                    parent=parent,
+                    symbols=symbols,
+                    is_subcategory=True,
+                )
+            )
+        else:
+            # Top-level category
+            structure[None].append(
+                Category(
+                    full_name=full_name,
+                    display_name=full_name,
+                    parent=None,
+                    symbols=symbols,
+                    is_subcategory=False,
+                )
+            )
+
+    return structure
+
+
+def determine_render_order(
+    symbols_per_category: Mapping[str, tuple[str, ...]],
+    category_structure: dict[str | None, list[Category]],
+) -> list[Category | ParentHeader]:
+    """Determine the order in which to render categories and parent headers.
+
+    Returns a list of Category objects and ParentHeader objects in the order they
+    should appear in the documentation.
+    """
+    result: list[Category | ParentHeader] = []
+    rendered = set()
+
+    for full_name in symbols_per_category.keys():
+        if full_name in rendered:
+            continue
+
+        if ">" in full_name:
+            # Subcategory: render parent header first (if not already done)
+            parent_name = full_name.split(">")[0].strip()
+            if parent_name not in rendered:
+                # Parent doesn't exist as standalone category, so add parent header
+                result.append(ParentHeader(name=parent_name))
+                rendered.add(parent_name)
+
+            # Add all subcategories of this parent
+            for cat in category_structure[parent_name]:
+                if cat.full_name not in rendered:
+                    result.append(cat)
+                    rendered.add(cat.full_name)
+        else:
+            # Top-level category
+            for cat in category_structure[None]:
+                if cat.full_name == full_name and cat.full_name not in rendered:
+                    result.append(cat)
+                    rendered.add(cat.full_name)
+
+                    # Add subcategories if any
+                    if cat.display_name in category_structure:
+                        for subcat in category_structure[cat.display_name]:
+                            if subcat.full_name not in rendered:
+                                result.append(subcat)
+                                rendered.add(subcat.full_name)
+                    break
+
+    return result
+
+
+def render_category_to_rst(
+    cat: Category,
+    aliased_symbols: Mapping[str, str],
+    lines: list[str],
+    module_name: str,
+) -> None:
+    """Render a single category with its symbols to RST format.
+
+    Args:
+        cat: Category to render
+        aliased_symbols: Mapping of symbols that are re-exported from submodules
+        lines: List to append RST lines to
+        module_name: Name of the module being documented (for special handling)
+    """
+    # Render section header
+    underline = "^" * len(cat.display_name) if cat.is_subcategory else "-" * len(cat.display_name)
+    lines.append(cat.display_name)
+    lines.append(underline)
+    lines.append("")
+
+    # Render non-aliased symbols
+    non_aliased = tuple(s for s in cat.symbols if s not in aliased_symbols)
+    if non_aliased:
+        lines.append(".. autosummary::")
+        lines.append("   :nosignatures:")
+        lines.append(f"   :toctree: {TOCTREE_DIR}")
+        if module_name == BUILTINS_MODULE:
+            lines.append("   :template: builtins.rst")
+        lines.append("")
+        lines.extend(f"   {s}" for s in non_aliased)
+        lines.append("")
+
+    # Render aliased symbols
+    aliased = tuple(s for s in cat.symbols if s in aliased_symbols)
+    if aliased:
+        for symbol in aliased:
+            source_module = aliased_symbols[symbol]
+            lines.append(f"- :obj:`{symbol} <{source_module}.{symbol}>`")
+        lines.append("")
+
+
 def write_module_page(
     name: str,
     symbols: Sequence[str],
@@ -384,82 +547,100 @@ def write_module_page(
     lines.append("=" * len(title))
     lines.append("")
 
-    doc = (module.__doc__ or "").strip()
-    if doc:
-        lines.append(doc)
-        lines.append("")
+    # Use automodule directive to create cross-reference target and render docstring.
+    # This enables :mod: cross-references to work and properly processes Sphinx
+    # directives in the module docstring (e.g., :class:, admonitions, etc.).
+    lines.append(f".. automodule:: {name}")
+    lines.append("   :no-members:")
+    lines.append("")
 
     lines.append(f".. currentmodule:: {current_module}")
     lines.append("")
 
     if submodules:
-        lines.append(SUBMODULES_CATEGORY)
-        lines.append("-" * len(SUBMODULES_CATEGORY))
-        lines.append("")
+        # Separate submodules into auto-available and explicit-import categories.
+        # A submodule is auto-available if it's imported in the parent module's namespace.
+        auto_available = []
+        explicit_import = []
+        for submodule in submodules:
+            # Extract the relative name (e.g., "types" from "warp.types")
+            submodule_rel_name = submodule.split(".")[-1]
+            # Check if this submodule name exists as a symbol in the parent module
+            if submodule_rel_name in symbols:
+                auto_available.append(submodule)
+            else:
+                explicit_import.append(submodule)
 
-        if name == "warp":
-            # Use :doc: references for top-level warp submodules to avoid duplicate
-            # toctree warnings since these are also listed in index.rst.
-            for submodule in submodules:
-                submodule_link = submodule.replace(".", "_")
-                lines.append(f"- :doc:`{submodule} <{submodule_link}>`")
-        else:
-            # Use a toctree for nested submodules so they're indexed'.
+        # For non-warp modules, add a hidden toctree to include submodules in the
+        # documentation tree (avoids Sphinx "not included in any toctree" warnings).
+        # Top-level warp submodules are already in a toctree in index.rst.
+        if name != "warp" and submodules:
             lines.append(".. toctree::")
-            lines.append("   :maxdepth: 1")
+            lines.append("   :hidden:")
             lines.append("")
-
             for submodule in submodules:
                 submodule_link = submodule.replace(".", "_")
-                lines.append(f"   {submodule} <{submodule_link}>")
+                lines.append(f"   {submodule_link}")
+            lines.append("")
 
-        lines.append("")
+        # Generate "Submodules" section for auto-available modules
+        if auto_available:
+            lines.append(SUBMODULES_CATEGORY)
+            lines.append("-" * len(SUBMODULES_CATEGORY))
+            lines.append("")
+            lines.append(f"These modules are automatically available when you ``import {name}``.")
+            lines.append("")
 
-    for category, symbols in symbols_per_category.items():
-        lines.append(category)
-        lines.append("-" * len(category))
-        lines.append("")
-
-        category_non_aliased_symbols = tuple(x for x in symbols if x not in aliased_symbols)
-        if category_non_aliased_symbols:
-            lines.append(".. autosummary::")
-            lines.append("   :nosignatures:")
-
-            lines.append(f"   :toctree: {TOCTREE_DIR}")
-
-            if name == BUILTINS_MODULE:
-                lines.append("   :template: builtins.rst")
+            for submodule in auto_available:
+                lines.append(f"- :mod:`{submodule}`")
 
             lines.append("")
 
-            lines.extend(f"   {x}" for x in category_non_aliased_symbols)
+        # Generate "Additional Submodules" section only if there are explicit-import modules
+        if explicit_import:
+            additional_category = "Additional Submodules"
+            lines.append(additional_category)
+            lines.append("-" * len(additional_category))
+            lines.append("")
+            # Use first module as concrete example
+            first_module = explicit_import[0]
+            lines.append(f"These modules must be explicitly imported (e.g., ``import {first_module}``).")
             lines.append("")
 
-        category_aliased_symbols = tuple(x for x in symbols if x in aliased_symbols)
-        if category_aliased_symbols:
-            for symbol in category_aliased_symbols:
-                source_module = aliased_symbols[symbol]
-                lines.append(f"- :obj:`{symbol} <{source_module}.{symbol}>`")
+            for submodule in explicit_import:
+                lines.append(f"- :mod:`{submodule}`")
 
             lines.append("")
+
+    # Build category structure and determine render order
+    category_structure = build_category_structure(symbols_per_category)
+    render_order = determine_render_order(symbols_per_category, category_structure)
+
+    # Render categories and headers in order
+    for item in render_order:
+        if isinstance(item, ParentHeader):
+            # Render parent header (section without content)
+            lines.append(item.name)
+            lines.append("-" * len(item.name))
+            lines.append("")
+        elif isinstance(item, Category):
+            # Render category with its symbols
+            render_category_to_rst(item, aliased_symbols, lines, name)
+        else:
+            raise TypeError(f"Unexpected item type in render order: {type(item)}")
 
     file = output_dir / f"{output_file_name}.rst"
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text("\n".join(lines), encoding="utf-8")
 
     symbol_count = sum(len(x) for x in symbols_per_category.values())
-    print(f"Wrote {file.relative_to(ROOT_DIR)} ({symbol_count} symbols)")
-
-
-SKIP = (
-    "warp._src",
-    "warp.examples",
-    "warp.tests",
-)
+    logger.info(f"Wrote {file.relative_to(ROOT_DIR)} ({symbol_count} symbols)")
 
 
 def run():
     """Execute the documentation generation process."""
+    logger.info("Generating API reference stubs...")
+
     install_mock_modules()
 
     output_api_dir = OUTPUT_DIR / API_REF_DIR
@@ -480,12 +661,16 @@ def run():
             # so we need to call `import module; dir(module)` in an isolated subprocess to have a clean
             # listing of the public API. It's quite slower so we only use it where necessary,
             # which is for the root module warp.
-            symbols = tuple(x for x in get_public_symbols(module_name, run_isolated=True))
+            all_symbols = get_public_symbols(module_name, run_isolated=True)
             # Filter out builtin functions (documented separately in builtins reference),
             # but only if the symbol in the warp module IS the builtin function object.
             # This keeps functions like `zeros` which share a name with a builtin but are
             # different functions (array creation vs kernel builtin).
-            symbols = tuple(x for x in symbols if getattr(wp, x) is not wp._src.context.builtin_functions.get(x, None))
+            symbols = tuple(
+                x for x in all_symbols if getattr(wp, x) is not wp._src.context.builtin_functions.get(x, None)
+            )
+            if (filtered_count := len(all_symbols) - len(symbols)) > 0:
+                logger.debug(f"Filtered {filtered_count} builtin functions from warp module (documented separately)")
         else:
             symbols = tuple(x for x in get_public_symbols(module_name))
 
@@ -511,7 +696,7 @@ def run():
                 }
             )
 
-            submodule_rel_name = other_module_name[len(module_name) + 1 :]
+            submodule_rel_name = other_module_name.removeprefix(f"{module_name}.")
             if "." not in submodule_rel_name:
                 submodules.append(other_module_name)
 
@@ -521,10 +706,22 @@ def run():
     builtins_symbols = tuple(k for k, v in wp._src.context.builtin_functions.items() if not v.hidden)
     write_module_page(BUILTINS_MODULE, builtins_symbols, {}, (), output_language_dir)
 
+    # Log summary statistics
+    total_modules = len(symbols_per_module) + 1  # +1 for builtins
+    total_symbols = sum(len(syms) for syms in symbols_per_module.values()) + len(builtins_symbols)
+    logger.info(f"Generated documentation for {total_modules} modules with {total_symbols} total symbols")
 
-# Entry Point
-# -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    run()
-    print("Done.")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=[logging.StreamHandler()],
+    )
+    try:
+        run()
+        logger.info("API reference stub generation completed successfully")
+    except Exception as e:
+        logger.error(f"API reference stub generation failed: {e}", exc_info=True)
+        sys.exit(1)

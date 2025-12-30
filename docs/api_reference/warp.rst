@@ -1,23 +1,34 @@
 warp
 ====
 
+.. automodule:: warp
+   :no-members:
+
 .. currentmodule:: warp
 
 Submodules
 ----------
 
-- :doc:`warp.autograd <warp_autograd>`
-- :doc:`warp.config <warp_config>`
-- :doc:`warp.fem <warp_fem>`
-- :doc:`warp.jax_experimental <warp_jax_experimental>`
-- :doc:`warp.optim <warp_optim>`
-- :doc:`warp.render <warp_render>`
-- :doc:`warp.sparse <warp_sparse>`
-- :doc:`warp.types <warp_types>`
-- :doc:`warp.utils <warp_utils>`
+These modules are automatically available when you ``import warp``.
 
-Annotations
------------
+- :mod:`warp.config`
+- :mod:`warp.types`
+- :mod:`warp.utils`
+
+Additional Submodules
+---------------------
+
+These modules must be explicitly imported (e.g., ``import warp.autograd``).
+
+- :mod:`warp.autograd`
+- :mod:`warp.fem`
+- :mod:`warp.jax_experimental`
+- :mod:`warp.optim`
+- :mod:`warp.render`
+- :mod:`warp.sparse`
+
+Type Annotations
+----------------
 
 .. autosummary::
    :nosignatures:
@@ -28,8 +39,11 @@ Annotations
    Int
    Scalar
 
+Data Types
+----------
+
 Scalars
--------
+^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -49,7 +63,7 @@ Scalars
    uint64
 
 Vectors
--------
+^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -93,7 +107,7 @@ Vectors
    vec4us
 
 Matrices
---------
+^^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -115,7 +129,7 @@ Matrices
    matrix_from_rows
 
 Quaternions
------------
+^^^^^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -128,7 +142,7 @@ Quaternions
    quat_between_vectors
 
 Transformations
----------------
+^^^^^^^^^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -141,7 +155,7 @@ Transformations
    transform_expand
 
 Spatial Vectors and Matrices
-----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -183,7 +197,7 @@ Arrays
    zeros_like
 
 Indexed Arrays
---------------
+^^^^^^^^^^^^^^
 
 .. autosummary::
    :nosignatures:
@@ -266,6 +280,15 @@ Kernel Execution
    launch_tiled
    synchronize
 
+Automatic Differentiation
+-------------------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   Tape
+
 Device Management
 -----------------
 
@@ -288,33 +311,6 @@ Device Management
    synchronize_device
    unmap_cuda_device
 
-Stream Management
------------------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-
-   ScopedStream
-   Stream
-   get_stream
-   set_stream
-   synchronize_stream
-   wait_stream
-
-Event Management
-----------------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-
-   Event
-   get_event_elapsed_time
-   record_event
-   synchronize_event
-   wait_event
-
 Module Management
 -----------------
 
@@ -330,24 +326,35 @@ Module Management
    load_module
    set_module_options
 
-Graph Management
-----------------
+CUDA Stream Management
+----------------------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
 
-   ScopedCapture
-   capture_begin
-   capture_debug_dot_print
-   capture_end
-   capture_if
-   capture_launch
-   capture_while
-   is_conditional_graph_supported
+   ScopedStream
+   Stream
+   get_stream
+   set_stream
+   synchronize_stream
+   wait_stream
 
-Memory Management
------------------
+CUDA Event Management
+---------------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   Event
+   get_event_elapsed_time
+   record_event
+   synchronize_event
+   wait_event
+
+CUDA Memory Management
+----------------------
 
 .. autosummary::
    :nosignatures:
@@ -370,14 +377,69 @@ Memory Management
    set_mempool_release_threshold
    set_peer_access_enabled
 
-Automatic Differentiation
--------------------------
+CUDA Graph Management
+---------------------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
 
-   Tape
+   ScopedCapture
+   capture_begin
+   capture_debug_dot_print
+   capture_end
+   capture_if
+   capture_launch
+   capture_while
+   is_conditional_graph_supported
+
+CUDA Interprocess Communication
+-------------------------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   event_from_ipc_handle
+   from_ipc_handle
+
+Profiling
+---------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   ScopedTimer
+   TimingResult
+   timing_begin
+   timing_end
+   timing_print
+
+Timing Flags
+^^^^^^^^^^^^
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   TIMING_ALL
+   TIMING_GRAPH
+   TIMING_KERNEL
+   TIMING_KERNEL_BUILTIN
+   TIMING_MEMCPY
+   TIMING_MEMSET
+
+NumPy Interop
+-------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   dtype_from_numpy
+   dtype_to_numpy
+   from_numpy
 
 DLPack Interop
 --------------
@@ -388,28 +450,6 @@ DLPack Interop
 
    from_dlpack
    to_dlpack
-
-Fabric Interop
---------------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-
-   fabricarray
-   indexedfabricarray
-   fabricarrayarray
-   indexedfabricarrayarray
-
-CUDA IPC Interop
-----------------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-
-   event_from_ipc_handle
-   from_ipc_handle
 
 JAX Interop
 -----------
@@ -424,32 +464,6 @@ JAX Interop
    dtype_to_jax
    from_jax
    to_jax
-
-NumPy Interop
--------------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-
-   dtype_from_numpy
-   dtype_to_numpy
-   from_numpy
-
-Paddle Interop
---------------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-
-   device_from_paddle
-   device_to_paddle
-   dtype_from_paddle
-   dtype_to_paddle
-   from_paddle
-   stream_from_paddle
-   to_paddle
 
 PyTorch Interop
 ---------------
@@ -467,24 +481,32 @@ PyTorch Interop
    stream_to_torch
    to_torch
 
-Profiling
----------
+Omniverse Runtime Fabric Interop
+--------------------------------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
 
-   ScopedTimer
-   TimingResult
-   timing_begin
-   timing_end
-   timing_print
-   TIMING_ALL
-   TIMING_GRAPH
-   TIMING_KERNEL
-   TIMING_KERNEL_BUILTIN
-   TIMING_MEMCPY
-   TIMING_MEMSET
+   fabricarray
+   indexedfabricarray
+   fabricarrayarray
+   indexedfabricarrayarray
+
+Paddle Interop
+--------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   device_from_paddle
+   device_to_paddle
+   dtype_from_paddle
+   dtype_to_paddle
+   from_paddle
+   stream_from_paddle
+   to_paddle
 
 Constants
 ---------

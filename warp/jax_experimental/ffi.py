@@ -13,6 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Current FFI-based implementation of JAX integration.
+
+This module provides the Foreign Function Interface (FFI) implementation that supports
+JAX 0.4.25 and later, including JAX 0.8.0+. It is the default implementation as of
+Warp 1.10.
+
+For low-level use cases, :func:`register_ffi_callback` provides direct FFI callback
+registration for functions that don't use Warp-style type annotations.
+"""
+
 # isort: skip_file
 
 from warp._src.jax_experimental.ffi import GraphMode as GraphMode

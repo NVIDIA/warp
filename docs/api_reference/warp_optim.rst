@@ -1,15 +1,22 @@
 warp.optim
 ==========
 
+.. automodule:: warp.optim
+   :no-members:
+
 .. currentmodule:: warp.optim
+
+.. toctree::
+   :hidden:
+
+   warp_optim_linear
 
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 1
+These modules are automatically available when you ``import warp.optim``.
 
-   warp.optim.linear <warp_optim_linear>
+- :mod:`warp.optim.linear`
 
 API
 ---

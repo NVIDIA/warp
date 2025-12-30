@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Iterative linear solvers for sparse linear systems.
+
+This module provides GPU-accelerated iterative methods for solving linear systems,
+including conjugate gradient (CG), biconjugate gradient stabilized (BiCGSTAB), conjugate
+residual (CR), and generalized minimal residual (GMRES) methods.
+"""
+
 # isort: skip_file
 
 from warp._src.optim.linear import LinearOperator as LinearOperator

@@ -13,6 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Optimization algorithms for gradient descent and linear systems.
+
+This module provides gradient-based optimizers (:class:`Adam`, :class:`SGD`) for
+updating arrays based on computed gradients. The :mod:`warp.optim.linear` submodule
+provides iterative linear solvers.
+
+Usage:
+    This module must be explicitly imported::
+
+        import warp.optim
+"""
+
 # isort: skip_file
 
 from warp._src.optim.adam import Adam as Adam

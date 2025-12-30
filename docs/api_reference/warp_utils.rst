@@ -1,6 +1,9 @@
 warp.utils
 ==========
 
+.. automodule:: warp.utils
+   :no-members:
+
 .. currentmodule:: warp.utils
 
 API
