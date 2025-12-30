@@ -174,30 +174,44 @@ class AutosummaryRenderer(AutosummaryRenderer):
             fullname = context["fullname"]
             symbol = fullname.split(".")[-1]
 
-            attr = wp._src.context.builtin_functions[symbol]
+            head = wp._src.context.builtin_functions[symbol]
 
-            args = {k: wp._src.context.type_str(v) for k, v in attr.input_types.items()}
+            # Collect all overloads, filtering out hidden ones.
+            # Note: head.overloads already includes the head itself (see Function.__init__)
+            all_funcs = head.overloads if hasattr(head, "overloads") else [head]
+            visible_overloads = [f for f in all_funcs if not f.hidden]
 
-            try:
-                return_type = wp._src.context.type_str(attr.value_func(None, None))
-            except Exception:
-                return_type = "None"
+            # Build overload info for each visible overload
+            overloads_info = []
+            for func in visible_overloads:
+                args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
 
-            if hasattr(attr, "overloads"):
-                sig = wp._src.context.resolve_exported_function_sig(attr)
-                is_exported = sig is not None
-            else:
-                is_exported = False
+                try:
+                    return_type = wp._src.context.type_str(func.value_func(None, None))
+                except Exception:
+                    return_type = "None"
+
+                if hasattr(func, "overloads"):
+                    sig = wp._src.context.resolve_exported_function_sig(func)
+                    is_exported = sig is not None
+                else:
+                    is_exported = False
+
+                overloads_info.append(
+                    {
+                        "args": ", ".join(f"{k}: {v}" for k, v in args.items()),
+                        "return_type": return_type,
+                        "is_exported": is_exported,
+                        "is_differentiable": func.is_differentiable,
+                        "doc": func.doc,
+                    }
+                )
 
             # Insert metadata that can be accessed from the template.
             context.update(
                 {
                     "wp_display_name": f"warp.{symbol}",
-                    "wp_args": ", ".join(f"{k}: {v}" for k, v in args.items()),
-                    "wp_return_type": return_type,
-                    "wp_is_exported": is_exported,
-                    "wp_is_differentiable": attr.is_differentiable,
-                    "wp_doc": attr.doc,
+                    "wp_overloads": overloads_info,
                 }
             )
 
