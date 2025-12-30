@@ -777,6 +777,176 @@ A native snippet may also include a return statement. If this is the case, you m
 
     x.grad = [0. 2. 4. 6. 8.]
 
+``grad()``
+#############
+
+The :func:`grad() <grad>` function provides a way to directly evaluate the gradient of a Warp function
+at specific input values. Unlike :class:`wp.Tape <Tape>`, which records operations for reverse-mode automatic
+differentiation, :func:`grad()` computes gradients inline during the forward pass (with the exception of custom gradient
+functions, see more below).
+
+Given a function :math:`f(x_1, x_2, \ldots, x_n) \rightarrow y`, calling :math:`grad(f)(x_1, x_2, \ldots, x_n)`
+returns a tuple of partial derivatives :math:`\left(\frac{\partial y}{\partial x_1}, \frac{\partial y}{\partial x_2}, \ldots, \frac{\partial y}{\partial x_n}\right)`
+evaluated at the given input values.
+
+Basic Usage
+^^^^^^^^^^^
+
+The following example computes the gradient of a simple squaring function:
+
+.. testcode::
+
+    import warp as wp
+    import numpy as np
+
+    @wp.func
+    def square(x: float):
+        return x * x
+
+    @wp.kernel(enable_backward=False)
+    def compute_gradient(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+        tid = wp.tid()
+        # Compute d(x^2)/dx = 2*x at each point
+        grad_x[tid] = wp.grad(square)(x[tid])
+
+    N = 3
+    x_np = np.arange(N, dtype=np.float32)
+    x = wp.array(x_np, dtype=float)
+    grad_x = wp.zeros(N, dtype=float)
+
+    wp.launch(compute_gradient, dim=N, inputs=[x, grad_x])
+
+    print(f"grad_x = {grad_x.numpy()}")
+
+.. testoutput::
+
+    grad_x = [0. 2. 4.]
+
+For functions with multiple inputs, ``wp.grad()`` returns a tuple of gradients:
+
+.. testcode::
+
+    import warp as wp
+    import numpy as np
+
+    @wp.kernel(enable_backward=False)
+    def compute_atan2_gradients(
+        y: wp.array(dtype=float),
+        x: wp.array(dtype=float),
+        grad_y: wp.array(dtype=float),
+        grad_x: wp.array(dtype=float),
+    ):
+        tid = wp.tid()
+        # wp.atan2(y, x) has two inputs, so grad returns (d/dy, d/dx)
+        dy, dx = wp.grad(wp.atan2)(y[tid], x[tid])
+        grad_y[tid] = dy
+        grad_x[tid] = dx
+
+    N = 3
+    x_np = np.arange(N, dtype=np.float32)
+    x = wp.array(x_np, dtype=float)
+    y = wp.ones(N, dtype=float)
+    grad_y = wp.zeros(N, dtype=float)
+    grad_x = wp.zeros(N, dtype=float)
+
+    wp.launch(compute_atan2_gradients, dim=N, inputs=[y, x, grad_y, grad_x])
+
+    print(f"grad_y = {grad_y.numpy()}")
+    print(f"grad_x = {grad_x.numpy()}")
+
+.. testoutput::
+
+    grad_y = [0.  0.5 0.4]
+    grad_x = [-1.  -0.5 -0.2]
+
+The gradient wrapper can also be stored in a variable and called later:
+
+.. code-block:: python
+
+    @wp.kernel(enable_backward=False)
+    def example_kernel(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+        tid = wp.tid()
+        grad_square = wp.grad(square)
+        grad_x[tid] = grad_square(x[tid])
+
+Usage Contexts
+^^^^^^^^^^^^^^
+
+:func:`grad()` can be used in the following contexts:
+
+1. **Warp kernels** (``@wp.kernel``): Computes gradients during the forward pass. The gradient
+   call itself does not participate in automatic differentiation—if the kernel has
+   ``enable_backward=True``, the :func:`grad()` call will be treated as a constant in the
+   backward pass (no gradients will flow through it) and a warning will be issued.
+
+2. **Warp functions** (``@wp.func``): Same behavior as in kernels. The gradient is computed
+   during the forward pass and does not participate in automatic differentiation.
+
+3. **Custom gradient functions** (``@wp.func_grad``): :func:`grad()` can be used inside custom
+   gradient definitions to compose gradients. In this context, the computed gradients do
+   participate in the backward pass since the custom gradient function itself is the adjoint.
+
+Example: Using ``grad()`` in a Custom Gradient
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following example defines a ``safe_sqrt`` function with a custom gradient that avoids
+division by zero. The custom gradient uses ``wp.grad(wp.sqrt)`` to obtain the standard
+square root gradient:
+
+.. testcode::
+
+    import warp as wp
+    import numpy as np
+
+    @wp.func
+    def safe_sqrt(x: float):
+        return wp.sqrt(x)
+
+    @wp.func_grad(safe_sqrt)
+    def adj_safe_sqrt(x: float, adj_ret: float):
+        # Only propagate gradient if x > 0 to avoid inf
+        if x > 0.0:
+            wp.adjoint[x] += wp.grad(wp.sqrt)(x) * adj_ret
+
+    @wp.kernel
+    def safe_sqrt_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+        tid = wp.tid()
+        y[tid] = safe_sqrt(x[tid])
+
+    N = 3
+    x_np = np.arange(N, dtype=np.float32)
+    x = wp.array(x_np, dtype=float, requires_grad=True)
+    y = wp.zeros_like(x, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(safe_sqrt_kernel, dim=N, inputs=[x, y])
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    print(f"x.grad = {x.grad.numpy()}")
+
+.. testoutput::
+
+    x.grad = [0.         0.5        0.35355338]
+
+This pattern is useful when you want to modify or guard the gradient computation while
+reusing the gradients of existing functions.
+
+Limitations
+^^^^^^^^^^^
+
+- **Single-output functions only**: :func:`grad()` currently only supports functions with a
+  single return value. Functions that return multiple values are not yet supported.
+
+- **Cannot be called from Python**: The :func:`grad()` wrapper can only be called inside Warp
+  kernels or functions. Attempting to call it from Python will raise a ``RuntimeError``.
+
+- **Forward-only in regular code**: When used in regular ``@wp.func`` or ``@wp.kernel`` code,
+  the gradient computation is forward-only and does not participate in reverse-mode automatic
+  differentiation. Only when used inside ``@wp.func_grad`` functions does :func:`grad()`
+  contribute to the backward pass.
+
+
 Debugging Gradients
 ###################
 
