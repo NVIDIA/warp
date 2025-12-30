@@ -116,7 +116,7 @@ default:
       - warp/bin/**/*.so
       - warp/bin/**/*.dylib
       - VERSION.md
-      - warp/_src/config.py
+      - warp/config.py
     expire_in: 1 week
 
 # All MacOS jobs use this definition
