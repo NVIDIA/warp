@@ -1,21 +1,34 @@
 warp.fem
 ========
 
+.. automodule:: warp.fem
+   :no-members:
+
 .. currentmodule:: warp.fem
+
+.. toctree::
+   :hidden:
+
+   warp_fem_cache
+   warp_fem_field
+   warp_fem_geometry
+   warp_fem_linalg
+   warp_fem_polynomial
+   warp_fem_space
+   warp_fem_utils
 
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 1
+These modules are automatically available when you ``import warp.fem``.
 
-   warp.fem.cache <warp_fem_cache>
-   warp.fem.field <warp_fem_field>
-   warp.fem.geometry <warp_fem_geometry>
-   warp.fem.linalg <warp_fem_linalg>
-   warp.fem.polynomial <warp_fem_polynomial>
-   warp.fem.space <warp_fem_space>
-   warp.fem.utils <warp_fem_utils>
+- :mod:`warp.fem.cache`
+- :mod:`warp.fem.field`
+- :mod:`warp.fem.geometry`
+- :mod:`warp.fem.linalg`
+- :mod:`warp.fem.polynomial`
+- :mod:`warp.fem.space`
+- :mod:`warp.fem.utils`
 
 API
 ---

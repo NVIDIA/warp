@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Utility functions for array operations, sorting, and function creation.
+
+This module provides GPU-accelerated utility functions for common array operations
+(scans, reductions, transformations), sorting algorithms (radix sort, segmented sort,
+run-length encoding), and a utility for creating Warp functions from Python callables.
+"""
+
 # isort: skip_file
 
 from warp._src.utils import array_cast as array_cast

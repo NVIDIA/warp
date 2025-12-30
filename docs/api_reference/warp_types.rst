@@ -1,6 +1,9 @@
 warp.types
 ==========
 
+.. automodule:: warp.types
+   :no-members:
+
 .. currentmodule:: warp.types
 
 API

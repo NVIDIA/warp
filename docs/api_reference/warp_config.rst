@@ -1,6 +1,9 @@
 warp.config
 ===========
 
+.. automodule:: warp.config
+   :no-members:
+
 .. currentmodule:: warp.config
 
 API

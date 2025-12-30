@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Utility functions for FEM geometry conversions.
+
+This module provides functions for converting dense grid topologies to mesh topologies,
+including triangular, tetrahedral, quadrilateral, and hexahedral meshes.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.utils import grid_to_quads as grid_to_quads

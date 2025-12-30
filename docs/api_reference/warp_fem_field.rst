@@ -1,6 +1,9 @@
 warp.fem.field
 ==============
 
+.. automodule:: warp.fem.field
+   :no-members:
+
 .. currentmodule:: warp.fem.field
 
 API

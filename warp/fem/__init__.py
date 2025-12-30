@@ -13,6 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Finite Element Method (FEM) toolkit for solving differential equations.
+
+This module provides tools for solving physical systems described as partial differential
+equations (PDEs) using finite-element-based Galerkin methods. It supports diffusion,
+convection, fluid flow, and elasticity problems with various FEM formulations and
+discretization schemes.
+
+The core workflow involves defining geometries (grids, meshes, NanoVDB volumes), function
+spaces with shape functions, integration domains, and using the :func:`integrate` function
+with :func:`integrand`-decorated kernels to build linear and bilinear forms for solving
+linear systems.
+
+Usage:
+    This module must be explicitly imported::
+
+        import warp.fem
+
+See Also:
+    :doc:`/domain_modules/fem` for comprehensive documentation and examples.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.geometry.adaptive_nanogrid import AdaptiveNanogrid as AdaptiveNanogrid

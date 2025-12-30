@@ -1,6 +1,9 @@
 warp.jax_experimental.ffi
 =========================
 
+.. automodule:: warp.jax_experimental.ffi
+   :no-members:
+
 .. currentmodule:: warp.jax_experimental.ffi
 
 API

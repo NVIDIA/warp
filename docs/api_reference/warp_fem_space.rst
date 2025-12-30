@@ -1,15 +1,22 @@
 warp.fem.space
 ==============
 
+.. automodule:: warp.fem.space
+   :no-members:
+
 .. currentmodule:: warp.fem.space
+
+.. toctree::
+   :hidden:
+
+   warp_fem_space_shape
 
 Submodules
 ----------
 
-.. toctree::
-   :maxdepth: 1
+These modules are automatically available when you ``import warp.fem.space``.
 
-   warp.fem.space.shape <warp_fem_space_shape>
+- :mod:`warp.fem.space.shape`
 
 API
 ---

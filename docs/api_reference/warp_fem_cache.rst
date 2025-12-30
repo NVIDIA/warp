@@ -1,6 +1,9 @@
 warp.fem.cache
 ==============
 
+.. automodule:: warp.fem.cache
+   :no-members:
+
 .. currentmodule:: warp.fem.cache
 
 API

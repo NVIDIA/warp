@@ -1,6 +1,9 @@
 warp.render
 ===========
 
+.. automodule:: warp.render
+   :no-members:
+
 .. currentmodule:: warp.render
 
 API

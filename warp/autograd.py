@@ -13,6 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Utility functions for debugging automatic differentiation.
+
+This module provides functions to evaluate and verify gradients computed by Warp's
+automatic differentiation engine. Typical workflows involve computing Jacobian matrices
+using both automatic differentiation and finite differences, then comparing them to
+verify gradient accuracy.
+
+Usage:
+    This module must be explicitly imported::
+
+        import warp.autograd
+"""
+
 # isort: skip_file
 
 from warp._src.autograd import gradcheck as gradcheck
