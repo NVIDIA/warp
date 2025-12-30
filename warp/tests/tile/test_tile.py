@@ -1393,7 +1393,8 @@ def test_tile_construction_kernel(
     out_full_twos: wp.array(dtype=float),
     out_full_vecs: wp.array(dtype=wp.vec3),
     out_full_mats: wp.array(dtype=wp.mat33),
-    out_full_structs: wp.array(dtype=TestStruct),
+    out_full_structs_register: wp.array(dtype=TestStruct),
+    out_full_structs_shared: wp.array(dtype=TestStruct),
     out_zeros_struct_with_array: wp.array(dtype=TestStructWithArray),
 ):
     zeros = wp.tile_zeros(TILE_M, dtype=float)
@@ -1406,7 +1407,8 @@ def test_tile_construction_kernel(
     ts = TestStruct()
     ts.x = wp.float32(2.0)
     ts.y = wp.vec3(1.0)
-    full_structs = wp.tile_full(TILE_M, value=ts, dtype=TestStruct)
+    full_structs_register = wp.tile_full(TILE_M, value=ts, dtype=TestStruct, storage="register")
+    full_structs_shared = wp.tile_full(TILE_M, value=ts, dtype=TestStruct, storage="shared")
 
     zeros_struct_with_array = wp.tile_zeros(TILE_M, dtype=TestStructWithArray)
 
@@ -1416,7 +1418,8 @@ def test_tile_construction_kernel(
     wp.tile_store(out_full_twos, full_twos)
     wp.tile_store(out_full_vecs, full_vecs)
     wp.tile_store(out_full_mats, full_mats)
-    wp.tile_store(out_full_structs, full_structs)
+    wp.tile_store(out_full_structs_register, full_structs_register)
+    wp.tile_store(out_full_structs_shared, full_structs_shared)
     wp.tile_store(out_zeros_struct_with_array, zeros_struct_with_array)
 
 
@@ -1427,14 +1430,25 @@ def test_tile_construction(test, device):
     full_twos = wp.empty(TILE_M, dtype=float, device=device)
     full_vecs = wp.empty(TILE_M, dtype=wp.vec3, device=device)
     full_mats = wp.empty(TILE_M, dtype=wp.mat33, device=device)
-    full_structs = wp.empty(TILE_M, dtype=TestStruct, device=device)
+    full_structs_register = wp.empty(TILE_M, dtype=TestStruct, device=device)
+    full_structs_shared = wp.empty(TILE_M, dtype=TestStruct, device=device)
     zeros_struct_with_array = wp.empty(TILE_M, dtype=TestStructWithArray, device=device)
 
     wp.launch_tiled(
         test_tile_construction_kernel,
         dim=1,
         inputs=[],
-        outputs=[zeros, ones, arange, full_twos, full_vecs, full_mats, full_structs, zeros_struct_with_array],
+        outputs=[
+            zeros,
+            ones,
+            arange,
+            full_twos,
+            full_vecs,
+            full_mats,
+            full_structs_register,
+            full_structs_shared,
+            zeros_struct_with_array,
+        ],
         block_dim=TILE_DIM,
         device=device,
     )
@@ -1444,8 +1458,10 @@ def test_tile_construction(test, device):
     assert_np_equal(full_twos.numpy(), np.full(TILE_M, 2.0, dtype=float))
     assert_np_equal(full_vecs.numpy(), np.ones((TILE_M, 3), dtype=float))
     assert_np_equal(full_mats.numpy(), np.ones((TILE_M, 3, 3), dtype=float))
-    assert_np_equal(full_structs.numpy()["x"], np.full(TILE_M, 2.0, dtype=float))
-    assert_np_equal(full_structs.numpy()["y"], np.ones((TILE_M, 3), dtype=float))
+    assert_np_equal(full_structs_register.numpy()["x"], np.full(TILE_M, 2.0, dtype=float))
+    assert_np_equal(full_structs_register.numpy()["y"], np.ones((TILE_M, 3), dtype=float))
+    assert_np_equal(full_structs_shared.numpy()["x"], np.full(TILE_M, 2.0, dtype=float))
+    assert_np_equal(full_structs_shared.numpy()["y"], np.ones((TILE_M, 3), dtype=float))
     assert_np_equal(arange.numpy(), np.arange(TILE_M, dtype=float))
 
     # Verify struct with array field is zero-initialized

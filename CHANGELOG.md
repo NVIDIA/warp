@@ -104,6 +104,7 @@
   ([GH-1143](https://github.com/NVIDIA/warp/issues/1143)).
 - Fix `warp.render.OpenGLRenderer` window visibility when `headless` parameter is not provided but
   `pyglet.options["headless"]` is set to `True`. The window is now correctly created as non-visible in this case.
+- Fix compilation issue when constructing shared tiles with struct types ([GH-1135](https://github.com/NVIDIA/warp/issues/1135)).
 
 ## [1.10.1] - 2025-12-01
 
