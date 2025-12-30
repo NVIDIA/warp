@@ -1,6 +1,9 @@
 warp.optim.linear
 =================
 
+.. automodule:: warp.optim.linear
+   :no-members:
+
 .. currentmodule:: warp.optim.linear
 
 API

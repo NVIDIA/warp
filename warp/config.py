@@ -13,6 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Global configuration settings for Warp.
+
+This module provides settings to control compilation behavior, debugging, performance,
+and runtime behavior of Warp kernels and modules. Settings exist at the global, module,
+and kernel levels, with more specific scopes taking precedence.
+
+Settings can be modified by direct assignment before or after calling :func:`warp.init`,
+though some settings only take effect if set prior to initialization. See individual
+setting documentation for details.
+
+For information on module-level and kernel-level settings, see :doc:`/user_guide/configuration`.
+"""
+
 from typing import Optional as _Optional
 
 _wp_module_name_ = "warp.config"

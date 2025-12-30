@@ -1,6 +1,9 @@
 Built-Ins
 =========
 
+.. automodule:: warp._src.lang
+   :no-members:
+
 .. currentmodule:: warp._src.lang
 
 Vector Math

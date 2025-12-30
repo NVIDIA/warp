@@ -1,6 +1,9 @@
 warp.sparse
 ===========
 
+.. automodule:: warp.sparse
+   :no-members:
+
 .. currentmodule:: warp.sparse
 
 API

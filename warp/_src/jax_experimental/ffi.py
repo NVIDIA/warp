@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import ctypes
 import inspect
 import threading
 import traceback
 from enum import IntEnum
-from typing import Callable, Optional
+from typing import Callable
 
 import jax
 
@@ -37,9 +39,9 @@ _wp_module_name_ = "warp.jax_experimental.ffi"
 DiffKernelCacheKey = tuple[Callable, tuple, int, str, tuple[str, ...]]
 
 # Holders for the custom callbacks to keep them alive.
-_FFI_KERNEL_REGISTRY: dict[str, "FfiKernel"] = {}
+_FFI_KERNEL_REGISTRY: dict[str, FfiKernel] = {}
 _FFI_DIFF_KERNEL_REGISTRY: dict[DiffKernelCacheKey, Callable] = {}
-_FFI_CALLABLE_REGISTRY: dict[str, "FfiCallable"] = {}
+_FFI_CALLABLE_REGISTRY: dict[str, FfiCallable] = {}
 _FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
 
@@ -1370,7 +1372,7 @@ def jax_callable(
     func: Callable,
     num_outputs: int = 1,
     graph_mode: GraphMode = GraphMode.JAX,
-    vmap_method: Optional[str] = "broadcast_all",
+    vmap_method: str | None = "broadcast_all",
     output_dims=None,
     in_out_argnames=None,
     stage_in_argnames=None,

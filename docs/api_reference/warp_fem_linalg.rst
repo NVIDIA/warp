@@ -1,6 +1,9 @@
 warp.fem.linalg
 ===============
 
+.. automodule:: warp.fem.linalg
+   :no-members:
+
 .. currentmodule:: warp.fem.linalg
 
 API

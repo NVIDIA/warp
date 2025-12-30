@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Linear algebra utilities for FEM computations.
+
+This module provides kernel-compatible linear algebra functions including matrix
+decompositions (QR factorization, tensor decompositions), eigenvalue solvers,
+matrix inversion, and array operations commonly needed in finite element computations.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.linalg import array_axpy as array_axpy

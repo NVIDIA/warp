@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Type introspection and construction utilities.
+
+This module provides functions for runtime type checking, creating custom vector,
+matrix, quaternion, and transformation types, and querying type properties.
+"""
+
 # isort: skip_file
 
 from warp._src.types import is_array as is_array

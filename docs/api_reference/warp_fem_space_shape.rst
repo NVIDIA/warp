@@ -1,6 +1,9 @@
 warp.fem.space.shape
 ====================
 
+.. automodule:: warp.fem.space.shape
+   :no-members:
+
 .. currentmodule:: warp.fem.space.shape
 
 API

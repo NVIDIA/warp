@@ -13,6 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Polynomial utilities for finite element interpolation and quadrature.
+
+This module provides utilities for working with polynomial families used in FEM,
+including quadrature rules (Gauss-Legendre, Lobatto-Gauss-Legendre, Newton-Cotes)
+and Lagrange polynomial scaling factors.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.polynomial import quadrature_1d as quadrature_1d

@@ -1,6 +1,9 @@
 warp.fem.polynomial
 ===================
 
+.. automodule:: warp.fem.polynomial
+   :no-members:
+
 .. currentmodule:: warp.fem.polynomial
 
 API

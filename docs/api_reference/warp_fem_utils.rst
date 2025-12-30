@@ -1,6 +1,9 @@
 warp.fem.utils
 ==============
 
+.. automodule:: warp.fem.utils
+   :no-members:
+
 .. currentmodule:: warp.fem.utils
 
 API

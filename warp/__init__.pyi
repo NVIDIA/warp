@@ -36,6 +36,20 @@ FabricArray = Generic[DType]
 IndexedFabricArray = Generic[DType]
 Tile = Generic[DType, Shape]
 
+"""The ``warp`` package provides array types and functions for creating and manipulating
+multi-dimensional data on CPU and CUDA devices. It includes kernel and function decorators
+(:func:`kernel`, :func:`func`) for defining parallel code, along with a comprehensive set
+of built-in types and functions for use within kernels (see :doc:`/language_reference/builtins`).
+
+The package provides device management, kernel launch and synchronization functions, automatic
+differentiation via :class:`Tape` recording, type introspection and construction utilities, and
+module compilation and caching.
+
+Additional functionality is available in optional submodules that must be explicitly
+imported, such as :mod:`warp.render` for visualization, :mod:`warp.fem` for finite
+element methods, and :mod:`warp.sparse` for sparse linear algebra.
+"""
+
 from warp._src.types import Int as Int
 from warp._src.types import Float as Float
 from warp._src.types import Scalar as Scalar
@@ -208,6 +222,8 @@ from warp._src.context import launch as launch
 from warp._src.context import launch_tiled as launch_tiled
 from warp._src.context import synchronize as synchronize
 
+from warp._src.tape import Tape as Tape
+
 from warp._src.context import Device as Device
 from warp._src.utils import ScopedDevice as ScopedDevice
 
@@ -228,6 +244,16 @@ from warp._src.context import set_device as set_device
 
 from warp._src.context import synchronize_device as synchronize_device
 
+from warp._src.context import set_module_options as set_module_options
+from warp._src.context import get_module_options as get_module_options
+
+from warp._src.context import get_module as get_module
+from warp._src.context import force_load as force_load
+from warp._src.context import load_module as load_module
+
+from warp._src.context import compile_aot_module as compile_aot_module
+from warp._src.context import load_aot_module as load_aot_module
+
 from warp._src.context import Stream as Stream
 from warp._src.utils import ScopedStream as ScopedStream
 
@@ -241,27 +267,6 @@ from warp._src.context import record_event as record_event
 from warp._src.context import wait_event as wait_event
 from warp._src.context import synchronize_event as synchronize_event
 from warp._src.context import get_event_elapsed_time as get_event_elapsed_time
-
-from warp._src.context import set_module_options as set_module_options
-from warp._src.context import get_module_options as get_module_options
-
-from warp._src.context import get_module as get_module
-from warp._src.context import force_load as force_load
-from warp._src.context import load_module as load_module
-
-from warp._src.context import compile_aot_module as compile_aot_module
-from warp._src.context import load_aot_module as load_aot_module
-
-from warp._src.utils import ScopedCapture as ScopedCapture
-
-from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported
-
-from warp._src.context import capture_begin as capture_begin
-from warp._src.context import capture_end as capture_end
-from warp._src.context import capture_launch as capture_launch
-from warp._src.context import capture_if as capture_if
-from warp._src.context import capture_while as capture_while
-from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
 
 from warp._src.utils import ScopedMempool as ScopedMempool
 from warp._src.utils import ScopedMempoolAccess as ScopedMempoolAccess
@@ -284,47 +289,19 @@ from warp._src.context import is_peer_access_supported as is_peer_access_support
 from warp._src.context import is_peer_access_enabled as is_peer_access_enabled
 from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
 
-from warp._src.tape import Tape as Tape
+from warp._src.utils import ScopedCapture as ScopedCapture
 
-from warp._src.dlpack import from_dlpack as from_dlpack
-from warp._src.dlpack import to_dlpack as to_dlpack
+from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported
 
-from warp._src.fabric import fabricarray as fabricarray
-from warp._src.fabric import fabricarrayarray as fabricarrayarray
-from warp._src.fabric import indexedfabricarray as indexedfabricarray
-from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
+from warp._src.context import capture_begin as capture_begin
+from warp._src.context import capture_end as capture_end
+from warp._src.context import capture_launch as capture_launch
+from warp._src.context import capture_if as capture_if
+from warp._src.context import capture_while as capture_while
+from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
 
 from warp._src.types import from_ipc_handle as from_ipc_handle
 from warp._src.context import event_from_ipc_handle as event_from_ipc_handle
-
-from warp._src.jax import from_jax as from_jax
-from warp._src.jax import to_jax as to_jax
-from warp._src.jax import dtype_from_jax as dtype_from_jax
-from warp._src.jax import dtype_to_jax as dtype_to_jax
-from warp._src.jax import device_from_jax as device_from_jax
-from warp._src.jax import device_to_jax as device_to_jax
-
-from warp._src.types import dtype_from_numpy as dtype_from_numpy
-from warp._src.types import dtype_to_numpy as dtype_to_numpy
-
-from warp._src.context import from_numpy as from_numpy
-
-from warp._src.paddle import from_paddle as from_paddle
-from warp._src.paddle import to_paddle as to_paddle
-from warp._src.paddle import dtype_from_paddle as dtype_from_paddle
-from warp._src.paddle import dtype_to_paddle as dtype_to_paddle
-from warp._src.paddle import device_from_paddle as device_from_paddle
-from warp._src.paddle import device_to_paddle as device_to_paddle
-from warp._src.paddle import stream_from_paddle as stream_from_paddle
-
-from warp._src.torch import from_torch as from_torch
-from warp._src.torch import to_torch as to_torch
-from warp._src.torch import dtype_from_torch as dtype_from_torch
-from warp._src.torch import dtype_to_torch as dtype_to_torch
-from warp._src.torch import device_from_torch as device_from_torch
-from warp._src.torch import device_to_torch as device_to_torch
-from warp._src.torch import stream_from_torch as stream_from_torch
-from warp._src.torch import stream_to_torch as stream_to_torch
 
 from warp._src.utils import ScopedTimer as ScopedTimer
 
@@ -339,6 +316,43 @@ from warp._src.utils import TIMING_MEMCPY as TIMING_MEMCPY
 from warp._src.utils import TIMING_MEMSET as TIMING_MEMSET
 from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
+
+from warp._src.types import dtype_from_numpy as dtype_from_numpy
+from warp._src.types import dtype_to_numpy as dtype_to_numpy
+
+from warp._src.context import from_numpy as from_numpy
+
+from warp._src.dlpack import from_dlpack as from_dlpack
+from warp._src.dlpack import to_dlpack as to_dlpack
+
+from warp._src.jax import from_jax as from_jax
+from warp._src.jax import to_jax as to_jax
+from warp._src.jax import dtype_from_jax as dtype_from_jax
+from warp._src.jax import dtype_to_jax as dtype_to_jax
+from warp._src.jax import device_from_jax as device_from_jax
+from warp._src.jax import device_to_jax as device_to_jax
+
+from warp._src.torch import from_torch as from_torch
+from warp._src.torch import to_torch as to_torch
+from warp._src.torch import dtype_from_torch as dtype_from_torch
+from warp._src.torch import dtype_to_torch as dtype_to_torch
+from warp._src.torch import device_from_torch as device_from_torch
+from warp._src.torch import device_to_torch as device_to_torch
+from warp._src.torch import stream_from_torch as stream_from_torch
+from warp._src.torch import stream_to_torch as stream_to_torch
+
+from warp._src.fabric import fabricarray as fabricarray
+from warp._src.fabric import fabricarrayarray as fabricarrayarray
+from warp._src.fabric import indexedfabricarray as indexedfabricarray
+from warp._src.fabric import indexedfabricarrayarray as indexedfabricarrayarray
+
+from warp._src.paddle import from_paddle as from_paddle
+from warp._src.paddle import to_paddle as to_paddle
+from warp._src.paddle import dtype_from_paddle as dtype_from_paddle
+from warp._src.paddle import dtype_to_paddle as dtype_to_paddle
+from warp._src.paddle import device_from_paddle as device_from_paddle
+from warp._src.paddle import device_to_paddle as device_to_paddle
+from warp._src.paddle import stream_from_paddle as stream_from_paddle
 
 from warp._src.utils import transform_expand as transform_expand
 
