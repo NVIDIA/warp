@@ -12,12 +12,12 @@ Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficie
 Requirements
 ------------
 
-Tile-based operations are fully supported on versions of Warp built against the CUDA 12 runtime.
-Most linear-algebra tile operations like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
-:func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`
-require Warp to be built with the MathDx library, which is not supported on CUDA 11.
+Tile-based operations are fully supported on versions of Warp built with CUDA Toolkit 12.6.3 or newer due to the use
+of the MathDx library to back linear-algebra tile operations
+like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
+:func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`.
 See `Building with MathDx`_ for more details when building the Warp locally with support for
-linear-algebra tile operations.
+these linear-algebra tile operations.
 
 Execution Model
 ---------------

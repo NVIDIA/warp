@@ -3311,7 +3311,7 @@ class Device:
 
             - ``True`` if supported.
             - ``False`` if not supported.
-            - ``None`` if IPC support could not be determined (e.g. CUDA 11).
+            - ``None`` if IPC support could not be determined.
 
         is_primary (bool): Indicates whether this device's CUDA context is also the device's primary context.
         uuid (str): The UUID of the CUDA device. The UUID is in the same format used by ``nvidia-smi -L``.

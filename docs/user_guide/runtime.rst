@@ -1922,9 +1922,8 @@ Some basic requirements for using IPC include:
   memory pools for the purpose of allocating arrays that can be shared using IPC.
 
 Support for IPC on a device is indicated by the :attr:`is_ipc_supported <warp.Device.is_ipc_supported>`
-attribute of the :class:`Device <warp.Device>`. If the Warp library has
-been compiled with CUDA 11, this device attribute will be ``None`` to indicate
-that IPC support could not be determined using the CUDA API.
+attribute of the :class:`Device <warp.Device>`. This device attribute will be
+``None`` to indicate that IPC support could not be determined using the CUDA API.
 
 To share a Warp array between processes, use :meth:`array.ipc_handle` in the
 originating process to obtain an IPC handle for the array's memory allocation.
