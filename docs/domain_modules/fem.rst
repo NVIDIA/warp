@@ -4,7 +4,7 @@ FEM Toolkit
 .. currentmodule:: warp.fem
 .. py:currentmodule:: warp.fem
 
-The ``warp.fem`` module is designed to facilitate solving physical systems described as differential 
+The :mod:`warp.fem` module is designed to facilitate solving physical systems described as differential 
 equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems 
 using finite-element-based (FEM) Galerkin methods and allows users to quickly experiment with various FEM
 formulations and discretization schemes.
@@ -65,7 +65,7 @@ passed as a dictionary in the `values` parameter of the launcher function, for i
 Basic Workflow
 --------------
 
-The typical steps for solving a linearized PDE with ``warp.fem`` are as follow:
+The typical steps for solving a linearized PDE with :mod:`warp.fem` are as follow:
 
  - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, NanoVDB volumes, and triangle, quadrilateral, tetrahedron and hexahedron unstructured meshes are supported.
  - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported, as well as linear Nédélec (first kind) and Raviart-Thomas vector-valued shape functions.
@@ -120,7 +120,7 @@ The following excerpt from the introductory example ``warp/examples/fem/example_
 Introductory Examples
 ---------------------
 
-``warp.fem`` ships with a list of examples in the ``warp/examples/fem`` directory demonstrating how to solve classical model problems.
+:mod:`warp.fem` ships with a list of examples in the ``warp/examples/fem`` directory demonstrating how to solve classical model problems.
 
  - ``example_diffusion.py``: 2D diffusion with homogeneous Neumann and Dirichlet boundary conditions
      * ``example_diffusion_3d.py``: 3D variant of the diffusion problem
@@ -217,7 +217,7 @@ i.e, without reindexing; this is illustrated in the ``example_streamlines.py`` e
 Adaptivity
 ^^^^^^^^^^
 
-While unstructured mesh refinement is currently out of scope, ``warp.fem`` provides an adaptive version of the sparse grid geometry, :class:`.AdaptiveNanogrid`,
+While unstructured mesh refinement is currently out of scope, :mod:`warp.fem` provides an adaptive version of the sparse grid geometry, :class:`.AdaptiveNanogrid`,
 with power-of-two voxel scales. Helpers for building such geometries from hierarchy of grids or a refinement oracle are also provided, see 
 :func:`.adaptive_nanogrid_from_field` and :func:`.adaptive_nanogrid_from_hierarchy`.
 An example is provided in ``warp/examples/fem/example_adaptive_grid.py``.
@@ -229,7 +229,7 @@ An example is provided in ``warp/examples/fem/example_adaptive_grid.py``.
 Memory management
 ^^^^^^^^^^^^^^^^^
 
-Several ``warp.fem`` functions require allocating temporary buffers to perform their computations. 
+Several :mod:`warp.fem` functions require allocating temporary buffers to perform their computations. 
 If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance,
 though this is a lot less significant when :ref:`mempool_allocators` are in use.
 To overcome this issue, a :class:`.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,

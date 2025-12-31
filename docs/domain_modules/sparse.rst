@@ -3,7 +3,7 @@ Sparse Matrices
 
 .. currentmodule:: warp.sparse
 
-Warp includes a sparse linear algebra module ``warp.sparse`` that implements common sparse matrix operations for simulation. The module provides efficient implementations of Block Sparse Row (BSR) matrices, with Compressed Sparse Row (CSR) matrices supported as a special case with 1x1 block size.
+Warp includes a sparse linear algebra module :mod:`warp.sparse` that implements common sparse matrix operations for simulation. The module provides efficient implementations of Block Sparse Row (BSR) matrices, with Compressed Sparse Row (CSR) matrices supported as a special case with 1x1 block size.
 
 Working with Sparse Matrices
 ----------------------------
@@ -109,9 +109,10 @@ Non-Zero Block Count
 ~~~~~~~~~~~~~~~~~~~~
 
 The number of non-zero blocks in a BSR matrix is computed on the device and not automatically synchronized to the host to avoid performance overhead and allow graph capture. 
-The `nnz` attribute of a BSR matrix is always an upper bound for the number of non-zero blocks, but the actual count is stored on the device at `offsets[nrow]`.
+The :attr:`BsrMatrix.nnz` attribute of a BSR matrix is always an upper bound for the number of non-zero blocks,
+but the actual count is stored on the device at ``offsets[nrow]``.
 
-To get the exact count on host, you can explicitly synchronize using the `nnz_sync()` method:
+To get the exact count on host, you can explicitly synchronize using :meth:`BsrMatrix.nnz_sync`:
 
 .. code-block:: python
 
@@ -121,9 +122,15 @@ To get the exact count on host, you can explicitly synchronize using the `nnz_sy
     # Get the exact number of non-zero blocks
     exact_nnz = A.nnz_sync()
 
-.. note:: The `nnz_sync()` method ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed and updates the nnz upper bound. This synchronization is only necessary when you need the exact count - for most operations, the upper bound is sufficient.
+.. note::
 
-If the number of non-zeros has been changed from outside of the ``warp.sparse`` builtin functions, for instance by direct modifications to the offsets array, use the `notify_nnz_changed()` method to ensure consistency.
+    The :meth:`BsrMatrix.nnz_sync` method ensures that any ongoing transfer
+    of the exact nnz number from the device offsets array to the host has completed
+    and updates the nnz upper bound.
+    This synchronization is only necessary when you need the exact count -
+    for most operations, the upper bound is sufficient.
+
+If the number of non-zeros has been changed from outside of the :mod:`warp.sparse` builtin functions, for instance by direct modifications to the offsets array, use the :meth:`BsrMatrix.notify_nnz_changed` method to ensure consistency.
 
 Converting back to COO Format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -220,15 +227,8 @@ Kernel-level utilities
 
 The following Warp functions are available for use in kernels:
 
-* :func:`warp.sparse.bsr_row_index`.
-* :func:`warp.sparse.bsr_block_index`.
-
-
-
-Reference
-~~~~~~~~~
-
-See :doc:`../api_reference/warp_sparse`.
+* :func:`warp.sparse.bsr_row_index`
+* :func:`warp.sparse.bsr_block_index`
 
 
 .. _iterative-linear-solvers:
@@ -236,9 +236,7 @@ See :doc:`../api_reference/warp_sparse`.
 Iterative Linear Solvers
 ------------------------
 
-.. currentmodule:: warp.optim.linear
-
-Warp provides several iterative linear solvers with optional preconditioning:
+The :mod:`warp.optim.linear` module provides several iterative linear solvers with optional preconditioning:
 
 - Conjugate Gradient (CG)
 - Conjugate Residual (CR)
@@ -252,6 +250,5 @@ Warp provides several iterative linear solvers with optional preconditioning:
     # Solve Ax = b
     x = cg(A, b, max_iter=100, tol=1e-6)
 
-.. note:: While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays. Custom operators can be implemented using the :class:`LinearOperator` interface.
-
-See :doc:`../api_reference/warp_optim_linear`.
+While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays.
+Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
