@@ -13,6 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ==============================================================================
+# Clang Build and Testing Child Pipeline
+#
+# This child pipeline tests Warp builds using the Clang/LLVM toolchain instead
+# of the default GCC compiler. This ensures compatibility with alternative build
+# configurations and validates that our codebase doesn't rely on GCC-specific
+# behavior.
+#
+# Key features:
+# - Tests against LLVM 22 toolchain
+# - Tests CUDA 12.8.1 and 13.0.1 compatibility
+# - Validates build system portability
+#
+# This pipeline can be triggered from the main GitLab pipeline under specific
+# circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
+# trigger conditions. It is not automatically run in merge request pipelines.
+# ==============================================================================
+
 include:
   - /.gitlab/ci/common.yml
 
@@ -31,7 +49,7 @@ stages:
 .build_linux_base:
   stage: build
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - !reference [.snippets, section-start-install-deps]
     - apt update && apt install curl --no-install-recommends -y wget build-essential ca-certificates
     - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/llvm.gpg
     - echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main" > /etc/apt/sources.list.d/llvm.list
@@ -39,12 +57,12 @@ stages:
     - apt-get update && apt-get install --no-install-recommends -y clang-22
     - update-alternatives --install /usr/bin/clang clang /usr/bin/clang-22 100
     - update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 100
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    - !reference [.snippets, section-end-install-deps]
     - clang --version
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=$CI_PROJECT_DIR/uv sh
     - source $CI_PROJECT_DIR/uv/env
     - unset CUDA_HOME
-    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+    - !reference [.snippets, setup-packman-config]
   allow_failure: true
 
 linux-x86_64 build:
@@ -80,22 +98,14 @@ linux-x86_64 build cuda 13:
 
 linux-x86_64 test:
   stage: test
-  image: ubuntu:24.04
+  image: $UV_BOOKWORM_SLIM_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install --no-install-recommends -y curl ca-certificates
     - df -h
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/warp.so warp/bin/
-    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    # Install UV
-    - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=$CI_PROJECT_DIR/uv sh
-    - source $CI_PROJECT_DIR/uv/env
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   allow_failure: true

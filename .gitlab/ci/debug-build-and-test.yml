@@ -44,42 +44,24 @@ stages:
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 build:
   stage: build
-  image: quay.io/pypa/manylinux_2_34_aarch64:latest
+  image: $WARP_BUILDER_IMAGE
   extends:
     - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - yum update -y && yum install curl wget -y
-    - gcc --version
-    - wget -qO- https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
-    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
-    - tools/packman/packman pull --platform linux-aarch64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run build_lib.py --cuda_path=$CUDA --mode=debug
+    - uv run build_lib.py --cuda_path=/usr/local/cuda --mode=debug
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
 linux-x86_64 build:
   stage: build
-  image: quay.io/pypa/manylinux_2_28_x86_64:latest
+  image: $WARP_BUILDER_IMAGE
   extends:
     - .save_warp_bin_artifact
     - .ipp_lnx_x86_64_cpu_medium
-  before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - yum update -y && yum install curl wget -y
-    - gcc --version
-    - wget -qO- https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
-    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
-    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run build_lib.py --cuda_path=$CUDA --mode=debug
+    - uv run build_lib.py --cuda_path=/usr/local/cuda --mode=debug
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -112,34 +94,29 @@ windows-x86_64 build:
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 test:
   stage: test
-  image: ubuntu:22.04
+  image: $UV_BOOKWORM_SLIM_ARM_IMAGE
   needs: [linux-aarch64 build]
   extends:
     - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
     - .save_test_report_artifact
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - !reference [.snippets, install-python+warp-aarch64]
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    - df -h
+    - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
 
 linux-x86_64 test:
   stage: test
-  image: ubuntu:22.04
+  # Note: Using slim image is intentional - manylinux-built wheels are glibc-portable
+  # and GPU runtime libs are provided by the runner environment
+  image: $UV_BOOKWORM_SLIM_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    # Move compiled binaries out of platform-specific directory
-    - mv warp/bin/linux-x86_64/warp.so warp/bin/
-    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
-    - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.local/bin:$PATH"
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
@@ -172,7 +149,7 @@ windows-x86_64 test:
 # due to problems building a debug binary
 create pypi wheels:
   stage: package
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  image: $UV_BOOKWORM_SLIM_IMAGE
   needs:
     - linux-x86_64 build
     - windows-x86_64 build
