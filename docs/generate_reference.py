@@ -703,7 +703,15 @@ def run():
         write_module_page(module_name, symbols, aliased_symbols, submodules, output_api_dir)
 
     # Third pass: handle the built-ins symbols.
-    builtins_symbols = tuple(k for k, v in wp._src.context.builtin_functions.items() if not v.hidden)
+    # Include a builtin if ANY of its overloads are visible (not hidden).
+    # This matches the behavior of the old export_functions_rst system.
+    def has_visible_overload(func):
+        """Check if a builtin function has at least one non-hidden overload."""
+        if hasattr(func, "overloads"):
+            return any(not overload.hidden for overload in func.overloads)
+        return not func.hidden
+
+    builtins_symbols = tuple(k for k, v in wp._src.context.builtin_functions.items() if has_visible_overload(v))
     write_module_page(BUILTINS_MODULE, builtins_symbols, {}, (), output_language_dir)
 
     # Log summary statistics

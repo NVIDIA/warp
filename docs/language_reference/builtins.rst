@@ -6,6 +6,54 @@ Built-Ins
 
 .. currentmodule:: warp._src.lang
 
+Scalar Math
+-----------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+   :template: builtins.rst
+
+   abs
+   acos
+   asin
+   atan
+   atan2
+   cbrt
+   ceil
+   clamp
+   cos
+   cosh
+   degrees
+   erf
+   erfc
+   erfcinv
+   erfinv
+   exp
+   floor
+   frac
+   isfinite
+   isinf
+   isnan
+   log
+   log2
+   log10
+   max
+   min
+   nonzero
+   pow
+   radians
+   rint
+   round
+   sign
+   sin
+   sinh
+   sqrt
+   step
+   tan
+   tanh
+   trunc
+
 Vector Math
 -----------
 
@@ -14,7 +62,21 @@ Vector Math
    :toctree: _generated
    :template: builtins.rst
 
+   argmax
+   argmin
+   cross
+   cw_div
+   cw_mul
+   ddot
+   determinant
+   diag
+   dot
+   eig3
+   get_diag
    identity
+   inverse
+   length
+   length_sq
    matrix
    matrix_from_cols
    matrix_from_rows
@@ -22,7 +84,15 @@ Vector Math
    norm_l1
    norm_l2
    norm_pseudo_huber
+   normalize
+   outer
+   qr3
+   skew
    smooth_normalize
+   svd2
+   svd3
+   trace
+   transpose
    vector
 
 Quaternion Math
@@ -33,7 +103,16 @@ Quaternion Math
    :toctree: _generated
    :template: builtins.rst
 
+   quat_from_axis_angle
+   quat_from_matrix
    quat_identity
+   quat_inverse
+   quat_rotate
+   quat_rotate_inv
+   quat_rpy
+   quat_slerp
+   quat_to_axis_angle
+   quat_to_matrix
    quaternion
 
 Transformations
@@ -47,8 +126,16 @@ Transformations
    transform_compose
    transform_decompose
    transform_from_matrix
+   transform_get_rotation
+   transform_get_translation
    transform_identity
+   transform_inverse
+   transform_multiply
+   transform_point
+   transform_set_rotation
+   transform_set_translation
    transform_to_matrix
+   transform_vector
    transformation
 
 Spatial Math
@@ -60,8 +147,13 @@ Spatial Math
    :template: builtins.rst
 
    spatial_adjoint
+   spatial_bottom
+   spatial_cross
+   spatial_cross_dual
+   spatial_dot
    spatial_jacobian
    spatial_mass
+   spatial_top
    spatial_vector
 
 Tile Primitives
@@ -156,6 +248,13 @@ Geometry
    mesh_query_aabb_next
    mesh_query_aabb_next_tiled
    mesh_query_aabb_tiled
+   mesh_query_furthest_point_no_sign
+   mesh_query_point
+   mesh_query_point_no_sign
+   mesh_query_point_sign_normal
+   mesh_query_point_sign_parity
+   mesh_query_point_sign_winding_number
+   mesh_query_ray
    mesh_query_ray_anyhit
    mesh_query_ray_count_intersections
 
@@ -168,14 +267,26 @@ Utility
    :template: builtins.rst
 
    array
+   atomic_add
+   atomic_and
+   atomic_cas
+   atomic_exch
+   atomic_max
+   atomic_min
+   atomic_or
+   atomic_sub
+   atomic_xor
    block_dim
    breakpoint
    cast
+   expect_near
    len
+   lerp
    print
    printf
    reversed
    select
+   smoothstep
    tid
    where
    zeros
@@ -238,6 +349,16 @@ Random
    sample_unit_sphere_surface
    sample_unit_square
 
+Other
+-----
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+   :template: builtins.rst
+
+   lower_bound
+
 Operators
 ---------
 
@@ -246,6 +367,20 @@ Operators
    :toctree: _generated
    :template: builtins.rst
 
+   add
+   bit_and
+   bit_or
+   bit_xor
+   div
+   floordiv
+   invert
+   lshift
+   mod
+   mul
+   neg
+   pos
+   rshift
+   sub
    unot
 
 Code Generation

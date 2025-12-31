@@ -65,6 +65,9 @@ extensions = [
     "sphinx_copybutton",  # Adds a copy button to code blocks.
 ]
 
+# Enable nitpicky mode to warn about unresolved references.
+nitpicky = False
+
 
 # -- Options for source files ------------------------------------------------
 
@@ -176,14 +179,14 @@ class AutosummaryRenderer(AutosummaryRenderer):
 
             head = wp._src.context.builtin_functions[symbol]
 
-            # Collect all overloads, filtering out hidden ones.
+            # Collect all overloads (including hidden ones).
+            # The template will filter out hidden overloads.
             # Note: head.overloads already includes the head itself (see Function.__init__)
             all_funcs = head.overloads if hasattr(head, "overloads") else [head]
-            visible_overloads = [f for f in all_funcs if not f.hidden]
 
-            # Build overload info for each visible overload
+            # Build overload info for each overload
             overloads_info = []
-            for func in visible_overloads:
+            for func in all_funcs:
                 args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
 
                 try:
@@ -203,6 +206,7 @@ class AutosummaryRenderer(AutosummaryRenderer):
                         "return_type": return_type,
                         "is_exported": is_exported,
                         "is_differentiable": func.is_differentiable,
+                        "is_hidden": func.hidden,
                         "doc": func.doc,
                     }
                 )
