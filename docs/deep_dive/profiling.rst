@@ -181,7 +181,7 @@ The next section is the `CUDA activity summary`, which reports the cumulative ti
 
 The `CUDA device summary` shows the total time taken per device.
 We see that device ``cuda:0`` took about 3.4 ms to complete the tasks and device ``cuda:1`` took about 4.3 ms.
-This summary can be used to asses the workload distribution in multi-GPU applications.
+This summary can be used to assess the workload distribution in multi-GPU applications.
 
 The final line shows the time taken by the CPU, as with the default :class:`ScopedTimer` options
 (without synchronization in this case).

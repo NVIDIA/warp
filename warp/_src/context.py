@@ -6209,7 +6209,7 @@ def event_from_ipc_handle(handle, device: DeviceLike = None) -> Event:
 
     Args:
         handle: The interprocess event handle for an existing CUDA event.
-        device: Device to associate with the array.
+        device: Device to associate with the event.
 
     Returns:
         An event created from the interprocess event handle ``handle``.
