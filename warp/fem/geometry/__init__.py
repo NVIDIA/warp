@@ -13,11 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Deformed geometry support for finite element computations.
+
+This module currently only provides the :class:`DeformedGeometry` class for defining
+geometries that are deformed by a displacement field. Most geometry types (grids,
+meshes, sparse grids) are available directly in :mod:`warp.fem`.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.geometry import DeformedGeometry as DeformedGeometry
-
-from . import closest_point as closest_point
 
 
 # TODO: Remove after cleaning up the public API.

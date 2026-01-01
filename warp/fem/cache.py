@@ -13,6 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Caching utilities for specializing and caching kernels and functions.
+
+This module provides decorators that create specialized, cached versions of kernels
+and functions based on a suffix parameter. The suffix typically encodes type or domain
+information, allowing a single function definition to be compiled into multiple optimized
+versions for different argument types or problem domains.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.cache import dynamic_kernel as dynamic_kernel

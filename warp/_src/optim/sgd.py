@@ -25,9 +25,9 @@ def sgd_step_kernel(
     g: wp.array(dtype=Any),
     b: wp.array(dtype=Any),
     lr: float,
-    weight_decay: float,
     momentum: float,
     damping: float,
+    weight_decay: float,
     nesterov: int,
     t: int,
     params: wp.array(dtype=Any),
@@ -51,9 +51,23 @@ def sgd_step_kernel(
 
 
 class SGD:
-    """An implementation of the Stochastic Gradient Descent Optimizer
-    It is designed to mimic Pytorch's version.
-    https://pytorch.org/docs/stable/generated/torch.optim.SGD.html
+    """Stochastic Gradient Descent (SGD) optimizer with optional momentum.
+
+    This optimizer implements gradient descent with support for momentum,
+    Nesterov accelerated gradient, and weight decay (L2 regularization).
+
+    The interface is similar to `PyTorch's torch.optim.SGD
+    <https://pytorch.org/docs/stable/generated/torch.optim.SGD.html>`_.
+
+    Args:
+        params: List of :class:`warp.array` objects to optimize. Can be ``None``
+            and set later via :meth:`set_params`.
+        lr: Learning rate (step size).
+        momentum: Momentum factor for accelerating SGD in relevant directions.
+        dampening: Dampening factor applied to the momentum.
+        weight_decay: Weight decay coefficient (L2 regularization).
+        nesterov: Whether to use Nesterov momentum. Requires ``momentum > 0``
+            and ``dampening = 0``.
     """
 
     def __init__(self, params=None, lr=0.001, momentum=0.0, dampening=0.0, weight_decay=0.0, nesterov=False):
@@ -105,10 +119,5 @@ class SGD:
         assert params.dtype == g.dtype
         assert params.dtype == b.dtype
         assert params.shape == g.shape
-        kernel_inputs = [g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params]
-        wp.launch(
-            kernel=sgd_step_kernel,
-            dim=len(params),
-            inputs=kernel_inputs,
-            device=params.device,
-        )
+        kernel_inputs = (g, b, lr, momentum, dampening, weight_decay, int(nesterov), t, params)
+        wp.launch(sgd_step_kernel, dim=len(params), inputs=kernel_inputs, device=params.device)

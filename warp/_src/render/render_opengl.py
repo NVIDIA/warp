@@ -958,8 +958,35 @@ def arr_pointer(arr: np.ndarray):
 
 
 class OpenGLRenderer:
-    """
-    OpenGLRenderer is a simple OpenGL renderer for rendering 3D shapes and meshes.
+    """Interactive OpenGL-based renderer for real-time 3D visualization.
+
+    This renderer provides hardware-accelerated visualization of Warp simulations
+    with support for geometric primitives (spheres, boxes, capsules, cylinders,
+    cones), meshes, and point clouds. It features an interactive camera system,
+    customizable scene setup, and can render to screen or offscreen buffers.
+
+    The renderer supports both windowed and headless modes, making it suitable
+    for interactive development and automated visualization pipelines. It can
+    also render tiled viewports for multi-view visualization.
+
+    Note:
+        Requires ``pyglet`` (version >= 2.0) to be installed.
+
+    Headless rendering (without a display) is supported on Linux systems.
+    To enable headless rendering, set the Pyglet options before importing
+    ``warp.render``:
+
+    .. code-block:: python
+
+        import pyglet
+
+        pyglet.options["headless"] = True
+
+        import warp.render
+
+        # OpenGLRenderer will run headless when pyglet.options["headless"] is True.
+        # Alternatively, pass headless=True to control window visibility explicitly.
+        renderer = warp.render.OpenGLRenderer()
     """
 
     # number of segments to use for rendering spheres, capsules, cones and cylinders
@@ -976,81 +1003,64 @@ class OpenGLRenderer:
 
     def __init__(
         self,
-        title="Warp",
-        scaling=1.0,
-        fps=60,
-        up_axis="Y",
-        screen_width=1024,
-        screen_height=768,
-        near_plane=1.0,
-        far_plane=100.0,
-        camera_fov=45.0,
-        camera_pos=(0.0, 2.0, 10.0),
-        camera_front=(0.0, 0.0, -1.0),
-        camera_up=(0.0, 1.0, 0.0),
-        background_color=(0.53, 0.8, 0.92),
-        draw_grid=True,
-        draw_sky=True,
-        draw_axis=True,
-        show_info=True,
-        render_wireframe=False,
-        render_depth=False,
-        axis_scale=1.0,
-        vsync=False,
-        headless=None,
-        enable_backface_culling=True,
-        enable_mouse_interaction=True,
-        enable_keyboard_interaction=True,
-        device=None,
+        title: str = "Warp",
+        scaling: float = 1.0,
+        fps: int = 60,
+        up_axis: str = "Y",
+        screen_width: int = 1024,
+        screen_height: int = 768,
+        near_plane: float = 1.0,
+        far_plane: float = 100.0,
+        camera_fov: float = 45.0,
+        camera_pos: tuple[float, float, float] = (0.0, 2.0, 10.0),
+        camera_front: tuple[float, float, float] = (0.0, 0.0, -1.0),
+        camera_up: tuple[float, float, float] = (0.0, 1.0, 0.0),
+        background_color: tuple[float, float, float] = (0.53, 0.8, 0.92),
+        draw_grid: bool = True,
+        draw_sky: bool = True,
+        draw_axis: bool = True,
+        show_info: bool = True,
+        render_wireframe: bool = False,
+        render_depth: bool = False,
+        axis_scale: float = 1.0,
+        vsync: bool = False,
+        headless: bool | None = None,
+        enable_backface_culling: bool = True,
+        enable_mouse_interaction: bool = True,
+        enable_keyboard_interaction: bool = True,
+        device: wp.DeviceLike = None,
         use_legacy_opengl: bool | None = None,
     ):
-        """
+        """Initialize the OpenGL renderer.
+
         Args:
-
-            title (str): The window title.
-            scaling (float): The scaling factor for the scene.
-            fps (int): The target frames per second.
-            up_axis (str): The up axis of the scene. Can be "X", "Y", or "Z".
-            screen_width (int): The width of the window.
-            screen_height (int): The height of the window.
-            near_plane (float): The near clipping plane.
-            far_plane (float): The far clipping plane.
-            camera_fov (float): The camera field of view in degrees.
-            camera_pos (tuple): The initial camera position.
-            camera_front (tuple): The initial camera front direction.
-            camera_up (tuple): The initial camera up direction.
-            background_color (tuple): The background color of the scene.
-            draw_grid (bool): Whether to draw a grid indicating the ground plane.
-            draw_sky (bool): Whether to draw a sky sphere.
-            draw_axis (bool): Whether to draw the coordinate system axes.
-            show_info (bool): Whether to overlay rendering information.
-            render_wireframe (bool): Whether to render scene shapes as wireframes.
-            render_depth (bool): Whether to show the depth buffer instead of the RGB image.
-            axis_scale (float): The scale of the coordinate system axes being rendered (only if ``draw_axis`` is True).
-            vsync (bool): Whether to enable vertical synchronization.
-            headless (bool): Whether to run in headless mode (no window is created). If None, the value is determined by the Pyglet configuration defined in ``pyglet.options["headless"]``.
-            enable_backface_culling (bool): Whether to enable backface culling.
-            enable_mouse_interaction (bool): Whether to enable mouse interaction.
-            enable_keyboard_interaction (bool): Whether to enable keyboard interaction.
-            device (DeviceLike): Where to store the internal data.
-            use_legacy_opengl (bool | None): Whether to use a legacy OpenGL implementation that is more compatible with macOS. If ``None``, it will be automatically detected based on the operating system.
-
-        Note:
-
-            :class:`OpenGLRenderer` requires Pyglet (version >= 2.0, known to work on 2.0.7) to be installed.
-
-            Headless rendering is supported via EGL on UNIX operating systems. To enable headless rendering, set the following pyglet options before importing ``warp.render``:
-
-            .. code-block:: python
-
-                import pyglet
-
-                pyglet.options["headless"] = True
-
-                import warp.render
-
-                # OpenGLRenderer is instantiated with headless=True by default
-                renderer = warp.render.OpenGLRenderer()
+            title: The window title.
+            scaling: The scaling factor for the scene.
+            fps: The target frames per second.
+            up_axis: The up axis of the scene. Can be ``"X"``, ``"Y"``, or ``"Z"``.
+            screen_width: The width of the window.
+            screen_height: The height of the window.
+            near_plane: The near clipping plane.
+            far_plane: The far clipping plane.
+            camera_fov: The camera field of view in degrees.
+            camera_pos: The initial camera position as ``(x, y, z)``.
+            camera_front: The initial camera front direction as ``(x, y, z)``.
+            camera_up: The initial camera up direction as ``(x, y, z)``.
+            background_color: The background color as RGB values ``(r, g, b)``.
+            draw_grid: Whether to draw a grid indicating the ground plane.
+            draw_sky: Whether to draw a sky sphere.
+            draw_axis: Whether to draw the coordinate system axes.
+            show_info: Whether to overlay rendering information.
+            render_wireframe: Whether to render scene shapes as wireframes.
+            render_depth: Whether to show the depth buffer instead of the RGB image.
+            axis_scale: The scale of the coordinate system axes (only if ``draw_axis`` is ``True``).
+            vsync: Whether to enable vertical synchronization.
+            headless: Whether to run in headless mode (no window). If ``None``, determined by ``pyglet.options["headless"]``.
+            enable_backface_culling: Whether to enable backface culling.
+            enable_mouse_interaction: Whether to enable mouse interaction.
+            enable_keyboard_interaction: Whether to enable keyboard interaction.
+            device: Warp device where internal data is stored.
+            use_legacy_opengl: Whether to use legacy OpenGL (more compatible with macOS). If ``None``, auto-detected.
         """
         try:
             import pyglet  # noqa: PLC0415
@@ -1091,13 +1101,20 @@ class OpenGLRenderer:
 
         self._title = title
 
-        self.window = pyglet.window.Window(
-            width=screen_width, height=screen_height, caption=title, resizable=True, vsync=vsync, visible=not headless
-        )
         if headless is None:
             self.headless = pyglet.options.get("headless", False)
         else:
             self.headless = headless
+
+        self.window = pyglet.window.Window(
+            width=screen_width,
+            height=screen_height,
+            caption=title,
+            resizable=True,
+            vsync=vsync,
+            visible=not self.headless,
+        )
+
         self.app = pyglet.app
 
         # making window current opengl rendering context
@@ -1198,7 +1215,7 @@ class OpenGLRenderer:
         self._frame_fbo = None
         self._frame_pbo = None
 
-        if not headless:
+        if not self.headless:
             self.window.push_handlers(on_draw=self._draw)
             self.window.push_handlers(on_resize=self._window_resize_callback)
             self.window.push_handlers(on_key_press=self._key_press_callback)
@@ -1421,7 +1438,7 @@ class OpenGLRenderer:
             width=400,
         )
 
-        if not headless:
+        if not self.headless:
             # set up our own event handling so we can synchronously render frames
             # by calling update() in a loop
             from pyglet.window import Window  # noqa: PLC0415

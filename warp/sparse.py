@@ -13,6 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Sparse linear algebra operations for Block Sparse Row (BSR) matrices.
+
+This module provides GPU-accelerated sparse matrix operations for simulation, including
+matrix-matrix multiplication, matrix-vector multiplication, addition, scaling, and
+transpose operations. BSR format supports arbitrary block sizes, with Compressed Sparse
+Row (CSR) format supported as a special case using 1x1 blocks.
+
+The :class:`BsrMatrix` class supports operator overloading for intuitive matrix operations
+(``+``, ``-``, ``*``, ``@``), and lower-level functions are available for fine-grained
+control over memory allocations.
+
+Usage:
+    This module must be explicitly imported::
+
+        import warp.sparse
+
+See Also:
+    :doc:`/domain_modules/sparse` for detailed examples and usage patterns.
+"""
+
 # isort: skip_file
 
 from warp._src.sparse import bsr_axpy_work_arrays as bsr_axpy_work_arrays

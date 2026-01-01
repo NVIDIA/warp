@@ -1350,7 +1350,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
             // if the destination layout is unique (no broadcast dimensions)
             // then we can use regular non-atomic accmulation
-            if (Layout::Unique)
+            if constexpr (Layout::Unique)
                 grad(linear) += tile.data[i];
             else
                 // use shared memory atomics to accumulate gradients
@@ -1382,7 +1382,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
             auto c = Layout::coord_from_linear(i);
             T g = global.load_grad(c);
 
-            if (Layout::Unique) {
+            if constexpr (Layout::Unique) {
                 // if the destination layout is unique (no broadcast dimensions)
                 // then we can use regular non-atomic accumulation
                 grad(c) += g;

@@ -1,4 +1,1060 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ==============================================================================
+# CI/CD Pipeline Configuration
+# ==============================================================================
+
 include:
+  - /.gitlab/ci/common.yml
   - project: "omniverse/warp-gitlab-ci"
-    ref: "main"
+    ref: "ershi/gitlab-ci-updates"
     file: "/.gitlab-ci.yml"
+
+workflow:
+  rules:
+    - if: $CI_PROJECT_ROOT_NAMESPACE != "omniverse" # Prevent pipelines that can't access the runners
+      when: never
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_SHA
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      auto_cancel:
+        on_new_commit: none
+        on_job_failure: none
+    - if: $CI_COMMIT_TAG # Run for tagged releases
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
+
+variables:
+  PM_PACKAGES_ROOT: "$CI_PROJECT_DIR/packman-repo"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  CUDA_BIN: "$CI_PROJECT_DIR/_build/target-deps/cuda/bin"
+  CUDA: "$CI_PROJECT_DIR/_build/target-deps/cuda"
+  CUDA_HOME: "$CI_PROJECT_DIR/_build/target-deps/cuda"
+  WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
+  GIT_DEPTH: 1
+  UV_LINK_MODE: copy
+  UV_HTTP_TIMEOUT: 120
+  UV_PYTHON_PREFERENCE: only-managed
+  UV_PYTHON:
+    value: "3.12"
+    options:
+      - "3.14"
+      - "3.13"
+      - "3.12"
+      - "3.11"
+      - "3.10"
+      - "3.9"
+    description: "The default UV Python version used in the main testing jobs."
+
+stages:
+  - build
+  - quality
+  - test
+  - child pipelines
+  - package
+  - deploy
+
+# ==============================================================================
+# Build Jobs (Release)
+# ==============================================================================
+
+linux-aarch64 build:
+  stage: build
+  image: quay.io/pypa/manylinux_2_34_aarch64:latest
+  extends:
+    - .lnx-aarch64-cpu-medium
+    - .save_warp_bin_artifact
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - yum update -y && yum install curl wget -y
+    - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+    - tools/packman/packman pull --platform linux-aarch64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run build_lib.py --cuda_path=$CUDA
+    - mkdir -p warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
+
+linux-x86_64 build:
+  stage: build
+  image: quay.io/pypa/manylinux_2_28_x86_64:latest
+  extends:
+    - .save_warp_bin_artifact
+    - .ipp_lnx_x86_64_cpu_medium
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - yum update -y && yum install curl wget -y
+    - gcc --version
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run build_lib.py --cuda_path=$CUDA
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
+
+windows-x86_64 build:
+  stage: build
+  extends:
+    - .save_warp_bin_artifact
+    - .runner-build-windows-x86_64
+  before_script:
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+    - Move-Item -Path $env:PACKMAN_CONFIG_FILE -Destination "$env:CI_PROJECT_DIR\tools\packman\config.packman.xml" -Force
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
+    - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
+  script:
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
+
+mac-aarch64 build:
+  stage: build
+  extends:
+    - .save_warp_bin_artifact
+    - .runner-build-macos-universal
+    - .macos_warp_tags
+  before_script:
+    - df -h
+    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$CI_PROJECT_DIR/_uv" sh
+    - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
+  script:
+    - uv run build_lib.py
+
+linux-x86_64 cuda 13 build:
+  stage: build
+  image: quay.io/pypa/manylinux_2_28_x86_64:latest
+  extends:
+    - .save_warp_bin_artifact
+    - .ipp_lnx_x86_64_cpu_medium
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - yum update -y && yum install curl wget -y
+    - wget -qO- https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
+    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-13"
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run build_lib.py --cuda_path=$CUDA
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
+
+# ==============================================================================
+# Linting and Code Quality Jobs
+#
+# The jobs here are meant to assist with code quality analysis.
+# They can run immediately without waiting for the build jobs to complete.
+# ==============================================================================
+
+pre-commit checks:
+  stage: quality
+  image: ghcr.io/astral-sh/uv:bookworm
+  needs: []
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  script:
+    - uvx pre-commit run --all-files --show-diff-on-failure
+
+# This job tests code snippets in the documentation
+doctest:
+  stage: quality
+  image: ghcr.io/astral-sh/uv:bookworm
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_gpu
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
+    - df -h
+    - apt-get update && apt-get install make --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra docs build_docs.py --doctest-only
+
+# The only purpose of this job is to make sure documentation can be built on Windows.
+# The output does not get published anywhere, but the website can be viewed in the
+# artifacts.
+windows-x86_64 docs:
+  stage: quality
+  needs: [windows-x86_64 build]
+  extends:
+    - .runner-utility-windows-x86_64
+  artifacts:
+    paths:
+      - public
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  script:
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra docs build_docs.py --quick
+    - mv docs/_build/html/ ./public/
+  after_script:
+    - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
+check un-namespaced symbols linux-x86_64:
+  stage: quality
+  image: python:3.12-bullseye
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  script:
+    - |
+      echo "Checking for un-namespaced symbols..."
+      LIBRARIES_TO_CHECK="warp/bin/linux-x86_64/warp.so warp/bin/linux-x86_64/warp-clang.so"
+      found_symbols=""
+
+      for lib in $LIBRARIES_TO_CHECK; do
+        echo "--> Checking $lib"
+        if [ ! -f "$lib" ]; then
+          echo "ERROR: $lib not found"
+          found_symbols="true"
+          continue
+        fi
+        output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
+        
+        if [ -n "$output" ]; then
+          echo "ERROR: Found un-namespaced symbols in $lib:"
+          echo "$output"
+          found_symbols="true"
+        fi
+      done
+
+      if [ -n "$found_symbols" ]; then
+        echo "FAIL: Un-namespaced symbols detected. Please prefix them with 'wp_' or '_wp_'."
+        exit 1
+      fi
+
+      echo "SUCCESS: All symbols are correctly namespaced."
+
+cppcheck:
+  stage: quality
+  image: ubuntu:24.04
+  needs: []
+  extends:
+    - .ipp_lnx_x86_64_cpu_medium
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${HOME}/conda"
+    - source "${HOME}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - conda install cppcheck --channel conda-forge
+    - python -m pip install -U cppcheck-codequality
+    - mkdir -p _build/.cppcheck
+    - cppcheck --version
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    # Pass 1: For the CI log and job failure.
+    - cppcheck_exit_code=0
+    - >-
+      cppcheck
+      --inline-suppr
+      --cppcheck-build-dir=_build/.cppcheck
+      --enable=warning
+      --quiet
+      --error-exitcode=1
+      -j $(nproc)
+      --suppress=*:warp/native/nanovdb/*
+      --suppress=normalCheckLevelMaxBranches
+      warp
+      || cppcheck_exit_code=$?
+    # Pass 2: For the Code Quality report.
+    - >-
+      cppcheck
+      --inline-suppr
+      --cppcheck-build-dir=_build/.cppcheck
+      --enable=warning
+      --quiet
+      --xml
+      --xml-version=2
+      -j $(nproc)
+      --suppress=*:warp/native/nanovdb/*
+      --suppress=normalCheckLevelMaxBranches
+      warp
+      2> cppcheck-report.xml
+    - cppcheck-codequality --input-file=cppcheck-report.xml --output-file=gl-code-quality-report.json
+    - exit $cppcheck_exit_code
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - cppcheck-report.xml
+
+# ==============================================================================
+# Main Unit Testing Jobs
+#
+# The jobs here will always be run when the pipeline is triggered. The jobs that
+# compute code coverage run slower than jobs that do not. The minimal jobs were
+# added to test the user experience without any optional Python packages.
+# ==============================================================================
+
+.test_common_with_coverage:
+  stage: test
+  extends:
+    - .basic_test_changes_rules
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    when: always
+    paths:
+      - rspec.xml
+      - coverage.xml
+    reports:
+      junit: rspec.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+linux-aarch64 test:
+  image: ubuntu:22.04
+  needs: [linux-aarch64 build]
+  extends:
+    - .test_common_with_coverage
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - !reference [.snippets, install-python+warp-aarch64]
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+  tags:
+    - lnx-aarch64-gpu-1x-580.95.05
+    - gpu/L40
+    - gpu/rtx
+
+linux-aarch64 test orin:
+  needs: [linux-aarch64 build]
+  image: ghcr.io/astral-sh/uv:bookworm-slim
+  extends:
+    - .save_test_report_artifact
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/warp.so warp/bin/
+    - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
+    - uv sync --extra dev --no-install-package psutil
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - gpu/orin
+
+linux-aarch64 test thor:
+  needs: [linux-aarch64 build]
+  image: ghcr.io/astral-sh/uv:bookworm-slim
+  extends:
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-aarch64/warp.so warp/bin/
+    - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
+    - uv sync --extra dev
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - gpu/thor
+
+linux-x86_64 test:
+  needs: [linux-x86_64 build]
+  image: ubuntu:22.04
+  extends:
+    - .ipp_lnx_x86_64_gpu_2x
+    - .test_common_with_coverage
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install curl git ca-certificates --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv venv
+    - source .venv/bin/activate
+    - uv sync --extra dev --extra torch-cu12
+    - uv pip install -U "jax[cuda12]"
+    - uv pip install -e .
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    # HACK: disable P2P tests due to misbehaving agents
+    - export WARP_DISABLE_P2P_TESTS=1
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    # Upload report to Codecov
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - uvx --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
+    - uvx --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
+
+# A temporary job for testing on Blackwell until more runners are available
+linux-x86_64-blackwell test:
+  needs: [linux-x86_64 build]
+  image: ubuntu:22.04
+  extends:
+    - .test_common_with_coverage
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install curl git ca-certificates --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv venv
+    - source .venv/bin/activate
+    - uv sync --extra dev
+    - uv pip install -U torch --index-url https://download.pytorch.org/whl/cu130
+    - uv pip install -U "jax[cuda13]"
+    - uv pip install -e .
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - python -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+  tags:
+    - arch/x86_64
+    - gpu/B40
+    - os/linux
+    - platform/horde
+
+# Note that for throughput reasons this runs on a single-GPU runner
+windows-x86_64 test:
+  stage: test
+  needs: [windows-x86_64 build]
+  timeout: 45m
+  extends:
+    - .runner-test-windows-x86_64-gpu
+    - .test_common_with_coverage
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      # Upload report to Codecov
+      git config --global --add safe.directory $env:CI_PROJECT_DIR
+      & "$env:CI_PROJECT_DIR\_uv\uvx.exe" --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
+      & "$env:CI_PROJECT_DIR\_uv\uvx.exe" --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
+
+# Optional multi-GPU Windows job (likely longer queue time)
+windows-x86_64 test mgpu:
+  stage: test
+  needs: [windows-x86_64 build]
+  extends:
+    - .save_test_report_artifact
+  timeout: 45m
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  allow_failure: true # GitLab runners are too unstable to run this job
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - win-x86_64-gpu-2x-573.42
+
+# Note: This will no longer be needed once Warp auto-initializes upon import
+linux-x86_64 test warp-init:
+  stage: test
+  image: ubuntu:22.04
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  timeout: 10m
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install curl ca-certificates --no-install-recommends -y
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --disable-process-pooling --disable-concurrent-futures --level test -p 'test_implicit_init.py'
+
+# Optional job to test MuJoCo Warp
+linux-x86_64 test mujoco warp:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+  variables:
+    UV_PYTHON: "3.12"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/*
+        - warp/**/*
+        - pyproject.toml
+        - tools/**/*
+        - deps/*
+        - build_lib.py
+        - build_llvm.py
+      allow_failure: true # Don't want to block MRs
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true # Don't want to block MRs
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update -q && apt-get install -y -q --no-install-recommends git
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    # Python environment
+    - uv venv
+    - uv pip install -e .
+    - uv pip install --pre mujoco -f https://py.mujoco.org/
+    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    - uv pip install pytest pytest-xdist "jax[cuda12]"
+    - source .venv/bin/activate
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
+
+# Ensure minimum and maximum Python versions are supported
+linux-x86_64 python matrix test:
+  stage: test
+  image: ghcr.io/astral-sh/uv:bookworm-slim
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  parallel:
+    matrix:
+      - UV_PYTHON: "3.9"
+      - UV_PYTHON: "3.10"
+      - UV_PYTHON: "3.13"
+      - UV_PYTHON: "3.14"
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    # Python 3.14 requires a C compiler for some dependencies
+    - if [ "$UV_PYTHON" = "3.14" ]; then apt-get update && apt-get install build-essential --no-install-recommends -y; fi
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+
+# Benchmark this commit with the current main branch using Airspeed Velocity
+# Only runs on merge requests
+linux-x86_64 asv:
+  stage: test
+  needs: []
+  image: ubuntu:22.04
+  extends:
+    - .ipp_lnx_x86_64_gpu
+  variables:
+    GIT_DEPTH: "50"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - .gitlab-ci.yml
+        - asv/**/*
+        - asv.conf.json
+        - warp/**/*
+        - pyproject.toml
+        - deps/*
+        - build_lib.py
+        - build_llvm.py
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    - apt-get update && apt-get install python3 python3.10-venv git-lfs build-essential curl ca-certificates --no-install-recommends -y
+    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+    - tools/packman/packman pull --platform linux-x86_64 deps/cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - export PATH="$CUDA_BIN:$PATH"
+    - python3 -m venv _venv
+    - source _venv/bin/activate
+    - python -m pip install --upgrade pip
+    - python -m pip install virtualenv==20.30.0 # Bug in 20.31.0
+    - python -m pip install asv
+    - GIT_LFS_SKIP_SMUDGE=1
+    # Make sure the comparison ref can be checked out by asv
+    - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
+    - 'echo "COMPARE_REF value: ${COMPARE_REF}"'
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - git fetch origin $COMPARE_REF
+    - git checkout -f $COMPARE_REF
+    - git checkout -f $CI_COMMIT_SHA
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - asv machine --yes
+    - asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA 2>&1 || (asv compare --split $COMPARE_REF $CI_COMMIT_SHA 2>&1 && exit 2)
+  allow_failure: True
+
+# Ensure cpp examples compile and run
+linux-x86_64 cpp examples test:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:12.9.1-ubuntu24.04
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .basic_test_changes_rules
+  before_script:
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - ls -lh warp/bin/*.so  # Verify binaries exist
+  script:
+    - cd warp/examples/cpp
+    - bash test_examples.sh
+
+# ==============================================================================
+# Child pipelines
+#
+# The child pipelines defined here are only run in specific
+# circumstances. Most developers don't need to worry about the
+# jobs in this section.
+# ==============================================================================
+
+# Trigger debug build and test (no code coverage) pipelines
+# Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
+trigger debug build and test pipeline:
+  stage: test
+  image: busybox
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test Warp compiled in debug mode."
+
+# Uses the same Python version as the main pipeline.
+debug build and test:
+  stage: child pipelines
+  needs: [trigger debug build and test pipeline]
+  trigger:
+    include: /.gitlab/ci/debug-build-and-test.yml
+  extends:
+    - .trigger_common
+
+# Trigger CUDA 13 pipelines
+# Workaround from https://gitlab.com/gitlab-org/gitlab/-/issues/284086
+trigger cuda 13 pipeline:
+  stage: test
+  image: busybox
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  needs: [linux-x86_64 cuda 13 build]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test Warp compiled with CUDA 13."
+
+# Uses the same Python version as the main pipeline.
+cuda 13 build:
+  stage: child pipelines
+  needs: [trigger cuda 13 pipeline]
+  trigger:
+    include: /.gitlab/ci/cuda-13-build.yml
+  extends:
+    - .trigger_common
+
+trigger kit extensions pipeline:
+  stage: test
+  image: busybox
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+    - windows-x86_64 build
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - changes:
+        - deps/kit-deps.packman.xml
+        - exts/**/*
+    - when: manual # Can be triggered in all other scenarios
+      allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - echo "Run this job to test the kit extensions."
+
+# Kit Extensions
+kit extensions:
+  stage: child pipelines
+  needs: [trigger kit extensions pipeline]
+  trigger:
+    include: /.gitlab/ci/kit-extensions.yml
+  extends:
+    - .trigger_common
+
+# Test Warp compilation with Clang instead of GCC and NVCC
+clang compilation:
+  stage: child pipelines
+  trigger:
+    include: /.gitlab/ci/clang-build-and-test.yml
+  needs: []
+  extends:
+    - .basic_test_changes_rules
+    - .trigger_common
+
+# ==============================================================================
+# Packaging Jobs
+#
+# Kit and PyPI jobs produce deployment artifacts and are not run in MRs unless
+# manually started.
+# ==============================================================================
+
+
+# Creates wheel files for PyPI
+create pypi wheels:
+  stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+    - windows-x86_64 build
+    - mac-aarch64 build
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - pyproject.toml
+        - setup.py
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+    - mkdir -p warp/bin/macos-aarch64
+    - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
+    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
+  script:
+    - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - printf '%s+cpu\n' "$(head -n1 VERSION.md | sed 's/+cu12$//' | tr -d '\n\r')" > VERSION.md # Modify VERSION.md with +cu12 replaced by +cpu
+    - uv build --wheel -C--build-option=-Pmacos-aarch64
+    - printf '%s\n' "$(head -n1 VERSION.md | sed 's/+cpu$//' | tr -d '\n\r')" > VERSION.md # Revert VERSION.md changes
+    - mv dist dist-github
+    # Now make the wheels meant for PyPI publishing
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Pmacos-aarch64
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Python Wheels"
+    paths:
+      - "dist/"
+      - "dist-github/"
+    when: always
+
+create dev wheels:
+  stage: package
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs:
+    - linux-aarch64 build
+    - linux-x86_64 build
+    - windows-x86_64 build
+    - mac-aarch64 build
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+    - mkdir -p warp/bin/macos-aarch64
+    - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
+    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
+  script:
+    # Version files (VERSION.md, config.py, version.h) are already updated from build artifacts
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - uv build --wheel -C--build-option=-Plinux-aarch64 -C--build-option=-Mmanylinux_2_34
+    - uv build --wheel -C--build-option=-Pmacos-aarch64
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+    - cp VERSION.md dist/
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA-dev
+    paths:
+      - "dist/"
+
+# ==============================================================================
+# Deployment Jobs
+#
+# This section currently contains jobs that publish files to the internal
+# GitLab service.
+# ==============================================================================
+
+publish wheels to testpypi registry:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /release-.*/ || $CI_COMMIT_TAG
+      when: manual
+      allow_failure: true
+  environment:
+    name: staging
+    url: https://test.pypi.org/project/warp-lang/
+  script:
+    - uv publish --verbose --index testpypi -t $TESTPYPI_DEPLOY_KEY dist/*
+
+publish wheels to pypi registry:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+      allow_failure: true
+  environment:
+    name: production
+    url: https://pypi.org/project/warp-lang/
+  script:
+    - uv publish --verbose -t $PYPI_DEPLOY_KEY dist/*
+
+publish wheels to gitlab pypi registry:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/ || $CI_COMMIT_TAG
+      when: manual
+      allow_failure: true
+  script:
+    - uv publish --verbose -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi --check-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi/simple dist-github/*
+
+# Uploads the wheels to the internal GitLab package registry in the Warp project
+# Generated files will be in a branch/tag-specific folder
+publish wheels to gitlab package registry:
+  stage: deploy
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_COMMIT_TAG
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true
+  before_script:
+    - apt-get update && apt-get install curl --no-install-recommends -y
+  script:
+    - |
+      for file in $(find . -name '*.whl'); do
+          filename=$(basename -- "$file")
+          curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
+      done
+    - echo "See the published files at $CI_PROJECT_URL/-/packages"
+
+publish wheels to github release:
+  stage: deploy
+  image: ubuntu:22.04
+  needs: ["create pypi wheels"]
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
+    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    - bash Miniforge3.sh -b -p "${HOME}/conda"
+    - source "${HOME}/conda/etc/profile.d/conda.sh"
+    - conda activate
+    - conda install gh --channel conda-forge
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - gh release upload $CI_COMMIT_TAG ./dist-github/*.whl
+
+.build-docs-common:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_cpu_medium
+  artifacts:
+    paths:
+      - public
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KSet up docs environment"
+    - df -h
+    # Move compiled binaries out of platform-specific directory
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uv run --extra docs build_docs.py --quick
+    - mv docs/_build/html/ ./public/
+
+# Merge requests: Build documentation and save as an artifact
+# A link to the generated documentation is added to the merge request.
+merge request docs:
+  extends:
+    - .build-docs-common
+  artifacts:
+    paths:
+      - warp/__init__.pyi
+      - docs/api_reference
+      - docs/language_reference
+      - public
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 20m
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
+  after_script:
+    - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
+# Merge requests: Ensure that exports.h, __init__.pyi, and docs reference files have been
+# manually added to the MR if they are changed
+check generated files:
+  stage: deploy
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs:
+    - job: linux-x86_64 build
+    - job: merge request docs
+      optional: true
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  timeout: 10m
+  artifacts:
+    when: on_failure
+    expose_as: "Generated source files"
+    paths:
+      - warp/native/exports.h
+      - warp/native/version.h
+      - warp/__init__.pyi
+      - docs/api_reference
+      - docs/language_reference
+  before_script:
+    - apt-get update -q
+    - apt-get install -y -q --no-install-recommends git
+  script:
+    # Check version consistency across VERSION.md, config.py, and version.h
+    - uv run tools/ci/publishing/check_version_consistency.py --verbose
+    # Check that generated documentation files are committed
+    - >
+      git diff --exit-code warp/__init__.pyi docs/api_reference docs/language_reference ||
+      (echo "Please run build_docs.py (or download from $CI_JOB_URL/artifacts/browse) and add modified files to your merge request." && false)
+    # Check that generated native files are committed
+    - >
+      git diff --exit-code warp/native/exports.h ||
+      (echo "Please run build_lib.py (or download from $CI_JOB_URL/artifacts/browse) and add warp/native/exports.h to your merge request." && false)
+    - >
+      git diff --exit-code warp/native/version.h ||
+      (echo "Please run build_lib.py (or download from $CI_JOB_URL/artifacts/browse) and add warp/native/version.h to your merge request." && false)
+
+# Build documentation and publish on GitLab
+# This only runs in the default branch pipeline. The "pages" name is special for GitLab.
+pages:
+  extends:
+    - .build-docs-common
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  timeout: 20m
+  environment:
+    name: GitLab Pages
+    deployment_tier: staging
+    url: $CI_PAGES_URL

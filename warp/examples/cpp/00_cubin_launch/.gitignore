@@ -1,0 +1,14 @@
+# Compiled executable
+00_cubin_launch
+00_cubin_launch.exe
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# CMake build directory
+build/
+
+# Generated directory (generated CUBIN files)
+generated/

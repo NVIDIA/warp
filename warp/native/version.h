@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,6 @@
 #ifndef WP_VERSION_H
 #define WP_VERSION_H
 
-#define WP_VERSION_STRING "1.11.0rc3"
+#define WP_VERSION_STRING "1.11.0"
 
 #endif  // WP_VERSION_H

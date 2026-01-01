@@ -82,7 +82,7 @@ def device_from_paddle(paddle_device: Place | CPUPlace | CUDAPinnedPlace | CUDAP
             raise
 
 
-def device_to_paddle(warp_device: warp._src.context.DeviceLike) -> str:
+def device_to_paddle(warp_device: warp.DeviceLike) -> str:
     """Return the Paddle device string corresponding to a Warp device.
 
     Args:
@@ -345,11 +345,13 @@ def to_paddle(a: warp.array, requires_grad: bool | None = None) -> paddle.Tensor
     """Convert a Warp array to a Paddle tensor without copying the data.
 
     Args:
-        a (warp.array): The Warp array to convert.
-        requires_grad (bool, optional): Whether the resulting tensor should convert the array's gradient, if it exists, to a grad tensor. Defaults to the array's `requires_grad` value.
+        a: The Warp array to convert.
+        requires_grad: Whether the resulting tensor should convert the array's
+          gradient, if it exists, to a grad tensor. Defaults to the array's
+          ``requires_grad`` value.
 
     Returns:
-        paddle.Tensor: The converted tensor.
+        The converted tensor.
     """
     import paddle  # noqa: PLC0415
     import paddle.utils.dlpack  # noqa: PLC0415
