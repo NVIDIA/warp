@@ -38,7 +38,7 @@ Module Settings
 ---------------
 
 Module-level settings to control runtime compilation and code generation may be changed by passing a dictionary of
-option pairs to :func:`wp.set_module_options() <set_module_options>`.
+option pairs to :func:`wp.set_module_options() <warp.set_module_options>`.
 
 For example, compilation of backward passes for the kernel in an entire module can be disabled with:
 
@@ -46,7 +46,7 @@ For example, compilation of backward passes for the kernel in an entire module c
 
     wp.set_module_options({"enable_backward": False})
 
-The options for a module can also be queried using :func:`wp.get_module_options() <get_module_options>`.
+The options for a module can also be queried using :func:`wp.get_module_options() <warp.get_module_options>`.
 
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 | Field                                | Type    |Default Value| Description                                                              |

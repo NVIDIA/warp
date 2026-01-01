@@ -102,17 +102,17 @@ def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
     return wp.normalize(q)
 
 
-def array_scan(in_array, out_array, inclusive=True):
+def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) -> None:
     """Perform a scan (prefix sum) operation on an array.
 
     This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
     The scan operation computes a running sum of elements in the array.
 
     Args:
-        in_array (wp.array): Input array to scan. Must be of type int32 or float32.
-        out_array (wp.array): Output array to store scan results. Must match input array type and size.
-        inclusive (bool, optional): If True, performs an inclusive scan (includes current element in sum).
-                                  If False, performs an exclusive scan (excludes current element). Defaults to True.
+        in_array: Input array to scan. Must be of type ``int32`` or ``float32``.
+        out_array: Output array to store scan results. Must match input array type and size.
+        inclusive: If ``True``, performs an inclusive scan (includes current element in sum).
+          If ``False``, performs an exclusive scan (excludes current element).
 
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
@@ -150,7 +150,7 @@ def array_scan(in_array, out_array, inclusive=True):
             raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
 
 
-def radix_sort_pairs(keys, values, count: int):
+def radix_sort_pairs(keys: wp.array, values: wp.array, count: int) -> None:
     """Sort key-value pairs using radix sort.
 
     This function sorts pairs of arrays based on the keys array, maintaining the key-value
@@ -158,9 +158,9 @@ def radix_sort_pairs(keys, values, count: int):
     The `keys` and `values` arrays must be large enough to accommodate 2*`count` elements.
 
     Args:
-        keys (wp.array): Array of keys to sort. Must be of type int32, float32, or int64.
-        values (wp.array): Array of values to sort along with keys. Must be of type int32.
-        count (int): Number of elements to sort.
+        keys: Array of keys to sort. Must be of type ``int32``, ``float32``, or ``int64``.
+        values: Array of values to sort along with keys. Must be of type ``int32``.
+        count: Number of elements to sort.
 
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
@@ -303,22 +303,29 @@ def segmented_sort_pairs(
             raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
 
 
-def runlength_encode(values, run_values, run_lengths, run_count=None, value_count=None):
+def runlength_encode(
+    values: wp.array,
+    run_values: wp.array,
+    run_lengths: wp.array,
+    run_count: wp.array | None = None,
+    value_count: int | None = None,
+) -> int | wp.array:
     """Perform run-length encoding on an array.
 
     This function compresses an array by replacing consecutive identical values with a single value
-    and its count. For example, [1,1,1,2,2,3] becomes values=[1,2,3] and lengths=[3,2,1].
+    and its count.
+    For example, ``[1,1,1,2,2,3]`` becomes ``values=[1,2,3]`` and ``lengths=[3,2,1]``.
 
     Args:
-        values (wp.array): Input array to encode. Must be of type int32.
-        run_values (wp.array): Output array to store unique values. Must be at least value_count in size.
-        run_lengths (wp.array): Output array to store run lengths. Must be at least value_count in size.
-        run_count (wp.array, optional): Optional output array to store the number of runs.
-                                       If None, returns the count as an integer.
-        value_count (int, optional): Number of values to process. If None, processes entire array.
+        values: Input array to encode. Must be of type ``int32``.
+        run_values: Output array to store unique values. Must be at least value_count in size.
+        run_lengths: Output array to store run lengths. Must be at least value_count in size.
+        run_count: Optional output array to store the number of runs.
+          If ``None``, returns the count as an integer.
+        value_count: Number of values to process. If ``None``, processes entire array.
 
     Returns:
-        int or wp.array: Number of runs if run_count is None, otherwise returns run_count array.
+        Number of runs if ``run_count`` is ``None``, otherwise returns the ``run_count`` array.
 
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
@@ -379,21 +386,23 @@ def runlength_encode(values, run_values, run_lengths, run_count=None, value_coun
     return run_count
 
 
-def array_sum(values, out=None, value_count=None, axis=None):
+def array_sum(
+    values: wp.array, out: wp.array | None = None, value_count: int | None = None, axis: int | None = None
+) -> wp.array | float:
     """Compute the sum of array elements.
 
     This function computes the sum of array elements, optionally along a specified axis.
     The operation can be performed on the entire array or along a specific dimension.
 
     Args:
-        values (wp.array): Input array to sum. Must be of type float32 or float64.
-        out (wp.array, optional): Output array to store results. If None, a new array is created.
-        value_count (int, optional): Number of elements to process. If None, processes entire array.
-        axis (int, optional): Axis along which to compute sum. If None, computes sum of all elements.
+        values: Input array to sum. Must be of type ``float32`` or ``float64``.
+        out: Output array to store results. If ``None``, a new array is created.
+        value_count: Number of elements to process. If ``None``, processes entire array.
+        axis: Axis along which to compute sum. If ``None``, computes sum of all elements.
 
     Returns:
-        wp.array or float: The sum result. Returns a float if axis is None and out is None,
-                           otherwise returns the output array.
+        The sum result. Returns a float if ``axis`` is ``None`` and ``out`` is ``None``,
+        otherwise returns the ``out`` array.
 
     Raises:
         RuntimeError: If output array storage device or data type is incompatible with input array.
@@ -477,22 +486,24 @@ def array_sum(values, out=None, value_count=None, axis=None):
     return out
 
 
-def array_inner(a, b, out=None, count=None, axis=None):
+def array_inner(
+    a: wp.array, b: wp.array, out: wp.array | None = None, count: int | None = None, axis: int | None = None
+) -> wp.array | float:
     """Compute the inner product of two arrays.
 
     This function computes the dot product between two arrays, optionally along a specified axis.
     The operation can be performed on the entire arrays or along a specific dimension.
 
     Args:
-        a (wp.array): First input array.
-        b (wp.array): Second input array. Must match shape and type of a.
-        out (wp.array, optional): Output array to store results. If None, a new array is created.
-        count (int, optional): Number of elements to process. If None, processes entire arrays.
-        axis (int, optional): Axis along which to compute inner product. If None, computes on flattened arrays.
+        a: First input array.
+        b: Second input array. Must match shape and type of a.
+        out: Output array to store results. If ``None``, a new array is created.
+        count: Number of elements to process. If ``None``, processes entire arrays.
+        axis: Axis along which to compute inner product. If ``None``, computes on flattened arrays.
 
     Returns:
-        wp.array or float: The inner product result. Returns a float if axis is None and out is None,
-                           otherwise returns the output array.
+        The inner product result. Returns a float if ``axis`` is ``None`` and ``out`` is ``None``,
+        otherwise returns the ``out`` array.
 
     Raises:
         RuntimeError: If array storage devices, sizes, or data types are incompatible.
@@ -600,7 +611,7 @@ def _array_cast_kernel(
     dest[i] = dest.dtype(src[i])
 
 
-def array_cast(in_array, out_array, count=None):
+def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = None):
     """Cast elements from one array to another array with a different data type.
 
     This function performs element-wise casting from the input array to the output array.
@@ -608,10 +619,10 @@ def array_cast(in_array, out_array, count=None):
     the arrays will be flattened and casting will be performed at the scalar level.
 
     Args:
-        in_array (wp.array): Input array to cast from.
-        out_array (wp.array): Output array to cast to. Must have the same device as in_array.
-        count (int, optional): Number of elements to process. If None, processes entire array.
-                             For multi-dimensional arrays, partial casting is not supported.
+        in_array: Input array to cast from.
+        out_array: Output array to cast to. Must have the same device as in_array.
+        count: Number of elements to process. If ``None``, processes entire array.
+          or multi-dimensional arrays, partial casting is not supported.
 
     Raises:
         RuntimeError: If arrays have different devices or if attempting partial casting
@@ -680,10 +691,10 @@ def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context
     """Create a Warp function from a Python function.
 
     Args:
-        func (Callable): A Python function to be converted to a Warp function.
+        func: A Python function to be converted to a Warp function.
 
     Returns:
-        wp.Function: A Warp function created from the input function.
+        A tuple containing the created Warp function and the module it belongs to.
     """
 
     from .codegen import Adjoint, get_full_arg_spec  # noqa: PLC0415
@@ -734,7 +745,7 @@ def broadcast_shapes(shapes: list[tuple[int]]) -> tuple[int]:
         (3, 5, 4)
 
     Returns:
-        tuple[int]: The broadcasted shape.
+        The broadcasted shape.
 
     Raises:
         ValueError: If the shapes are not broadcastable.
@@ -768,8 +779,7 @@ def map(
     block_dim: int = 256,
     device: DeviceLike = None,
 ) -> Array[DType] | list[Array[DType]] | wp.Kernel:
-    """
-    Map a function over the elements of one or more arrays.
+    """Map a function over the elements of one or more arrays.
 
     You can use a Warp function, a regular Python function, or a lambda expression to map it to a set of arrays.
 
@@ -798,7 +808,7 @@ def map(
         [-0.5  0.   0.5]
 
     Note that only one of the inputs must be a Warp array. For example, it is possible
-    vectorize the function :func:`warp.transform_point` over a collection of points
+    vectorize the function :func:`warp.transform_point() <warp._src.lang.transform_point>` over a collection of points
     with a given input transform as follows:
 
     .. code-block:: python
@@ -807,7 +817,7 @@ def map(
         points = wp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=wp.vec3)
         transformed = wp.map(wp.transform_point, tf, points)
 
-    Besides regular Warp arrays, other array types, such as the ``indexedarray``, are supported as well:
+    Besides regular Warp arrays, other array types, such as the :class:`warp.indexedarray`, are supported as well:
 
     .. testcode::
 
@@ -840,12 +850,12 @@ def map(
     supports differentiation.
 
     Args:
-        func (Callable | Function): The function to map over the arrays.
-        *inputs (array | Any): The input arrays or values to pass to the function.
-        out (array | list[array] | None): Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
-        return_kernel (bool): If True, only return the generated kernel without performing the mapping operation.
-        block_dim (int): The block dimension for the kernel launch.
-        device (DeviceLike): The device on which to run the kernel.
+        func: The function to map over the arrays.
+        *inputs: The input arrays or values to pass to the function.
+        out: Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
+        return_kernel: If True, only return the generated kernel without performing the mapping operation.
+        block_dim: The number of threads per block for the kernel launch.
+        device: The device on which to run the kernel.
 
     Returns:
         array | list[array] | Kernel:

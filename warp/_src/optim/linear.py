@@ -96,7 +96,7 @@ def aslinearoperator(A: _Matrix) -> LinearOperator:
         - :class:`warp.sparse.BsrMatrix`
         - two-dimensional `warp.array`; then `A` is assumed to be a dense matrix
         - one-dimensional `warp.array`; then `A` is assumed to be a diagonal matrix
-        - :class:`warp.sparse.LinearOperator`; no casting necessary
+        - :class:`warp.optim.linear.LinearOperator`; no casting necessary
     """
 
     if A is None or isinstance(A, LinearOperator):

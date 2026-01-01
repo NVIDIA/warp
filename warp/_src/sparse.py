@@ -164,15 +164,14 @@ class BsrMatrix(Generic[_BlockType]):
         return out
 
     def nnz_sync(self) -> int:
-        """
-        Synchronize the number of non-zeros from the device offsets array to the host.
+        """Synchronize the number of non-zeros from the device ``offsets`` array to the host.
 
         Ensures that any ongoing transfer of the exact nnz number from the device offsets array to the host has completed,
         or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
 
         Then updates the host-side nnz upper bound to match the exact one, and returns it.
 
-        See also :meth:`notify_nnz_async`.
+        See also :meth:`notify_nnz_changed`.
         """
 
         buf, event = self._nnz_transfer_if_any()
@@ -185,7 +184,7 @@ class BsrMatrix(Generic[_BlockType]):
         return self.nnz
 
     def notify_nnz_changed(self, nnz: int | None = None) -> None:
-        """Notify the matrix that the number of non-zeros has been changed from outside of the ``warp.sparse`` builtin functions.
+        """Notify the matrix that the number of non-zeros has been changed from outside of the :mod:`warp.sparse` builtin functions.
 
         Should be called in particular when the offsets array has been modified, or when the nnz upper bound has changed.
         Makes sure that the matrix is properly resized and starts the asynchronous transfer of the actual non-zero count.
@@ -369,7 +368,7 @@ def bsr_zeros(
         cols_of_blocks: Number of columns of blocks.
         block_type: Type of individual blocks.
           For CSR matrices, this should be a scalar type.
-          For BSR matrices, this should be a matrix type (e.g. from :func:`warp.mat`).
+          For BSR matrices, this should be a matrix type (e.g. from :func:`warp.types.matrix`).
         device: Device on which to allocate the matrix arrays.
     """
 

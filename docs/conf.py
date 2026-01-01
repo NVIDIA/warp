@@ -65,6 +65,43 @@ extensions = [
     "sphinx_copybutton",  # Adds a copy button to code blocks.
 ]
 
+# Enable nitpicky mode to warn about unresolved references.
+nitpicky = False
+
+# Ignore warnings for Warp types in function signatures that Sphinx can't
+# resolve without fully qualified names (e.g., "int32" vs "warp.int32").
+# This includes:
+# - Type aliases (Scalar, Int, Float, Vector, Quaternion, Matrix, Array, Transformation, Tile)
+# - Array types (IndexedArray, IndexedFabricArray, FabricArray)
+# - Concrete types (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float16, float32, float64)
+# - Array type parameters (ndim=3, dtype=float32) from wp.array() annotations
+# - Internal _src paths that leak into type annotations
+nitpick_ignore_regex = [
+    # Warp type aliases and meta-types
+    (
+        r"py:class",
+        r"(Scalar|Int|Float|Vector|Quaternion|Matrix|Array|Transformation|Tile|IndexedArray|IndexedFabricArray|FabricArray|Shape|DType|Any)",
+    ),
+    # Concrete numeric types
+    (r"py:class", r"(int|uint|float)\d+"),
+    # Array type parameters from wp.array() annotations
+    (r"py:class", r"(ndim|dtype)=\w+"),
+    # Internal _src paths
+    (r"py:class", r"warp\._src\..*"),
+    # Internal C++/Python interop methods on geometric types
+    (
+        r"py:obj",
+        r"warp\.(vec|mat|quat|transform|spatial_vector|spatial_matrix)\w*\.(from_ptr|scalar_export|scalar_import)",
+    ),
+    # Matrix accessor methods
+    (r"py:obj", r"warp\.(mat|spatial_matrix)\w+\.(get_col|get_row|set_col|set_row)"),
+    # Built-in numeric methods/properties inherited by enums/int/float subclasses
+    (
+        r"py:obj",
+        r".*\.(conjugate|bit_length|bit_count|to_bytes|from_bytes|as_integer_ratio|is_integer|real|imag|numerator|denominator)",
+    ),
+]
+
 
 # -- Options for source files ------------------------------------------------
 

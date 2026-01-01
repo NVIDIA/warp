@@ -1,10 +1,12 @@
 Profiling
 =========
 
-ScopedTimer
------------
+.. currentmodule:: warp
 
-:class:`wp.ScopedTimer <ScopedTimer>` objects can be used to gain some basic insight into the performance of Warp applications:
+``ScopedTimer``
+---------------
+
+:class:`ScopedTimer` objects can be used to gain some basic insight into the performance of Warp applications:
 
 .. code:: python
 
@@ -31,7 +33,9 @@ ScopedTimer
             wp.launch(inc_loop, dim=n, inputs=[a, 1500], device=device)
             wp.copy(host_arrays[i], a)
 
-The only required argument for the ``ScopedTimer`` constructor is a string label, which can be used to distinguish multiple timed code sections when reading the output.  The snippet above will print a message like this:
+The only required argument for the :class:`ScopedTimer` constructor is a string label,
+which can be used to distinguish multiple timed code sections when reading the output.
+The snippet above will print a message like this:
 
 .. code:: console
 
@@ -39,7 +43,12 @@ The only required argument for the ``ScopedTimer`` constructor is a string label
 
 By default, ``ScopedTimer`` measures the elapsed time on the CPU and does not introduce any CUDA synchronization.  Since most CUDA operations are asynchronous, the result does not include the time spent executing kernels and memory transfers on the CUDA device.  It's still a useful measurement, because it shows how long it took to schedule the CUDA operations on the CPU.
 
-To get the total amount of time including the device executions time, create the ``ScopedTimer`` with the ``synchronize=True`` flag.  This is equivalent to calling :func:`wp.synchronize() <synchronize>` before and after the timed section of code.  Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.  Synchronizing at the end ensures that all timed work finishes before stopping the timer.  With the example above, the result might look like this:
+To get the total amount of time including the device executions time, create the :class:`ScopedTimer`
+with the ``synchronize=True`` flag.
+This is equivalent to calling :func:`wp.synchronize() <synchronize>` before and after the timed section of code.
+Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.
+Synchronizing at the end ensures that all timed work finishes before stopping the timer.
+With the example above, the result might look like this:
 
 .. code:: console
 
@@ -47,7 +56,13 @@ To get the total amount of time including the device executions time, create the
 
 The timing values will vary slightly from run to run and will depend on the system hardware and current load.  The sample results presented here were obtained on a system with one RTX 4090 GPU, one RTX 3090 GPU, and an AMD Ryzen Threadripper Pro 5965WX CPU.  For each GPU, the code allocates and initializes an array with 10 million floating point elements.  It then launches the ``inc_loop`` kernel three times on the array.  The kernel increments each array element a given number of times - 500, 1000, and 1500.  Finally, the code copies the array contents to the CPU.
 
-Profiling complex programs with many asynchronous and concurrent operations can be tricky.  Profiling tools like `NVIDIA Nsight Systems <https://developer.nvidia.com/nsight-systems>`_ can present the results in a visual way and capture a plethora of timing information for deeper study.  For profiling tools capable of visualizing NVTX ranges, ``ScopedTimer`` can be created with the ``use_nvtx=True`` argument.  This will mark the CPU execution range on the timeline for easier visual inspection.  The color can be customized using the ``color`` argument, as shown below:
+Profiling complex programs with many asynchronous and concurrent operations can be tricky.
+Profiling tools like `NVIDIA Nsight Systems <https://developer.nvidia.com/nsight-systems>`_ can present the results
+in a visual way and capture a plethora of timing information for deeper study.
+For profiling tools capable of visualizing NVTX ranges, :class:`ScopedTimer` can be created with the ``use_nvtx=True``
+argument.
+This will mark the CPU execution range on the timeline for easier visual inspection.
+The color can be customized using the ``color`` argument, as shown below:
 
 .. code:: python
 
@@ -87,7 +102,10 @@ Note that synchronization was not enabled in this run, so the NVTX range only sp
 CUDA Activity Profiling
 -----------------------
 
-``ScopedTimer`` supports timing individual CUDA activities like kernels and memory operations.  This is done by measuring the time taken between :ref:`CUDA events <cuda_events>` on the device.  To get information about CUDA activities, pass the ``cuda_filter`` argument to the ``ScopedTimer`` constructor.  The ``cuda_filter`` can be a bitwise combination of the following values:
+:class:`ScopedTimer` supports timing individual CUDA activities like kernels and memory operations.
+This is done by measuring the time taken between :ref:`CUDA events <cuda_events>` on the device.
+To get information about CUDA activities, pass the ``cuda_filter`` argument to the :class:`ScopedTimer` constructor.
+The ``cuda_filter`` argument can be a bitwise combination of the following values:
 
 .. list-table:: CUDA profiling flags
     :widths: 25 50
@@ -106,9 +124,14 @@ CUDA Activity Profiling
     * - :const:`wp.TIMING_ALL <TIMING_ALL>`
       - Combines all of the above for convenience.
 
-When a non-zero ``cuda_filter`` is specified, Warp will inject CUDA events for timing purposes and report the results when the ``ScopeTimer`` finishes.  This adds some overhead to the code, so should be used only during profiling.
+When a non-zero ``cuda_filter`` argument is specified, Warp will inject CUDA events for timing purposes and
+report the results when the :class:`ScopedTimer` finishes.
+This adds some overhead to the code, so should be used only during profiling.
 
-CUDA event timing resolution is about 0.5 microseconds.  The reported execution time of short operations will likely be longer than the operations actually took on the device.  This is due to the timing resolution and the overhead of added instrumentation code.  For more precise analysis of short operations, a tool like Nsight Systems can report more accurate data.
+CUDA event timing resolution is about 0.5 microseconds.
+The reported execution time of short operations will likely be longer than the operations actually took on the device.
+This is due to the timing resolution and the overhead of added instrumentation code.
+For more precise analysis of short operations, a tool like Nsight Systems can report more accurate data.
 
 Enabling CUDA profiling with the demo code can be done like this:
 
@@ -156,14 +179,25 @@ The first section is the `CUDA timeline`, which lists all captured activities in
 
 The next section is the `CUDA activity summary`, which reports the cumulative time taken by each activity type.  Here, the `memsets`, kernel launches, and memory transfer operations are grouped together.  This is a good way to see where time is being spent overall.  The `memsets` are quite fast.  The ``inc_loop`` kernel launches took about three milliseconds of combined GPU time.  The memory transfers took the longest, over four milliseconds.
 
-The `CUDA device summary` shows the total time taken per device.  We see that device ``cuda:0`` took about 3.4 ms to complete the tasks and device ``cuda:1`` took about 4.3 ms.  This summary can be used to asses the workload distribution in multi-GPU applications.
+The `CUDA device summary` shows the total time taken per device.
+We see that device ``cuda:0`` took about 3.4 ms to complete the tasks and device ``cuda:1`` took about 4.3 ms.
+This summary can be used to assess the workload distribution in multi-GPU applications.
 
-The final line shows the time taken by the CPU, as with the default ``ScopedTimer`` options (without synchronization in this case).
+The final line shows the time taken by the CPU, as with the default :class:`ScopedTimer` options
+(without synchronization in this case).
 
 Customizing the output
 ~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to customize how the activity timing results are reported.  The function :func:`warp.timing_print` is used by default.  To use a different reporting function, pass it as the ``report_func`` argument to ``ScopedTimer``.  The custom report function should take a list of :class:`warp.TimingResult` objects as the first argument.  Each result in the list corresponds to a single activity and the list represents the complete recorded timeline.  By manually traversing the list, you can customize the formatting of the output, apply custom sorting rules, and aggregate the results as desired.  The second argument is a string indent that should be printed at the beginning of each line.  This is for compatibility with ``ScopedTimer`` indenting rules used with nested timers.
+It is possible to customize how the activity timing results are reported.
+The function :func:`warp.timing_print` is used by default.
+To use a different reporting function, pass it as the ``report_func`` argument to :class:`ScopedTimer`.
+The custom report function should take a list of :class:`warp.TimingResult` objects as the first argument.
+Each result in the list corresponds to a single activity and the list represents the complete recorded timeline.
+By manually traversing the list, you can customize the formatting of the output, apply custom sorting rules,
+and aggregate the results as desired.
+The second argument is a string indent that should be printed at the beginning of each line.
+This is for compatibility with :class:`ScopedTimer` indenting rules used with nested timers.
 
 Here is an example of a custom reporting function, which aggregates the total time spend in forward and backward kernels:
 
@@ -208,7 +242,11 @@ This produces a report like this:
 Using the activity timing functions directly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is also possible to capture activity timings without using the ``ScopedTimer`` at all.  Simply call :func:`warp.timing_begin` to start recording activity timings and :func:`warp.timing_end` to stop and get a list of recorded activities.  You can use :func:`warp.timing_print` to print the default activity report or generate your own report from the list of results.
+It is also possible to capture activity timings without using the :class:`ScopedTimer` at all.
+Simply call :func:`warp.timing_begin` to start recording activity timings and
+:func:`warp.timing_end` to stop and get a list of recorded activities.
+You can use :func:`warp.timing_print` to print the default activity report or
+generate your own report from the list of results.
 
 .. code:: python
 
@@ -267,7 +305,7 @@ By default, this function will synchronize on the second event using :func:`warp
 If that is not desired, the user may pass the ``synchronize=False`` flag and must use some other means of ensuring that both events have completed prior to calling the function.
 
 Note that timing very short operations may yield inflated results, due to the timing resolution of CUDA events and the overhead of the profiling code.
-In most cases, CUDA activity profiling with ``ScopedTimer`` will have less overhead and better precision.
+In most cases, CUDA activity profiling with :class:`ScopedTimer` will have less overhead and better precision.
 For the most accurate results, a profiling tool such as NVIDIA Nsight Systems should be used.
 The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code rather than individual activities.
 

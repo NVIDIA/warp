@@ -12,12 +12,12 @@ Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficie
 Requirements
 ------------
 
-Tile-based operations are fully supported on versions of Warp built against the CUDA 12 runtime.
-Most linear-algebra tile operations like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
-:func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`
-require Warp to be built with the MathDx library, which is not supported on CUDA 11.
+Tile-based operations are fully supported on versions of Warp built with CUDA Toolkit 12.6.3 or newer due to the use
+of the MathDx library to back linear-algebra tile operations
+like :func:`wp.tile_cholesky <warp._src.lang.tile_cholesky>`,
+:func:`wp.tile_fft <warp._src.lang.tile_fft>`, and :func:`wp.tile_matmul <warp._src.lang.tile_matmul>`.
 See `Building with MathDx`_ for more details when building the Warp locally with support for
-linear-algebra tile operations.
+these linear-algebra tile operations.
 
 Execution Model
 ---------------
@@ -202,46 +202,46 @@ Tile Operations
 Construction
 ^^^^^^^^^^^^
 
-* :func:`tile_zeros`
-* :func:`tile_ones`
-* :func:`tile_full`
-* :func:`tile_randi`
-* :func:`tile_randf`
-* :func:`tile_arange`
-* :func:`tile`
-* :func:`untile`
-* :func:`tile_view`
-* :func:`tile_broadcast`
-* :func:`tile_reshape`
-* :func:`tile_squeeze`
-* :func:`tile_astype`
+* :func:`tile_zeros <warp._src.lang.tile_zeros>`
+* :func:`tile_ones <warp._src.lang.tile_ones>`
+* :func:`tile_full <warp._src.lang.tile_full>`
+* :func:`tile_randi <warp._src.lang.tile_randi>`
+* :func:`tile_randf <warp._src.lang.tile_randf>`
+* :func:`tile_arange <warp._src.lang.tile_arange>`
+* :func:`tile <warp._src.lang.tile>`
+* :func:`untile <warp._src.lang.untile>`
+* :func:`tile_view <warp._src.lang.tile_view>`
+* :func:`tile_broadcast <warp._src.lang.tile_broadcast>`
+* :func:`tile_reshape <warp._src.lang.tile_reshape>`
+* :func:`tile_squeeze <warp._src.lang.tile_squeeze>`
+* :func:`tile_astype <warp._src.lang.tile_astype>`
 
 Load/Store
 ^^^^^^^^^^
 
-* :func:`tile_load`
-* :func:`tile_store`
-* :func:`tile_atomic_add`
+* :func:`tile_load <warp._src.lang.tile_load>`
+* :func:`tile_store <warp._src.lang.tile_store>`
+* :func:`tile_atomic_add <warp._src.lang.tile_atomic_add>`
 
 Maps/Reductions
 ^^^^^^^^^^^^^^^
 
-* :func:`tile_map`
-* :func:`tile_reduce`
-* :func:`tile_sum`
-* :func:`tile_min`
-* :func:`tile_max`
+* :func:`tile_map <warp._src.lang.tile_map>`
+* :func:`tile_reduce <warp._src.lang.tile_reduce>`
+* :func:`tile_sum <warp._src.lang.tile_sum>`
+* :func:`tile_min <warp._src.lang.tile_min>`
+* :func:`tile_max <warp._src.lang.tile_max>`
 
 Linear Algebra
 ^^^^^^^^^^^^^^
 
-* :func:`tile_matmul`
-* :func:`tile_transpose`
-* :func:`tile_fft`
-* :func:`tile_ifft`
-* :func:`tile_cholesky`
-* :func:`tile_cholesky_solve`
-* :func:`tile_diag_add`
+* :func:`tile_matmul <warp._src.lang.tile_matmul>`
+* :func:`tile_transpose <warp._src.lang.tile_transpose>`
+* :func:`tile_fft <warp._src.lang.tile_fft>`
+* :func:`tile_ifft <warp._src.lang.tile_ifft>`
+* :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+* :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`
+* :func:`tile_diag_add <warp._src.lang.tile_diag_add>`
 
 Tiles and SIMT Code
 -------------------
