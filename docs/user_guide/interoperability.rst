@@ -1166,7 +1166,7 @@ and a Warp array of :class:`wp.mat22 <warp.mat22>` will have a JAX array shape o
         b = jnp.zeros((n, 3), dtype=jnp.float32)     # vec3 array
         c = jnp.zeros((n, 2, 2), dtype=jnp.float32)  # mat22 array
 
-        d, e, f = vecmat_kernel(a, b, c)
+        d, e, f = jax_vecmat(a, b, c)
 
 It's important to recognize that the Warp and JAX array shapes are different for vector and matrix types.
 In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of :class:`wp.float32 <warp.float32>`,
@@ -1176,19 +1176,19 @@ with shape ``(n, 3)``, and ``c`` is a three-dimensional array with shape ``(n, 2
 
 When specifying custom output dimensions, it's possible to use either convention. The following calls are equivalent::
 
-    d, e, f = vecmat_kernel(a, b, c, output_dims=n)
-    d, e, f = vecmat_kernel(a, b, c, output_dims={"d": n, "e": n, "f": n})
-    d, e, f = vecmat_kernel(a, b, c, output_dims={"d": n, "e": (n, 3), "f": (n, 2, 2)})
+    d, e, f = jax_vecmat(a, b, c, output_dims=n)
+    d, e, f = jax_vecmat(a, b, c, output_dims={"d": n, "e": n, "f": n})
+    d, e, f = jax_vecmat(a, b, c, output_dims={"d": n, "e": (n, 3), "f": (n, 2, 2)})
 
 This is a convenience feature meant to simplify writing code.
 For example, when Warp expects the arrays to be of the same shape, we only need to specify the shape once without
 worrying about the extra vector and matrix dimensions required by JAX::
 
-    d, e, f = vecmat_kernel(a, b, c, output_dims=n)
+    d, e, f = jax_vecmat(a, b, c, output_dims=n)
 
 On the other hand, JAX dimensions are also accepted to allow passing shapes directly from JAX::
 
-    d, e, f = vecmat_kernel(a, b, c, output_dims={"d": a.shape, "e": b.shape, "f": c.shape})
+    d, e, f = jax_vecmat(a, b, c, output_dims={"d": a.shape, "e": b.shape, "f": c.shape})
 
 See `example_jax_kernel.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_kernel.py>`_ for examples.
 
