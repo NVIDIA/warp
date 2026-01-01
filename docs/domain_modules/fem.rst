@@ -37,7 +37,7 @@ The main mechanism is the :py:func:`.integrand` decorator, for instance: ::
 Integrands are normal Warp kernels, meaning that they may contain arbitrary Warp functions. 
 However, they accept a few special parameters:
 
-  - :class:`.Sample` contains information about the current integration sample point, such as the element index and coordinates in element.
+  - :data:`.Sample` contains information about the current integration sample point, such as the element index and coordinates in element.
   - :class:`.Field` designates an abstract field, which will be replaced at call time by the actual field type such as a discrete field, :class:`.field.TestField` or :class:`.field.TrialField` defined over some :class:`.FunctionSpace`,
     an :class:`.ImplicitField` wrapping an arbitrary function, or any other of the available :ref:`Fields`.
     A field `u` can then be evaluated at a given sample `s` using the usual call operator as ``u(s)``.
@@ -55,7 +55,7 @@ However, they accept a few special parameters:
                 return wp.dot(u(s), nor)
 
 Integrands cannot be used directly with :func:`warp.launch`, but must be called through :func:`.integrate` or :func:`.interpolate` instead.
-The :class:`.Sample` and :class:`.Domain` arguments of the root integrand (`integrand` parameter passed to :func:`integrate` or :func:`interpolate` call) will get automatically populated.
+The :data:`.Sample` and :class:`.Domain` arguments of the root integrand (`integrand` parameter passed to :func:`integrate` or :func:`interpolate` call) will get automatically populated.
 :class:`.Field` arguments must be passed as a dictionary in the `fields` parameter of the launcher function, and all other standard Warp types arguments must be
 passed as a dictionary in the `values` parameter of the launcher function, for instance: ::
     
@@ -169,7 +169,7 @@ It is also possible to define the deformation field from an :class:`ImplicitFiel
 Particle-based quadrature and position lookups
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The global :obj:`.lookup` and :obj:`.partition_lookup` operators allow generating a :class:`.Sample` from an arbitrary position; this is illustrated in 
+The global :obj:`.lookup` and :obj:`.partition_lookup` operators allow generating a :data:`.Sample` from an arbitrary position; this is illustrated in 
 the ``example_streamlines.py`` example for generating 3D streamlines by tracing through a velocity field.
 
 .. note::
@@ -248,7 +248,7 @@ Fields represent functions defined over a geometry. The following field types ar
 - :class:`.NonconformingField`: A wrapper for evaluating fields defined on a different geometry.
 - :class:`.GeometryField`: A field representing the deformation of a geometry.
 
-Fields can be evaluated at a :class:`.Sample` using the call operator, e.g., ``u(s)`` evaluates field ``u`` at sample ``s``.
+Fields can be evaluated at a :data:`.Sample` using the call operator, e.g., ``u(s)`` evaluates field ``u`` at sample ``s``.
 
 Additionally, test and trial fields (:class:`.field.TestField` and :class:`.field.TrialField`) are created using
 :func:`.make_test` and :func:`.make_trial` for building linear and bilinear forms.
@@ -290,7 +290,9 @@ Visualization
 -------------
 
 Most function spaces define a ``vtk_cells`` method that returns a list of VTK-compatible cell types and node indices.
-This can be used to visualize discrete fields in VTK-aware viewers such as ``pyvista``, for instance::
+This can be used to visualize discrete fields in VTK-aware viewers such as ``pyvista``, for instance:
+
+.. code-block:: python
 
    import numpy as np
    import pyvista

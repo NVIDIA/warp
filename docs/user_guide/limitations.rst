@@ -90,7 +90,7 @@ Modulus Operator
 """"""""""""""""
 
 Deviation from Python behavior can occur when the modulus operator (``%``) is used with a negative dividend or divisor
-(also see :func:`wp.mod() <mod>`).
+(also see :func:`wp.mod() <warp._src.lang.mod>`).
 The behavior of the modulus operator in a Warp kernel follows that of C++11: The sign of the result follows the sign of
 *dividend*. In Python, the sign of the result follows the sign of the *divisor*:
 
@@ -117,16 +117,16 @@ In Python, the power operator can also be used on integers.
 Inverse Sine and Cosine
 """""""""""""""""""""""
 
-:func:`wp.asin() <asin>` and :func:`wp.acos() <acos>` automatically clamp the input to fall in the range [-1, 1].
+:func:`wp.asin() <warp._src.lang.asin>` and :func:`wp.acos() <warp._src.lang.acos>` automatically clamp the input to fall in the range [-1, 1].
 In Python, using :external+python:py:func:`math.asin` or :external+python:py:func:`math.acos`
 with an input outside [-1, 1] raises a ``ValueError`` exception.
 
 Rounding
 """"""""
 
-:func:`wp.round() <round>` rounds halfway cases away from zero, but Python's
+:func:`wp.round() <warp._src.lang.round>` rounds halfway cases away from zero, but Python's
 :external+python:py:func:`round` rounds halfway cases to the nearest even
-choice (Banker's rounding). Use :func:`wp.rint() <rint>` when Banker's rounding is
+choice (Banker's rounding). Use :func:`wp.rint() <warp._src.lang.rint>` when Banker's rounding is
 desired. Unlike Python, the return type in Warp of both of these rounding
 functions is the same type as the input:
 
@@ -147,9 +147,11 @@ functions is the same type as the input:
 Variable Scope
 --------------
 
-When writing Warp kernels, variable scope might behave differently than in standard Python. This can sometimes lead to unexpected results.
+When writing Warp kernels, variable scope might behave differently than in standard Python.
+This can sometimes lead to unexpected results.
 
-In standard Python, variables are only accessible within the block where they are defined. Consider this example:
+In standard Python, variables are only accessible within the block where they are defined.
+Consider this example:
 
 .. code-block:: python
 
@@ -162,7 +164,8 @@ In standard Python, variables are only accessible within the block where they ar
 
         print(out)
 
-This code works as expected in standard Python. Regardless of the value of `cond`, `out` is defined before being printed.
+This code works as expected in standard Python.
+Regardless of the value of ``cond``, ``out`` is defined before being printed.
 
 However, consider a slightly modified example:
 
@@ -175,9 +178,12 @@ However, consider a slightly modified example:
 
         print(out) # No error even when `cond` is `False`.
 
-In standard Python, if `cond` is `False`, the call to `print(out)` would raise an `UnboundLocalError` because `out` is only defined inside the `if` block.
+In standard Python, if ``cond`` is ``False``, the call to ``print(out)`` would raise an ``UnboundLocalError`` because
+``out`` is only defined inside the ``if`` block.
 
-In Warp, the behavior is different. The call to `print(out)` *will not* raise an error, even if `cond` is `False`. Warp effectively makes `out` accessible outside the `if` block. However, if `cond` is `False`, `out` will be uninitialized, leading to undefined behavior.
+In Warp, the behavior is different. The call to ``print(out)`` *will not* raise an error, even if ``cond`` is ``False``.
+Warp effectively makes ``out`` accessible outside the ``if`` block.
+However, if ``cond`` is ``False``, ``out`` will be uninitialized, leading to undefined behavior.
 
 Arrays in Structs
 -----------------
@@ -199,4 +205,5 @@ Modifying flags on arrays stored in structs may not trigger an update to the und
     a.requires_grad = True
 
 
-In this case the array stored in the struct will not have the `requires_grad=True` value propagated to it which could lead to gradients not being computed during backward kernel launches.
+In this case the array stored in the struct will not have the `requires_grad=True` value propagated to it,
+which could lead to gradients not being computed during backward kernel launches.

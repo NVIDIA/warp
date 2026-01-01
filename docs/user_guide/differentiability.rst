@@ -237,8 +237,14 @@ In PyTorch::
 Jacobians
 #########
 
-To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`, we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`. The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
-In Warp, instead of passing a scalar loss buffer to the :meth:`tape.backward()` method, we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}` having the same type::
+To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`,
+we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`.
+The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
+In Warp, instead of passing a scalar loss buffer to :meth:`warp.Tape.backward`,
+we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}`
+having the same type:
+
+.. code-block:: python
 
     # compute the Jacobian for a function of single output
     jacobian = np.empty((output_dim, input_dim), dtype=np.float32)
@@ -264,7 +270,15 @@ In Warp, instead of passing a scalar loss buffer to the :meth:`tape.backward()` 
         # zero gradient arrays for next row
         tape.zero()
 
-When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics is a block-diagonal matrix. In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector that has the output indices active for all environment copies. For example, to get the first rows of the Jacobians of all environments, :math:`\mathbf{e}=[\begin{smallmatrix}1 & 0 & 0 & \dots & 1 & 0 & 0 & \dots\end{smallmatrix}]^\top`, to compute the second rows, :math:`\mathbf{e}=[\begin{smallmatrix}0 & 1 & 0 & \dots & 0 & 1 & 0 & \dots\end{smallmatrix}]^\top`, etc.::
+When we run simulations independently in parallel, the Jacobian corresponding to the entire system dynamics
+is a block-diagonal matrix.
+In this case, we can compute the Jacobian in parallel for all environments by choosing a selection vector
+that has the output indices active for all environment copies.
+For example, to get the first rows of the Jacobians of all environments,
+:math:`\mathbf{e}=[\begin{smallmatrix}1 & 0 & 0 & \dots & 1 & 0 & 0 & \dots\end{smallmatrix}]^\top`,
+to compute the second rows, :math:`\mathbf{e}=[\begin{smallmatrix}0 & 1 & 0 & \dots & 0 & 1 & 0 & \dots\end{smallmatrix}]^\top`, etc.:
+
+.. code-block:: python
 
     # compute the Jacobian for a function over multiple environments in parallel
     jacobians = np.empty((num_envs, output_dim, input_dim), dtype=np.float32)
@@ -1068,7 +1082,8 @@ The returned Jacobian matrices are now limited to the input/output pairs specifi
 Furthermore, we limited the number of dimensions to evaluate the gradient for to 5 per output array using the ``max_outputs_per_var`` argument.
 The corresponding non-evaluated Jacobian elements are set to ``NaN``.
 
-Furthermore, it is possible to check the gradients of multiple kernels recorded on a :class:`Tape` via the :func:`gradcheck_tape` function. Here, the inputs and outputs of the kernel launches are used to compute the Jacobian matrices for each kernel launch and compare them with finite differences::
+Furthermore, it is possible to check the gradients of multiple kernels recorded on a :class:`Tape <warp.Tape>`
+via the :func:`gradcheck_tape` function. Here, the inputs and outputs of the kernel launches are used to compute the Jacobian matrices for each kernel launch and compare them with finite differences::
 
     tape = wp.Tape()
     with tape:

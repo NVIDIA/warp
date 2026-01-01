@@ -54,8 +54,8 @@ consistently good behavior from kernels that is close to native code.
 Examples of unsupported concepts that don't map well to the GPU are
 dynamic types, list comprehensions, exceptions, garbage collection, etc.
 
-When should I call :func:`wp.synchronize() <synchronize>`?
-----------------------------------------------------------
+When should I call :func:`wp.synchronize() <warp.synchronize>`?
+---------------------------------------------------------------
 
 One of the common sources of confusion for new users is when calls to
 :func:`wp.synchronize() <warp.synchronize>` are necessary. The answer is "almost never"!

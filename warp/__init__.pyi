@@ -2005,8 +2005,9 @@ def erfcinv(x: Float) -> Float:
 def round(x: Float) -> Float:
     """Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 
-    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like :func:`warp.rint()`.
-    Differs from :func:`numpy.round()`, which behaves the same way as :func:`numpy.rint()`.
+    This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like
+    :func:`warp.rint() <warp._src.lang.rint>`.
+    Differs from :func:`numpy.round`, which behaves the same way as :data:`numpy.rint`.
     """
     ...
 
@@ -2014,7 +2015,8 @@ def round(x: Float) -> Float:
 def rint(x: Float) -> Float:
     """Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
-    It is generally faster than :func:`warp.round()`. Equivalent to :func:`numpy.rint()`.
+    It is generally faster than :func:`warp.round() <warp._src.lang.round>`.
+    Equivalent to :data:`numpy.rint`.
     """
     ...
 
@@ -2024,7 +2026,7 @@ def trunc(x: Float) -> Float:
 
     In other words, it discards the fractional part of ``x``.
     It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
-    Equivalent to :func:`numpy.trunc()` and :func:`numpy.fix()`.
+    Equivalent to :data:`numpy.trunc` and :func:`numpy.fix`.
     """
     ...
 
@@ -2305,7 +2307,7 @@ def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
     .. versionremoved:: 1.10
-       This function has been removed in favor of :func:`warp.math.transform_compose()`.
+       This function has been removed in favor of :func:`warp.transform_compose <warp._src.lang.transform_compose>`.
 
     .. deprecated:: 1.8
     """
@@ -2676,7 +2678,7 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
     """Generate a tile of random integers.
 
     :param shape: Shape of the output tile
-    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param rng: Random number generator state, typically from :func:`warp.rand_init <warp._src.lang.rand_init>`
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
     :returns: A tile of random integers with the specified shape
@@ -2720,7 +2722,7 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, stor
     """Generate a tile of random integers within a specified range.
 
     :param shape: Shape of the output tile
-    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param rng: Random number generator state, typically from :func:`warp.rand_init <warp._src.lang.rand_init>`
     :param min: Minimum value (inclusive) for random integers
     :param max: Maximum value (exclusive) for random integers
     :param storage: The storage location for the tile: ``"register"`` for registers
@@ -2766,7 +2768,7 @@ def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any, t
     """Generate a tile of random floats.
 
     :param shape: Shape of the output tile
-    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param rng: Random number generator state, typically from :func:`warp.rand_init <warp._src.lang.rand_init>`
     :param storage: The storage location for the tile: ``"register"`` for registers
       (default) or ``"shared"`` for shared memory.
     :returns: A tile of random floats in the range [0, 1) with the specified shape
@@ -2812,7 +2814,7 @@ def tile_randf(
     """Generate a tile of random floats within a specified range.
 
     :param shape: Shape of the output tile
-    :param rng: Random number generator state, typically from :func:`warp.rand_init`
+    :param rng: Random number generator state, typically from :func:`warp.rand_init <warp._src.lang.rand_init>`
     :param min: Minimum value (inclusive) for random floats
     :param max: Maximum value (exclusive) for random floats
     :param storage: The storage location for the tile: ``"register"`` for registers
@@ -4062,7 +4064,7 @@ def bvh_get_group_root(id: uint64, group: int32) -> int:
 
 @over
 def mesh_get_group_root(id: uint64, group: int32) -> int:
-    """Get the root of a group in a :class:`Mesh`.
+    """Get the root of a group in a :class:`warp.Mesh`.
 
     Returns the root node index for the specified group. If the group does not exist, returns ``-1``
     (sentinel for the mesh's global root). Pass ``-1`` to mesh queries to traverse from the global root.
@@ -4074,7 +4076,7 @@ def mesh_get_group_root(id: uint64, group: int32) -> int:
 
 @over
 def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+    """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
     This method is relatively robust, but does increase computational cost.
@@ -4090,7 +4092,7 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPo
 def mesh_query_point_sign_parity(
     id: uint64, point: vec3f, max_dist: float32, n_sample: int32, perturbation_scale: float32
 ) -> MeshQueryPoint:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+    """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     The method will cast multiple rays starting from the query point by applying
     small random perturbations to a base direction (1, 1, 1). Each perturbation is
@@ -4116,7 +4118,7 @@ def mesh_query_point_sign_parity(
 
 @over
 def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+    """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
 
@@ -4140,7 +4142,7 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
 
 @over
 def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given ``point`` in space.
+    """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
     Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
     This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
@@ -4158,13 +4160,13 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
 def mesh_query_point_sign_winding_number(
     id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32
 ) -> MeshQueryPoint:
-    """Computes the closest point on the :class:`Mesh` with identifier ``id`` to the given point in space.
+    """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given point in space.
 
     Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
     and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
     but also the most expensive.
 
-    .. note:: The :class:`Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
+    .. note:: The :class:`warp.Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
 
     :param id: The mesh identifier
     :param point: The point in space to query
@@ -4176,7 +4178,7 @@ def mesh_query_point_sign_winding_number(
 
 @over
 def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay:
-    """Computes the closest ray hit on the :class:`Mesh` with identifier ``id``.
+    """Computes the closest ray hit on the :class:`warp.Mesh` with identifier ``id``.
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
@@ -4192,7 +4194,7 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: i
 
 @over
 def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> bool:
-    """Returns ``True`` immediately upon the first ray hit on the :class:`Mesh` with identifier ``id``.
+    """Returns ``True`` immediately upon the first ray hit on the :class:`warp.Mesh` with identifier ``id``.
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
@@ -4208,7 +4210,7 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, 
 
 @over
 def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int:
-    """Count the number of intersections between a ray and a :class:`Mesh`. Returns the number of intersections (with t >= 0) between the ray and the mesh.
+    """Count the number of intersections between a ray and a :class:`warp.Mesh`. Returns the number of intersections (with t >= 0) between the ray and the mesh.
 
     This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
     Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
@@ -4230,7 +4232,7 @@ def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, roo
 
 @over
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
-    """Construct an axis-aligned bounding box query against a :class:`Mesh`.
+    """Construct an axis-aligned bounding box query against a :class:`warp.Mesh`.
 
     This query can be used to iterate over all bounding boxes of the triangles inside a volume.
 
@@ -4250,7 +4252,7 @@ def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
 
 @over
 def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
-    """Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
+    """Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
     This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
 
@@ -4277,7 +4279,7 @@ def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[i
 
 @over
 def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
-    """Construct an axis-aligned bounding box query against a :class:`Mesh` for thread-block parallel traversal.
+    """Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
     This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
 
@@ -4308,17 +4310,17 @@ def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[in
 
 @over
 def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluates the position on the :class:`Mesh` given a face index and barycentric coordinates."""
+    """Evaluates the position on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
     ...
 
 @over
 def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluates the velocity on the :class:`Mesh` given a face index and barycentric coordinates."""
+    """Evaluates the velocity on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
     ...
 
 @over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
-    """Construct a point query against a :class:`HashGrid`.
+    """Construct a point query against a :class:`warp.HashGrid`.
 
     This query can be used to iterate over all neighboring point within a fixed radius from the query point.
     """
@@ -4334,11 +4336,11 @@ def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
 
 @over
 def hash_grid_point_id(id: uint64, index: int32) -> int:
-    """Return the index of a point in the :class:`HashGrid`.
+    """Return the index of a point in the :class:`warp.HashGrid`.
 
     This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
 
-    Returns -1 if the :class:`HashGrid` has not been reserved.
+    Returns -1 if the :class:`warp.HashGrid` has not been reserved.
     """
     ...
 
@@ -4411,7 +4413,7 @@ def reversed(range: range_t) -> range_t:
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
     """Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     """
     ...
 
@@ -4419,7 +4421,7 @@ def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> A
 def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
     """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     """
     ...
 
@@ -4440,7 +4442,7 @@ def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any):
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     """
     ...
 
@@ -4448,7 +4450,7 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
 def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
     """Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     """
     ...
 
@@ -4469,7 +4471,7 @@ def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
 def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
     """Sample the vector volume given by ``id`` at the volume local-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR.`
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     """
     ...
 
@@ -4509,7 +4511,7 @@ def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data
     """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
 
     Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     This function is available for both index grids and classical volumes.
 
     """
@@ -4522,7 +4524,7 @@ def volume_sample_grad_index(
     """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
 
     Values for allocated voxels are read from the ``voxel_data`` array, and `background` is used as the value of non-existing voxels.
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`wp.Volume.LINEAR`.
+    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
     This function is available for both index grids and classical volumes.
 
     """

@@ -416,7 +416,7 @@ Some functions that are helpful include:
   both NumPy arrays are flattened and compared with ``np.testing.assert_allclose()``.
 * ``assert_array_equal()``: Accepts two Warp arrays as input parameters, converts each array to a NumPy array on the
   CPU, and then compares the arrays using ``np.testing.assert_equal()``.
-* :func:`wp.expect_eq() <expect_eq>`: Unlike the previous two functions, the array(s) are to be compared by running a Warp kernel
+* ``wp.expect_eq()``: Unlike the previous two functions, the array(s) are to be compared by running a Warp kernel
   so the data can remain in the GPU. This is important if the array is particularly large that an element-wise
   comparison on the CPU would be prohibitively slow.
 

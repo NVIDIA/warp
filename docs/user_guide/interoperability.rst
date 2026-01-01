@@ -493,7 +493,7 @@ PyTorch employs a deferred allocation strategy for gradient tensors. When you cr
 PyTorch does not immediately allocate memory for the gradient. Instead, gradients are allocated on-demand during
 the backward pass.
 
-However, when :func:`wp.from_torch() <from_torch>` encounters a tensor with ``requires_grad=True`` but no allocated gradient,
+However, when :func:`wp.from_torch() <warp.from_torch>` encounters a tensor with ``requires_grad=True`` but no allocated gradient,
 it forces the gradient to be allocated immediately. This creates overhead that can significantly impact performance.
 
 When PyTorch later discovers that an external
@@ -627,7 +627,7 @@ There are three approaches to avoid this synchronization overhead, depending on 
 
 **Solution A: Disable Gradient Tracking in wp.from_torch()**
 
-The simplest solution is to pass ``requires_grad=False`` to :func:`wp.from_torch() <from_torch>`, preventing Warp from
+The simplest solution is to pass ``requires_grad=False`` to :func:`wp.from_torch() <warp.from_torch>`, preventing Warp from
 auto-allocating gradients:
 
 .. code:: python
@@ -1142,8 +1142,10 @@ Vector and Matrix Arrays
 
 Arrays of Warp vector and matrix types are supported.
 Since JAX does not have corresponding data types, the components are packed into extra inner dimensions of JAX arrays.
-For example, a Warp array of :class:`wp.vec3 <vec3>` will have a JAX array shape of (..., 3) and a Warp array of :class:`wp.mat22 <mat22>` will
-have a JAX array shape of (..., 2, 2)::
+For example, a Warp array of :class:`wp.vec3 <warp.vec3>` will have a JAX array shape of (..., 3) 
+and a Warp array of :class:`wp.mat22 <warp.mat22>` will have a JAX array shape of (..., 2, 2):
+
+.. code-block:: python
 
     @wp.kernel
     def vecmat_kernel(a: wp.array(dtype=float),
@@ -1167,9 +1169,10 @@ have a JAX array shape of (..., 2, 2)::
         d, e, f = vecmat_kernel(a, b, c)
 
 It's important to recognize that the Warp and JAX array shapes are different for vector and matrix types.
-In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of :class:`wp.float32 <float32>`, :class:`wp.vec3 <vec3>`, and
-:class:`wp.mat22 <mat22>`, respectively. In JAX, ``a`` is a one-dimensional array with length n, ``b`` is a two-dimensional array
-with shape (n, 3), and ``c`` is a three-dimensional array with shape (n, 2, 2).
+In the above snippet, Warp sees ``a``, ``b``, and ``c`` as one-dimensional arrays of :class:`wp.float32 <warp.float32>`,
+:class:`wp.vec3 <warp.vec3>`, and :class:`wp.mat22 <warp.mat22>`, respectively.
+In JAX, ``a`` is a one-dimensional array with length ``n``, ``b`` is a two-dimensional array
+with shape ``(n, 3)``, and ``c`` is a three-dimensional array with shape ``(n, 2, 2)``.
 
 When specifying custom output dimensions, it's possible to use either convention. The following calls are equivalent::
 
@@ -1194,8 +1197,11 @@ JAX VMAP Support
 ~~~~~~~~~~~~~~~~
 
 The ``vmap_method`` argument can be used to specify how the callback transforms under :func:`jax.vmap`.
-The default is ``"broadcast_all"``. This argument can be passed to :func:`jax_kernel() <warp.jax_experimental.jax_kernel>`,
-and it can also be passed to each call::
+The default is ``"broadcast_all"``.
+This argument can be passed to :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`,
+and it can also be passed to each call:
+
+.. code-block:: python
 
     # set default vmap behavior
     jax_callback = jax_kernel(my_kernel, vmap_method="sequential")
@@ -1212,7 +1218,8 @@ and it can also be passed to each call::
 JAX Automatic Differentiation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint. To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax_experimental.jax_kernel>`.
+Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint.
+To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`.
 
 Basic example (one output)::
 
@@ -1324,10 +1331,10 @@ The autodiff functionality is considered experimental and is still a work in pro
 Calling Annotated Python Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` mechanism can be used to launch a single Warp kernel
+The :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` mechanism can be used to launch a single Warp kernel
 from JAX, but it's also possible to call a Python function that launches multiple kernels.
 The target Python function should have argument type annotations as if it were a Warp kernel.
-To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental.jax_callable>`::
+To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>`::
 
     from warp.jax_experimental import jax_callable
 
@@ -1378,13 +1385,13 @@ To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental
     print(r1)
     print(r2)
 
-The input and output semantics of :func:`jax_callable() <warp.jax_experimental.jax_callable>` are similar to
-:func:`jax_kernel() <warp.jax_experimental.jax_kernel>`, so we won't recap everything here,
+The input and output semantics of :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are similar to
+:func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>`, so we won't recap everything here,
 just focus on the differences:
 
-- :func:`jax_callable() <warp.jax_experimental.jax_callable>` does not take a ``launch_dims`` argument,
+- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` does not take a ``launch_dims`` argument,
   since the target function is responsible for launching kernels using appropriate dimensions.
-- :func:`jax_callable() <warp.jax_experimental.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
+- :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
   Graphs are generally desirable, since they can greatly improve the application performance.
   ``GraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
   ``GraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
@@ -1397,7 +1404,7 @@ Generic JAX FFI Callbacks
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Another way to call Python functions is to use
-:func:`register_ffi_callback() <warp.jax_experimental.register_ffi_callback>`::
+:func:`register_ffi_callback() <warp.jax_experimental.ffi.register_ffi_callback>`::
 
     from warp.jax_experimental import register_ffi_callback
 
@@ -1478,8 +1485,8 @@ Here is an example::
 This is a more low-level approach to JAX FFI callbacks.
 A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here.
 This approach leaves a lot of work up to the user, such as verifying argument types and shapes,
-but it can be used when other utilities like :func:`jax_kernel() <warp.jax_experimental.jax_kernel>` and
-:func:`jax_callable() <warp.jax_experimental.jax_callable>` are not sufficient.
+but it can be used when other utilities like :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` and
+:func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are not sufficient.
 
 See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
 
@@ -1836,7 +1843,7 @@ Sample output:
      5990 ms  from_paddle(..., return_ctype=True)
     35167 ms  direct from paddle
 
-The default :func:`wp.from_paddle() <from_paddle>` conversion is the slowest.
+The default :func:`wp.from_paddle() <warp.from_paddle>` conversion is the slowest.
 Passing ``return_ctype=True`` is the fastest, because it skips creating temporary Warp array objects.
 Passing Paddle tensors to Warp kernels directly falls somewhere in between.
 It skips creating temporary Warp arrays, but accessing the ``__cuda_array_interface__`` attributes of Paddle tensors adds overhead because they are initialized on-demand.

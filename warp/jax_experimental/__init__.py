@@ -15,10 +15,13 @@
 
 """Experimental JAX integration for calling Warp kernels from JAX.
 
-This module enables using Warp kernels as JAX primitives, allowing them to be called
-inside jitted JAX functions. The :func:`jax_kernel` function wraps individual Warp
-kernels, while :func:`jax_callable` wraps Python functions that launch multiple kernels.
-Both support automatic differentiation, custom launch dimensions, and CUDA graph capture.
+This module enables using Warp kernels as JAX primitives, allowing them to be
+called inside jitted JAX functions. The
+:func:`jax_kernel <warp.jax_experimental.ffi.jax_kernel>` function wraps
+individual Warp kernels, while
+:func:`jax_callable <warp.jax_experimental.ffi.jax_callable>` wraps Python
+functions that launch multiple kernels. Both support automatic differentiation,
+custom launch dimensions, and CUDA graph capture.
 
 .. caution::
     This module is experimental and less stable than the core Warp API. The interface

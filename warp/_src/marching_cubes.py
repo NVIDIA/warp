@@ -498,10 +498,10 @@ class MarchingCubes:
         nx (int): The number of grid nodes in the x-direction.
         ny (int): The number of grid nodes in the y-direction.
         nz (int): The number of grid nodes in the z-direction.
-        domain_bounds_lower_corner (wp.vec3 | tuple | None): The lower bound
+        domain_bounds_lower_corner (warp.vec3f | tuple | None): The lower bound
           for the mesh coordinate scaling. See the documentation in
           :meth:`~.extract_surface_marching_cubes` for more details.
-        domain_bounds_upper_corner (wp.vec3 | tuple | None): The upper bound
+        domain_bounds_upper_corner (warp.vec3f | tuple | None): The upper bound
           for the mesh coordinate scaling. See the documentation in
           :meth:`~.extract_surface_marching_cubes` for more details.
         verts (warp.array | None): An array of vertex positions of type
@@ -510,7 +510,7 @@ class MarchingCubes:
         indices (warp.array | None): An array of triangle indices of type
           :class:`warp.int32` for the output mesh.
           This is populated by calling the :meth:`~.surface` method.
-        device (warp._src.context.Device): The device on which the context was created. This
+        device (warp.Device): The device on which the context was created. This
           attribute is for backward compatibility and is not used by the
           class's methods.
     """
@@ -526,7 +526,7 @@ class MarchingCubes:
         nz: int,
         max_verts: int = 0,
         max_tris: int = 0,
-        device=None,
+        device: wp.DeviceLike = None,
         domain_bounds_lower_corner=None,
         domain_bounds_upper_corner=None,
     ):
@@ -538,8 +538,8 @@ class MarchingCubes:
             nz: Number of grid nodes in the z-direction.
             max_verts: (Deprecated) This argument is ignored.
             max_tris: (Deprecated) This argument is ignored.
-            device (DeviceLike): (Deprecated) The value is assigned to
-              `self.device` for backward compatibility but is not used by the
+            device: (Deprecated) The value is assigned to
+              ``self.device`` for backward compatibility but is not used by the
               class's methods. It may be removed in a future version.
             domain_bounds_lower_corner: See the documentation in
               :meth:`~.extract_surface_marching_cubes`.

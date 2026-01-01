@@ -1153,7 +1153,7 @@ wp.NAN           float('nan')
 The :const:`wp.NAN <warp.NAN>` constant may only be used with floating-point types.
 Comparisons involving :const:`wp.NAN <warp.NAN>` follow the IEEE 754 standard,
 e.g. ``wp.float32(wp.NAN) == wp.float32(wp.NAN)`` returns ``False``.
-The :func:`wp.isnan() <warp.isnan>` built-in function can be used to determine whether a
+The :func:`wp.isnan() <warp._src.lang.isnan>` built-in function can be used to determine whether a
 value is a NaN (or if a vector, matrix, or quaternion contains a NaN entry).
 
 The following example shows how positive and negative infinity
@@ -1239,7 +1239,7 @@ between `matrix types <Matrices>`_.
 Mapping Functions
 #################
 
-The :func:`wp.map()` function can be used to apply a function to each element of an array.
+The :func:`wp.map() <warp.map>` function can be used to apply a function to each element of an array.
 
 
 Streams
@@ -1343,7 +1343,11 @@ The condition value can be updated by kernels launched prior to ``capture_if()``
     cond.fill_(0)
     wp.capture_launch(capture.graph)
 
-The ``on_true`` and ``on_false`` callbacks can be previously captured :class:`Graph` objects or Python callback functions. These callbacks are captured as child graphs of the enclosing graph. It's possible to specify only one or both callbacks, as needed. When the parent graph is launched, the correct child graph is executed based on the value of the condition. This is done efficiently on the device without involving the CPU. 
+The ``on_true`` and ``on_false`` callbacks can be previously captured graph objects or Python callback functions.
+These callbacks are captured as child graphs of the enclosing graph.
+It's possible to specify only one or both callbacks, as needed.
+When the parent graph is launched, the correct child graph is executed based on the value of the condition.
+This is done efficiently on the device without involving the CPU. 
 
 Here is an example that uses previously captured graphs:
 
@@ -1603,8 +1607,8 @@ To support spatial neighbor queries Warp provides a ``HashGrid`` object that may
     grid.build(points=p, radius=r)
 
 ``p`` is an array of :class:`wp.vec3 <warp.vec3>` point positions, and ``r`` is the radius to use when building the grid.
-Neighbors can then be iterated over inside the kernel code using :func:`wp.hash_grid_query() <warp.hash_grid_query>`
-and :func:`wp.hash_grid_query_next() <warp.hash_grid_query_next>` as follows:
+Neighbors can then be iterated over inside the kernel code using :func:`wp.hash_grid_query() <warp._src.lang.hash_grid_query>`
+and :func:`wp.hash_grid_query_next() <warp._src.lang.hash_grid_query_next>` as follows:
 
 .. code:: python
 
@@ -1658,9 +1662,9 @@ standard ``.nvdb`` file using :func:`load_from_nvdb() <warp.Volume.load_from_nvd
 from an uncompressed in-memory buffer using :func:`load_from_address() <warp.Volume.load_from_address>`,
 or from a dense 3D NumPy array using :func:`load_from_numpy() <warp.Volume.load_from_numpy>`.
 
-Volumes can also be created using :func:`allocate() <warp.Volume.allocate>`, 
-:func:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>` or :func:`allocate_by_voxels() <warp.Volume.allocate_by_voxels>`. 
-The values for a Volume object can be modified in a Warp kernel using :func:`wp.volume_store() <warp.volume_store>`.
+Volumes can also be created using :meth:`allocate() <warp.Volume.allocate>`, 
+:meth:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>` or :meth:`allocate_by_voxels() <warp.Volume.allocate_by_voxels>`. 
+The values for a Volume object can be modified in a Warp kernel using :func:`wp.volume_store() <warp._src.lang.volume_store>`.
 
 .. note::
     Warp does not currently support modifying the topology of sparse volumes at runtime.
