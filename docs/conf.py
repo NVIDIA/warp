@@ -213,14 +213,14 @@ class AutosummaryRenderer(AutosummaryRenderer):
 
             head = wp._src.context.builtin_functions[symbol]
 
-            # Collect all overloads (including hidden ones).
-            # The template will filter out hidden overloads.
+            # Collect all overloads, filtering out hidden ones.
             # Note: head.overloads already includes the head itself (see Function.__init__)
             all_funcs = head.overloads if hasattr(head, "overloads") else [head]
+            visible_overloads = [f for f in all_funcs if not f.hidden]
 
-            # Build overload info for each overload
+            # Build overload info for each visible overload
             overloads_info = []
-            for func in all_funcs:
+            for func in visible_overloads:
                 args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
 
                 try:
@@ -240,7 +240,6 @@ class AutosummaryRenderer(AutosummaryRenderer):
                         "return_type": return_type,
                         "is_exported": is_exported,
                         "is_differentiable": func.is_differentiable,
-                        "is_hidden": func.hidden,
                         "doc": func.doc,
                     }
                 )
