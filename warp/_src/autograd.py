@@ -262,14 +262,16 @@ def gradcheck_tape(
     """
     Checks whether the autodiff gradients for kernels recorded on the Warp tape match finite differences.
 
-    Given the autodiff (:math:`\\nabla_\\text{AD}`) and finite difference gradients (:math:`\\nabla_\\text{FD}`), the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:
+    Given the autodiff (:math:`\\nabla_\\text{AD}`) and finite difference gradients (:math:`\\nabla_\\text{FD}`),
+    the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:
 
     .. math::
 
         |\\nabla_\\text{AD} - \\nabla_\\text{FD}| \\leq atol + rtol \\cdot |\\nabla_\\text{FD}|.
 
     Note:
-        Only Warp kernels recorded on the tape are checked but not arbitrary functions that have been recorded, e.g. via :meth:`Tape.record_func`.
+        Only Warp kernels recorded on the tape are checked but not arbitrary functions that have been recorded,
+        e.g. via :meth:`warp.Tape.record_func`.
 
         Only Warp arrays with ``requires_grad=True`` are considered for the Jacobian computation.
 

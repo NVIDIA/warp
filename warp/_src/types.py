@@ -2455,7 +2455,7 @@ class array(Array[DType]):
         strides: tuple[int, ...] | None = None,
         ptr: int | None = None,
         capacity: int | None = None,
-        device=None,
+        device: warp.DeviceLike = None,
         pinned: builtins.bool = False,
         copy: builtins.bool = True,
         deleter: Callable[[int, int], None] | None = None,
@@ -2489,7 +2489,7 @@ class array(Array[DType]):
             strides: Number of bytes in each dimension between successive elements of the array
             ptr: Address of an external memory address to alias (``data`` should be ``None``)
             capacity: Maximum size in bytes of the ``ptr`` allocation (``data`` should be ``None``)
-            device (DeviceLike): Device the array lives on
+            device: Device the array lives on
             copy: Whether the incoming ``data`` will be copied or aliased. Aliasing requires that
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
             deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
@@ -3834,7 +3834,7 @@ def _close_cuda_ipc_handle(ptr, size):
 
 
 def from_ipc_handle(
-    handle: bytes, dtype, shape: tuple[int, ...], strides: tuple[int, ...] | None = None, device=None
+    handle: bytes, dtype, shape: tuple[int, ...], strides: tuple[int, ...] | None = None, device: warp.DeviceLike = None
 ) -> array:
     """Create an array from an IPC handle.
 
@@ -3846,7 +3846,7 @@ def from_ipc_handle(
         dtype: One of the available `data types <#data-types>`_, such as :class:`warp.float32`, :class:`warp.mat33`, or a custom `struct <#structs>`_.
         shape: Dimensions of the array.
         strides: Number of bytes in each dimension between successive elements of the array.
-        device (DeviceLike): Device to associate with the array.
+        device: Device to associate with the array.
 
     Returns:
         An array created from the existing memory allocation described by the interprocess memory handle ``handle``.
@@ -4344,7 +4344,8 @@ class Bvh:
 
             In a standard BVH, all objects share one global tree, so queries must traverse the entire hierarchy and filter
             results in user space. Grouped BVH introduces a group identifier for each object and makes sure that objects
-            from the same group occupy an entire subtree whose root can be quickly identified by calling :func:`bvh_get_group_root`.
+            from the same group occupy an entire subtree whose root can be quickly identified by calling
+            :func:`bvh_get_group_root <warp._src.lang.bvh_get_group_root>`.
 
             By starting traversal directly from a group's root node, queries are confined to that group's objects only,
             avoiding unnecessary intersection tests with other groups. This design significantly reduces query overhead
@@ -5404,7 +5405,7 @@ class Volume:
         bg_value=0.0,
         translation=(0.0, 0.0, 0.0),
         points_in_world_space=False,
-        device=None,
+        device: warp.DeviceLike = None,
     ) -> Volume:
         """Allocate a new Volume based on the bounding box defined by min and max.
 
@@ -5424,7 +5425,7 @@ class Volume:
             bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type,
               a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
             translation (array-like): Translation between the index and world spaces.
-            device (DeviceLike): The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
+            device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
         if points_in_world_space:
             min = np.around((np.array(min, dtype=np.float32) - translation) / voxel_size)
@@ -5480,7 +5481,7 @@ class Volume:
         voxel_size: float | list[float] | None = None,
         bg_value=0.0,
         translation=(0.0, 0.0, 0.0),
-        device=None,
+        device: warp.DeviceLike = None,
         transform=None,
     ) -> Volume:
         """Allocate a new :class:`Volume` with active tiles for each point ``tile_points``.
@@ -5507,7 +5508,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
-            device (DeviceLike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         """
         device = warp.get_device(device)
@@ -5590,7 +5591,7 @@ class Volume:
         voxel_points: array,
         voxel_size: float | list[float] | None = None,
         translation=(0.0, 0.0, 0.0),
-        device=None,
+        device: warp.DeviceLike = None,
         transform=None,
     ) -> Volume:
         """Allocate a new :class:`Volume` with active voxel for each point ``voxel_points``.
@@ -5610,7 +5611,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             transform (array-like): Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
-            device (DeviceLike): The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         Raises:
             RuntimeError: If the ``device`` is not a CUDA device.
@@ -5676,10 +5677,11 @@ class MeshQueryPoint:
         v (float32): Barycentric v coordinate of the closest point.
 
     See Also:
-        :func:`mesh_query_point`, :func:`mesh_query_point_no_sign`,
-        :func:`mesh_query_furthest_point_no_sign`,
-        :func:`mesh_query_point_sign_normal`,
-        and :func:`mesh_query_point_sign_winding_number`.
+        :func:`mesh_query_point <warp._src.lang.mesh_query_point>`,
+        :func:`mesh_query_point_no_sign <warp._src.lang.mesh_query_point_no_sign>`,
+        :func:`mesh_query_furthest_point_no_sign <warp._src.lang.mesh_query_furthest_point_no_sign>`,
+        :func:`mesh_query_point_sign_normal <warp._src.lang.mesh_query_point_sign_normal>`,
+        :func:`mesh_query_point_sign_winding_number <warp._src.lang.mesh_query_point_sign_winding_number>`
     """
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415

@@ -7,7 +7,7 @@ Printing Values
 ---------------
 
 Often one of the best debugging methods is to simply print values from kernels. Warp supports printing all built-in
-types using the ``print()`` function, e.g.:
+types using the :func:`print() <warp._src.lang.print>` function, e.g.:
 
 .. testcode::
 
@@ -19,7 +19,7 @@ types using the ``print()`` function, e.g.:
 
     [1.0, 2.0, 3.0]
 
-In addition, formatted C-style printing for *scalar types* is available through the :func:`wp.printf() <printf>` function, e.g.:
+In addition, formatted C-style printing for *scalar types* is available through :func:`wp.printf() <warp._src.lang.printf>`, e.g.:
 
 .. code-block:: python
 
@@ -49,7 +49,7 @@ Verbose *warnings* can be enabled with::
 
     wp.config.verbose_warnings = True
 
-This can be useful in identify where a particular ``Warp UserWarning`` message is being emitted from.
+This can be useful in identifying where a particular ``Warp UserWarning`` message is being emitted from.
 
 .. _debug-mode:
 
