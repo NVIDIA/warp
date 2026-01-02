@@ -114,7 +114,7 @@ Step-Through Debugging
 
 It is possible to attach IDE debuggers such as Visual Studio to Warp processes to step through generated kernel code.
 Users should first compile the kernels in debug mode by setting::
-   
+
     wp.config.mode = "debug"
 
 This setting ensures that line numbers, and debug symbols are generated correctly. After launching the Python process,
@@ -170,9 +170,9 @@ for each module that was compiled at runtime.
 The name of each folder ends with a hexadecimal hash constructed from the module contents to avoid potential
 conflicts when using multiple processes and to support the caching of runtime-defined kernels.
 
-If an bug with Warp's kernel caching logic is suspected, kernel caching can be disabled by setting::
+If a bug with Warp's kernel caching logic is suspected, kernel caching can be disabled by setting::
 
-    wp.config.cache_kernels = True
+    wp.config.cache_kernels = False
 
 CUDA Error Verification
 -----------------------
