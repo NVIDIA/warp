@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Build Warp
-        run: uv run build_lib.py --llvm_path /opt/llvm
+        run: uv run build_lib.py --llvm-path /opt/llvm
       
       - name: Build wheel
         run: uv build --wheel
@@ -49,7 +49,7 @@ docker run --rm \
   -v $(pwd):/workspace \
   -w /workspace \
   ghcr.io/nvidia/warp-builder:cuda13 \
-  bash -c "uv run build_lib.py --llvm_path /opt/llvm"
+  bash -c "uv run build_lib.py --llvm-path /opt/llvm"
 
 # 4. Build Python wheel (optional)
 docker run --rm \
@@ -76,7 +76,7 @@ docker run --rm -it \
   bash
 
 # Inside container:
-# uv run build_lib.py --llvm_path /opt/llvm       # Build
+# uv run build_lib.py --llvm-path /opt/llvm       # Build
 # uv run --extra dev -m warp.tests -s autodetect  # Test (GPU tests will be skipped without --gpus)
 # uv build --wheel                                 # Package
 ```
@@ -226,6 +226,6 @@ docker run --rm ghcr.io/nvidia/warp-builder:cuda13 cat /opt/llvm/licenses/README
 
 ## Notes
 
-- Always pass `--llvm_path /opt/llvm` to `build_lib.py` to use the built-in LLVM
+- Always pass `--llvm-path /opt/llvm` to `build_lib.py` to use the built-in LLVM
 - Images are self-contained with no external dependencies (no Packman required)
 - LLVM is compiled with targets for X86/AArch64 + NVPTX

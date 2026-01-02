@@ -444,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
     # propagate verbosity to build subsystem
     build_dll.verbose_cmd = args.verbose
 
-    # check LLVM build dependencies early if --build_llvm is set
+    # check LLVM build dependencies early if --build-llvm is set
     if args.build_llvm:
         try:
             build_llvm.check_build_dependencies(verbose=args.verbose)
@@ -476,7 +476,9 @@ def main(argv: list[str] | None = None) -> int:
     if platform.system() == "Windows":
         if args.msvc_path or args.sdk_path:
             # user provided MSVC and Windows SDK
-            assert args.msvc_path and args.sdk_path, "--msvc_path and --sdk_path must be used together."
+            if not (args.msvc_path and args.sdk_path):
+                print("Error: --msvc-path and --sdk-path must be used together")
+                return 1
             args.host_compiler = build_dll.set_msvc_env(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
         else:
             # attempt to find MSVC in environment (will set vcvars)

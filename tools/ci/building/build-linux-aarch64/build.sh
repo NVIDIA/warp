@@ -85,9 +85,9 @@ else
         source "${SCRIPT_DIR}/../../../packman/packman" pull --platform "${platform}" "${SCRIPT_DIR}/../../../../deps/host-deps.packman.xml" --verbose
         LINBUILD="$SCRIPT_DIR/../../../../_build/host-deps/linbuild/linbuild.sh"
         # build with docker for increased compatibility
-        $LINBUILD --profile=centos7-gcc10-builder -- $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
+        $LINBUILD --profile=centos7-gcc10-builder -- $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda-path=$CUDA --mode=$BUILD_MODE
     else
         # build without docker
-        $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda_path=$CUDA --mode=$BUILD_MODE
+        $PYTHON "$SCRIPT_DIR/../../../../build_lib.py" --cuda-path=$CUDA --mode=$BUILD_MODE
     fi
 fi
