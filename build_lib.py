@@ -392,13 +392,13 @@ def main(argv: list[str] | None = None) -> int:
     group_clang_llvm.add_argument(
         "--llvm-path",
         type=str,
-        help="Path to LLVM installation (adds bin directory to PATH for use with --clang-build-toolchain)",
+        help="Path to existing LLVM installation (used for warp-clang library and adds bin to PATH for --clang-build-toolchain)",
     )
     group_clang_llvm.add_argument(
         "--build-llvm",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Build Clang/LLVM from source (if disabled, downloads prebuilt LLVM via packman)",
+        help="Build Clang/LLVM from source (takes ~60 minutes)",
     )
     group_clang_llvm.add_argument(
         "--llvm-source-path",

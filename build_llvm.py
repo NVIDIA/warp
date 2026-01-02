@@ -378,7 +378,12 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
 
         clang_dll_path = os.path.join(build_path, "bin", lib_name)
 
-        if args.build_llvm:
+        if hasattr(args, "llvm_path") and args.llvm_path:
+            # Use existing LLVM installation (e.g., from Docker /opt/llvm)
+            libpath = os.path.join(args.llvm_path, "lib")
+            if not os.path.exists(libpath):
+                raise FileNotFoundError(f"LLVM library directory not found at {libpath}")
+        elif args.build_llvm:
             # obtain Clang and LLVM libraries from the local build
             install_path = os.path.join(llvm_install_path, f"{args.mode}-{arch}")
             libpath = os.path.join(install_path, "lib")
