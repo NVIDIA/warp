@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased] - 2026-??
+
+### Added
+
+### Removed
+
+### Deprecated
+
+### Changed
+
+- Rename all `build_lib.py` CLI flags to use kebab-case for consistency (e.g., `--cuda_path` to `--cuda-path`,
+  `--llvm_source_path` to `--llvm-source-path`). Rename `--libmathdx` to `--use-libmathdx` for clarity.
+
+### Fixed
+
+- Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
+  downloading from packman.
+
+### Documentation
+
 ## [1.11.0] - 2026-01-02
 
 ### Added

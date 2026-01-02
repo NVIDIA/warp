@@ -524,8 +524,13 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         else:
             raise RuntimeError("Warp build error: No host compiler was found")
 
-        cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
-        cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
+        # Use LLVM include path if provided (e.g., from Docker /opt/llvm)
+        if hasattr(args, "llvm_path") and args.llvm_path:
+            cpp_includes = f' /I"{args.llvm_path}/include"'
+        else:
+            # Use LLVM from source build (external/llvm-project) or packman (_build/host-deps)
+            cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
+            cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' /I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
@@ -628,8 +633,13 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         cuda_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "nvcc"
         cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else args.host_compiler
 
-        cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
-        cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
+        # Use LLVM include path if provided (e.g., from Docker /opt/llvm)
+        if hasattr(args, "llvm_path") and args.llvm_path:
+            cpp_includes = f' -I"{args.llvm_path}/include"'
+        else:
+            # Use LLVM from source build (external/llvm-project) or packman (_build/host-deps)
+            cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
+            cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
         cuda_includes = f' -I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
