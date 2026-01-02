@@ -1,0 +1,62 @@
+﻿warp.fem.FrontierSides
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: FrontierSides
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FrontierSides.__init__
+      ~FrontierSides.cell_domain
+      ~FrontierSides.element_arg_value
+      ~FrontierSides.element_count
+      ~FrontierSides.element_index_arg_value
+      ~FrontierSides.fill_element_arg
+      ~FrontierSides.fill_element_index_arg
+      ~FrontierSides.geometry_element_count
+      ~FrontierSides.notify_operator_usage
+      ~FrontierSides.reference_element
+      ~FrontierSides.supports_lookup
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FrontierSides.DomainArg
+      ~FrontierSides.ElementArg
+      ~FrontierSides.ElementIndexArg
+      ~FrontierSides.cell_to_element_coords
+      ~FrontierSides.dimension
+      ~FrontierSides.domain_cell_arg
+      ~FrontierSides.element_closest_point
+      ~FrontierSides.element_coordinates
+      ~FrontierSides.element_deformation_gradient
+      ~FrontierSides.element_index
+      ~FrontierSides.element_inner_cell_coords
+      ~FrontierSides.element_inner_cell_index
+      ~FrontierSides.element_kind
+      ~FrontierSides.element_measure
+      ~FrontierSides.element_measure_ratio
+      ~FrontierSides.element_normal
+      ~FrontierSides.element_outer_cell_coords
+      ~FrontierSides.element_outer_cell_index
+      ~FrontierSides.element_position
+      ~FrontierSides.name
+      ~FrontierSides.geometry_partition
+      ~FrontierSides.geometry
+      ~FrontierSides.element_partition_index
+      ~FrontierSides.element_lookup
+      ~FrontierSides.element_partition_lookup
+   
+   

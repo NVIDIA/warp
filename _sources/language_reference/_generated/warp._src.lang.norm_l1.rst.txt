@@ -1,0 +1,20 @@
+﻿warp.\_src.lang.norm\_l1
+========================
+
+.. function:: warp._src.lang.norm_l1(v: Any) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Computes the L1 norm of a vector v.
+
+    .. math:: \|v\|_1 = \sum_i |v_i|
+
+    Args:
+        v (Vector[Any,Float]): The vector to compute the L1 norm of.
+
+    Returns:
+        float: The L1 norm of the vector.

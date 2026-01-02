@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.pow
+===================
+
+.. function:: warp._src.lang.pow(x: Float, y: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the result of ``x`` raised to power of ``y``.

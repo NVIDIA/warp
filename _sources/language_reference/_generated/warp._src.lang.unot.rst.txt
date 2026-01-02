@@ -1,0 +1,110 @@
+﻿warp.\_src.lang.unot
+====================
+
+.. function:: warp._src.lang.unot(a: bool) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: int8) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: uint8) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: int16) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: uint16) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: uint32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: int64) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: uint64) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   
+
+.. function:: warp._src.lang.unot(a: Array[Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   

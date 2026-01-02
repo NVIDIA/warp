@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_rpy
+=========================
+
+.. function:: warp._src.lang.quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.

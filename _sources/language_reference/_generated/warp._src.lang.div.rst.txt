@@ -1,0 +1,78 @@
+﻿warp.\_src.lang.div
+===================
+
+.. function:: warp._src.lang.div(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.div(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.div(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.div(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.div(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.div(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   

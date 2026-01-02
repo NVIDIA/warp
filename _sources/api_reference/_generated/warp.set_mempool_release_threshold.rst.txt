@@ -1,0 +1,6 @@
+﻿warp.set\_mempool\_release\_threshold
+=====================================
+
+.. currentmodule:: warp
+
+.. autofunction:: set_mempool_release_threshold

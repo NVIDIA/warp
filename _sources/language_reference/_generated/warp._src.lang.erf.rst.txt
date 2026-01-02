@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.erf
+===================
+
+.. function:: warp._src.lang.erf(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the error function of ``x``.

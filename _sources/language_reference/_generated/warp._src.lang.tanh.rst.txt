@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.tanh
+====================
+
+.. function:: warp._src.lang.tanh(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the tanh of ``x``.

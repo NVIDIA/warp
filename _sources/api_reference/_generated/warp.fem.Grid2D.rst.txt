@@ -1,0 +1,90 @@
+﻿warp.fem.Grid2D
+===============
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Grid2D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Grid2D.__init__
+      ~Grid2D.boundary_side_count
+      ~Grid2D.build_bvh
+      ~Grid2D.bvh_id
+      ~Grid2D.cell_arg_value
+      ~Grid2D.cell_count
+      ~Grid2D.fill_cell_arg
+      ~Grid2D.fill_side_arg
+      ~Grid2D.fill_side_index_arg
+      ~Grid2D.make_filtered_cell_lookup
+      ~Grid2D.reference_cell
+      ~Grid2D.reference_side
+      ~Grid2D.side_arg_value
+      ~Grid2D.side_count
+      ~Grid2D.side_index_arg_value
+      ~Grid2D.supports_cell_lookup
+      ~Grid2D.update_bvh
+      ~Grid2D.vertex_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Grid2D.ALT_AXIS
+      ~Grid2D.CellArg
+      ~Grid2D.LONG_AXIS
+      ~Grid2D.Side
+      ~Grid2D.SideArg
+      ~Grid2D.SideIndexArg
+      ~Grid2D.base
+      ~Grid2D.boundary_side_index
+      ~Grid2D.cell_closest_point
+      ~Grid2D.cell_coordinates
+      ~Grid2D.cell_deformation_gradient
+      ~Grid2D.cell_dimension
+      ~Grid2D.cell_index
+      ~Grid2D.cell_inverse_deformation_gradient
+      ~Grid2D.cell_lookup
+      ~Grid2D.cell_measure
+      ~Grid2D.cell_measure_ratio
+      ~Grid2D.cell_normal
+      ~Grid2D.cell_position
+      ~Grid2D.cell_size
+      ~Grid2D.dimension
+      ~Grid2D.extents
+      ~Grid2D.get_cell
+      ~Grid2D.get_side
+      ~Grid2D.is_flipped
+      ~Grid2D.name
+      ~Grid2D.orient
+      ~Grid2D.origin
+      ~Grid2D.res
+      ~Grid2D.side_closest_point
+      ~Grid2D.side_coordinates
+      ~Grid2D.side_deformation_gradient
+      ~Grid2D.side_from_cell_coords
+      ~Grid2D.side_index
+      ~Grid2D.side_inner_cell_coords
+      ~Grid2D.side_inner_cell_index
+      ~Grid2D.side_inner_inverse_deformation_gradient
+      ~Grid2D.side_measure
+      ~Grid2D.side_measure_ratio
+      ~Grid2D.side_normal
+      ~Grid2D.side_outer_cell_coords
+      ~Grid2D.side_outer_cell_index
+      ~Grid2D.side_outer_inverse_deformation_gradient
+      ~Grid2D.side_position
+      ~Grid2D.side_to_cell_arg
+      ~Grid2D.strides
+   
+   

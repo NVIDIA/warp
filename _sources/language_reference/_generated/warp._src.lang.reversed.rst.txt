@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.reversed
+========================
+
+.. function:: warp._src.lang.reversed(range: range_t) -> range_t
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Returns the range in reversed order.

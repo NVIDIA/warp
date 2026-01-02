@@ -1,0 +1,20 @@
+﻿warp.\_src.lang.norm\_l2
+========================
+
+.. function:: warp._src.lang.norm_l2(v: Any) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Computes the L2 norm of a vector v.
+
+    .. math:: \|v\|_2 = \sqrt{\sum_i v_i^2}
+
+    Args:
+        v (Vector[Any,Float]): The vector to compute the L2 norm of.
+
+    Returns:
+        float: The L2 norm of the vector.

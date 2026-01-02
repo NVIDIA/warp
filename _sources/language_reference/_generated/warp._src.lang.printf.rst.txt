@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.printf
+======================
+
+.. function:: warp._src.lang.printf(fmt: str, *args: Any) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Allows printing formatted strings using C-style format specifiers.

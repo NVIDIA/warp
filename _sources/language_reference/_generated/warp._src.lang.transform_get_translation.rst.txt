@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_get\_translation
+===========================================
+
+.. function:: warp._src.lang.transform_get_translation(xform: Transformation[Float]) -> Vector[3,Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the translational part of a transform ``xform``.

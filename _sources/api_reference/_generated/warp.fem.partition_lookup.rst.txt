@@ -1,0 +1,6 @@
+﻿warp.fem.partition\_lookup
+==========================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: partition_lookup

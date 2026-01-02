@@ -1,0 +1,58 @@
+﻿warp.\_src.lang.tid
+===================
+
+.. function:: warp._src.lang.tid() -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return the current thread index for a 1D kernel launch.
+
+    Note that this is the *global* index of the thread in the range [0, dim)
+    where dim is the parameter passed to kernel launch.
+
+    This function may not be called from user-defined Warp functions.
+
+.. function:: warp._src.lang.tid() -> tuple[int, int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return the current thread indices for a 2D kernel launch.
+
+    Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+    This function may not be called from user-defined Warp functions.
+
+.. function:: warp._src.lang.tid() -> tuple[int, int, int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return the current thread indices for a 3D kernel launch.
+
+    Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+    This function may not be called from user-defined Warp functions.
+
+.. function:: warp._src.lang.tid() -> tuple[int, int, int, int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return the current thread indices for a 4D kernel launch.
+
+    Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+
+    This function may not be called from user-defined Warp functions.

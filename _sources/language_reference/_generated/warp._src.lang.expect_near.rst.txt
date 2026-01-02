@@ -1,0 +1,41 @@
+﻿warp.\_src.lang.expect\_near
+============================
+
+.. function:: warp._src.lang.expect_near(a: Float, b: Float, tolerance: Float) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude
+
+.. function:: warp._src.lang.expect_near(a: Vector[Any,Float], b: Vector[Any,Float], tolerance: Float) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+.. function:: warp._src.lang.expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude
+
+.. function:: warp._src.lang.expect_near(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], tolerance: Float) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude

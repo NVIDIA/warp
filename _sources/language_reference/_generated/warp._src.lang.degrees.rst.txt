@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.degrees
+=======================
+
+.. function:: warp._src.lang.degrees(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Convert ``x`` from radians into degrees.

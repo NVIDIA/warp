@@ -1,0 +1,6 @@
+﻿warp.jax\_experimental.ffi.clear\_jax\_callable\_graph\_cache
+=============================================================
+
+.. currentmodule:: warp.jax_experimental.ffi
+
+.. autofunction:: clear_jax_callable_graph_cache

@@ -1,0 +1,21 @@
+﻿warp.\_src.lang.zeros
+=====================
+
+.. function:: warp._src.lang.zeros(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   
+
+.. function:: warp._src.lang.zeros(shape: int32, dtype: Any) -> Array[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   

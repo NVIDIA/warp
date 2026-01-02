@@ -1,0 +1,53 @@
+﻿warp.fem.GeometryField
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: GeometryField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryField.__init__
+      ~GeometryField.divergence_valid
+      ~GeometryField.eval_arg_value
+      ~GeometryField.eval_degree
+      ~GeometryField.eval_div_inner
+      ~GeometryField.eval_div_outer
+      ~GeometryField.eval_grad_inner
+      ~GeometryField.eval_grad_outer
+      ~GeometryField.eval_inner
+      ~GeometryField.eval_outer
+      ~GeometryField.eval_reference_grad_inner
+      ~GeometryField.eval_reference_grad_outer
+      ~GeometryField.fill_eval_arg
+      ~GeometryField.gradient_valid
+      ~GeometryField.make_deformed_geometry
+      ~GeometryField.notify_operator_usage
+      ~GeometryField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeometryField.degree
+      ~GeometryField.divergence_dtype
+      ~GeometryField.dtype
+      ~GeometryField.element_kind
+      ~GeometryField.geometry
+      ~GeometryField.gradient_dtype
+      ~GeometryField.name
+      ~GeometryField.reference_gradient_dtype
+      ~GeometryField.EvalArg
+      ~GeometryField.ElementEvalArg
+   
+   

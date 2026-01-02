@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.householder\_qr\_decomposition
+==============================================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autodata:: householder_qr_decomposition

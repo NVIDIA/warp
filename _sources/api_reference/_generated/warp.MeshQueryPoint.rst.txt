@@ -1,0 +1,28 @@
+﻿warp.MeshQueryPoint
+===================
+
+.. currentmodule:: warp
+
+.. autoclass:: MeshQueryPoint
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MeshQueryPoint.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeshQueryPoint.vars
+   
+   

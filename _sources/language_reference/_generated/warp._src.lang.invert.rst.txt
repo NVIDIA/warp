@@ -1,0 +1,31 @@
+﻿warp.\_src.lang.invert
+======================
+
+.. function:: warp._src.lang.invert(a: Int) -> Int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   
+
+.. function:: warp._src.lang.invert(a: Vector[Any,Int]) -> Vector[Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   
+
+.. function:: warp._src.lang.invert(a: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   

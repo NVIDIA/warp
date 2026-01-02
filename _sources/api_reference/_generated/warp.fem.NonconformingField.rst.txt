@@ -1,0 +1,53 @@
+﻿warp.fem.NonconformingField
+===========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: NonconformingField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NonconformingField.__init__
+      ~NonconformingField.divergence_valid
+      ~NonconformingField.eval_arg_value
+      ~NonconformingField.eval_degree
+      ~NonconformingField.eval_div_inner
+      ~NonconformingField.eval_div_outer
+      ~NonconformingField.eval_grad_inner
+      ~NonconformingField.eval_grad_outer
+      ~NonconformingField.eval_inner
+      ~NonconformingField.eval_outer
+      ~NonconformingField.eval_reference_grad_inner
+      ~NonconformingField.eval_reference_grad_outer
+      ~NonconformingField.fill_eval_arg
+      ~NonconformingField.gradient_valid
+      ~NonconformingField.make_deformed_geometry
+      ~NonconformingField.notify_operator_usage
+      ~NonconformingField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NonconformingField.degree
+      ~NonconformingField.divergence_dtype
+      ~NonconformingField.dtype
+      ~NonconformingField.element_kind
+      ~NonconformingField.geometry
+      ~NonconformingField.gradient_dtype
+      ~NonconformingField.name
+      ~NonconformingField.reference_gradient_dtype
+      ~NonconformingField.EvalArg
+      ~NonconformingField.ElementEvalArg
+   
+   

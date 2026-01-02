@@ -1,0 +1,25 @@
+﻿warp.MarchingCubes
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: MarchingCubes
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MarchingCubes.__init__
+      ~MarchingCubes.extract_surface_marching_cubes
+      ~MarchingCubes.resize
+      ~MarchingCubes.surface
+   
+   
+
+   
+   
+   

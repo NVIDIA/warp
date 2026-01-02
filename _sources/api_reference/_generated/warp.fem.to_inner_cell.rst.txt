@@ -1,0 +1,6 @@
+﻿warp.fem.to\_inner\_cell
+========================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: to_inner_cell

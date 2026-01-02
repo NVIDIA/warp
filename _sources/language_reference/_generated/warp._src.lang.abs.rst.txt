@@ -1,0 +1,23 @@
+﻿warp.\_src.lang.abs
+===================
+
+.. function:: warp._src.lang.abs(x: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the absolute value of ``x``.
+
+.. function:: warp._src.lang.abs(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the absolute values of the elements of ``x``.

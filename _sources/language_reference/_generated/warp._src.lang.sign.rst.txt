@@ -1,0 +1,22 @@
+﻿warp.\_src.lang.sign
+====================
+
+.. function:: warp._src.lang.sign(x: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return -1 if ``x`` < 0, return 1 otherwise.
+
+.. function:: warp._src.lang.sign(x: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return -1 for the negative elements of ``x``, and 1 otherwise.

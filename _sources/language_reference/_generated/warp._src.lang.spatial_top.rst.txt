@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_top
+============================
+
+.. function:: warp._src.lang.spatial_top(svec: Vector[6,Float]) -> Vector[3,Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the top (first) part of a 6D screw vector.

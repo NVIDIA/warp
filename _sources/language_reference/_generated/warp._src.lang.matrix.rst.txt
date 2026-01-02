@@ -1,0 +1,29 @@
+﻿warp.\_src.lang.matrix
+======================
+
+.. function:: warp._src.lang.matrix(pos: Vector[3,Float], rot: Quaternion[Float], scale: Vector[3,Float], dtype: Float) -> Matrix[4,4,Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a 4x4 transformation matrix that applies the transformations as
+    Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
+
+    .. versionremoved:: 1.10
+       This function has been removed in favor of :func:`warp.transform_compose <warp._src.lang.transform_compose>`.
+
+    .. deprecated:: 1.8
+
+.. function:: warp._src.lang.matrix(*args: Scalar, shape: tuple[int, int], dtype: Scalar) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized.

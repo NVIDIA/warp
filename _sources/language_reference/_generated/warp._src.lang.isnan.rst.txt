@@ -1,0 +1,53 @@
+﻿warp.\_src.lang.isnan
+=====================
+
+.. function:: warp._src.lang.isnan(a: Scalar) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return ``True`` if ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
+.. function:: warp._src.lang.isnan(a: Vector[Any,Scalar]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return ``True`` if any element of the vector ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
+.. function:: warp._src.lang.isnan(a: Quaternion[Scalar]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    
+
+.. function:: warp._src.lang.isnan(a: Matrix[Any,Any,Scalar]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Return ``True`` if any element of the matrix ``a`` is NaN, otherwise return ``False``.
+
+    .. attention:: This function will no longer support integer types as input. Please use float types instead.
+    

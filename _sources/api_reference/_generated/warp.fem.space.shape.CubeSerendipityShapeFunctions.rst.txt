@@ -1,0 +1,42 @@
+﻿warp.fem.space.shape.CubeSerendipityShapeFunctions
+==================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeSerendipityShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeSerendipityShapeFunctions.__init__
+      ~CubeSerendipityShapeFunctions.element_node_tets
+      ~CubeSerendipityShapeFunctions.element_vtk_cells
+      ~CubeSerendipityShapeFunctions.make_element_inner_weight
+      ~CubeSerendipityShapeFunctions.make_element_inner_weight_gradient
+      ~CubeSerendipityShapeFunctions.make_node_coords_in_element
+      ~CubeSerendipityShapeFunctions.make_node_quadrature_weight
+      ~CubeSerendipityShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeSerendipityShapeFunctions.EDGE
+      ~CubeSerendipityShapeFunctions.FACE
+      ~CubeSerendipityShapeFunctions.INTERIOR
+      ~CubeSerendipityShapeFunctions.VERTEX
+      ~CubeSerendipityShapeFunctions.name
+      ~CubeSerendipityShapeFunctions.value
+      ~CubeSerendipityShapeFunctions.ORDER
+      ~CubeSerendipityShapeFunctions.NODES_PER_ELEMENT
+   
+   

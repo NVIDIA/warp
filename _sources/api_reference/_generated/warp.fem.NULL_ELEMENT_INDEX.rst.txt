@@ -1,0 +1,6 @@
+﻿warp.fem.NULL\_ELEMENT\_INDEX
+=============================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: NULL_ELEMENT_INDEX

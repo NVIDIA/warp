@@ -1,0 +1,38 @@
+﻿warp.fem.NodeIndex
+==================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: NodeIndex
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NodeIndex.__init__
+      ~NodeIndex.as_integer_ratio
+      ~NodeIndex.bit_count
+      ~NodeIndex.bit_length
+      ~NodeIndex.conjugate
+      ~NodeIndex.from_bytes
+      ~NodeIndex.is_integer
+      ~NodeIndex.to_bytes
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NodeIndex.denominator
+      ~NodeIndex.imag
+      ~NodeIndex.numerator
+      ~NodeIndex.real
+   
+   

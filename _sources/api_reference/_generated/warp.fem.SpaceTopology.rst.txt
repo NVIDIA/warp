@@ -1,0 +1,44 @@
+﻿warp.fem.SpaceTopology
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: SpaceTopology
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SpaceTopology.__init__
+      ~SpaceTopology.element_node_count
+      ~SpaceTopology.element_node_index
+      ~SpaceTopology.element_node_indices
+      ~SpaceTopology.fill_topo_arg
+      ~SpaceTopology.full_space_topology
+      ~SpaceTopology.is_derived_from
+      ~SpaceTopology.make_generic_side_neighbor_node_counts
+      ~SpaceTopology.node_count
+      ~SpaceTopology.side_neighbor_node_counts
+      ~SpaceTopology.topo_arg_value
+      ~SpaceTopology.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SpaceTopology.TopologyArg
+      ~SpaceTopology.geometry
+      ~SpaceTopology.is_trace
+      ~SpaceTopology.name
+      ~SpaceTopology.dimension
+      ~SpaceTopology.MAX_NODES_PER_ELEMENT
+   
+   

@@ -1,0 +1,43 @@
+﻿warp.fem.FieldLike
+==================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: FieldLike
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FieldLike.__init__
+      ~FieldLike.divergence_valid
+      ~FieldLike.eval_arg_value
+      ~FieldLike.eval_degree
+      ~FieldLike.eval_div_inner
+      ~FieldLike.eval_div_outer
+      ~FieldLike.eval_grad_inner
+      ~FieldLike.eval_grad_outer
+      ~FieldLike.eval_inner
+      ~FieldLike.eval_outer
+      ~FieldLike.fill_eval_arg
+      ~FieldLike.gradient_valid
+      ~FieldLike.notify_operator_usage
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FieldLike.degree
+      ~FieldLike.name
+      ~FieldLike.EvalArg
+      ~FieldLike.ElementEvalArg
+   
+   

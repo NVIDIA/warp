@@ -1,0 +1,6 @@
+﻿warp.half\_pi
+=============
+
+.. currentmodule:: warp
+
+.. autodata:: half_pi

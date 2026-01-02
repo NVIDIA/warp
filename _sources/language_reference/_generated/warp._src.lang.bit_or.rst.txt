@@ -1,0 +1,41 @@
+﻿warp.\_src.lang.bit\_or
+=======================
+
+.. function:: warp._src.lang.bit_or(a: Int, b: Int) -> Int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   
+
+.. function:: warp._src.lang.bit_or(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   
+
+.. function:: warp._src.lang.bit_or(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   
+
+.. function:: warp._src.lang.bit_or(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Bitwise OR each element of two tiles together

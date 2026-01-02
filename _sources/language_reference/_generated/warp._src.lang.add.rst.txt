@@ -1,0 +1,67 @@
+﻿warp.\_src.lang.add
+===================
+
+.. function:: warp._src.lang.add(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.add(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.add(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.add(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Add each element of two tiles together

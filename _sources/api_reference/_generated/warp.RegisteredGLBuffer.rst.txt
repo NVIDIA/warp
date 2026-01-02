@@ -1,0 +1,32 @@
+﻿warp.RegisteredGLBuffer
+=======================
+
+.. currentmodule:: warp
+
+.. autoclass:: RegisteredGLBuffer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RegisteredGLBuffer.__init__
+      ~RegisteredGLBuffer.map
+      ~RegisteredGLBuffer.unmap
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RegisteredGLBuffer.NONE
+      ~RegisteredGLBuffer.READ_ONLY
+      ~RegisteredGLBuffer.WRITE_DISCARD
+   
+   

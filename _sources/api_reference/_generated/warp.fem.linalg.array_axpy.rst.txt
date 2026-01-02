@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.array\_axpy
+===========================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autofunction:: array_axpy

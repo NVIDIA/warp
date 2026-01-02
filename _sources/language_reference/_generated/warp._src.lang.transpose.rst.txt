@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transpose
+=========================
+
+.. function:: warp._src.lang.transpose(a: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the transpose of the matrix ``a``.

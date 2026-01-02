@@ -1,0 +1,25 @@
+﻿warp.\_src.lang.svd2
+====================
+
+.. function:: warp._src.lang.svd2(A: Matrix[2,2,Float]) -> tuple[Matrix[2,2,Float], Vector[2,Float], Matrix[2,2,Float]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.
+
+.. function:: warp._src.lang.svd2(A: Matrix[2,2,Float], U: Matrix[2,2,Float], sigma: Vector[2,Float], V: Matrix[2,2,Float]) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
+    while the left and right basis vectors are returned in ``U`` and ``V``.

@@ -1,0 +1,177 @@
+﻿warp.\_src.lang.mul
+===================
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Matrix[Any,Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Vector[Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Transformation[Scalar]) -> Transformation[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   
+
+.. function:: warp._src.lang.mul(x: Tile[Any,tuple[int, ...]], y: Scalar) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply each element of a tile by a scalar
+
+.. function:: warp._src.lang.mul(x: Scalar, y: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply each element of a tile by a scalar

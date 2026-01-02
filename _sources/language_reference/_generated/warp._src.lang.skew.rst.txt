@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.skew
+====================
+
+.. function:: warp._src.lang.skew(vec: Vector[3,Scalar]) -> Matrix[3,3,Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.

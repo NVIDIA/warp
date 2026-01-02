@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.exp
+===================
+
+.. function:: warp._src.lang.exp(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the value of the exponential function :math:`e^x`.

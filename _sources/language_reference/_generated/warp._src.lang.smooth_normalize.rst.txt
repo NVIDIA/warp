@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.smooth\_normalize
+=================================
+
+.. function:: warp._src.lang.smooth_normalize(v: Any, delta: float) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Normalizes a vector using the pseudo-Huber norm.
+
+    See :func:`norm_pseudo_huber`.
+
+    .. math::
+        \frac{v}{H^\prime(v)}
+
+    Args:
+        v (Vector[Any,Float]): The vector to normalize.
+        delta (float): The threshold value, defaults to 1.0.
+
+    Returns:
+        Vector[Any,Float]: The normalized vector.
