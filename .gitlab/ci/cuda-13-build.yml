@@ -47,7 +47,7 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: ${CI_REGISTRY_IMAGE}/warp-builder:cuda13.0.2-llvm21-latest
+  image: $WARP_BUILDER_IMAGE_CU13
   extends:
     - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
