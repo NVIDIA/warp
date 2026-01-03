@@ -241,7 +241,6 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
         "-D", "CLANG_TOOL_LIBCLANG_BUILD=FALSE",
         "-D", "CLANG_TOOL_SCAN_BUILD_BUILD=FALSE",
         "-D", "CLANG_TOOL_SCAN_BUILD_PY_BUILD=FALSE",
-        "-D", "CLANG_TOOL_CLANG_OFFLOAD_BUNDLER_BUILD=FALSE",
         "-D", "CLANG_TOOL_SCAN_VIEW_BUILD=FALSE",
         "-D", "LLVM_ENABLE_BINDINGS=FALSE",
         "-D", "LLVM_ENABLE_OCAMLDOC=FALSE",
