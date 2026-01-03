@@ -277,6 +277,69 @@ def add_llvm_bin_to_path(args):
     return True
 
 
+def format_include_paths(paths: list[str], prefix: str) -> str:
+    """Format include directory paths as compiler flags.
+
+    Args:
+        paths: List of include directory paths.
+        prefix: Compiler-specific include flag prefix ('/I' for MSVC, '-I' for GCC/Clang).
+
+    Returns:
+        String of formatted include flags with spaces, e.g., ' /I"path1" /I"path2"'.
+    """
+    return "".join([f' {prefix}"{path}"' for path in paths])
+
+
+def get_llvm_include_paths(args, warp_home_path, mode: str, arch: str) -> list[str]:
+    """Get LLVM include directory paths based on configuration.
+
+    Args:
+        args: The argument namespace containing llvm_path.
+        warp_home_path: Path to the warp package directory.
+        mode: Build mode ('debug' or 'release').
+        arch: Target architecture ('x86_64' or 'aarch64').
+
+    Returns:
+        List of LLVM include directory paths to use for compilation.
+
+    Raises:
+        FileNotFoundError: If user-provided llvm_path include directory doesn't exist.
+    """
+    if hasattr(args, "llvm_path") and args.llvm_path:
+        # Use LLVM include path if provided (e.g., from Docker /opt/llvm)
+        include_path = os.path.join(args.llvm_path, "include")
+        if not os.path.isdir(include_path):
+            print(f"Warning: LLVM include directory not found: {include_path}")
+            print(f"The --llvm-path option points to {args.llvm_path}, but it doesn't contain an 'include' directory.")
+            print("Compilation will likely fail if LLVM headers are needed.")
+        elif verbose_cmd:
+            print(f"Using LLVM from --llvm-path: {include_path}")
+        return [include_path]
+    else:
+        # Use LLVM from source build (external/llvm-project) or packman (_build/host-deps)
+        # Priority: prefer source build over packman if both exist
+        source_build_path = os.path.join(
+            warp_home_path.parent, "external", "llvm-project", "out", "install", f"{mode}-{arch}", "include"
+        )
+        packman_path = os.path.join(
+            warp_home_path.parent, "_build", "host-deps", "llvm-project", f"release-{arch}", "include"
+        )
+
+        # Check paths in priority order
+        if os.path.isdir(source_build_path):
+            if verbose_cmd:
+                print(f"Using LLVM from source build: {source_build_path}")
+            return [source_build_path]
+        elif os.path.isdir(packman_path):
+            if verbose_cmd:
+                print(f"Using LLVM from packman: {packman_path}")
+            return [packman_path]
+        else:
+            # Neither path exists yet - return both and let the compiler fail if headers are truly missing
+            # Note: For warp-clang builds, packman fetch happens in build_llvm.py before this is called
+            return [source_build_path, packman_path]
+
+
 def _get_architectures_cu12(
     ctk_version: tuple[int, int], arch: str, target_platform: str, quick_build: bool = False
 ) -> tuple[list[str], list[str]]:
@@ -524,13 +587,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         else:
             raise RuntimeError("Warp build error: No host compiler was found")
 
-        # Use LLVM include path if provided (e.g., from Docker /opt/llvm)
-        if hasattr(args, "llvm_path") and args.llvm_path:
-            cpp_includes = f' /I"{args.llvm_path}/include"'
-        else:
-            # Use LLVM from source build (external/llvm-project) or packman (_build/host-deps)
-            cpp_includes = f' /I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
-            cpp_includes += f' /I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
+        # Build include paths for LLVM and CUDA
+        llvm_include_paths = get_llvm_include_paths(args, warp_home_path, mode, arch)
+        cpp_includes = format_include_paths(llvm_include_paths, "/I")
         cuda_includes = f' /I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
@@ -633,13 +692,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         cuda_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "nvcc"
         cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else args.host_compiler
 
-        # Use LLVM include path if provided (e.g., from Docker /opt/llvm)
-        if hasattr(args, "llvm_path") and args.llvm_path:
-            cpp_includes = f' -I"{args.llvm_path}/include"'
-        else:
-            # Use LLVM from source build (external/llvm-project) or packman (_build/host-deps)
-            cpp_includes = f' -I"{warp_home_path.parent}/external/llvm-project/out/install/{mode}-{arch}/include"'
-            cpp_includes += f' -I"{warp_home_path.parent}/_build/host-deps/llvm-project/release-{arch}/include"'
+        # Build include paths for LLVM and CUDA
+        llvm_include_paths = get_llvm_include_paths(args, warp_home_path, mode, arch)
+        cpp_includes = format_include_paths(llvm_include_paths, "-I")
         cuda_includes = f' -I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
