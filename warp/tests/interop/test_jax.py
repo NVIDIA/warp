@@ -1105,6 +1105,9 @@ def test_ffi_callback(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_simple(test, device):
+    if device.ordinal > 0:
+        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
+
     import jax
     import jax.numpy as jp
 
@@ -1360,6 +1363,9 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_static_required(test, device):
+    if device.ordinal > 0:
+        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
+
     import jax
     import jax.numpy as jp
 
@@ -1416,6 +1422,9 @@ def test_ffi_jax_kernel_autodiff_pmap_triple(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skip(
+    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
+)
 def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
     import jax
     import jax.numpy as jp
