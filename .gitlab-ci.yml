@@ -51,7 +51,8 @@ variables:
   UV_BOOKWORM_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.9.18-bookworm-slim@sha256:31c863502897b16f2019c9754e56983444c36f53016a46cee6a136f5c6def206"
   UV_BOOKWORM_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.9.18-bookworm-slim@sha256:ed8b4a2b0f4a2bf3cbd26a62bf98486c75605c9f129fdfd8f5c9380b5e2b4976"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
-  WARP_BUILDER_IMAGE: "${CI_REGISTRY_IMAGE}/warp-builder:cuda12.9.1-llvm21-latest"
+  WARP_BUILDER_IMAGE_CU12: "${CI_REGISTRY_IMAGE}/warp-builder:cuda12.9.1-llvm21-latest"
+  WARP_BUILDER_IMAGE_CU13: "${CI_REGISTRY_IMAGE}/warp-builder:cuda13.0.2-llvm21-latest"
   
   UV_PYTHON:
     value: "3.12"
@@ -81,28 +82,28 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: $WARP_BUILDER_IMAGE
+  image: $WARP_BUILDER_IMAGE_CU12
   extends:
     - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   before_script:
     - gcc --version
   script:
-    - uv run build_lib.py --cuda_path=/usr/local/cuda
+    - uv run build_lib.py --cuda-path=/usr/local/cuda
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
 linux-x86_64 build:
   stage: build
-  image: $WARP_BUILDER_IMAGE
+  image: $WARP_BUILDER_IMAGE_CU12
   extends:
     - .save_warp_bin_artifact
     - .ipp_lnx_x86_64_cpu_medium
   before_script:
     - gcc --version
   script:
-    - uv run build_lib.py --cuda_path=/usr/local/cuda
+    - uv run build_lib.py --cuda-path=/usr/local/cuda
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -121,7 +122,7 @@ windows-x86_64 build:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
+      uv run build_lib.py --msvc-path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk-path=_build\host-deps\winsdk --cuda-path=_build\target-deps\cuda
 
 mac-aarch64 build:
   stage: build
@@ -138,12 +139,12 @@ mac-aarch64 build:
 
 linux-x86_64 cuda 13 build:
   stage: build
-  image: ${CI_REGISTRY_IMAGE}/warp-builder:cuda13.0.2-llvm21-latest
+  image: $WARP_BUILDER_IMAGE_CU13
   extends:
     - .save_warp_bin_artifact
     - .ipp_lnx_x86_64_cpu_medium
   script:
-    - uv run build_lib.py --cuda_path=/usr/local/cuda
+    - uv run build_lib.py --cuda-path=/usr/local/cuda
     - mkdir -p warp/bin/linux-x86_64
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
@@ -541,7 +542,7 @@ linux-x86_64 python matrix test:
 linux-x86_64 asv:
   stage: test
   needs: []
-  image: $WARP_BUILDER_IMAGE
+  image: $WARP_BUILDER_IMAGE_CU12
   extends:
     - .ipp_lnx_x86_64_gpu
   variables:

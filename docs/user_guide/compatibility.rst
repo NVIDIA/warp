@@ -115,7 +115,7 @@ To build Warp from source, you need:
     $ python build_lib.py
     $ pip install -e .
 
-Run ``python build_lib.py --help`` for build options like ``--cuda_path``, ``--mode``, and ``--verbose``.
+Run ``python build_lib.py --help`` for build options like ``--cuda-path``, ``--mode``, and ``--verbose``.
 
 For detailed instructions, see :doc:`installation`.
 

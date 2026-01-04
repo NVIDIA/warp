@@ -502,7 +502,7 @@ leveraging MathDx APIs.
 
 When building Warp locally using ``build_lib.py``, the script will attempt to automatically download ``libmathdx``
 from the `cuBLASDx Downloads Page <https://developer.nvidia.com/cublasdx-downloads>`__.
-A path to an existing ``libmathdx`` installation can also be specified using the ``--libmathdx_path`` option
+A path to an existing ``libmathdx`` installation can also be specified using the ``--libmathdx-path`` option
 when running ``build_lib.py`` or by defining the path in the ``LIBMATHDX_HOME`` environment variable.
 
 Please note that CUDA Toolkit 12.6.3 or higher is required for full MathDx support when building Warp from source.

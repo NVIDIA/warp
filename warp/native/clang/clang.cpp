@@ -25,6 +25,9 @@
 #else
 #include <llvm/Support/CodeGen.h>
 #endif
+#if LLVM_VERSION_MAJOR == 21
+#include <llvm/Support/VirtualFileSystem.h>
+#endif
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -201,8 +204,10 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
     }
 
-#if LLVM_VERSION_MAJOR >= 21
+#if LLVM_VERSION_MAJOR >= 22
     compiler_instance.createDiagnostics(diagnostic_engine->getClient(), false);
+#elif LLVM_VERSION_MAJOR == 21
+    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), diagnostic_engine->getClient(), false);
 #else
     compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
 #endif
