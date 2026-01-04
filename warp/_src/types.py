@@ -5652,6 +5652,75 @@ class Volume:
         return volume
 
 
+class Texture:
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance.id = None
+        return instance
+
+    def __init__(
+        self,
+        data: array,
+        width: int,
+        height: int,
+        channels: int = 4,
+        normalized_coords: builtins.bool = True,
+        address_mode: builtins.int = 1,
+        filter_mode: builtins.int = 1,
+    ):
+        """Class representing a texture object.
+
+        Args:
+            data: Array of bytes representing the texture.
+            width: Width of the texture.
+            height: Height of the texture.
+            channels: Number of channels in the texture.
+            normalized_coords: Whether the texture coordinates are normalized.
+            address_mode: Address mode for the texture.
+            filter_mode: Filter mode for the texture.
+        """
+
+        self.runtime = warp._src.context.runtime
+
+        if data is None:
+            return
+        self.device = data.device
+
+        if self.device.is_cpu:
+            raise NotImplementedError("Texture creation on CPU is not supported")
+        else:
+            # format 0 = float32, 1 = uint8
+            if channels not in (1, 2, 4):
+                raise RuntimeError("Texture channels must be 1, 2 or 4")
+            self.id = self.runtime.core.wp_texture_create_device(
+                self.device.context,
+                ctypes.cast(data.ptr, ctypes.c_void_p),
+                ctypes.c_uint64(data.size),
+                ctypes.c_int(width),
+                ctypes.c_int(height),
+                ctypes.c_int(channels),
+                ctypes.c_int(0),
+                ctypes.c_int(int(normalized_coords)),
+                ctypes.c_int(address_mode),
+                ctypes.c_int(filter_mode),
+            )
+            print("self.id", self.id)
+
+        if self.id == 0:
+            raise RuntimeError("Failed to create texture from input array")
+
+    def __del__(self):
+        if not self.id:
+            return
+
+        if self.device.is_cpu:
+            raise NotImplementedError("Texture destruction on CPU is not supported")
+        else:
+            # use CUDA context guard to avoid side effects during garbage collection
+            with self.device.context_guard:
+                self.runtime.core.wp_texture_destroy_device(self.id)
+
+
 def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[type]) -> builtins.bool:
     if not (is_array(array) and array.is_contiguous):
         return False

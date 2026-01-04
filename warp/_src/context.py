@@ -4247,6 +4247,16 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
+            self.core.wp_texture_create_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_texture_create_device.restype = ctypes.c_uint64
+            self.core.wp_texture_destroy_device.argtypes = [ctypes.c_uint64]
+
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
                 ctypes.c_int,  # scalar size in bytes

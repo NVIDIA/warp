@@ -7312,6 +7312,33 @@ add_builtin(
     doc="""Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.""",
 )
 
+# ---------------------------------
+# Textures
+
+add_builtin(
+    "texture_sample_f",
+    input_types={"id": uint64, "uv": vec2},
+    value_type=float,
+    group="Utility",
+    doc="""Sample a single-channel texture at normalized coordinates ``uv`` using linear filtering.""",
+)
+
+add_builtin(
+    "texture_sample_v3",
+    input_types={"id": uint64, "uv": vec2},
+    value_type=vec3,
+    group="Utility",
+    doc="""Sample a 3-channel texture at normalized coordinates ``uv`` using linear filtering.""",
+)
+
+add_builtin(
+    "texture_sample_v4",
+    input_types={"id": uint64, "uv": vec2},
+    value_type=vec4,
+    group="Utility",
+    doc="""Sample a 4-channel texture at normalized coordinates ``uv`` using linear filtering.""",
+)
+
 
 # ---------------------------------
 # Random

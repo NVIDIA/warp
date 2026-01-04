@@ -184,6 +184,20 @@ WP_API const char* wp_volume_get_blind_data_info(
     uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count, uint32_t* value_size, char type_str[16]
 );
 
+WP_API uint64_t wp_texture_create_device(
+    void* context,
+    void* data_ptr,
+    uint64_t size_in_bytes,
+    int width,
+    int height,
+    int channels,
+    int format,
+    int normalized_coords,
+    int address_mode,
+    int filter_mode
+);
+WP_API void wp_texture_destroy_device(uint64_t id);
+
 WP_API uint64_t wp_marching_cubes_create_device(void* context);
 WP_API void wp_marching_cubes_destroy_device(uint64_t id);
 WP_API int wp_marching_cubes_surface_device(

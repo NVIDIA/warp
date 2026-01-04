@@ -1069,6 +1069,9 @@ WP_API void wp_builtin_volume_index_to_world_uint64_vec3f(uint64 id, vec3f& uvw,
 WP_API void wp_builtin_volume_world_to_index_uint64_vec3f(uint64 id, vec3f& xyz, vec3f* ret) { *ret = wp::volume_world_to_index(id, xyz); }
 WP_API void wp_builtin_volume_index_to_world_dir_uint64_vec3f(uint64 id, vec3f& uvw, vec3f* ret) { *ret = wp::volume_index_to_world_dir(id, uvw); }
 WP_API void wp_builtin_volume_world_to_index_dir_uint64_vec3f(uint64 id, vec3f& xyz, vec3f* ret) { *ret = wp::volume_world_to_index_dir(id, xyz); }
+WP_API void wp_builtin_texture_sample_f_uint64_vec2f(uint64 id, vec2f& uv, float* ret) { *ret = wp::texture_sample_f(id, uv); }
+WP_API void wp_builtin_texture_sample_v3_uint64_vec2f(uint64 id, vec2f& uv, vec3f* ret) { *ret = wp::texture_sample_v3(id, uv); }
+WP_API void wp_builtin_texture_sample_v4_uint64_vec2f(uint64 id, vec2f& uv, vec4f* ret) { *ret = wp::texture_sample_v4(id, uv); }
 WP_API void wp_builtin_rand_init_int32(int32 seed, uint32* ret) { *ret = wp::rand_init(seed); }
 WP_API void wp_builtin_rand_init_int32_int32(int32 seed, int32 offset, uint32* ret) { *ret = wp::rand_init(seed, offset); }
 WP_API void wp_builtin_randi_uint32(uint32 state, int* ret) { *ret = wp::randi(state); }
