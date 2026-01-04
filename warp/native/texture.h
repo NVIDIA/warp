@@ -16,11 +16,20 @@
  */
 
 #pragma once
+
 #include "builtin.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <map>
+
+#if WP_ENABLE_CUDA
+// Needed for ContextGuard, check_cuda, WP_CURRENT_CONTEXT, wp_alloc_device/wp_memcpy_h2d/wp_free_device, etc.
+#include "cuda_util.h"
+
+// Use CUDA runtime types in host compilation units.
+#include <cuda_runtime.h>
+#endif
 
 namespace wp {
 
@@ -54,13 +63,24 @@ struct TextureDesc {
     int num_channels;
     int format;
     bool is_cpu;
-    void* context;
-    unsigned long long handle;
-    uint64 array_handle;
-    void* data;
+    void* context;  // Warp CUDA context (or nullptr for CPU)
+    unsigned long long handle;  // cudaTextureObject_t stored as 64-bit integer
+    uint64 array_handle;  // cudaArray_t stored as uint64
+    void* data;  // host copy for CPU textures
 };
 
-CUDA_CALLABLE inline TextureDesc texture_get_desc(uint64 id) { return *(TextureDesc*)(id); }
+// NOTE: id is a pointer to TextureDesc on CPU OR a pointer to device memory holding TextureDesc on GPU.
+// Do not dereference device pointers on host.
+CUDA_CALLABLE inline TextureDesc texture_get_desc(uint64 id)
+{
+#if defined(__CUDA_ARCH__)
+    return *(TextureDesc*)(id);
+#else
+    // Host should not dereference a device pointer; return a default.
+    TextureDesc d {};
+    return d;
+#endif
+}
 
 template <typename T> CUDA_CALLABLE inline float normalize_value(T val);
 
@@ -193,7 +213,7 @@ CUDA_CALLABLE inline vec4 texture2d_sample_v4(uint64 id, vec2 uv)
     }
 
 #if defined(__CUDA_ARCH__)
-    typedef unsigned long long cudaTextureObject_t;
+    // In device code, cudaTextureObject_t is available from CUDA headers included by NVCC.
     cudaTextureObject_t tex = (cudaTextureObject_t)(t->handle);
 
     if (t->num_channels == 1) {
@@ -241,7 +261,6 @@ CUDA_CALLABLE inline vec4 texture3d_sample_v4(uint64 id, vec3 uvw)
     }
 
 #if defined(__CUDA_ARCH__)
-    typedef unsigned long long cudaTextureObject_t;
     cudaTextureObject_t tex = (cudaTextureObject_t)(t->handle);
 
     if (t->num_channels == 1) {
@@ -278,19 +297,19 @@ CUDA_CALLABLE inline float texture3d_sample_f(uint64 id, vec3 uvw)
 }
 
 // Adjoint functions (not differentiable)
-CUDA_CALLABLE inline void adj_texture2d_sample_v4(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, vec4& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture2d_sample_v3(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, vec3& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture2d_sample_v2(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, vec2& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture2d_sample_f(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, float& adj_ret) { }
+CUDA_CALLABLE inline void adj_texture2d_sample_v4(uint64, vec2, uint64&, vec2&, vec4&) { }
+CUDA_CALLABLE inline void adj_texture2d_sample_v3(uint64, vec2, uint64&, vec2&, vec3&) { }
+CUDA_CALLABLE inline void adj_texture2d_sample_v2(uint64, vec2, uint64&, vec2&, vec2&) { }
+CUDA_CALLABLE inline void adj_texture2d_sample_f(uint64, vec2, uint64&, vec2&, float&) { }
 
-CUDA_CALLABLE inline void adj_texture3d_sample_v4(uint64 id, vec3 uvw, uint64& adj_id, vec3& adj_uvw, vec4& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture3d_sample_v3(uint64 id, vec3 uvw, uint64& adj_id, vec3& adj_uvw, vec3& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture3d_sample_v2(uint64 id, vec3 uvw, uint64& adj_id, vec3& adj_uvw, vec2& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture3d_sample_f(uint64 id, vec3 uvw, uint64& adj_id, vec3& adj_uvw, float& adj_ret) { }
+CUDA_CALLABLE inline void adj_texture3d_sample_v4(uint64, vec3, uint64&, vec3&, vec4&) { }
+CUDA_CALLABLE inline void adj_texture3d_sample_v3(uint64, vec3, uint64&, vec3&, vec3&) { }
+CUDA_CALLABLE inline void adj_texture3d_sample_v2(uint64, vec3, uint64&, vec3&, vec2&) { }
+CUDA_CALLABLE inline void adj_texture3d_sample_f(uint64, vec3, uint64&, vec3&, float&) { }
 
-CUDA_CALLABLE inline void adj_texture_sample_v4(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, vec4& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture_sample_v3(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, vec3& adj_ret) { }
-CUDA_CALLABLE inline void adj_texture_sample_f(uint64 id, vec2 uv, uint64& adj_id, vec2& adj_uv, float& adj_ret) { }
+CUDA_CALLABLE inline void adj_texture_sample_v4(uint64, vec2, uint64&, vec2&, vec4&) { }
+CUDA_CALLABLE inline void adj_texture_sample_v3(uint64, vec2, uint64&, vec2&, vec3&) { }
+CUDA_CALLABLE inline void adj_texture_sample_f(uint64, vec2, uint64&, vec2&, float&) { }
 
 // Descriptor management (header-only implementation using inline + static)
 namespace detail {
@@ -400,6 +419,7 @@ inline void wp_texture_destroy_host(uint64_t id)
 #if WP_ENABLE_CUDA
 
 namespace {
+// Helpers are only needed for the host-side creation of cuda arrays/texture objects.
 inline cudaChannelFormatDesc get_channel_format_desc(int format, int channels)
 {
     cudaChannelFormatKind kind;
@@ -450,6 +470,9 @@ inline cudaTextureFilterMode get_filter_mode(int mode)
 
 #endif  // WP_ENABLE_CUDA
 
+// IMPORTANT: Warp's public header (warp.h) declares these APIs with C linkage.
+// Define them with matching linkage here.
+extern "C" {
 
 WP_API uint64_t wp_texture_create_device(
     void* context,
@@ -466,18 +489,18 @@ WP_API uint64_t wp_texture_create_device(
 )
 {
 #if WP_ENABLE_CUDA
-    ContextGuard guard(context);
+    wp::ContextGuard guard(context);
 
     int actual_channels = (channels == 3) ? 4 : channels;
     cudaChannelFormatDesc ch_desc = get_channel_format_desc(format, actual_channels);
-    size_t elem_size = texture_format_element_size(format);
+    size_t elem_size = wp::texture_format_element_size(format);
 
     cudaArray_t cu_array = nullptr;
     void* temp_data = nullptr;
 
-    if (type == TEX_TYPE_3D) {
-        cudaExtent extent = make_cudaExtent(width, height, depth);
-        auto err = cudaMalloc3DArray(&cu_array, &ch_desc, extent, cudaArrayDefault);
+    if (type == wp::TEX_TYPE_3D) {
+        cudaExtent extent = make_cudaExtent((size_t)width, (size_t)height, (size_t)depth);
+        cudaError_t err = cudaMalloc3DArray(&cu_array, &ch_desc, extent, cudaArrayDefault);
         if (!check_cuda(err) || !cu_array)
             return 0;
 
@@ -489,16 +512,17 @@ WP_API uint64_t wp_texture_create_device(
         copy_params.kind = cudaMemcpyDefault;
 
         if (channels == 3) {
-            size_t total_size = num_texels * 4 * elem_size;
+            size_t total_size = num_texels * (size_t)4 * elem_size;
             temp_data = malloc(total_size);
             if (!temp_data) {
                 cudaFreeArray(cu_array);
                 return 0;
             }
+
             for (size_t i = 0; i < num_texels; ++i) {
-                const uint8_t* src = (const uint8_t*)data_ptr + i * 3 * elem_size;
-                uint8_t* dst = (uint8_t*)temp_data + i * 4 * elem_size;
-                memcpy(dst, src, 3 * elem_size);
+                const uint8_t* src = (const uint8_t*)data_ptr + i * (size_t)3 * elem_size;
+                uint8_t* dst = (uint8_t*)temp_data + i * (size_t)4 * elem_size;
+                memcpy(dst, src, (size_t)3 * elem_size);
                 if (format == wp::TEX_FORMAT_FLOAT32)
                     ((float*)dst)[3] = 1.0f;
                 else if (format == wp::TEX_FORMAT_UINT16)
@@ -506,13 +530,16 @@ WP_API uint64_t wp_texture_create_device(
                 else
                     dst[3] = 255;
             }
-            copy_params.srcPtr = make_cudaPitchedPtr(temp_data, (size_t)width * 4 * elem_size, width, height);
-        } else {
+
             copy_params.srcPtr
-                = make_cudaPitchedPtr(data_ptr, (size_t)width * (size_t)actual_channels * elem_size, width, height);
+                = make_cudaPitchedPtr(temp_data, (size_t)width * (size_t)4 * elem_size, (size_t)width, (size_t)height);
+        } else {
+            copy_params.srcPtr = make_cudaPitchedPtr(
+                data_ptr, (size_t)width * (size_t)actual_channels * elem_size, (size_t)width, (size_t)height
+            );
         }
 
-        auto err2 = cudaMemcpy3D(&copy_params);
+        cudaError_t err2 = cudaMemcpy3D(&copy_params);
         if (temp_data)
             free(temp_data);
         if (!check_cuda(err2)) {
@@ -520,45 +547,55 @@ WP_API uint64_t wp_texture_create_device(
             return 0;
         }
     } else {
-        auto err = cudaMallocArray(&cu_array, &ch_desc, width, height, cudaArrayDefault);
+        cudaError_t err = cudaMallocArray(&cu_array, &ch_desc, (size_t)width, (size_t)height, cudaArrayDefault);
         if (!check_cuda(err) || !cu_array)
             return 0;
 
         size_t row_size_dst = (size_t)width * (size_t)actual_channels * elem_size;
 
         if (channels == 3) {
-            size_t row_size_src = (size_t)width * 3 * elem_size;
+            size_t row_size_src = (size_t)width * (size_t)3 * elem_size;
             size_t total_size = row_size_dst * (size_t)height;
+
             temp_data = malloc(total_size);
             if (!temp_data) {
                 cudaFreeArray(cu_array);
                 return 0;
             }
+
             for (int y = 0; y < height; ++y) {
-                const uint8_t* src = (const uint8_t*)data_ptr + y * row_size_src;
-                uint8_t* dst = (uint8_t*)temp_data + y * row_size_dst;
+                const uint8_t* src = (const uint8_t*)data_ptr + (size_t)y * row_size_src;
+                uint8_t* dst = (uint8_t*)temp_data + (size_t)y * row_size_dst;
                 for (int x = 0; x < width; ++x) {
-                    memcpy(dst + x * 4 * elem_size, src + x * 3 * elem_size, 3 * elem_size);
+                    memcpy(
+                        dst + (size_t)x * (size_t)4 * elem_size, src + (size_t)x * (size_t)3 * elem_size,
+                        (size_t)3 * elem_size
+                    );
                     if (format == wp::TEX_FORMAT_FLOAT32)
-                        ((float*)dst)[x * 4 + 3] = 1.0f;
+                        ((float*)dst)[(size_t)x * 4 + 3] = 1.0f;
                     else if (format == wp::TEX_FORMAT_UINT16)
-                        ((uint16_t*)dst)[x * 4 + 3] = 65535;
+                        ((uint16_t*)dst)[(size_t)x * 4 + 3] = 65535;
                     else
-                        dst[x * 4 * elem_size + 3] = 255;
+                        dst[(size_t)x * (size_t)4 * elem_size + 3] = 255;
                 }
             }
-            auto err2 = cudaMemcpy2DToArray(
+
+            cudaError_t err2 = cudaMemcpy2DToArray(
                 cu_array, 0, 0, temp_data, row_size_dst, row_size_dst, (size_t)height, cudaMemcpyHostToDevice
             );
+
             free(temp_data);
+            temp_data = nullptr;
+
             if (!check_cuda(err2)) {
                 cudaFreeArray(cu_array);
                 return 0;
             }
         } else {
-            auto err2 = cudaMemcpy2DToArray(
+            cudaError_t err2 = cudaMemcpy2DToArray(
                 cu_array, 0, 0, data_ptr, row_size_dst, row_size_dst, (size_t)height, cudaMemcpyDefault
             );
+
             if (!check_cuda(err2)) {
                 cudaFreeArray(cu_array);
                 return 0;
@@ -576,16 +613,18 @@ WP_API uint64_t wp_texture_create_device(
     tex_desc.addressMode[1] = get_address_mode(address_mode);
     tex_desc.addressMode[2] = get_address_mode(address_mode);
     tex_desc.filterMode = get_filter_mode(filter_mode);
+
+    // float -> element type; integer -> normalized float
     tex_desc.readMode = (format == wp::TEX_FORMAT_FLOAT32) ? cudaReadModeElementType : cudaReadModeNormalizedFloat;
 
     cudaTextureObject_t tex_obj = 0;
-    auto err = cudaCreateTextureObject(&tex_obj, &res_desc, &tex_desc, nullptr);
+    cudaError_t err = cudaCreateTextureObject(&tex_obj, &res_desc, &tex_desc, nullptr);
     if (!check_cuda(err)) {
         cudaFreeArray(cu_array);
         return 0;
     }
 
-    TextureDesc desc {};
+    wp::TextureDesc desc {};
     desc.type = type;
     desc.handle = (unsigned long long)tex_obj;
     desc.width = width;
@@ -594,15 +633,15 @@ WP_API uint64_t wp_texture_create_device(
     desc.num_channels = actual_channels;
     desc.format = format;
     desc.is_cpu = false;
-    desc.context = context ? context : wp_cuda_context_get_current();
-    desc.array_handle = (uint64)cu_array;
+    desc.context = context ? context : wp::wp_cuda_context_get_current();
+    desc.array_handle = (wp::uint64)cu_array;
     desc.data = nullptr;
 
-    TextureDesc* desc_ptr = (TextureDesc*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(TextureDesc));
-    wp_memcpy_h2d(WP_CURRENT_CONTEXT, desc_ptr, &desc, sizeof(TextureDesc));
-    uint64_t id = (uint64_t)desc_ptr;
+    wp::TextureDesc* desc_ptr = (wp::TextureDesc*)wp::wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::TextureDesc));
+    wp::wp_memcpy_h2d(WP_CURRENT_CONTEXT, desc_ptr, &desc, sizeof(wp::TextureDesc));
 
-    texture_add_descriptor(id, desc);
+    uint64_t id = (uint64_t)desc_ptr;
+    wp::texture_add_descriptor(id, desc);
 
     return id;
 #else
@@ -624,21 +663,22 @@ WP_API uint64_t wp_texture_create_device(
 WP_API void wp_texture_destroy_device(uint64_t id)
 {
 #if WP_ENABLE_CUDA
-    TextureDesc desc;
-    if (texture_get_descriptor(id, desc)) {
-        ContextGuard guard(desc.context);
+    wp::TextureDesc desc;
+    if (wp::texture_get_descriptor(id, desc)) {
+        wp::ContextGuard guard(desc.context);
 
         cudaDestroyTextureObject((cudaTextureObject_t)desc.handle);
         cudaFreeArray((cudaArray_t)desc.array_handle);
 
-        texture_rem_descriptor(id);
-        wp_free_device(WP_CURRENT_CONTEXT, (void*)id);
+        wp::texture_rem_descriptor(id);
+        wp::wp_free_device(WP_CURRENT_CONTEXT, (void*)id);
     }
 #else
     (void)id;
 #endif
 }
 
+}  // extern "C"
+
 // Device texture creation/destruction (CUDA implementation)
-// Note: These are declared here but implemented in texture_impl.h
-// which is included by files that need them (e.g., warp.cpp)
+// Note: These are declared here but implemented elsewhere if needed.
