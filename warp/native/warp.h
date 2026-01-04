@@ -187,9 +187,10 @@ WP_API const char* wp_volume_get_blind_data_info(
 WP_API uint64_t wp_texture_create_device(
     void* context,
     void* data_ptr,
-    uint64_t size_in_bytes,
+    int type,
     int width,
     int height,
+    int depth,
     int channels,
     int format,
     int normalized_coords,

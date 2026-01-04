@@ -4247,12 +4247,29 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
+            self.core.wp_texture_create_host.argtypes = [
+                ctypes.c_void_p,  # data_ptr
+                ctypes.c_int,  # type (0=2D, 1=3D)
+                ctypes.c_int,  # width
+                ctypes.c_int,  # height
+                ctypes.c_int,  # depth
+                ctypes.c_int,  # channels
+                ctypes.c_int,  # format
+            ]
+            self.core.wp_texture_create_host.restype = ctypes.c_uint64
+            self.core.wp_texture_destroy_host.argtypes = [ctypes.c_uint64]
             self.core.wp_texture_create_device.argtypes = [
-                ctypes.c_void_p,
-                ctypes.c_void_p,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_int,
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # data_ptr
+                ctypes.c_int,  # type (0=2D, 1=3D)
+                ctypes.c_int,  # width
+                ctypes.c_int,  # height
+                ctypes.c_int,  # depth
+                ctypes.c_int,  # channels
+                ctypes.c_int,  # format
+                ctypes.c_int,  # normalized_coords
+                ctypes.c_int,  # address_mode
+                ctypes.c_int,  # filter_mode
             ]
             self.core.wp_texture_create_device.restype = ctypes.c_uint64
             self.core.wp_texture_destroy_device.argtypes = [ctypes.c_uint64]
