@@ -24,16 +24,29 @@ from warp._src.context import export_stubs
 
 docs.generate_reference.install_mock_modules()
 
-parser = argparse.ArgumentParser(description="Warp Sphinx Documentation Builder")
-parser.add_argument("--quick", action="store_true", help="Only build docs, skipping doctest tests of code blocks.")
-parser.add_argument("--doctest-only", action="store_true", help="Only run doctest, skipping HTML build.")
+parser = argparse.ArgumentParser(
+    description="Warp Sphinx Documentation Builder",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "--html",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="Build HTML documentation",
+)
+parser.add_argument(
+    "--doctest",
+    action=argparse.BooleanOptionalAction,
+    default=False,
+    help="Run doctest tests of code blocks",
+)
 parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
 args = parser.parse_args()
 
 # Validate argument combinations
-if args.quick and args.doctest_only:
-    parser.error("--quick and --doctest-only are mutually exclusive")
+if not args.html and not args.doctest:
+    parser.error("At least one of --html or --doctest must be enabled")
 
 # Configure logging
 log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -109,20 +122,15 @@ docs.generate_reference.run()
 
 source_dir = os.path.join(base_path, "docs")
 
-if args.doctest_only:
-    # Only run doctest
-    logger.info("Running doctest only (skipping HTML build)")
-    doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
-    build_sphinx_docs(source_dir, doctest_output_dir, "doctest")
-else:
+if args.html:
     # Build HTML docs
     html_output_dir = os.path.join(base_path, "docs", "_build", "html")
     build_sphinx_docs(source_dir, html_output_dir, "html")
 
-    # Run doctest unless --quick is specified
-    if not args.quick:
-        logger.info("Running doctest... (skip with --quick)")
-        doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
-        build_sphinx_docs(source_dir, doctest_output_dir, "doctest")
+if args.doctest:
+    # Run doctest
+    logger.info("Running doctest...")
+    doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
+    build_sphinx_docs(source_dir, doctest_output_dir, "doctest")
 
 logger.info("Documentation build completed successfully")
