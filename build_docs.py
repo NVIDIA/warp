@@ -61,22 +61,38 @@ logger = logging.getLogger(__name__)
 
 def format_file_with_ruff(file_path):
     """Format file with ruff using pre-commit for version consistency."""
-    logger.debug(f"Formatting {file_path} with ruff via pre-commit")
     try:
         import pre_commit.main  # noqa: PLC0415
 
         result = pre_commit.main.main(["run", "ruff-format", "--files", file_path])
+        logger.debug(f"pre-commit returned exit code {result} (first run)")
+
         if result == 0:
-            logger.info(f"Formatted {file_path} using pre-commit (no changes needed)")
+            # Success - file was already formatted or no changes needed
+            logger.info(f"File {file_path} is already formatted")
         elif result == 1:
-            # Exit code 1 typically means files were modified (which is what we want)
-            logger.info(f"Formatted {file_path} using pre-commit (files modified)")
+            # Exit code 1 typically means files were modified
+            # Run again to verify the file is now properly formatted
+            logger.info("Running pre-commit again to verify formatting (a 'Passed' message below is expected)")
+            result = pre_commit.main.main(["run", "ruff-format", "--files", file_path])
+            logger.debug(f"pre-commit returned exit code {result} (second run)")
+
+            if result == 0:
+                # Success - file is now properly formatted
+                logger.info(f"Formatted {file_path}")
+            else:
+                # Still failing after formatting - this is a real error
+                raise RuntimeError(
+                    f"pre-commit formatting failed for {file_path}. "
+                    f"File was modified but still has issues (exit code {result})"
+                )
         else:
-            raise RuntimeError(f"Pre-commit formatting failed for {file_path} with exit code {result}")
+            # Exit code > 1: Unexpected error
+            raise RuntimeError(f"pre-commit formatting failed for {file_path} with exit code {result}")
     except ImportError as err:
         raise ImportError(
             f"Could not format {file_path}: pre-commit not available. "
-            "Install with 'pip install warp-lang[dev]' or equivalent."
+            "Install with 'pip install warp-lang[docs]' or equivalent."
         ) from err
 
 
@@ -115,6 +131,7 @@ with open(os.path.join(base_path, "warp", "__init__.pyi"), "w") as stub_file:
     export_stubs(stub_file)
 
 # code formatting of __init__.pyi
+logger.info("Formatting __init__.pyi (a 'Failed' message in the output below is expected)")
 format_file_with_ruff(os.path.join(base_path, "warp", "__init__.pyi"))
 
 logger.info("Generating function reference documentation")
