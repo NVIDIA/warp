@@ -235,7 +235,7 @@ jobs:
           path: warp/bin/
       - name: Build Sphinx documentation
         run: |
-          uv run --extra docs build_docs.py --quick
+          uv run --extra docs build_docs.py
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         id: build-docs-output
