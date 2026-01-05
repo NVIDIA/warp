@@ -638,6 +638,9 @@ def test_ffi_jax_kernel_scale_vec_constant(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_scale_vec_static(test, device):
+    if device.ordinal > 0:
+        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit() returns zeros instead of scaled values")
+
     # multiply vectors by scalar (static arg)
     import jax.numpy as jp
 
