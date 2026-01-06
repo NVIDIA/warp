@@ -34,8 +34,8 @@ FRAME_COUNT = 30
 
 
 class TestSamplePrimFlocking(omni.kit.test.AsyncTestCase):
-    async def _test_eval(self, enable_fsd: bool) -> None:
-        await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
+    async def test_eval(self) -> None:
+        await open_sample(f"{TEST_ID}.usda")
 
         stage_id = omni.usd.get_context().get_stage_id()
         stage = usdrt.Usd.Stage.Attach(stage_id)
@@ -58,6 +58,3 @@ class TestSamplePrimFlocking(omni.kit.test.AsyncTestCase):
                 curr_points_hash = hash(points.tobytes())
                 assert curr_points_hash != prev_points_hash
                 prev_points_hash = curr_points_hash
-
-    async def test_eval_fsd_on(self) -> None:
-        await self._test_eval(enable_fsd=True)

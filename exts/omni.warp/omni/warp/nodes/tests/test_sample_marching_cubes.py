@@ -15,8 +15,6 @@
 
 """Tests for the marching cubes sample scene."""
 
-import unittest
-
 import numpy as np
 import omni.kit
 import omni.usd
@@ -33,8 +31,8 @@ TEST_ID = "marching_cubes"
 
 
 class TestSampleMarchingCubes(omni.kit.test.AsyncTestCase):
-    async def _test_eval(self, enable_fsd: bool) -> None:
-        await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
+    async def test_eval(self) -> None:
+        await open_sample(f"{TEST_ID}.usda")
 
         stage = omni.usd.get_context().get_stage()
         mesh_prim = stage.GetPrimAtPath("/World/Mesh")
@@ -60,26 +58,11 @@ class TestSampleMarchingCubes(omni.kit.test.AsyncTestCase):
         array_are_almost_equal(np.min(points_last, axis=0), (-45.0, -50.0, -45.0), atol=2.0)
         array_are_almost_equal(np.max(points_last, axis=0), (45.0, 5.0, 45.0), atol=2.0)
 
-    async def test_eval_fsd_off(self) -> None:
-        await self._test_eval(enable_fsd=False)
-
-    async def test_eval_fsd_on(self) -> None:
-        await self._test_eval(enable_fsd=True)
-
-    async def _test_capture(self, enable_fsd: bool) -> None:
-        await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
+    async def test_capture(self) -> None:
+        await open_sample(f"{TEST_ID}.usda")
 
         with FrameRange(60) as frames:
             async for _ in frames:
                 pass
 
-        fsd_str = "fsd_on" if enable_fsd else "fsd_off"
-        await validate_render(f"{TEST_ID}_{fsd_str}")
-
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
-    async def test_capture_fsd_off(self) -> None:
-        await self._test_capture(enable_fsd=False)
-
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
-    async def test_capture_fsd_on(self) -> None:
-        await self._test_capture(enable_fsd=True)
+        await validate_render(TEST_ID)
