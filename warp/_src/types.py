@@ -5653,25 +5653,12 @@ class Volume:
 
 
 class Texture:
-    """Class representing a 2D or 3D texture object.
-
-    Supports 1-4 channels with uint8, uint16, or float32 data types.
-    Works on both CPU and GPU devices.
-    """
-
-    TYPE_2D = constant(0)
-    TYPE_3D = constant(1)
-
     FILTER_POINT = constant(0)
     FILTER_LINEAR = constant(1)
 
     ADDRESS_CLAMP = constant(0)
     ADDRESS_WRAP = constant(1)
     ADDRESS_BORDER = constant(2)
-
-    FORMAT_FLOAT32 = constant(0)
-    FORMAT_UINT8 = constant(1)
-    FORMAT_UINT16 = constant(2)
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -5681,31 +5668,25 @@ class Texture:
     def __init__(
         self,
         data: array,
-        width: builtins.int | None = None,
-        height: builtins.int | None = None,
-        depth: builtins.int | None = None,
-        channels: builtins.int | None = None,
-        dtype: type | None = None,
+        width: int,
+        height: int,
+        channels: int = 1,
+        depth: int = 1,
         normalized_coords: builtins.bool = True,
-        address_mode: builtins.int = 1,
-        filter_mode: builtins.int = 1,
+        address_mode: int = ADDRESS_CLAMP,
+        filter_mode: int = FILTER_LINEAR,
     ):
-        """Create a 2D or 3D texture.
-
-        The texture type (2D or 3D) is automatically inferred from the data shape
-        or from the presence of the depth parameter.
+        """Create a 1D, 2D, or 3D texture.
 
         Args:
-            data: Array containing texture data. For 2D: (height, width, channels) or (height, width).
-                  For 3D: (depth, height, width, channels) or (depth, height, width).
-            width: Width of the texture. If None, inferred from data shape.
-            height: Height of the texture. If None, inferred from data shape.
-            depth: Depth of the texture (for 3D textures). If None, inferred from data shape.
-            channels: Number of channels (1-4). If None, inferred from data shape.
-            dtype: Data type (uint8, uint16, or float32). If None, inferred from data dtype.
+            data: Array containing texture data.
+            width: Width of the texture.
+            height: Height of the texture.
+            channels: Number of channels. Only 1, 2, and 4 channels are supported.
+            depth: Depth of the texture (for 3D textures). Only needed if the texture is 3D.
             normalized_coords: Whether texture coordinates are normalized to [0, 1].
-            address_mode: Address mode (ADDRESS_CLAMP=0, ADDRESS_WRAP=1, ADDRESS_BORDER=2).
-            filter_mode: Filter mode (FILTER_POINT=0, FILTER_LINEAR=1).
+            address_mode: Address mode.
+            filter_mode: Filter mode.
         """
         self.runtime = warp._src.context.runtime
 
@@ -5714,59 +5695,24 @@ class Texture:
 
         self.device = data.device
 
-        # Infer dimensions and type from data shape
-        if data.ndim == 4:
-            inferred_depth, inferred_height, inferred_width, inferred_channels = data.shape
-            inferred_type = 1  # 3D
-        elif data.ndim == 3:
-            if depth is not None or (height is not None and width is not None):
-                inferred_depth, inferred_height, inferred_width = data.shape
-                inferred_channels = 1
-                inferred_type = 1  # 3D
-            else:
-                inferred_height, inferred_width, inferred_channels = data.shape
-                inferred_depth = None
-                inferred_type = 0  # 2D
-        elif data.ndim == 2:
-            inferred_height, inferred_width = data.shape
-            inferred_channels = 1
-            inferred_depth = None
-            inferred_type = 0  # 2D
-        else:
-            inferred_depth, inferred_height, inferred_width, inferred_channels = None, None, None, None
-            inferred_type = 0
+        if channels not in (1, 2, 4):
+            raise RuntimeError("Texture channels must be 1, 2, or 4")
 
-        self.width = width if width is not None else inferred_width
-        self.height = height if height is not None else inferred_height
-        self.depth = depth if depth is not None else inferred_depth
-        self.channels = channels if channels is not None else inferred_channels
-        self.type = 1 if self.depth is not None else inferred_type
+        if len(data) != width * height * depth * channels:
+            raise RuntimeError("The size of the array does not match the dimensions")
 
-        if self.type == 1:  # 3D
-            if self.width is None or self.height is None or self.depth is None or self.channels is None:
-                raise RuntimeError("Could not infer 3D texture dimensions from data shape")
-        else:  # 2D
-            if self.width is None or self.height is None or self.channels is None:
-                raise RuntimeError("Could not infer 2D texture dimensions from data shape")
-            self.depth = 1
+        if data.dtype not in (warp.uint8, warp.float32):
+            raise RuntimeError(f"Unsupported texture dtype: {data.dtype}. Only uint8 and float32 are supported.")
 
-        if self.channels not in (1, 2, 3, 4):
-            raise RuntimeError("Texture channels must be 1, 2, 3 or 4")
-
-        # Infer format from dtype
-        if dtype is not None:
-            self.dtype = dtype
-        else:
-            self.dtype = data.dtype
-
-        if self.dtype == uint8:
-            self.format = 1  # TEX_FORMAT_UINT8
-        elif self.dtype == uint16:
-            self.format = 2  # TEX_FORMAT_UINT16
-        elif self.dtype in (float32, float):
-            self.format = 0  # TEX_FORMAT_FLOAT32
-        else:
-            raise RuntimeError(f"Unsupported texture dtype: {self.dtype}")
+        self.width = width
+        self.height = height
+        self.depth = depth
+        self.channels = channels
+        self.type = 1 if self.depth > 1 else 0
+        self.dtype = data.dtype
+        self.format = 0 if self.dtype == warp.float32 else 1
+        self.address_mode = address_mode
+        self.filter_mode = filter_mode
 
         if self.device.is_cpu:
             self.id = self.runtime.core.wp_texture_create_host(
@@ -5777,6 +5723,8 @@ class Texture:
                 ctypes.c_int(self.depth),
                 ctypes.c_int(self.channels),
                 ctypes.c_int(self.format),
+                ctypes.c_int(address_mode),
+                ctypes.c_int(filter_mode),
             )
         else:
             self.id = self.runtime.core.wp_texture_create_device(
@@ -5795,11 +5743,6 @@ class Texture:
 
         if self.id == 0:
             raise RuntimeError("Failed to create texture from input array")
-
-    @property
-    def is_3d(self) -> builtins.bool:
-        """Returns True if this is a 3D texture."""
-        return self.type == 1
 
     def __del__(self):
         if not self.id:

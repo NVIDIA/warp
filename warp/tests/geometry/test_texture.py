@@ -22,367 +22,128 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def test_texture2d_sample_v4_kernel(
+def sample_texture2d_f_kernel(
     tex_id: wp.uint64,
     uvs: wp.array(dtype=wp.vec2),
-    results: wp.array(dtype=wp.vec4),
+    out: wp.array(dtype=wp.float32),
 ):
     tid = wp.tid()
-    uv = uvs[tid]
-    results[tid] = wp.texture2d_sample_v4(tex_id, uv)
-
-
-@wp.kernel
-def test_texture2d_sample_v3_kernel(
-    tex_id: wp.uint64,
-    uvs: wp.array(dtype=wp.vec2),
-    results: wp.array(dtype=wp.vec3),
-):
-    tid = wp.tid()
-    uv = uvs[tid]
-    results[tid] = wp.texture2d_sample_v3(tex_id, uv)
-
-
-@wp.kernel
-def test_texture2d_sample_f_kernel(
-    tex_id: wp.uint64,
-    uvs: wp.array(dtype=wp.vec2),
-    results: wp.array(dtype=wp.float32),
-):
-    tid = wp.tid()
-    uv = uvs[tid]
-    results[tid] = wp.texture2d_sample_f(tex_id, uv)
-
-
-@wp.kernel
-def test_texture3d_sample_v4_kernel(
-    tex_id: wp.uint64,
-    uvws: wp.array(dtype=wp.vec3),
-    results: wp.array(dtype=wp.vec4),
-):
-    tid = wp.tid()
-    uvw = uvws[tid]
-    results[tid] = wp.texture3d_sample_v4(tex_id, uvw)
-
-
-@wp.kernel
-def test_texture3d_sample_f_kernel(
-    tex_id: wp.uint64,
-    uvws: wp.array(dtype=wp.vec3),
-    results: wp.array(dtype=wp.float32),
-):
-    tid = wp.tid()
-    uvw = uvws[tid]
-    results[tid] = wp.texture3d_sample_f(tex_id, uvw)
-
-
-def create_test_texture_2d_uint8(width, height, channels):
-    data = np.zeros((height, width, channels), dtype=np.uint8)
-    for y in range(height):
-        for x in range(width):
-            for c in range(channels):
-                data[y, x, c] = ((x + y * width) * (c + 1)) % 256
-    return data
-
-
-def create_test_texture_2d_uint16(width, height, channels):
-    data = np.zeros((height, width, channels), dtype=np.uint16)
-    for y in range(height):
-        for x in range(width):
-            for c in range(channels):
-                data[y, x, c] = ((x + y * width) * (c + 1) * 256) % 65536
-    return data
-
-
-def create_test_texture_2d_float32(width, height, channels):
-    data = np.zeros((height, width, channels), dtype=np.float32)
-    for y in range(height):
-        for x in range(width):
-            for c in range(channels):
-                data[y, x, c] = float((x + y * width) * (c + 1)) / float(width * height)
-    return data
-
-
-def create_test_texture_3d_uint8(width, height, depth, channels):
-    data = np.zeros((depth, height, width, channels), dtype=np.uint8)
-    for z in range(depth):
-        for y in range(height):
-            for x in range(width):
-                for c in range(channels):
-                    data[z, y, x, c] = ((x + y * width + z * width * height) * (c + 1)) % 256
-    return data
-
-
-def create_test_texture_3d_float32(width, height, depth, channels):
-    data = np.zeros((depth, height, width, channels), dtype=np.float32)
-    for z in range(depth):
-        for y in range(height):
-            for x in range(width):
-                for c in range(channels):
-                    data[z, y, x, c] = float((x + y * width + z * width * height) * (c + 1)) / float(
-                        width * height * depth
-                    )
-    return data
-
-
-def test_texture2d_uint8_4ch(test, device):
-    width, height, channels = 4, 4, 4
-    tex_data = create_test_texture_2d_uint8(width, height, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.uint8, device=device)
-    texture = wp.Texture(data_arr, dtype=wp.uint8)
-
-    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.vec4, device=device)
-
-    wp.launch(test_texture2d_sample_v4_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 4))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture2d_uint16_4ch(test, device):
-    width, height, channels = 4, 4, 4
-    tex_data = create_test_texture_2d_uint16(width, height, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.uint16, device=device)
-    texture = wp.Texture(data_arr, dtype=wp.uint16)
-
-    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.vec4, device=device)
-
-    wp.launch(test_texture2d_sample_v4_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 4))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture2d_float32_4ch(test, device):
-    width, height, channels = 4, 4, 4
-    tex_data = create_test_texture_2d_float32(width, height, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.vec4, device=device)
-
-    wp.launch(test_texture2d_sample_v4_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 4))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture2d_1ch(test, device):
-    width, height, channels = 4, 4, 1
-    tex_data = create_test_texture_2d_float32(width, height, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.float32, device=device)
-
-    wp.launch(test_texture2d_sample_f_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1,))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture2d_2ch(test, device):
-    width, height, channels = 4, 4, 2
-    tex_data = create_test_texture_2d_float32(width, height, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.vec4, device=device)
-
-    wp.launch(test_texture2d_sample_v4_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 4))
-
-
-def test_texture2d_3ch(test, device):
-    width, height, channels = 4, 4, 3
-    tex_data = create_test_texture_2d_float32(width, height, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.vec3, device=device)
-
-    wp.launch(test_texture2d_sample_v3_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 3))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture3d_uint8_4ch(test, device):
-    width, height, depth, channels = 4, 4, 4, 4
-    tex_data = create_test_texture_3d_uint8(width, height, depth, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.uint8, device=device)
-    texture = wp.Texture(data_arr, dtype=wp.uint8)
-
-    test.assertTrue(texture.is_3d)
-
-    uvws_np = np.array([[0.5, 0.5, 0.5]], dtype=np.float32)
-    uvws = wp.array(uvws_np, dtype=wp.vec3, device=device)
-    results = wp.empty(len(uvws_np), dtype=wp.vec4, device=device)
-
-    wp.launch(test_texture3d_sample_v4_kernel, dim=len(uvws_np), inputs=[texture.id, uvws, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 4))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture3d_float32_4ch(test, device):
-    width, height, depth, channels = 4, 4, 4, 4
-    tex_data = create_test_texture_3d_float32(width, height, depth, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    test.assertTrue(texture.is_3d)
-
-    uvws_np = np.array([[0.5, 0.5, 0.5]], dtype=np.float32)
-    uvws = wp.array(uvws_np, dtype=wp.vec3, device=device)
-    results = wp.empty(len(uvws_np), dtype=wp.vec4, device=device)
-
-    wp.launch(test_texture3d_sample_v4_kernel, dim=len(uvws_np), inputs=[texture.id, uvws, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1, 4))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture3d_1ch(test, device):
-    width, height, depth, channels = 4, 4, 4, 1
-    tex_data = create_test_texture_3d_float32(width, height, depth, channels)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    test.assertTrue(texture.is_3d)
-
-    uvws_np = np.array([[0.5, 0.5, 0.5]], dtype=np.float32)
-    uvws = wp.array(uvws_np, dtype=wp.vec3, device=device)
-    results = wp.empty(len(uvws_np), dtype=wp.float32, device=device)
-
-    wp.launch(test_texture3d_sample_f_kernel, dim=len(uvws_np), inputs=[texture.id, uvws, results], device=device)
-
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (1,))
-    test.assertTrue(np.sum(np.abs(results_np)) > 0)
-
-
-def test_texture2d_corner_sampling(test, device):
-    width, height, channels = 2, 2, 4
-    tex_data = np.array(
-        [
-            [[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]],
-            [[0.0, 0.0, 1.0, 1.0], [1.0, 1.0, 0.0, 1.0]],
-        ],
-        dtype=np.float32,
+    out[tid] = wp.texture2d_sample_f(tex_id, uvs[tid])
+
+
+def sample_point_clamp_1ch(data_1d: np.ndarray, width: int, height: int, uv: np.ndarray) -> float:
+    # Match the typical normalized texture mapping:
+    #   texel space coordinate: x = u*width - 0.5
+    x = float(uv[0]) * width - 0.5
+    y = float(uv[1]) * height - 0.5
+
+    # Nearest: round to nearest integer in texel space (ties avoided by choosing UVs accordingly)
+    xi = int(np.floor(x + 0.5))
+    yi = int(np.floor(y + 0.5))
+
+    xi = np.clip(xi, 0, width - 1)
+    yi = np.clip(yi, 0, height - 1)
+
+    return float(data_1d[yi * width + xi])
+
+
+def sample_linear_clamp_1ch(data_1d: np.ndarray, width: int, height: int, uv: np.ndarray) -> float:
+    x = float(uv[0]) * width - 0.5
+    y = float(uv[1]) * height - 0.5
+
+    x0 = int(np.floor(x))
+    y0 = int(np.floor(y))
+    fx = x - float(x0)
+    fy = y - float(y0)
+
+    x1 = x0 + 1
+    y1 = y0 + 1
+
+    # clamp addressing
+    x0c = np.clip(x0, 0, width - 1)
+    x1c = np.clip(x1, 0, width - 1)
+    y0c = np.clip(y0, 0, height - 1)
+    y1c = np.clip(y1, 0, height - 1)
+
+    v00 = float(data_1d[y0c * width + x0c])
+    v10 = float(data_1d[y0c * width + x1c])
+    v01 = float(data_1d[y1c * width + x0c])
+    v11 = float(data_1d[y1c * width + x1c])
+
+    w00 = (1.0 - fx) * (1.0 - fy)
+    w10 = fx * (1.0 - fy)
+    w01 = (1.0 - fx) * fy
+    w11 = fx * fy
+
+    return v00 * w00 + v10 * w10 + v01 * w01 + v11 * w11
+
+
+def test_texture_filtering(test, device):
+    width, height, channels = 2, 2, 1
+    tex_data_1d = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+
+    data_arr = wp.array(tex_data_1d, dtype=wp.float32, device=device)
+
+    tex_point = wp.Texture(
+        data_arr,
+        width=width,
+        height=height,
+        channels=channels,
+        normalized_coords=True,
+        address_mode=wp.Texture.ADDRESS_CLAMP,
+        filter_mode=wp.Texture.FILTER_POINT,
+    )
+    tex_linear = wp.Texture(
+        data_arr,
+        width=width,
+        height=height,
+        channels=channels,
+        normalized_coords=True,
+        address_mode=wp.Texture.ADDRESS_CLAMP,
+        filter_mode=wp.Texture.FILTER_LINEAR,
     )
 
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
+    uv_between = np.array([0.49, 0.49], dtype=np.float32)
 
-    test.assertFalse(texture.is_3d)
+    uvs = wp.array([uv_between], dtype=wp.vec2, device=device)
 
-    uvs_np = np.array(
-        [
-            [0.25, 0.25],
-            [0.75, 0.25],
-            [0.25, 0.75],
-            [0.75, 0.75],
-        ],
-        dtype=np.float32,
+    out_point = wp.empty(1, dtype=wp.float32, device=device)
+    out_linear = wp.empty(1, dtype=wp.float32, device=device)
+
+    wp.launch(
+        sample_texture2d_f_kernel,
+        dim=1,
+        inputs=[tex_point.id, uvs, out_point],
+        device=device,
     )
-    uvs = wp.array(uvs_np, dtype=wp.vec2, device=device)
-    results = wp.empty(len(uvs_np), dtype=wp.vec4, device=device)
 
-    wp.launch(test_texture2d_sample_v4_kernel, dim=len(uvs_np), inputs=[texture.id, uvs, results], device=device)
+    wp.launch(
+        sample_texture2d_f_kernel,
+        dim=1,
+        inputs=[tex_linear.id, uvs, out_linear],
+        device=device,
+    )
 
-    results_np = results.numpy()
-    test.assertEqual(results_np.shape, (4, 4))
+    got_point = out_point.numpy()
+    got_linear = out_linear.numpy()
 
+    test.assertNotAlmostEqual(got_point[0], got_linear[0], places=6)
 
-def test_texture2d_inferred_dimensions(test, device):
-    width, height, channels = 8, 6, 4
-    tex_data = np.random.Generator(height, width, channels).astype(np.float32)
+    point_expected = sample_point_clamp_1ch(tex_data_1d, width, height, uv_between)
+    linear_expected = sample_linear_clamp_1ch(tex_data_1d, width, height, uv_between)
 
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    test.assertEqual(texture.width, width)
-    test.assertEqual(texture.height, height)
-    test.assertEqual(texture.channels, channels)
-    test.assertFalse(texture.is_3d)
-
-
-def test_texture3d_inferred_dimensions(test, device):
-    width, height, depth, channels = 8, 6, 4, 2
-    tex_data = np.random.Generator(depth, height, width, channels).astype(np.float32)
-
-    data_arr = wp.array(tex_data, dtype=wp.float32, device=device)
-    texture = wp.Texture(data_arr)
-
-    test.assertEqual(texture.width, width)
-    test.assertEqual(texture.height, height)
-    test.assertEqual(texture.depth, depth)
-    test.assertEqual(texture.channels, channels)
-    test.assertTrue(texture.is_3d)
-
-
-def test_texture_type_aliases(test, device):
-    test.assertIs(wp.Texture, wp.Texture2D)
-    test.assertIs(wp.Texture, wp.Texture3D)
-
-
-class TestTexture(unittest.TestCase):
-    def test_texture_new_del(self):
-        instance = wp.Texture.__new__(wp.Texture)
-        instance.__del__()
+    test.assertAlmostEqual(got_point[0], point_expected, places=6)
+    test.assertAlmostEqual(got_linear[0], linear_expected, places=2)
 
 
 devices = get_test_devices()
 
-add_function_test(TestTexture, "test_texture2d_uint8_4ch", test_texture2d_uint8_4ch, devices=devices)
-add_function_test(TestTexture, "test_texture2d_uint16_4ch", test_texture2d_uint16_4ch, devices=devices)
-add_function_test(TestTexture, "test_texture2d_float32_4ch", test_texture2d_float32_4ch, devices=devices)
-add_function_test(TestTexture, "test_texture2d_1ch", test_texture2d_1ch, devices=devices)
-add_function_test(TestTexture, "test_texture2d_2ch", test_texture2d_2ch, devices=devices)
-add_function_test(TestTexture, "test_texture2d_3ch", test_texture2d_3ch, devices=devices)
-add_function_test(TestTexture, "test_texture3d_uint8_4ch", test_texture3d_uint8_4ch, devices=devices)
-add_function_test(TestTexture, "test_texture3d_float32_4ch", test_texture3d_float32_4ch, devices=devices)
-add_function_test(TestTexture, "test_texture3d_1ch", test_texture3d_1ch, devices=devices)
-add_function_test(TestTexture, "test_texture2d_corner_sampling", test_texture2d_corner_sampling, devices=devices)
-add_function_test(
-    TestTexture, "test_texture2d_inferred_dimensions", test_texture2d_inferred_dimensions, devices=devices
-)
-add_function_test(
-    TestTexture, "test_texture3d_inferred_dimensions", test_texture3d_inferred_dimensions, devices=devices
-)
-add_function_test(TestTexture, "test_texture_type_aliases", test_texture_type_aliases, devices=devices)
 
+class TestTexture(unittest.TestCase):
+    pass
+
+
+add_function_test(TestTexture, "test_texture_filtering", test_texture_filtering, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

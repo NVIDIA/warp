@@ -4572,11 +4572,6 @@ def texture2d_sample_v2(id: uint64, uv: vec2f) -> vec2f:
     ...
 
 @over
-def texture2d_sample_v3(id: uint64, uv: vec2f) -> vec3f:
-    """Sample a 2D texture and return a vec3 at normalized coordinates ``uv``."""
-    ...
-
-@over
 def texture2d_sample_v4(id: uint64, uv: vec2f) -> vec4f:
     """Sample a 2D texture and return a vec4 at normalized coordinates ``uv``."""
     ...
@@ -4592,28 +4587,8 @@ def texture3d_sample_v2(id: uint64, uvw: vec3f) -> vec2f:
     ...
 
 @over
-def texture3d_sample_v3(id: uint64, uvw: vec3f) -> vec3f:
-    """Sample a 3D texture and return a vec3 at normalized coordinates ``uvw``."""
-    ...
-
-@over
 def texture3d_sample_v4(id: uint64, uvw: vec3f) -> vec4f:
     """Sample a 3D texture and return a vec4 at normalized coordinates ``uvw``."""
-    ...
-
-@over
-def texture_sample_f(id: uint64, uv: vec2f) -> float:
-    """Sample a 2D texture at normalized coordinates ``uv`` using linear filtering. Returns a float."""
-    ...
-
-@over
-def texture_sample_v3(id: uint64, uv: vec2f) -> vec3f:
-    """Sample a 2D texture at normalized coordinates ``uv`` using linear filtering. Returns a vec3."""
-    ...
-
-@over
-def texture_sample_v4(id: uint64, uv: vec2f) -> vec4f:
-    """Sample a 2D texture at normalized coordinates ``uv`` using linear filtering. Returns a vec4."""
     ...
 
 @over

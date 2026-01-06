@@ -18,11 +18,6 @@
 #pragma once
 
 #include "builtin.h"
-#include "warp.h"
-
-#include <cstdlib>
-#include <cstring>
-#include <map>
 
 namespace wp {
 
@@ -45,7 +40,6 @@ enum TextureAddressMode {
 enum TextureFormat {
     TEX_FORMAT_FLOAT32 = 0,
     TEX_FORMAT_UINT8 = 1,
-    TEX_FORMAT_UINT16 = 2,
 };
 
 struct TextureDesc {
@@ -55,21 +49,20 @@ struct TextureDesc {
     int depth;
     int num_channels;
     int format;
+    int filter_mode;
+    int address_mode;
     bool is_cpu;
-    void* context;  // Warp CUDA context (or nullptr for CPU)
-    unsigned long long handle;  // cudaTextureObject_t stored as 64-bit integer
-    uint64 array_handle;  // cudaArray_t stored as uint64
-    void* data;  // host copy for CPU textures
+    void* context;
+    unsigned long long handle;
+    uint64 array_handle;
+    void* data;
 };
-
 
 CUDA_CALLABLE inline TextureDesc texture_get(uint64_t id) { return *(TextureDesc*)(id); }
 
 template <typename T> CUDA_CALLABLE inline float normalize_value(T val);
 
 template <> CUDA_CALLABLE inline float normalize_value<uint8>(uint8 val) { return float(val) / 255.0f; }
-
-template <> CUDA_CALLABLE inline float normalize_value<uint16>(uint16 val) { return float(val) / 65535.0f; }
 
 template <> CUDA_CALLABLE inline float normalize_value<float>(float val) { return val; }
 
@@ -81,35 +74,72 @@ CUDA_CALLABLE inline int wrap_coord(int c, int size, int address_mode)
         c = c % size;
         return c < 0 ? c + size : c;
     } else {
+        // TEX_ADDRESS_BORDER: return -1 for out-of-bounds (caller handles border value)
         return (c < 0 || c >= size) ? -1 : c;
     }
+}
+
+template <typename T> CUDA_CALLABLE inline vec4 fetch_texel_2d(const TextureDesc* t, int x, int y)
+{
+    x = wrap_coord(x, t->width, t->address_mode);
+    y = wrap_coord(y, t->height, t->address_mode);
+
+    // Border addressing returns 0 for out-of-bounds
+    if (x < 0 || y < 0) {
+        return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    const T* ptr = (const T*)t->data + (y * t->width + x) * t->num_channels;
+    vec4 c(0.0f, 0.0f, 0.0f, 1.0f);
+    for (int i = 0; i < t->num_channels; ++i)
+        c[i] = normalize_value<T>(ptr[i]);
+    if (t->num_channels < 4)
+        c[3] = 1.0f;
+    return c;
+}
+
+template <typename T> CUDA_CALLABLE inline vec4 fetch_texel_3d(const TextureDesc* t, int x, int y, int z)
+{
+    x = wrap_coord(x, t->width, t->address_mode);
+    y = wrap_coord(y, t->height, t->address_mode);
+    z = wrap_coord(z, t->depth, t->address_mode);
+
+    // Border addressing returns 0 for out-of-bounds
+    if (x < 0 || y < 0 || z < 0) {
+        return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
+    const T* ptr = (const T*)t->data + ((z * t->height + y) * t->width + x) * t->num_channels;
+    vec4 c(0.0f, 0.0f, 0.0f, 1.0f);
+    for (int i = 0; i < t->num_channels; ++i)
+        c[i] = normalize_value<T>(ptr[i]);
+    if (t->num_channels < 4)
+        c[3] = 1.0f;
+    return c;
 }
 
 template <typename T> CUDA_CALLABLE inline vec4 sample_cpu_2d(const TextureDesc* t, float u, float v)
 {
     float fx = u * float(t->width) - 0.5f;
     float fy = v * float(t->height) - 0.5f;
+
+    if (t->filter_mode == TEX_FILTER_POINT) {
+        // Nearest neighbor: round to nearest texel
+        int x = int(floor(fx + 0.5f));
+        int y = int(floor(fy + 0.5f));
+        return fetch_texel_2d<T>(t, x, y);
+    }
+
+    // Bilinear filtering
     int x0 = int(floor(fx));
     int y0 = int(floor(fy));
     float wx = fx - float(x0);
     float wy = fy - float(y0);
 
-    auto fetch = [&](int x, int y) -> vec4 {
-        x = wrap_coord(x, t->width, TEX_ADDRESS_CLAMP);
-        y = wrap_coord(y, t->height, TEX_ADDRESS_CLAMP);
-        const T* ptr = (const T*)t->data + (y * t->width + x) * t->num_channels;
-        vec4 c(0.0f, 0.0f, 0.0f, 1.0f);
-        for (int i = 0; i < t->num_channels; ++i)
-            c[i] = normalize_value<T>(ptr[i]);
-        if (t->num_channels < 4)
-            c[3] = 1.0f;
-        return c;
-    };
-
-    vec4 c00 = fetch(x0, y0);
-    vec4 c10 = fetch(x0 + 1, y0);
-    vec4 c01 = fetch(x0, y0 + 1);
-    vec4 c11 = fetch(x0 + 1, y0 + 1);
+    vec4 c00 = fetch_texel_2d<T>(t, x0, y0);
+    vec4 c10 = fetch_texel_2d<T>(t, x0 + 1, y0);
+    vec4 c01 = fetch_texel_2d<T>(t, x0, y0 + 1);
+    vec4 c11 = fetch_texel_2d<T>(t, x0 + 1, y0 + 1);
 
     vec4 c0 = c00 * (1.0f - wx) + c10 * wx;
     vec4 c1 = c01 * (1.0f - wx) + c11 * wx;
@@ -121,6 +151,16 @@ template <typename T> CUDA_CALLABLE inline vec4 sample_cpu_3d(const TextureDesc*
     float fx = u * float(t->width) - 0.5f;
     float fy = v * float(t->height) - 0.5f;
     float fz = w * float(t->depth) - 0.5f;
+
+    if (t->filter_mode == TEX_FILTER_POINT) {
+        // Nearest neighbor: round to nearest texel
+        int x = int(floor(fx + 0.5f));
+        int y = int(floor(fy + 0.5f));
+        int z = int(floor(fz + 0.5f));
+        return fetch_texel_3d<T>(t, x, y, z);
+    }
+
+    // Trilinear filtering
     int x0 = int(floor(fx));
     int y0 = int(floor(fy));
     int z0 = int(floor(fz));
@@ -128,27 +168,14 @@ template <typename T> CUDA_CALLABLE inline vec4 sample_cpu_3d(const TextureDesc*
     float wy = fy - float(y0);
     float wz = fz - float(z0);
 
-    auto fetch = [&](int x, int y, int z) -> vec4 {
-        x = wrap_coord(x, t->width, TEX_ADDRESS_CLAMP);
-        y = wrap_coord(y, t->height, TEX_ADDRESS_CLAMP);
-        z = wrap_coord(z, t->depth, TEX_ADDRESS_CLAMP);
-        const T* ptr = (const T*)t->data + ((z * t->height + y) * t->width + x) * t->num_channels;
-        vec4 c(0.0f, 0.0f, 0.0f, 1.0f);
-        for (int i = 0; i < t->num_channels; ++i)
-            c[i] = normalize_value<T>(ptr[i]);
-        if (t->num_channels < 4)
-            c[3] = 1.0f;
-        return c;
-    };
-
-    vec4 c000 = fetch(x0, y0, z0);
-    vec4 c100 = fetch(x0 + 1, y0, z0);
-    vec4 c010 = fetch(x0, y0 + 1, z0);
-    vec4 c110 = fetch(x0 + 1, y0 + 1, z0);
-    vec4 c001 = fetch(x0, y0, z0 + 1);
-    vec4 c101 = fetch(x0 + 1, y0, z0 + 1);
-    vec4 c011 = fetch(x0, y0 + 1, z0 + 1);
-    vec4 c111 = fetch(x0 + 1, y0 + 1, z0 + 1);
+    vec4 c000 = fetch_texel_3d<T>(t, x0, y0, z0);
+    vec4 c100 = fetch_texel_3d<T>(t, x0 + 1, y0, z0);
+    vec4 c010 = fetch_texel_3d<T>(t, x0, y0 + 1, z0);
+    vec4 c110 = fetch_texel_3d<T>(t, x0 + 1, y0 + 1, z0);
+    vec4 c001 = fetch_texel_3d<T>(t, x0, y0, z0 + 1);
+    vec4 c101 = fetch_texel_3d<T>(t, x0 + 1, y0, z0 + 1);
+    vec4 c011 = fetch_texel_3d<T>(t, x0, y0 + 1, z0 + 1);
+    vec4 c111 = fetch_texel_3d<T>(t, x0 + 1, y0 + 1, z0 + 1);
 
     vec4 c00 = c000 * (1.0f - wx) + c100 * wx;
     vec4 c10 = c010 * (1.0f - wx) + c110 * wx;
@@ -165,8 +192,6 @@ CUDA_CALLABLE inline vec4 texture_sample_cpu_2d(const TextureDesc* t, vec2 uv)
     switch (t->format) {
     case TEX_FORMAT_UINT8:
         return sample_cpu_2d<uint8>(t, uv[0], uv[1]);
-    case TEX_FORMAT_UINT16:
-        return sample_cpu_2d<uint16>(t, uv[0], uv[1]);
     default:
         return sample_cpu_2d<float>(t, uv[0], uv[1]);
     }
@@ -177,14 +202,11 @@ CUDA_CALLABLE inline vec4 texture_sample_cpu_3d(const TextureDesc* t, vec3 uvw)
     switch (t->format) {
     case TEX_FORMAT_UINT8:
         return sample_cpu_3d<uint8>(t, uvw[0], uvw[1], uvw[2]);
-    case TEX_FORMAT_UINT16:
-        return sample_cpu_3d<uint16>(t, uvw[0], uvw[1], uvw[2]);
     default:
         return sample_cpu_3d<float>(t, uvw[0], uvw[1], uvw[2]);
     }
 }
 
-// 2D sampling
 CUDA_CALLABLE inline vec4 texture2d_sample_v4(uint64 id, vec2 uv)
 {
     const TextureDesc t = texture_get(id);
@@ -193,7 +215,6 @@ CUDA_CALLABLE inline vec4 texture2d_sample_v4(uint64 id, vec2 uv)
     }
 
 #if defined(__CUDA_ARCH__)
-    // In device code, cudaTextureObject_t is available from CUDA headers included by NVCC.
     cudaTextureObject_t tex = (cudaTextureObject_t)(t.handle);
 
     if (t.num_channels == 1) {
@@ -211,12 +232,6 @@ CUDA_CALLABLE inline vec4 texture2d_sample_v4(uint64 id, vec2 uv)
 #endif
 }
 
-CUDA_CALLABLE inline vec3 texture2d_sample_v3(uint64 id, vec2 uv)
-{
-    const vec4 c = texture2d_sample_v4(id, uv);
-    return vec3(c[0], c[1], c[2]);
-}
-
 CUDA_CALLABLE inline vec2 texture2d_sample_v2(uint64 id, vec2 uv)
 {
     const vec4 c = texture2d_sample_v4(id, uv);
@@ -229,7 +244,6 @@ CUDA_CALLABLE inline float texture2d_sample_f(uint64 id, vec2 uv)
     return c[0];
 }
 
-// 3D sampling
 CUDA_CALLABLE inline vec4 texture3d_sample_v4(uint64 id, vec3 uvw)
 {
     const TextureDesc t = texture_get(id);
@@ -255,12 +269,6 @@ CUDA_CALLABLE inline vec4 texture3d_sample_v4(uint64 id, vec3 uvw)
 #endif
 }
 
-CUDA_CALLABLE inline vec3 texture3d_sample_v3(uint64 id, vec3 uvw)
-{
-    const vec4 c = texture3d_sample_v4(id, uvw);
-    return vec3(c[0], c[1], c[2]);
-}
-
 CUDA_CALLABLE inline vec2 texture3d_sample_v2(uint64 id, vec3 uvw)
 {
     const vec4 c = texture3d_sample_v4(id, uvw);
@@ -273,22 +281,16 @@ CUDA_CALLABLE inline float texture3d_sample_f(uint64 id, vec3 uvw)
     return c[0];
 }
 
-// Adjoint functions (not differentiable)
+// Adjoint functions (no-op for textures)
 CUDA_CALLABLE inline void adj_texture2d_sample_v4(uint64, vec2, uint64&, vec2&, vec4&) { }
-CUDA_CALLABLE inline void adj_texture2d_sample_v3(uint64, vec2, uint64&, vec2&, vec3&) { }
 CUDA_CALLABLE inline void adj_texture2d_sample_v2(uint64, vec2, uint64&, vec2&, vec2&) { }
 CUDA_CALLABLE inline void adj_texture2d_sample_f(uint64, vec2, uint64&, vec2&, float&) { }
 
 CUDA_CALLABLE inline void adj_texture3d_sample_v4(uint64, vec3, uint64&, vec3&, vec4&) { }
-CUDA_CALLABLE inline void adj_texture3d_sample_v3(uint64, vec3, uint64&, vec3&, vec3&) { }
 CUDA_CALLABLE inline void adj_texture3d_sample_v2(uint64, vec3, uint64&, vec3&, vec2&) { }
 CUDA_CALLABLE inline void adj_texture3d_sample_f(uint64, vec3, uint64&, vec3&, float&) { }
 
-CUDA_CALLABLE inline void adj_texture_sample_v4(uint64, vec2, uint64&, vec2&, vec4&) { }
-CUDA_CALLABLE inline void adj_texture_sample_v3(uint64, vec2, uint64&, vec2&, vec3&) { }
-CUDA_CALLABLE inline void adj_texture_sample_f(uint64, vec2, uint64&, vec2&, float&) { }
-
-
+// Host-side functions (declared here, defined in texture.cpp)
 bool texture_get_descriptor(uint64_t id, TextureDesc& desc);
 void texture_add_descriptor(uint64_t id, const TextureDesc& desc);
 void texture_rem_descriptor(uint64_t id);

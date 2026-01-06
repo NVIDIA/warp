@@ -4255,6 +4255,8 @@ class Runtime:
                 ctypes.c_int,  # depth
                 ctypes.c_int,  # channels
                 ctypes.c_int,  # format
+                ctypes.c_int,  # address_mode
+                ctypes.c_int,  # filter_mode
             ]
             self.core.wp_texture_create_host.restype = ctypes.c_uint64
             self.core.wp_texture_destroy_host.argtypes = [ctypes.c_uint64]
