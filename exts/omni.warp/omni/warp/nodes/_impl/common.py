@@ -70,6 +70,12 @@ def device_get_cuda_compute() -> wp.Device:
     return wp.get_device(f"cuda:{cuda_device_idx}")
 
 
+#   Constants
+# ------------------------------------------------------------------------------
+
+ARRAY_MAX_DIMS = 4
+
+
 #   Types
 # ------------------------------------------------------------------------------
 
