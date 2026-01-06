@@ -18,9 +18,7 @@
 import importlib
 import os
 import tempfile
-from collections.abc import Mapping
 from typing import (
-    Any,
     Optional,
     Union,
 )
@@ -54,15 +52,6 @@ _DATA_PATH = os.path.join(os.path.dirname(__file__), "data")
 _OUTPUT_PATH = omni.kit.test.get_test_output_path()
 
 _SETTING_UPDATE_GOLDEN_IMAGES = "/exts/omni.warp/update_golden_images"
-
-
-def set_settings(
-    values: Mapping[str, Any],
-) -> None:
-    """Sets Kit settings."""
-    settings = carb.settings.get_settings()
-    for k, v in values.items():
-        settings.set(k, v)
 
 
 async def wait_for_streaming(
@@ -99,7 +88,6 @@ async def wait_for_streaming(
 
 async def open_sample(
     file_name: str,
-    enable_fsd: Optional[bool] = None,
 ) -> None:
     """Opens a sample scene and waits until it finishes loading."""
     context = omni.usd.get_context()
@@ -107,13 +95,6 @@ async def open_sample(
     # Start with a clean slate or else some lingering settings might cause rendering artifacts.
     await context.new_stage_async()
     await omni.kit.app.get_app().next_update_async()
-
-    if enable_fsd is not None:
-        set_settings(
-            {
-                "/app/useFabricSceneDelegate": enable_fsd,
-            }
-        )
 
     # Open the scene.
     file_path = os.path.join(_SAMPLES_PATH, file_name)
