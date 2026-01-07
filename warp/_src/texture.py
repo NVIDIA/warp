@@ -118,15 +118,17 @@ class Texture:
         FILTER_POINT (int): Nearest-neighbor filtering = 0
         FILTER_LINEAR (int): Bilinear/trilinear filtering = 1
 
-    Example:
-        >>> import warp as wp
-        >>> import numpy as np
-        >>> # Create a 2D texture
-        >>> data_2d = np.random.rand(256, 256).astype(np.float32)
-        >>> tex2d = wp.Texture(data_2d, device="cuda:0")
-        >>> # Create a 3D texture
-        >>> data_3d = np.random.rand(64, 64, 64).astype(np.float32)
-        >>> tex3d = wp.Texture(data_3d, device="cuda:0")
+    Example::
+
+        import warp as wp
+        import numpy as np
+
+        # Create a 2D texture
+        data_2d = np.random.rand(256, 256).astype(np.float32)
+        tex2d = wp.Texture(data_2d, device="cuda:0")
+        # Create a 3D texture
+        data_3d = np.random.rand(64, 64, 64).astype(np.float32)
+        tex3d = wp.Texture(data_3d, device="cuda:0")
     """
 
     # Class constants for address modes (matching PR #1153 API)
@@ -516,16 +518,19 @@ class Texture2D(Texture):
     This is a specialized version of :class:`Texture` with dimensionality fixed to 2.
     Use this for explicit 2D texture creation and as a type hint in kernel parameters.
 
-    Example:
-        >>> import warp as wp
-        >>> import numpy as np
-        >>> data = np.random.rand(256, 256, 4).astype(np.float32)
-        >>> tex = wp.Texture2D(data, device="cuda:0")
+    Example::
 
-        >>> @wp.kernel
-        >>> def sample_kernel(tex: wp.Texture2D, output: wp.array(dtype=float)):
-        >>>     tid = wp.tid()
-        >>>     output[tid] = wp.texture_sample(tex, wp.vec2f(0.5, 0.5), dtype=float)
+        import warp as wp
+        import numpy as np
+
+        data = np.random.rand(256, 256, 4).astype(np.float32)
+        tex = wp.Texture2D(data, device="cuda:0")
+
+
+        @wp.kernel
+        def sample_kernel(tex: wp.Texture2D, output: wp.array(dtype=float)):
+            tid = wp.tid()
+            output[tid] = wp.texture_sample(tex, wp.vec2f(0.5, 0.5), dtype=float)
     """
 
     _default_dims = 2
@@ -580,16 +585,19 @@ class Texture3D(Texture):
     This is a specialized version of :class:`Texture` with dimensionality fixed to 3.
     Use this for explicit 3D texture creation and as a type hint in kernel parameters.
 
-    Example:
-        >>> import warp as wp
-        >>> import numpy as np
-        >>> data = np.random.rand(64, 64, 64).astype(np.float32)
-        >>> tex = wp.Texture3D(data, device="cuda:0")
+    Example::
 
-        >>> @wp.kernel
-        >>> def sample_kernel(tex: wp.Texture3D, output: wp.array(dtype=float)):
-        >>>     tid = wp.tid()
-        >>>     output[tid] = wp.texture_sample(tex, wp.vec3f(0.5, 0.5, 0.5), dtype=float)
+        import warp as wp
+        import numpy as np
+
+        data = np.random.rand(64, 64, 64).astype(np.float32)
+        tex = wp.Texture3D(data, device="cuda:0")
+
+
+        @wp.kernel
+        def sample_kernel(tex: wp.Texture3D, output: wp.array(dtype=float)):
+            tid = wp.tid()
+            output[tid] = wp.texture_sample(tex, wp.vec3f(0.5, 0.5, 0.5), dtype=float)
     """
 
     _default_dims = 3
