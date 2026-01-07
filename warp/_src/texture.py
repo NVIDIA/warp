@@ -96,31 +96,330 @@ class texture3d_t(ctypes.Structure):
         self.num_channels = num_channels
 
 
-class _TextureBase:
-    """Base class for 2D and 3D textures with shared functionality.
+class Texture:
+    """Unified texture class for hardware-accelerated sampling on GPU and software sampling on CPU.
 
-    This class provides common utilities and properties for texture classes.
-    It should not be instantiated directly.
+    This class handles both 2D and 3D textures. The dimensionality is determined automatically
+    from the input data shape, or can be set explicitly via the ``dims`` parameter or by using
+    the :class:`Texture2D` or :class:`Texture3D` subclasses.
+
+    Textures provide hardware-accelerated filtering and addressing for regularly-gridded data
+    on CUDA devices. On CPU, software-based filtering and addressing is used. Supports
+    bilinear/trilinear interpolation and various addressing modes (wrap, clamp, mirror, border).
+
+    Supports uint8, uint16, and float32 data types. Integer textures are read as normalized
+    floats in the [0, 1] range.
+
+    Class Constants:
+        ADDRESS_WRAP (int): Wrap coordinates (tile the texture) = 0
+        ADDRESS_CLAMP (int): Clamp coordinates to [0, 1] = 1
+        ADDRESS_MIRROR (int): Mirror coordinates at boundaries = 2
+        ADDRESS_BORDER (int): Return 0 for coordinates outside [0, 1] = 3
+        FILTER_POINT (int): Nearest-neighbor filtering = 0
+        FILTER_LINEAR (int): Bilinear/trilinear filtering = 1
+
+    Example:
+        >>> import warp as wp
+        >>> import numpy as np
+        >>> # Create a 2D texture
+        >>> data_2d = np.random.rand(256, 256).astype(np.float32)
+        >>> tex2d = wp.Texture(data_2d, device="cuda:0")
+        >>> # Create a 3D texture
+        >>> data_3d = np.random.rand(64, 64, 64).astype(np.float32)
+        >>> tex3d = wp.Texture(data_3d, device="cuda:0")
     """
+
+    # Class constants for address modes (matching PR #1153 API)
+    ADDRESS_WRAP = 0
+    ADDRESS_CLAMP = 1
+    ADDRESS_MIRROR = 2
+    ADDRESS_BORDER = 3
+
+    # Class constants for filter modes
+    FILTER_POINT = 0
+    FILTER_LINEAR = 1
+
+    # Default dimensionality (None means auto-detect; subclasses override)
+    _default_dims: int | None = None
+
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance._tex_handle = 0
+        instance._array_handle = 0
+        return instance
+
+    def __init__(
+        self,
+        data: np.ndarray | array | None = None,
+        width: int = 0,
+        height: int = 0,
+        depth: int = 0,
+        num_channels: int = 1,
+        dtype=np.float32,
+        filter_mode: int = 1,
+        address_mode: int | tuple[int, ...] | None = None,
+        address_mode_u: int | None = None,
+        address_mode_v: int | None = None,
+        address_mode_w: int | None = None,
+        normalized_coords: bool = True,
+        device=None,
+        dims: int | None = None,
+    ):
+        """Create a texture.
+
+        Args:
+            data: Initial texture data as a numpy array or warp array.
+                  For 2D: shape (height, width), (height, width, 2), or (height, width, 4).
+                  For 3D: shape (depth, height, width), (depth, height, width, 2), or (depth, height, width, 4).
+                  Supported dtypes: uint8, uint16, float32.
+            width: Texture width (required if data is None).
+            height: Texture height (required if data is None).
+            depth: Texture depth (required if data is None for 3D textures).
+            num_channels: Number of channels (1, 2, or 4). Default is 1.
+            dtype: Data type (uint8, uint16, or float32). Default is float32.
+            filter_mode: Filtering mode - FILTER_POINT (0) or FILTER_LINEAR (1). Default is LINEAR.
+            address_mode: Address mode for all axes - ADDRESS_WRAP (0), ADDRESS_CLAMP (1),
+                          ADDRESS_MIRROR (2), or ADDRESS_BORDER (3). Can be a single int or tuple.
+            address_mode_u: Per-axis address mode for U. Overrides address_mode if specified.
+            address_mode_v: Per-axis address mode for V. Overrides address_mode if specified.
+            address_mode_w: Per-axis address mode for W (3D only). Overrides address_mode if specified.
+            normalized_coords: If True (default), coordinates are in [0, 1] range.
+                              If False, coordinates are in texel space.
+            device: Device to create the texture on (CPU or CUDA).
+            dims: Explicit dimensionality (2 or 3). If None, auto-detected from data.
+        """
+        import warp._src.context  # noqa: PLC0415
+
+        self.runtime = warp._src.context.runtime
+
+        # Determine dimensionality
+        if self._default_dims is not None:
+            # Subclass has fixed dimensionality
+            self._dims = self._default_dims
+        elif dims is not None:
+            self._dims = dims
+        else:
+            # Auto-detect from data
+            self._dims = self._detect_dims(data, depth)
+
+        # Resolve address modes
+        resolved_u = self._resolve_address_mode(address_mode, address_mode_u, 0)
+        resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1)
+        resolved_w = self._resolve_address_mode(address_mode, address_mode_w, 2) if self._dims == 3 else 1
+
+        if data is None:
+            # Lazy creation - just store dimensions
+            self.device = warp._src.context.get_device(device)
+            self._width = width
+            self._height = height
+            self._depth = depth if self._dims == 3 else 1
+            self._num_channels = num_channels
+            self._dtype = np.dtype(dtype)
+            self._dtype_code = self._dtype_to_code(dtype)
+            self._filter_mode = filter_mode
+            self._address_mode_u = resolved_u
+            self._address_mode_v = resolved_v
+            self._address_mode_w = resolved_w
+            self._normalized_coords = normalized_coords
+            self._tex_handle = 0
+            self._array_handle = 0
+            return
+
+        # Extract data and dimensions
+        data_flat, width, height, depth, num_channels, dtype, dtype_code = self._process_data(data, device)
+        self.device = (
+            warp._src.context.get_device(device)
+            if not is_array(data)
+            else (data.device if device is None else warp._src.context.get_device(device))
+        )
+
+        if num_channels not in (1, 2, 4):
+            raise ValueError("num_channels must be 1, 2, or 4")
+
+        self._width = width
+        self._height = height
+        self._depth = depth if self._dims == 3 else 1
+        self._num_channels = num_channels
+        self._dtype = np.dtype(dtype)
+        self._dtype_code = dtype_code
+        self._filter_mode = filter_mode
+        self._address_mode_u = resolved_u
+        self._address_mode_v = resolved_v
+        self._address_mode_w = resolved_w
+        self._normalized_coords = normalized_coords
+
+        # Create the texture
+        self._create_texture(data_flat)
+
+    def _detect_dims(self, data, depth: int) -> int:
+        """Auto-detect texture dimensionality from data or depth parameter."""
+        if data is not None:
+            if isinstance(data, np.ndarray):
+                np_data = data
+            elif is_array(data):
+                np_data = data.numpy()
+            else:
+                raise TypeError("data must be a numpy array or warp array")
+
+            ndim = np_data.ndim
+            if ndim == 4:
+                return 3  # (depth, height, width, channels)
+            elif ndim == 3:
+                # Could be (height, width, channels) for 2D or (depth, height, width) for 3D
+                if np_data.shape[-1] in (1, 2, 4) and np_data.shape[0] <= 4:
+                    return 2  # Likely 2D with channels
+                elif np_data.shape[-1] not in (1, 2, 4):
+                    return 3  # Last dim is not channels, so 3D
+                else:
+                    return 3  # Large first dim, likely 3D
+            else:
+                return 2  # ndim == 2 is always 2D
+        else:
+            return 3 if depth > 1 else 2
+
+    def _process_data(self, data, device):
+        """Process input data and extract dimensions."""
+        if isinstance(data, np.ndarray):
+            np_data = data
+        elif is_array(data):
+            np_data = data.numpy()
+        else:
+            raise TypeError("data must be a numpy array or warp array")
+
+        if not np_data.flags["C_CONTIGUOUS"]:
+            np_data = np.ascontiguousarray(np_data)
+
+        dtype_code = self._dtype_to_code(np_data.dtype)
+        dtype = np_data.dtype
+
+        if self._dims == 2:
+            if np_data.ndim == 2:
+                height, width = np_data.shape
+                num_channels = 1
+            elif np_data.ndim == 3:
+                height, width, num_channels = np_data.shape
+            else:
+                raise ValueError("2D texture data must be 2D or 3D array")
+            depth = 1
+        else:  # 3D
+            if np_data.ndim == 3:
+                depth, height, width = np_data.shape
+                num_channels = 1
+            elif np_data.ndim == 4:
+                depth, height, width, num_channels = np_data.shape
+            else:
+                raise ValueError("3D texture data must be 3D or 4D array")
+
+        return np_data.flatten(), width, height, depth, num_channels, dtype, dtype_code
+
+    def _create_texture(self, data_flat):
+        """Create the underlying texture resource."""
+        tex_handle = ctypes.c_uint64(0)
+        array_handle = ctypes.c_uint64(0)
+        data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
+
+        if self._dims == 2:
+            if self.device.is_cuda:
+                success = self.runtime.core.wp_texture2d_create_device(
+                    self.device.context,
+                    self._width,
+                    self._height,
+                    self._num_channels,
+                    self._dtype_code,
+                    self._filter_mode,
+                    self._address_mode_u,
+                    self._address_mode_v,
+                    self._normalized_coords,
+                    data_ptr,
+                    ctypes.byref(tex_handle),
+                    ctypes.byref(array_handle),
+                )
+            else:
+                success = self.runtime.core.wp_texture2d_create_host(
+                    self._width,
+                    self._height,
+                    self._num_channels,
+                    self._dtype_code,
+                    self._filter_mode,
+                    self._address_mode_u,
+                    self._address_mode_v,
+                    self._normalized_coords,
+                    data_ptr,
+                    ctypes.byref(tex_handle),
+                )
+        else:  # 3D
+            if self.device.is_cuda:
+                success = self.runtime.core.wp_texture3d_create_device(
+                    self.device.context,
+                    self._width,
+                    self._height,
+                    self._depth,
+                    self._num_channels,
+                    self._dtype_code,
+                    self._filter_mode,
+                    self._address_mode_u,
+                    self._address_mode_v,
+                    self._address_mode_w,
+                    self._normalized_coords,
+                    data_ptr,
+                    ctypes.byref(tex_handle),
+                    ctypes.byref(array_handle),
+                )
+            else:
+                success = self.runtime.core.wp_texture3d_create_host(
+                    self._width,
+                    self._height,
+                    self._depth,
+                    self._num_channels,
+                    self._dtype_code,
+                    self._filter_mode,
+                    self._address_mode_u,
+                    self._address_mode_v,
+                    self._address_mode_w,
+                    self._normalized_coords,
+                    data_ptr,
+                    ctypes.byref(tex_handle),
+                )
+
+        if not success:
+            raise RuntimeError(f"Failed to create Texture{self._dims}D")
+
+        self._tex_handle = tex_handle.value
+        self._array_handle = array_handle.value
+
+    def __del__(self):
+        if self._tex_handle == 0 and self._array_handle == 0:
+            return
+
+        try:
+            if self._dims == 2:
+                if self.device.is_cuda:
+                    with self.device.context_guard:
+                        self.runtime.core.wp_texture2d_destroy_device(
+                            self.device.context, self._tex_handle, self._array_handle
+                        )
+                else:
+                    self.runtime.core.wp_texture2d_destroy_host(self._tex_handle)
+            else:  # 3D
+                if self.device.is_cuda:
+                    with self.device.context_guard:
+                        self.runtime.core.wp_texture3d_destroy_device(
+                            self.device.context, self._tex_handle, self._array_handle
+                        )
+                else:
+                    self.runtime.core.wp_texture3d_destroy_host(self._tex_handle)
+        except (TypeError, AttributeError):
+            pass
 
     @staticmethod
     def _dtype_to_code(dtype):
-        """Convert dtype to internal dtype code.
-
-        Args:
-            dtype: One of np.uint8, np.uint16, np.float32, wp.uint8, wp.uint16, wp.float32, or float.
-
-        Returns:
-            Internal dtype code (0 for uint8, 1 for uint16, 2 for float32).
-        """
-        # Handle warp types
+        """Convert dtype to internal dtype code."""
         if dtype is uint8 or dtype is np.uint8:
             return 0
         elif dtype is uint16 or dtype is np.uint16:
             return 1
         elif dtype is float32 or dtype is np.float32 or dtype is float:
             return 2
-        # Try numpy dtype conversion as fallback
         try:
             dtype = np.dtype(dtype)
             if dtype == np.uint8:
@@ -135,25 +434,21 @@ class _TextureBase:
 
     @staticmethod
     def _resolve_address_mode(address_mode, address_mode_axis, axis_index):
-        """Resolve address mode for a single axis.
-
-        Args:
-            address_mode: The base address_mode (single int or tuple).
-            address_mode_axis: Per-axis override (or None).
-            axis_index: Index into tuple if address_mode is a tuple.
-
-        Returns:
-            Resolved address mode as int (default is CLAMP=1).
-        """
+        """Resolve address mode for a single axis."""
         if address_mode_axis is not None:
             return address_mode_axis
         elif address_mode is not None:
             if isinstance(address_mode, tuple):
-                return address_mode[axis_index]
+                return address_mode[axis_index] if axis_index < len(address_mode) else 1
             else:
                 return address_mode
         else:
             return 1  # CLAMP
+
+    @property
+    def dims(self) -> int:
+        """Texture dimensionality (2 or 3)."""
+        return self._dims
 
     @property
     def width(self) -> int:
@@ -166,71 +461,82 @@ class _TextureBase:
         return self._height
 
     @property
+    def depth(self) -> int:
+        """Texture depth in pixels (1 for 2D textures)."""
+        return self._depth
+
+    @property
     def num_channels(self) -> int:
         """Number of channels."""
         return self._num_channels
 
     @property
     def dtype(self):
-        """Data type of the texture (uint8, uint16, or float32)."""
+        """Data type of the texture."""
         return self._dtype
 
     @property
     def address_mode_u(self) -> int:
-        """Address mode for U axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        """Address mode for U axis."""
         return self._address_mode_u
 
     @property
     def address_mode_v(self) -> int:
-        """Address mode for V axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        """Address mode for V axis."""
         return self._address_mode_v
 
     @property
+    def address_mode_w(self) -> int:
+        """Address mode for W axis (3D only)."""
+        return self._address_mode_w
+
+    @property
     def normalized_coords(self) -> bool:
-        """Whether texture uses normalized coordinates [0,1] or texel space."""
+        """Whether texture uses normalized coordinates."""
         return self._normalized_coords
 
+    @property
+    def id(self) -> int:
+        """Texture handle ID (for advanced use)."""
+        return self._tex_handle
 
-class Texture2D(_TextureBase):
-    """Class representing a 2D texture.
+    def __ctype__(self):
+        """Return the ctypes structure for passing to kernels."""
+        if self._tex_handle == 0:
+            raise RuntimeError("Texture was created with data=None but never initialized.")
+        if self._dims == 2:
+            return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
+        else:
+            return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)
 
-    Textures provide hardware-accelerated filtering and addressing for
-    regularly-gridded data on CUDA devices. On CPU, software-based
-    filtering and addressing is used. Supports bilinear interpolation and
-    various addressing modes (wrap, clamp, mirror, border).
 
-    Supports uint8, uint16, and float32 data types. Integer textures are
-    read as normalized floats in the [0, 1] range.
+class Texture2D(Texture):
+    """2D texture class.
+
+    This is a specialized version of :class:`Texture` with dimensionality fixed to 2.
+    Use this for explicit 2D texture creation and as a type hint in kernel parameters.
 
     Example:
         >>> import warp as wp
         >>> import numpy as np
-        >>> # Create a 256x256 RGBA float texture on GPU
         >>> data = np.random.rand(256, 256, 4).astype(np.float32)
         >>> tex = wp.Texture2D(data, device="cuda:0")
-        >>> # Create a texture on CPU
-        >>> tex_cpu = wp.Texture2D(data, device="cpu")
-        >>> # Create a compressed 8-bit texture
-        >>> data8 = (np.random.rand(256, 256) * 255).astype(np.uint8)
-        >>> tex8 = wp.Texture2D(data8, device="cuda:0")
+
+        >>> @wp.kernel
+        >>> def sample_kernel(tex: wp.Texture2D, output: wp.array(dtype=float)):
+        >>>     tid = wp.tid()
+        >>>     output[tid] = wp.texture_sample(tex, wp.vec2f(0.5, 0.5), dtype=float)
     """
 
-    # Native C++ type name for code generation
+    _default_dims = 2
     _wp_native_name_ = "texture2d_t"
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
-    #: Member attributes available during code-gen (e.g.: w = tex.width)
     vars: ClassVar[dict[str, Var]] = {
         "width": _Var("width", int32),
         "height": _Var("height", int32),
     }
-
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        instance._tex_handle = 0
-        instance._array_handle = 0
-        return instance
 
     def __init__(
         self,
@@ -246,217 +552,56 @@ class Texture2D(_TextureBase):
         normalized_coords: bool = True,
         device=None,
     ):
-        """Create a 2D texture.
-
-        Args:
-            data: Initial texture data as a numpy array or warp array.
-                  Shape should be (height, width) for 1-channel,
-                  (height, width, 2) for 2-channel, or
-                  (height, width, 4) for 4-channel textures.
-                  Supported dtypes: uint8, uint16, float32 (or wp.uint8, wp.uint16, wp.float32).
-                  If None, width/height/num_channels must be specified.
-            width: Texture width (required if data is None).
-            height: Texture height (required if data is None).
-            num_channels: Number of channels (1, 2, or 4). Default is 4.
-            dtype: Data type (uint8, uint16, or float32). Default is float32.
-            filter_mode: Filtering mode - CLOSEST (0) or LINEAR (1). Default is LINEAR.
-            address_mode: Address mode for all axes - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3).
-                          Can be a single int (applied to all axes) or a tuple (u, v) for per-axis modes.
-                          Default is CLAMP. Overridden by address_mode_u/address_mode_v if specified.
-            address_mode_u: Per-axis address mode for U (horizontal). Overrides address_mode if specified.
-            address_mode_v: Per-axis address mode for V (vertical). Overrides address_mode if specified.
-            normalized_coords: If True (default), texture coordinates are in [0, 1] range.
-                              If False, coordinates are in texel space [0, width/height].
-            device: Device to create the texture on (CPU or CUDA).
-        """
-        import warp._src.context  # noqa: PLC0415 - lazy import to avoid circular imports
-
-        self.runtime = warp._src.context.runtime
-
-        # Resolve per-axis address modes using base class helper
-        resolved_u = self._resolve_address_mode(address_mode, address_mode_u, 0)
-        resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1)
-
-        if data is None:
-            # Just store dimensions for lazy creation
-            self.device = warp._src.context.get_device(device)
-            self._width = width
-            self._height = height
-            self._num_channels = num_channels
-            self._dtype = np.dtype(dtype)
-            self._dtype_code = self._dtype_to_code(dtype)
-            self._filter_mode = filter_mode
-            self._address_mode_u = resolved_u
-            self._address_mode_v = resolved_v
-            self._normalized_coords = normalized_coords
-            self._tex_handle = 0
-            self._array_handle = 0
-            return
-
-        # Get device and extract data
-        if isinstance(data, np.ndarray):
-            self.device = warp._src.context.get_device(device)
-
-            # Determine dimensions from numpy array shape
-            if data.ndim == 2:
-                height, width = data.shape
-                num_channels = 1
-            elif data.ndim == 3:
-                height, width, num_channels = data.shape
-            else:
-                raise ValueError("Data must be 2D or 3D numpy array")
-
-            # Validate and get dtype code
-            dtype_code = self._dtype_to_code(data.dtype)
-            dtype = data.dtype
-
-            # Ensure contiguous
-            if not data.flags["C_CONTIGUOUS"]:
-                data = np.ascontiguousarray(data)
-
-            data_flat = data.flatten()
-        elif is_array(data):
-            self.device = data.device if device is None else warp._src.context.get_device(device)
-
-            # Copy to numpy for now (could optimize later)
-            np_data = data.numpy()
-            if np_data.ndim == 2:
-                height, width = np_data.shape
-                num_channels = 1
-            elif np_data.ndim == 3:
-                height, width, num_channels = np_data.shape
-            else:
-                raise ValueError("Data must be 2D or 3D array")
-
-            dtype_code = self._dtype_to_code(np_data.dtype)
-            dtype = np_data.dtype
-
-            if not np_data.flags["C_CONTIGUOUS"]:
-                np_data = np.ascontiguousarray(np_data)
-            data_flat = np_data.flatten()
-        else:
-            raise TypeError("data must be a numpy array or warp array")
-
-        if num_channels not in (1, 2, 4):
-            raise ValueError("num_channels must be 1, 2, or 4")
-
-        self._width = width
-        self._height = height
-        self._num_channels = num_channels
-        self._dtype = np.dtype(dtype)
-        self._dtype_code = dtype_code
-        self._filter_mode = filter_mode
-        self._address_mode_u = resolved_u
-        self._address_mode_v = resolved_v
-        self._normalized_coords = normalized_coords
-
-        # Create the texture
-        tex_handle = ctypes.c_uint64(0)
-        array_handle = ctypes.c_uint64(0)
-
-        data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
-
-        if self.device.is_cuda:
-            # Create CUDA texture
-            success = self.runtime.core.wp_texture2d_create_device(
-                self.device.context,
-                width,
-                height,
-                num_channels,
-                dtype_code,
-                filter_mode,
-                resolved_u,
-                resolved_v,
-                normalized_coords,
-                data_ptr,
-                ctypes.byref(tex_handle),
-                ctypes.byref(array_handle),
-            )
-        else:
-            # Create CPU texture
-            success = self.runtime.core.wp_texture2d_create_host(
-                width,
-                height,
-                num_channels,
-                dtype_code,
-                filter_mode,
-                resolved_u,
-                resolved_v,
-                normalized_coords,
-                data_ptr,
-                ctypes.byref(tex_handle),
-            )
-
-        if not success:
-            raise RuntimeError("Failed to create Texture2D")
-
-        self._tex_handle = tex_handle.value
-        self._array_handle = array_handle.value
-
-    def __del__(self):
-        if self._tex_handle == 0 and self._array_handle == 0:
-            return
-
-        try:
-            if self.device.is_cuda:
-                with self.device.context_guard:
-                    self.runtime.core.wp_texture2d_destroy_device(
-                        self.device.context, self._tex_handle, self._array_handle
-                    )
-            else:
-                self.runtime.core.wp_texture2d_destroy_host(self._tex_handle)
-        except (TypeError, AttributeError):
-            # Suppress errors during shutdown
-            pass
+        super().__init__(
+            data=data,
+            width=width,
+            height=height,
+            depth=1,
+            num_channels=num_channels,
+            dtype=dtype,
+            filter_mode=filter_mode,
+            address_mode=address_mode,
+            address_mode_u=address_mode_u,
+            address_mode_v=address_mode_v,
+            normalized_coords=normalized_coords,
+            device=device,
+        )
 
     def __ctype__(self) -> texture2d_t:
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
-            raise RuntimeError("Texture was created with data=None but never initialized. Cannot be used in kernels.")
+            raise RuntimeError("Texture was created with data=None but never initialized.")
         return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
 
 
-class Texture3D(_TextureBase):
-    """Class representing a 3D texture.
+class Texture3D(Texture):
+    """3D texture class.
 
-    Textures provide hardware-accelerated filtering and addressing for
-    regularly-gridded volumetric data on CUDA devices. On CPU, software-based
-    filtering and addressing is used. Supports trilinear interpolation
-    and various addressing modes (wrap, clamp, mirror, border).
-
-    Supports uint8, uint16, and float32 data types. Integer textures are
-    read as normalized floats in the [0, 1] range.
+    This is a specialized version of :class:`Texture` with dimensionality fixed to 3.
+    Use this for explicit 3D texture creation and as a type hint in kernel parameters.
 
     Example:
         >>> import warp as wp
         >>> import numpy as np
-        >>> # Create a 64x64x64 single-channel 3D texture on GPU
         >>> data = np.random.rand(64, 64, 64).astype(np.float32)
         >>> tex = wp.Texture3D(data, device="cuda:0")
-        >>> # Create a texture on CPU
-        >>> tex_cpu = wp.Texture3D(data, device="cpu")
-        >>> # Create a compressed 8-bit 3D texture
-        >>> data8 = (np.random.rand(64, 64, 64) * 255).astype(np.uint8)
-        >>> tex8 = wp.Texture3D(data8, device="cuda:0")
+
+        >>> @wp.kernel
+        >>> def sample_kernel(tex: wp.Texture3D, output: wp.array(dtype=float)):
+        >>>     tid = wp.tid()
+        >>>     output[tid] = wp.texture_sample(tex, wp.vec3f(0.5, 0.5, 0.5), dtype=float)
     """
 
-    # Native C++ type name for code generation
+    _default_dims = 3
     _wp_native_name_ = "texture3d_t"
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
-    #: Member attributes available during code-gen (e.g.: w = tex.width)
     vars: ClassVar[dict[str, Var]] = {
         "width": _Var("width", int32),
         "height": _Var("height", int32),
         "depth": _Var("depth", int32),
     }
-
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        instance._tex_handle = 0
-        instance._array_handle = 0
-        return instance
 
     def __init__(
         self,
@@ -474,192 +619,24 @@ class Texture3D(_TextureBase):
         normalized_coords: bool = True,
         device=None,
     ):
-        """Create a 3D texture.
-
-        Args:
-            data: Initial texture data as a numpy array or warp array.
-                  Shape should be (depth, height, width) for 1-channel,
-                  (depth, height, width, 2) for 2-channel, or
-                  (depth, height, width, 4) for 4-channel textures.
-                  Supported dtypes: uint8, uint16, float32 (or wp.uint8, wp.uint16, wp.float32).
-                  If None, width/height/depth/num_channels must be specified.
-            width: Texture width (required if data is None).
-            height: Texture height (required if data is None).
-            depth: Texture depth (required if data is None).
-            num_channels: Number of channels (1, 2, or 4). Default is 1.
-            dtype: Data type (uint8, uint16, or float32). Default is float32.
-            filter_mode: Filtering mode - CLOSEST (0) or LINEAR (1). Default is LINEAR.
-            address_mode: Address mode for all axes - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3).
-                          Can be a single int (applied to all axes) or a tuple (u, v, w) for per-axis modes.
-                          Default is CLAMP. Overridden by address_mode_u/v/w if specified.
-            address_mode_u: Per-axis address mode for U. Overrides address_mode if specified.
-            address_mode_v: Per-axis address mode for V. Overrides address_mode if specified.
-            address_mode_w: Per-axis address mode for W. Overrides address_mode if specified.
-            normalized_coords: If True (default), texture coordinates are in [0, 1] range.
-                              If False, coordinates are in texel space [0, width/height/depth].
-            device: Device to create the texture on (CPU or CUDA).
-        """
-        import warp._src.context  # noqa: PLC0415 - lazy import to avoid circular imports
-
-        self.runtime = warp._src.context.runtime
-
-        # Resolve per-axis address modes using base class helper
-        resolved_u = self._resolve_address_mode(address_mode, address_mode_u, 0)
-        resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1)
-        resolved_w = self._resolve_address_mode(address_mode, address_mode_w, 2)
-
-        if data is None:
-            # Just store dimensions for lazy creation
-            self.device = warp._src.context.get_device(device)
-            self._width = width
-            self._height = height
-            self._depth = depth
-            self._num_channels = num_channels
-            self._dtype = np.dtype(dtype)
-            self._dtype_code = self._dtype_to_code(dtype)
-            self._filter_mode = filter_mode
-            self._address_mode_u = resolved_u
-            self._address_mode_v = resolved_v
-            self._address_mode_w = resolved_w
-            self._normalized_coords = normalized_coords
-            self._tex_handle = 0
-            self._array_handle = 0
-            return
-
-        # Get device and extract data
-        if isinstance(data, np.ndarray):
-            self.device = warp._src.context.get_device(device)
-
-            # Determine dimensions from numpy array shape
-            if data.ndim == 3:
-                depth, height, width = data.shape
-                num_channels = 1
-            elif data.ndim == 4:
-                depth, height, width, num_channels = data.shape
-            else:
-                raise ValueError("Data must be 3D or 4D numpy array")
-
-            # Validate and get dtype code
-            dtype_code = self._dtype_to_code(data.dtype)
-            dtype = data.dtype
-
-            # Ensure contiguous
-            if not data.flags["C_CONTIGUOUS"]:
-                data = np.ascontiguousarray(data)
-
-            data_flat = data.flatten()
-        elif is_array(data):
-            self.device = data.device if device is None else warp._src.context.get_device(device)
-
-            # Copy to numpy for now (could optimize later)
-            np_data = data.numpy()
-            if np_data.ndim == 3:
-                depth, height, width = np_data.shape
-                num_channels = 1
-            elif np_data.ndim == 4:
-                depth, height, width, num_channels = np_data.shape
-            else:
-                raise ValueError("Data must be 3D or 4D array")
-
-            dtype_code = self._dtype_to_code(np_data.dtype)
-            dtype = np_data.dtype
-
-            if not np_data.flags["C_CONTIGUOUS"]:
-                np_data = np.ascontiguousarray(np_data)
-            data_flat = np_data.flatten()
-        else:
-            raise TypeError("data must be a numpy array or warp array")
-
-        if num_channels not in (1, 2, 4):
-            raise ValueError("num_channels must be 1, 2, or 4")
-
-        self._width = width
-        self._height = height
-        self._depth = depth
-        self._num_channels = num_channels
-        self._dtype = np.dtype(dtype)
-        self._dtype_code = dtype_code
-        self._filter_mode = filter_mode
-        self._address_mode_u = resolved_u
-        self._address_mode_v = resolved_v
-        self._address_mode_w = resolved_w
-        self._normalized_coords = normalized_coords
-
-        # Create the texture
-        tex_handle = ctypes.c_uint64(0)
-        array_handle = ctypes.c_uint64(0)
-
-        data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
-
-        if self.device.is_cuda:
-            # Create CUDA texture
-            success = self.runtime.core.wp_texture3d_create_device(
-                self.device.context,
-                width,
-                height,
-                depth,
-                num_channels,
-                dtype_code,
-                filter_mode,
-                resolved_u,
-                resolved_v,
-                resolved_w,
-                normalized_coords,
-                data_ptr,
-                ctypes.byref(tex_handle),
-                ctypes.byref(array_handle),
-            )
-        else:
-            # Create CPU texture
-            success = self.runtime.core.wp_texture3d_create_host(
-                width,
-                height,
-                depth,
-                num_channels,
-                dtype_code,
-                filter_mode,
-                resolved_u,
-                resolved_v,
-                resolved_w,
-                normalized_coords,
-                data_ptr,
-                ctypes.byref(tex_handle),
-            )
-
-        if not success:
-            raise RuntimeError("Failed to create Texture3D")
-
-        self._tex_handle = tex_handle.value
-        self._array_handle = array_handle.value
-
-    def __del__(self):
-        if self._tex_handle == 0 and self._array_handle == 0:
-            return
-
-        try:
-            if self.device.is_cuda:
-                with self.device.context_guard:
-                    self.runtime.core.wp_texture3d_destroy_device(
-                        self.device.context, self._tex_handle, self._array_handle
-                    )
-            else:
-                self.runtime.core.wp_texture3d_destroy_host(self._tex_handle)
-        except (TypeError, AttributeError):
-            # Suppress errors during shutdown
-            pass
-
-    @property
-    def depth(self) -> int:
-        """Texture depth in pixels."""
-        return self._depth
-
-    @property
-    def address_mode_w(self) -> int:
-        """Address mode for W axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
-        return self._address_mode_w
+        super().__init__(
+            data=data,
+            width=width,
+            height=height,
+            depth=depth,
+            num_channels=num_channels,
+            dtype=dtype,
+            filter_mode=filter_mode,
+            address_mode=address_mode,
+            address_mode_u=address_mode_u,
+            address_mode_v=address_mode_v,
+            address_mode_w=address_mode_w,
+            normalized_coords=normalized_coords,
+            device=device,
+        )
 
     def __ctype__(self) -> texture3d_t:
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
-            raise RuntimeError("Texture was created with data=None but never initialized. Cannot be used in kernels.")
+            raise RuntimeError("Texture was created with data=None but never initialized.")
         return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)

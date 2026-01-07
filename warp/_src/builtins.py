@@ -7450,6 +7450,121 @@ add_builtin(
 
 
 # ---------------------------------
+# Dimension-specific texture sampling (for unified Texture class)
+#
+# These functions are aliases that provide explicit dimension selection.
+# They call the same underlying C++ texture_sample functions.
+# ---------------------------------
+
+# texture_sample_2d with vec2 coordinates
+add_builtin(
+    "texture_sample_2d",
+    input_types={"tex": Texture2D, "uv": vec2f, "dtype": Any},
+    value_func=texture_sample_2d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_2d_dispatch_func,
+    native_func="texture_sample",
+    export=False,
+    group="Textures",
+    doc="""Sample a 2D texture at the given UV coordinates.
+
+    This function explicitly samples a 2D texture and is useful when using the
+    unified :func:`warp.Texture` factory function.
+
+    :param tex: The 2D texture to sample (Texture2D or Texture created with 2D data).
+    :param uv: UV coordinates as a vec2f. Range depends on ``normalized_coords`` setting.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Example::
+
+        @wp.kernel
+        def sample_texture(tex: wp.Texture2D, coords: wp.array(dtype=wp.vec2f), output: wp.array(dtype=float)):
+            tid = wp.tid()
+            output[tid] = wp.texture_sample_2d(tex, coords[tid], dtype=float)
+
+    See Also:
+        :func:`texture_sample_3d`: For 3D texture sampling.
+        :func:`texture_sample`: Generic texture sampling function.""",
+    is_differentiable=False,
+)
+
+# texture_sample_2d with separate u, v coordinates
+add_builtin(
+    "texture_sample_2d",
+    input_types={"tex": Texture2D, "u": float, "v": float, "dtype": Any},
+    value_func=texture_sample_2d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_2d_dispatch_func,
+    native_func="texture_sample",
+    export=False,
+    group="Textures",
+    doc="""Sample a 2D texture at the given U, V coordinates.
+
+    :param tex: The 2D texture to sample.
+    :param u: U coordinate. Range depends on ``normalized_coords`` setting.
+    :param v: V coordinate. Range depends on ``normalized_coords`` setting.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.""",
+    is_differentiable=False,
+)
+
+# texture_sample_3d with vec3 coordinates
+add_builtin(
+    "texture_sample_3d",
+    input_types={"tex": Texture3D, "uvw": vec3f, "dtype": Any},
+    value_func=texture_sample_3d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_3d_dispatch_func,
+    native_func="texture_sample",
+    export=False,
+    group="Textures",
+    doc="""Sample a 3D texture at the given UVW coordinates.
+
+    This function explicitly samples a 3D texture and is useful when using the
+    unified :func:`warp.Texture` factory function.
+
+    :param tex: The 3D texture to sample (Texture3D or Texture created with 3D data).
+    :param uvw: UVW coordinates as a vec3f. Range depends on ``normalized_coords`` setting.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Example::
+
+        @wp.kernel
+        def sample_volume(tex: wp.Texture3D, coords: wp.array(dtype=wp.vec3f), output: wp.array(dtype=float)):
+            tid = wp.tid()
+            output[tid] = wp.texture_sample_3d(tex, coords[tid], dtype=float)
+
+    See Also:
+        :func:`texture_sample_2d`: For 2D texture sampling.
+        :func:`texture_sample`: Generic texture sampling function.""",
+    is_differentiable=False,
+)
+
+# texture_sample_3d with separate u, v, w coordinates
+add_builtin(
+    "texture_sample_3d",
+    input_types={"tex": Texture3D, "u": float, "v": float, "w": float, "dtype": Any},
+    value_func=texture_sample_3d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_3d_dispatch_func,
+    native_func="texture_sample",
+    export=False,
+    group="Textures",
+    doc="""Sample a 3D texture at the given U, V, W coordinates.
+
+    :param tex: The 3D texture to sample.
+    :param u: U coordinate. Range depends on ``normalized_coords`` setting.
+    :param v: V coordinate. Range depends on ``normalized_coords`` setting.
+    :param w: W coordinate. Range depends on ``normalized_coords`` setting.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.""",
+    is_differentiable=False,
+)
+
+
+# ---------------------------------
 # Random
 
 add_builtin(
