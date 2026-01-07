@@ -486,10 +486,10 @@ class CubeTripolynomialShapeFunctions(CubeShapeFunction):
 
 
 class CubeSerendipityShapeFunctions(CubeShapeFunction):
-    """
-    Serendipity element ~ tensor product space without interior nodes
-    Edge shape functions are usual Lagrange shape functions times a bilinear function in the normal directions
-    Corner shape functions are trilinear shape functions times a function of (x^{d-1} + y^{d-1})
+    """Serendipity element: a tensor product space without interior nodes.
+
+    Edge shape functions are usual Lagrange shape functions times a bilinear function in the normal directions.
+    Corner shape functions are trilinear shape functions times a function of (x^{d-1} + y^{d-1} + z^{d-1}).
     """
 
     def __init__(self, degree: int, family: Polynomial):

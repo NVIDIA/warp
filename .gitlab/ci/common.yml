@@ -1,0 +1,222 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ==============================================================================
+# Common Shared Configuration
+#
+# This file defines reusable configuration snippets that are shared across all
+# GitLab CI pipelines in the Warp project.
+#
+# USING SNIPPETS:
+# ---------------
+# Snippets are referenced using the !reference syntax:
+#
+#   before_script:
+#     - !reference [.snippets, section-start-install-deps]
+#     - apt-get update && apt-get install -y curl
+#     - !reference [.snippets, section-end-install-deps]
+#
+# AVAILABLE SNIPPETS:
+# -------------------
+# Collapsible Section Markers:
+#   - section-start-install-deps / section-end-install-deps (Linux)
+#   - powershell-section-start-install-deps / powershell-section-end-install-deps (Windows)
+#
+# Binary Movement:
+#   - move-linux-x86_64-binaries / move-linux-aarch64-binaries
+#       Move from platform-specific directories to warp/bin/
+#   - move-windows-binaries-to-platform-dir / move-macos-binaries-to-platform-dir
+#       Move from warp/bin/ to platform-specific directories (for packaging)
+#
+# Tool Installation:
+#   - install-uv-windows
+#       Install UV package manager in unmanaged mode (Windows)
+#   - setup-packman-config / setup-packman-config-windows
+#       Configure packman for dependency management
+#
+# Utilities:
+#   - define-powershell-GetTime
+#       Define a PowerShell function to get timestamps for Windows jobs
+#
+# CONTAINER IMAGES:
+# -----------------
+# Standard container image references are defined as variables in the main
+# .gitlab-ci.yml file and can be used throughout all child pipelines:
+#
+#   - $UV_BOOKWORM_IMAGE: Full uv image with git, make, and build tools
+#   - $UV_BOOKWORM_SLIM_IMAGE: Lightweight uv image for testing
+#   - $MINIFORGE_IMAGE: Conda/Mamba environment for Python packaging
+#
+# All external images are pinned with SHA256 digests for supply chain security.
+#
+# MAINTENANCE:
+# ------------
+# When adding new snippets:
+# 1. Add them to the .snippets section below
+# 2. Update this documentation with the snippet name and purpose
+# 3. Consider if the snippet should be in this file (global) or a specific
+#    child pipeline file (kit-extensions.yml has its own .kit-snippets)
+# ==============================================================================
+
+include:
+  - project: "omniverse/warp-gitlab-ci"
+    ref: "main"
+    file: "/.gitlab/ci/common.yml"
+
+# ==============================================================================
+# Default pipeline configuration
+# ==============================================================================
+default:
+  interruptible: true
+  # Only retry on GitLab failures (not on script failures for example)
+  retry:
+    max: 2
+    when:
+      - api_failure
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - unknown_failure
+
+# ==============================================================================
+# Use !reference [.snippets, NAME] to reuse the following snippets
+# in the before_script, script, after_script job sections
+# ==============================================================================
+.snippets:
+  define-powershell-GetTime:
+    - |
+      function GetTime {
+        $time = Get-Date -UFormat "%s"
+        return $time.Substring(0, $time.IndexOf('.'))
+      }
+  
+  # Move compiled binaries out of platform-specific directories
+  move-linux-x86_64-binaries:
+    - mv warp/bin/linux-x86_64/warp.so warp/bin/
+    - mv warp/bin/linux-x86_64/warp-clang.so warp/bin/
+    - rm -r warp/bin/linux-x86_64/
+  
+  move-linux-aarch64-binaries:
+    - mv warp/bin/linux-aarch64/warp.so warp/bin/
+    - mv warp/bin/linux-aarch64/warp-clang.so warp/bin/
+    - rm -r warp/bin/linux-aarch64/
+  
+  # Move compiled binaries into platform-specific directories for packaging
+  move-windows-binaries-to-platform-dir:
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+  
+  move-macos-binaries-to-platform-dir:
+    - mkdir -p warp/bin/macos-aarch64
+    - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
+    - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
+  
+  # GitLab collapsible section wrappers for cleaner CI logs
+  section-start-install-deps:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+  
+  section-end-install-deps:
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  
+  # PowerShell collapsible section wrappers (Windows)
+  powershell-section-start-install-deps:
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+  
+  powershell-section-end-install-deps:
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  
+  # Install UV package manager (Windows)
+  install-uv-windows:
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+  
+  # Packman configuration setup
+  setup-packman-config:
+    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
+  
+  # Packman configuration setup (Windows)
+  setup-packman-config-windows:
+    - Move-Item -Path $env:PACKMAN_CONFIG_FILE -Destination "$env:CI_PROJECT_DIR\tools\packman\config.packman.xml" -Force
+
+# Used to log the output of jobs that run only run unit tests (no coverage report)
+.save_test_report_artifact:
+  artifacts:
+    reports:
+      junit: rspec.xml
+
+# Used to save the compiled Warp binaries
+.save_warp_bin_artifact:
+  artifacts:
+    name: $CI_JOB_NAME_SLUG
+    paths:
+      - warp/native/exports.h
+      - warp/native/version.h
+      - warp/bin/**/*.dll
+      - warp/bin/**/*.so
+      - warp/bin/**/*.dylib
+      - VERSION.md
+      - warp/config.py
+    expire_in: 1 week
+
+# All MacOS jobs use this definition
+.macos_warp_tags:
+  tags:
+    - pkg/xcode/13 # Avoid AWS-MAC-0
+
+# Basic rules to avoid triggering a test job unless certain files have changed to save CI resources
+.basic_test_changes_rules:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - .gitlab-ci.yml
+        - .gitlab/ci/*
+        - warp/**/*
+        - pyproject.toml
+        - tools/**/*
+        - deps/*
+        - build_lib.py
+        - build_llvm.py
+        - uv.lock
+    - when: manual # If not auto-triggered, allow any pipeline to run this job manually
+      allow_failure: true
+
+# Common settings used by all child pipelines
+#
+# Child pipelines automatically inherit global variables from the parent pipeline,
+# but we need to explicitly pass certain variables for cross-pipeline operations
+# and to ensure consistent paths across parent/child pipeline contexts.
+.trigger_common:
+  variables:
+    PARENT_PROJECT_DIR: $CI_PROJECT_DIR
+    # Required for cross-pipeline artifact dependencies (needs: pipeline: $PARENT_PIPELINE_ID)
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+    # Required for tag-based deployment rules and GitHub release uploads
+    PARENT_COMMIT_TAG: $CI_COMMIT_TAG
+    # Required for branch-based conditional rules (e.g., release branches)
+    PARENT_COMMIT_BRANCH: $CI_COMMIT_BRANCH
+    # Required for deployment jobs in warp-gitlab-ci that use commit reference names
+    PARENT_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME
+    # Cache directories - must be explicitly passed to ensure consistent paths
+    PM_PACKAGES_ROOT: "$PARENT_PROJECT_DIR/packman-repo"
+    PIP_CACHE_DIR: "$PARENT_PROJECT_DIR/.cache/pip"
+    WARP_CACHE_ROOT: "$PARENT_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
+  trigger:
+    strategy: depend

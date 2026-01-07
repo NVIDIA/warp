@@ -1,20 +1,24 @@
-section#built-ins-reference dl.function table.hlist tbody
+/*
+Tweak the display of the built-ins annotations (kernel, python, differentiable).
+*/
+
+section[id^=warp-src-lang-] dl.function table.hlist tbody
 {
     display: table-cell;
 }
 
-section#built-ins-reference dl.function table.hlist td
+section[id^=warp-src-lang-] dl.function table.hlist td
 {
     padding: 0;
 }
 
-section#built-ins-reference dl.function table.hlist ul
+section[id^=warp-src-lang-] dl.function table.hlist ul
 {
     list-style-type: none;
     padding: 0;
 }
 
-section#built-ins-reference dl.function table.hlist li
+section[id^=warp-src-lang-] dl.function table.hlist li
 {
     border-color: var(--pst-color-border);
     border-radius: 1rem;
@@ -24,6 +28,13 @@ section#built-ins-reference dl.function table.hlist li
     margin: 0 0.25rem;
     padding: 0 0.25rem;
 }
+
+
+/*
+Remove default blockquote styling when it wraps a code block inside
+a numbered list. This prevents visual artifacts from blockquote
+indentation that Sphinx/docutils adds due to RST nesting rules.
+*/
 
 ol.arabic li blockquote:has(div[class^="highlight-"])
 {

@@ -206,7 +206,17 @@ def _closed_newton_cotes_quadrature_1d(n: int):
 
 
 def quadrature_1d(point_count: int, family: Polynomial):
-    """Return quadrature points and weights for the given family and point count"""
+    """Return quadrature points and weights for the given family and point count.
+
+    Args:
+        point_count: Number of quadrature points.
+        family: Polynomial family defining the quadrature rule.
+
+    Returns:
+        A tuple ``(coords, weights)`` in which ``coords`` is a NumPy array of quadrature point
+        coordinates in the interval ``[0, 1]``, and ``weights`` is a NumPy array of corresponding
+        quadrature weights.
+    """
 
     if family == Polynomial.GAUSS_LEGENDRE:
         return _gauss_legendre_quadrature_1d(point_count)
@@ -220,8 +230,17 @@ def quadrature_1d(point_count: int, family: Polynomial):
     raise NotImplementedError
 
 
-def lagrange_scales(coords: np.array):
-    """Return the scaling factors for Lagrange polynomials with roots at coords"""
+def lagrange_scales(coords: np.ndarray) -> np.ndarray:
+    """Return the scaling factors for Lagrange polynomials with roots at ``coords``.
+
+    Args:
+        coords: NumPy array of coordinates defining the polynomial roots.
+
+    Returns:
+        A NumPy array of scaling factors for the Lagrange basis polynomials, in which
+        the i-th element is the reciprocal of the product of differences between
+        ``coords[i]`` and all other coordinates.
+    """
     lagrange_scale = np.empty_like(coords)
     for i in range(len(coords)):
         deltas = coords[i] - coords

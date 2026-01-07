@@ -217,7 +217,7 @@ jobs:
               ls -lh /opt/llvm/lib/*.a 2>/dev/null | head -5 || echo "LLVM libs found"
               echo ""
               echo "=== Building Warp ==="
-              uv run build_lib.py --llvm_path /opt/llvm --verbose
+              uv run build_lib.py --llvm-path /opt/llvm
               echo ""
               echo "=== Build Complete ==="
               ls -lh warp/bin/
@@ -325,7 +325,7 @@ jobs:
           echo "**Build Warp:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "docker run --rm -v \$(pwd):/workspace -w /workspace ${IMAGE_BASE}:cuda13 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  bash -c \"uv run build_lib.py --llvm_path /opt/llvm\"" >> $GITHUB_STEP_SUMMARY
+          echo "  bash -c \"uv run build_lib.py --llvm-path /opt/llvm\"" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Date-pinned tags: \`:cuda13-${DATE_TAG}\`, \`:cuda12-${DATE_TAG}\`" >> $GITHUB_STEP_SUMMARY

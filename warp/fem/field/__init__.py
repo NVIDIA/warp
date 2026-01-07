@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Test and trial field types for finite element formulations.
+
+This module provides field types used in FEM weak formulations for defining bilinear
+and linear forms, local operations, and restricting fields to subdomains.
+"""
+
 # isort: skip_file
 
 from warp._src.fem.field import FieldRestriction as FieldRestriction

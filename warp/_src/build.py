@@ -24,7 +24,7 @@ import threading
 import time
 from pathlib import Path
 
-import warp._src.config
+import warp.config
 from warp._src.thirdparty import appdirs
 from warp._src.types import *
 
@@ -58,7 +58,7 @@ def build_cuda(
     inc_path = os.path.join(warp_home, "native").encode("utf-8")
     output_path = output_path.encode("utf-8")
 
-    if warp._src.config.llvm_cuda:
+    if warp.config.llvm_cuda:
         warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
 
     else:
@@ -75,7 +75,7 @@ def build_cuda(
             fatbins
         )
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-        kernel_cache_dir_bytes = warp._src.config.kernel_cache_dir.encode("utf-8")
+        kernel_cache_dir_bytes = warp.config.kernel_cache_dir.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
             program_name_bytes,
@@ -85,13 +85,13 @@ def build_cuda(
             None,
             config == "debug",
             optimization_level,
-            warp._src.config.verbose,
+            warp.config.verbose,
             verify_fp,
             fast_math,
             fuse_fp,
             lineinfo,
             compile_time_trace,
-            warp._src.config.use_precompiled_headers,
+            warp.config.use_precompiled_headers,
             output_path,
             kernel_cache_dir_bytes,
             num_link,
@@ -152,7 +152,7 @@ def init_kernel_cache(path=None):
     elif "WARP_CACHE_PATH" in os.environ:
         cache_root_dir = os.path.realpath(os.environ.get("WARP_CACHE_PATH"))
     else:
-        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp._src.config.version)
+        cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
 
         if os.name == "nt" and os.path.isabs(cache_root_dir) and not cache_root_dir.startswith("\\\\?\\"):
             # Add Windows long-path prefix, accounting for UNC shares.
@@ -163,9 +163,9 @@ def init_kernel_cache(path=None):
                 # Drive-letter path  C:\…  →  \\?\C:\…
                 cache_root_dir = "\\\\?\\" + cache_root_dir
 
-    warp._src.config.kernel_cache_dir = cache_root_dir
+    warp.config.kernel_cache_dir = cache_root_dir
 
-    os.makedirs(warp._src.config.kernel_cache_dir, exist_ok=True)
+    os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
 
 
 def clear_kernel_cache() -> None:
@@ -184,8 +184,8 @@ def clear_kernel_cache() -> None:
     for m in warp._src.context.user_modules.values():
         m.unload()
 
-    for item in os.listdir(warp._src.config.kernel_cache_dir):
-        item_path = os.path.join(warp._src.config.kernel_cache_dir, item)
+    for item in os.listdir(warp.config.kernel_cache_dir):
+        item_path = os.path.join(warp.config.kernel_cache_dir, item)
         if os.path.isdir(item_path) and item.startswith("wp_"):
             # Remove the directory and its contents
             shutil.rmtree(item_path, ignore_errors=True)
@@ -203,7 +203,7 @@ def clear_lto_cache() -> None:
     is_initialized = warp._src.context.runtime is not None
     assert is_initialized, "The kernel cache directory is not configured; wp.init() has not been called yet or failed."
 
-    lto_path = os.path.join(warp._src.config.kernel_cache_dir, "lto")
+    lto_path = os.path.join(warp.config.kernel_cache_dir, "lto")
     if os.path.isdir(lto_path):
         # Remove the lto directory and its contents
         shutil.rmtree(lto_path, ignore_errors=True)
@@ -243,7 +243,7 @@ def hash_symbol(symbol):
 
 
 def get_lto_cache_dir():
-    lto_dir = os.path.join(warp._src.config.kernel_cache_dir, "lto")
+    lto_dir = os.path.join(warp.config.kernel_cache_dir, "lto")
     return lto_dir
 
 
@@ -461,7 +461,7 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
 def build_lto_solver(
     M,
     N,
-    NRHS,
+    K,
     solver,
     solver_enum,
     side_enum,
@@ -488,7 +488,7 @@ def build_lto_solver(
     a_arrangement = cusolverdx_arrangement_map(alayout)
     b_arrangement = cusolverdx_arrangement_map(blayout)
 
-    lto_symbol = f"{solver}_{M}_{N}_{NRHS}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode}"
+    lto_symbol = f"{solver}_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode}"
 
     def compile_lto_solver(temp_paths):
         # compile LTO
@@ -502,7 +502,7 @@ def build_lto_solver(
             arch,
             M,
             N,
-            NRHS,
+            K,
             solver_enum,
             side_enum,
             diag_enum,

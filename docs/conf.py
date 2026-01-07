@@ -15,29 +15,32 @@
 
 # Configuration file for the Sphinx documentation builder.
 #
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
+# For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
 import inspect
 import operator
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import warp as wp
+import docutils
+import sphinx
+from sphinx.ext.autosummary.generate import AutosummaryRenderer
+
+# -- Path setup --------------------------------------------------------------
+
+HERE = os.path.dirname(__file__)
+WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
+
+sys.path.insert(0, WARP_PATH)
+import warp as wp  # noqa: E402
 
 # Determine the Git version/tag from CI environment variables.
 # 1. Check for GitHub Actions' variable.
 # 2. Check for GitLab CI's variable.
 # 3. Fallback to 'main' for local builds.
-github_version = os.environ.get("GITHUB_REF_NAME") or os.environ.get("CI_COMMIT_REF_NAME") or "main"
+GITHUB_VERSION = os.environ.get("GITHUB_REF_NAME") or os.environ.get("CI_COMMIT_REF_NAME") or "main"
+
 
 # -- Project information -----------------------------------------------------
 
@@ -45,62 +48,219 @@ project = "Warp"
 version = wp.__version__
 release = version
 
+
 # -- General configuration ---------------------------------------------------
 
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
 extensions = [
-    "myst_parser",  # Parse markdown files
-    "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",  # Convert docstrings to reStructuredText
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.extlinks",  # Markup to shorten external links
-    "sphinx.ext.githubpages",
-    "sphinx.ext.linkcode",  # Add GitHub source code links
-    "sphinx.ext.doctest",  # Test code snippets in docs
-    # Third-party extensions:
-    "sphinx_copybutton",
-    # 'sphinx_tabs.tabs',
-    #    'autodocsumm'
+    "sphinx.ext.autodoc",  # Expands `auto*` directives with their corresponding docstrings.
+    "sphinx.ext.autosummary",  # Builds stub .rst files and summary tables.
+    "sphinx.ext.doctest",  # Tests code snippets in docs.
+    "sphinx.ext.extlinks",  # Generates markups to shorten external links.
+    "sphinx.ext.githubpages",  # Makes the doc compatible with GitHub Pages.
+    "sphinx.ext.intersphinx",  # Allows linking to external projects' documentations.
+    "sphinx.ext.linkcode",  # Adds GitHub source code links.
+    "sphinx.ext.napoleon",  # Supports Google and NumPy style docstrings..
+    # Third-party extensions.
+    "myst_parser",  # Parses markdown files.
+    "sphinx_copybutton",  # Adds a copy button to code blocks.
 ]
 
-# put type hints inside the description instead of the signature (easier to read)
-autodoc_typehints = "description"
-# default argument values of functions will be not evaluated on generating document
-autodoc_preserve_defaults = True
+# Enable nitpicky mode to warn about unresolved references.
+nitpicky = False
 
-autodoc_default_options = {
-    "members": True,
-    "member-order": "bysource",
-    "special-members": "__init__",
-    "undoc-members": False,
-    "exclude-members": "__weakref__",
-}
+# Ignore warnings for Warp types in function signatures that Sphinx can't
+# resolve without fully qualified names (e.g., "int32" vs "warp.int32").
+# This includes:
+# - Type aliases (Scalar, Int, Float, Vector, Quaternion, Matrix, Array, Transformation, Tile)
+# - Array types (IndexedArray, IndexedFabricArray, FabricArray)
+# - Concrete types (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float16, float32, float64)
+# - Array type parameters (ndim=3, dtype=float32) from wp.array() annotations
+# - Internal _src paths that leak into type annotations
+nitpick_ignore_regex = [
+    # Warp type aliases and meta-types
+    (
+        r"py:class",
+        r"(Scalar|Int|Float|Vector|Quaternion|Matrix|Array|Transformation|Tile|IndexedArray|IndexedFabricArray|FabricArray|Shape|DType|Any)",
+    ),
+    # Concrete numeric types
+    (r"py:class", r"(int|uint|float)\d+"),
+    # Array type parameters from wp.array() annotations
+    (r"py:class", r"(ndim|dtype)=\w+"),
+    # Internal _src paths
+    (r"py:class", r"warp\._src\..*"),
+    # Internal C++/Python interop methods on geometric types
+    (
+        r"py:obj",
+        r"warp\.(vec|mat|quat|transform|spatial_vector|spatial_matrix)\w*\.(from_ptr|scalar_export|scalar_import)",
+    ),
+    # Matrix accessor methods
+    (r"py:obj", r"warp\.(mat|spatial_matrix)\w+\.(get_col|get_row|set_col|set_row)"),
+    # Built-in numeric methods/properties inherited by enums/int/float subclasses
+    (
+        r"py:obj",
+        r".*\.(conjugate|bit_length|bit_count|to_bytes|from_bytes|as_integer_ratio|is_integer|real|imag|numerator|denominator)",
+    ),
+]
 
-# Mock imports for modules that are not installed by default
-autodoc_mock_imports = ["jax", "torch", "paddle", "pxr"]
 
-# autodoc_typehints_format
-# add_module_names = False
+# -- Options for source files ------------------------------------------------
 
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable", None),
-    "jax": ("https://docs.jax.dev/en/latest", None),
-    "pytorch": ("https://docs.pytorch.org/docs/stable", None),
-}
-
-extlinks = {
-    "github": (f"https://github.com/NVIDIA/warp/blob/{github_version}/%s", "%s"),
-}
-
+exclude_patterns = [".DS_Store", "Thumbs.db", "_build", "_src"]
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
 }
 
+
+# -- Options for templating --------------------------------------------------
+
+templates_path = ["_templates"]
+
+
+# -- Options for HTML output -------------------------------------------------
+
+html_theme = "nvidia_sphinx_theme"
+html_theme_options = {
+    "secondary_sidebar_items": ["page-toc", "edit-this-page"],
+    "use_edit_page_button": True,
+    "copyright_override": {"start": 2022},
+    "pygments_light_style": "tango",
+    "pygments_dark_style": "monokai",
+    "footer_links": {},
+    "github_url": "https://github.com/NVIDIA/warp",
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/warp-lang",
+            "icon": "fa-brands fa-python",
+            "type": "fontawesome",
+        },
+    ],
+    "navigation_depth": 1,
+}
+html_title = f"Warp {version}"
+html_context = {
+    "github_user": "NVIDIA",
+    "github_repo": "warp",
+    "github_version": GITHUB_VERSION,
+    "doc_path": "docs",
+}
+html_css_files = ["custom.css"]
+html_static_path = ["_static"]
+html_show_sphinx = False
+
+
+# -- sphinx.ext.autodoc ------------------------------------------------------
+
+autodoc_default_options = {
+    "members": True,  # Includes all public members, not just the class' doscstring.
+    "member-order": "bysource",  # Keep members in the order they appear in the source code.
+    "undoc-members": False,  # Skips documenting members without a docstring.
+    "exclude-members": "__weakref__",  # Skips these names even if they have a docstring.
+    "autosummary": True,  # Generate summary tables for members.
+}
+
+# Mock external dependencies that might not be installed.
+autodoc_mock_imports = ["jax", "paddle", "pxr", "torch"]
+
+# Show typehints as content of the function or method insert of in the signature.
+autodoc_typehints = "description"
+
+# Show the literal expression for default arguments instead of evaluating them.
+autodoc_preserve_defaults = True
+
+# Prevent docstrings from being inehrited from parent classes or methods.
+autodoc_inherit_docstrings = False
+
+
+# -- sphinx.ext.autosummary --------------------------------------------------
+
+# Document imported classes and functions.
+autosummary_imported_members = True
+
+# Only document symbols defined in `__all__` if present.
+autosummary_ignore_module_all = False
+
+# Map object names to unique filenames to avoid collisions on case-insensitive
+# file systems (e.g., Windows NTFS).
+autosummary_filename_map = {
+    "warp.e": "warp.e_constant",
+    "warp.half_pi": "warp.half_pi_constant",
+    "warp.inf": "warp.inf_constant",
+    "warp.ln2": "warp.ln2_constant",
+    "warp.ln10": "warp.ln10_constant",
+    "warp.log10e": "warp.log10e_constant",
+    "warp.log2e": "warp.log2e_constant",
+    "warp.nan": "warp.nan_constant",
+    "warp.phi": "warp.phi_constant",
+    "warp.pi": "warp.pi_constant",
+    "warp.tau": "warp.tau_constant",
+    "warp.kernel": "warp.kernel_decorator",
+    "warp.launch": "warp.launch_function",
+    "warp.fem.cells": "warp.fem.cells_function",
+    "warp.fem.integrand": "warp.fem.integrand_decorator",
+}
+
+
+class AutosummaryRenderer(AutosummaryRenderer):
+    # Module containing Warp's built-ins functions and requiring special handling.
+    BUILTINS_TEMPLATE_FILE = "builtins.rst"
+
+    def render(self, template_name, context):
+        if template_name == self.BUILTINS_TEMPLATE_FILE:
+            fullname = context["fullname"]
+            symbol = fullname.split(".")[-1]
+
+            head = wp._src.context.builtin_functions[symbol]
+
+            # Collect all overloads, filtering out hidden ones.
+            # Note: head.overloads already includes the head itself (see Function.__init__)
+            all_funcs = head.overloads if hasattr(head, "overloads") else [head]
+            visible_overloads = [f for f in all_funcs if not f.hidden]
+
+            # Build overload info for each visible overload
+            overloads_info = []
+            for func in visible_overloads:
+                args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
+
+                try:
+                    return_type = wp._src.context.type_str(func.value_func(None, None))
+                except Exception:
+                    return_type = "None"
+
+                if hasattr(func, "overloads"):
+                    sig = wp._src.context.resolve_exported_function_sig(func)
+                    is_exported = sig is not None
+                else:
+                    is_exported = False
+
+                overloads_info.append(
+                    {
+                        "args": ", ".join(f"{k}: {v}" for k, v in args.items()),
+                        "return_type": return_type,
+                        "is_exported": is_exported,
+                        "is_differentiable": func.is_differentiable,
+                        "doc": func.doc,
+                    }
+                )
+
+            # Insert metadata that can be accessed from the template.
+            context.update(
+                {
+                    "wp_display_name": f"warp.{symbol}",
+                    "wp_overloads": overloads_info,
+                }
+            )
+
+        return super().render(template_name, context)
+
+
+sphinx.ext.autosummary.generate.AutosummaryRenderer = AutosummaryRenderer
+
+
+# -- sphinx.ext.doctest ------------------------------------------------------
+
+# Code to run for every doctest block.
 doctest_global_setup = """
 from typing import Any
 import numpy as np
@@ -108,6 +268,28 @@ import warp as wp
 wp.config.quiet = True
 wp.init()
 """
+
+
+# -- sphinx.ext.extlinks -----------------------------------------------------
+
+extlinks = {
+    # Short-hand for :github:`path/to/file.py#L123`.
+    "github": (f"https://github.com/NVIDIA/warp/blob/{GITHUB_VERSION}/%s", "%s"),
+}
+
+
+# -- sphinx.ext.intersphinx --------------------------------------------------
+
+# Mapping to external documentation to enable cross-linking (e.g., :class:`numpy.ndarray`)
+intersphinx_mapping = {
+    "jax": ("https://docs.jax.dev/en/latest", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "python": ("https://docs.python.org/3", None),
+    "pytorch": ("https://pytorch.org/docs/stable/", None),
+}
+
+
+# -- sphinx.ext.linkcode -----------------------------------------------------
 
 
 def linkcode_resolve(domain, info):
@@ -140,49 +322,49 @@ def linkcode_resolve(domain, info):
     filename = os.path.relpath(filename, start=os.path.dirname(wp.__file__))
     lines = f"#L{linenum}-L{linenum + len(source)}" if linenum else ""
 
-    return f"https://github.com/NVIDIA/warp/blob/{github_version}/warp/{filename}{lines}"
+    return f"https://github.com/NVIDIA/warp/blob/{GITHUB_VERSION}/warp/{filename}{lines}"
 
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+# -- sphinx_copybutton -------------------------------------------------------
 
-# sphinx_copybutton settings
-copybutton_prompt_text = r">>> |\.\.\. |\$ "
-copybutton_prompt_is_regexp = True
+copybutton_prompt_is_regexp = True  # Tell copybutton the text variable below is a regex.
+copybutton_prompt_text = r">>> |\.\.\. |\$ "  # Prompts (>>>, ..., $) to strip when copying code.
 
-# -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-html_theme = "nvidia_sphinx_theme"
-html_title = f"Warp {version}"
-html_show_sphinx = False
-html_static_path = ["_static"]
-html_css_files = [
-    "custom.css",
-]
-html_context = {
-    "github_user": "NVIDIA",
-    "github_repo": "warp",
-    "github_version": github_version,
-    "doc_path": "docs",
-}
-html_theme_options = {
-    "secondary_sidebar_items": ["page-toc", "edit-this-page"],
-    "use_edit_page_button": True,
-    "copyright_override": {"start": 2022},
-    "pygments_light_style": "tango",
-    "pygments_dark_style": "monokai",
-    "footer_links": {},
-    "github_url": "https://github.com/NVIDIA/warp",
-    "icon_links": [
-        {
-            "name": "PyPI",
-            "url": "https://pypi.org/project/warp-lang",
-            "icon": "fa-brands fa-python",
-            "type": "fontawesome",
-        },
-    ],
-}
+# -- Hooks -------------------------------------------------------------------
+
+
+BUILTIN_DOCSTRINGS = (
+    "Convert a string or number to a floating-point number",
+    "Return the integer represented by the given array of bytes",
+    "bool(x) -> bool",
+    "int([x]) -> integer",
+)
+
+
+def filter_builtin_docstrings(app, what, name, obj, options, lines):
+    """Remove docstrings inherited from Python built-in types."""
+    if not lines:
+        return
+
+    for prefix in BUILTIN_DOCSTRINGS:
+        if lines[0].startswith(prefix):
+            lines.clear()
+            return
+
+
+def rewrite_internal_module_paths(app, doctree, docname):
+    """Replace internal module paths with public paths in the rendered output.
+
+    Replaces all occurrences of '._src.lang.' with '.' in text nodes.
+    """
+    for node in doctree.traverse(docutils.nodes.Text):
+        if "._src.lang." in node.astext():
+            new_text = node.astext().replace("._src.lang.", ".")
+            node.parent.replace(node, docutils.nodes.Text(new_text))
+
+
+def setup(app):
+    """Sphinx extension setup."""
+    app.connect("autodoc-process-docstring", filter_builtin_docstrings)
+    app.connect("doctree-resolved", rewrite_internal_module_paths)

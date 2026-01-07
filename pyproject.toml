@@ -83,6 +83,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["warp*"]
+exclude = ["warp.examples.cpp*"]
 
 [tool.setuptools.dynamic]
 version = { file = ["VERSION.md"] }
@@ -180,11 +181,11 @@ publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu129", extra = "torch-cu12" }]
+torch = [{ index = "pytorch-cu128", extra = "torch-cu12" }]
 
 [[tool.uv.index]]
-name = "pytorch-cu129"
-url = "https://download.pytorch.org/whl/cu129"
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.typos]

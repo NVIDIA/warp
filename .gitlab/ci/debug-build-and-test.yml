@@ -1,0 +1,173 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ==============================================================================
+# Debug Build and Testing Child Pipeline
+#
+# This child pipeline is used to build and test Warp when the library is built
+# in debug mode.
+#
+# This pipeline can be triggered from the main GitLab pipeline under specific
+# circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
+# trigger conditions. It is not automatically run in merge request pipelines.
+# ==============================================================================
+
+include:
+  - /.gitlab/ci/common.yml
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
+# ==============================================================================
+# Build Jobs (Debug)
+# ==============================================================================
+
+# Hide this job for now until debug aarch64 builds work
+.linux-aarch64 build:
+  stage: build
+  image: $WARP_BUILDER_IMAGE_CU12
+  extends:
+    - .lnx-aarch64-cpu-medium
+    - .save_warp_bin_artifact
+  script:
+    - uv run build_lib.py --cuda-path=/usr/local/cuda --mode=debug
+    - mkdir -p warp/bin/linux-aarch64
+    - mv warp/bin/warp.so warp/bin/linux-aarch64
+    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
+
+linux-x86_64 build:
+  stage: build
+  image: $WARP_BUILDER_IMAGE_CU12
+  extends:
+    - .save_warp_bin_artifact
+    - .ipp_lnx_x86_64_cpu_medium
+  script:
+    - uv run build_lib.py --cuda-path=/usr/local/cuda --mode=debug
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
+
+windows-x86_64 build:
+  stage: build
+  extends:
+    - .save_warp_bin_artifact
+    - .runner-build-windows-x86_64
+  before_script:
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - Move-Item -Path $env:PACKMAN_CONFIG_FILE -Destination "$env:CI_PROJECT_DIR\tools\packman\config.packman.xml" -Force
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - $env:PATH = "$env:CI_PROJECT_DIR\_uv\bin;$env:PATH"
+    - tools\packman\packman pull --platform windows-x86_64 deps\cuda-toolkit-deps.packman.xml --verbose --include-tag "cuda-12"
+    - tools\packman\packman install -l _build\host-deps\winsdk winsdk 10.17763
+    - tools\packman\packman install -l _build\host-deps\msvc msvc 2019-16.11.24
+  script:
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run build_lib.py --msvc-path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk-path=_build\host-deps\winsdk --cuda-path=_build\target-deps\cuda
+
+# ==============================================================================
+# Unit Testing Jobs (Debug)
+#
+# Unlike the main testing jobs defined in /.gitlab-ci.yml, the debug jobs don't
+# generate code coverage reports.
+# ==============================================================================
+
+# Hide this job for now until debug aarch64 builds work
+.linux-aarch64 test:
+  stage: test
+  image: $UV_BOOKWORM_SLIM_ARM_IMAGE
+  needs: [linux-aarch64 build]
+  extends:
+    - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
+    - .save_test_report_artifact
+  before_script:
+    - df -h
+    - !reference [.snippets, move-linux-aarch64-binaries]
+  script:
+    - uv run --extra dev -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+
+linux-x86_64 test:
+  stage: test
+  # Note: Using slim image is intentional - manylinux-built wheels are glibc-portable
+  # and GPU runtime libs are provided by the runner environment
+  image: $UV_BOOKWORM_SLIM_IMAGE
+  needs: [linux-x86_64 build]
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+  before_script:
+    - df -h
+    - !reference [.snippets, move-linux-x86_64-binaries]
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+
+windows-x86_64 test:
+  stage: test
+  needs: [windows-x86_64 build]
+  timeout: 60m
+  extends:
+    - .runner-test-windows-x86_64-gpu
+    - .save_test_report_artifact
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - Write-Output "$([char]27)[0Ksection_start:$(GetTime):install_dependencies[collapsed=true]$([char]13)$([char]27)[0KInstalling dependencies"
+    - powershell -command "Get-Volume | Format-Table -AutoSize"
+    - powershell -ExecutionPolicy ByPass -c {$env:UV_UNMANAGED_INSTALL = "$env:CI_PROJECT_DIR\_uv";irm https://astral.sh/uv/install.ps1 | iex}
+    - Write-Output "$([char]27)[0Ksection_end:$(GetTime):install_dependencies$([char]13)$([char]27)[0K"
+  script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+
+# ==============================================================================
+# Packaging Jobs
+#
+# ==============================================================================
+
+# Creates wheel files for PyPI
+# Note that compared to the job in .gitlab-ci.yml, there is no aarch64 job
+# due to problems building a debug binary
+create pypi wheels:
+  stage: package
+  image: $UV_BOOKWORM_SLIM_IMAGE
+  needs:
+    - linux-x86_64 build
+    - windows-x86_64 build
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  before_script:
+    # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
+    - mkdir -p warp/bin/windows-x86_64
+    - mv warp/bin/warp.dll warp/bin/windows-x86_64/
+    - mv warp/bin/warp-clang.dll warp/bin/windows-x86_64/
+  script:
+    - uv build --wheel -C--build-option=-Pwindows-x86_64
+    - uv build --wheel -C--build-option=-Plinux-x86_64
+    - find . -type f -exec chmod 664 {} +
+    - find . -type d -exec chmod 775 {} +
+  artifacts:
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    expose_as: "Python Wheels Debug"
+    paths:
+      - "dist/"
+    when: always

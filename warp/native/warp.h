@@ -599,7 +599,7 @@ WP_API bool wp_cuda_compile_solver(
     int arch,
     int M,
     int N,
-    int NRHS,
+    int K,
     int function,
     int side,
     int diag,

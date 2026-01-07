@@ -235,7 +235,7 @@ jobs:
           path: warp/bin/
       - name: Build Sphinx documentation
         run: |
-          uv run --extra docs build_docs.py --quick
+          uv run --extra docs build_docs.py
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         id: build-docs-output
@@ -243,7 +243,8 @@ jobs:
           name: build-docs-output
           path: |
             warp/__init__.pyi
-            docs/modules/functions.rst
+            docs/api_reference
+            docs/language_reference
 
   check-build-docs-output:
     runs-on: ubuntu-latest
@@ -256,12 +257,12 @@ jobs:
         with:
           name: build-docs-output
           path: .
-      - name: Check functions.rst
+      - name: Check API reference docs
         env:
           ARTIFACT_URL: ${{ needs.build-docs.outputs.artifact-url }}
         run: >
-          git diff --exit-code docs/modules/functions.rst ||
-          (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add docs/modules/functions.rst to your pull request." && false)
+          git diff --exit-code docs/api_reference docs/language_reference ||
+          (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add docs/api_reference and docs/language_reference to your pull request." && false)
       - name: Check stubs
         env:
           ARTIFACT_URL: ${{ needs.build-docs.outputs.artifact-url }}

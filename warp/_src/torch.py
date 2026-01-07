@@ -13,22 +13,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import ctypes
+from typing import TYPE_CHECKING
 
 import numpy
 
 import warp
 import warp._src.context
 
+if TYPE_CHECKING:
+    import torch
+
 _wp_module_name_ = "warp.torch"
 
 
 # return the warp device corresponding to a torch device
-def device_from_torch(torch_device) -> warp._src.context.Device:
+def device_from_torch(torch_device: torch.device | str) -> warp.Device:
     """Return the Warp device corresponding to a Torch device.
 
     Args:
-        torch_device (`torch.device` or `str`): Torch device identifier
+        torch_device: Torch device identifier
 
     Raises:
         RuntimeError: Torch device does not have a corresponding Warp device
@@ -57,11 +63,11 @@ def device_from_torch(torch_device) -> warp._src.context.Device:
             raise
 
 
-def device_to_torch(warp_device: warp._src.context.DeviceLike) -> str:
+def device_to_torch(warp_device: warp.DeviceLike) -> str:
     """Return the Torch device string corresponding to a Warp device.
 
     Args:
-        warp_device: An identifier that can be resolved to a :class:`warp._src.context.Device`.
+        warp_device: An identifier that can be resolved to a :class:`warp.Device`.
 
     Raises:
         RuntimeError: The Warp device is not compatible with PyTorch.
@@ -193,17 +199,27 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a torch tensor to a wp array, data is not copied
-def from_torch(t, dtype=None, requires_grad=None, grad=None, return_ctype=False):
+def from_torch(
+    t: torch.Tensor,
+    dtype: warp.DType | None = None,
+    requires_grad: bool | None = None,
+    grad=None,
+    return_ctype: bool = False,
+) -> warp.array | warp._src.types.array_t:
     """Convert a Torch tensor to a Warp array without copying the data.
 
     Args:
-        t (torch.Tensor): The torch tensor to wrap.
-        dtype (warp.dtype, optional): The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
-        requires_grad (bool, optional): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
-        return_ctype (bool, optional): Whether to return a low-level array descriptor instead of a ``wp.array`` object (faster).  The descriptor can be passed to Warp kernels.
+        t: The torch tensor to wrap.
+        dtype: The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
+        requires_grad: Whether the resulting array should wrap the tensor's gradient,
+          if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's ``requires_grad`` value.
+        grad: Optional gradient array to attach to the result. Can be a Warp array or Torch tensor.
+          If not provided and ``requires_grad`` is True, the tensor's gradient will be wrapped or allocated.
+        return_ctype: Whether to return a low-level array descriptor instead of a ``wp.array`` object (faster).
+          The descriptor can be passed to Warp kernels.
 
     Returns:
-        warp.array: The wrapped array or array descriptor.
+        The wrapped array or array descriptor.
     """
     if dtype is None:
         dtype = dtype_from_torch(t.dtype)
@@ -308,13 +324,14 @@ def from_torch(t, dtype=None, requires_grad=None, grad=None, return_ctype=False)
         return a
 
 
-def to_torch(a, requires_grad=None):
-    """
-    Convert a Warp array to a Torch tensor without copying the data.
+def to_torch(a: warp.array, requires_grad: bool | None = None):
+    """Convert a Warp array to a Torch tensor without copying the data.
 
     Args:
-        a (warp.array): The Warp array to convert.
-        requires_grad (bool, optional): Whether the resulting tensor should convert the array's gradient, if it exists, to a grad tensor. Defaults to the array's `requires_grad` value.
+        a: The Warp array to convert.
+        requires_grad: Whether the resulting tensor should convert the array's
+          gradient, if it exists, to a grad tensor. Defaults to the array's
+          ``requires_grad`` value.
 
     Returns:
         torch.Tensor: The converted tensor.
