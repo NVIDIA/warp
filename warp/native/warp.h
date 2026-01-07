@@ -185,8 +185,8 @@ WP_API const char* wp_volume_get_blind_data_info(
 );
 
 // Texture2D functions (CUDA device)
-// Creates a 2D texture from data on a CUDA device. Returns texture handle (combines tex object + array handle).
-// data: pointer to host data (will be copied to device)
+// Creates a 2D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
+// data: pointer to HOST data (will be copied into a CUDA array)
 // width, height: texture dimensions
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
@@ -233,8 +233,8 @@ WP_API bool wp_texture2d_create_host(
 WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
 
 // Texture3D functions (CUDA device)
-// Creates a 3D texture from data on a CUDA device. Returns texture handle (combines tex object + array handle).
-// data: pointer to host data (will be copied to device)
+// Creates a 3D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
+// data: pointer to HOST data (will be copied into a CUDA array)
 // width, height, depth: texture dimensions
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32

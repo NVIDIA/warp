@@ -4255,7 +4255,9 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode
+                ctypes.c_int,  # address_mode_u
+                ctypes.c_int,  # address_mode_v
+                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_void_p,  # data
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
                 ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
@@ -4277,7 +4279,10 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode
+                ctypes.c_int,  # address_mode_u
+                ctypes.c_int,  # address_mode_v
+                ctypes.c_int,  # address_mode_w
+                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_void_p,  # data
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
                 ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
@@ -4298,7 +4303,9 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode
+                ctypes.c_int,  # address_mode_u
+                ctypes.c_int,  # address_mode_v
+                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_void_p,  # data
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]
@@ -4316,7 +4323,10 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode
+                ctypes.c_int,  # address_mode_u
+                ctypes.c_int,  # address_mode_v
+                ctypes.c_int,  # address_mode_w
+                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_void_p,  # data
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]

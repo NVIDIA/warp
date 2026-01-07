@@ -1397,6 +1397,100 @@ def test_texture3d_address_mode_tuple(test, device):
     test.assertEqual(tex.address_mode_w, wp.TextureAddressMode.MIRROR)
 
 
+def test_texture2d_wrap_linear_edge(test, device):
+    """Test WRAP mode with LINEAR filtering at texture edge.
+
+    This tests that bilinear interpolation correctly wraps neighbor indices
+    at the texture boundary. At u=0.9 on a 4-wide texture with WRAP mode,
+    the neighbors should include texel 0 (wrapped), not just clamped to texel 3.
+    """
+    width, height = 4, 4
+    # Create texture where each column has a distinct value
+    # Column 0: 0, Column 1: 1, Column 2: 2, Column 3: 3
+    data = np.zeros((4, 4), dtype=np.float32)
+    for x in range(4):
+        data[:, x] = float(x)
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.WRAP,
+        device=device,
+    )
+
+    # Sample at u=0.9375 (texel center of x=3), v=0.5
+    # At texel center, should get exact value = 3.0
+    uvs_center = np.array([[0.875, 0.5]], dtype=np.float32)
+    uvs = wp.array(uvs_center, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvs, output],
+        device=device,
+    )
+
+    result_center = output.numpy()[0]
+    test.assertAlmostEqual(result_center, 3.0, places=3)
+
+    # Sample at u=0.96875 (between texel 3 and wrapped texel 0)
+    # With WRAP: should interpolate between value 3 and value 0
+    # With CLAMP (bug): would interpolate between value 3 and value 3
+    uvs_edge = np.array([[0.96875, 0.5]], dtype=np.float32)
+    uvs2 = wp.array(uvs_edge, dtype=wp.vec2f, device=device)
+    output2 = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvs2, output2],
+        device=device,
+    )
+
+    result_edge = output2.numpy()[0]
+    # With correct WRAP: result should be < 3.0 (interpolating toward 0)
+    # With incorrect CLAMP: result would be exactly 3.0
+    test.assertLess(result_edge, 2.9, f"WRAP mode not working correctly at edge: got {result_edge}")
+
+
+def test_texture2d_mirror_linear_edge(test, device):
+    """Test MIRROR mode with LINEAR filtering at texture edge.
+
+    At the edge with MIRROR mode, neighbors should mirror back into the texture.
+    """
+    width, height = 4, 4
+    # Create texture where each column has a distinct value
+    data = np.zeros((4, 4), dtype=np.float32)
+    for x in range(4):
+        data[:, x] = float(x)
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.MIRROR,
+        device=device,
+    )
+
+    # Sample at u=0.96875 (between texel 3 and mirrored texel 3 or 2)
+    # With MIRROR: at edge, should mirror back so neighbor is texel 2
+    uvs_edge = np.array([[0.96875, 0.5]], dtype=np.float32)
+    uvs = wp.array(uvs_edge, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvs, output],
+        device=device,
+    )
+
+    result_edge = output.numpy()[0]
+    # With correct MIRROR: result should be close to 3.0 but may interpolate with mirrored neighbor
+    # The key is it should match CUDA behavior
+    test.assertGreater(result_edge, 2.0, f"MIRROR mode result unexpected: got {result_edge}")
+
+
 # ============================================================================
 # Non-Normalized Coordinates Tests
 # ============================================================================
@@ -1711,6 +1805,10 @@ add_function_test(
 )
 add_function_test(
     TestTexture, "test_texture3d_address_mode_tuple", test_texture3d_address_mode_tuple, devices=all_devices
+)
+add_function_test(TestTexture, "test_texture2d_wrap_linear_edge", test_texture2d_wrap_linear_edge, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture2d_mirror_linear_edge", test_texture2d_mirror_linear_edge, devices=all_devices
 )
 
 # Non-normalized coordinates tests - run on all devices

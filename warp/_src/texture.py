@@ -96,7 +96,102 @@ class texture3d_t(ctypes.Structure):
         self.num_channels = num_channels
 
 
-class Texture2D:
+class _TextureBase:
+    """Base class for 2D and 3D textures with shared functionality.
+
+    This class provides common utilities and properties for texture classes.
+    It should not be instantiated directly.
+    """
+
+    @staticmethod
+    def _dtype_to_code(dtype):
+        """Convert dtype to internal dtype code.
+
+        Args:
+            dtype: One of np.uint8, np.uint16, np.float32, wp.uint8, wp.uint16, wp.float32, or float.
+
+        Returns:
+            Internal dtype code (0 for uint8, 1 for uint16, 2 for float32).
+        """
+        # Handle warp types
+        if dtype is uint8 or dtype is np.uint8:
+            return 0
+        elif dtype is uint16 or dtype is np.uint16:
+            return 1
+        elif dtype is float32 or dtype is np.float32 or dtype is float:
+            return 2
+        # Try numpy dtype conversion as fallback
+        try:
+            dtype = np.dtype(dtype)
+            if dtype == np.uint8:
+                return 0
+            elif dtype == np.uint16:
+                return 1
+            elif dtype == np.float32:
+                return 2
+        except (TypeError, AttributeError):
+            pass
+        raise ValueError(f"Unsupported texture dtype: {dtype}. Supported: uint8, uint16, float32")
+
+    @staticmethod
+    def _resolve_address_mode(address_mode, address_mode_axis, axis_index):
+        """Resolve address mode for a single axis.
+
+        Args:
+            address_mode: The base address_mode (single int or tuple).
+            address_mode_axis: Per-axis override (or None).
+            axis_index: Index into tuple if address_mode is a tuple.
+
+        Returns:
+            Resolved address mode as int (default is CLAMP=1).
+        """
+        if address_mode_axis is not None:
+            return address_mode_axis
+        elif address_mode is not None:
+            if isinstance(address_mode, tuple):
+                return address_mode[axis_index]
+            else:
+                return address_mode
+        else:
+            return 1  # CLAMP
+
+    @property
+    def width(self) -> int:
+        """Texture width in pixels."""
+        return self._width
+
+    @property
+    def height(self) -> int:
+        """Texture height in pixels."""
+        return self._height
+
+    @property
+    def num_channels(self) -> int:
+        """Number of channels."""
+        return self._num_channels
+
+    @property
+    def dtype(self):
+        """Data type of the texture (uint8, uint16, or float32)."""
+        return self._dtype
+
+    @property
+    def address_mode_u(self) -> int:
+        """Address mode for U axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_u
+
+    @property
+    def address_mode_v(self) -> int:
+        """Address mode for V axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_v
+
+    @property
+    def normalized_coords(self) -> bool:
+        """Whether texture uses normalized coordinates [0,1] or texel space."""
+        return self._normalized_coords
+
+
+class Texture2D(_TextureBase):
     """Class representing a 2D texture.
 
     Textures provide hardware-accelerated filtering and addressing for
@@ -136,36 +231,6 @@ class Texture2D:
         instance._tex_handle = 0
         instance._array_handle = 0
         return instance
-
-    @staticmethod
-    def _dtype_to_code(dtype):
-        """Convert dtype to internal dtype code.
-
-        Args:
-            dtype: One of np.uint8, np.uint16, np.float32, wp.uint8, wp.uint16, wp.float32, or float.
-
-        Returns:
-            Internal dtype code (0 for uint8, 1 for uint16, 2 for float32).
-        """
-        # Handle warp types
-        if dtype is uint8 or dtype is np.uint8:
-            return 0
-        elif dtype is uint16 or dtype is np.uint16:
-            return 1
-        elif dtype is float32 or dtype is np.float32 or dtype is float:
-            return 2
-        # Try numpy dtype conversion as fallback
-        try:
-            dtype = np.dtype(dtype)
-            if dtype == np.uint8:
-                return 0
-            elif dtype == np.uint16:
-                return 1
-            elif dtype == np.float32:
-                return 2
-        except (TypeError, AttributeError):
-            pass
-        raise ValueError(f"Unsupported texture dtype: {dtype}. Supported: uint8, uint16, float32")
 
     def __init__(
         self,
@@ -208,27 +273,9 @@ class Texture2D:
 
         self.runtime = warp._src.context.runtime
 
-        # Resolve per-axis address modes
-        # Priority: address_mode_u/v > address_mode tuple > address_mode single > default (CLAMP=1)
-        if address_mode_u is not None:
-            resolved_u = address_mode_u
-        elif address_mode is not None:
-            if isinstance(address_mode, tuple):
-                resolved_u = address_mode[0]
-            else:
-                resolved_u = address_mode
-        else:
-            resolved_u = 1  # CLAMP
-
-        if address_mode_v is not None:
-            resolved_v = address_mode_v
-        elif address_mode is not None:
-            if isinstance(address_mode, tuple):
-                resolved_v = address_mode[1]
-            else:
-                resolved_v = address_mode
-        else:
-            resolved_v = 1  # CLAMP
+        # Resolve per-axis address modes using base class helper
+        resolved_u = self._resolve_address_mode(address_mode, address_mode_u, 0)
+        resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1)
 
         if data is None:
             # Just store dimensions for lazy creation
@@ -362,41 +409,6 @@ class Texture2D:
             # Suppress errors during shutdown
             pass
 
-    @property
-    def width(self) -> int:
-        """Texture width in pixels."""
-        return self._width
-
-    @property
-    def height(self) -> int:
-        """Texture height in pixels."""
-        return self._height
-
-    @property
-    def num_channels(self) -> int:
-        """Number of channels."""
-        return self._num_channels
-
-    @property
-    def dtype(self):
-        """Data type of the texture (uint8, uint16, or float32)."""
-        return self._dtype
-
-    @property
-    def address_mode_u(self) -> int:
-        """Address mode for U axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
-        return self._address_mode_u
-
-    @property
-    def address_mode_v(self) -> int:
-        """Address mode for V axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
-        return self._address_mode_v
-
-    @property
-    def normalized_coords(self) -> bool:
-        """Whether texture uses normalized coordinates [0,1] or texel space."""
-        return self._normalized_coords
-
     def __ctype__(self) -> texture2d_t:
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
@@ -404,7 +416,7 @@ class Texture2D:
         return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
 
 
-class Texture3D:
+class Texture3D(_TextureBase):
     """Class representing a 3D texture.
 
     Textures provide hardware-accelerated filtering and addressing for
@@ -445,36 +457,6 @@ class Texture3D:
         instance._tex_handle = 0
         instance._array_handle = 0
         return instance
-
-    @staticmethod
-    def _dtype_to_code(dtype):
-        """Convert dtype to internal dtype code.
-
-        Args:
-            dtype: One of np.uint8, np.uint16, np.float32, wp.uint8, wp.uint16, wp.float32, or float.
-
-        Returns:
-            Internal dtype code (0 for uint8, 1 for uint16, 2 for float32).
-        """
-        # Handle warp types
-        if dtype is uint8 or dtype is np.uint8:
-            return 0
-        elif dtype is uint16 or dtype is np.uint16:
-            return 1
-        elif dtype is float32 or dtype is np.float32 or dtype is float:
-            return 2
-        # Try numpy dtype conversion as fallback
-        try:
-            dtype = np.dtype(dtype)
-            if dtype == np.uint8:
-                return 0
-            elif dtype == np.uint16:
-                return 1
-            elif dtype == np.float32:
-                return 2
-        except (TypeError, AttributeError):
-            pass
-        raise ValueError(f"Unsupported texture dtype: {dtype}. Supported: uint8, uint16, float32")
 
     def __init__(
         self,
@@ -521,37 +503,10 @@ class Texture3D:
 
         self.runtime = warp._src.context.runtime
 
-        # Resolve per-axis address modes
-        # Priority: address_mode_u/v/w > address_mode tuple > address_mode single > default (CLAMP=1)
-        if address_mode_u is not None:
-            resolved_u = address_mode_u
-        elif address_mode is not None:
-            if isinstance(address_mode, tuple):
-                resolved_u = address_mode[0]
-            else:
-                resolved_u = address_mode
-        else:
-            resolved_u = 1  # CLAMP
-
-        if address_mode_v is not None:
-            resolved_v = address_mode_v
-        elif address_mode is not None:
-            if isinstance(address_mode, tuple):
-                resolved_v = address_mode[1]
-            else:
-                resolved_v = address_mode
-        else:
-            resolved_v = 1  # CLAMP
-
-        if address_mode_w is not None:
-            resolved_w = address_mode_w
-        elif address_mode is not None:
-            if isinstance(address_mode, tuple):
-                resolved_w = address_mode[2]
-            else:
-                resolved_w = address_mode
-        else:
-            resolved_w = 1  # CLAMP
+        # Resolve per-axis address modes using base class helper
+        resolved_u = self._resolve_address_mode(address_mode, address_mode_u, 0)
+        resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1)
+        resolved_w = self._resolve_address_mode(address_mode, address_mode_w, 2)
 
         if data is None:
             # Just store dimensions for lazy creation
@@ -694,49 +649,14 @@ class Texture3D:
             pass
 
     @property
-    def width(self) -> int:
-        """Texture width in pixels."""
-        return self._width
-
-    @property
-    def height(self) -> int:
-        """Texture height in pixels."""
-        return self._height
-
-    @property
     def depth(self) -> int:
         """Texture depth in pixels."""
         return self._depth
 
     @property
-    def num_channels(self) -> int:
-        """Number of channels."""
-        return self._num_channels
-
-    @property
-    def dtype(self):
-        """Data type of the texture (uint8, uint16, or float32)."""
-        return self._dtype
-
-    @property
-    def address_mode_u(self) -> int:
-        """Address mode for U axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
-        return self._address_mode_u
-
-    @property
-    def address_mode_v(self) -> int:
-        """Address mode for V axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
-        return self._address_mode_v
-
-    @property
     def address_mode_w(self) -> int:
         """Address mode for W axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
         return self._address_mode_w
-
-    @property
-    def normalized_coords(self) -> bool:
-        """Whether texture uses normalized coordinates [0,1] or texel space."""
-        return self._normalized_coords
 
     def __ctype__(self) -> texture3d_t:
         """Return the ctypes structure for passing to kernels."""

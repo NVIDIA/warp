@@ -158,6 +158,34 @@ inline float cpu_apply_address_mode_1d(float coord, int size, int address_mode)
 // Clamp integer index to valid range
 inline int cpu_clamp_index(int idx, int size) { return (idx < 0) ? 0 : ((idx >= size) ? size - 1 : idx); }
 
+// Apply address mode to an integer texel index
+// This is used for neighbor indices in linear filtering to properly handle wrap/mirror
+inline int cpu_apply_address_mode_index(int idx, int size, int address_mode)
+{
+    switch (address_mode) {
+    case WP_TEXTURE_ADDRESS_WRAP: {
+        int m = idx % size;
+        if (m < 0)
+            m += size;
+        return m;
+    }
+    case WP_TEXTURE_ADDRESS_CLAMP:
+        return cpu_clamp_index(idx, size);
+    case WP_TEXTURE_ADDRESS_MIRROR: {
+        int period = 2 * size;
+        int m = idx % period;
+        if (m < 0)
+            m += period;
+        if (m >= size)
+            return period - m - 1;
+        return m;
+    }
+    case WP_TEXTURE_ADDRESS_BORDER:
+    default:
+        return idx;  // border handled by fetch bounds checks
+    }
+}
+
 // Check if index is within bounds (for border mode)
 inline bool cpu_in_bounds_2d(int x, int y, int w, int h) { return x >= 0 && x < w && y >= 0 && y < h; }
 
@@ -241,14 +269,11 @@ inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float
         float fx = tx - x0;
         float fy = ty - y0;
 
-        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            x0 = cpu_clamp_index(x0, tex->width);
-            x1 = cpu_clamp_index(x1, tex->width);
-        }
-        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
-            y0 = cpu_clamp_index(y0, tex->height);
-            y1 = cpu_clamp_index(y1, tex->height);
-        }
+        // Apply address mode to neighbor indices (properly handles wrap/mirror at edges)
+        x0 = cpu_apply_address_mode_index(x0, tex->width, tex->address_mode_u);
+        x1 = cpu_apply_address_mode_index(x1, tex->width, tex->address_mode_u);
+        y0 = cpu_apply_address_mode_index(y0, tex->height, tex->address_mode_v);
+        y1 = cpu_apply_address_mode_index(y1, tex->height, tex->address_mode_v);
 
         float v00 = cpu_fetch_texel_2d(tex, x0, y0, channel);
         float v10 = cpu_fetch_texel_2d(tex, x1, y0, channel);
@@ -304,18 +329,13 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
         float fy = ty - y0;
         float fz = tz - z0;
 
-        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            x0 = cpu_clamp_index(x0, tex->width);
-            x1 = cpu_clamp_index(x1, tex->width);
-        }
-        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
-            y0 = cpu_clamp_index(y0, tex->height);
-            y1 = cpu_clamp_index(y1, tex->height);
-        }
-        if (tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
-            z0 = cpu_clamp_index(z0, tex->depth);
-            z1 = cpu_clamp_index(z1, tex->depth);
-        }
+        // Apply address mode to neighbor indices (properly handles wrap/mirror at edges)
+        x0 = cpu_apply_address_mode_index(x0, tex->width, tex->address_mode_u);
+        x1 = cpu_apply_address_mode_index(x1, tex->width, tex->address_mode_u);
+        y0 = cpu_apply_address_mode_index(y0, tex->height, tex->address_mode_v);
+        y1 = cpu_apply_address_mode_index(y1, tex->height, tex->address_mode_v);
+        z0 = cpu_apply_address_mode_index(z0, tex->depth, tex->address_mode_w);
+        z1 = cpu_apply_address_mode_index(z1, tex->depth, tex->address_mode_w);
 
         // Fetch 8 corner values
         float v000 = cpu_fetch_texel_3d(tex, x0, y0, z0, channel);
