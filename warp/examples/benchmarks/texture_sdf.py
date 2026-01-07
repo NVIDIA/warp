@@ -616,6 +616,110 @@ def apply_subgrid_sdf_scale(raw_value: float, min_value: float, value_range: flo
     return raw_value * value_range + min_value
 
 
+@wp.func
+def sample_texture_at_cell(
+    sdf: SparseSDF,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
+    start_slot: wp.uint32,
+    x_base: int,
+    y_base: int,
+    z_base: int,
+    f: wp.vec3,
+) -> float:
+    """
+    Core texture sampling logic - shared by all sampling functions (fast path).
+
+    Samples either from coarse texture (if start_slot == 0xFFFFFFFF) or
+    from subgrid texture using the pre-computed cell indices.
+    Assumes f is already within valid grid bounds.
+
+    Args:
+        sdf: SparseSDF parameters
+        coarse_texture: Background/coarse texture
+        subgrid_texture: Packed subgrid texture
+        start_slot: Subgrid start slot (0xFFFFFFFF = use coarse)
+        x_base, y_base, z_base: Coarse cell indices
+        f: Grid coordinates (fine resolution)
+
+    Returns:
+        Sampled SDF value (with quantization scale applied for subgrid)
+    """
+    if start_slot == wp.uint32(0xFFFFFFFF):
+        # No subgrid - sample from coarse texture (non-normalized coords)
+        coarse_f = f * sdf.fine_to_coarse
+        return wp.texture_sample(
+            coarse_texture,
+            wp.vec3f(coarse_f[0] + 0.5, coarse_f[1] + 0.5, coarse_f[2] + 0.5),
+            dtype=float,
+        )
+    else:
+        # Sample from subgrid texture
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        local_x = f[0] - fx_base * sdf.subgrid_size_f
+        local_y = f[1] - fy_base * sdf.subgrid_size_f
+        local_z = f[2] - fz_base * sdf.subgrid_size_f
+
+        local_f = wp.vec3(local_x, local_y, local_z)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
+
+        # Sample with non-normalized texel coordinates
+        raw_val = wp.texture_sample(
+            subgrid_texture,
+            wp.vec3f(tex_coords[0] + 0.5, tex_coords[1] + 0.5, tex_coords[2] + 0.5),
+            dtype=float,
+        )
+        return apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+
+
+@wp.func
+def sample_texture_at_cell_safe(
+    sdf: SparseSDF,
+    coarse_texture: wp.Texture3D,
+    subgrid_texture: wp.Texture3D,
+    start_slot: wp.uint32,
+    x_base: int,
+    y_base: int,
+    z_base: int,
+    f: wp.vec3,
+) -> float:
+    """
+    Core texture sampling with boundary clamping (safe path).
+
+    Like sample_texture_at_cell but clamps local subgrid coordinates
+    to prevent floating-point edge case issues.
+    """
+    if start_slot == wp.uint32(0xFFFFFFFF):
+        # No subgrid - sample from coarse texture (non-normalized coords)
+        coarse_f = f * sdf.fine_to_coarse
+        return wp.texture_sample(
+            coarse_texture,
+            wp.vec3f(coarse_f[0] + 0.5, coarse_f[1] + 0.5, coarse_f[2] + 0.5),
+            dtype=float,
+        )
+    else:
+        # Sample from subgrid texture with clamped local coordinates
+        fx_base = float(x_base)
+        fy_base = float(y_base)
+        fz_base = float(z_base)
+        local_x = wp.clamp(f[0] - fx_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+        local_y = wp.clamp(f[1] - fy_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+        local_z = wp.clamp(f[2] - fz_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
+
+        local_f = wp.vec3(local_x, local_y, local_z)
+        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
+
+        # Sample with non-normalized texel coordinates
+        raw_val = wp.texture_sample(
+            subgrid_texture,
+            wp.vec3f(tex_coords[0] + 0.5, tex_coords[1] + 0.5, tex_coords[2] + 0.5),
+            dtype=float,
+        )
+        return apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+
+
 @wp.kernel
 def sample_sparse_sdf(
     sdf: SparseSDF,
@@ -645,46 +749,17 @@ def sample_sparse_sdf(
     # Convert to grid coordinates
     f = (clamped - sdf.sdf_box_lower) * sdf.inv_sdf_dx
 
-    # Compute coarse cell indices
+    # Compute coarse cell indices (clamped for safety)
     x_base = wp.clamp(int(f[0] * sdf.fine_to_coarse), 0, sdf.coarse_size_x - 1)
     y_base = wp.clamp(int(f[1] * sdf.fine_to_coarse), 0, sdf.coarse_size_y - 1)
     z_base = wp.clamp(int(f[2] * sdf.fine_to_coarse), 0, sdf.coarse_size_z - 1)
 
-    # Look up indirection slot: (z * sy + y) * sx + x
+    # Look up indirection slot
     slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
     start_slot = subgrid_start_slots[slot_idx]
 
-    sdf_val = float(0.0)
-
-    if start_slot == wp.uint32(0xFFFFFFFF):
-        # No subgrid - sample from coarse texture (non-normalized coords)
-        coarse_f = f * sdf.fine_to_coarse
-        sdf_val = wp.texture_sample(
-            coarse_texture,
-            wp.vec3f(coarse_f[0] + 0.5, coarse_f[1] + 0.5, coarse_f[2] + 0.5),
-            dtype=float,
-        )
-    else:
-        # Sample from subgrid texture (convert to float once)
-        fx_base = float(x_base)
-        fy_base = float(y_base)
-        fz_base = float(z_base)
-        local_x = wp.clamp(f[0] - fx_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
-        local_y = wp.clamp(f[1] - fy_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
-        local_z = wp.clamp(f[2] - fz_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
-
-        local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
-
-        # Sample with non-normalized texel coordinates
-        raw_val = wp.texture_sample(
-            subgrid_texture,
-            wp.vec3f(tex_coords[0] + 0.5, tex_coords[1] + 0.5, tex_coords[2] + 0.5),
-            dtype=float,
-        )
-
-        # Apply quantization scale (no-op for float32 where range=1.0, min=0.0)
-        sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+    # Sample with boundary clamping for safety
+    sdf_val = sample_texture_at_cell_safe(sdf, coarse_texture, subgrid_texture, start_slot, x_base, y_base, z_base, f)
 
     results[tid] = sdf_val + diff_mag
 
@@ -713,44 +788,17 @@ def sample_sparse_sdf_at(
     # Convert to grid coordinates
     f = (clamped - sdf.sdf_box_lower) * sdf.inv_sdf_dx
 
-    # Compute coarse cell indices
+    # Compute coarse cell indices (clamped for safety)
     x_base = wp.clamp(int(f[0] * sdf.fine_to_coarse), 0, sdf.coarse_size_x - 1)
     y_base = wp.clamp(int(f[1] * sdf.fine_to_coarse), 0, sdf.coarse_size_y - 1)
     z_base = wp.clamp(int(f[2] * sdf.fine_to_coarse), 0, sdf.coarse_size_z - 1)
 
-    # Look up indirection slot: (z * sy + y) * sx + x = 2 int muls instead of 3
+    # Look up indirection slot
     slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
     start_slot = subgrid_start_slots[slot_idx]
 
-    sdf_val = float(0.0)
-
-    if start_slot == wp.uint32(0xFFFFFFFF):
-        # No subgrid - sample from coarse texture (non-normalized coords)
-        coarse_f = f * sdf.fine_to_coarse
-        sdf_val = wp.texture_sample(
-            coarse_texture,
-            wp.vec3f(coarse_f[0] + 0.5, coarse_f[1] + 0.5, coarse_f[2] + 0.5),
-            dtype=float,
-        )
-    else:
-        # Sample from subgrid texture (use float x_base to avoid int->float)
-        fx_base = float(x_base)
-        fy_base = float(y_base)
-        fz_base = float(z_base)
-        local_x = wp.clamp(f[0] - fx_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
-        local_y = wp.clamp(f[1] - fy_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
-        local_z = wp.clamp(f[2] - fz_base * sdf.subgrid_size_f, 0.0, sdf.subgrid_samples_f)
-
-        local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
-
-        # Sample with non-normalized texel coordinates
-        raw_val = wp.texture_sample(
-            subgrid_texture,
-            wp.vec3f(tex_coords[0] + 0.5, tex_coords[1] + 0.5, tex_coords[2] + 0.5),
-            dtype=float,
-        )
-        sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+    # Sample with boundary clamping for safety
+    sdf_val = sample_texture_at_cell_safe(sdf, coarse_texture, subgrid_texture, start_slot, x_base, y_base, z_base, f)
 
     return sdf_val + diff_mag
 
@@ -774,41 +822,11 @@ def sample_texture_at_grid_coords(
     y_base = int(f[1] * sdf.fine_to_coarse)
     z_base = int(f[2] * sdf.fine_to_coarse)
 
-    # Look up indirection slot: (z * sy + y) * sx + x
+    # Look up indirection slot
     slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
     start_slot = subgrid_start_slots[slot_idx]
 
-    sdf_val = float(0.0)
-
-    if start_slot == wp.uint32(0xFFFFFFFF):
-        # No subgrid - sample from coarse texture (non-normalized coords)
-        coarse_f = f * sdf.fine_to_coarse
-        sdf_val = wp.texture_sample(
-            coarse_texture,
-            wp.vec3f(coarse_f[0] + 0.5, coarse_f[1] + 0.5, coarse_f[2] + 0.5),
-            dtype=float,
-        )
-    else:
-        # Sample from subgrid texture (convert to float once)
-        fx_base = float(x_base)
-        fy_base = float(y_base)
-        fz_base = float(z_base)
-        local_x = f[0] - fx_base * sdf.subgrid_size_f
-        local_y = f[1] - fy_base * sdf.subgrid_size_f
-        local_z = f[2] - fz_base * sdf.subgrid_size_f
-
-        local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
-
-        # Sample with non-normalized texel coordinates
-        raw_val = wp.texture_sample(
-            subgrid_texture,
-            wp.vec3f(tex_coords[0] + 0.5, tex_coords[1] + 0.5, tex_coords[2] + 0.5),
-            dtype=float,
-        )
-        sdf_val = apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
-
-    return sdf_val
+    return sample_texture_at_cell(sdf, coarse_texture, subgrid_texture, start_slot, x_base, y_base, z_base, f)
 
 
 @wp.func
@@ -828,45 +846,17 @@ def sample_with_precomputed_cell(
 
     Handles both coarse (start_slot == 0xFFFFFFFF) and subgrid cases.
     This avoids recomputing the cell lookup for each of the 7 gradient samples.
+    Uses sentinel 0xFFFFFFFE to indicate cell indices need to be computed.
     """
-
     if start_slot == wp.uint32(0xFFFFFFFE):
-        # Compute coarse cell indices
+        # Sentinel: compute cell indices dynamically
         x_base = int(f[0] * sdf.fine_to_coarse)
         y_base = int(f[1] * sdf.fine_to_coarse)
         z_base = int(f[2] * sdf.fine_to_coarse)
-
-        # Look up indirection slot: (z * sy + y) * sx + x
         slot_idx = (z_base * sdf.coarse_size_y + y_base) * sdf.coarse_size_x + x_base
         start_slot = subgrid_start_slots[slot_idx]
 
-    if start_slot == wp.uint32(0xFFFFFFFF):
-        # No subgrid - sample from coarse texture (non-normalized coords)
-        coarse_f = f * sdf.fine_to_coarse
-        return wp.texture_sample(
-            coarse_texture,
-            wp.vec3f(coarse_f[0] + 0.5, coarse_f[1] + 0.5, coarse_f[2] + 0.5),
-            dtype=float,
-        )
-    else:
-        # Sample from subgrid texture (convert to float once)
-        fx_base = float(x_base)
-        fy_base = float(y_base)
-        fz_base = float(z_base)
-        local_x = f[0] - fx_base * sdf.subgrid_size_f
-        local_y = f[1] - fy_base * sdf.subgrid_size_f
-        local_z = f[2] - fz_base * sdf.subgrid_size_f
-
-        local_f = wp.vec3(local_x, local_y, local_z)
-        tex_coords = apply_subgrid_start(start_slot, local_f, sdf.subgrid_samples_f)
-
-        # Sample with non-normalized texel coordinates
-        raw_val = wp.texture_sample(
-            subgrid_texture,
-            wp.vec3f(tex_coords[0] + 0.5, tex_coords[1] + 0.5, tex_coords[2] + 0.5),
-            dtype=float,
-        )
-        return apply_subgrid_sdf_scale(raw_val, sdf.subgrids_min_sdf_value, sdf.subgrids_sdf_value_range)
+    return sample_texture_at_cell(sdf, coarse_texture, subgrid_texture, start_slot, x_base, y_base, z_base, f)
 
 
 @wp.kernel
