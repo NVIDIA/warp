@@ -30,14 +30,15 @@ from omni.warp.nodes._impl.attributes import (
     attr_get_base_name,
     attr_get_name,
 )
-from omni.warp.nodes._impl.common import SUPPORTED_SDF_DATA_TYPE_NAMES
+from omni.warp.nodes._impl.common import (
+    ARRAY_MAX_DIMS,
+    SUPPORTED_SDF_DATA_TYPE_NAMES,
+)
 from omni.warp.nodes._impl.kernel import EXPLICIT_SOURCE
 from omni.warp.nodes._impl.props.codefile import get_code_file_prop_builder
 from omni.warp.nodes._impl.props.codestr import get_code_str_prop_builder
 from omni.warp.nodes._impl.props.editattrs import get_edit_attrs_prop_builder
 from omni.warp.nodes._impl.props.sourcepicker import get_source_picker_prop_builder
-
-import warp as wp
 
 
 def find_prop(
@@ -191,7 +192,7 @@ class CustomLayout:
                             og.Controller.get(self.dim_count_attr),
                             0,
                         ),
-                        wp.types.ARRAY_MAX_DIMS,
+                        ARRAY_MAX_DIMS,
                     )
                     for i in range(dim_count):
                         prop = find_prop(props, f"inputs:dim{i + 1}")

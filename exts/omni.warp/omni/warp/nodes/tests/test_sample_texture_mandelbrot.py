@@ -15,10 +15,7 @@
 
 """Tests for the texture mandelbrot sample scene."""
 
-import unittest
-
 import omni.kit
-import omni.usd
 import omni.warp
 
 from ._common import (
@@ -31,20 +28,11 @@ TEST_ID = "texture_mandelbrot"
 
 
 class TestSampleTextureMandelbrot(omni.kit.test.AsyncTestCase):
-    async def _test_capture(self, enable_fsd: bool) -> None:
-        await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
+    async def test_capture(self) -> None:
+        await open_sample(f"{TEST_ID}.usda")
 
         with FrameRange(30) as frames:
             async for _ in frames:
                 pass
 
-        fsd_str = "fsd_on" if enable_fsd else "fsd_off"
-        await validate_render(f"{TEST_ID}_{fsd_str}")
-
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
-    async def test_capture_fsd_off(self) -> None:
-        await self._test_capture(enable_fsd=False)
-
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
-    async def test_capture_fsd_on(self) -> None:
-        await self._test_capture(enable_fsd=True)
+        await validate_render(TEST_ID)

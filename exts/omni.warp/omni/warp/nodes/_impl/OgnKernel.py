@@ -25,6 +25,7 @@ from omni.warp.nodes.ogn.OgnKernelDatabase import OgnKernelDatabase
 import warp as wp
 
 from .attributes import attr_join_name
+from .common import ARRAY_MAX_DIMS
 from .kernel import (
     EXPLICIT_SOURCE,
     InternalStateBase,
@@ -125,7 +126,7 @@ def infer_kernel_shape(
     """Infers the shape of the kernel."""
     source = db.inputs.dimSource
     if source == EXPLICIT_SOURCE:
-        dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
+        dim_count = min(max(db.inputs.dimCount, 0), ARRAY_MAX_DIMS)
         return tuple(max(getattr(db.inputs, f"dim{i + 1}"), 0) for i in range(dim_count))
 
     try:

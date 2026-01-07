@@ -24,6 +24,8 @@ from omni.warp.nodes.ogn.OgnTextureWriteDatabase import OgnTextureWriteDatabase
 
 import warp as wp
 
+from .common import ARRAY_MAX_DIMS
+
 try:
     import omni.ui as ui
 except ImportError:
@@ -97,7 +99,7 @@ def compute(db: OgnTextureWriteDatabase) -> None:
         if not state.initialize(db):
             return
 
-    dim_count = min(max(db.inputs.dimCount, 0), wp.types.ARRAY_MAX_DIMS)
+    dim_count = min(max(db.inputs.dimCount, 0), ARRAY_MAX_DIMS)
     resolution = tuple(max(getattr(db.inputs, f"dim{i + 1}"), 0) for i in range(dim_count))
 
     # We need to dereference OG's attribute pointer to get the actual pointer

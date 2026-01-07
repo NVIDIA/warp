@@ -15,8 +15,6 @@
 
 """Tests for the mesh deformation sample scene."""
 
-import unittest
-
 import numpy as np
 import omni.graph.core as og
 import omni.kit
@@ -35,8 +33,8 @@ TEST_ID = "mesh_deformation"
 
 
 class TestSampleMeshDeformation(omni.kit.test.AsyncTestCase):
-    async def _test_eval(self, enable_fsd: bool) -> None:
-        await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
+    async def test_eval(self) -> None:
+        await open_sample(f"{TEST_ID}.usda")
 
         graph = og.Controller.graph("/World/ActionGraph")
 
@@ -83,26 +81,11 @@ class TestSampleMeshDeformation(omni.kit.test.AsyncTestCase):
         await test_variant(grid_size=(100.0, 100.0), grid_dims=(32, 32))
         await test_variant(grid_size=(50.0, 10.0), grid_dims=(64, 8))
 
-    async def test_eval_fsd_off(self) -> None:
-        await self._test_eval(enable_fsd=False)
-
-    async def test_eval_fsd_on(self) -> None:
-        await self._test_eval(enable_fsd=True)
-
-    async def _test_capture(self, enable_fsd: bool) -> None:
-        await open_sample(f"{TEST_ID}.usda", enable_fsd=enable_fsd)
+    async def test_capture(self) -> None:
+        await open_sample(f"{TEST_ID}.usda")
 
         with FrameRange(30) as frames:
             async for _ in frames:
                 pass
 
-        fsd_str = "fsd_on" if enable_fsd else "fsd_off"
-        await validate_render(f"{TEST_ID}_{fsd_str}")
-
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
-    async def test_capture_fsd_off(self) -> None:
-        await self._test_capture(enable_fsd=False)
-
-    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Regression in Kit")
-    async def test_capture_fsd_on(self) -> None:
-        await self._test_capture(enable_fsd=True)
+        await validate_render(TEST_ID)
