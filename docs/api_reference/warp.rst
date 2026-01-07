@@ -226,6 +226,7 @@ Spatial Acceleration
    MeshQueryAABBTiled
    MeshQueryPoint
    MeshQueryRay
+   Texture
    Texture2D
    Texture3D
    TextureAddressMode

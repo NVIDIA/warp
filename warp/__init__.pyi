@@ -4621,67 +4621,6 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
     ...
 
 @over
-def texture_sample_2d(tex: Texture2D, uv: vec2f, dtype: Any) -> Any:
-    """Sample a 2D texture at the given UV coordinates.
-
-    This function explicitly samples a 2D texture and is useful when using the
-    unified :func:`warp.Texture` factory function.
-
-    :param tex: The 2D texture to sample (Texture2D or Texture created with 2D data).
-    :param uv: UV coordinates as a vec2f. Range depends on ``normalized_coords`` setting.
-    :param dtype: The return type (float, vec2f, or vec4f).
-    :returns: The sampled value of the specified dtype.
-
-    See Also:
-        :func:`texture_sample_3d`: For 3D texture sampling.
-        :func:`texture_sample`: Generic texture sampling function.
-    """
-    ...
-
-@over
-def texture_sample_2d(tex: Texture2D, u: float32, v: float32, dtype: Any) -> Any:
-    """Sample a 2D texture at the given U, V coordinates.
-
-    :param tex: The 2D texture to sample.
-    :param u: U coordinate. Range depends on ``normalized_coords`` setting.
-    :param v: V coordinate. Range depends on ``normalized_coords`` setting.
-    :param dtype: The return type (float, vec2f, or vec4f).
-    :returns: The sampled value of the specified dtype.
-    """
-    ...
-
-@over
-def texture_sample_3d(tex: Texture3D, uvw: vec3f, dtype: Any) -> Any:
-    """Sample a 3D texture at the given UVW coordinates.
-
-    This function explicitly samples a 3D texture and is useful when using the
-    unified :func:`warp.Texture` factory function.
-
-    :param tex: The 3D texture to sample (Texture3D or Texture created with 3D data).
-    :param uvw: UVW coordinates as a vec3f. Range depends on ``normalized_coords`` setting.
-    :param dtype: The return type (float, vec2f, or vec4f).
-    :returns: The sampled value of the specified dtype.
-
-    See Also:
-        :func:`texture_sample_2d`: For 2D texture sampling.
-        :func:`texture_sample`: Generic texture sampling function.
-    """
-    ...
-
-@over
-def texture_sample_3d(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any) -> Any:
-    """Sample a 3D texture at the given U, V, W coordinates.
-
-    :param tex: The 3D texture to sample.
-    :param u: U coordinate. Range depends on ``normalized_coords`` setting.
-    :param v: V coordinate. Range depends on ``normalized_coords`` setting.
-    :param w: W coordinate. Range depends on ``normalized_coords`` setting.
-    :param dtype: The return type (float, vec2f, or vec4f).
-    :returns: The sampled value of the specified dtype.
-    """
-    ...
-
-@over
 def rand_init(seed: int32) -> uint32:
     """Initialize a new random number generator given a user-defined seed. Returns a 32-bit integer representing the RNG state."""
     ...
