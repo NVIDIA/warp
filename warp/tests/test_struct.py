@@ -896,6 +896,53 @@ add_function_test(
 )
 
 
+@wp.struct
+class StructWithProperty:
+    value: float
+
+    @property
+    def neg_value(self) -> float:
+        return -self.value
+
+
+@wp.kernel
+def kernel_struct_property(s: StructWithProperty, out: wp.array(dtype=float)):
+    out[0] = s.neg_value
+
+
+def test_struct_property(test, device):
+    """Tests that structs with properties (getters) are supported."""
+    s = StructWithProperty()
+    s.value = 42.0
+
+    out = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(kernel_struct_property, dim=1, inputs=[s, out], device=device)
+
+    assert_np_equal(out.numpy(), np.array([-42.0]))
+
+
+def test_struct_property_with_setter(test, device):
+    """Tests that structs with properties (setters) are not supported."""
+    with test.assertRaisesRegex(TypeError, "Struct properties with setters are not supported"):
+
+        @wp.struct
+        class StructWithPropertySetter:
+            value: float
+
+            @property
+            def neg_value(self) -> float:
+                return -self.value
+
+            @neg_value.setter
+            def neg_value(self, value: float):
+                self.value = -value
+
+
+add_function_test(TestStruct, "test_struct_property", test_struct_property, devices=devices)
+add_function_test(TestStruct, "test_struct_property_with_setter", test_struct_property_with_setter, devices=devices)
+
+
 if __name__ == "__main__":
     wp.clear_kernel_cache()
     unittest.main(verbosity=2)
