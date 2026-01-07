@@ -45,7 +45,9 @@ struct cpu_texture2d_data {
     int32 num_channels;
     int32 dtype;
     int32 filter_mode;
-    int32 address_mode;
+    int32 address_mode_u;  // Per-axis address mode for U
+    int32 address_mode_v;  // Per-axis address mode for V
+    bool use_normalized_coords;  // If true, coords in [0,1]; if false, in texel space
 };
 
 struct cpu_texture3d_data {
@@ -56,7 +58,10 @@ struct cpu_texture3d_data {
     int32 num_channels;
     int32 dtype;
     int32 filter_mode;
-    int32 address_mode;
+    int32 address_mode_u;  // Per-axis address mode for U
+    int32 address_mode_v;  // Per-axis address mode for V
+    int32 address_mode_w;  // Per-axis address mode for W
+    bool use_normalized_coords;  // If true, coords in [0,1]; if false, in texel space
 };
 
 // Texture descriptor passed to kernels
@@ -206,16 +211,22 @@ inline float cpu_fetch_texel_3d(const cpu_texture3d_data* tex, int x, int y, int
 // Sample a single channel with bilinear interpolation (2D)
 inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float v, int channel)
 {
-    float tx = cpu_apply_address_mode_1d(u, tex->width, tex->address_mode);
-    float ty = cpu_apply_address_mode_1d(v, tex->height, tex->address_mode);
+    // Convert to texel space if using normalized coordinates
+    float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
+    float coord_v = tex->use_normalized_coords ? v : (v / (float)tex->height);
+
+    float tx = cpu_apply_address_mode_1d(coord_u, tex->width, tex->address_mode_u);
+    float ty = cpu_apply_address_mode_1d(coord_v, tex->height, tex->address_mode_v);
 
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
         // Nearest neighbor
         int x = (int)floor(tx + 0.5f);
         int y = (int)floor(ty + 0.5f);
 
-        if (tex->address_mode != WP_TEXTURE_ADDRESS_BORDER) {
+        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
             x = cpu_clamp_index(x, tex->width);
+        }
+        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
             y = cpu_clamp_index(y, tex->height);
         }
 
@@ -230,10 +241,12 @@ inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float
         float fx = tx - x0;
         float fy = ty - y0;
 
-        if (tex->address_mode != WP_TEXTURE_ADDRESS_BORDER) {
+        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
             x0 = cpu_clamp_index(x0, tex->width);
-            y0 = cpu_clamp_index(y0, tex->height);
             x1 = cpu_clamp_index(x1, tex->width);
+        }
+        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
+            y0 = cpu_clamp_index(y0, tex->height);
             y1 = cpu_clamp_index(y1, tex->height);
         }
 
@@ -252,9 +265,14 @@ inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float
 // Sample a single channel with trilinear interpolation (3D)
 inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float v, float w, int channel)
 {
-    float tx = cpu_apply_address_mode_1d(u, tex->width, tex->address_mode);
-    float ty = cpu_apply_address_mode_1d(v, tex->height, tex->address_mode);
-    float tz = cpu_apply_address_mode_1d(w, tex->depth, tex->address_mode);
+    // Convert to texel space if using normalized coordinates
+    float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
+    float coord_v = tex->use_normalized_coords ? v : (v / (float)tex->height);
+    float coord_w = tex->use_normalized_coords ? w : (w / (float)tex->depth);
+
+    float tx = cpu_apply_address_mode_1d(coord_u, tex->width, tex->address_mode_u);
+    float ty = cpu_apply_address_mode_1d(coord_v, tex->height, tex->address_mode_v);
+    float tz = cpu_apply_address_mode_1d(coord_w, tex->depth, tex->address_mode_w);
 
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
         // Nearest neighbor
@@ -262,9 +280,13 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
         int y = (int)floor(ty + 0.5f);
         int z = (int)floor(tz + 0.5f);
 
-        if (tex->address_mode != WP_TEXTURE_ADDRESS_BORDER) {
+        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
             x = cpu_clamp_index(x, tex->width);
+        }
+        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
             y = cpu_clamp_index(y, tex->height);
+        }
+        if (tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
             z = cpu_clamp_index(z, tex->depth);
         }
 
@@ -282,12 +304,16 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
         float fy = ty - y0;
         float fz = tz - z0;
 
-        if (tex->address_mode != WP_TEXTURE_ADDRESS_BORDER) {
+        if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
             x0 = cpu_clamp_index(x0, tex->width);
-            y0 = cpu_clamp_index(y0, tex->height);
-            z0 = cpu_clamp_index(z0, tex->depth);
             x1 = cpu_clamp_index(x1, tex->width);
+        }
+        if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
+            y0 = cpu_clamp_index(y0, tex->height);
             y1 = cpu_clamp_index(y1, tex->height);
+        }
+        if (tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
+            z0 = cpu_clamp_index(z0, tex->depth);
             z1 = cpu_clamp_index(z1, tex->depth);
         }
 

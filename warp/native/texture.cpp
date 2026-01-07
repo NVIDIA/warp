@@ -54,7 +54,9 @@ struct cpu_texture2d_data {
     int num_channels;
     int dtype;  // WP_TEXTURE_DTYPE_*
     int filter_mode;  // WP_TEXTURE_FILTER_*
-    int address_mode;  // WP_TEXTURE_ADDRESS_*
+    int address_mode_u;  // WP_TEXTURE_ADDRESS_* for U axis
+    int address_mode_v;  // WP_TEXTURE_ADDRESS_* for V axis
+    bool use_normalized_coords;  // If true, coords in [0,1]; if false, in texel space
 };
 
 struct cpu_texture3d_data {
@@ -65,7 +67,10 @@ struct cpu_texture3d_data {
     int num_channels;
     int dtype;  // WP_TEXTURE_DTYPE_*
     int filter_mode;  // WP_TEXTURE_FILTER_*
-    int address_mode;  // WP_TEXTURE_ADDRESS_*
+    int address_mode_u;  // WP_TEXTURE_ADDRESS_* for U axis
+    int address_mode_v;  // WP_TEXTURE_ADDRESS_* for V axis
+    int address_mode_w;  // WP_TEXTURE_ADDRESS_* for W axis
+    bool use_normalized_coords;  // If true, coords in [0,1]; if false, in texel space
 };
 
 // Helper function to get bytes per channel from dtype
@@ -92,7 +97,9 @@ bool wp_texture2d_create_host(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out
 )
@@ -136,7 +143,9 @@ bool wp_texture2d_create_host(
     tex_data->num_channels = num_channels;
     tex_data->dtype = dtype;
     tex_data->filter_mode = filter_mode;
-    tex_data->address_mode = address_mode;
+    tex_data->address_mode_u = address_mode_u;
+    tex_data->address_mode_v = address_mode_v;
+    tex_data->use_normalized_coords = use_normalized_coords;
 
     // Return the pointer as uint64_t handle
     *tex_handle_out = (uint64_t)tex_data;
@@ -163,7 +172,10 @@ bool wp_texture3d_create_host(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out
 )
@@ -208,7 +220,10 @@ bool wp_texture3d_create_host(
     tex_data->num_channels = num_channels;
     tex_data->dtype = dtype;
     tex_data->filter_mode = filter_mode;
-    tex_data->address_mode = address_mode;
+    tex_data->address_mode_u = address_mode_u;
+    tex_data->address_mode_v = address_mode_v;
+    tex_data->address_mode_w = address_mode_w;
+    tex_data->use_normalized_coords = use_normalized_coords;
 
     // Return the pointer as uint64_t handle
     *tex_handle_out = (uint64_t)tex_data;
@@ -248,6 +263,23 @@ static CUarray_format get_cuda_format(int dtype)
     }
 }
 
+// Helper function to convert address mode int to CUDA address mode
+static CUaddress_mode get_cuda_address_mode(int address_mode)
+{
+    switch (address_mode) {
+    case 0:
+        return CU_TR_ADDRESS_MODE_WRAP;
+    case 1:
+        return CU_TR_ADDRESS_MODE_CLAMP;
+    case 2:
+        return CU_TR_ADDRESS_MODE_MIRROR;
+    case 3:
+        return CU_TR_ADDRESS_MODE_BORDER;
+    default:
+        return CU_TR_ADDRESS_MODE_CLAMP;
+    }
+}
+
 bool wp_texture2d_create_device(
     void* context,
     int width,
@@ -255,7 +287,9 @@ bool wp_texture2d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -327,37 +361,18 @@ bool wp_texture2d_create_device(
     // Create texture descriptor
     CUDA_TEXTURE_DESC tex_desc = {};
 
-    // Address mode: 0=wrap, 1=clamp, 2=mirror, 3=border
-    CUaddress_mode cuda_address_mode;
-    switch (address_mode) {
-    case 0:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_WRAP;
-        break;
-    case 1:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
-        break;
-    case 2:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_MIRROR;
-        break;
-    case 3:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_BORDER;
-        break;
-    default:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
-        break;
-    }
-
-    tex_desc.addressMode[0] = cuda_address_mode;
-    tex_desc.addressMode[1] = cuda_address_mode;
-    tex_desc.addressMode[2] = cuda_address_mode;
+    // Per-axis address modes
+    tex_desc.addressMode[0] = get_cuda_address_mode(address_mode_u);
+    tex_desc.addressMode[1] = get_cuda_address_mode(address_mode_v);
+    tex_desc.addressMode[2] = CU_TR_ADDRESS_MODE_CLAMP;  // Not used for 2D, but set a default
 
     // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
-    // Use normalized coordinates [0,1] for texture addressing
+    // Coordinate mode: normalized [0,1] or texel space [0,width/height]
     // For uint8/uint16 textures, CUDA automatically normalizes values to [0,1] when sampled
     // (since CU_TRSF_READ_AS_INTEGER is NOT set). Float32 textures return values as-is.
-    tex_desc.flags = CU_TRSF_NORMALIZED_COORDINATES;
+    tex_desc.flags = use_normalized_coords ? CU_TRSF_NORMALIZED_COORDINATES : 0;
 
     tex_desc.maxAnisotropy = 0;
     tex_desc.mipmapFilterMode = CU_TR_FILTER_MODE_POINT;
@@ -403,7 +418,10 @@ bool wp_texture3d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -481,37 +499,18 @@ bool wp_texture3d_create_device(
     // Create texture descriptor
     CUDA_TEXTURE_DESC tex_desc = {};
 
-    // Address mode: 0=wrap, 1=clamp, 2=mirror, 3=border
-    CUaddress_mode cuda_address_mode;
-    switch (address_mode) {
-    case 0:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_WRAP;
-        break;
-    case 1:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
-        break;
-    case 2:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_MIRROR;
-        break;
-    case 3:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_BORDER;
-        break;
-    default:
-        cuda_address_mode = CU_TR_ADDRESS_MODE_CLAMP;
-        break;
-    }
-
-    tex_desc.addressMode[0] = cuda_address_mode;
-    tex_desc.addressMode[1] = cuda_address_mode;
-    tex_desc.addressMode[2] = cuda_address_mode;
+    // Per-axis address modes
+    tex_desc.addressMode[0] = get_cuda_address_mode(address_mode_u);
+    tex_desc.addressMode[1] = get_cuda_address_mode(address_mode_v);
+    tex_desc.addressMode[2] = get_cuda_address_mode(address_mode_w);
 
     // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
-    // Use normalized coordinates [0,1] for texture addressing
+    // Coordinate mode: normalized [0,1] or texel space [0,width/height/depth]
     // For uint8/uint16 textures, CUDA automatically normalizes values to [0,1] when sampled
     // (since CU_TRSF_READ_AS_INTEGER is NOT set). Float32 textures return values as-is.
-    tex_desc.flags = CU_TRSF_NORMALIZED_COORDINATES;
+    tex_desc.flags = use_normalized_coords ? CU_TRSF_NORMALIZED_COORDINATES : 0;
 
     tex_desc.maxAnisotropy = 0;
     tex_desc.mipmapFilterMode = CU_TR_FILTER_MODE_POINT;
@@ -559,7 +558,9 @@ bool wp_texture2d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -578,7 +579,10 @@ bool wp_texture3d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out

@@ -175,7 +175,10 @@ class Texture2D:
         num_channels: int = 4,
         dtype=np.float32,
         filter_mode: int = 1,
-        address_mode: int = 1,
+        address_mode: int | tuple[int, int] | None = None,
+        address_mode_u: int | None = None,
+        address_mode_v: int | None = None,
+        normalized_coords: bool = True,
         device=None,
     ):
         """Create a 2D texture.
@@ -192,12 +195,40 @@ class Texture2D:
             num_channels: Number of channels (1, 2, or 4). Default is 4.
             dtype: Data type (uint8, uint16, or float32). Default is float32.
             filter_mode: Filtering mode - CLOSEST (0) or LINEAR (1). Default is LINEAR.
-            address_mode: Address mode - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3). Default is CLAMP.
+            address_mode: Address mode for all axes - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3).
+                          Can be a single int (applied to all axes) or a tuple (u, v) for per-axis modes.
+                          Default is CLAMP. Overridden by address_mode_u/address_mode_v if specified.
+            address_mode_u: Per-axis address mode for U (horizontal). Overrides address_mode if specified.
+            address_mode_v: Per-axis address mode for V (vertical). Overrides address_mode if specified.
+            normalized_coords: If True (default), texture coordinates are in [0, 1] range.
+                              If False, coordinates are in texel space [0, width/height].
             device: Device to create the texture on (CPU or CUDA).
         """
         import warp._src.context  # noqa: PLC0415 - lazy import to avoid circular imports
 
         self.runtime = warp._src.context.runtime
+
+        # Resolve per-axis address modes
+        # Priority: address_mode_u/v > address_mode tuple > address_mode single > default (CLAMP=1)
+        if address_mode_u is not None:
+            resolved_u = address_mode_u
+        elif address_mode is not None:
+            if isinstance(address_mode, tuple):
+                resolved_u = address_mode[0]
+            else:
+                resolved_u = address_mode
+        else:
+            resolved_u = 1  # CLAMP
+
+        if address_mode_v is not None:
+            resolved_v = address_mode_v
+        elif address_mode is not None:
+            if isinstance(address_mode, tuple):
+                resolved_v = address_mode[1]
+            else:
+                resolved_v = address_mode
+        else:
+            resolved_v = 1  # CLAMP
 
         if data is None:
             # Just store dimensions for lazy creation
@@ -208,7 +239,9 @@ class Texture2D:
             self._dtype = np.dtype(dtype)
             self._dtype_code = self._dtype_to_code(dtype)
             self._filter_mode = filter_mode
-            self._address_mode = address_mode
+            self._address_mode_u = resolved_u
+            self._address_mode_v = resolved_v
+            self._normalized_coords = normalized_coords
             self._tex_handle = 0
             self._array_handle = 0
             return
@@ -266,7 +299,9 @@ class Texture2D:
         self._dtype = np.dtype(dtype)
         self._dtype_code = dtype_code
         self._filter_mode = filter_mode
-        self._address_mode = address_mode
+        self._address_mode_u = resolved_u
+        self._address_mode_v = resolved_v
+        self._normalized_coords = normalized_coords
 
         # Create the texture
         tex_handle = ctypes.c_uint64(0)
@@ -283,7 +318,9 @@ class Texture2D:
                 num_channels,
                 dtype_code,
                 filter_mode,
-                address_mode,
+                resolved_u,
+                resolved_v,
+                normalized_coords,
                 data_ptr,
                 ctypes.byref(tex_handle),
                 ctypes.byref(array_handle),
@@ -296,7 +333,9 @@ class Texture2D:
                 num_channels,
                 dtype_code,
                 filter_mode,
-                address_mode,
+                resolved_u,
+                resolved_v,
+                normalized_coords,
                 data_ptr,
                 ctypes.byref(tex_handle),
             )
@@ -342,6 +381,21 @@ class Texture2D:
     def dtype(self):
         """Data type of the texture (uint8, uint16, or float32)."""
         return self._dtype
+
+    @property
+    def address_mode_u(self) -> int:
+        """Address mode for U axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_u
+
+    @property
+    def address_mode_v(self) -> int:
+        """Address mode for V axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_v
+
+    @property
+    def normalized_coords(self) -> bool:
+        """Whether texture uses normalized coordinates [0,1] or texel space."""
+        return self._normalized_coords
 
     def __ctype__(self) -> texture2d_t:
         """Return the ctypes structure for passing to kernels."""
@@ -431,7 +485,11 @@ class Texture3D:
         num_channels: int = 1,
         dtype=np.float32,
         filter_mode: int = 1,
-        address_mode: int = 1,
+        address_mode: int | tuple[int, int, int] | None = None,
+        address_mode_u: int | None = None,
+        address_mode_v: int | None = None,
+        address_mode_w: int | None = None,
+        normalized_coords: bool = True,
         device=None,
     ):
         """Create a 3D texture.
@@ -449,12 +507,51 @@ class Texture3D:
             num_channels: Number of channels (1, 2, or 4). Default is 1.
             dtype: Data type (uint8, uint16, or float32). Default is float32.
             filter_mode: Filtering mode - CLOSEST (0) or LINEAR (1). Default is LINEAR.
-            address_mode: Address mode - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3). Default is CLAMP.
+            address_mode: Address mode for all axes - WRAP (0), CLAMP (1), MIRROR (2), or BORDER (3).
+                          Can be a single int (applied to all axes) or a tuple (u, v, w) for per-axis modes.
+                          Default is CLAMP. Overridden by address_mode_u/v/w if specified.
+            address_mode_u: Per-axis address mode for U. Overrides address_mode if specified.
+            address_mode_v: Per-axis address mode for V. Overrides address_mode if specified.
+            address_mode_w: Per-axis address mode for W. Overrides address_mode if specified.
+            normalized_coords: If True (default), texture coordinates are in [0, 1] range.
+                              If False, coordinates are in texel space [0, width/height/depth].
             device: Device to create the texture on (CPU or CUDA).
         """
         import warp._src.context  # noqa: PLC0415 - lazy import to avoid circular imports
 
         self.runtime = warp._src.context.runtime
+
+        # Resolve per-axis address modes
+        # Priority: address_mode_u/v/w > address_mode tuple > address_mode single > default (CLAMP=1)
+        if address_mode_u is not None:
+            resolved_u = address_mode_u
+        elif address_mode is not None:
+            if isinstance(address_mode, tuple):
+                resolved_u = address_mode[0]
+            else:
+                resolved_u = address_mode
+        else:
+            resolved_u = 1  # CLAMP
+
+        if address_mode_v is not None:
+            resolved_v = address_mode_v
+        elif address_mode is not None:
+            if isinstance(address_mode, tuple):
+                resolved_v = address_mode[1]
+            else:
+                resolved_v = address_mode
+        else:
+            resolved_v = 1  # CLAMP
+
+        if address_mode_w is not None:
+            resolved_w = address_mode_w
+        elif address_mode is not None:
+            if isinstance(address_mode, tuple):
+                resolved_w = address_mode[2]
+            else:
+                resolved_w = address_mode
+        else:
+            resolved_w = 1  # CLAMP
 
         if data is None:
             # Just store dimensions for lazy creation
@@ -466,7 +563,10 @@ class Texture3D:
             self._dtype = np.dtype(dtype)
             self._dtype_code = self._dtype_to_code(dtype)
             self._filter_mode = filter_mode
-            self._address_mode = address_mode
+            self._address_mode_u = resolved_u
+            self._address_mode_v = resolved_v
+            self._address_mode_w = resolved_w
+            self._normalized_coords = normalized_coords
             self._tex_handle = 0
             self._array_handle = 0
             return
@@ -525,7 +625,10 @@ class Texture3D:
         self._dtype = np.dtype(dtype)
         self._dtype_code = dtype_code
         self._filter_mode = filter_mode
-        self._address_mode = address_mode
+        self._address_mode_u = resolved_u
+        self._address_mode_v = resolved_v
+        self._address_mode_w = resolved_w
+        self._normalized_coords = normalized_coords
 
         # Create the texture
         tex_handle = ctypes.c_uint64(0)
@@ -543,7 +646,10 @@ class Texture3D:
                 num_channels,
                 dtype_code,
                 filter_mode,
-                address_mode,
+                resolved_u,
+                resolved_v,
+                resolved_w,
+                normalized_coords,
                 data_ptr,
                 ctypes.byref(tex_handle),
                 ctypes.byref(array_handle),
@@ -557,7 +663,10 @@ class Texture3D:
                 num_channels,
                 dtype_code,
                 filter_mode,
-                address_mode,
+                resolved_u,
+                resolved_v,
+                resolved_w,
+                normalized_coords,
                 data_ptr,
                 ctypes.byref(tex_handle),
             )
@@ -608,6 +717,26 @@ class Texture3D:
     def dtype(self):
         """Data type of the texture (uint8, uint16, or float32)."""
         return self._dtype
+
+    @property
+    def address_mode_u(self) -> int:
+        """Address mode for U axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_u
+
+    @property
+    def address_mode_v(self) -> int:
+        """Address mode for V axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_v
+
+    @property
+    def address_mode_w(self) -> int:
+        """Address mode for W axis (0=WRAP, 1=CLAMP, 2=MIRROR, 3=BORDER)."""
+        return self._address_mode_w
+
+    @property
+    def normalized_coords(self) -> bool:
+        """Whether texture uses normalized coordinates [0,1] or texel space."""
+        return self._normalized_coords
 
     def __ctype__(self) -> texture3d_t:
         """Return the ctypes structure for passing to kernels."""

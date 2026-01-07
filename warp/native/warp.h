@@ -191,7 +191,8 @@ WP_API const char* wp_volume_get_blind_data_info(
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
-// address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
+// address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
 WP_API bool wp_texture2d_create_device(
     void* context,
     int width,
@@ -199,7 +200,9 @@ WP_API bool wp_texture2d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -213,14 +216,17 @@ WP_API void wp_texture2d_destroy_device(void* context, uint64_t tex_handle, uint
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
-// address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
+// address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
 WP_API bool wp_texture2d_create_host(
     int width,
     int height,
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out
 );
@@ -233,7 +239,8 @@ WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
-// address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
+// address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
 WP_API bool wp_texture3d_create_device(
     void* context,
     int width,
@@ -242,7 +249,10 @@ WP_API bool wp_texture3d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -256,7 +266,8 @@ WP_API void wp_texture3d_destroy_device(void* context, uint64_t tex_handle, uint
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
-// address_mode: 0=wrap, 1=clamp, 2=mirror, 3=border
+// address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
 WP_API bool wp_texture3d_create_host(
     int width,
     int height,
@@ -264,7 +275,10 @@ WP_API bool wp_texture3d_create_host(
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
     const void* data,
     uint64_t* tex_handle_out
 );

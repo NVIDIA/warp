@@ -1210,6 +1210,423 @@ def test_texture3d_uint16_linear_interpolation(test, device):
 
 
 # ============================================================================
+# Per-Axis Address Mode Tests
+# ============================================================================
+
+
+@wp.kernel
+def sample_texture2d_outside_bounds(
+    tex: wp.Texture2D,
+    uvs: wp.array(dtype=wp.vec2f),
+    output: wp.array(dtype=float),
+):
+    """Sample a 2D texture at specified UV coordinates (may be outside [0,1])."""
+    tid = wp.tid()
+    uv = uvs[tid]
+    output[tid] = wp.texture_sample(tex, uv, dtype=float)
+
+
+@wp.kernel
+def sample_texture3d_outside_bounds(
+    tex: wp.Texture3D,
+    uvws: wp.array(dtype=wp.vec3f),
+    output: wp.array(dtype=float),
+):
+    """Sample a 3D texture at specified UVW coordinates (may be outside [0,1])."""
+    tid = wp.tid()
+    uvw = uvws[tid]
+    output[tid] = wp.texture_sample(tex, uvw, dtype=float)
+
+
+def test_texture2d_per_axis_address_modes(test, device):
+    """Test 2D texture with different address modes per axis.
+
+    Creates a 2x2 texture and tests WRAP on U, CLAMP on V.
+    """
+    width, height = 2, 2
+    # Create texture with distinct values at each corner:
+    # [0, 1]
+    # [2, 3]
+    data = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
+
+    # WRAP on U (horizontal), CLAMP on V (vertical)
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode_u=wp.TextureAddressMode.WRAP,
+        address_mode_v=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Verify properties are set correctly
+    test.assertEqual(tex.address_mode_u, wp.TextureAddressMode.WRAP)
+    test.assertEqual(tex.address_mode_v, wp.TextureAddressMode.CLAMP)
+    test.assertTrue(tex.normalized_coords)
+
+    # Test sampling at U=1.25 (should wrap to 0.25 -> texel 0),
+    # V=0.25 (in bounds -> texel 0)
+    # Expected: texel (0, 0) = 0.0
+    uvs_wrap = np.array([[1.25, 0.25]], dtype=np.float32)
+    uvs = wp.array(uvs_wrap, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvs, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # With WRAP on U, u=1.25 wraps to u=0.25, which is texel 0
+    # With CLAMP on V, v=0.25 is in texel 0
+    test.assertAlmostEqual(result, 0.0, places=4)
+
+    # Test sampling at U=0.25 (in bounds -> texel 0),
+    # V=1.5 (clamped to 1.0 -> texel 1)
+    # Expected: texel (0, 1) = 2.0
+    uvs_clamp = np.array([[0.25, 1.5]], dtype=np.float32)
+    uvs2 = wp.array(uvs_clamp, dtype=wp.vec2f, device=device)
+    output2 = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvs2, output2],
+        device=device,
+    )
+
+    result2 = output2.numpy()[0]
+    # With CLAMP on V, v=1.5 is clamped, so we get texel (0, 1) = 2.0
+    test.assertAlmostEqual(result2, 2.0, places=4)
+
+
+def test_texture2d_address_mode_tuple(test, device):
+    """Test 2D texture with address_mode as a tuple (u, v)."""
+    width, height = 2, 2
+    data = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
+
+    # Use tuple syntax for address modes
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=(wp.TextureAddressMode.CLAMP, wp.TextureAddressMode.WRAP),
+        device=device,
+    )
+
+    # Verify properties
+    test.assertEqual(tex.address_mode_u, wp.TextureAddressMode.CLAMP)
+    test.assertEqual(tex.address_mode_v, wp.TextureAddressMode.WRAP)
+
+    # Test sampling with V wrapping: V=1.25 should wrap to 0.25 -> texel 0
+    uvs_np = np.array([[0.25, 1.25]], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvs, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # V wraps from 1.25 to 0.25 (texel 0), U=0.25 is texel 0
+    # So we get texel (0, 0) = 0.0
+    test.assertAlmostEqual(result, 0.0, places=4)
+
+
+def test_texture3d_per_axis_address_modes(test, device):
+    """Test 3D texture with different address modes per axis."""
+    width, height, depth = 2, 2, 2
+    # Create 2x2x2 texture with values 0-7
+    data = np.arange(8, dtype=np.float32).reshape((2, 2, 2))
+
+    # Different mode for each axis
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode_u=wp.TextureAddressMode.WRAP,
+        address_mode_v=wp.TextureAddressMode.CLAMP,
+        address_mode_w=wp.TextureAddressMode.WRAP,
+        device=device,
+    )
+
+    # Verify properties
+    test.assertEqual(tex.address_mode_u, wp.TextureAddressMode.WRAP)
+    test.assertEqual(tex.address_mode_v, wp.TextureAddressMode.CLAMP)
+    test.assertEqual(tex.address_mode_w, wp.TextureAddressMode.WRAP)
+    test.assertTrue(tex.normalized_coords)
+
+    # Sample at voxel center (0,0,0)
+    uvws_np = np.array([[0.25, 0.25, 0.25]], dtype=np.float32)
+    uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_outside_bounds,
+        dim=1,
+        inputs=[tex, uvws, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    test.assertAlmostEqual(result, 0.0, places=4)
+
+
+def test_texture3d_address_mode_tuple(test, device):
+    """Test 3D texture with address_mode as a tuple (u, v, w)."""
+    width, height, depth = 2, 2, 2
+    data = np.arange(8, dtype=np.float32).reshape((2, 2, 2))
+
+    # Use tuple syntax
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=(
+            wp.TextureAddressMode.WRAP,
+            wp.TextureAddressMode.CLAMP,
+            wp.TextureAddressMode.MIRROR,
+        ),
+        device=device,
+    )
+
+    # Verify properties
+    test.assertEqual(tex.address_mode_u, wp.TextureAddressMode.WRAP)
+    test.assertEqual(tex.address_mode_v, wp.TextureAddressMode.CLAMP)
+    test.assertEqual(tex.address_mode_w, wp.TextureAddressMode.MIRROR)
+
+
+# ============================================================================
+# Non-Normalized Coordinates Tests
+# ============================================================================
+
+
+@wp.kernel
+def sample_texture2d_texel_coords(
+    tex: wp.Texture2D,
+    coords: wp.array(dtype=wp.vec2f),
+    output: wp.array(dtype=float),
+):
+    """Sample a 2D texture using texel-space coordinates."""
+    tid = wp.tid()
+    coord = coords[tid]
+    output[tid] = wp.texture_sample(tex, coord, dtype=float)
+
+
+@wp.kernel
+def sample_texture3d_texel_coords(
+    tex: wp.Texture3D,
+    coords: wp.array(dtype=wp.vec3f),
+    output: wp.array(dtype=float),
+):
+    """Sample a 3D texture using texel-space coordinates."""
+    tid = wp.tid()
+    coord = coords[tid]
+    output[tid] = wp.texture_sample(tex, coord, dtype=float)
+
+
+def test_texture2d_non_normalized_coords(test, device):
+    """Test 2D texture with non-normalized (texel-space) coordinates.
+
+    With normalized_coords=False, coordinates are in [0, width] x [0, height]
+    instead of [0, 1] x [0, 1].
+    """
+    width, height = 4, 4
+    data = np.arange(16, dtype=np.float32).reshape((4, 4))
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        normalized_coords=False,
+        device=device,
+    )
+
+    # Verify property
+    test.assertFalse(tex.normalized_coords)
+
+    # Sample at texel center (1.5, 1.5) in texel space
+    # This corresponds to texel (1, 1) = data[1, 1] = 5.0
+    coords_np = np.array([[1.5, 1.5]], dtype=np.float32)
+    coords = wp.array(coords_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_texel_coords,
+        dim=1,
+        inputs=[tex, coords, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    expected = data[1, 1]  # 5.0
+    test.assertAlmostEqual(result, expected, places=4)
+
+    # Sample at texel center (0.5, 0.5) -> texel (0, 0) = 0.0
+    coords_np2 = np.array([[0.5, 0.5]], dtype=np.float32)
+    coords2 = wp.array(coords_np2, dtype=wp.vec2f, device=device)
+    output2 = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_texel_coords,
+        dim=1,
+        inputs=[tex, coords2, output2],
+        device=device,
+    )
+
+    result2 = output2.numpy()[0]
+    test.assertAlmostEqual(result2, 0.0, places=4)
+
+
+def test_texture2d_non_normalized_at_all_texels(test, device):
+    """Test 2D texture with non-normalized coords sampling all texels."""
+    width, height = 4, 4
+    data = np.arange(16, dtype=np.float32).reshape((4, 4))
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        normalized_coords=False,
+        device=device,
+    )
+
+    # Sample at all texel centers using texel-space coordinates
+    coords_list = []
+    for y in range(height):
+        for x in range(width):
+            # Texel center in texel space
+            coords_list.append([x + 0.5, y + 0.5])
+
+    coords_np = np.array(coords_list, dtype=np.float32)
+    coords = wp.array(coords_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(width * height, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_texel_coords,
+        dim=width * height,
+        inputs=[tex, coords, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = data.flatten()
+    np.testing.assert_allclose(result, expected, rtol=1e-4, atol=1e-4)
+
+
+def test_texture3d_non_normalized_coords(test, device):
+    """Test 3D texture with non-normalized (texel-space) coordinates."""
+    width, height, depth = 2, 2, 2
+    data = np.arange(8, dtype=np.float32).reshape((2, 2, 2))
+
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        normalized_coords=False,
+        device=device,
+    )
+
+    # Verify property
+    test.assertFalse(tex.normalized_coords)
+
+    # Sample at voxel centers using texel-space coordinates
+    coords_list = []
+    for z in range(depth):
+        for y in range(height):
+            for x in range(width):
+                coords_list.append([x + 0.5, y + 0.5, z + 0.5])
+
+    coords_np = np.array(coords_list, dtype=np.float32)
+    coords = wp.array(coords_np, dtype=wp.vec3f, device=device)
+    output = wp.zeros(width * height * depth, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_texel_coords,
+        dim=width * height * depth,
+        inputs=[tex, coords, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = data.flatten()
+    np.testing.assert_allclose(result, expected, rtol=1e-4, atol=1e-4)
+
+
+def test_texture2d_non_normalized_linear(test, device):
+    """Test 2D texture with non-normalized coords and linear filtering."""
+    width, height = 2, 2
+    data = np.array([[0.0, 2.0], [2.0, 4.0]], dtype=np.float32)
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        normalized_coords=False,
+        device=device,
+    )
+
+    # Sample at center (1.0, 1.0) in texel space - this is between all 4 texels
+    # With linear filtering, should average all 4: (0 + 2 + 2 + 4) / 4 = 2.0
+    coords_np = np.array([[1.0, 1.0]], dtype=np.float32)
+    coords = wp.array(coords_np, dtype=wp.vec2f, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_texel_coords,
+        dim=1,
+        inputs=[tex, coords, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    expected = 2.0  # Average of 0, 2, 2, 4
+    test.assertAlmostEqual(result, expected, places=3)
+
+
+def test_texture2d_backward_compat_address_mode(test, device):
+    """Test that single address_mode parameter still works (backward compatibility)."""
+    width, height = 2, 2
+    data = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
+
+    # Old-style single address_mode should apply to all axes
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.WRAP,
+        device=device,
+    )
+
+    # Both axes should have WRAP
+    test.assertEqual(tex.address_mode_u, wp.TextureAddressMode.WRAP)
+    test.assertEqual(tex.address_mode_v, wp.TextureAddressMode.WRAP)
+    # Default should be normalized
+    test.assertTrue(tex.normalized_coords)
+
+
+def test_texture3d_backward_compat_address_mode(test, device):
+    """Test that single address_mode parameter still works for 3D (backward compatibility)."""
+    width, height, depth = 2, 2, 2
+    data = np.arange(8, dtype=np.float32).reshape((2, 2, 2))
+
+    # Old-style single address_mode should apply to all axes
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.MIRROR,
+        device=device,
+    )
+
+    # All axes should have MIRROR
+    test.assertEqual(tex.address_mode_u, wp.TextureAddressMode.MIRROR)
+    test.assertEqual(tex.address_mode_v, wp.TextureAddressMode.MIRROR)
+    test.assertEqual(tex.address_mode_w, wp.TextureAddressMode.MIRROR)
+    # Default should be normalized
+    test.assertTrue(tex.normalized_coords)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -1281,6 +1698,51 @@ add_function_test(
 # These tests don't need a device
 add_function_test(TestTexture, "test_texture2d_new_del", test_texture2d_new_del, devices=[None])
 add_function_test(TestTexture, "test_texture3d_new_del", test_texture3d_new_del, devices=[None])
+
+# Per-axis address mode tests - run on all devices
+add_function_test(
+    TestTexture, "test_texture2d_per_axis_address_modes", test_texture2d_per_axis_address_modes, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_address_mode_tuple", test_texture2d_address_mode_tuple, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_per_axis_address_modes", test_texture3d_per_axis_address_modes, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_address_mode_tuple", test_texture3d_address_mode_tuple, devices=all_devices
+)
+
+# Non-normalized coordinates tests - run on all devices
+add_function_test(
+    TestTexture, "test_texture2d_non_normalized_coords", test_texture2d_non_normalized_coords, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_non_normalized_at_all_texels",
+    test_texture2d_non_normalized_at_all_texels,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture3d_non_normalized_coords", test_texture3d_non_normalized_coords, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_non_normalized_linear", test_texture2d_non_normalized_linear, devices=all_devices
+)
+
+# Backward compatibility tests - run on all devices
+add_function_test(
+    TestTexture,
+    "test_texture2d_backward_compat_address_mode",
+    test_texture2d_backward_compat_address_mode,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_backward_compat_address_mode",
+    test_texture3d_backward_compat_address_mode,
+    devices=all_devices,
+)
 
 
 if __name__ == "__main__":
