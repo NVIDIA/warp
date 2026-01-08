@@ -8634,7 +8634,7 @@ def export_stubs(file):  # pragma: no cover
 
     print(file=file)
 
-    def add_builtin_function_stub(f):
+    def add_builtin_function_stub(f, use_overload=True):
         args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
 
         return_str = ""
@@ -8648,7 +8648,8 @@ def export_stubs(file):  # pragma: no cover
         if return_type:
             return_str = " -> " + type_str(return_type)
 
-        print("@over", file=file)
+        if use_overload:
+            print("@over", file=file)
         print(f"def {f.key}({args}){return_str}:", file=file)
         print(f'    """{f.doc}', file=file)
         print('    """', file=file)
@@ -8839,10 +8840,14 @@ def export_stubs(file):  # pragma: no cover
             continue  # Already generated merged stubs
 
         if hasattr(g, "overloads"):
-            for f in g.overloads:
-                add_builtin_function_stub(f)
+            # Only use @overload decorator when there are multiple non-hidden overloads
+            non_hidden_overloads = [f for f in g.overloads if not f.hidden]
+            use_overload = len(non_hidden_overloads) > 1
+            for f in non_hidden_overloads:
+                add_builtin_function_stub(f, use_overload=use_overload)
         elif isinstance(g, Function):
-            add_builtin_function_stub(g)
+            # Single function without overloads - no @overload decorator needed
+            add_builtin_function_stub(g, use_overload=False)
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover

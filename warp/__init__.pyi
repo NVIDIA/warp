@@ -1815,7 +1815,6 @@ def max(a: Vector[Any, Scalar]) -> Scalar:
     """Return the maximum element of a vector ``a``."""
     ...
 
-@over
 def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
     """Clamp the value of ``x`` to the range [low, high]."""
     ...
@@ -1840,132 +1839,106 @@ def sign(x: Vector[Any, Scalar]) -> Scalar:
     """Return -1 for the negative elements of ``x``, and 1 otherwise."""
     ...
 
-@over
 def step(x: Scalar) -> Scalar:
     """Return 1.0 if ``x`` < 0.0, return 0.0 otherwise."""
     ...
 
-@over
 def nonzero(x: Scalar) -> Scalar:
     """Return 1.0 if ``x`` is not equal to zero, return 0.0 otherwise."""
     ...
 
-@over
 def sin(x: Float) -> Float:
     """Return the sine of ``x`` in radians."""
     ...
 
-@over
 def cos(x: Float) -> Float:
     """Return the cosine of ``x`` in radians."""
     ...
 
-@over
 def acos(x: Float) -> Float:
     """Return arccos of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0]."""
     ...
 
-@over
 def asin(x: Float) -> Float:
     """Return arcsin of ``x`` in radians. Inputs are automatically clamped to [-1.0, 1.0]."""
     ...
 
-@over
 def sqrt(x: Float) -> Float:
     """Return the square root of ``x``, where ``x`` is positive."""
     ...
 
-@over
 def cbrt(x: Float) -> Float:
     """Return the cube root of ``x``."""
     ...
 
-@over
 def tan(x: Float) -> Float:
     """Return the tangent of ``x`` in radians."""
     ...
 
-@over
 def atan(x: Float) -> Float:
     """Return the arctangent of ``x`` in radians."""
     ...
 
-@over
 def atan2(y: Float, x: Float) -> Float:
     """Return the 2-argument arctangent, atan2, of the point ``(x, y)`` in radians."""
     ...
 
-@over
 def sinh(x: Float) -> Float:
     """Return the sinh of ``x``."""
     ...
 
-@over
 def cosh(x: Float) -> Float:
     """Return the cosh of ``x``."""
     ...
 
-@over
 def tanh(x: Float) -> Float:
     """Return the tanh of ``x``."""
     ...
 
-@over
 def degrees(x: Float) -> Float:
     """Convert ``x`` from radians into degrees."""
     ...
 
-@over
 def radians(x: Float) -> Float:
     """Convert ``x`` from degrees into radians."""
     ...
 
-@over
 def log(x: Float) -> Float:
     """Return the natural logarithm (base-e) of ``x``, where ``x`` is positive."""
     ...
 
-@over
 def log2(x: Float) -> Float:
     """Return the binary logarithm (base-2) of ``x``, where ``x`` is positive."""
     ...
 
-@over
 def log10(x: Float) -> Float:
     """Return the common logarithm (base-10) of ``x``, where ``x`` is positive."""
     ...
 
-@over
 def exp(x: Float) -> Float:
     """Return the value of the exponential function :math:`e^x`."""
     ...
 
-@over
 def pow(x: Float, y: Float) -> Float:
     """Return the result of ``x`` raised to power of ``y``."""
     ...
 
-@over
 def erf(x: Float) -> Float:
     """Return the error function of ``x``."""
     ...
 
-@over
 def erfc(x: Float) -> Float:
     """Return the complementary error function of ``x``."""
     ...
 
-@over
 def erfinv(x: Float) -> Float:
     """Return the inverse error function of ``x``."""
     ...
 
-@over
 def erfcinv(x: Float) -> Float:
     """Return the inverse complementary error function of ``x``."""
     ...
 
-@over
 def round(x: Float) -> Float:
     """Return the nearest integer value to ``x``, rounding halfway cases away from zero.
 
@@ -1975,7 +1948,6 @@ def round(x: Float) -> Float:
     """
     ...
 
-@over
 def rint(x: Float) -> Float:
     """Return the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
@@ -1984,7 +1956,6 @@ def rint(x: Float) -> Float:
     """
     ...
 
-@over
 def trunc(x: Float) -> Float:
     """Return the nearest integer that is closer to zero than ``x``.
 
@@ -1994,17 +1965,14 @@ def trunc(x: Float) -> Float:
     """
     ...
 
-@over
 def floor(x: Float) -> Float:
     """Return the largest integer that is less than or equal to ``x``."""
     ...
 
-@over
 def ceil(x: Float) -> Float:
     """Return the smallest integer that is greater than or equal to ``x``."""
     ...
 
-@over
 def frac(x: Float) -> Float:
     """Retrieve the fractional part of ``x``.
 
@@ -2130,32 +2098,26 @@ def dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float:
     """Compute the dot product between two quaternions."""
     ...
 
-@over
 def ddot(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Scalar:
     """Compute the double dot product between two matrices."""
     ...
 
-@over
 def argmin(a: Vector[Any, Scalar]) -> uint32:
     """Return the index of the minimum element of a vector ``a``."""
     ...
 
-@over
 def argmax(a: Vector[Any, Scalar]) -> uint32:
     """Return the index of the maximum element of a vector ``a``."""
     ...
 
-@over
 def outer(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Compute the outer product ``a*b^T`` for two vectors."""
     ...
 
-@over
 def cross(a: Vector[3, Scalar], b: Vector[3, Scalar]) -> Vector[3, Scalar]:
     """Compute the cross product of two 3D vectors."""
     ...
 
-@over
 def skew(vec: Vector[3, Scalar]) -> Matrix[3, 3, Scalar]:
     """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``."""
     ...
@@ -2190,7 +2152,6 @@ def normalize(a: Quaternion[Float]) -> Quaternion[Float]:
     """Compute the normalized value of ``a``. If ``length(a)`` is 0, then the zero quaternion is returned."""
     ...
 
-@over
 def transpose(a: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Return the transpose of the matrix ``a``."""
     ...
@@ -2225,17 +2186,14 @@ def determinant(a: Matrix[4, 4, Float]) -> Float:
     """Return the determinant of a 4x4 matrix ``a``."""
     ...
 
-@over
 def trace(a: Matrix[Any, Any, Scalar]) -> Scalar:
     """Return the trace of the matrix ``a``."""
     ...
 
-@over
 def diag(vec: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     """Returns a matrix with the components of the vector ``vec`` on the diagonal."""
     ...
 
-@over
 def get_diag(mat: Matrix[Any, Any, Scalar]) -> Vector[Any, Scalar]:
     """Returns a vector containing the diagonal elements of the square matrix ``mat``."""
     ...
@@ -2260,7 +2218,6 @@ def cw_div(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[A
     """Component-wise division of two matrices."""
     ...
 
-@over
 def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any, Scalar]:
     """Construct a vector of given length and dtype."""
     ...
@@ -2282,7 +2239,6 @@ def matrix(*args: Scalar, shape: tuple[int, int], dtype: Scalar) -> Matrix[Any, 
     """Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized."""
     ...
 
-@over
 def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
     """Create an identity matrix with shape=(n,n) with the type given by ``dtype``."""
     ...
@@ -2365,12 +2321,10 @@ def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
     """Construct a quaternion of type dtype from another quaternion of a different dtype."""
     ...
 
-@over
 def quat_identity(dtype: Float) -> quatf:
     """Construct an identity quaternion with zero imaginary part and real part of 1.0"""
     ...
 
-@over
 def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Float]:
     """Construct a quaternion representing a rotation of angle radians around the given axis."""
     ...
@@ -2401,32 +2355,26 @@ def quat_from_matrix(mat: Matrix[4, 4, Float]) -> Quaternion[Float]:
     """
     ...
 
-@over
 def quat_rpy(roll: Float, pitch: Float, yaw: Float) -> Quaternion[Float]:
     """Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians."""
     ...
 
-@over
 def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
     """Compute quaternion conjugate."""
     ...
 
-@over
 def quat_rotate(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Rotate a vector by a quaternion."""
     ...
 
-@over
 def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
     """Rotate a vector by the inverse of a quaternion."""
     ...
 
-@over
 def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]:
     """Linearly interpolate between two quaternions."""
     ...
 
-@over
 def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
     """Convert a quaternion to a 3x3 rotation matrix."""
     ...
@@ -2441,32 +2389,26 @@ def transformation(*args: Float, dtype: Float) -> Transformation[Float]:
     """Construct a spatial transform vector of given dtype."""
     ...
 
-@over
 def transform_identity(dtype: Float) -> transformf:
     """Construct an identity transform with zero translation and identity rotation."""
     ...
 
-@over
 def transform_get_translation(xform: Transformation[Float]) -> Vector[3, Float]:
     """Return the translational part of a transform ``xform``."""
     ...
 
-@over
 def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
     """Return the rotational part of a transform ``xform``."""
     ...
 
-@over
 def transform_set_translation(xform: Transformation[Float], p: Vector[3, Float]):
     """Set the translational part of a transform ``xform``."""
     ...
 
-@over
 def transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]):
     """Set the rotational part of a transform ``xform``."""
     ...
 
-@over
 def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]:
     """Multiply two rigid body transformations together."""
     ...
@@ -2505,7 +2447,6 @@ def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[
     """
     ...
 
-@over
 def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
     """Compute the inverse of the transformation ``xform``."""
     ...
@@ -2525,37 +2466,30 @@ def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Fl
     """Construct a 6D screw vector from six values."""
     ...
 
-@over
 def spatial_adjoint(r: Matrix[3, 3, Float], s: Matrix[3, 3, Float]) -> Matrix[6, 6, Float]:
     """Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks."""
     ...
 
-@over
 def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Float:
     """Compute the dot product of two 6D screw vectors."""
     ...
 
-@over
 def spatial_cross(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
     """Compute the cross product of two 6D screw vectors."""
     ...
 
-@over
 def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
     """Compute the dual cross product of two 6D screw vectors."""
     ...
 
-@over
 def spatial_top(svec: Vector[6, Float]) -> Vector[3, Float]:
     """Return the top (first) part of a 6D screw vector."""
     ...
 
-@over
 def spatial_bottom(svec: Vector[6, Float]) -> Vector[3, Float]:
     """Return the bottom (second) part of a 6D screw vector."""
     ...
 
-@over
 def spatial_jacobian(
     S: Array[Vector[6, Float]],
     joint_parents: Array[int32],
@@ -2568,7 +2502,6 @@ def spatial_jacobian(
     """ """
     ...
 
-@over
 def spatial_mass(
     I_s: Array[Matrix[6, 6, Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]
 ):
@@ -2810,7 +2743,6 @@ def tile_randf(shape: int32, rng: uint32, min: float32, max: float32, storage: s
     """ """
     ...
 
-@over
 def tile_arange(*args: Scalar, dtype: Scalar, storage: str) -> Tile[Scalar, tuple[int]]:
     """Generate a tile of linearly spaced elements.
 
@@ -2852,7 +2784,6 @@ def tile_load(
     """ """
     ...
 
-@over
 def tile_load_indexed(
     a: Array[Any],
     indices: Tile[int32, tuple[int]],
@@ -2938,7 +2869,6 @@ def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, boun
     """ """
     ...
 
-@over
 def tile_store_indexed(
     a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], axis: int32
 ):
@@ -3024,7 +2954,6 @@ def tile_atomic_add(
     """ """
     ...
 
-@over
 def tile_atomic_add_indexed(
     a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], axis: int32
 ) -> Tile[Any, tuple[int, ...]]:
@@ -3081,7 +3010,6 @@ def tile_atomic_add_indexed(
     """
     ...
 
-@over
 def tile_view(
     t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], shape: tuple[int, ...]
 ) -> Tile[Any, tuple[int, ...]]:
@@ -3094,7 +3022,6 @@ def tile_view(
     """
     ...
 
-@over
 def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
     """Return a squeezed view of a tile with the same data.
 
@@ -3104,7 +3031,6 @@ def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...]) -> Tile[A
     """
     ...
 
-@over
 def tile_reshape(t: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
     """Return a reshaped view of a tile with the same data.
 
@@ -3114,7 +3040,6 @@ def tile_reshape(t: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[
     """
     ...
 
-@over
 def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: Scalar) -> Tile[Any, tuple[int, ...]]:
     """Return a new tile with the same data as the input tile, but with a different data type.
 
@@ -3124,7 +3049,6 @@ def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: Scalar) -> Tile[Any, tu
     """
     ...
 
-@over
 def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...]):
     """Assign a tile to a subrange of a destination tile.
 
@@ -3134,7 +3058,6 @@ def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]]
     """
     ...
 
-@over
 def tile(x: Any, preserve_type: bool) -> Tile[Any, tuple]:
     """Construct a new tile from per-thread kernel values.
 
@@ -3172,7 +3095,6 @@ def tile(x: Any, preserve_type: bool) -> Tile[Any, tuple]:
     """
     ...
 
-@over
 def untile(a: Tile[Any, tuple[int, ...]]) -> Any:
     """Convert a tile back to per-thread values.
 
@@ -3317,7 +3239,6 @@ def tile_extract(
     """
     ...
 
-@over
 def tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]:
     """Transpose a tile.
 
@@ -3329,7 +3250,6 @@ def tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]:
     """
     ...
 
-@over
 def tile_broadcast(a: Tile[Any, tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
     """Broadcast a tile.
 
@@ -3403,7 +3323,6 @@ def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[1]]:
     """
     ...
 
-@over
 def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]):
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
@@ -3437,7 +3356,6 @@ def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]):
     """
     ...
 
-@over
 def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
     """Cooperatively compute the minimum of the tile elements using all threads in the block.
 
@@ -3467,7 +3385,6 @@ def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
     """
     ...
 
-@over
 def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
     """Cooperatively compute the index of the minimum element in the tile using all threads in the block.
 
@@ -3497,7 +3414,6 @@ def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
     """
     ...
 
-@over
 def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
     """Cooperatively compute the maximum of the tile elements using all threads in the block.
 
@@ -3527,7 +3443,6 @@ def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
     """
     ...
 
-@over
 def tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
     """Cooperatively compute the index of the maximum element in the tile using all threads in the block.
 
@@ -3636,7 +3551,6 @@ def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> 
     """
     ...
 
-@over
 def tile_scan_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
     """Inclusive scan (prefix sum) across the tile.
 
@@ -3666,7 +3580,6 @@ def tile_scan_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[
     """
     ...
 
-@over
 def tile_scan_exclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
     """Exclusive scan (prefix sum) across the tile.
 
@@ -3696,7 +3609,6 @@ def tile_scan_exclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[
     """
     ...
 
-@over
 def tile_scan_max_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
     """Inclusive max scan across the tile.
 
@@ -3727,7 +3639,6 @@ def tile_scan_max_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tu
     """
     ...
 
-@over
 def tile_scan_min_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
     """Inclusive min scan across the tile.
 
@@ -3865,7 +3776,6 @@ def tile_map(op: Callable, *args: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar,
     """
     ...
 
-@over
 def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
     """Construct an axis-aligned bounding box query against a BVH object.
 
@@ -3883,7 +3793,6 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
     """
     ...
 
-@over
 def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
     """Construct a ray query against a BVH object.
 
@@ -3901,7 +3810,6 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery
     """
     ...
 
-@over
 def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
     """Move to the next bound returned by the query.
 
@@ -3920,7 +3828,6 @@ def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
     """
     ...
 
-@over
 def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     """Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
 
@@ -3932,7 +3839,6 @@ def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     """
     ...
 
-@over
 def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """Construct a ray query against a BVH object for thread-block parallel traversal.
 
@@ -3944,7 +3850,6 @@ def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """
     ...
 
-@over
 def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
     """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
@@ -3959,7 +3864,6 @@ def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
     """
     ...
 
-@over
 def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     """Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
 
@@ -3973,7 +3877,6 @@ def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
     """
     ...
 
-@over
 def tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """Construct a ray query against a BVH object for thread-block parallel traversal.
 
@@ -3987,7 +3890,6 @@ def tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
     """
     ...
 
-@over
 def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
     """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
@@ -4004,7 +3906,6 @@ def tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
     """
     ...
 
-@over
 def bvh_get_group_root(id: uint64, group: int32) -> int:
     """Get the root of a group in a BVH.
 
@@ -4016,7 +3917,6 @@ def bvh_get_group_root(id: uint64, group: int32) -> int:
     """
     ...
 
-@over
 def mesh_get_group_root(id: uint64, group: int32) -> int:
     """Get the root of a group in a :class:`warp.Mesh`.
 
@@ -4028,7 +3928,6 @@ def mesh_get_group_root(id: uint64, group: int32) -> int:
     """
     ...
 
-@over
 def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -4042,7 +3941,6 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPo
     """
     ...
 
-@over
 def mesh_query_point_sign_parity(
     id: uint64, point: vec3f, max_dist: float32, n_sample: int32, perturbation_scale: float32
 ) -> MeshQueryPoint:
@@ -4070,7 +3968,6 @@ def mesh_query_point_sign_parity(
     """
     ...
 
-@over
 def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -4082,7 +3979,6 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> Mes
     """
     ...
 
-@over
 def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint:
     """Computes the furthest point on the mesh with identifier `id` to the given point in space.
 
@@ -4094,7 +3990,6 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
     """
     ...
 
-@over
 def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint:
     """Computes the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
@@ -4110,7 +4005,6 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
     """
     ...
 
-@over
 def mesh_query_point_sign_winding_number(
     id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32
 ) -> MeshQueryPoint:
@@ -4130,7 +4024,6 @@ def mesh_query_point_sign_winding_number(
     """
     ...
 
-@over
 def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay:
     """Computes the closest ray hit on the :class:`warp.Mesh` with identifier ``id``.
 
@@ -4146,7 +4039,6 @@ def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: i
     """
     ...
 
-@over
 def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> bool:
     """Returns ``True`` immediately upon the first ray hit on the :class:`warp.Mesh` with identifier ``id``.
 
@@ -4162,7 +4054,6 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, 
     """
     ...
 
-@over
 def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int:
     """Count the number of intersections between a ray and a :class:`warp.Mesh`. Returns the number of intersections (with t >= 0) between the ray and the mesh.
 
@@ -4184,7 +4075,6 @@ def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, roo
     """
     ...
 
-@over
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """Construct an axis-aligned bounding box query against a :class:`warp.Mesh`.
 
@@ -4196,7 +4086,6 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
     """
     ...
 
-@over
 def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
     """Move to the next triangle whose bounding box overlaps the query bounding box.
 
@@ -4204,7 +4093,6 @@ def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
     """
     ...
 
-@over
 def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
     """Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
@@ -4216,7 +4104,6 @@ def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBT
     """
     ...
 
-@over
 def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[int]]:
     """Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
 
@@ -4231,7 +4118,6 @@ def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[i
     """
     ...
 
-@over
 def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
     """Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
@@ -4245,7 +4131,6 @@ def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTi
     """
     ...
 
-@over
 def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[int]]:
     """Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.
 
@@ -4262,17 +4147,14 @@ def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[in
     """
     ...
 
-@over
 def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
     """Evaluates the position on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
     ...
 
-@over
 def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
     """Evaluates the velocity on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
     ...
 
-@over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`.
 
@@ -4280,7 +4162,6 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuer
     """
     ...
 
-@over
 def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     """Move to the next point in the hash grid query.
 
@@ -4288,7 +4169,6 @@ def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     """
     ...
 
-@over
 def hash_grid_point_id(id: uint64, index: int32) -> int:
     """Return the index of a point in the :class:`warp.HashGrid`.
 
@@ -4318,32 +4198,26 @@ def intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2:
     """
     ...
 
-@over
 def mesh_get(id: uint64) -> Mesh:
     """Retrieves the mesh given its index."""
     ...
 
-@over
 def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
     """Evaluates the face normal the mesh given a face index."""
     ...
 
-@over
 def mesh_get_point(id: uint64, index: int32) -> vec3f:
     """Returns the point of the mesh given a index."""
     ...
 
-@over
 def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
     """Returns the velocity of the mesh given a index."""
     ...
 
-@over
 def mesh_get_index(id: uint64, index: int32) -> int:
     """Returns the point-index of the mesh given a face-vertex index."""
     ...
 
-@over
 def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
     """Finds the closest points between two edges.
 
@@ -4358,12 +4232,10 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
     """
     ...
 
-@over
 def reversed(range: range_t) -> range_t:
     """Returns the range in reversed order."""
     ...
 
-@over
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
     """Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
 
@@ -4371,7 +4243,6 @@ def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> A
     """
     ...
 
-@over
 def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
     """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
 
@@ -4379,7 +4250,6 @@ def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, 
     """
     ...
 
-@over
 def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
     """Returns the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type type `dtype`.
 
@@ -4387,12 +4257,10 @@ def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
     """
     ...
 
-@over
 def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any):
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
-@over
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
 
@@ -4400,7 +4268,6 @@ def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
     """
     ...
 
-@over
 def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
     """Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
 
@@ -4408,7 +4275,6 @@ def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec
     """
     ...
 
-@over
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
     """Returns the value of voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -4416,12 +4282,10 @@ def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
     """
     ...
 
-@over
 def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
-@over
 def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
     """Sample the vector volume given by ``id`` at the volume local-space point ``uvw``.
 
@@ -4429,7 +4293,6 @@ def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
     """
     ...
 
-@over
 def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
     """Returns the vector value of voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -4437,17 +4300,14 @@ def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
     """
     ...
 
-@over
 def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
-@over
 def volume_sample_i(id: uint64, uvw: vec3f) -> int:
     """Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``."""
     ...
 
-@over
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
     """Returns the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -4455,12 +4315,10 @@ def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
     """
     ...
 
-@over
 def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
-@over
 def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any) -> Any:
     """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
 
@@ -4471,7 +4329,6 @@ def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data
     """
     ...
 
-@over
 def volume_sample_grad_index(
     id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any
 ) -> Any:
@@ -4484,7 +4341,6 @@ def volume_sample_grad_index(
     """
     ...
 
-@over
 def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
     """Returns the index associated to the voxel with coordinates ``i``, ``j``, ``k``.
 
@@ -4494,22 +4350,18 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
     """
     ...
 
-@over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
     """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...
 
-@over
 def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
     """Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
     ...
 
-@over
 def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
     """Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...
 
-@over
 def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     """Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
     ...
@@ -4558,62 +4410,50 @@ def randf(state: uint32, low: float32, high: float32) -> float:
     """Return a random float between [low, high)."""
     ...
 
-@over
 def randn(state: uint32) -> float:
     """Sample a normal (Gaussian) distribution of mean 0 and variance 1."""
     ...
 
-@over
 def sample_cdf(state: uint32, cdf: Array[float32]) -> int:
     """Inverse-transform sample a cumulative distribution function."""
     ...
 
-@over
 def sample_triangle(state: uint32) -> vec2f:
     """Uniformly sample a triangle. Returns sample barycentric coordinates."""
     ...
 
-@over
 def sample_unit_ring(state: uint32) -> vec2f:
     """Uniformly sample a ring in the xy plane."""
     ...
 
-@over
 def sample_unit_disk(state: uint32) -> vec2f:
     """Uniformly sample a disk in the xy plane."""
     ...
 
-@over
 def sample_unit_sphere_surface(state: uint32) -> vec3f:
     """Uniformly sample a unit sphere surface."""
     ...
 
-@over
 def sample_unit_sphere(state: uint32) -> vec3f:
     """Uniformly sample a unit sphere."""
     ...
 
-@over
 def sample_unit_hemisphere_surface(state: uint32) -> vec3f:
     """Uniformly sample a unit hemisphere surface."""
     ...
 
-@over
 def sample_unit_hemisphere(state: uint32) -> vec3f:
     """Uniformly sample a unit hemisphere."""
     ...
 
-@over
 def sample_unit_square(state: uint32) -> vec2f:
     """Uniformly sample a unit square."""
     ...
 
-@over
 def sample_unit_cube(state: uint32) -> vec3f:
     """Uniformly sample a unit cube."""
     ...
 
-@over
 def poisson(state: uint32, lam: float32) -> uint32:
     """Generate a random sample from a Poisson distribution.
 
@@ -4677,17 +4517,14 @@ def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, 
     """Divergence-free vector field based on the curl of three Perlin noise functions."""
     ...
 
-@over
 def printf(fmt: str, *args: Any):
     """Allows printing formatted strings using C-style format specifiers."""
     ...
 
-@over
 def print(value: Any):
     """Print variable to stdout"""
     ...
 
-@over
 def breakpoint():
     """Debugger breakpoint"""
     ...
@@ -4733,7 +4570,6 @@ def tid() -> tuple[int, int, int, int]:
     """
     ...
 
-@over
 def block_dim() -> int:
     """Returns the number of threads in the current block."""
     ...
@@ -5797,7 +5633,6 @@ def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transf
     """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``"""
     ...
 
-@over
 def smoothstep(a: Float, b: Float, x: Float) -> Float:
     """Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
@@ -6124,7 +5959,6 @@ def div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
     """ """
     ...
 
-@over
 def floordiv(a: Scalar, b: Scalar) -> Scalar:
     """ """
     ...
@@ -6224,7 +6058,6 @@ def unot(a: Array[Any]) -> bool:
     """ """
     ...
 
-@over
 def tile_diag_add(a: Tile[Any, tuple[int, int]], d: Tile[Any, tuple[int]]) -> Tile[Any, tuple[int, int]]:
     """Add a square matrix and a diagonal matrix 'd' represented as a 1D tile"""
     ...
@@ -6280,7 +6113,6 @@ def tile_matmul(
     """
     ...
 
-@over
 def tile_fft(inout: Tile[Vector[2, Float], tuple[int, int]]):
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
@@ -6295,7 +6127,6 @@ def tile_fft(inout: Tile[Vector[2, Float], tuple[int, int]]):
     """
     ...
 
-@over
 def tile_ifft(inout: Tile[Vector[2, Float], tuple[int, int]]):
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
@@ -6310,7 +6141,6 @@ def tile_ifft(inout: Tile[Vector[2, Float], tuple[int, int]]):
     """
     ...
 
-@over
 def tile_cholesky(A: Tile[Float, tuple[int, int]]) -> Tile[Float, tuple[int, int]]:
     """Compute the Cholesky factorization L of a matrix A.
 
@@ -6330,7 +6160,6 @@ def tile_cholesky(A: Tile[Float, tuple[int, int]]) -> Tile[Float, tuple[int, int
     """
     ...
 
-@over
 def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]]):
     """Compute the Cholesky factorization L of a matrix A.
 
@@ -6350,7 +6179,6 @@ def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]]):
     """
     ...
 
-@over
 def tile_cholesky_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]:
     """With L such that LL^T = A, solve for x in Ax = y
 
@@ -6366,7 +6194,6 @@ def tile_cholesky_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[in
     """
     ...
 
-@over
 def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]):
     """With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
 
@@ -6382,7 +6209,6 @@ def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, 
     """
     ...
 
-@over
 def tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]:
     """Solve for z in Lz = y, where L is a lower triangular matrix.
 
@@ -6400,7 +6226,6 @@ def tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]
     """
     ...
 
-@over
 def tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]):
     """Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
 
@@ -6418,7 +6243,6 @@ def tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tup
     """
     ...
 
-@over
 def tile_upper_solve(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]:
     """Solve for x in Ux = z, where U is an upper triangular matrix.
 
@@ -6436,7 +6260,6 @@ def tile_upper_solve(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]
     """
     ...
 
-@over
 def tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]):
     """Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
 
@@ -6489,7 +6312,6 @@ def len(a: tuple) -> int:
     """Return the number of elements in a tuple."""
     ...
 
-@over
 def cast(a: Any, dtype: Any) -> Any:
     """Reinterpret a value as a different type while preserving its bit pattern.
 
@@ -6522,7 +6344,6 @@ def cast(a: Any, dtype: Any) -> Any:
     """
     ...
 
-@over
 def norm_l1(v: Any):
     """Computes the L1 norm of a vector v.
 
@@ -6536,7 +6357,6 @@ def norm_l1(v: Any):
     """
     ...
 
-@over
 def norm_l2(v: Any):
     """Computes the L2 norm of a vector v.
 
@@ -6550,7 +6370,6 @@ def norm_l2(v: Any):
     """
     ...
 
-@over
 def norm_huber(v: Any, delta: float):
     """Computes the Huber norm of a vector v with a given delta.
 
@@ -6569,7 +6388,6 @@ def norm_huber(v: Any, delta: float):
     """
     ...
 
-@over
 def norm_pseudo_huber(v: Any, delta: float):
     """Computes the "pseudo" Huber norm of a vector v with a given delta.
 
@@ -6588,7 +6406,6 @@ def norm_pseudo_huber(v: Any, delta: float):
     """
     ...
 
-@over
 def smooth_normalize(v: Any, delta: float):
     """Normalizes a vector using the pseudo-Huber norm.
 
@@ -6606,7 +6423,6 @@ def smooth_normalize(v: Any, delta: float):
     """
     ...
 
-@over
 def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]:
     """Construct a transformation from a 4x4 matrix.
 
@@ -6631,7 +6447,6 @@ def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]
     """
     ...
 
-@over
 def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]:
     """Convert a transformation to a 4x4 matrix.
 
@@ -6656,7 +6471,6 @@ def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]
     """
     ...
 
-@over
 def transform_compose(position: Vector[3, float32], rotation: Quaternion[float32], scale: Vector[3, float32]):
     """Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
 
@@ -6684,7 +6498,6 @@ def transform_compose(position: Vector[3, float32], rotation: Quaternion[float32
     """
     ...
 
-@over
 def transform_decompose(m: Matrix[4, 4, float32]):
     """Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
 
