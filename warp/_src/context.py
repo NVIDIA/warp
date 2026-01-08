@@ -8568,6 +8568,12 @@ def export_stubs(file):  # pragma: no cover
     print("from typing import overload as over", file=file)
     print(file=file)
 
+    # Import type aliases needed for generic class definitions
+    print("from warp._src.types import Int as Int", file=file)
+    print("from warp._src.types import Float as Float", file=file)
+    print("from warp._src.types import Scalar as Scalar", file=file)
+    print(file=file)
+
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
     print('Rows = TypeVar("Rows", bound=int)', file=file)
@@ -8575,14 +8581,16 @@ def export_stubs(file):  # pragma: no cover
     print('DType = TypeVar("DType")', file=file)
     print('Shape = TypeVar("Shape")', file=file)
 
-    print("Vector = Generic[Length, Scalar]", file=file)
-    print("Matrix = Generic[Rows, Cols, Scalar]", file=file)
-    print("Quaternion = Generic[Float]", file=file)
-    print("Transformation = Generic[Float]", file=file)
-    print("Array = Generic[DType]", file=file)
-    print("FabricArray = Generic[DType]", file=file)
-    print("IndexedFabricArray = Generic[DType]", file=file)
-    print("Tile = Generic[DType, Shape]", file=file)
+    # Generic type stubs - must be proper class definitions, not type alias assignments.
+    # Using "class Foo(Generic[...]): ..." syntax makes these valid types for Mypy.
+    print("class Vector(Generic[Length, Scalar]): ...", file=file)
+    print("class Matrix(Generic[Rows, Cols, Scalar]): ...", file=file)
+    print("class Quaternion(Generic[Float]): ...", file=file)
+    print("class Transformation(Generic[Float]): ...", file=file)
+    print("class Array(Generic[DType]): ...", file=file)
+    print("class FabricArray(Generic[DType]): ...", file=file)
+    print("class IndexedFabricArray(Generic[DType]): ...", file=file)
+    print("class Tile(Generic[DType, Shape]): ...", file=file)
 
     # =========================================================================
     # Step 3: Copy __init__.py, but skip re-exports for function conflicts
@@ -8593,6 +8601,9 @@ def export_stubs(file):  # pragma: no cover
     # Types that will have class stubs generated below (skip their imports to avoid duplicates).
     # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
     class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
+
+    # Type aliases already imported in the header (skip to avoid duplicates)
+    header_imported_types = {"Int", "Float", "Scalar"}
 
     init_lines = init_content.split("\n")
     for line in init_lines:
@@ -8614,6 +8625,9 @@ def export_stubs(file):  # pragma: no cover
                 continue
             if alias_name in class_stub_types:
                 # Skip this import - class stubs are generated below
+                continue
+            if alias_name in header_imported_types:
+                # Skip this import - already imported in header for generic class definitions
                 continue
 
         print(line, file=file)
@@ -8762,8 +8776,6 @@ def export_stubs(file):  # pragma: no cover
             cls = getattr(warp._src.types, f"vec{length}{suffix}")
             add_vector_type_stub(cls, "vector")
 
-        print(f"vec{length} = vec{length}f", file=file)
-
     # Matrix types.
     suffixes = ("h", "f", "d")
     for length in (2, 3, 4):
@@ -8772,23 +8784,17 @@ def export_stubs(file):  # pragma: no cover
             cls = getattr(warp._src.types, f"mat{shape}{suffix}")
             add_matrix_type_stub(cls, "matrix")
 
-        print(f"mat{shape} = mat{shape}f", file=file)
-
     # Quaternion types.
     suffixes = ("h", "f", "d")
     for suffix in suffixes:
         cls = getattr(warp._src.types, f"quat{suffix}")
         add_vector_type_stub(cls, "quaternion")
 
-    print("quat = quatf", file=file)
-
     # Transformation types.
     suffixes = ("h", "f", "d")
     for suffix in suffixes:
         cls = getattr(warp._src.types, f"transform{suffix}")
         add_transform_type_stub(cls, "transformation")
-
-    print("transform = transformf", file=file)
 
     # =========================================================================
     # Step 4: Generate merged stubs for function conflicts
