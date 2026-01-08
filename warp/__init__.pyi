@@ -22,19 +22,24 @@ from typing import Generic
 from typing import Sequence
 from typing import overload as over
 
+from warp._src.types import Int as Int
+from warp._src.types import Float as Float
+from warp._src.types import Scalar as Scalar
+
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
 Shape = TypeVar("Shape")
-Vector = Generic[Length, Scalar]
-Matrix = Generic[Rows, Cols, Scalar]
-Quaternion = Generic[Float]
-Transformation = Generic[Float]
-Array = Generic[DType]
-FabricArray = Generic[DType]
-IndexedFabricArray = Generic[DType]
-Tile = Generic[DType, Shape]
+
+class Vector(Generic[Length, Scalar]): ...
+class Matrix(Generic[Rows, Cols, Scalar]): ...
+class Quaternion(Generic[Float]): ...
+class Transformation(Generic[Float]): ...
+class Array(Generic[DType]): ...
+class FabricArray(Generic[DType]): ...
+class IndexedFabricArray(Generic[DType]): ...
+class Tile(Generic[DType, Shape]): ...
 
 """The ``warp`` package provides array types and functions for creating and manipulating
 multi-dimensional data on CPU and CUDA devices. It includes kernel and function decorators
@@ -50,9 +55,6 @@ imported, such as :mod:`warp.render` for visualization, :mod:`warp.fem` for fini
 element methods, and :mod:`warp.sparse` for sparse linear algebra.
 """
 
-from warp._src.types import Int as Int
-from warp._src.types import Float as Float
-from warp._src.types import Scalar as Scalar
 from warp._src.context import DeviceLike as DeviceLike
 
 from warp._src.types import bool as bool
@@ -642,8 +644,6 @@ class vec2ul:
         """Construct a vector filled with a value."""
         ...
 
-vec2 = vec2f
-
 class vec3h:
     @over
     def __init__(self) -> None:
@@ -929,8 +929,6 @@ class vec3ul:
     def __init__(self, value: uint64) -> None:
         """Construct a vector filled with a value."""
         ...
-
-vec3 = vec3f
 
 class vec4h:
     @over
@@ -1218,8 +1216,6 @@ class vec4ul:
         """Construct a vector filled with a value."""
         ...
 
-vec4 = vec4f
-
 class mat22h:
     @over
     def __init__(self) -> None:
@@ -1312,8 +1308,6 @@ class mat22d:
     def __init__(self, value: float64) -> None:
         """Construct a matrix filled with a value."""
         ...
-
-mat22 = mat22f
 
 class mat33h:
     @over
@@ -1440,8 +1434,6 @@ class mat33d:
     def __init__(self, value: float64) -> None:
         """Construct a matrix filled with a value."""
         ...
-
-mat33 = mat33f
 
 class mat44h:
     @over
@@ -1590,8 +1582,6 @@ class mat44d:
         """Construct a matrix filled with a value."""
         ...
 
-mat44 = mat44f
-
 class quath:
     @over
     def __init__(self) -> None:
@@ -1669,8 +1659,6 @@ class quatd:
     def __init__(self, value: float64) -> None:
         """Construct a quaternion filled with a value."""
         ...
-
-quat = quatf
 
 class transformh:
     @over
@@ -1770,8 +1758,6 @@ class transformd:
     def __init__(self, value: float64) -> None:
         """Construct a transformation filled with a value."""
         ...
-
-transform = transformf
 
 # ======================================================================
 # Merged stubs for symbols with both Python API and kernel-scope versions
