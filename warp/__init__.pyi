@@ -69,73 +69,25 @@ from warp._src.types import float32 as float32
 from warp._src.types import float64 as float64
 
 from warp._src.types import vec2 as vec2
-from warp._src.types import vec2b as vec2b
-from warp._src.types import vec2ub as vec2ub
-from warp._src.types import vec2s as vec2s
-from warp._src.types import vec2us as vec2us
-from warp._src.types import vec2i as vec2i
-from warp._src.types import vec2ui as vec2ui
-from warp._src.types import vec2l as vec2l
-from warp._src.types import vec2ul as vec2ul
-from warp._src.types import vec2h as vec2h
-from warp._src.types import vec2f as vec2f
-from warp._src.types import vec2d as vec2d
 
 from warp._src.types import vec3 as vec3
-from warp._src.types import vec3b as vec3b
-from warp._src.types import vec3ub as vec3ub
-from warp._src.types import vec3s as vec3s
-from warp._src.types import vec3us as vec3us
-from warp._src.types import vec3i as vec3i
-from warp._src.types import vec3ui as vec3ui
-from warp._src.types import vec3l as vec3l
-from warp._src.types import vec3ul as vec3ul
-from warp._src.types import vec3h as vec3h
-from warp._src.types import vec3f as vec3f
-from warp._src.types import vec3d as vec3d
 
 from warp._src.types import vec4 as vec4
-from warp._src.types import vec4b as vec4b
-from warp._src.types import vec4ub as vec4ub
-from warp._src.types import vec4s as vec4s
-from warp._src.types import vec4us as vec4us
-from warp._src.types import vec4i as vec4i
-from warp._src.types import vec4ui as vec4ui
-from warp._src.types import vec4l as vec4l
-from warp._src.types import vec4ul as vec4ul
-from warp._src.types import vec4h as vec4h
-from warp._src.types import vec4f as vec4f
-from warp._src.types import vec4d as vec4d
 
 from warp._src.types import mat22 as mat22
-from warp._src.types import mat22h as mat22h
-from warp._src.types import mat22f as mat22f
-from warp._src.types import mat22d as mat22d
 
 from warp._src.types import mat33 as mat33
-from warp._src.types import mat33h as mat33h
-from warp._src.types import mat33f as mat33f
-from warp._src.types import mat33d as mat33d
 
 from warp._src.types import mat44 as mat44
-from warp._src.types import mat44h as mat44h
-from warp._src.types import mat44f as mat44f
-from warp._src.types import mat44d as mat44d
 
 from warp._src.types import matrix_from_cols as matrix_from_cols
 from warp._src.types import matrix_from_rows as matrix_from_rows
 
 from warp._src.types import quat as quat
-from warp._src.types import quath as quath
-from warp._src.types import quatf as quatf
-from warp._src.types import quatd as quatd
 
 from warp._src.types import transform as transform
-from warp._src.types import transformh as transformh
-from warp._src.types import transformf as transformf
-from warp._src.types import transformd as transformd
 
-from warp._src.types import spatial_vector as spatial_vector
+# Skipped: from warp._src.types import spatial_vector as spatial_vector (kernel builtin stubs preferred)
 from warp._src.types import spatial_vectorh as spatial_vectorh
 from warp._src.types import spatial_vectorf as spatial_vectorf
 from warp._src.types import spatial_vectord as spatial_vectord
@@ -153,11 +105,11 @@ from warp._src.types import array4d as array4d
 
 from warp._src.types import fixedarray as fixedarray
 
-from warp._src.types import tile as tile
+# Skipped: from warp._src.types import tile as tile (kernel builtin stubs preferred)
 
 from warp._src.types import from_ptr as from_ptr
 
-from warp._src.context import zeros as zeros
+# Skipped: from warp._src.context import zeros as zeros (merged stubs generated below)
 from warp._src.context import zeros_like as zeros_like
 from warp._src.context import ones as ones
 from warp._src.context import ones_like as ones_like
@@ -1821,6 +1773,32 @@ class transformd:
 
 transform = transformf
 
+# ======================================================================
+# Merged stubs for symbols with both Python API and kernel-scope versions
+# ======================================================================
+
+@over
+def zeros(
+    shape: "int | tuple[int, ...] | list[int] | None" = None,
+    dtype: "type" = float,
+    device: "DeviceLike" = None,
+    requires_grad: "bool" = False,
+    pinned: "bool" = False,
+    **kwargs,
+) -> "array":
+    """Return a zero-initialized array"""
+    ...
+
+@over
+def zeros(shape: tuple[int, ...], dtype: Any):
+    """ """
+    ...
+
+@over
+def zeros(shape: int32, dtype: Any):
+    """ """
+    ...
+
 @over
 def min(a: Scalar, b: Scalar) -> Scalar:
     """Return the minimum of two scalars."""
@@ -2316,16 +2294,6 @@ def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float
 @over
 def matrix(*args: Scalar, shape: tuple[int, int], dtype: Scalar) -> Matrix[Any, Any, Scalar]:
     """Construct a matrix. If the positional ``arg_types`` are not given, then matrix will be zero-initialized."""
-    ...
-
-@over
-def matrix_from_cols(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Construct a matrix from column vectors."""
-    ...
-
-@over
-def matrix_from_rows(*args: Vector[Any, Scalar]) -> Matrix[Any, Any, Scalar]:
-    """Construct a matrix from row vectors."""
     ...
 
 @over
@@ -4955,21 +4923,6 @@ def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
     ...
 
 @over
-def array(ptr: uint64, shape: tuple[int, ...], dtype: Any):
-    """ """
-    ...
-
-@over
-def zeros(shape: tuple[int, ...], dtype: Any):
-    """ """
-    ...
-
-@over
-def zeros(shape: int32, dtype: Any):
-    """ """
-    ...
-
-@over
 def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
 
@@ -6512,19 +6465,6 @@ def tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tup
 
     :param U: A square, non-singular, upper triangular matrix
     :param z: A 1D or 2D tile with compatible shape that gets overwritten by x where Ux = z
-    """
-    ...
-
-@over
-def static(expr: Any) -> Any:
-    """Evaluate a static Python expression and replaces it with its result.
-
-    See the :ref:`code generation guide <static_expressions>` for more details.
-
-    The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
-    which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
-    The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
-    (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).
     """
     ...
 

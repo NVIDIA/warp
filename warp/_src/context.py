@@ -8590,6 +8590,10 @@ def export_stubs(file):  # pragma: no cover
     # Pattern to match: "from module import name as name" or "from module import name"
     import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
 
+    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
+    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
+    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
+
     init_lines = init_content.split("\n")
     for line in init_lines:
         if line.startswith("#"):
@@ -8607,6 +8611,9 @@ def export_stubs(file):  # pragma: no cover
             if alias_name in prefer_builtin:
                 # Skip this import - kernel builtin stubs are preferred
                 print(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)", file=file)
+                continue
+            if alias_name in class_stub_types:
+                # Skip this import - class stubs are generated below
                 continue
 
         print(line, file=file)
