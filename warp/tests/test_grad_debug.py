@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import unittest
+from typing import Any
 
 import warp as wp
 from warp.autograd import (
@@ -27,15 +28,38 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def kernel_3d(
-    a: wp.array(dtype=float, ndim=3),
-    b: wp.array(dtype=float, ndim=3),
-    c: wp.array(dtype=float, ndim=3),
-    out1: wp.array(dtype=float, ndim=3),
-    out2: wp.array(dtype=float, ndim=3),
+    a: wp.array3d(dtype=Any),
+    b: wp.array3d(dtype=Any),
+    c: wp.array3d(dtype=Any),
+    out1: wp.array3d(dtype=Any),
+    out2: wp.array3d(dtype=Any),
 ):
     i, j, k = wp.tid()
     out1[i, j, k] = a[i, j, k] * b[i, j, k] + c[i, j, k]
     out2[i, j, k] = -a[i, j, k] * b[i, j, k] - c[i, j, k]
+
+
+wp.overload(
+    kernel_3d,
+    [
+        wp.array3d(dtype=wp.float32),
+        wp.array3d(dtype=wp.float32),
+        wp.array3d(dtype=wp.float32),
+        wp.array3d(dtype=wp.float32),
+        wp.array3d(dtype=wp.float32),
+    ],
+)
+
+wp.overload(
+    kernel_3d,
+    [
+        wp.array3d(dtype=wp.float64),
+        wp.array3d(dtype=wp.float64),
+        wp.array3d(dtype=wp.float64),
+        wp.array3d(dtype=wp.float64),
+        wp.array3d(dtype=wp.float64),
+    ],
+)
 
 
 @wp.kernel
@@ -86,13 +110,21 @@ def transform_point_kernel(
     out[tid] = wp.transform_point(transforms[tid], points[tid])
 
 
-def test_gradcheck_3d(test, device):
-    a_3d = wp.array([((2.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
-    b_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
-    c_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
+def test_gradcheck_3d(test, device, dtype):
+    # Adjust tolerances based on dtype precision
+    if dtype == wp.float64:
+        eps = 1e-5
+        atol, rtol = 1e-7, 1e-7
+    else:
+        eps = 1e-4
+        atol, rtol = 1e-2, 1e-2
 
-    out1_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
-    out2_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
+    a_3d = wp.array([((2.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+    b_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+    c_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+
+    out1_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+    out2_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
 
     jacs_ad = jacobian(
         kernel_3d,
@@ -103,12 +135,12 @@ def test_gradcheck_3d(test, device):
         input_output_mask=[("a", "out1"), ("b", "out2")],
     )
 
-    assert sorted(jacs_ad.keys()) == [(0, 0), (1, 1)]
-    assert jacs_ad[(0, 0)].shape == (6, 6)
-    assert jacs_ad[(1, 1)].shape == (6, 6)
+    test.assertEqual(sorted(jacs_ad.keys()), [(0, 0), (1, 1)])
+    test.assertEqual(jacs_ad[(0, 0)].shape, (6, 6))
+    test.assertEqual(jacs_ad[(1, 1)].shape, (6, 6))
     # all entries beyond the max_outputs_per_var are NaN
-    assert np.all(np.isnan(jacs_ad[(0, 0)].numpy()[4:]))
-    assert np.all(np.isnan(jacs_ad[(1, 1)].numpy()[4:]))
+    test.assertTrue(np.all(np.isnan(jacs_ad[(0, 0)].numpy()[4:])))
+    test.assertTrue(np.all(np.isnan(jacs_ad[(1, 1)].numpy()[4:])))
 
     jacs_fd = jacobian_fd(
         kernel_3d,
@@ -118,19 +150,19 @@ def test_gradcheck_3d(test, device):
         max_inputs_per_var=4,
         # use integer indices instead of variable names
         input_output_mask=[(0, 0), (1, 1)],
-        eps=1e-4,
+        eps=eps,
     )
 
-    assert sorted(jacs_fd.keys()) == [(0, 0), (1, 1)]
-    assert jacs_fd[(0, 0)].shape == (6, 6)
-    assert jacs_fd[(1, 1)].shape == (6, 6)
+    test.assertEqual(sorted(jacs_fd.keys()), [(0, 0), (1, 1)])
+    test.assertEqual(jacs_fd[(0, 0)].shape, (6, 6))
+    test.assertEqual(jacs_fd[(1, 1)].shape, (6, 6))
     # all entries beyond the max_inputs_per_var are NaN
-    assert np.all(np.isnan(jacs_fd[(0, 0)].numpy()[:, 4:]))
-    assert np.all(np.isnan(jacs_fd[(1, 1)].numpy()[:, 4:]))
+    test.assertTrue(np.all(np.isnan(jacs_fd[(0, 0)].numpy()[:, 4:])))
+    test.assertTrue(np.all(np.isnan(jacs_fd[(1, 1)].numpy()[:, 4:])))
 
     # manual gradcheck
-    assert np.allclose(jacs_ad[(0, 0)].numpy()[:4, :4], jacs_fd[(0, 0)].numpy()[:4, :4], atol=1e-2, rtol=1e-2)
-    assert np.allclose(jacs_ad[(1, 1)].numpy()[:4, :4], jacs_fd[(1, 1)].numpy()[:4, :4], atol=1e-2, rtol=1e-2)
+    np.testing.assert_allclose(jacs_ad[(0, 0)].numpy()[:4, :4], jacs_fd[(0, 0)].numpy()[:4, :4], atol=atol, rtol=rtol)
+    np.testing.assert_allclose(jacs_ad[(1, 1)].numpy()[:4, :4], jacs_fd[(1, 1)].numpy()[:4, :4], atol=atol, rtol=rtol)
 
     passed = gradcheck(
         kernel_3d,
@@ -142,7 +174,10 @@ def test_gradcheck_3d(test, device):
         input_output_mask=[("a", "out1"), ("b", "out2")],
         show_summary=False,
     )
-    assert passed
+    test.assertTrue(
+        passed,
+        f"gradcheck failed for kernel_3d (dtype={dtype.__name__}, eps={eps}, atol={atol}, rtol={rtol})",
+    )
 
 
 def test_gradcheck_mixed(test, device):
@@ -151,35 +186,19 @@ def test_gradcheck_mixed(test, device):
     out1 = wp.zeros(2, dtype=wp.vec2, requires_grad=True, device=device)
     out2 = wp.zeros(2, dtype=wp.quat, requires_grad=True, device=device)
 
-    jacs_ad = jacobian(
-        kernel_mixed,
-        dim=len(a),
-        inputs=[a, b],
-        outputs=[out1, out2],
-    )
-    jacs_fd = jacobian_fd(
-        kernel_mixed,
-        dim=len(a),
-        inputs=[a, b],
-        outputs=[out1, out2],
-        eps=1e-4,
-    )
+    jacs_ad = jacobian(kernel_mixed, dim=len(a), inputs=[a, b], outputs=[out1, out2])
+    jacs_fd = jacobian_fd(kernel_mixed, dim=len(a), inputs=[a, b], outputs=[out1, out2], eps=1e-4)
 
     # manual gradcheck
     for i in range(2):
         for j in range(2):
-            assert np.allclose(jacs_ad[(i, j)].numpy(), jacs_fd[(i, j)].numpy(), atol=1e-2, rtol=1e-2)
+            np.testing.assert_allclose(jacs_ad[(i, j)].numpy(), jacs_fd[(i, j)].numpy(), atol=1e-2, rtol=1e-2)
 
     passed = gradcheck(
-        kernel_mixed,
-        dim=len(a),
-        inputs=[a, b],
-        outputs=[out1, out2],
-        raise_exception=False,
-        show_summary=False,
+        kernel_mixed, dim=len(a), inputs=[a, b], outputs=[out1, out2], raise_exception=False, show_summary=False
     )
 
-    assert passed
+    test.assertTrue(passed, "gradcheck failed for kernel_mixed")
 
 
 def test_gradcheck_nan(test, device):
@@ -187,14 +206,7 @@ def test_gradcheck_nan(test, device):
     out = wp.array([0.0, 0.0], dtype=float, requires_grad=True, device=device)
 
     with test.assertRaises(ValueError):
-        gradcheck(
-            vec_length_kernel,
-            dim=a.shape,
-            inputs=[a],
-            outputs=[out],
-            raise_exception=True,
-            show_summary=False,
-        )
+        gradcheck(vec_length_kernel, dim=a.shape, inputs=[a], outputs=[out], raise_exception=True, show_summary=False)
 
 
 def test_gradcheck_incorrect(test, device):
@@ -202,77 +214,40 @@ def test_gradcheck_incorrect(test, device):
     out = wp.zeros_like(a)
 
     with test.assertRaises(ValueError):
-        gradcheck(
-            wrong_grad_kernel,
-            dim=a.shape,
-            inputs=[a],
-            outputs=[out],
-            raise_exception=True,
-            show_summary=False,
-        )
+        gradcheck(wrong_grad_kernel, dim=a.shape, inputs=[a], outputs=[out], raise_exception=True, show_summary=False)
 
 
-def test_gradcheck_tape(test, device):
+def test_gradcheck_tape_basic(test, device, dtype):
+    a_3d = wp.array([((2.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+    b_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+    c_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+
+    out1_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+    out2_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=dtype, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(kernel_3d, dim=a_3d.shape, inputs=[a_3d, b_3d, c_3d], outputs=[out1_3d, out2_3d], device=device)
+
+    passed = gradcheck_tape(tape, raise_exception=False, show_summary=False)
+
+    test.assertTrue(passed, f"gradcheck_tape failed for kernel_3d (dtype={dtype.__name__})")
+
+
+def test_gradcheck_tape_mixed(test, device):
     a = wp.array([2.0, -1.0], dtype=wp.float32, requires_grad=True, device=device)
     b = wp.array([wp.vec3(3.0, 1.0, 2.0), wp.vec3(-4.0, -1.0, 0.0)], dtype=wp.vec3, requires_grad=True, device=device)
     out1 = wp.zeros(2, dtype=wp.vec2, requires_grad=True, device=device)
     out2 = wp.zeros(2, dtype=wp.quat, requires_grad=True, device=device)
 
-    a_3d = wp.array([((2.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
-    b_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
-    c_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(kernel_mixed, dim=len(a), inputs=[a, b], outputs=[out1, out2], device=device)
 
-    out1_3d = wp.array([((3.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
-    out2_3d = wp.array([((4.0, 0.0), (1.0, 0.0), (2.0, 0.0))], dtype=float, requires_grad=True, device=device)
+    passed = gradcheck_tape(tape, raise_exception=False, show_summary=False)
 
-    tape = wp.Tape()
-    with tape:
-        wp.launch(
-            kernel_mixed,
-            dim=len(a),
-            inputs=[a, b],
-            outputs=[out1, out2],
-            device=device,
-        )
-
-        wp.launch(
-            kernel_3d,
-            dim=a_3d.shape,
-            inputs=[a_3d, b_3d, c_3d],
-            outputs=[out1_3d, out2_3d],
-            device=device,
-        )
-
-    passed = gradcheck_tape(
-        tape,
-        raise_exception=False,
-        show_summary=False,
-    )
-
-    assert passed
+    test.assertTrue(passed, "gradcheck_tape failed for kernel_mixed")
 
 
 def test_gradcheck_function(test, device):
-    def compute_transformed_point_norms(transforms, points):
-        tf_points = wp.empty_like(points)
-        norms = wp.empty(len(points), dtype=float, requires_grad=points.requires_grad, device=points.device)
-
-        wp.launch(
-            transform_point_kernel,
-            dim=len(points),
-            inputs=[transforms, points],
-            outputs=[tf_points],
-            device=device,
-        )
-        wp.launch(
-            vec_length_kernel,
-            dim=len(points),
-            inputs=[tf_points],
-            outputs=[norms],
-            device=device,
-        )
-        return tf_points, norms
-
     transforms = wp.array(
         [
             wp.transform(wp.vec3(1.0, 0.6, -2.0), wp.quat_rpy(-0.5, 0.1, 0.8)),
@@ -294,32 +269,19 @@ def test_gradcheck_function(test, device):
         device=device,
     )
 
-    jacs_ad = jacobian(
-        kernel_mixed,
-        dim=len(points),
-        inputs=[transforms, points],
-    )
-    jacs_fd = jacobian_fd(
-        kernel_mixed,
-        dim=len(points),
-        inputs=[transforms, points],
-        eps=1e-4,
-    )
+    jacs_ad = jacobian(kernel_mixed, dim=len(points), inputs=[transforms, points])
+    jacs_fd = jacobian_fd(kernel_mixed, dim=len(points), inputs=[transforms, points], eps=1e-4)
 
     # manual gradcheck
     for i in range(2):
         for j in range(2):
-            assert np.allclose(jacs_ad[(i, j)].numpy(), jacs_fd[(i, j)].numpy(), atol=1e-2, rtol=1e-2)
+            np.testing.assert_allclose(jacs_ad[(i, j)].numpy(), jacs_fd[(i, j)].numpy(), atol=1e-2, rtol=1e-2)
 
     passed = gradcheck(
-        kernel_mixed,
-        dim=len(points),
-        inputs=[transforms, points],
-        raise_exception=False,
-        show_summary=False,
+        kernel_mixed, dim=len(points), inputs=[transforms, points], raise_exception=False, show_summary=False
     )
 
-    assert passed
+    test.assertTrue(passed, "gradcheck_function failed for kernel_mixed")
 
 
 devices = get_test_devices()
@@ -329,11 +291,21 @@ class TestGradDebug(unittest.TestCase):
     pass
 
 
-add_function_test(TestGradDebug, "test_gradcheck_3d", test_gradcheck_3d, devices=devices)
+for dtype in [wp.float32, wp.float64]:
+    add_function_test(
+        TestGradDebug, f"test_gradcheck_3d_{dtype.__name__}", test_gradcheck_3d, devices=devices, dtype=dtype
+    )
+    add_function_test(
+        TestGradDebug,
+        f"test_gradcheck_tape_basic_{dtype.__name__}",
+        test_gradcheck_tape_basic,
+        devices=devices,
+        dtype=dtype,
+    )
 add_function_test(TestGradDebug, "test_gradcheck_mixed", test_gradcheck_mixed, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_nan", test_gradcheck_nan, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_incorrect", test_gradcheck_incorrect, devices=devices)
-add_function_test(TestGradDebug, "test_gradcheck_tape", test_gradcheck_tape, devices=devices)
+add_function_test(TestGradDebug, "test_gradcheck_tape_mixed", test_gradcheck_tape_mixed, devices=devices)
 
 
 if __name__ == "__main__":
