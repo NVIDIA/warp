@@ -15,6 +15,8 @@
 
 """Tests for the ocean sample scene."""
 
+import unittest
+
 import numpy as np
 import omni.graph.core as og
 import omni.kit
@@ -62,6 +64,7 @@ class TestSampleOcean(omni.kit.test.AsyncTestCase):
                 assert curr_points_hash != prev_points_hash
                 prev_points_hash = curr_points_hash
 
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Inconsistencies across ETM matrix")
     async def test_capture(self) -> None:
         await open_sample(f"{TEST_ID}.usda")
 
