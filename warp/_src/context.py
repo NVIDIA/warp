@@ -8567,6 +8567,10 @@ def export_stubs(file):  # pragma: no cover
     print("from typing import Sequence", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
+    # Import builtins with underscore prefix to avoid re-exporting (PEP 484).
+    # This is needed because warp._src.types.bool shadows Python's bool.
+    print("import builtins as _builtins", file=file)
+    print(file=file)
 
     # Import type aliases needed for generic class definitions
     print("from warp._src.types import Int as Int", file=file)
@@ -8806,6 +8810,8 @@ def export_stubs(file):  # pragma: no cover
             sig = str(inspect.signature(func))
             sig = sig.replace("warp.", "").replace("typing.", "")
             sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
+            # Replace bool with _builtins.bool to avoid shadowing by warp._src.types.bool
+            sig = re.sub(r"\bbool\b", "_builtins.bool", sig)
             return sig
         except (ValueError, TypeError):
             return None
