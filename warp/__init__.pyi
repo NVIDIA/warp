@@ -22,6 +22,8 @@ from typing import Generic
 from typing import Sequence
 from typing import overload as over
 
+import builtins as _builtins
+
 from warp._src.types import Int as Int
 from warp._src.types import Float as Float
 from warp._src.types import Scalar as Scalar
@@ -1768,8 +1770,8 @@ def zeros(
     shape: "int | tuple[int, ...] | list[int] | None" = None,
     dtype: "type" = float,
     device: "DeviceLike" = None,
-    requires_grad: "bool" = False,
-    pinned: "bool" = False,
+    requires_grad: "_builtins.bool" = False,
+    pinned: "_builtins.bool" = False,
     **kwargs,
 ) -> "array":
     """Return a zero-initialized array"""
