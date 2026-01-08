@@ -20,6 +20,7 @@ import ctypes
 import enum
 import functools
 import hashlib
+import importlib
 import inspect
 import io
 import itertools
@@ -27,6 +28,7 @@ import json
 import operator
 import os
 import platform
+import re
 import shutil
 import sys
 import threading
@@ -8423,8 +8425,118 @@ def export_functions_rst(file):  # pragma: no cover
 
 def export_stubs(file):  # pragma: no cover
     """Generates stub file for auto-complete of builtin functions"""
+    # =========================================================================
+    # Step 1: Parse __init__.py to identify Python API imports and conflicts
+    # =========================================================================
+    # Use warp_home (defined at module level) for robust path resolution
+    init_path = os.path.join(warp_home, "__init__.py")
+    with open(init_path) as f:
+        init_content = f.read()
 
-    # Add copyright notice
+    tree = ast.parse(init_content)
+
+    # Collect all imports: symbol_name -> (module_path, original_name, is_relative)
+    python_api_imports: dict[str, tuple[str, str, bool]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            is_relative = node.level > 0
+            for alias in node.names:
+                name = alias.asname if alias.asname else alias.name
+                original = alias.name
+                python_api_imports[name] = (module, original, is_relative)
+
+    # Identify conflicts: symbols in both Python API and kernel builtins
+    conflicts = set(python_api_imports.keys()) & set(builtin_functions.keys())
+
+    # Cache Python API objects for conflicting symbols (avoids duplicate imports)
+    python_api_objects: dict[str, Any] = {}
+    for name in conflicts:
+        module_path, original_name, is_relative = python_api_imports[name]
+        try:
+            if is_relative:
+                # Relative import from warp/__init__.py
+                # e.g., "from . import config" -> import warp, getattr(warp, "config")
+                abs_module = "warp" + ("." + module_path if module_path else "")
+                mod = importlib.import_module(abs_module)
+            else:
+                mod = importlib.import_module(module_path)
+            python_api_objects[name] = getattr(mod, original_name, None)
+        except (ImportError, AttributeError):
+            python_api_objects[name] = None
+
+    # Scalar type names (re-export always sufficient)
+    scalar_type_names = {t.__name__ for t in warp._src.types.scalar_and_bool_types}
+
+    def is_codegen_internal_class(obj) -> bool:
+        """Check if a class is primarily for internal code generation.
+
+        Classes with callable ctype() or cinit() methods are internal types
+        used during code generation, not meant for direct Python runtime use.
+        """
+        if not inspect.isclass(obj):
+            return False
+        ctype_attr = getattr(obj, "ctype", None)
+        cinit_attr = getattr(obj, "cinit", None)
+        return callable(ctype_attr) or callable(cinit_attr)
+
+    def prefers_builtin_stub(name: str) -> bool:
+        """Check if kernel builtin stubs should be preferred over Python API re-export.
+
+        Returns True for symbols where:
+        - Python API is a class (not a function) that's not a scalar type
+        - All kernel builtin overloads have export=False (kernel-only)
+        - Either the class is for internal code generation (e.g., tile),
+          or multiple overloads exist (constructor pattern, e.g., spatial_vector)
+        """
+        obj = python_api_objects.get(name)
+        if not inspect.isclass(obj) or name in scalar_type_names:
+            return False
+
+        builtin = builtin_functions.get(name)
+        if builtin is None or not hasattr(builtin, "overloads"):
+            return False
+
+        # All overloads must be kernel-only (not exported to Python runtime)
+        if not all(not overload.export for overload in builtin.overloads):
+            return False
+
+        # Prefer builtin if it's a codegen-internal class or has multiple constructor overloads
+        return is_codegen_internal_class(obj) or len(builtin.overloads) > 1
+
+    prefer_builtin = {name for name in conflicts if prefers_builtin_stub(name)}
+
+    def needs_merged_stubs(name: str) -> bool:
+        """Check if symbol needs merged @overload stubs (Python + kernel signatures)."""
+        obj = python_api_objects.get(name)
+        if obj is None or inspect.isclass(obj) or name in scalar_type_names:
+            return False
+
+        builtin = builtin_functions.get(name)
+        if builtin is None or builtin.hidden:
+            return False
+
+        # Compare parameter counts
+        try:
+            sig = inspect.signature(obj)
+            py_count = sum(
+                1
+                for p in sig.parameters.values()
+                if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            )
+        except (ValueError, TypeError):
+            return False
+
+        kernel_count = len(builtin.input_types or {})
+        return abs(py_count - kernel_count) > 1
+
+    # Categorize conflicts
+    function_conflicts = {name for name in conflicts if needs_merged_stubs(name)}
+    reexport_only = conflicts - function_conflicts - prefer_builtin
+
+    # =========================================================================
+    # Step 2: Write header
+    # =========================================================================
     print(
         """# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -8472,13 +8584,33 @@ def export_stubs(file):  # pragma: no cover
     print("IndexedFabricArray = Generic[DType]", file=file)
     print("Tile = Generic[DType, Shape]", file=file)
 
-    # prepend __init__.py
-    with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
-        # strip comment lines
-        lines = [line for line in header_file if not line.startswith("#")]
-        header = "".join(lines)
+    # =========================================================================
+    # Step 3: Copy __init__.py, but skip re-exports for function conflicts
+    # =========================================================================
+    # Pattern to match: "from module import name as name" or "from module import name"
+    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
 
-    print(header, file=file)
+    init_lines = init_content.split("\n")
+    for line in init_lines:
+        if line.startswith("#"):
+            continue  # Skip comment lines
+
+        # Check if this line imports a symbol we handle specially
+        match = import_pattern.search(line)
+        if match:
+            original_name = match.group(1)
+            alias_name = match.group(2) if match.group(2) else original_name
+            if alias_name in function_conflicts:
+                # Skip this import - we'll generate merged stubs later
+                print(f"# Skipped: {line.strip()} (merged stubs generated below)", file=file)
+                continue
+            if alias_name in prefer_builtin:
+                # Skip this import - kernel builtin stubs are preferred
+                print(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)", file=file)
+                continue
+
+        print(line, file=file)
+
     print(file=file)
 
     def add_builtin_function_stub(f):
@@ -8651,7 +8783,48 @@ def export_stubs(file):  # pragma: no cover
 
     print("transform = transformf", file=file)
 
+    # =========================================================================
+    # Step 4: Generate merged stubs for function conflicts
+    # =========================================================================
+    def format_signature(func) -> str | None:
+        """Format function signature for stubs, cleaning up namespace prefixes."""
+        try:
+            sig = str(inspect.signature(func))
+            sig = sig.replace("warp.", "").replace("typing.", "")
+            sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
+            return sig
+        except (ValueError, TypeError):
+            return None
+
+    if function_conflicts:
+        print("\n# " + "=" * 70, file=file)
+        print("# Merged stubs for symbols with both Python API and kernel-scope versions", file=file)
+        print("# " + "=" * 70 + "\n", file=file)
+
+    for name in sorted(function_conflicts):
+        python_func = python_api_objects[name]
+        builtin = builtin_functions[name]
+
+        # Python API overload
+        if sig_str := format_signature(python_func):
+            doc = (python_func.__doc__ or "").strip().split("\n")[0] or "Python API version."
+            print(f'@over\ndef {name}{sig_str}:\n    """{doc}"""\n    ...\n', file=file)
+
+        # Kernel-scope overloads
+        for f in getattr(builtin, "overloads", [builtin]):
+            if not getattr(f, "hidden", False):
+                add_builtin_function_stub(f)
+
+    # =========================================================================
+    # Step 5: Generate stubs for non-conflicting builtins
+    # =========================================================================
     for g in builtin_functions.values():
+        # Skip conflicts - already handled above
+        if g.key in reexport_only:
+            continue  # Python API re-export is sufficient
+        if g.key in function_conflicts:
+            continue  # Already generated merged stubs
+
         if hasattr(g, "overloads"):
             for f in g.overloads:
                 add_builtin_function_stub(f)
