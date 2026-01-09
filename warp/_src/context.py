@@ -8442,9 +8442,24 @@ def export_stubs(file):  # pragma: no cover
             module = node.module or ""
             is_relative = node.level > 0
             for alias in node.names:
-                name = alias.asname if alias.asname else alias.name
-                original = alias.name
-                python_api_imports[name] = (module, original, is_relative)
+                if alias.name == "*":
+                    # Expand wildcard imports to get actual symbol names
+                    try:
+                        if is_relative:
+                            full_module = "warp" + ("." + module if module else "")
+                        else:
+                            full_module = module
+                        mod = importlib.import_module(full_module)
+                        # Use __all__ if defined, otherwise public names
+                        names = getattr(mod, "__all__", [n for n in dir(mod) if not n.startswith("_")])
+                        for sym_name in names:
+                            python_api_imports[sym_name] = (module, sym_name, is_relative)
+                    except ImportError:
+                        pass
+                else:
+                    name = alias.asname if alias.asname else alias.name
+                    original = alias.name
+                    python_api_imports[name] = (module, original, is_relative)
 
     # Identify conflicts: symbols in both Python API and kernel builtins
     conflicts = set(python_api_imports.keys()) & set(builtin_functions.keys())
@@ -8560,12 +8575,12 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
+    print("from collections.abc import Sequence", file=file)
     print("from typing import Any", file=file)
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
     print("from typing import Literal", file=file)
-    print("from typing import Sequence", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
     # Import builtins with underscore prefix to avoid re-exporting (PEP 484).
@@ -8805,17 +8820,35 @@ def export_stubs(file):  # pragma: no cover
     # =========================================================================
     # Step 4: Generate merged stubs for function conflicts
     # =========================================================================
+    def format_annotation(ann) -> str:
+        """Format a type annotation for stubs, cleaning up module prefixes."""
+        # Handle string annotations directly (PEP 563)
+        if isinstance(ann, str):
+            s = ann
+        else:
+            s = inspect.formatannotation(ann)
+        # Clean up module prefixes
+        s = s.replace("warp._src.types.", "").replace("warp._src.context.", "")
+        s = s.replace("warp.", "").replace("typing.", "")
+        # NoneType -> None
+        s = s.replace("NoneType", "None")
+        # Avoid shadowing warp's bool type
+        s = re.sub(r"\bbool\b", "_builtins.bool", s)
+        return s
+
     def format_signature(func) -> str | None:
-        """Format function signature for stubs, cleaning up namespace prefixes."""
+        """Format function signature for stubs with unquoted type annotations."""
         try:
             sig = str(inspect.signature(func))
-            sig = sig.replace("warp.", "").replace("typing.", "")
-            sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
-            # Replace bool with _builtins.bool to avoid shadowing by warp._src.types.bool
-            sig = re.sub(r"\bbool\b", "_builtins.bool", sig)
-            return sig
         except (ValueError, TypeError):
             return None
+        # Remove quotes around type annotations (PEP 563 stringified annotations)
+        sig = re.sub(r": '([^']+)'", r": \1", sig)
+        sig = re.sub(r" -> '([^']+)'", r" -> \1", sig)
+        # Fix <class 'X'> -> X for type defaults
+        sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
+        # Clean up module prefixes and bool shadowing
+        return format_annotation(sig)
 
     if function_conflicts:
         print("\n# " + "=" * 70, file=file)
