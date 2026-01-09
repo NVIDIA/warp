@@ -8178,7 +8178,7 @@ def type_str(t):
     elif t == Callable:
         return "Callable"
     elif isinstance(t, int):
-        return str(t)
+        return f"Literal[{t}]"
     elif isinstance(t, (list, tuple)):
         return "tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
@@ -8564,6 +8564,7 @@ def export_stubs(file):  # pragma: no cover
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
+    print("from typing import Literal", file=file)
     print("from typing import Sequence", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
