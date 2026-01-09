@@ -48,6 +48,17 @@ from typing import (
     get_args,
     get_origin,
 )
+from typing import (
+    overload as typing_overload,
+)
+
+try:
+    from typing import ParamSpec
+except ImportError:
+    # Python 3.9 - ParamSpec not available, use TypeVar as fallback
+    def ParamSpec(name):
+        return TypeVar(name)
+
 
 import numpy as np
 
@@ -859,8 +870,31 @@ class Kernel:
 
 # ----------------------
 
+# Type variables for the @func decorator overloads below.
+# Using ParamSpec preserves the decorated function's signature for static type checkers,
+# so IDEs show the original parameters instead of generic (*args, **kwargs).
+# Note: ParamSpec requires Python 3.10+; on 3.9 this falls back to TypeVar.
+_FuncParams = ParamSpec("_FuncParams")
+_FuncReturn = TypeVar("_FuncReturn")
 
-# decorator to register function, @func
+
+@typing_overload
+def func(f: Callable[_FuncParams, _FuncReturn]) -> Callable[_FuncParams, _FuncReturn]:
+    """Register a Warp function (bare decorator: ``@wp.func``)."""
+    ...
+
+
+@typing_overload
+def func(
+    f: None = None,
+    *,
+    name: str | None = None,
+    module: Module | Literal["unique"] | str | None = None,
+) -> Callable[[Callable[_FuncParams, _FuncReturn]], Callable[_FuncParams, _FuncReturn]]:
+    """Register a Warp function (decorator with arguments: ``@wp.func(...)``)."""
+    ...
+
+
 def func(
     f: Callable | None = None,
     *,
