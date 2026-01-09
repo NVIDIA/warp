@@ -7312,6 +7312,57 @@ add_builtin(
     doc="""Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.""",
 )
 
+# ---------------------------------
+# Textures
+
+add_builtin(
+    "texture2d_sample_f",
+    input_types={"id": uint64, "uv": vec2},
+    value_type=float,
+    group="Textures",
+    doc="""Sample a 2D texture and return a single float value at normalized coordinates ``uv``.""",
+)
+
+add_builtin(
+    "texture2d_sample_v2",
+    input_types={"id": uint64, "uv": vec2},
+    value_type=vec2,
+    group="Textures",
+    doc="""Sample a 2D texture and return a vec2 at normalized coordinates ``uv``.""",
+)
+
+add_builtin(
+    "texture2d_sample_v4",
+    input_types={"id": uint64, "uv": vec2},
+    value_type=vec4,
+    group="Textures",
+    doc="""Sample a 2D texture and return a vec4 at normalized coordinates ``uv``.""",
+)
+
+add_builtin(
+    "texture3d_sample_f",
+    input_types={"id": uint64, "uvw": vec3},
+    value_type=float,
+    group="Textures",
+    doc="""Sample a 3D texture and return a single float value at normalized coordinates ``uvw``.""",
+)
+
+add_builtin(
+    "texture3d_sample_v2",
+    input_types={"id": uint64, "uvw": vec3},
+    value_type=vec2,
+    group="Textures",
+    doc="""Sample a 3D texture and return a vec2 at normalized coordinates ``uvw``.""",
+)
+
+add_builtin(
+    "texture3d_sample_v4",
+    input_types={"id": uint64, "uvw": vec3},
+    value_type=vec4,
+    group="Textures",
+    doc="""Sample a 3D texture and return a vec4 at normalized coordinates ``uvw``.""",
+)
+
 
 # ---------------------------------
 # Random

@@ -2095,6 +2095,7 @@ inline CUDA_CALLABLE void adj_expect_near(
 #include "svd.h"
 #include "hashgrid.h"
 #include "volume.h"
+#include "texture.h"
 #include "range.h"
 #include "rand.h"
 #include "noise.h"

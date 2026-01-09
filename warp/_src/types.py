@@ -5652,6 +5652,112 @@ class Volume:
         return volume
 
 
+class Texture:
+    FILTER_POINT = constant(0)
+    FILTER_LINEAR = constant(1)
+
+    ADDRESS_CLAMP = constant(0)
+    ADDRESS_WRAP = constant(1)
+    ADDRESS_BORDER = constant(2)
+
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        instance.id = None
+        return instance
+
+    def __init__(
+        self,
+        data: array,
+        width: int,
+        height: int,
+        channels: int = 1,
+        depth: int = 1,
+        normalized_coords: builtins.bool = True,
+        address_mode: int = ADDRESS_CLAMP,
+        filter_mode: int = FILTER_LINEAR,
+    ):
+        """Create a 1D, 2D, or 3D texture.
+
+        Args:
+            data: Array containing texture data.
+            width: Width of the texture.
+            height: Height of the texture.
+            channels: Number of channels. Only 1, 2, and 4 channels are supported.
+            depth: Depth of the texture (for 3D textures). Only needed if the texture is 3D.
+            normalized_coords: Whether texture coordinates are normalized to [0, 1].
+            address_mode: Address mode.
+            filter_mode: Filter mode.
+        """
+        self.runtime = warp._src.context.runtime
+
+        if data is None:
+            return
+
+        self.device = data.device
+
+        if channels not in (1, 2, 4):
+            raise RuntimeError("Texture channels must be 1, 2, or 4")
+
+        if len(data) != width * height * depth * channels:
+            raise RuntimeError("The size of the array does not match the dimensions")
+
+        if data.dtype not in (warp.uint8, warp.float32):
+            raise RuntimeError(f"Unsupported texture dtype: {data.dtype}. Only uint8 and float32 are supported.")
+
+        self.width = width
+        self.height = height
+        self.depth = depth
+        self.channels = channels
+        self.type = 1 if self.depth > 1 else 0
+        self.dtype = data.dtype
+        self.format = 0 if self.dtype == warp.float32 else 1
+        self.address_mode = address_mode
+        self.filter_mode = filter_mode
+
+        if self.device.is_cpu:
+            self.id = self.runtime.core.wp_texture_create_host(
+                ctypes.cast(data.ptr, ctypes.c_void_p),
+                ctypes.c_int(self.type),
+                ctypes.c_int(self.width),
+                ctypes.c_int(self.height),
+                ctypes.c_int(self.depth),
+                ctypes.c_int(self.channels),
+                ctypes.c_int(self.format),
+                ctypes.c_int(address_mode),
+                ctypes.c_int(filter_mode),
+            )
+        else:
+            self.id = self.runtime.core.wp_texture_create_device(
+                self.device.context,
+                ctypes.cast(data.ptr, ctypes.c_void_p),
+                ctypes.c_int(self.type),
+                ctypes.c_int(self.width),
+                ctypes.c_int(self.height),
+                ctypes.c_int(self.depth),
+                ctypes.c_int(self.channels),
+                ctypes.c_int(self.format),
+                ctypes.c_int(int(normalized_coords)),
+                ctypes.c_int(address_mode),
+                ctypes.c_int(filter_mode),
+            )
+
+        if self.id == 0:
+            raise RuntimeError("Failed to create texture from input array")
+
+    def __del__(self):
+        if not self.id:
+            return
+
+        try:
+            if self.device.is_cpu:
+                self.runtime.core.wp_texture_destroy_host(self.id)
+            else:
+                with self.device.context_guard:
+                    self.runtime.core.wp_texture_destroy_device(self.id)
+        except (TypeError, AttributeError):
+            pass
+
+
 def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[type]) -> builtins.bool:
     if not (is_array(array) and array.is_contiguous):
         return False
