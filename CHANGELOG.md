@@ -15,6 +15,8 @@
 
 ### Fixed
 
+- Fix `@wp.func` decorated functions showing generic `_Wrapped` types in Pyright/Pylance instead of their actual
+  signatures on Python 3.10+ ([GH-1163](https://github.com/NVIDIA/warp/issues/1163)).
 - Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
   downloading from packman.
 - Fix excessive memory usage in CUDA graphs with multiple allocations/deallocations
