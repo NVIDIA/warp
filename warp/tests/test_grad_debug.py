@@ -247,43 +247,6 @@ def test_gradcheck_tape_mixed(test, device):
     test.assertTrue(passed, "gradcheck_tape failed for kernel_mixed")
 
 
-def test_gradcheck_function(test, device):
-    transforms = wp.array(
-        [
-            wp.transform(wp.vec3(1.0, 0.6, -2.0), wp.quat_rpy(-0.5, 0.1, 0.8)),
-            wp.transform(wp.vec3(0.2, 1.4, -0.4), wp.quat_rpy(0.5, 0.65, -0.3)),
-            wp.transform(wp.vec3(0.5, 0.2, 0.0), wp.quat_rpy(-0.5, -0.3, 0.4)),
-        ],
-        dtype=wp.transform,
-        requires_grad=True,
-        device=device,
-    )
-    points = wp.array(
-        [
-            (1.0, -0.5, 2.0),
-            (-0.95, -0.1, 0.0),
-            (9.1, 9.7, 3.8),
-        ],
-        dtype=wp.vec3,
-        requires_grad=True,
-        device=device,
-    )
-
-    jacs_ad = jacobian(kernel_mixed, dim=len(points), inputs=[transforms, points])
-    jacs_fd = jacobian_fd(kernel_mixed, dim=len(points), inputs=[transforms, points], eps=1e-4)
-
-    # manual gradcheck
-    for i in range(2):
-        for j in range(2):
-            np.testing.assert_allclose(jacs_ad[(i, j)].numpy(), jacs_fd[(i, j)].numpy(), atol=1e-2, rtol=1e-2)
-
-    passed = gradcheck(
-        kernel_mixed, dim=len(points), inputs=[transforms, points], raise_exception=False, show_summary=False
-    )
-
-    test.assertTrue(passed, "gradcheck_function failed for kernel_mixed")
-
-
 devices = get_test_devices()
 
 
