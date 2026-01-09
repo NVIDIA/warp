@@ -19,6 +19,7 @@ from typing import Any
 from typing import Callable
 from typing import TypeVar
 from typing import Generic
+from typing import Literal
 from typing import Sequence
 from typing import overload as over
 
@@ -2116,11 +2117,11 @@ def outer(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Matrix[Any, Any, Sc
     """Compute the outer product ``a*b^T`` for two vectors."""
     ...
 
-def cross(a: Vector[3, Scalar], b: Vector[3, Scalar]) -> Vector[3, Scalar]:
+def cross(a: Vector[Literal[3], Scalar], b: Vector[Literal[3], Scalar]) -> Vector[Literal[3], Scalar]:
     """Compute the cross product of two 3D vectors."""
     ...
 
-def skew(vec: Vector[3, Scalar]) -> Matrix[3, 3, Scalar]:
+def skew(vec: Vector[Literal[3], Scalar]) -> Matrix[Literal[3], Literal[3], Scalar]:
     """Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``."""
     ...
 
@@ -2159,32 +2160,32 @@ def transpose(a: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     ...
 
 @over
-def inverse(a: Matrix[2, 2, Float]) -> Matrix[Any, Any, Float]:
+def inverse(a: Matrix[Literal[2], Literal[2], Float]) -> Matrix[Any, Any, Float]:
     """Return the inverse of a 2x2 matrix ``a``."""
     ...
 
 @over
-def inverse(a: Matrix[3, 3, Float]) -> Matrix[Any, Any, Float]:
+def inverse(a: Matrix[Literal[3], Literal[3], Float]) -> Matrix[Any, Any, Float]:
     """Return the inverse of a 3x3 matrix ``a``."""
     ...
 
 @over
-def inverse(a: Matrix[4, 4, Float]) -> Matrix[Any, Any, Float]:
+def inverse(a: Matrix[Literal[4], Literal[4], Float]) -> Matrix[Any, Any, Float]:
     """Return the inverse of a 4x4 matrix ``a``."""
     ...
 
 @over
-def determinant(a: Matrix[2, 2, Float]) -> Float:
+def determinant(a: Matrix[Literal[2], Literal[2], Float]) -> Float:
     """Return the determinant of a 2x2 matrix ``a``."""
     ...
 
 @over
-def determinant(a: Matrix[3, 3, Float]) -> Float:
+def determinant(a: Matrix[Literal[3], Literal[3], Float]) -> Float:
     """Return the determinant of a 3x3 matrix ``a``."""
     ...
 
 @over
-def determinant(a: Matrix[4, 4, Float]) -> Float:
+def determinant(a: Matrix[Literal[4], Literal[4], Float]) -> Float:
     """Return the determinant of a 4x4 matrix ``a``."""
     ...
 
@@ -2225,7 +2226,9 @@ def vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any, Scalar]:
     ...
 
 @over
-def matrix(pos: Vector[3, Float], rot: Quaternion[Float], scale: Vector[3, Float], dtype: Float) -> Matrix[4, 4, Float]:
+def matrix(
+    pos: Vector[Literal[3], Float], rot: Quaternion[Float], scale: Vector[Literal[3], Float], dtype: Float
+) -> Matrix[Literal[4], Literal[4], Float]:
     """Construct a 4x4 transformation matrix that applies the transformations as
     Translation(pos)*Rotation(rot)*Scaling(scale) when applied to column vectors, i.e.: y = (TRS)*x
 
@@ -2246,56 +2249,80 @@ def identity(n: int32, dtype: Scalar) -> Matrix[Any, Any, Scalar]:
     ...
 
 @over
-def svd3(A: Matrix[3, 3, Float]) -> tuple[Matrix[3, 3, Float], Vector[3, Float], Matrix[3, 3, Float]]:
+def svd3(
+    A: Matrix[Literal[3], Literal[3], Float],
+) -> tuple[Matrix[Literal[3], Literal[3], Float], Vector[Literal[3], Float], Matrix[Literal[3], Literal[3], Float]]:
     """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
 @over
-def svd3(A: Matrix[3, 3, Float], U: Matrix[3, 3, Float], sigma: Vector[3, Float], V: Matrix[3, 3, Float]):
+def svd3(
+    A: Matrix[Literal[3], Literal[3], Float],
+    U: Matrix[Literal[3], Literal[3], Float],
+    sigma: Vector[Literal[3], Float],
+    V: Matrix[Literal[3], Literal[3], Float],
+):
     """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
 @over
-def svd2(A: Matrix[2, 2, Float]) -> tuple[Matrix[2, 2, Float], Vector[2, Float], Matrix[2, 2, Float]]:
+def svd2(
+    A: Matrix[Literal[2], Literal[2], Float],
+) -> tuple[Matrix[Literal[2], Literal[2], Float], Vector[Literal[2], Float], Matrix[Literal[2], Literal[2], Float]]:
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
 @over
-def svd2(A: Matrix[2, 2, Float], U: Matrix[2, 2, Float], sigma: Vector[2, Float], V: Matrix[2, 2, Float]):
+def svd2(
+    A: Matrix[Literal[2], Literal[2], Float],
+    U: Matrix[Literal[2], Literal[2], Float],
+    sigma: Vector[Literal[2], Float],
+    V: Matrix[Literal[2], Literal[2], Float],
+):
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
     ...
 
 @over
-def qr3(A: Matrix[3, 3, Float]) -> tuple[Matrix[3, 3, Float], Matrix[3, 3, Float]]:
+def qr3(
+    A: Matrix[Literal[3], Literal[3], Float],
+) -> tuple[Matrix[Literal[3], Literal[3], Float], Matrix[Literal[3], Literal[3], Float]]:
     """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
     """
     ...
 
 @over
-def qr3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], R: Matrix[3, 3, Float]):
+def qr3(
+    A: Matrix[Literal[3], Literal[3], Float],
+    Q: Matrix[Literal[3], Literal[3], Float],
+    R: Matrix[Literal[3], Literal[3], Float],
+):
     """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
     """
     ...
 
 @over
-def eig3(A: Matrix[3, 3, Float]) -> tuple[Matrix[3, 3, Float], Vector[3, Float]]:
+def eig3(
+    A: Matrix[Literal[3], Literal[3], Float],
+) -> tuple[Matrix[Literal[3], Literal[3], Float], Vector[Literal[3], Float]]:
     """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
     while the corresponding eigenvalues are returned in ``d``.
     """
     ...
 
 @over
-def eig3(A: Matrix[3, 3, Float], Q: Matrix[3, 3, Float], d: Vector[3, Float]):
+def eig3(
+    A: Matrix[Literal[3], Literal[3], Float], Q: Matrix[Literal[3], Literal[3], Float], d: Vector[Literal[3], Float]
+):
     """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
     while the corresponding eigenvalues are returned in ``d``.
     """
@@ -2314,7 +2341,7 @@ def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quatern
     ...
 
 @over
-def quaternion(ijk: Vector[3, Float], real: Float, dtype: Float) -> Quaternion[Float]:
+def quaternion(ijk: Vector[Literal[3], Float], real: Float, dtype: Float) -> Quaternion[Float]:
     """Create a quaternion using the supplied vector/scalar (type inferred from scalar type)."""
     ...
 
@@ -2327,22 +2354,22 @@ def quat_identity(dtype: Float) -> quatf:
     """Construct an identity quaternion with zero imaginary part and real part of 1.0"""
     ...
 
-def quat_from_axis_angle(axis: Vector[3, Float], angle: Float) -> Quaternion[Float]:
+def quat_from_axis_angle(axis: Vector[Literal[3], Float], angle: Float) -> Quaternion[Float]:
     """Construct a quaternion representing a rotation of angle radians around the given axis."""
     ...
 
 @over
-def quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[3, Float], Float]:
+def quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[Literal[3], Float], Float]:
     """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
 @over
-def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[3, Float], angle: Float):
+def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Literal[3], Float], angle: Float):
     """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
 @over
-def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
+def quat_from_matrix(mat: Matrix[Literal[3], Literal[3], Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 3x3 matrix.
 
     If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
@@ -2350,7 +2377,7 @@ def quat_from_matrix(mat: Matrix[3, 3, Float]) -> Quaternion[Float]:
     ...
 
 @over
-def quat_from_matrix(mat: Matrix[4, 4, Float]) -> Quaternion[Float]:
+def quat_from_matrix(mat: Matrix[Literal[4], Literal[4], Float]) -> Quaternion[Float]:
     """Construct a quaternion from a 4x4 matrix.
 
     If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
@@ -2365,11 +2392,11 @@ def quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]:
     """Compute quaternion conjugate."""
     ...
 
-def quat_rotate(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+def quat_rotate(quat: Quaternion[Float], vec: Vector[Literal[3], Float]) -> Vector[Literal[3], Float]:
     """Rotate a vector by a quaternion."""
     ...
 
-def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+def quat_rotate_inv(quat: Quaternion[Float], vec: Vector[Literal[3], Float]) -> Vector[Literal[3], Float]:
     """Rotate a vector by the inverse of a quaternion."""
     ...
 
@@ -2377,12 +2404,12 @@ def quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaterni
     """Linearly interpolate between two quaternions."""
     ...
 
-def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[3, 3, Float]:
+def quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Literal[3], Literal[3], Float]:
     """Convert a quaternion to a 3x3 rotation matrix."""
     ...
 
 @over
-def transformation(p: Vector[3, Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]:
+def transformation(p: Vector[Literal[3], Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]:
     """Construct a rigid-body transformation with translation part ``p`` and rotation ``q``."""
     ...
 
@@ -2395,7 +2422,7 @@ def transform_identity(dtype: Float) -> transformf:
     """Construct an identity transform with zero translation and identity rotation."""
     ...
 
-def transform_get_translation(xform: Transformation[Float]) -> Vector[3, Float]:
+def transform_get_translation(xform: Transformation[Float]) -> Vector[Literal[3], Float]:
     """Return the translational part of a transform ``xform``."""
     ...
 
@@ -2403,7 +2430,7 @@ def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
     """Return the rotational part of a transform ``xform``."""
     ...
 
-def transform_set_translation(xform: Transformation[Float], p: Vector[3, Float]):
+def transform_set_translation(xform: Transformation[Float], p: Vector[Literal[3], Float]):
     """Set the translational part of a transform ``xform``."""
     ...
 
@@ -2416,12 +2443,14 @@ def transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Tr
     ...
 
 @over
-def transform_point(xform: Transformation[Float], point: Vector[3, Float]) -> Vector[3, Float]:
+def transform_point(xform: Transformation[Float], point: Vector[Literal[3], Float]) -> Vector[Literal[3], Float]:
     """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1 (translation and rotation)."""
     ...
 
 @over
-def transform_point(mat: Matrix[4, 4, Float], point: Vector[3, Float]) -> Vector[3, Float]:
+def transform_point(
+    mat: Matrix[Literal[4], Literal[4], Float], point: Vector[Literal[3], Float]
+) -> Vector[Literal[3], Float]:
     """Apply the transform to a point ``point`` treating the homogeneous coordinate as w=1.
 
     The transformation is applied treating ``point`` as a column vector, e.g.: ``y = mat*point``.
@@ -2433,12 +2462,14 @@ def transform_point(mat: Matrix[4, 4, Float], point: Vector[3, Float]) -> Vector
     ...
 
 @over
-def transform_vector(xform: Transformation[Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+def transform_vector(xform: Transformation[Float], vec: Vector[Literal[3], Float]) -> Vector[Literal[3], Float]:
     """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0 (rotation only)."""
     ...
 
 @over
-def transform_vector(mat: Matrix[4, 4, Float], vec: Vector[3, Float]) -> Vector[3, Float]:
+def transform_vector(
+    mat: Matrix[Literal[4], Literal[4], Float], vec: Vector[Literal[3], Float]
+) -> Vector[Literal[3], Float]:
     """Apply the transform to a vector ``vec`` treating the homogeneous coordinate as w=0.
 
     The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
@@ -2454,46 +2485,52 @@ def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
     ...
 
 @over
-def spatial_vector(dtype: Float) -> Vector[6, Float]:
+def spatial_vector(dtype: Float) -> Vector[Literal[6], Float]:
     """Zero-initialize a 6D screw vector."""
     ...
 
 @over
-def spatial_vector(w: Vector[3, Float], v: Vector[3, Float], dtype: Float) -> Vector[6, Float]:
+def spatial_vector(
+    w: Vector[Literal[3], Float], v: Vector[Literal[3], Float], dtype: Float
+) -> Vector[Literal[6], Float]:
     """Construct a 6D screw vector from two 3D vectors."""
     ...
 
 @over
-def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[6, Float]:
+def spatial_vector(
+    wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float
+) -> Vector[Literal[6], Float]:
     """Construct a 6D screw vector from six values."""
     ...
 
-def spatial_adjoint(r: Matrix[3, 3, Float], s: Matrix[3, 3, Float]) -> Matrix[6, 6, Float]:
+def spatial_adjoint(
+    r: Matrix[Literal[3], Literal[3], Float], s: Matrix[Literal[3], Literal[3], Float]
+) -> Matrix[Literal[6], Literal[6], Float]:
     """Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks."""
     ...
 
-def spatial_dot(a: Vector[6, Float], b: Vector[6, Float]) -> Float:
+def spatial_dot(a: Vector[Literal[6], Float], b: Vector[Literal[6], Float]) -> Float:
     """Compute the dot product of two 6D screw vectors."""
     ...
 
-def spatial_cross(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
+def spatial_cross(a: Vector[Literal[6], Float], b: Vector[Literal[6], Float]) -> Vector[Literal[6], Float]:
     """Compute the cross product of two 6D screw vectors."""
     ...
 
-def spatial_cross_dual(a: Vector[6, Float], b: Vector[6, Float]) -> Vector[6, Float]:
+def spatial_cross_dual(a: Vector[Literal[6], Float], b: Vector[Literal[6], Float]) -> Vector[Literal[6], Float]:
     """Compute the dual cross product of two 6D screw vectors."""
     ...
 
-def spatial_top(svec: Vector[6, Float]) -> Vector[3, Float]:
+def spatial_top(svec: Vector[Literal[6], Float]) -> Vector[Literal[3], Float]:
     """Return the top (first) part of a 6D screw vector."""
     ...
 
-def spatial_bottom(svec: Vector[6, Float]) -> Vector[3, Float]:
+def spatial_bottom(svec: Vector[Literal[6], Float]) -> Vector[Literal[3], Float]:
     """Return the bottom (second) part of a 6D screw vector."""
     ...
 
 def spatial_jacobian(
-    S: Array[Vector[6, Float]],
+    S: Array[Vector[Literal[6], Float]],
     joint_parents: Array[int32],
     joint_qd_start: Array[int32],
     joint_start: int32,
@@ -2505,7 +2542,11 @@ def spatial_jacobian(
     ...
 
 def spatial_mass(
-    I_s: Array[Matrix[6, 6, Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]
+    I_s: Array[Matrix[Literal[6], Literal[6], Float]],
+    joint_start: int32,
+    joint_count: int32,
+    M_start: int32,
+    M: Array[Float],
 ):
     """ """
     ...
@@ -3296,7 +3337,7 @@ def tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int,
     ...
 
 @over
-def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[1]]:
+def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
     """Cooperatively compute the sum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the sum of
@@ -3358,7 +3399,7 @@ def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]):
     """
     ...
 
-def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
+def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]]:
     """Cooperatively compute the minimum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the minimum of
@@ -3387,7 +3428,7 @@ def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
     """
     ...
 
-def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
+def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]:
     """Cooperatively compute the index of the minimum element in the tile using all threads in the block.
 
     :param a: The tile to compute the argmin from
@@ -3416,7 +3457,7 @@ def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
     """
     ...
 
-def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
+def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]]:
     """Cooperatively compute the maximum of the tile elements using all threads in the block.
 
     :param a: The tile to compute the maximum from
@@ -3445,7 +3486,7 @@ def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[1]]:
     """
     ...
 
-def tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
+def tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]:
     """Cooperatively compute the index of the maximum element in the tile using all threads in the block.
 
     :param a: The tile to compute the argmax from
@@ -3475,7 +3516,7 @@ def tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[1]]:
     ...
 
 @over
-def tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[1]]:
+def tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
     """Apply a custom reduction operator across the tile.
 
     This function cooperatively performs a reduction using the provided operator across the tile.
@@ -6115,7 +6156,7 @@ def tile_matmul(
     """
     ...
 
-def tile_fft(inout: Tile[Vector[2, Float], tuple[int, int]]):
+def tile_fft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]):
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
@@ -6129,7 +6170,7 @@ def tile_fft(inout: Tile[Vector[2, Float], tuple[int, int]]):
     """
     ...
 
-def tile_ifft(inout: Tile[Vector[2, Float], tuple[int, int]]):
+def tile_ifft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]):
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
@@ -6425,7 +6466,7 @@ def smooth_normalize(v: Any, delta: float):
     """
     ...
 
-def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]:
+def transform_from_matrix(mat: Matrix[Literal[4], Literal[4], float32]) -> Transformation[float32]:
     """Construct a transformation from a 4x4 matrix.
 
         .. math::
@@ -6449,7 +6490,7 @@ def transform_from_matrix(mat: Matrix[4, 4, float32]) -> Transformation[float32]
     """
     ...
 
-def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]:
+def transform_to_matrix(xform: Transformation[float32]) -> Matrix[Literal[4], Literal[4], float32]:
     """Convert a transformation to a 4x4 matrix.
 
         .. math::
@@ -6473,7 +6514,9 @@ def transform_to_matrix(xform: Transformation[float32]) -> Matrix[4, 4, float32]
     """
     ...
 
-def transform_compose(position: Vector[3, float32], rotation: Quaternion[float32], scale: Vector[3, float32]):
+def transform_compose(
+    position: Vector[Literal[3], float32], rotation: Quaternion[float32], scale: Vector[Literal[3], float32]
+):
     """Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
 
         .. math::
@@ -6500,7 +6543,7 @@ def transform_compose(position: Vector[3, float32], rotation: Quaternion[float32
     """
     ...
 
-def transform_decompose(m: Matrix[4, 4, float32]):
+def transform_decompose(m: Matrix[Literal[4], Literal[4], float32]):
     """Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
 
         .. math::
