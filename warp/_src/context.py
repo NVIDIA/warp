@@ -20,6 +20,7 @@ import ctypes
 import enum
 import functools
 import hashlib
+import importlib
 import inspect
 import io
 import itertools
@@ -27,6 +28,7 @@ import json
 import operator
 import os
 import platform
+import re
 import shutil
 import sys
 import threading
@@ -8176,7 +8178,7 @@ def type_str(t):
     elif t == Callable:
         return "Callable"
     elif isinstance(t, int):
-        return str(t)
+        return f"Literal[{t}]"
     elif isinstance(t, (list, tuple)):
         return "tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
@@ -8423,8 +8425,133 @@ def export_functions_rst(file):  # pragma: no cover
 
 def export_stubs(file):  # pragma: no cover
     """Generates stub file for auto-complete of builtin functions"""
+    # =========================================================================
+    # Step 1: Parse __init__.py to identify Python API imports and conflicts
+    # =========================================================================
+    # Use warp_home (defined at module level) for robust path resolution
+    init_path = os.path.join(warp_home, "__init__.py")
+    with open(init_path) as f:
+        init_content = f.read()
 
-    # Add copyright notice
+    tree = ast.parse(init_content)
+
+    # Collect all imports: symbol_name -> (module_path, original_name, is_relative)
+    python_api_imports: dict[str, tuple[str, str, bool]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            is_relative = node.level > 0
+            for alias in node.names:
+                if alias.name == "*":
+                    # Expand wildcard imports to get actual symbol names
+                    try:
+                        if is_relative:
+                            full_module = "warp" + ("." + module if module else "")
+                        else:
+                            full_module = module
+                        mod = importlib.import_module(full_module)
+                        # Use __all__ if defined, otherwise public names
+                        names = getattr(mod, "__all__", [n for n in dir(mod) if not n.startswith("_")])
+                        for sym_name in names:
+                            python_api_imports[sym_name] = (module, sym_name, is_relative)
+                    except ImportError:
+                        pass
+                else:
+                    name = alias.asname if alias.asname else alias.name
+                    original = alias.name
+                    python_api_imports[name] = (module, original, is_relative)
+
+    # Identify conflicts: symbols in both Python API and kernel builtins
+    conflicts = set(python_api_imports.keys()) & set(builtin_functions.keys())
+
+    # Cache Python API objects for conflicting symbols (avoids duplicate imports)
+    python_api_objects: dict[str, Any] = {}
+    for name in conflicts:
+        module_path, original_name, is_relative = python_api_imports[name]
+        try:
+            if is_relative:
+                # Relative import from warp/__init__.py
+                # e.g., "from . import config" -> import warp, getattr(warp, "config")
+                abs_module = "warp" + ("." + module_path if module_path else "")
+                mod = importlib.import_module(abs_module)
+            else:
+                mod = importlib.import_module(module_path)
+            python_api_objects[name] = getattr(mod, original_name, None)
+        except (ImportError, AttributeError):
+            python_api_objects[name] = None
+
+    # Scalar type names (re-export always sufficient)
+    scalar_type_names = {t.__name__ for t in warp._src.types.scalar_and_bool_types}
+
+    def is_codegen_internal_class(obj) -> bool:
+        """Check if a class is primarily for internal code generation.
+
+        Classes with callable ctype() or cinit() methods are internal types
+        used during code generation, not meant for direct Python runtime use.
+        """
+        if not inspect.isclass(obj):
+            return False
+        ctype_attr = getattr(obj, "ctype", None)
+        cinit_attr = getattr(obj, "cinit", None)
+        return callable(ctype_attr) or callable(cinit_attr)
+
+    def prefers_builtin_stub(name: str) -> bool:
+        """Check if kernel builtin stubs should be preferred over Python API re-export.
+
+        Returns True for symbols where:
+        - Python API is a class (not a function) that's not a scalar type
+        - All kernel builtin overloads have export=False (kernel-only)
+        - Either the class is for internal code generation (e.g., tile),
+          or multiple overloads exist (constructor pattern, e.g., spatial_vector)
+        """
+        obj = python_api_objects.get(name)
+        if not inspect.isclass(obj) or name in scalar_type_names:
+            return False
+
+        builtin = builtin_functions.get(name)
+        if builtin is None or not hasattr(builtin, "overloads"):
+            return False
+
+        # All overloads must be kernel-only (not exported to Python runtime)
+        if not all(not overload.export for overload in builtin.overloads):
+            return False
+
+        # Prefer builtin if it's a codegen-internal class or has multiple constructor overloads
+        return is_codegen_internal_class(obj) or len(builtin.overloads) > 1
+
+    prefer_builtin = {name for name in conflicts if prefers_builtin_stub(name)}
+
+    def needs_merged_stubs(name: str) -> bool:
+        """Check if symbol needs merged @overload stubs (Python + kernel signatures)."""
+        obj = python_api_objects.get(name)
+        if obj is None or inspect.isclass(obj) or name in scalar_type_names:
+            return False
+
+        builtin = builtin_functions.get(name)
+        if builtin is None or builtin.hidden:
+            return False
+
+        # Compare parameter counts
+        try:
+            sig = inspect.signature(obj)
+            py_count = sum(
+                1
+                for p in sig.parameters.values()
+                if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            )
+        except (ValueError, TypeError):
+            return False
+
+        kernel_count = len(builtin.input_types or {})
+        return abs(py_count - kernel_count) > 1
+
+    # Categorize conflicts
+    function_conflicts = {name for name in conflicts if needs_merged_stubs(name)}
+    reexport_only = conflicts - function_conflicts - prefer_builtin
+
+    # =========================================================================
+    # Step 2: Write header
+    # =========================================================================
     print(
         """# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -8448,12 +8575,23 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
+    print("from collections.abc import Sequence", file=file)
     print("from typing import Any", file=file)
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
-    print("from typing import Sequence", file=file)
+    print("from typing import Literal", file=file)
     print("from typing import overload as over", file=file)
+    print(file=file)
+    # Import builtins with underscore prefix to avoid re-exporting (PEP 484).
+    # This is needed because warp._src.types.bool shadows Python's bool.
+    print("import builtins as _builtins", file=file)
+    print(file=file)
+
+    # Import type aliases needed for generic class definitions
+    print("from warp._src.types import Int as Int", file=file)
+    print("from warp._src.types import Float as Float", file=file)
+    print("from warp._src.types import Scalar as Scalar", file=file)
     print(file=file)
 
     # type hints, these need to be mirrored into the stubs file
@@ -8463,25 +8601,60 @@ def export_stubs(file):  # pragma: no cover
     print('DType = TypeVar("DType")', file=file)
     print('Shape = TypeVar("Shape")', file=file)
 
-    print("Vector = Generic[Length, Scalar]", file=file)
-    print("Matrix = Generic[Rows, Cols, Scalar]", file=file)
-    print("Quaternion = Generic[Float]", file=file)
-    print("Transformation = Generic[Float]", file=file)
-    print("Array = Generic[DType]", file=file)
-    print("FabricArray = Generic[DType]", file=file)
-    print("IndexedFabricArray = Generic[DType]", file=file)
-    print("Tile = Generic[DType, Shape]", file=file)
+    # Generic type stubs - must be proper class definitions, not type alias assignments.
+    # Using "class Foo(Generic[...]): ..." syntax makes these valid types for Mypy.
+    print("class Vector(Generic[Length, Scalar]): ...", file=file)
+    print("class Matrix(Generic[Rows, Cols, Scalar]): ...", file=file)
+    print("class Quaternion(Generic[Float]): ...", file=file)
+    print("class Transformation(Generic[Float]): ...", file=file)
+    print("class Array(Generic[DType]): ...", file=file)
+    print("class FabricArray(Generic[DType]): ...", file=file)
+    print("class IndexedFabricArray(Generic[DType]): ...", file=file)
+    print("class Tile(Generic[DType, Shape]): ...", file=file)
 
-    # prepend __init__.py
-    with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
-        # strip comment lines
-        lines = [line for line in header_file if not line.startswith("#")]
-        header = "".join(lines)
+    # =========================================================================
+    # Step 3: Copy __init__.py, but skip re-exports for function conflicts
+    # =========================================================================
+    # Pattern to match: "from module import name as name" or "from module import name"
+    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
 
-    print(header, file=file)
+    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
+    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
+    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
+
+    # Type aliases already imported in the header (skip to avoid duplicates)
+    header_imported_types = {"Int", "Float", "Scalar"}
+
+    init_lines = init_content.split("\n")
+    for line in init_lines:
+        if line.startswith("#"):
+            continue  # Skip comment lines
+
+        # Check if this line imports a symbol we handle specially
+        match = import_pattern.search(line)
+        if match:
+            original_name = match.group(1)
+            alias_name = match.group(2) if match.group(2) else original_name
+            if alias_name in function_conflicts:
+                # Skip this import - we'll generate merged stubs later
+                print(f"# Skipped: {line.strip()} (merged stubs generated below)", file=file)
+                continue
+            if alias_name in prefer_builtin:
+                # Skip this import - kernel builtin stubs are preferred
+                print(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)", file=file)
+                continue
+            if alias_name in class_stub_types:
+                # Skip this import - class stubs are generated below
+                continue
+            if alias_name in header_imported_types:
+                # Skip this import - already imported in header for generic class definitions
+                continue
+
+        print(line, file=file)
+
     print(file=file)
 
-    def add_builtin_function_stub(f):
+    def add_builtin_function_stub(f, use_overload=True):
         args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
 
         return_str = ""
@@ -8495,7 +8668,8 @@ def export_stubs(file):  # pragma: no cover
         if return_type:
             return_str = " -> " + type_str(return_type)
 
-        print("@over", file=file)
+        if use_overload:
+            print("@over", file=file)
         print(f"def {f.key}({args}){return_str}:", file=file)
         print(f'    """{f.doc}', file=file)
         print('    """', file=file)
@@ -8623,8 +8797,6 @@ def export_stubs(file):  # pragma: no cover
             cls = getattr(warp._src.types, f"vec{length}{suffix}")
             add_vector_type_stub(cls, "vector")
 
-        print(f"vec{length} = vec{length}f", file=file)
-
     # Matrix types.
     suffixes = ("h", "f", "d")
     for length in (2, 3, 4):
@@ -8633,15 +8805,11 @@ def export_stubs(file):  # pragma: no cover
             cls = getattr(warp._src.types, f"mat{shape}{suffix}")
             add_matrix_type_stub(cls, "matrix")
 
-        print(f"mat{shape} = mat{shape}f", file=file)
-
     # Quaternion types.
     suffixes = ("h", "f", "d")
     for suffix in suffixes:
         cls = getattr(warp._src.types, f"quat{suffix}")
         add_vector_type_stub(cls, "quaternion")
-
-    print("quat = quatf", file=file)
 
     # Transformation types.
     suffixes = ("h", "f", "d")
@@ -8649,14 +8817,77 @@ def export_stubs(file):  # pragma: no cover
         cls = getattr(warp._src.types, f"transform{suffix}")
         add_transform_type_stub(cls, "transformation")
 
-    print("transform = transformf", file=file)
+    # =========================================================================
+    # Step 4: Generate merged stubs for function conflicts
+    # =========================================================================
+    def format_annotation(ann) -> str:
+        """Format a type annotation for stubs, cleaning up module prefixes."""
+        # Handle string annotations directly (PEP 563)
+        if isinstance(ann, str):
+            s = ann
+        else:
+            s = inspect.formatannotation(ann)
+        # Clean up module prefixes
+        s = s.replace("warp._src.types.", "").replace("warp._src.context.", "")
+        s = s.replace("warp.", "").replace("typing.", "")
+        # NoneType -> None
+        s = s.replace("NoneType", "None")
+        # Avoid shadowing warp's bool type
+        s = re.sub(r"\bbool\b", "_builtins.bool", s)
+        return s
 
-    for g in builtin_functions.values():
-        if hasattr(g, "overloads"):
-            for f in g.overloads:
+    def format_signature(func) -> str | None:
+        """Format function signature for stubs with unquoted type annotations."""
+        try:
+            sig = str(inspect.signature(func))
+        except (ValueError, TypeError):
+            return None
+        # Remove quotes around type annotations (PEP 563 stringified annotations)
+        sig = re.sub(r": '([^']+)'", r": \1", sig)
+        sig = re.sub(r" -> '([^']+)'", r" -> \1", sig)
+        # Fix <class 'X'> -> X for type defaults
+        sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
+        # Clean up module prefixes and bool shadowing
+        return format_annotation(sig)
+
+    if function_conflicts:
+        print("\n# " + "=" * 70, file=file)
+        print("# Merged stubs for symbols with both Python API and kernel-scope versions", file=file)
+        print("# " + "=" * 70 + "\n", file=file)
+
+    for name in sorted(function_conflicts):
+        python_func = python_api_objects[name]
+        builtin = builtin_functions[name]
+
+        # Python API overload
+        if sig_str := format_signature(python_func):
+            doc = (python_func.__doc__ or "").strip().split("\n")[0] or "Python API version."
+            print(f'@over\ndef {name}{sig_str}:\n    """{doc}"""\n    ...\n', file=file)
+
+        # Kernel-scope overloads
+        for f in getattr(builtin, "overloads", [builtin]):
+            if not getattr(f, "hidden", False):
                 add_builtin_function_stub(f)
+
+    # =========================================================================
+    # Step 5: Generate stubs for non-conflicting builtins
+    # =========================================================================
+    for g in builtin_functions.values():
+        # Skip conflicts - already handled above
+        if g.key in reexport_only:
+            continue  # Python API re-export is sufficient
+        if g.key in function_conflicts:
+            continue  # Already generated merged stubs
+
+        if hasattr(g, "overloads"):
+            # Only use @overload decorator when there are multiple non-hidden overloads
+            non_hidden_overloads = [f for f in g.overloads if not f.hidden]
+            use_overload = len(non_hidden_overloads) > 1
+            for f in non_hidden_overloads:
+                add_builtin_function_stub(f, use_overload=use_overload)
         elif isinstance(g, Function):
-            add_builtin_function_stub(g)
+            # Single function without overloads - no @overload decorator needed
+            add_builtin_function_stub(g, use_overload=False)
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover
