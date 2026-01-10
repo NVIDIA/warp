@@ -773,6 +773,9 @@ class Kernel:
         # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
         self.is_unique_module = False
 
+        # cache for invoke() struct types (avoids dynamic type() calls)
+        self._invoke_cache = {}
+
         if self.module:
             self.module.register_kernel(self)
 
@@ -6370,8 +6373,33 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
 # invoke a CPU kernel by passing the parameters as a ctypes structure
 def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
-    fields = []
+    # Build cache key from parameter types
+    param_types = tuple(type(p) for p in params[1:])  # skip launch bounds
+    cache_key = (param_types, adjoint)
 
+    cached = kernel._invoke_cache.get(cache_key)
+    if cached is not None:
+        # Fast path: use cached struct types
+        if adjoint:
+            ArgsStruct, AdjArgsStruct, fields, adj_fields = cached
+        else:
+            ArgsStruct, fields = cached
+
+        args = ArgsStruct()
+        for i, field in enumerate(fields):
+            setattr(args, field[0], params[1 + i])
+
+        if not adjoint:
+            hooks.forward(params[0], ctypes.byref(args))
+        else:
+            adj_args = AdjArgsStruct()
+            for i, field in enumerate(adj_fields):
+                setattr(adj_args, field[0], params[1 + len(fields) + i])
+            hooks.backward(params[0], ctypes.byref(args), ctypes.byref(adj_args))
+        return
+
+    # Slow path: build struct types and cache them
+    fields = []
     for i in range(0, len(kernel.adj.args)):
         arg_name = kernel.adj.args[i].label
         field = (arg_name, type(params[1 + i]))  # skip the first argument, which is the launch bounds
@@ -6385,6 +6413,7 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
         setattr(args, name, params[1 + i])
 
     if not adjoint:
+        kernel._invoke_cache[cache_key] = (ArgsStruct, fields)
         hooks.forward(params[0], ctypes.byref(args))
 
     # for adjoint kernels the adjoint arguments are passed through a second struct
@@ -6403,6 +6432,7 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
             name = field[0]
             setattr(adj_args, name, params[1 + len(fields) + i])
 
+        kernel._invoke_cache[cache_key] = (ArgsStruct, AdjArgsStruct, fields, adj_fields)
         hooks.backward(params[0], ctypes.byref(args), ctypes.byref(adj_args))
 
 

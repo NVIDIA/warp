@@ -2339,6 +2339,8 @@ def scalars_equal(a, b):
 
 
 def types_equal(a, b):
+    if a is b:
+        return True
     return types_equal_generic(a, b, match_generic=False)
 
 
