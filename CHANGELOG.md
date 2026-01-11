@@ -21,6 +21,8 @@
   ([GH-1157](https://github.com/NVIDIA/warp/issues/1157)).
 - Fix `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()` support for kernels involving arrays with data types
   other than single-precision floats ([GH-1113](https://github.com/NVIDIA/warp/issues/1113)).
+- Fix a segfault in conditional expressions (ternary `if`/`else`) when one branch accesses an array element
+  and the other branch is taken ([GH-1094](https://github.com/NVIDIA/warp/issues/1094)).
 
 ### Documentation
 
