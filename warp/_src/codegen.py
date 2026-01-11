@@ -2114,10 +2114,12 @@ class Adjoint:
 
         adj.begin_if(cond)
         body = adj.eval(node.body)
+        body = adj.load(body)
         adj.end_if(cond)
 
         adj.begin_else(cond)
         orelse = adj.eval(node.orelse)
+        orelse = adj.load(orelse)
         adj.end_else(cond)
 
         return adj.add_builtin_call("where", [cond, body, orelse])
