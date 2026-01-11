@@ -13,13 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import math
+import sys
 import unittest
 from typing import Any
 
 import numpy as np
 
 import warp as wp
+from warp.sparse import bsr_row_index
 from warp.tests.unittest_utils import *
 
 
@@ -569,6 +572,61 @@ class TestFunc(unittest.TestCase):
         arr = wp.array((1, 2, 3, 4, 5, 6, 7, 8), dtype=wp.float32)
         length = get_array_len(arr)
         assert length == 8
+
+    @unittest.skipUnless(sys.version_info >= (3, 11), "get_overloads() is only available in Python 3.11 and later")
+    def test_func_decorator_has_overloads(self):
+        """Verify @wp.func has @overload signatures for static type checkers.
+
+        Without @overload signatures using ParamSpec, static type checkers like
+        Pyright/Pylance show generic _Wrapped types instead of the actual function
+        signature when hovering over @wp.func decorated functions.
+        """
+        from typing import get_overloads  # noqa: PLC0415
+
+        overloads = get_overloads(wp.func)
+        # Should have at least 2 overloads:
+        # 1. @wp.func (bare decorator)
+        # 2. @wp.func(...) (decorator with arguments)
+        self.assertGreaterEqual(
+            len(overloads),
+            2,
+            "wp.func should have @overload signatures for Pyright/Pylance. "
+            "Without these, static type checkers cannot infer decorated function signatures.",
+        )
+
+    @unittest.skipUnless(sys.version_info >= (3, 11), "get_overloads() is only available in Python 3.11 and later")
+    def test_func_decorator_overloads_preserve_signature(self):
+        """Verify @wp.func overloads return Callable types to preserve signatures."""
+        from typing import get_overloads  # noqa: PLC0415
+
+        overloads = get_overloads(wp.func)
+        if len(overloads) < 2:
+            self.skipTest("Overloads not yet implemented")
+
+        # At least one overload should have a Callable return annotation
+        has_callable_return = False
+        for overload in overloads:
+            hints = getattr(overload, "__annotations__", {})
+            return_hint = hints.get("return", "")
+            if "Callable" in str(return_hint):
+                has_callable_return = True
+                break
+
+        self.assertTrue(
+            has_callable_return,
+            "At least one @wp.func overload should return Callable to preserve signatures.",
+        )
+
+    def test_func_decorated_signature_introspection(self):
+        """Verify inspect.signature() works on @wp.func decorated functions."""
+        sig = inspect.signature(bsr_row_index)
+        params = list(sig.parameters.keys())
+
+        # Based on warp/_src/sparse.py bsr_row_index(offsets, row_count, block_index)
+        # Update these if the function signature changes
+        self.assertIn("offsets", params)
+        self.assertIn("row_count", params)
+        self.assertIn("block_index", params)
 
 
 devices = get_test_devices()
