@@ -15,6 +15,8 @@
 
 ### Fixed
 
+- Fix `wp.static()` incorrectly capturing global Python variables instead of loop variables when used inside for-loops
+  in kernels ([GH-1139](https://github.com/NVIDIA/warp/issues/1139)).
 - Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
   downloading from packman.
 - Fix excessive memory usage in CUDA graphs with multiple allocations/deallocations
