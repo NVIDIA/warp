@@ -1261,6 +1261,7 @@ def bsr_get_diag(A: BsrMatrixOrExpression[BlockType], out: Array[BlockType] | No
             raise ValueError(f"Output array must reside on device {A.values.device}, got {out.device}")
         if out.shape[0] < dim:
             raise ValueError(f"Output array must be of length at least {dim}, got {out.shape[0]}")
+        out.zero_()
 
     wp.launch(
         kernel=_bsr_get_diag_kernel,
