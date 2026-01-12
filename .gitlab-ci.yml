@@ -171,7 +171,6 @@ pyright stubs:
   image: $UV_BOOKWORM_IMAGE
   needs: []
   timeout: 5m
-  allow_failure: true
   variables:
     GIT_LFS_SKIP_SMUDGE: "1"
     GIT_DEPTH: "1"
