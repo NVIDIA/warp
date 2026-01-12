@@ -727,9 +727,5 @@ if __name__ == "__main__":
         datefmt="%H:%M:%S",
         handlers=[logging.StreamHandler()],
     )
-    try:
-        run()
-        logger.info("API reference stub generation completed successfully")
-    except Exception as e:
-        logger.error(f"API reference stub generation failed: {e}", exc_info=True)
-        sys.exit(1)
+    run()
+    logger.info("API reference stub generation completed successfully")
