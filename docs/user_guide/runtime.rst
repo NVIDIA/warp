@@ -1773,17 +1773,19 @@ are automatically normalized to the [0, 1] range when sampled.
     :members:
     :undoc-members:
     :exclude-members: vars
+    :no-index:
 
 .. autoclass:: Texture3D
     :members:
     :undoc-members:
     :exclude-members: vars
+    :no-index:
 
 .. seealso:: `Reference <functions.html#textures>`__ for the texture sampling functions available in kernels.
 
 
 Bounding Volume Hierarchies (BVH)
-################################
+#################################
 
 The :class:`wp.Bvh <warp.Bvh>` class can be used to create a BVH for a group of bounding volumes. This object can then be traversed
 to determine which parts are intersected by a ray using :func:`wp.bvh_query_ray <warp._src.lang.bvh_query_ray>` and which parts overlap
