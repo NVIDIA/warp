@@ -21,6 +21,7 @@
   ([GH-1157](https://github.com/NVIDIA/warp/issues/1157)).
 - Fix `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()` support for kernels involving arrays with data types
   other than single-precision floats ([GH-1113](https://github.com/NVIDIA/warp/issues/1113)).
+- Fix reporting of returning a value from a kernel ([GH-1109](https://github.com/NVIDIA/warp/issues/1109)).
 
 ### Documentation
 

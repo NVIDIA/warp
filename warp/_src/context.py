@@ -53,7 +53,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp.config
-from warp._src.codegen import synchronized
+from warp._src.codegen import WarpCodegenTypeError, synchronized
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -2013,8 +2013,7 @@ class ModuleBuilder:
         kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:
-            if kernel.adj.return_var.ctype() != "void":
-                raise TypeError(f"Error, kernels can't have return values, got: {kernel.adj.return_var}")
+            raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
 
     def build_function(self, func):
         if func in self.functions:
