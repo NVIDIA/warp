@@ -21,6 +21,9 @@
   ([GH-1157](https://github.com/NVIDIA/warp/issues/1157)).
 - Fix `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()` support for kernels involving arrays with data types
   other than single-precision floats ([GH-1113](https://github.com/NVIDIA/warp/issues/1113)).
+- Fix IDE autocomplete stubs to show all valid signatures for functions that have both Python API
+  and kernel-scope versions (e.g., `zeros()`). The stub generator now detects conflicts and
+  generates merged `@overload` definitions where appropriate ([GH-1156](https://github.com/NVIDIA/warp/issues/1156)).
 
 ### Documentation
 
