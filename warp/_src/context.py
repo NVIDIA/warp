@@ -6459,8 +6459,20 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             return value
         # Check if value is a Texture object that needs conversion
         if arg_type is warp._src.types.texture2d_t and isinstance(value, warp._src.types.Texture2D):
+            # check device
+            if value.device != device:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                    f"but input texture for argument '{arg_name}' is on device={value.device}."
+                )
             return value.__ctype__()
         if arg_type is warp._src.types.texture3d_t and isinstance(value, warp._src.types.Texture3D):
+            # check device
+            if value.device != device:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                    f"but input texture for argument '{arg_name}' is on device={value.device}."
+                )
             return value.__ctype__()
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects {arg_type.__name__} "

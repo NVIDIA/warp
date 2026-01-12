@@ -7355,10 +7355,11 @@ add_builtin(
     dispatch_func=texture_sample_2d_dispatch_func,
     export=False,
     group="Textures",
-    doc="""Sample the 2D texture at the given normalized UV coordinates.
+    doc="""Sample the 2D texture at the given UV coordinates.
 
     :param tex: The 2D texture to sample.
-    :param uv: Normalized UV coordinates as a vec2f in the range [0, 1].
+    :param uv: UV coordinates as a vec2f. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] x [0, height] if ``normalized_coords=False``.
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
@@ -7375,11 +7376,13 @@ add_builtin(
     dispatch_func=texture_sample_2d_dispatch_func,
     export=False,
     group="Textures",
-    doc="""Sample the 2D texture at the given normalized UV coordinates.
+    doc="""Sample the 2D texture at the given UV coordinates.
 
     :param tex: The 2D texture to sample.
-    :param u: Normalized U coordinate in the range [0, 1].
-    :param v: Normalized V coordinate in the range [0, 1].
+    :param u: U coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
+    :param v: V coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
@@ -7415,10 +7418,11 @@ add_builtin(
     dispatch_func=texture_sample_3d_dispatch_func,
     export=False,
     group="Textures",
-    doc="""Sample the 3D texture at the given normalized UVW coordinates.
+    doc="""Sample the 3D texture at the given UVW coordinates.
 
     :param tex: The 3D texture to sample.
-    :param uvw: Normalized UVW coordinates as a vec3f in the range [0, 1].
+    :param uvw: UVW coordinates as a vec3f. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] x [0, height] x [0, depth] if ``normalized_coords=False``.
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 
@@ -7435,12 +7439,15 @@ add_builtin(
     dispatch_func=texture_sample_3d_dispatch_func,
     export=False,
     group="Textures",
-    doc="""Sample the 3D texture at the given normalized UVW coordinates.
+    doc="""Sample the 3D texture at the given UVW coordinates.
 
     :param tex: The 3D texture to sample.
-    :param u: Normalized U coordinate in the range [0, 1].
-    :param v: Normalized V coordinate in the range [0, 1].
-    :param w: Normalized W coordinate in the range [0, 1].
+    :param u: U coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
+    :param v: V coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
+    :param w: W coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, depth] if ``normalized_coords=False``.
     :param dtype: The return type (float, vec2f, or vec4f).
     :returns: The sampled value of the specified dtype.
 

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import ctypes
 import enum
+import warnings
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
@@ -177,8 +178,9 @@ class Texture:
             width: Texture width (required if data is None).
             height: Texture height (required if data is None).
             depth: Texture depth (required if data is None for 3D textures).
-            num_channels: Number of channels (1, 2, or 4). Default is 1.
-            dtype: Data type (uint8, uint16, or float32). Default is float32.
+            num_channels: Number of channels (1, 2, or 4). Only used if data is None. Default is 1.
+            dtype: Data type (uint8, uint16, or float32). Only used if data is None;
+                   when data is provided, dtype is inferred from the data. Default is float32.
             filter_mode: Filtering mode - FILTER_POINT (0) or FILTER_LINEAR (1). Default is LINEAR.
             address_mode: Address mode for all axes - ADDRESS_WRAP (0), ADDRESS_CLAMP (1),
                           ADDRESS_MIRROR (2), or ADDRESS_BORDER (3). Can be a single int or tuple.
@@ -268,12 +270,20 @@ class Texture:
                 return 3  # (depth, height, width, channels)
             elif ndim == 3:
                 # Could be (height, width, channels) for 2D or (depth, height, width) for 3D
-                if np_data.shape[-1] in (1, 2, 4) and np_data.shape[0] <= 4:
-                    return 2  # Likely 2D with channels
-                elif np_data.shape[-1] not in (1, 2, 4):
-                    return 3  # Last dim is not channels, so 3D
+                if np_data.shape[-1] not in (1, 2, 4):
+                    return 3  # Last dim is not a valid channel count, so must be 3D
                 else:
-                    return 3  # Large first dim, likely 3D
+                    # Ambiguous case: last dim could be channels (for 2D) or width (for 3D)
+                    # Default to 3D since the numpy array is 3-dimensional, but warn the user
+                    warnings.warn(
+                        f"Ambiguous array shape {np_data.shape}: could be interpreted as 2D texture "
+                        f"with shape (height={np_data.shape[0]}, width={np_data.shape[1]}, "
+                        f"channels={np_data.shape[2]}) or 3D texture with shape "
+                        f"(depth={np_data.shape[0]}, height={np_data.shape[1]}, width={np_data.shape[2]}). "
+                        f"Defaulting to 3D. Use dims=2 parameter or Texture2D class for 2D textures.",
+                        stacklevel=3,
+                    )
+                    return 3
             else:
                 return 2  # ndim == 2 is always 2D
         else:
