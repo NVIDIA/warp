@@ -4275,10 +4275,6 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
     """
     ...
 
-def reversed(range: range_t) -> range_t:
-    """Returns the range in reversed order."""
-    ...
-
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
     """Sample the volume of type `dtype` given by ``id`` at the volume local-space point ``uvw``.
 

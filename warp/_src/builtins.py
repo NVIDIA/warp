@@ -6930,6 +6930,7 @@ add_builtin(
     group="Utility",
     doc="""Returns the range in reversed order.""",
     export=False,
+    hidden=True,
     is_differentiable=False,
 )
 
