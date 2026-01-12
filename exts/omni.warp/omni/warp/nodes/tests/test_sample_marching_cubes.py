@@ -15,6 +15,8 @@
 
 """Tests for the marching cubes sample scene."""
 
+import unittest
+
 import numpy as np
 import omni.kit
 import omni.usd
@@ -58,6 +60,7 @@ class TestSampleMarchingCubes(omni.kit.test.AsyncTestCase):
         array_are_almost_equal(np.min(points_last, axis=0), (-45.0, -50.0, -45.0), atol=2.0)
         array_are_almost_equal(np.max(points_last, axis=0), (45.0, 5.0, 45.0), atol=2.0)
 
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Inconsistencies across ETM matrix")
     async def test_capture(self) -> None:
         await open_sample(f"{TEST_ID}.usda")
 

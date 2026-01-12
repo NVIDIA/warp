@@ -1017,18 +1017,30 @@ def set_element_kernel(a: wp.array(dtype=Any), i: int, val: Any, relative: bool)
         a[i] = val
 
 
+wp.overload(set_element_kernel, {"a": wp.array(dtype=wp.float32), "val": wp.float32})
+wp.overload(set_element_kernel, {"a": wp.array(dtype=wp.float64), "val": wp.float64})
+
+
 def set_element(a: wp.array(dtype=Any), i: int, val: Any, relative: bool = False):
     wp.launch(set_element_kernel, dim=1, inputs=[a, i, a.dtype(val), relative], device=a.device)
 
 
 @wp.kernel(enable_backward=False)
-def compute_fd_kernel(left: wp.array(dtype=float), right: wp.array(dtype=float), eps: float, fd: wp.array(dtype=float)):
+def compute_fd_kernel(left: wp.array(dtype=Any), right: wp.array(dtype=Any), eps: Any, fd: wp.array(dtype=Any)):
     tid = wp.tid()
-    fd[tid] = (right[tid] - left[tid]) / (2.0 * eps)
+    fd[tid] = (right[tid] - left[tid]) / (fd.dtype(2.0) * eps)
 
 
-def compute_fd(left: wp.array(dtype=Any), right: wp.array(dtype=Any), eps: float, fd: wp.array(dtype=Any)):
-    wp.launch(compute_fd_kernel, dim=len(left), inputs=[left, right, eps], outputs=[fd], device=left.device)
+wp.overload(
+    compute_fd_kernel, [wp.array(dtype=wp.float32), wp.array(dtype=wp.float32), wp.float32, wp.array(dtype=wp.float32)]
+)
+wp.overload(
+    compute_fd_kernel, [wp.array(dtype=wp.float64), wp.array(dtype=wp.float64), wp.float64, wp.array(dtype=wp.float64)]
+)
+
+
+def compute_fd(left: wp.array(dtype=Any), right: wp.array(dtype=Any), eps: Any, fd: wp.array(dtype=Any)):
+    wp.launch(compute_fd_kernel, dim=len(left), inputs=[left, right, fd.dtype(eps)], outputs=[fd], device=left.device)
 
 
 @wp.kernel(enable_backward=False)

@@ -166,6 +166,20 @@ pre-commit checks:
   script:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
+pyright stubs:
+  stage: quality
+  image: $UV_BOOKWORM_IMAGE
+  needs: []
+  timeout: 5m
+  allow_failure: true
+  variables:
+    GIT_LFS_SKIP_SMUDGE: "1"
+    GIT_DEPTH: "1"
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  script:
+    - uvx pyright warp/__init__.pyi
+
 # This job tests code snippets in the documentation
 doctest:
   stage: quality

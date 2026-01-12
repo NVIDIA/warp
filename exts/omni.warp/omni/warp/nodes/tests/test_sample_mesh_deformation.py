@@ -15,6 +15,8 @@
 
 """Tests for the mesh deformation sample scene."""
 
+import unittest
+
 import numpy as np
 import omni.graph.core as og
 import omni.kit
@@ -81,6 +83,7 @@ class TestSampleMeshDeformation(omni.kit.test.AsyncTestCase):
         await test_variant(grid_size=(100.0, 100.0), grid_dims=(32, 32))
         await test_variant(grid_size=(50.0, 10.0), grid_dims=(64, 8))
 
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Inconsistencies across ETM matrix")
     async def test_capture(self) -> None:
         await open_sample(f"{TEST_ID}.usda")
 

@@ -15,6 +15,8 @@
 
 """Tests for the texture mandelbrot sample scene."""
 
+import unittest
+
 import omni.kit
 import omni.warp
 
@@ -28,6 +30,7 @@ TEST_ID = "texture_mandelbrot"
 
 
 class TestSampleTextureMandelbrot(omni.kit.test.AsyncTestCase):
+    @unittest.skipIf(omni.kit.test.utils.is_etm_run(), "Inconsistencies across ETM matrix")
     async def test_capture(self) -> None:
         await open_sample(f"{TEST_ID}.usda")
 
