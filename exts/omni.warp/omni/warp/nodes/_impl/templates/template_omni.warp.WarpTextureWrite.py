@@ -25,8 +25,7 @@ from omni.kit.property.usd.custom_layout_helper import (
     CustomLayoutProperty,
 )
 from omni.kit.property.usd.usd_property_widget import UsdPropertyUiEntry
-
-import warp as wp
+from omni.warp.nodes._impl.common import ARRAY_MAX_DIMS
 
 
 def find_prop(
@@ -91,7 +90,7 @@ class CustomLayout:
                         og.Controller.get(self.dim_count_attr),
                         0,
                     ),
-                    wp.types.ARRAY_MAX_DIMS,
+                    ARRAY_MAX_DIMS,
                 )
                 for i in range(dim_count):
                     prop = find_prop(

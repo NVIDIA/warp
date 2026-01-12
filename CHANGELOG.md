@@ -17,6 +17,10 @@
 
 - Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
   downloading from packman.
+- Fix excessive memory usage in CUDA graphs with multiple allocations/deallocations
+  ([GH-1157](https://github.com/NVIDIA/warp/issues/1157)).
+- Fix `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()` support for kernels involving arrays with data types
+  other than single-precision floats ([GH-1113](https://github.com/NVIDIA/warp/issues/1113)).
 
 ### Documentation
 

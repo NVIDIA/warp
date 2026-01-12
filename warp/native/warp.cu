@@ -831,7 +831,11 @@ void wp_free_device_async(void* context, void* ptr)
             std::vector<cudaGraphNode_t> leaf_nodes;
             if (graph && get_graph_leaf_nodes(graph, leaf_nodes)) {
                 cudaGraphNode_t free_node;
-                check_cuda(cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr));
+                if (check_cuda(cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr))) {
+                    check_cu(cuStreamUpdateCaptureDependencies_f(
+                        capture->stream, &free_node, 1, cudaStreamSetCaptureDependencies
+                    ));
+                }
             }
 
             // we're done with this allocation, it's owned by the graph
