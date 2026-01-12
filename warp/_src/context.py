@@ -8687,24 +8687,61 @@ def export_stubs(file):  # pragma: no cover
 
     print(file=file)
 
+    def get_return_type_str(f):
+        """Get the return type string for a builtin function."""
+        return_type = f.value_type
+        if f.value_func:
+            try:
+                return_type = f.value_func(None, None)
+            except Exception:
+                pass  # Keep f.value_type as fallback
+        return type_str(return_type)
+
     def add_builtin_function_stub(f, use_overload=True):
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
-
-        return_str = ""
-
         if f.hidden:  # or f.generic:
             return
 
-        return_type = f.value_type
-        if f.value_func:
-            return_type = f.value_func(None, None)
-        if return_type:
-            return_str = " -> " + type_str(return_type)
+        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+        rt_str = get_return_type_str(f)
+        return_str = f" -> {rt_str}"
 
         if use_overload:
             print("@over", file=file)
         print(f"def {f.key}({args}){return_str}:", file=file)
         print(f'    """{f.doc}', file=file)
+        print('    """', file=file)
+        print("    ...\n\n", file=file)
+
+    def add_merged_builtin_function_stub(overloads):
+        """Generate a single stub with union return type for overloads with identical input_types.
+
+        This is used for functions like wp.tid() where the return type depends on
+        usage context (unpacking syntax) rather than input parameters, which type
+        checkers cannot distinguish between.
+        """
+        first = overloads[0]
+
+        # Warn if doc strings differ
+        if not all(f.doc == first.doc for f in overloads):
+            warp._src.utils.warn(
+                f"Merging overloads for '{first.key}' with differing docstrings. "
+                "Consider aligning docstrings for consistency.",
+                stacklevel=3,
+            )
+
+        # Collect unique return types from all overloads (preserving order)
+        seen = set()
+        return_types = []
+        for f in overloads:
+            rt_str = get_return_type_str(f)
+            if rt_str is not None and rt_str not in seen:
+                seen.add(rt_str)
+                return_types.append(rt_str)
+
+        args = ", ".join(f"{k}: {type_str(v)}" for k, v in first.input_types.items())
+        return_str = " -> " + " | ".join(return_types) if return_types else ""
+        print(f"def {first.key}({args}){return_str}:", file=file)
+        print(f'    """{first.doc}', file=file)
         print('    """', file=file)
         print("    ...\n\n", file=file)
 
@@ -8915,6 +8952,23 @@ def export_stubs(file):  # pragma: no cover
         if hasattr(g, "overloads"):
             # Only use @overload decorator when there are multiple non-hidden overloads
             non_hidden_overloads = [f for f in g.overloads if not f.hidden]
+
+            if len(non_hidden_overloads) > 1:
+                # Check if all overloads have identical input_types.
+                # This indicates overloads that differ only in return type based on
+                # usage context (e.g., wp.tid()), which type checkers can't distinguish.
+                # These should be merged into a single function with a union return type.
+                first = non_hidden_overloads[0]
+                first_inputs = tuple(sorted(first.input_types.items()))
+                all_same_inputs = all(
+                    tuple(sorted(f.input_types.items())) == first_inputs for f in non_hidden_overloads
+                )
+
+                if all_same_inputs:
+                    add_merged_builtin_function_stub(non_hidden_overloads)
+                    continue
+
+            # Otherwise emit separate @overload stubs as usual
             use_overload = len(non_hidden_overloads) > 1
             for f in non_hidden_overloads:
                 add_builtin_function_stub(f, use_overload=use_overload)

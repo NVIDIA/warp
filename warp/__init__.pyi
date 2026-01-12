@@ -1779,12 +1779,12 @@ def zeros(
     ...
 
 @over
-def zeros(shape: tuple[int, ...], dtype: Any):
+def zeros(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]:
     """ """
     ...
 
 @over
-def zeros(shape: int32, dtype: Any):
+def zeros(shape: int32, dtype: Any) -> Array[Scalar]:
     """ """
     ...
 
@@ -2002,7 +2002,7 @@ def isfinite(a: Vector[Any, Scalar]) -> bool:
     ...
 
 @over
-def isfinite(a: Quaternion[Scalar]) -> bool:
+def isfinite(a: Quaternion[Float]) -> bool:
     """Return ``True`` if all elements of the quaternion ``a`` are finite, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
@@ -2038,7 +2038,7 @@ def isnan(a: Vector[Any, Scalar]) -> bool:
     ...
 
 @over
-def isnan(a: Quaternion[Scalar]) -> bool:
+def isnan(a: Quaternion[Float]) -> bool:
     """Return ``True`` if any element of the quaternion ``a`` is NaN, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
@@ -2074,7 +2074,7 @@ def isinf(a: Vector[Any, Scalar]) -> bool:
     ...
 
 @over
-def isinf(a: Quaternion[Scalar]) -> bool:
+def isinf(a: Quaternion[Float]) -> bool:
     """Return ``True`` if any element of the quaternion ``a`` is positive or negative infinity, otherwise return ``False``.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
@@ -2141,7 +2141,7 @@ def length_sq(a: Vector[Any, Scalar]) -> Scalar:
     ...
 
 @over
-def length_sq(a: Quaternion[Scalar]) -> Scalar:
+def length_sq(a: Quaternion[Float]) -> Float:
     """Compute the squared length of a quaternion ``a``."""
     ...
 
@@ -2263,7 +2263,7 @@ def svd3(
     U: Matrix[Literal[3], Literal[3], Float],
     sigma: Vector[Literal[3], Float],
     V: Matrix[Literal[3], Literal[3], Float],
-):
+) -> None:
     """Compute the SVD of a 3x3 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
@@ -2284,7 +2284,7 @@ def svd2(
     U: Matrix[Literal[2], Literal[2], Float],
     sigma: Vector[Literal[2], Float],
     V: Matrix[Literal[2], Literal[2], Float],
-):
+) -> None:
     """Compute the SVD of a 2x2 matrix ``A``. The singular values are returned in ``sigma``,
     while the left and right basis vectors are returned in ``U`` and ``V``.
     """
@@ -2304,7 +2304,7 @@ def qr3(
     A: Matrix[Literal[3], Literal[3], Float],
     Q: Matrix[Literal[3], Literal[3], Float],
     R: Matrix[Literal[3], Literal[3], Float],
-):
+) -> None:
     """Compute the QR decomposition of a 3x3 matrix ``A``. The orthogonal matrix is returned in ``Q``,
     while the upper triangular matrix is returned in ``R``.
     """
@@ -2322,7 +2322,7 @@ def eig3(
 @over
 def eig3(
     A: Matrix[Literal[3], Literal[3], Float], Q: Matrix[Literal[3], Literal[3], Float], d: Vector[Literal[3], Float]
-):
+) -> None:
     """Compute the eigendecomposition of a 3x3 matrix ``A``. The eigenvectors are returned as the columns of ``Q``,
     while the corresponding eigenvalues are returned in ``d``.
     """
@@ -2364,7 +2364,7 @@ def quat_to_axis_angle(quat: Quaternion[Float]) -> tuple[Vector[Literal[3], Floa
     ...
 
 @over
-def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Literal[3], Float], angle: Float):
+def quat_to_axis_angle(quat: Quaternion[Float], axis: Vector[Literal[3], Float], angle: Float) -> None:
     """Extract the rotation axis and angle radians a quaternion represents."""
     ...
 
@@ -2430,11 +2430,11 @@ def transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]:
     """Return the rotational part of a transform ``xform``."""
     ...
 
-def transform_set_translation(xform: Transformation[Float], p: Vector[Literal[3], Float]):
+def transform_set_translation(xform: Transformation[Float], p: Vector[Literal[3], Float]) -> None:
     """Set the translational part of a transform ``xform``."""
     ...
 
-def transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]):
+def transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]) -> None:
     """Set the rotational part of a transform ``xform``."""
     ...
 
@@ -2537,7 +2537,7 @@ def spatial_jacobian(
     joint_count: int32,
     J_start: int32,
     J_out: Array[Float],
-):
+) -> None:
     """ """
     ...
 
@@ -2547,7 +2547,7 @@ def spatial_mass(
     joint_count: int32,
     M_start: int32,
     M: Array[Float],
-):
+) -> None:
     """ """
     ...
 
@@ -2894,7 +2894,7 @@ def tile_load_indexed(
     ...
 
 @over
-def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool):
+def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> None:
     """Store a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -2908,13 +2908,13 @@ def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, 
     ...
 
 @over
-def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool):
+def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool) -> None:
     """ """
     ...
 
 def tile_store_indexed(
     a: Array[Any], indices: Tile[int32, tuple[int]], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], axis: int32
-):
+) -> None:
     """Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
 
     :param a: The destination array in global memory
@@ -3092,7 +3092,7 @@ def tile_astype(t: Tile[Scalar, tuple[int, ...]], dtype: Scalar) -> Tile[Any, tu
     """
     ...
 
-def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...]):
+def tile_assign(dst: Tile[Any, tuple[int, ...]], src: Tile[Any, tuple[int, ...]], offset: tuple[int, ...]) -> None:
     """Assign a tile to a subrange of a destination tile.
 
     :param dst: The destination tile to assign to
@@ -3366,7 +3366,7 @@ def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
     """
     ...
 
-def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]):
+def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> None:
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
     :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`, :class:`int64`, :class:`uint64`. Must be in shared memory.
@@ -4296,7 +4296,7 @@ def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
     """
     ...
 
-def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any):
+def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any) -> None:
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
@@ -4321,7 +4321,7 @@ def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
     """
     ...
 
-def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32):
+def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None:
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
@@ -4339,7 +4339,7 @@ def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
     """
     ...
 
-def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f):
+def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f) -> None:
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
@@ -4354,7 +4354,7 @@ def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
     """
     ...
 
-def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32):
+def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32) -> None:
     """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
     ...
 
@@ -4556,54 +4556,31 @@ def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, 
     """Divergence-free vector field based on the curl of three Perlin noise functions."""
     ...
 
-def printf(fmt: str, *args: Any):
+def printf(fmt: str, *args: Any) -> None:
     """Allows printing formatted strings using C-style format specifiers."""
     ...
 
-def print(value: Any):
+def print(value: Any) -> None:
     """Print variable to stdout"""
     ...
 
-def breakpoint():
+def breakpoint() -> None:
     """Debugger breakpoint"""
     ...
 
-@over
-def tid() -> int:
-    """Return the current thread index for a 1D kernel launch.
+def tid() -> int | tuple[int, int] | tuple[int, int, int] | tuple[int, int, int, int]:
+    """Return the current thread index or indices.
 
-    Note that this is the *global* index of the thread in the range [0, dim)
-    where dim is the parameter passed to kernel launch.
+    The return type is determined by the unpacking syntax used:
 
-    This function may not be called from user-defined Warp functions.
-    """
-    ...
+    - ``i = wp.tid()`` - Returns the first thread index as ``int``
+    - ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+    - ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+    - ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
 
-@over
-def tid() -> tuple[int, int]:
-    """Return the current thread indices for a 2D kernel launch.
-
-    Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-    This function may not be called from user-defined Warp functions.
-    """
-    ...
-
-@over
-def tid() -> tuple[int, int, int]:
-    """Return the current thread indices for a 3D kernel launch.
-
-    Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-    This function may not be called from user-defined Warp functions.
-    """
-    ...
-
-@over
-def tid() -> tuple[int, int, int, int]:
-    """Return the current thread indices for a 4D kernel launch.
-
-    Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
+    The indices correspond to the thread's position in the kernel launch grid.
+    If fewer indices are requested than the launch dimensionality, only the
+    leading indices are returned.
 
     This function may not be called from user-defined Warp functions.
     """
@@ -5679,22 +5656,22 @@ def smoothstep(a: Float, b: Float, x: Float) -> Float:
     ...
 
 @over
-def expect_near(a: Float, b: Float, tolerance: Float):
+def expect_near(a: Float, b: Float, tolerance: Float) -> None:
     """Prints an error to stdout if ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 @over
-def expect_near(a: Vector[Any, Float], b: Vector[Any, Float], tolerance: Float):
+def expect_near(a: Vector[Any, Float], b: Vector[Any, Float], tolerance: Float) -> None:
     """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 @over
-def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float):
+def expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None:
     """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
 @over
-def expect_near(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], tolerance: Float):
+def expect_near(a: Matrix[Any, Any, Float], b: Matrix[Any, Any, Float], tolerance: Float) -> None:
     """Prints an error to stdout if any element of ``a`` and ``b`` are not closer than tolerance in magnitude"""
     ...
 
@@ -5719,7 +5696,7 @@ def add(a: Vector[Any, Scalar], b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
-def add(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def add(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
@@ -5729,7 +5706,7 @@ def add(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any,
     ...
 
 @over
-def add(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
+def add(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]:
     """ """
     ...
 
@@ -5754,12 +5731,12 @@ def sub(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any,
     ...
 
 @over
-def sub(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def sub(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
 @over
-def sub(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
+def sub(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]:
     """ """
     ...
 
@@ -5889,17 +5866,17 @@ def mul(a: Scalar, b: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
-def mul(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
+def mul(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]:
     """ """
     ...
 
 @over
-def mul(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def mul(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
 @over
-def mul(a: Quaternion[Scalar], b: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def mul(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
@@ -5929,17 +5906,17 @@ def mul(a: Matrix[Any, Any, Scalar], b: Matrix[Any, Any, Scalar]) -> Matrix[Any,
     ...
 
 @over
-def mul(a: Transformation[Scalar], b: Transformation[Scalar]) -> Transformation[Scalar]:
+def mul(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]:
     """ """
     ...
 
 @over
-def mul(a: Scalar, b: Transformation[Scalar]) -> Transformation[Scalar]:
+def mul(a: Scalar, b: Transformation[Float]) -> Transformation[Float]:
     """ """
     ...
 
 @over
-def mul(a: Transformation[Scalar], b: Scalar) -> Transformation[Scalar]:
+def mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]:
     """ """
     ...
 
@@ -5989,12 +5966,12 @@ def div(a: Scalar, b: Matrix[Any, Any, Scalar]) -> Matrix[Any, Any, Scalar]:
     ...
 
 @over
-def div(a: Quaternion[Scalar], b: Scalar) -> Quaternion[Scalar]:
+def div(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]:
     """ """
     ...
 
 @over
-def div(a: Scalar, b: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
@@ -6013,7 +5990,7 @@ def pos(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
-def pos(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def pos(x: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
@@ -6033,7 +6010,7 @@ def neg(x: Vector[Any, Scalar]) -> Vector[Any, Scalar]:
     ...
 
 @over
-def neg(x: Quaternion[Scalar]) -> Quaternion[Scalar]:
+def neg(x: Quaternion[Float]) -> Quaternion[Float]:
     """ """
     ...
 
@@ -6108,7 +6085,7 @@ def tile_matmul(
     out: Tile[Float, tuple[int, int]],
     alpha: Float,
     beta: Float,
-):
+) -> None:
     """Computes the matrix product and accumulates ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
@@ -6152,7 +6129,7 @@ def tile_matmul(
     """
     ...
 
-def tile_fft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]):
+def tile_fft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]) -> None:
     """Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
@@ -6166,7 +6143,7 @@ def tile_fft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]):
     """
     ...
 
-def tile_ifft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]):
+def tile_ifft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]) -> None:
     """Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
@@ -6199,7 +6176,7 @@ def tile_cholesky(A: Tile[Float, tuple[int, int]]) -> Tile[Float, tuple[int, int
     """
     ...
 
-def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]]):
+def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]]) -> None:
     """Compute the Cholesky factorization L of a matrix A.
 
     L is lower triangular and satisfies LL^T = A.
@@ -6233,7 +6210,7 @@ def tile_cholesky_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[in
     """
     ...
 
-def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]):
+def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> None:
     """With L such that LL^T = A, solve for x in Ax = y by overwriting y with x
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
@@ -6265,7 +6242,7 @@ def tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]
     """
     ...
 
-def tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]):
+def tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> None:
     """Solve for z in Lz = y, where L is a lower triangular matrix by overwriting y with z.
 
     This performs general forward substitution for a lower triangular system inplace.
@@ -6299,7 +6276,7 @@ def tile_upper_solve(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]
     """
     ...
 
-def tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]):
+def tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> None:
     """Solve for x in Ux = z, where U is an upper triangular matrix by overwriting z with x.
 
     This performs general back substitution for upper triangular systems inplace.
@@ -6322,7 +6299,7 @@ def len(a: Vector[Any, Scalar]) -> int:
     ...
 
 @over
-def len(a: Quaternion[Scalar]) -> int:
+def len(a: Quaternion[Float]) -> int:
     """Return the number of elements in a quaternion."""
     ...
 
