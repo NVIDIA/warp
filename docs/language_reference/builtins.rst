@@ -258,39 +258,6 @@ Geometry
    mesh_query_ray_anyhit
    mesh_query_ray_count_intersections
 
-Utility
--------
-
-.. autosummary::
-   :nosignatures:
-   :toctree: _generated
-   :template: builtins.rst
-
-   array
-   atomic_add
-   atomic_and
-   atomic_cas
-   atomic_exch
-   atomic_max
-   atomic_min
-   atomic_or
-   atomic_sub
-   atomic_xor
-   block_dim
-   breakpoint
-   cast
-   expect_near
-   len
-   lerp
-   print
-   printf
-   reversed
-   select
-   smoothstep
-   tid
-   where
-   zeros
-
 Volumes
 -------
 
@@ -348,6 +315,38 @@ Random
    sample_unit_sphere
    sample_unit_sphere_surface
    sample_unit_square
+
+Utility
+-------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+   :template: builtins.rst
+
+   array
+   atomic_add
+   atomic_and
+   atomic_cas
+   atomic_exch
+   atomic_max
+   atomic_min
+   atomic_or
+   atomic_sub
+   atomic_xor
+   block_dim
+   breakpoint
+   cast
+   expect_near
+   len
+   lerp
+   print
+   printf
+   select
+   smoothstep
+   tid
+   where
+   zeros
 
 Other
 -----
