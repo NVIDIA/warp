@@ -329,10 +329,8 @@ jobs:
           echo "SUCCESS: All symbols are correctly namespaced."
 
   # Validate that the type stub file (warp/__init__.pyi) passes pyright's type checking.
-  # TODO: Remove continue-on-error once existing pyright issues are resolved.
   pyright-stubs:
     runs-on: ubuntu-latest
-    continue-on-error: true  # Allow failures until existing issues are fixed
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
