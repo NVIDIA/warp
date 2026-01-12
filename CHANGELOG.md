@@ -28,6 +28,7 @@
   generates merged `@overload` definitions where appropriate ([GH-1156](https://github.com/NVIDIA/warp/issues/1156)).
 - Fix a segfault in conditional expressions (ternary `if`/`else`) when one branch accesses an array element
   and the other branch is taken ([GH-1094](https://github.com/NVIDIA/warp/issues/1094)).
+- Fix reporting of returning a value from a kernel ([GH-1109](https://github.com/NVIDIA/warp/issues/1109)).
 
 ### Documentation
 
