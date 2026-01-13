@@ -214,11 +214,12 @@ warp/examples/optim
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py
       - .. image:: ./img/examples/optim_fluid_checkpoint.png
            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py
-      -
+      - .. image:: ./img/examples/optim_particle_repulsion.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_particle_repulsion.py
       -
     * - diffray
       - fluid checkpoint
-      -
+      - particle repulsion
       -
 
 warp/examples/tile

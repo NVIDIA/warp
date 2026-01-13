@@ -251,13 +251,13 @@ python -m warp.tests
         <tr>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_diffray.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_fluid_checkpoint.png"></a></td>
-            <td></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_particle_repulsion.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_particle_repulsion.png"></a></td>
             <td></td>
         </tr>
         <tr>
             <td align="center">diffray</td>
             <td align="center">fluid checkpoint</td>
-            <td align="center"></td>
+            <td align="center">particle repulsion</td>
             <td align="center"></td>
         </tr>
     </tbody>
