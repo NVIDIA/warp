@@ -32,6 +32,9 @@
 
 ### Documentation
 
+- Add a Random Number Generation section to the runtime documentation, describing seed management strategies
+  to avoid correlated random number sequences ([GH-1043](https://github.com/NVIDIA/warp/issues/1043)).
+
 ## [1.11.0] - 2026-01-02
 
 ### Added
