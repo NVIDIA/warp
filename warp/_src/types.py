@@ -54,9 +54,201 @@ Cols = TypeVar("Cols")
 DType = TypeVar("DType")
 Shape = TypeVar("Shape", bound=tuple[int, ...])
 
-Int = TypeVar("Int")
-Float = TypeVar("Float")
-Scalar = TypeVar("Scalar")
+
+# =============================================================================
+# Scalar types - defined early so TypeVars can reference them
+# =============================================================================
+
+
+class scalar_base:
+    def __init__(self, x=0):
+        self.value = x
+
+    def __bool__(self) -> builtins.bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __add__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.add(self, y)
+
+    def __radd__(self, y):
+        return warp.add(y, self)
+
+    def __sub__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.sub(self, y)
+
+    def __rsub__(self, y):
+        return warp.sub(y, self)
+
+    def __mul__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.mul(self, y)
+
+    def __rmul__(self, x):
+        return warp.mul(x, self)
+
+    def __truediv__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.div(self, y)
+
+    def __rtruediv__(self, x):
+        return warp.div(x, self)
+
+    def __mod__(self, x):
+        if is_array(x):
+            return NotImplemented
+
+        return warp.mod(self, x)
+
+    def __rmod__(self, x):
+        return warp.mod(x, self)
+
+    def __pos__(self):
+        return warp.pos(self)
+
+    def __neg__(self):
+        return warp.neg(self)
+
+
+class float_base(scalar_base):
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
+
+
+class int_base(scalar_base):
+    def __index__(self) -> int:
+        return int(self._type_(self.value).value)
+
+    def __str__(self) -> str:
+        return str(self._type_(self.value).value)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
+
+
+class bool:
+    _length_ = 1
+    _type_ = ctypes.c_bool
+
+    def __init__(self, x=False):
+        self.value = x
+
+    def __bool__(self) -> builtins.bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value != 0)
+
+    def __int__(self) -> int:
+        return int(self.value != 0)
+
+    def __str__(self) -> str:
+        return str(self.value != 0)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
+
+
+class float16(float_base):
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+
+class float32(float_base):
+    _length_ = 1
+    _type_ = ctypes.c_float
+
+
+class float64(float_base):
+    _length_ = 1
+    _type_ = ctypes.c_double
+
+
+class int8(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_int8
+
+
+class uint8(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_uint8
+
+
+class int16(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_int16
+
+
+class uint16(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+
+class int32(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_int32
+
+
+class uint32(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_uint32
+
+
+class int64(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_int64
+
+
+class uint64(int_base):
+    _length_ = 1
+    _type_ = ctypes.c_uint64
+
+
+# Scalar type tuples - defined here as canonical source, used by TypeVars below
+int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
+float_types = (float16, float32, float64)
+scalar_types = int_types + float_types
+scalar_and_bool_types = (*scalar_types, bool)
+
+# TypeVars with proper constraints now that scalar types are defined
+# Note: TypeVar constraints must be listed explicitly (Pyright doesn't support unpacking)
+# Keep these in sync with the tuples above when adding new scalar types
+Int = TypeVar("Int", int, int8, uint8, int16, uint16, int32, uint32, int64, uint64)
+Float = TypeVar("Float", float, float16, float32, float64)
+Scalar = TypeVar(
+    "Scalar",
+    int,
+    float,
+    int8,
+    uint8,
+    int16,
+    uint16,
+    int32,
+    uint32,
+    int64,
+    uint64,
+    float16,
+    float32,
+    float64,
+)
 
 
 class Vector(Generic[Length, Scalar]):
@@ -1027,168 +1219,6 @@ class void:
         pass
 
 
-class scalar_base:
-    def __init__(self, x=0):
-        self.value = x
-
-    def __bool__(self) -> builtins.bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __add__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.add(self, y)
-
-    def __radd__(self, y):
-        return warp.add(y, self)
-
-    def __sub__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.sub(self, y)
-
-    def __rsub__(self, y):
-        return warp.sub(y, self)
-
-    def __mul__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.mul(self, y)
-
-    def __rmul__(self, x):
-        return warp.mul(x, self)
-
-    def __truediv__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.div(self, y)
-
-    def __rtruediv__(self, x):
-        return warp.div(x, self)
-
-    def __mod__(self, x):
-        if is_array(x):
-            return NotImplemented
-
-        return warp.mod(self, x)
-
-    def __rmod__(self, x):
-        return warp.mod(x, self)
-
-    def __pos__(self):
-        return warp.pos(self)
-
-    def __neg__(self):
-        return warp.neg(self)
-
-
-class float_base(scalar_base):
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self!s})"
-
-
-class int_base(scalar_base):
-    def __index__(self) -> int:
-        return int(self._type_(self.value).value)
-
-    def __str__(self) -> str:
-        return str(self._type_(self.value).value)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self!s})"
-
-
-class bool:
-    _length_ = 1
-    _type_ = ctypes.c_bool
-
-    def __init__(self, x=False):
-        self.value = x
-
-    def __bool__(self) -> builtins.bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value != 0)
-
-    def __int__(self) -> int:
-        return int(self.value != 0)
-
-    def __str__(self) -> str:
-        return str(self.value != 0)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self!s})"
-
-
-class float16(float_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint16
-
-
-class float32(float_base):
-    _length_ = 1
-    _type_ = ctypes.c_float
-
-
-class float64(float_base):
-    _length_ = 1
-    _type_ = ctypes.c_double
-
-
-class int8(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int8
-
-
-class uint8(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint8
-
-
-class int16(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int16
-
-
-class uint16(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint16
-
-
-class int32(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int32
-
-
-class uint32(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint32
-
-
-class int64(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int64
-
-
-class uint64(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint64
-
-
 def quaternion(dtype=Any):
     class quat_t(vector(length=4, dtype=dtype)):
         pass
@@ -1513,11 +1543,6 @@ transform = transformf
 spatial_vector = spatial_vectorf
 spatial_matrix = spatial_matrixf
 
-
-int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
-float_types = (float16, float32, float64)
-scalar_types = int_types + float_types
-scalar_and_bool_types = (*scalar_types, bool)
 
 vector_types = (
     vec2b,
@@ -2223,9 +2248,9 @@ def scalars_equal_generic(a, b, match_generic=True):
             return True
         if a is Int and b is Int:
             return True
-        if a is Scalar and b in scalar_and_bool_types:
+        if a is Scalar and b in scalar_types:
             return True
-        if b is Scalar and a in scalar_and_bool_types:
+        if b is Scalar and a in scalar_types:
             return True
         if a is Scalar and b is Scalar:
             return True
