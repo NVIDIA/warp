@@ -8824,6 +8824,16 @@ add_builtin(
     hidden=True,
     group="Utility",
 )
+# Bool vector extract (bool is not part of Scalar)
+add_builtin(
+    "extract",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
 add_builtin(
     "extract",
     input_types={"a": quaternion(dtype=Float), "i": Any},
@@ -8905,6 +8915,25 @@ add_builtin(
     hidden=True,
     group="Utility",
 )
+# Bool matrix extract (bool is not part of Scalar)
+add_builtin(
+    "extract",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any},
+    value_func=matrix_extract_value_func,
+    dispatch_func=matrix_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
+add_builtin(
+    "extract",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any, "j": Any},
+    value_func=matrix_extract_value_func,
+    dispatch_func=matrix_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
 
 add_builtin("extract", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
@@ -8946,6 +8975,17 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+# implements &bool_vector[index] (bool is not part of Scalar)
+add_builtin(
+    "index",
+    input_types={"a": vector(length=Any, dtype=bool), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 # implements &quaternion[index]
 add_builtin(
     "index",
@@ -8979,10 +9019,32 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+# implements &(*bool_vector)[index] (bool is not part of Scalar)
+add_builtin(
+    "indexref",
+    input_types={"a": vector(length=Any, dtype=bool), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    value_func=matrix_ij_value_func,
+    dispatch_func=matrix_ij_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
+# implements &(*bool_matrix)[i, j] (bool is not part of Scalar)
+add_builtin(
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": int, "j": int},
     value_func=matrix_ij_value_func,
     dispatch_func=matrix_ij_dispatch_func,
     hidden=True,
@@ -9617,6 +9679,50 @@ add_builtin(
 add_builtin(
     "expect_neq",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "b": matrix(shape=(Any, Any), dtype=Scalar)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are equal",
+    group="Utility",
+    hidden=True,
+    export=False,
+    is_differentiable=False,
+)
+
+# Bool vector/matrix overloads for expect_eq/expect_neq (bool is not part of Scalar)
+add_builtin(
+    "expect_eq",
+    input_types={"a": vector(length=Any, dtype=bool), "b": vector(length=Any, dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
+    group="Utility",
+    hidden=True,
+    is_differentiable=False,
+)
+add_builtin(
+    "expect_neq",
+    input_types={"a": vector(length=Any, dtype=bool), "b": vector(length=Any, dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are equal",
+    group="Utility",
+    hidden=True,
+    export=False,
+    is_differentiable=False,
+)
+add_builtin(
+    "expect_eq",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "b": matrix(shape=(Any, Any), dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
+    group="Utility",
+    hidden=True,
+    is_differentiable=False,
+)
+add_builtin(
+    "expect_neq",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "b": matrix(shape=(Any, Any), dtype=bool)},
     constraint=sametypes,
     value_func=expect_eq_value_func,
     doc="Prints an error to stdout if ``a`` and ``b`` are equal",
