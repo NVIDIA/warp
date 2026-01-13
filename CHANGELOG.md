@@ -27,6 +27,8 @@
 
 ### Documentation
 
+- Add `example_particle_repulsion.py` to optimization examples, demonstrating how to use `wp.grad()`
+  ([GH-1137](https://github.com/NVIDIA/warp/issues/1137)).
 - Add a Random Number Generation section to the runtime documentation, describing seed management strategies
   to avoid correlated random number sequences ([GH-1043](https://github.com/NVIDIA/warp/issues/1043)).
 
