@@ -262,6 +262,42 @@ def test_conditional_unequal_types(test: unittest.TestCase, device):
     del sys.modules["warp.tests.aux_test_conditional_unequal_types_kernels"]
 
 
+@wp.kernel
+def test_ifexp_with_array_access_kernel(
+    idx: wp.int32,
+    transforms: wp.array(dtype=wp.transform),
+    result: wp.array(dtype=wp.vec3),
+):
+    # Conditional expression with array element access in else branch
+    # When idx < 0, should use transform_identity() and NOT access transforms[idx]
+    # This is the exact pattern that caused the segfault bug.
+    t = wp.transform_identity() if idx < 0 else transforms[idx]
+    result[0] = wp.transform_get_translation(t)
+
+
+def test_ifexp_with_array_access(test: unittest.TestCase, device):
+    transforms = wp.array((wp.transform(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0),), dtype=wp.transform, device=device)
+    result = wp.zeros(1, dtype=wp.vec3, device=device)
+
+    wp.launch(
+        test_ifexp_with_array_access_kernel,
+        dim=1,
+        inputs=(-1, transforms),
+        outputs=(result,),
+        device=device,
+    )
+    test.assertEqual(result.numpy()[0].tolist(), [0.0, 0.0, 0.0])
+
+    wp.launch(
+        test_ifexp_with_array_access_kernel,
+        dim=1,
+        inputs=(0, transforms),
+        outputs=(result,),
+        device=device,
+    )
+    test.assertEqual(result.numpy()[0].tolist(), [1.0, 2.0, 3.0])
+
+
 devices = get_test_devices()
 
 
@@ -289,6 +325,7 @@ add_kernel_test(TestConditional, kernel=test_conditional_chain_and, dim=1, devic
 add_kernel_test(TestConditional, kernel=test_conditional_chain_eqs, dim=1, devices=devices)
 add_kernel_test(TestConditional, kernel=test_conditional_chain_mixed, dim=1, devices=devices)
 add_function_test(TestConditional, "test_conditional_unequal_types", test_conditional_unequal_types, devices=devices)
+add_function_test(TestConditional, "test_ifexp_with_array_access", test_ifexp_with_array_access, devices=devices)
 
 
 if __name__ == "__main__":

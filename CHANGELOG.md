@@ -26,6 +26,8 @@
 - Fix IDE autocomplete stubs to show all valid signatures for functions that have both Python API
   and kernel-scope versions (e.g., `zeros()`). The stub generator now detects conflicts and
   generates merged `@overload` definitions where appropriate ([GH-1156](https://github.com/NVIDIA/warp/issues/1156)).
+- Fix a segfault in conditional expressions (ternary `if`/`else`) when one branch accesses an array element
+  and the other branch is taken ([GH-1094](https://github.com/NVIDIA/warp/issues/1094)).
 
 ### Documentation
 
