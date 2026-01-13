@@ -2248,9 +2248,9 @@ def scalars_equal_generic(a, b, match_generic=True):
             return True
         if a is Int and b is Int:
             return True
-        if a is Scalar and b in scalar_and_bool_types:
+        if a is Scalar and b in scalar_types:
             return True
-        if b is Scalar and a in scalar_and_bool_types:
+        if b is Scalar and a in scalar_types:
             return True
         if a is Scalar and b is Scalar:
             return True
