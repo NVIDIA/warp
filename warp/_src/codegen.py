@@ -2313,7 +2313,7 @@ class Adjoint:
         # If a message was provided with the assert, " marks can interfere with the generated code
         escaped_segment = source_segment.replace('"', '\\"')
 
-        adj.add_forward(f'assert(("{escaped_segment}",{cond.emit()}));')
+        adj.add_forward(f'assert(((void)"{escaped_segment}",{cond.emit()}));')
 
     def emit_Constant(adj, node):
         if node.value is None:
