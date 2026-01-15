@@ -174,6 +174,9 @@ omit = [
     "__init__.pyi",
 ]
 
+[tool.uv]
+managed = true
+
 [[tool.uv.index]]
 name = "testpypi"
 url = "https://test.pypi.org/simple/"
