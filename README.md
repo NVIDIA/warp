@@ -360,7 +360,7 @@ Review the license terms of these open source projects before use.
 ## Contributing
 
 Contributions and pull requests from the community are welcome.
-Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
+Please see the [Contribution Guide](https://nvidia.github.io/warp/user_guide/contribution_guide.html) for more
 information on contributing to the development of Warp.
 
 ## Publications & Citation
