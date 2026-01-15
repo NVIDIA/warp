@@ -575,7 +575,9 @@ linux-x86_64 asv:
   before_script:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
     - df -h
-    - GIT_LFS_SKIP_SMUDGE=1
+    # Remove /shared/local/bin from PATH - contains musl-linked binaries from the ephemeral
+    # runner (v1.5.1+) that are incompatible with this glibc-based container
+    - export PATH=$(echo "$PATH" | sed 's|:/shared/local/bin||g; s|/shared/local/bin:||g')
     # Make sure the comparison ref can be checked out by asv
     - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
     - 'echo "COMPARE_REF value: ${COMPARE_REF}"'
