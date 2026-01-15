@@ -1,7 +1,7 @@
 <!--
 Thank you for contributing to NVIDIA Warp!
 
-See the contribution guide: https://nvidia.github.io/warp/modules/contribution_guide.html
+See the contribution guide: https://nvidia.github.io/warp/user_guide/contribution_guide.html
 
 Please fill the relevant sections.
 
