@@ -1114,9 +1114,6 @@
 - Add documentation for dynamic loop autograd limitations
 - Allow users to pass function arguments by keyword in a kernel using standard Python calling semantics
 - Implement the assignment operator for `wp.quat`
-
-## [1.2.2] - 2024-07-04
-
 - Support for NumPy >= 2.0
 
 ## [1.2.1] - 2024-06-14
