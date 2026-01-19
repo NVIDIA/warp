@@ -531,18 +531,16 @@ class Struct:
             getter = item.fget
             # We need to add 'self' as the first argument, with the type of the struct itself.
             # This allows overload resolution to match the struct instance to the 'self' argument.
-            # Copy annotations to avoid mutating the original function
-            annotations = dict(getattr(getter, "__annotations__", {}))
-
+            if not hasattr(getter, "__annotations__"):
+                getter.__annotations__ = {}
 
             # Find the name of the first argument (conventionally 'self')
             argspec = get_full_arg_spec(getter)
-            
+
             if len(argspec.args) == 0:
                 raise TypeError(f"Struct property '{name}' must have at least one argument (self)")
             self_arg = argspec.args[0]
-            annotations[self_arg] = self
-            getter.__annotations__ = annotations
+            getter.__annotations__[self_arg] = self
 
             # Create the Warp Function.
             # We pass 'func=getter' so that input_types and return_types are inferred.
