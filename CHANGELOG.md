@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- Fix `wp.tile_matmul()` reading from uninitialized output tile when using `c = wp.tile_matmul(a, b)`.
 - Fix CPU kernel assertions in debug mode not aborting the program.
 - Fix `@wp.func` decorated functions showing generic `_Wrapped` types in Pyright/Pylance instead of their actual
   signatures on Python 3.10+ ([GH-1163](https://github.com/NVIDIA/warp/issues/1163)).
