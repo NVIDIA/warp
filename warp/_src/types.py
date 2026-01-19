@@ -3795,7 +3795,7 @@ class array(Array[DType]):
         elif isinstance(self._allocator, warp._src.context.CudaMempoolAllocator):
             raise RuntimeError(
                 "Currently, IPC is only supported for arrays using the default memory allocator.\n"
-                "See https://nvidia.github.io/warp/modules/allocators.html for instructions on how to disable\n"
+                "See https://nvidia.github.io/warp/deep_dive/allocators.html for instructions on how to disable\n"
                 f"the mempool allocator on device {self.device}."
             )
 
