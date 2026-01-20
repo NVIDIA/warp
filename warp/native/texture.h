@@ -528,4 +528,45 @@ CUDA_CALLABLE void adj_texture_sample(
 using Texture2D = texture2d_t;
 using Texture3D = texture3d_t;
 
+// ============================================================================
+// Adjoint Support for Texture Types (required when textures are array dtypes)
+// Textures are not differentiable, so these are essentially no-ops
+// ============================================================================
+
+// 2D Texture operations
+CUDA_CALLABLE inline texture2d_t add(const texture2d_t& a, const texture2d_t& b)
+{
+    // Textures are not addable; return first argument unchanged
+    return a;
+}
+
+CUDA_CALLABLE inline texture2d_t& operator+=(texture2d_t& a, const texture2d_t& b)
+{
+    // No-op: textures have no gradients to accumulate
+    return a;
+}
+
+CUDA_CALLABLE inline void adj_atomic_add(texture2d_t* p, const texture2d_t& t)
+{
+    // No-op: textures are not differentiable
+}
+
+// 3D Texture operations
+CUDA_CALLABLE inline texture3d_t add(const texture3d_t& a, const texture3d_t& b)
+{
+    // Textures are not addable; return first argument unchanged
+    return a;
+}
+
+CUDA_CALLABLE inline texture3d_t& operator+=(texture3d_t& a, const texture3d_t& b)
+{
+    // No-op: textures have no gradients to accumulate
+    return a;
+}
+
+CUDA_CALLABLE inline void adj_atomic_add(texture3d_t* p, const texture3d_t& t)
+{
+    // No-op: textures are not differentiable
+}
+
 }  // namespace wp

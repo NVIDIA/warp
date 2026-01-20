@@ -545,6 +545,7 @@ class Texture2D(Texture):
 
     _default_dims = 2
     _wp_native_name_ = "texture2d_t"
+    _wp_ctype_ = texture2d_t  # ctypes struct for arrays of textures
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
@@ -612,6 +613,7 @@ class Texture3D(Texture):
 
     _default_dims = 3
     _wp_native_name_ = "texture3d_t"
+    _wp_ctype_ = texture3d_t  # ctypes struct for arrays of textures
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
