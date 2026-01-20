@@ -6366,31 +6366,6 @@ def event_from_ipc_handle(handle, device: DeviceLike = None) -> Event:
 # given a kernel destination argument type and a value convert
 #  to a c-type that can be passed to a kernel
 def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
-    # Handle Texture2D and Texture3D types (when used as type annotations)
-    if arg_type is warp._src.types.Texture2D:
-        if value is None:
-            return warp._src.types.texture2d_t()
-        if isinstance(value, warp._src.types.Texture2D):
-            return value.__ctype__()
-        if isinstance(value, warp._src.types.texture2d_t):
-            return value
-        raise RuntimeError(
-            f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture2D "
-            f"but got {type(value).__name__}"
-        )
-
-    if arg_type is warp._src.types.Texture3D:
-        if value is None:
-            return warp._src.types.texture3d_t()
-        if isinstance(value, warp._src.types.Texture3D):
-            return value.__ctype__()
-        if isinstance(value, warp._src.types.texture3d_t):
-            return value
-        raise RuntimeError(
-            f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture3D "
-            f"but got {type(value).__name__}"
-        )
-
     if warp._src.types.is_array(arg_type):
         if value is None:
             # allow for NULL arrays
@@ -6468,6 +6443,31 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 )
 
             return value.__ctype__()
+
+    # Handle Texture2D and Texture3D types (when used as type annotations)
+    elif arg_type is warp._src.types.Texture2D:
+        if value is None:
+            return warp._src.types.texture2d_t()
+        if isinstance(value, warp._src.types.Texture2D):
+            return value.__ctype__()
+        if isinstance(value, warp._src.types.texture2d_t):
+            return value
+        raise RuntimeError(
+            f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture2D "
+            f"but got {type(value).__name__}"
+        )
+
+    elif arg_type is warp._src.types.Texture3D:
+        if value is None:
+            return warp._src.types.texture3d_t()
+        if isinstance(value, warp._src.types.Texture3D):
+            return value.__ctype__()
+        if isinstance(value, warp._src.types.texture3d_t):
+            return value
+        raise RuntimeError(
+            f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture3D "
+            f"but got {type(value).__name__}"
+        )
 
     elif isinstance(arg_type, warp._src.codegen.Struct):
         assert value is not None

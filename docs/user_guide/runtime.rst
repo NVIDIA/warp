@@ -1754,7 +1754,7 @@ Textures can be created from NumPy arrays or Warp arrays::
     data3d = np.random.rand(64, 64, 64).astype(np.float32)
     tex3d = wp.Texture3D(data3d, filter_mode=wp.TextureFilterMode.LINEAR, device="cuda:0")
 
-Textures can be sampled inside kernels using the ``texture_sample()`` function::
+Textures can be sampled inside kernels using the :func:`wp.texture_sample() <warp._src.lang.texture_sample>` function::
 
     @wp.kernel
     def sample_texture(
@@ -1769,19 +1769,7 @@ Textures can be sampled inside kernels using the ``texture_sample()`` function::
 Supported data types include ``uint8``, ``uint16``, and ``float32``. Integer textures (uint8, uint16)
 are automatically normalized to the [0, 1] range when sampled.
 
-.. autoclass:: Texture2D
-    :members:
-    :undoc-members:
-    :exclude-members: vars
-    :no-index:
-
-.. autoclass:: Texture3D
-    :members:
-    :undoc-members:
-    :exclude-members: vars
-    :no-index:
-
-.. seealso:: `Reference <functions.html#textures>`__ for the texture sampling functions available in kernels.
+.. seealso:: `Reference <language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
 
 
 Bounding Volume Hierarchies (BVH)

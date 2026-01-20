@@ -184,6 +184,35 @@ def test_texture3d_resolution(
 
 
 # ============================================================================
+# Texture Array Kernels
+# ============================================================================
+
+
+@wp.kernel
+def sample_texture2d_array(
+    textures: wp.array(dtype=wp.Texture2D),
+    uv: wp.vec2f,
+    output: wp.array(dtype=float),
+):
+    """Sample from an array of 2D textures, one texture per thread."""
+    tid = wp.tid()
+    tex = textures[tid]
+    output[tid] = wp.texture_sample(tex, uv, dtype=float)
+
+
+@wp.kernel
+def sample_texture3d_array(
+    textures: wp.array(dtype=wp.Texture3D),
+    uvw: wp.vec3f,
+    output: wp.array(dtype=float),
+):
+    """Sample from an array of 3D textures, one texture per thread."""
+    tid = wp.tid()
+    tex = textures[tid]
+    output[tid] = wp.texture_sample(tex, uvw, dtype=float)
+
+
+# ============================================================================
 # Test Data Generation
 # ============================================================================
 
@@ -1721,6 +1750,101 @@ def test_texture3d_backward_compat_address_mode(test, device):
 
 
 # ============================================================================
+# Texture Array Tests
+# ============================================================================
+
+
+def test_texture2d_array(test, device):
+    """Test sampling from an array of 2D textures.
+
+    Creates multiple 2D textures with different constant values and verifies
+    that each thread correctly samples from its corresponding texture.
+    """
+    num_textures = 4
+    width, height = 4, 4
+
+    # Create textures with different constant values (0.25, 0.5, 0.75, 1.0)
+    textures = []
+    expected_values = []
+    for i in range(num_textures):
+        value = (i + 1) * 0.25
+        data = np.full((height, width), value, dtype=np.float32)
+        tex = wp.Texture2D(
+            data,
+            filter_mode=wp.TextureFilterMode.CLOSEST,
+            address_mode=wp.TextureAddressMode.CLAMP,
+            device=device,
+        )
+        textures.append(tex)
+        expected_values.append(value)
+
+    # Create array of textures
+    tex_array = wp.array(textures, dtype=wp.Texture2D, device=device)
+
+    # Output array
+    output = wp.zeros(num_textures, dtype=float, device=device)
+
+    # Sample at center of each texture (same UV for all)
+    uv = wp.vec2f(0.5, 0.5)
+
+    wp.launch(
+        sample_texture2d_array,
+        dim=num_textures,
+        inputs=[tex_array, uv, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = np.array(expected_values, dtype=np.float32)
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture3d_array(test, device):
+    """Test sampling from an array of 3D textures.
+
+    Creates multiple 3D textures with different constant values and verifies
+    that each thread correctly samples from its corresponding texture.
+    """
+    num_textures = 4
+    width, height, depth = 4, 4, 4
+
+    # Create textures with different constant values (0.1, 0.2, 0.3, 0.4)
+    textures = []
+    expected_values = []
+    for i in range(num_textures):
+        value = (i + 1) * 0.1
+        data = np.full((depth, height, width), value, dtype=np.float32)
+        tex = wp.Texture3D(
+            data,
+            filter_mode=wp.TextureFilterMode.CLOSEST,
+            address_mode=wp.TextureAddressMode.CLAMP,
+            device=device,
+        )
+        textures.append(tex)
+        expected_values.append(value)
+
+    # Create array of textures
+    tex_array = wp.array(textures, dtype=wp.Texture3D, device=device)
+
+    # Output array
+    output = wp.zeros(num_textures, dtype=float, device=device)
+
+    # Sample at center of each texture (same UVW for all)
+    uvw = wp.vec3f(0.5, 0.5, 0.5)
+
+    wp.launch(
+        sample_texture3d_array,
+        dim=num_textures,
+        inputs=[tex_array, uvw, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = np.array(expected_values, dtype=np.float32)
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -1841,6 +1965,10 @@ add_function_test(
     test_texture3d_backward_compat_address_mode,
     devices=all_devices,
 )
+
+# Texture array tests - run on all devices
+add_function_test(TestTexture, "test_texture2d_array", test_texture2d_array, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_array", test_texture3d_array, devices=all_devices)
 
 
 if __name__ == "__main__":

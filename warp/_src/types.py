@@ -6137,5 +6137,5 @@ from warp._src.texture import texture2d_t as texture2d_t  # noqa: E402
 from warp._src.texture import texture3d_t as texture3d_t  # noqa: E402
 
 # Add texture types to simple_type_codes now that they're imported
-simple_type_codes[Texture2D] = "tex2d"
-simple_type_codes[Texture3D] = "tex3d"
+simple_type_codes[Texture2D] = "t2"
+simple_type_codes[Texture3D] = "t3"
