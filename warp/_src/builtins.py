@@ -425,7 +425,7 @@ add_builtin(
 )
 add_builtin(
     "isfinite",
-    input_types={"a": quaternion(dtype=Scalar)},
+    input_types={"a": quaternion(dtype=Float)},
     value_type=builtins.bool,
     dispatch_func=special_float_dispatch_func,
     group="Vector Math",
@@ -474,7 +474,7 @@ add_builtin(
 )
 add_builtin(
     "isnan",
-    input_types={"a": quaternion(dtype=Scalar)},
+    input_types={"a": quaternion(dtype=Float)},
     value_type=builtins.bool,
     dispatch_func=special_float_dispatch_func,
     group="Vector Math",
@@ -523,7 +523,7 @@ add_builtin(
 )
 add_builtin(
     "isinf",
-    input_types={"a": quaternion(dtype=Scalar)},
+    input_types={"a": quaternion(dtype=Float)},
     value_type=builtins.bool,
     dispatch_func=special_float_dispatch_func,
     group="Vector Math",
@@ -740,8 +740,8 @@ add_builtin(
 )
 add_builtin(
     "length_sq",
-    input_types={"a": quaternion(dtype=Scalar)},
-    value_func=scalar_sametypes_value_func,
+    input_types={"a": quaternion(dtype=Float)},
+    value_func=float_sametypes_value_func,
     group="Vector Math",
     doc="Compute the squared length of a quaternion ``a``.",
 )
@@ -6930,6 +6930,7 @@ add_builtin(
     group="Utility",
     doc="""Returns the range in reversed order.""",
     export=False,
+    hidden=True,
     is_differentiable=False,
 )
 
@@ -7774,14 +7775,94 @@ add_builtin(
     value_type=int,
     export=False,
     group="Utility",
-    doc="""Return the current thread index for a 1D kernel launch.
+    doc="""Return the current thread index or indices.
 
-    Note that this is the *global* index of the thread in the range [0, dim)
-    where dim is the parameter passed to kernel launch.
+The return type is determined by the unpacking syntax used:
 
-    This function may not be called from user-defined Warp functions.""",
+- ``i = wp.tid()`` - Returns the first thread index as ``int``
+- ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+- ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+- ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+
+The indices correspond to the thread's position in the kernel launch grid.
+If fewer indices are requested than the launch dimensionality, only the
+leading indices are returned.
+
+This function may not be called from user-defined Warp functions.""",
     namespace="",
     native_func="builtin_tid1d",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tid",
+    input_types={},
+    value_type=[int, int],
+    group="Utility",
+    doc="""Return the current thread index or indices.
+
+The return type is determined by the unpacking syntax used:
+
+- ``i = wp.tid()`` - Returns the first thread index as ``int``
+- ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+- ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+- ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+
+The indices correspond to the thread's position in the kernel launch grid.
+If fewer indices are requested than the launch dimensionality, only the
+leading indices are returned.
+
+This function may not be called from user-defined Warp functions.""",
+    namespace="",
+    native_func="builtin_tid2d",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tid",
+    input_types={},
+    value_type=[int, int, int],
+    group="Utility",
+    doc="""Return the current thread index or indices.
+
+The return type is determined by the unpacking syntax used:
+
+- ``i = wp.tid()`` - Returns the first thread index as ``int``
+- ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+- ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+- ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+
+The indices correspond to the thread's position in the kernel launch grid.
+If fewer indices are requested than the launch dimensionality, only the
+leading indices are returned.
+
+This function may not be called from user-defined Warp functions.""",
+    namespace="",
+    native_func="builtin_tid3d",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tid",
+    input_types={},
+    value_type=[int, int, int, int],
+    group="Utility",
+    doc="""Return the current thread index or indices.
+
+The return type is determined by the unpacking syntax used:
+
+- ``i = wp.tid()`` - Returns the first thread index as ``int``
+- ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+- ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+- ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+
+The indices correspond to the thread's position in the kernel launch grid.
+If fewer indices are requested than the launch dimensionality, only the
+leading indices are returned.
+
+This function may not be called from user-defined Warp functions.""",
+    namespace="",
+    native_func="builtin_tid4d",
     is_differentiable=False,
 )
 
@@ -7793,51 +7874,6 @@ add_builtin(
     doc="Returns the number of threads in the current block.",
     namespace="",
     native_func="builtin_block_dim",
-    is_differentiable=False,
-)
-
-add_builtin(
-    "tid",
-    input_types={},
-    value_type=[int, int],
-    group="Utility",
-    doc="""Return the current thread indices for a 2D kernel launch.
-
-    Use ``i,j = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-    This function may not be called from user-defined Warp functions.""",
-    namespace="",
-    native_func="builtin_tid2d",
-    is_differentiable=False,
-)
-
-add_builtin(
-    "tid",
-    input_types={},
-    value_type=[int, int, int],
-    group="Utility",
-    doc="""Return the current thread indices for a 3D kernel launch.
-
-    Use ``i,j,k = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-    This function may not be called from user-defined Warp functions.""",
-    namespace="",
-    native_func="builtin_tid3d",
-    is_differentiable=False,
-)
-
-add_builtin(
-    "tid",
-    input_types={},
-    value_type=[int, int, int, int],
-    group="Utility",
-    doc="""Return the current thread indices for a 4D kernel launch.
-
-    Use ``i,j,k,l = wp.tid()`` syntax to retrieve the coordinates inside the kernel thread grid.
-
-    This function may not be called from user-defined Warp functions.""",
-    namespace="",
-    native_func="builtin_tid4d",
     is_differentiable=False,
 )
 
@@ -8931,9 +8967,10 @@ add_builtin(
     hidden=True,
     group="Utility",
 )
+# Bool vector extract (bool is not part of Scalar)
 add_builtin(
     "extract",
-    input_types={"a": quaternion(dtype=Scalar), "i": Any},
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any},
     value_func=vector_extract_value_func,
     dispatch_func=vector_extract_dispatch_func,
     export=False,
@@ -8942,7 +8979,16 @@ add_builtin(
 )
 add_builtin(
     "extract",
-    input_types={"a": transformation(dtype=Scalar), "i": Any},
+    input_types={"a": quaternion(dtype=Float), "i": Any},
+    value_func=vector_extract_value_func,
+    dispatch_func=vector_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
+add_builtin(
+    "extract",
+    input_types={"a": transformation(dtype=Float), "i": Any},
     value_func=vector_extract_value_func,
     dispatch_func=vector_extract_dispatch_func,
     export=False,
@@ -9012,6 +9058,25 @@ add_builtin(
     hidden=True,
     group="Utility",
 )
+# Bool matrix extract (bool is not part of Scalar)
+add_builtin(
+    "extract",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any},
+    value_func=matrix_extract_value_func,
+    dispatch_func=matrix_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
+add_builtin(
+    "extract",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Any, "j": Any},
+    value_func=matrix_extract_value_func,
+    dispatch_func=matrix_extract_dispatch_func,
+    export=False,
+    hidden=True,
+    group="Utility",
+)
 
 add_builtin("extract", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
 
@@ -9053,6 +9118,17 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+# implements &bool_vector[index] (bool is not part of Scalar)
+add_builtin(
+    "index",
+    input_types={"a": vector(length=Any, dtype=bool), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 # implements &quaternion[index]
 add_builtin(
     "index",
@@ -9086,10 +9162,32 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+# implements &(*bool_vector)[index] (bool is not part of Scalar)
+add_builtin(
+    "indexref",
+    input_types={"a": vector(length=Any, dtype=bool), "i": int},
+    value_func=vector_index_value_func,
+    dispatch_func=vector_index_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    value_func=matrix_ij_value_func,
+    dispatch_func=matrix_ij_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
+# implements &(*bool_matrix)[i, j] (bool is not part of Scalar)
+add_builtin(
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": int, "j": int},
     value_func=matrix_ij_value_func,
     dispatch_func=matrix_ij_dispatch_func,
     hidden=True,
@@ -9169,7 +9267,7 @@ add_builtin(
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
+    input_types={"a": quaternion(dtype=Float), "i": Any, "value": Any},
     value_type=None,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -9179,7 +9277,7 @@ add_builtin(
 # implements transformation[index] = value
 add_builtin(
     "assign_inplace",
-    input_types={"a": transformation(dtype=Scalar), "i": Any, "value": Any},
+    input_types={"a": transformation(dtype=Float), "i": Any, "value": Any},
     value_type=None,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -9207,7 +9305,7 @@ add_builtin(
 # implements quaternion[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
+    input_types={"a": quaternion(dtype=Float), "i": Any, "value": Any},
     value_func=vector_assign_copy_value_func,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -9218,7 +9316,7 @@ add_builtin(
 # implements transformation[index] = value, performs a copy internally if wp.config.enable_vector_component_overwrites is True
 add_builtin(
     "assign_copy",
-    input_types={"a": transformation(dtype=Scalar), "i": Any, "value": Any},
+    input_types={"a": transformation(dtype=Float), "i": Any, "value": Any},
     value_func=vector_assign_copy_value_func,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -9240,7 +9338,7 @@ add_builtin(
 # implements quaternion[idx] += scalar
 add_builtin(
     "add_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
+    input_types={"a": quaternion(dtype=Float), "i": Any, "value": Any},
     value_type=None,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -9283,7 +9381,7 @@ add_builtin(
 # implements quaternion[idx] -= scalar
 add_builtin(
     "sub_inplace",
-    input_types={"a": quaternion(dtype=Scalar), "i": Any, "value": Any},
+    input_types={"a": quaternion(dtype=Float), "i": Any, "value": Any},
     value_type=None,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -9733,6 +9831,50 @@ add_builtin(
     is_differentiable=False,
 )
 
+# Bool vector/matrix overloads for expect_eq/expect_neq (bool is not part of Scalar)
+add_builtin(
+    "expect_eq",
+    input_types={"a": vector(length=Any, dtype=bool), "b": vector(length=Any, dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
+    group="Utility",
+    hidden=True,
+    is_differentiable=False,
+)
+add_builtin(
+    "expect_neq",
+    input_types={"a": vector(length=Any, dtype=bool), "b": vector(length=Any, dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are equal",
+    group="Utility",
+    hidden=True,
+    export=False,
+    is_differentiable=False,
+)
+add_builtin(
+    "expect_eq",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "b": matrix(shape=(Any, Any), dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are not equal",
+    group="Utility",
+    hidden=True,
+    is_differentiable=False,
+)
+add_builtin(
+    "expect_neq",
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "b": matrix(shape=(Any, Any), dtype=bool)},
+    constraint=sametypes,
+    value_func=expect_eq_value_func,
+    doc="Prints an error to stdout if ``a`` and ``b`` are equal",
+    group="Utility",
+    hidden=True,
+    export=False,
+    is_differentiable=False,
+)
+
 add_builtin(
     "lerp",
     input_types={"a": Float, "b": Float, "t": Float},
@@ -9894,8 +10036,8 @@ add_builtin(
 )
 add_builtin(
     "add",
-    input_types={"a": quaternion(dtype=Scalar), "b": quaternion(dtype=Scalar)},
-    value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float)},
+    value_func=sametypes_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -9909,8 +10051,8 @@ add_builtin(
 )
 add_builtin(
     "add",
-    input_types={"a": transformation(dtype=Scalar), "b": transformation(dtype=Scalar)},
-    value_func=sametypes_create_value_func(transformation(dtype=Scalar)),
+    input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float)},
+    value_func=sametypes_create_value_func(transformation(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -9936,15 +10078,15 @@ add_builtin(
 )
 add_builtin(
     "sub",
-    input_types={"a": quaternion(dtype=Scalar), "b": quaternion(dtype=Scalar)},
-    value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float)},
+    value_func=sametypes_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "sub",
-    input_types={"a": transformation(dtype=Scalar), "b": transformation(dtype=Scalar)},
-    value_func=sametypes_create_value_func(transformation(dtype=Scalar)),
+    input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float)},
+    value_func=sametypes_create_value_func(transformation(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -10139,22 +10281,22 @@ add_builtin(
 )
 add_builtin(
     "mul",
-    input_types={"a": quaternion(dtype=Scalar), "b": Scalar},
-    value_func=scalar_mul_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": quaternion(dtype=Float), "b": Scalar},
+    value_func=scalar_mul_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
-    input_types={"a": Scalar, "b": quaternion(dtype=Scalar)},
-    value_func=scalar_mul_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": Scalar, "b": quaternion(dtype=Float)},
+    value_func=scalar_mul_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
-    input_types={"a": quaternion(dtype=Scalar), "b": quaternion(dtype=Scalar)},
-    value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": quaternion(dtype=Float), "b": quaternion(dtype=Float)},
+    value_func=sametypes_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -10267,22 +10409,22 @@ add_builtin(
 
 add_builtin(
     "mul",
-    input_types={"a": transformation(dtype=Scalar), "b": transformation(dtype=Scalar)},
-    value_func=sametypes_create_value_func(transformation(dtype=Scalar)),
+    input_types={"a": transformation(dtype=Float), "b": transformation(dtype=Float)},
+    value_func=sametypes_create_value_func(transformation(dtype=Float)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
-    input_types={"a": Scalar, "b": transformation(dtype=Scalar)},
-    value_func=scalar_mul_create_value_func(transformation(dtype=Scalar)),
+    input_types={"a": Scalar, "b": transformation(dtype=Float)},
+    value_func=scalar_mul_create_value_func(transformation(dtype=Float)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "mul",
-    input_types={"a": transformation(dtype=Scalar), "b": Scalar},
-    value_func=scalar_mul_create_value_func(transformation(dtype=Scalar)),
+    input_types={"a": transformation(dtype=Float), "b": Scalar},
+    value_func=scalar_mul_create_value_func(transformation(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -10342,15 +10484,15 @@ add_builtin(
 )
 add_builtin(
     "div",
-    input_types={"a": quaternion(dtype=Scalar), "b": Scalar},
-    value_func=scalar_mul_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": quaternion(dtype=Float), "b": Scalar},
+    value_func=scalar_mul_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
 add_builtin(
     "div",
-    input_types={"a": Scalar, "b": quaternion(dtype=Scalar)},
-    value_func=scalar_mul_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"a": Scalar, "b": quaternion(dtype=Float)},
+    value_func=scalar_mul_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -10374,8 +10516,8 @@ add_builtin(
 )
 add_builtin(
     "pos",
-    input_types={"x": quaternion(dtype=Scalar)},
-    value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"x": quaternion(dtype=Float)},
+    value_func=sametypes_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -10396,8 +10538,8 @@ add_builtin(
 )
 add_builtin(
     "neg",
-    input_types={"x": quaternion(dtype=Scalar)},
-    value_func=sametypes_create_value_func(quaternion(dtype=Scalar)),
+    input_types={"x": quaternion(dtype=Float)},
+    value_func=sametypes_create_value_func(quaternion(dtype=Float)),
     doc="",
     group="Operators",
 )
@@ -10753,25 +10895,8 @@ def tile_matmul_value_func(arg_types, arg_values):
     return tile(dtype=a.dtype, shape=(a.shape[0], b.shape[1]), storage="shared")
 
 
-def tile_matmul_lto_dispatch_func(
-    arg_types: Mapping[str, type],
-    return_type: Any,
-    return_values: List[Var],
-    arg_values: Mapping[str, Var],
-    options: Mapping[str, Any],
-    builder: warp._src.context.ModuleBuilder,
-):
-    a = arg_values["a"]
-    b = arg_values["b"]
-    alpha = arg_values["alpha"]
-
-    if len(return_values) > 0:
-        beta = 0.0  # for c = tile_matmul(a,b) case we want to overwrite c value
-        out = return_values[0]
-    else:
-        beta = arg_values["beta"]
-        out = arg_values["out"]
-
+def _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder):
+    """Common dispatch logic for tile_matmul variants."""
     if not is_tile(out.type):
         raise TypeError(f"tile_matmul() 'out' argument must be a tile, got {out!r}")
 
@@ -10791,16 +10916,35 @@ def tile_matmul_lto_dispatch_func(
     a.type.storage = "shared"
     b.type.storage = "shared"
     out.type.storage = "shared"
-    template_args = ()
 
     M, K = a.type.shape[0], a.type.shape[1]
     _, N = b.type.shape[0], b.type.shape[1]
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
+    return M, K, N, num_threads, arch
+
+
+def tile_matmul_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp._src.context.ModuleBuilder,
+):
+    """Dispatch for c = tile_matmul(a, b) - does not read from output."""
+    a = arg_values["a"]
+    b = arg_values["b"]
+    alpha = arg_values["alpha"]
+    beta = 0.0
+    out = return_values[0]
+
+    M, K, N, num_threads, arch = _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder)
+
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, 0, 0, a, b, out, alpha, beta), template_args, [], 0)
+        return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
     else:
 
         def tile_flip_layout(layout):
@@ -10872,7 +11016,104 @@ def tile_matmul_lto_dispatch_func(
                 alpha,
                 beta,
             ),
-            template_args,
+            (),
+            [lto_forward, lto_backward_A, lto_backward_B],
+            0,
+        )
+
+
+def tile_matmul_acc_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp._src.context.ModuleBuilder,
+):
+    """Dispatch for tile_matmul(a, b, out=c) - accumulates into output."""
+    a = arg_values["a"]
+    b = arg_values["b"]
+    alpha = arg_values["alpha"]
+    beta = arg_values["beta"]
+    out = arg_values["out"]
+
+    M, K, N, num_threads, arch = _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder)
+
+    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
+        # CPU/no-MathDx dispatch
+        return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
+    else:
+
+        def tile_flip_layout(layout):
+            if layout == "rowmajor":
+                return "colmajor"
+            elif layout == "colmajor":
+                return "rowmajor"
+
+        # generate the LTOs
+        #    C += A * B
+        (fun_forward, lto_forward) = warp._src.build.build_lto_dot(
+            M,
+            N,
+            K,
+            a.type.dtype,
+            b.type.dtype,
+            out.type.dtype,
+            a.type.layout,
+            b.type.layout,
+            out.type.layout,
+            arch,
+            num_threads,
+            builder,
+        )
+        if warp.config.enable_backward:
+            # adjA += adjC * B^T - Transpose ~= flipped layout
+            (fun_backward_A, lto_backward_A) = warp._src.build.build_lto_dot(
+                M,
+                K,
+                N,
+                out.type.dtype,
+                b.type.dtype,
+                a.type.dtype,
+                out.type.layout,
+                tile_flip_layout(b.type.layout),
+                a.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+            # adjB += A^T * adjC - Transpose ~= flipped layout
+            (fun_backward_B, lto_backward_B) = warp._src.build.build_lto_dot(
+                K,
+                N,
+                M,
+                a.type.dtype,
+                out.type.dtype,
+                b.type.dtype,
+                tile_flip_layout(a.type.layout),
+                out.type.layout,
+                b.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+        else:
+            # adjoints aren't computed, so we reuse fun_forward as a dummy arg
+            (fun_backward_A, lto_backward_A) = (fun_forward, None)
+            (fun_backward_B, lto_backward_B) = (fun_forward, None)
+
+        return (
+            (
+                Var(fun_forward, str, False, True, False),
+                Var(fun_backward_A, str, False, True, False),
+                Var(fun_backward_B, str, False, True, False),
+                a,
+                b,
+                out,
+                alpha,
+                beta,
+            ),
+            (),
             [lto_forward, lto_backward_A, lto_backward_B],
             0,
         )
@@ -10889,7 +11130,8 @@ add_builtin(
     },
     defaults={"alpha": 1.0, "beta": 1.0},
     value_func=tile_matmul_out_value_func,
-    lto_dispatch_func=tile_matmul_lto_dispatch_func,
+    lto_dispatch_func=tile_matmul_acc_lto_dispatch_func,
+    native_func="tile_matmul_acc",
     variadic=False,
     doc="""Computes the matrix product and accumulates ``out = alpha * a*b + beta * out``.
 
@@ -11869,7 +12111,7 @@ add_builtin(
 
 add_builtin(
     "len",
-    input_types={"a": quaternion(dtype=Scalar)},
+    input_types={"a": quaternion(dtype=Float)},
     value_func=static_len_value_func,
     doc="Return the number of elements in a quaternion.",
     group="Utility",

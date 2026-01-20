@@ -4431,6 +4431,7 @@ inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
 }
 
 template <
+    bool Accumulate,
     typename LayoutA,
     typename LayoutB,
     typename LayoutC,
@@ -4458,7 +4459,10 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
             sum = muladd<decltype(sum)>(a, b, sum);
         }
 
-        C(coord) = alpha * sum + beta * C(coord);
+        if constexpr (Accumulate)
+            C(coord) = alpha * sum + beta * C(coord);
+        else
+            C(coord) = alpha * sum;
     }
 }
 
@@ -4580,6 +4584,7 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
 }  // namespace partition_gemm
 
 
+// tile_matmul: C = alpha * A @ B (does not read from C)
 template <
     typename Fwd,
     typename AdjA,
@@ -4605,6 +4610,49 @@ TileC& tile_matmul(
     static_assert(ShapeC::dim(0) == ShapeA::dim(0), "Expected ShapeC::dim(0) == ShapeA::dim(0)");
     static_assert(ShapeC::dim(1) == ShapeB::dim(1), "Expected ShapeC::dim(1) == ShapeB::dim(1)");
 
+    using T = typename TileC::Type;
+
+    T alphaT = T(alpha);
+    T betaT = T(beta);
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+    partitioned_gemm::scalar_matmul<false, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
+        A.data, B.data, C.data, alphaT, betaT
+    );
+#else
+    fun_forward(&alphaT, A.data.ptr, B.data.ptr, &betaT, C.data.ptr);
+#endif
+
+    WP_TILE_SYNC();
+
+    return C;
+}
+
+// tile_matmul_acc: C = alpha * A @ B + beta * C (accumulates into C)
+template <
+    typename Fwd,
+    typename AdjA,
+    typename AdjB,
+    typename TileA,
+    typename TileB,
+    typename TileC,
+    typename Alpha,
+    typename Beta>
+TileC& tile_matmul_acc(
+    Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C, Alpha& alpha, Beta& beta
+)
+{
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+    using ShapeC = typename TileC::Layout::Shape;
+
+    static_assert(ShapeA::N == 2, "Expected ShapeA::N == 2");
+    static_assert(ShapeB::N == 2, "Expected ShapeB::N == 2");
+    static_assert(ShapeC::N == 2, "Expected ShapeC::N == 2");
+
+    static_assert(ShapeA::dim(1) == ShapeB::dim(0), "Expected ShapeA::dim(1) == ShapeB::dim(0)");
+    static_assert(ShapeC::dim(0) == ShapeA::dim(0), "Expected ShapeC::dim(0) == ShapeA::dim(0)");
+    static_assert(ShapeC::dim(1) == ShapeB::dim(1), "Expected ShapeC::dim(1) == ShapeB::dim(1)");
 
     using T = typename TileC::Type;
 
@@ -4612,7 +4660,7 @@ TileC& tile_matmul(
     T betaT = T(beta);
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
-    partitioned_gemm::scalar_matmul<typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
+    partitioned_gemm::scalar_matmul<true, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
         A.data, B.data, C.data, alphaT, betaT
     );
 #else
@@ -4625,7 +4673,7 @@ TileC& tile_matmul(
 }
 
 
-// backward for the wp.tile_matmul(a, b, out) syntax
+// backward for tile_matmul_acc (the wp.tile_matmul(a, b, out) syntax)
 template <
     typename Fwd,
     typename AdjA,
@@ -4637,7 +4685,7 @@ template <
     typename Beta,
     typename AdjAlpha,
     typename AdjBeta>
-void adj_tile_matmul(
+void adj_tile_matmul_acc(
     Fwd fun_forward,
     AdjA fun_backward_A,
     AdjB fun_backward_B,
@@ -4669,10 +4717,13 @@ void adj_tile_matmul(
     auto At = tile_transpose(A);
     auto Bt = tile_transpose(B);
 
-    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
+    // Backward always accumulates into gradients (beta=1.0)
+    partitioned_gemm::scalar_matmul<
+        true, typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
         adj_C.grad, Bt.data, adj_A.grad, alpha_A, beta_A
     );
-    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
+    partitioned_gemm::scalar_matmul<
+        true, typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
         At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
     );
 #else
@@ -4688,7 +4739,7 @@ void adj_tile_matmul(
     WP_TILE_SYNC();
 }
 
-// backward for the out = wp.tile_matmul(a, b) syntax
+// backward for tile_matmul (the out = wp.tile_matmul(a, b) syntax)
 template <
     typename Fwd,
     typename AdjA,
@@ -4733,10 +4784,13 @@ void adj_tile_matmul(
     auto At = tile_transpose(A);
     auto Bt = tile_transpose(B);
 
-    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
+    // Backward always accumulates into gradients (beta=1.0)
+    partitioned_gemm::scalar_matmul<
+        true, typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
         adj_C.grad, Bt.data, adj_A.grad, alpha_A, beta_A
     );
-    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
+    partitioned_gemm::scalar_matmul<
+        true, typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
         At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
     );
 #else

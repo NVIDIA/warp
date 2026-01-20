@@ -2114,10 +2114,12 @@ class Adjoint:
 
         adj.begin_if(cond)
         body = adj.eval(node.body)
+        body = adj.load(body)
         adj.end_if(cond)
 
         adj.begin_else(cond)
         orelse = adj.eval(node.orelse)
+        orelse = adj.load(orelse)
         adj.end_else(cond)
 
         return adj.add_builtin_call("where", [cond, body, orelse])
@@ -2311,7 +2313,7 @@ class Adjoint:
         # If a message was provided with the assert, " marks can interfere with the generated code
         escaped_segment = source_segment.replace('"', '\\"')
 
-        adj.add_forward(f'assert(("{escaped_segment}",{cond.emit()}));')
+        adj.add_forward(f'assert(((void)"{escaped_segment}",{cond.emit()}));')
 
     def emit_Constant(adj, node):
         if node.value is None:

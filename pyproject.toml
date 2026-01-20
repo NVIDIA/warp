@@ -127,10 +127,10 @@ ignore = [
     "RUF046",  # Warp kernels often use int(val)
     "PLW1641", # TODO: Make sure classes implementing __eq__ also implement a __hash__ method
 ]
-exclude = ["warp/__init__.pyi"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "PLC0414"]
+"__init__.pyi" = ["E402", "I001"]
 "warp/*.py" = ["PLC0414"]
 "warp/tests/*.py" = ["F841"]
 "asv/benchmarks/**.py" = ["RUF012"]
@@ -173,6 +173,9 @@ omit = [
     "config.py",
     "__init__.pyi",
 ]
+
+[tool.uv]
+managed = true
 
 [[tool.uv.index]]
 name = "testpypi"

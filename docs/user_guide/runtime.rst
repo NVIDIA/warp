@@ -2007,3 +2007,98 @@ solver configuration, and is otherwise independent of the kernel in which its co
 is called. Therefore, LTOs are stored in a cache that is independent of a given module's kernel cache,
 and will remain cached even if :func:`wp.clear_kernel_cache() <warp.clear_kernel_cache>` is called.
 :func:`wp.clear_lto_cache() <warp.clear_lto_cache>` can be used to clear the LTO cache.
+
+
+Random Number Generation
+------------------------
+
+To generate random numbers in a Warp kernel, use the :func:`wp.rand_init() <warp._src.lang.rand_init>` built-in
+inside the kernel to initialize a random number generator, followed by a call to any of Warp's random number
+built-ins. For example:
+
+.. testcode::
+
+    import warp as wp
+
+    @wp.kernel
+    def rand_kernel(seed: int, out_rand: wp.array(dtype=float)):
+        i = wp.tid()
+        rng = wp.rand_init(seed, i)
+        out_rand[i] = wp.randf(rng)
+
+    seed = 123
+    out_rand = wp.empty(3, dtype=float)
+    wp.launch(rand_kernel, dim=3, inputs=[seed, out_rand])
+
+    print(out_rand.numpy())
+
+.. testoutput::
+
+    [0.1415146 0.9632247 0.6449367]
+
+Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation [1]_.
+:func:`wp.rand_init() <warp._src.lang.rand_init>` hashes the seed and offset with two nested calls
+to a PCG routine to produce a 32-bit unsigned integer representing the RNG state. The offset
+in a kernel is necessary to ensure that each thread generates a unique sequence of numbers. Were it
+absent, all threads would share the same RNG state.
+
+All calls to Warp random functions accept a uint32 RNG state, which is internally updated when 
+the function is called. Hence, consecutive calls to the same random function will generate different
+numbers, e.g.:
+
+.. testcode::
+
+    import warp as wp
+
+    @wp.kernel
+    def rand_kernel(seed: int, output: wp.array(dtype=float)):
+        i = wp.tid()
+        rng = wp.rand_init(seed, i)
+        output[0] = wp.randf(rng)
+        output[1] = wp.randf(rng)
+
+    output = wp.zeros(2, dtype=float)
+    wp.launch(rand_kernel, dim=1, inputs=[42], outputs=[output])
+    print(output.numpy())
+
+.. testoutput::
+
+    [0.86597514 0.1859147 ]
+
+Avoiding Correlated Sequences
+#############################
+
+Care must be taken when two different kernels generate random numbers. If the same seed is used for both,
+any quantities computed from the generated random numbers will be correlated. Similarly, if the same seed
+is passed to a kernel that is launched multiple times, the same random numbers will be generated for each launch.
+To generate different sequences across launches, use a different seed for each launch:
+
+.. testcode::
+
+    import warp as wp
+
+    def increment_seed(seed: int) -> int:
+        return seed + 1
+
+    @wp.kernel
+    def rand_kernel(seed: int, out_rand: wp.array(dtype=float)):
+        i = wp.tid()
+        rng = wp.rand_init(seed, i)
+        out_rand[i] = wp.randf(rng)
+
+    seed = 123
+    out_rand = wp.empty(3, dtype=float)
+    wp.launch(rand_kernel, dim=3, inputs=[seed, out_rand])
+    print(out_rand.numpy())
+
+    seed = increment_seed(seed)
+    wp.launch(rand_kernel, dim=3, inputs=[seed, out_rand])
+    print(out_rand.numpy())
+
+.. testoutput::
+
+    [0.1415146 0.9632247 0.6449367]
+    [0.37815237 0.68619    0.7548081 ]
+
+.. [1] Mark Jarzynski and Marc Olano, `Hash Functions for GPU Rendering <https://jcgt.org/published/0009/03/02/>`_,
+   Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.
