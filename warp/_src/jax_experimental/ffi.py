@@ -680,7 +680,6 @@ class FfiCallable:
                 assert num_outputs == self.num_outputs
 
                 cuda_stream = get_stream_from_callframe(call_frame.contents)
-
                 device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
 
                 if self.graph_mode == GraphMode.WARP:
