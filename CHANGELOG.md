@@ -31,6 +31,7 @@
 - Fix a segfault in conditional expressions (ternary `if`/`else`) when one branch accesses an array element
   and the other branch is taken ([GH-1094](https://github.com/NVIDIA/warp/issues/1094)).
 - Fix reporting of returning a value from a kernel ([GH-1109](https://github.com/NVIDIA/warp/issues/1109)).
+- Fix JAX FFI multi-gpu graph caching ([GH-1181](https://github.com/NVIDIA/warp/pull/1181)).
 
 ### Documentation
 
