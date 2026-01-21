@@ -1750,6 +1750,191 @@ def test_texture3d_backward_compat_address_mode(test, device):
 
 
 # ============================================================================
+# Texture as Struct Member Tests
+# ============================================================================
+
+
+@wp.struct
+class TextureStruct2D:
+    """Struct containing a 2D texture member."""
+
+    tex: wp.Texture2D
+    scale: float
+
+
+@wp.struct
+class TextureStruct3D:
+    """Struct containing a 3D texture member."""
+
+    tex: wp.Texture3D
+    offset: float
+
+
+@wp.struct
+class TextureStructBoth:
+    """Struct containing both 2D and 3D texture members."""
+
+    tex2d: wp.Texture2D
+    tex3d: wp.Texture3D
+    multiplier: float
+
+
+@wp.kernel
+def sample_texture2d_from_struct(
+    s: TextureStruct2D,
+    uv: wp.vec2f,
+    output: wp.array(dtype=float),
+):
+    """Sample a 2D texture from a struct member."""
+    tid = wp.tid()
+    value = wp.texture_sample(s.tex, uv, dtype=float)
+    output[tid] = value * s.scale
+
+
+@wp.kernel
+def sample_texture3d_from_struct(
+    s: TextureStruct3D,
+    uvw: wp.vec3f,
+    output: wp.array(dtype=float),
+):
+    """Sample a 3D texture from a struct member."""
+    tid = wp.tid()
+    value = wp.texture_sample(s.tex, uvw, dtype=float)
+    output[tid] = value + s.offset
+
+
+@wp.kernel
+def sample_both_textures_from_struct(
+    s: TextureStructBoth,
+    uv: wp.vec2f,
+    uvw: wp.vec3f,
+    output: wp.array(dtype=float),
+):
+    """Sample both 2D and 3D textures from a struct."""
+    tid = wp.tid()
+    val2d = wp.texture_sample(s.tex2d, uv, dtype=float)
+    val3d = wp.texture_sample(s.tex3d, uvw, dtype=float)
+    output[tid] = (val2d + val3d) * s.multiplier
+
+
+def test_texture2d_struct_member(test, device):
+    """Test that wp.Texture2D can be a member of a warp struct."""
+    width, height = 4, 4
+
+    # Create a texture with a constant value
+    data = np.full((height, width), 0.5, dtype=np.float32)
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create struct instance with texture
+    s = TextureStruct2D()
+    s.tex = tex
+    s.scale = 2.0
+
+    # Output array
+    output = wp.zeros(1, dtype=float, device=device)
+
+    # Sample at center
+    uv = wp.vec2f(0.5, 0.5)
+
+    wp.launch(
+        sample_texture2d_from_struct,
+        dim=1,
+        inputs=[s, uv, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    expected = 0.5 * 2.0  # texture value * scale
+    test.assertAlmostEqual(result, expected, places=4)
+
+
+def test_texture3d_struct_member(test, device):
+    """Test that wp.Texture3D can be a member of a warp struct."""
+    width, height, depth = 4, 4, 4
+
+    # Create a texture with a constant value
+    data = np.full((depth, height, width), 0.25, dtype=np.float32)
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create struct instance with texture
+    s = TextureStruct3D()
+    s.tex = tex
+    s.offset = 0.75
+
+    # Output array
+    output = wp.zeros(1, dtype=float, device=device)
+
+    # Sample at center
+    uvw = wp.vec3f(0.5, 0.5, 0.5)
+
+    wp.launch(
+        sample_texture3d_from_struct,
+        dim=1,
+        inputs=[s, uvw, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    expected = 0.25 + 0.75  # texture value + offset
+    test.assertAlmostEqual(result, expected, places=4)
+
+
+def test_texture_struct_both_members(test, device):
+    """Test that both wp.Texture2D and wp.Texture3D can be members of the same struct."""
+    # Create 2D texture
+    data2d = np.full((4, 4), 0.3, dtype=np.float32)
+    tex2d = wp.Texture2D(
+        data2d,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create 3D texture
+    data3d = np.full((4, 4, 4), 0.2, dtype=np.float32)
+    tex3d = wp.Texture3D(
+        data3d,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create struct instance with both textures
+    s = TextureStructBoth()
+    s.tex2d = tex2d
+    s.tex3d = tex3d
+    s.multiplier = 2.0
+
+    # Output array
+    output = wp.zeros(1, dtype=float, device=device)
+
+    # Sample coordinates
+    uv = wp.vec2f(0.5, 0.5)
+    uvw = wp.vec3f(0.5, 0.5, 0.5)
+
+    wp.launch(
+        sample_both_textures_from_struct,
+        dim=1,
+        inputs=[s, uv, uvw, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    expected = (0.3 + 0.2) * 2.0  # (tex2d + tex3d) * multiplier
+    test.assertAlmostEqual(result, expected, places=4)
+
+
+# ============================================================================
 # Texture Array Tests
 # ============================================================================
 
@@ -1969,6 +2154,13 @@ add_function_test(
 # Texture array tests - run on all devices
 add_function_test(TestTexture, "test_texture2d_array", test_texture2d_array, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_array", test_texture3d_array, devices=all_devices)
+
+# Texture as struct member tests - run on all devices
+add_function_test(TestTexture, "test_texture2d_struct_member", test_texture2d_struct_member, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_struct_member", test_texture3d_struct_member, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture_struct_both_members", test_texture_struct_both_members, devices=all_devices
+)
 
 
 if __name__ == "__main__":
