@@ -227,20 +227,33 @@ template <typename Tile, typename Op> CUDA_CALLABLE_DEVICE auto tile_reduce_impl
         thread_sum = f(thread_sum, input.data[i]);
     }
 
-    // shared memory for cross-warp reduction
-    __shared__ T partials[warp_count];
-    __shared__ int active_warps;
+    // step 2: combine thread results across block
+    T block_sum;
+    if constexpr (warp_count == 1) {
+        // fast path: single warp, just do warp reduction
+        unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+        if (thread_has_data)
+            block_sum = warp_reduce(thread_sum, f, mask);
 
-    if (threadIdx.x == 0)
-        active_warps = 0;
+        // write from first active lane (warp_reduce result is only valid there)
+        int first_active = __ffs(mask) - 1;
+        if (threadIdx.x == first_active)
+            output.data[0] = block_sum;
+    } else {
+        // multi-warp path: cross-warp reduction via shared memory
+        __shared__ T partials[warp_count];
+        __shared__ int active_warps;
 
-    WP_TILE_SYNC();
+        if (threadIdx.x == 0)
+            active_warps = 0;
 
-    // step 2-3: combine thread results across warps and block
-    T block_sum = block_combine_thread_results(thread_sum, thread_has_data, f, partials, active_warps);
+        WP_TILE_SYNC();
 
-    if (threadIdx.x == 0)
-        output.data[0] = block_sum;
+        block_sum = block_combine_thread_results(thread_sum, thread_has_data, f, partials, active_warps);
+
+        if (threadIdx.x == 0)
+            output.data[0] = block_sum;
+    }
 
     return output;
 }
@@ -337,7 +350,7 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
         // Tier 3: Block-level reduction (entire block collaborates on each output element)
         constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
 
-        // shared memory for cross-warp reduction
+        // shared memory for cross-warp reduction (only needed for multi-warp)
         __shared__ T partials[warp_count];
         __shared__ int active_warps;
 
@@ -362,17 +375,30 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
                 }
             }
 
-            // initialize active warp counter
-            if (threadIdx.x == 0)
-                active_warps = 0;
+            // step 2: combine thread results across block
+            T block_sum;
+            if constexpr (warp_count == 1) {
+                // fast path: single warp, just do warp reduction
+                unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
+                if (thread_has_data)
+                    block_sum = warp_reduce(thread_sum, f, mask);
 
-            WP_TILE_SYNC();
+                // write from first active lane (warp_reduce result is only valid there)
+                int first_active = __ffs(mask) - 1;
+                if (threadIdx.x == first_active)
+                    output_buffer[out_idx] = block_sum;
+            } else {
+                // multi-warp path: cross-warp reduction via shared memory
+                if (threadIdx.x == 0)
+                    active_warps = 0;
 
-            // step 2-3: combine thread results across warps and block
-            T block_sum = block_combine_thread_results(thread_sum, thread_has_data, f, partials, active_warps);
+                WP_TILE_SYNC();
 
-            if (threadIdx.x == 0)
-                output_buffer[out_idx] = block_sum;
+                block_sum = block_combine_thread_results(thread_sum, thread_has_data, f, partials, active_warps);
+
+                if (threadIdx.x == 0)
+                    output_buffer[out_idx] = block_sum;
+            }
 
             // sync before next output element
             WP_TILE_SYNC();
