@@ -59,31 +59,43 @@ def get_node_name_safe(node):
 
 
 class WarpCodegenError(RuntimeError):
+    """General error during Warp kernel code generation."""
+
     def __init__(self, message):
         super().__init__(message)
 
 
 class WarpCodegenTypeError(TypeError):
+    """Type error during Warp kernel code generation."""
+
     def __init__(self, message):
         super().__init__(message)
 
 
 class WarpCodegenAttributeError(AttributeError):
+    """Attribute error during Warp kernel code generation."""
+
     def __init__(self, message):
         super().__init__(message)
 
 
 class WarpCodegenIndexError(IndexError):
+    """Index error during Warp kernel code generation."""
+
     def __init__(self, message):
         super().__init__(message)
 
 
 class WarpCodegenKeyError(KeyError):
+    """Key error during Warp kernel code generation."""
+
     def __init__(self, message):
         super().__init__(message)
 
 
 class WarpCodegenValueError(ValueError):
+    """Value error during Warp kernel code generation."""
+
     def __init__(self, message):
         super().__init__(message)
 

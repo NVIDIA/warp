@@ -42,13 +42,13 @@ _wp_module_name_ = "warp.fem.field.field"
 
 
 class FieldLike:
-    """Base class for integrable fields"""
+    """Base class for integrable fields."""
 
     EvalArg: Struct
-    """Structure containing field-level arguments passed to device functions for field evaluation"""
+    """Structure containing field-level arguments passed to device functions for field evaluation."""
 
     ElementEvalArg: Struct
-    """Structure combining geometry-level and field-level arguments passed to device functions for field evaluation"""
+    """Structure combining geometry-level and field-level arguments passed to device functions for field evaluation."""
 
     def eval_arg_value(self, device) -> "EvalArg":  # noqa: F821
         """Value of the field-level arguments to be passed to device functions"""
@@ -69,6 +69,7 @@ class FieldLike:
 
     @property
     def name(self) -> str:
+        """Unique name of the field instance."""
         raise NotImplementedError()
 
     @property
@@ -119,12 +120,12 @@ class FieldLike:
         raise NotImplementedError()
 
     def notify_operator_usage(self, ops: set[Operator]):
-        """Makes the Domain aware that the operators `ops` will be applied"""
+        """Make the Domain aware that the operators ``ops`` will be applied."""
         pass
 
 
 class GeometryField(FieldLike):
-    """Base class for fields defined over a geometry"""
+    """Base class for fields defined over a geometry."""
 
     @property
     def geometry(self) -> Geometry:
@@ -138,6 +139,7 @@ class GeometryField(FieldLike):
 
     @property
     def dtype(self) -> type:
+        """Data type of the field values."""
         raise NotImplementedError
 
     @staticmethod
@@ -155,7 +157,7 @@ class GeometryField(FieldLike):
         raise NotImplementedError
 
     def make_deformed_geometry(self, relative=True) -> Geometry:
-        """Returns a deformed version of the underlying geometry, with positions displaced according to this field's values.
+        """Return a deformed version of the underlying geometry, with positions displaced according to this field's values.
 
         Args:
             relative: If ``True``, the field is interpreted as a relative displacement over the original geometry.
@@ -211,7 +213,7 @@ class GeometryField(FieldLike):
 
 
 class SpaceField(GeometryField):
-    """Base class for fields defined over a function space"""
+    """Base class for fields defined over a function space."""
 
     def __init__(self, space: FunctionSpace, space_partition: SpacePartition):
         self._space = space
@@ -222,30 +224,37 @@ class SpaceField(GeometryField):
 
     @property
     def geometry(self) -> Geometry:
+        """Geometry over which the field is defined."""
         return self._space.geometry
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements over which the field is defined."""
         return self._space.element_kind
 
     @property
     def space(self) -> FunctionSpace:
+        """Function space defining the field."""
         return self._space
 
     @property
     def space_partition(self) -> SpacePartition:
+        """Space partition associated with the field."""
         return self._space_partition
 
     @property
     def degree(self) -> int:
+        """Polynomial degree of the field."""
         return self.space.degree
 
     @property
     def dtype(self) -> type:
+        """Data type of the field values."""
         return self.space.dtype
 
     @property
     def dof_dtype(self) -> type:
+        """Data type of the field degrees of freedom."""
         return self.space.dof_dtype
 
     def _make_eval_degree(self):
@@ -259,7 +268,7 @@ class SpaceField(GeometryField):
 
 
 class DiscreteField(SpaceField):
-    """Explicitly-valued field defined over a partition of a discrete function space"""
+    """Explicitly-valued field defined over a partition of a discrete function space."""
 
     @property
     def dof_values(self) -> wp.array:
@@ -268,7 +277,7 @@ class DiscreteField(SpaceField):
 
     @dof_values.setter
     def dof_values(self, values: wp.array):
-        """Sets degrees of freedom values from an array"""
+        """Set degrees of freedom values from an array."""
         raise NotImplementedError
 
     @staticmethod
@@ -278,6 +287,7 @@ class DiscreteField(SpaceField):
 
     @cached_property
     def name(self) -> str:
+        """Unique name for this discrete field."""
         return f"{self.__class__.__qualname__}_{self.space.name}_{self.space_partition.name}"
 
 
@@ -350,6 +360,7 @@ class ImplicitField(GeometryField):
 
     @property
     def values(self):
+        """Argument values passed to the evaluation function."""
         return self._func_arg
 
     @values.setter
@@ -359,32 +370,40 @@ class ImplicitField(GeometryField):
 
     @property
     def geometry(self) -> Geometry:
+        """Underlying geometry of the domain."""
         return self.domain.geometry
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements over which the field is defined."""
         return self.domain.element_kind
 
     @property
     def dtype(self):
+        """Field value type if known, otherwise ``None``."""
         # Cannot determine dtype from function
         return None
 
     def eval_arg_value(self, device):
+        """Return the evaluation argument structure for device functions."""
         return self._func_arg
 
     @property
     def degree(self) -> int:
+        """Quadrature degree hint for the field."""
         return self._degree
 
     @property
     def name(self) -> str:
+        """Unique name encoding the domain and argument structure."""
         return f"Implicit_{self.domain.name}_{self.degree}_{self.EvalArg.key}"
 
     def gradient_valid(self) -> bool:
+        """Whether gradient evaluation is available."""
         return self._grad_func is not None
 
     def divergence_valid(self) -> bool:
+        """Whether divergence evaluation is available."""
         return self._div_func is not None
 
     def _make_eval_func(self, func):
@@ -433,6 +452,7 @@ class ImplicitField(GeometryField):
         return degree
 
     def trace(self):
+        """Return the trace of this field on domain sides."""
         if self.element_kind == ElementKind.SIDE:
             raise RuntimeError("Trace only available for field defined on cell elements")
 
@@ -481,6 +501,7 @@ class UniformField(GeometryField):
 
     @property
     def value(self):
+        """Uniform value of the field."""
         return self._value
 
     @value.setter
@@ -491,31 +512,39 @@ class UniformField(GeometryField):
 
     @property
     def geometry(self) -> Geometry:
+        """Underlying geometry of the domain."""
         return self.domain.geometry
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements over which the field is defined."""
         return self.domain.element_kind
 
     @property
     def dtype(self) -> type:
+        """Data type of the field values."""
         return type(self.value)
 
     def fill_eval_arg(self, arg, device):
+        """Fill evaluation arguments for device functions."""
         arg.value = self.value
 
     @property
     def degree(self) -> int:
+        """Polynomial degree for the constant field."""
         return 0
 
     def gradient_valid(self) -> bool:
+        """Whether gradient evaluation is available."""
         return self.gradient_dtype is not None
 
     def divergence_valid(self) -> bool:
+        """Whether divergence evaluation is available."""
         return self.divergence_dtype is not None
 
     @cached_property
     def name(self) -> str:
+        """Unique name encoding the domain and value type."""
         return f"Uniform{self.domain.name}_{cache.pod_type_key(self.dtype)}"
 
     def _make_eval_inner(self):
@@ -560,6 +589,7 @@ class UniformField(GeometryField):
         return degree
 
     def trace(self):
+        """Return the trace of this field on domain sides."""
         if self.element_kind == ElementKind.SIDE:
             raise RuntimeError("Trace only available for field defined on cell elements")
 
@@ -567,7 +597,7 @@ class UniformField(GeometryField):
 
 
 class NonconformingField(GeometryField):
-    """Field defined as the map of a DiscreteField over a non-conforming geometry.
+    """Field defined as the map of a :class:`DiscreteField` over a non-conforming geometry.
 
     Args:
         domain: The new domain over which the nonconforming field will be evaluated
@@ -606,17 +636,21 @@ class NonconformingField(GeometryField):
 
     @property
     def geometry(self) -> Geometry:
+        """Underlying geometry of the domain."""
         return self.domain.geometry
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements over which the field is defined."""
         return self.domain.element_kind
 
     @property
     def dtype(self) -> type:
+        """Data type of the field values."""
         return self.field.dtype
 
     def fill_eval_arg(self, arg, device):
+        """Fill evaluation arguments for device functions."""
         if not self.field.geometry.supports_cell_lookup(device):
             raise RuntimeError(
                 f"The NonconformingField's geometry of type '{self.field.geometry.name}' does not support global cell lookups on this device. "
@@ -629,16 +663,20 @@ class NonconformingField(GeometryField):
 
     @property
     def degree(self) -> int:
+        """Polynomial degree of the field."""
         return self.field.degree
 
     def gradient_valid(self) -> bool:
+        """Whether gradient evaluation is available."""
         return self.field.gradient_valid() and self.background.gradient_valid()
 
     def divergence_valid(self) -> bool:
+        """Whether divergence evaluation is available."""
         return self.field.divergence_valid() and self.background.divergence_valid()
 
     @cached_property
     def name(self) -> str:
+        """Unique name encoding the domain and backing fields."""
         return f"{self.domain.name}_{self.field.name}_{self.background.name}"
 
     def _make_nonconforming_eval(self, eval_func_name):
@@ -702,6 +740,7 @@ class NonconformingField(GeometryField):
         return degree
 
     def trace(self):
+        """Return the trace of this field on domain sides."""
         if self.element_kind == ElementKind.SIDE:
             raise RuntimeError("Trace only available for field defined on cell elements")
 

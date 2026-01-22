@@ -30,27 +30,35 @@ wp.set_module_options({"enable_backward": False})
 
 
 class SpacePartition:
+    """Partition of a function space over a geometry partition.
+
+    A space partition associates nodes of a function space topology with
+    a geometry partition, enabling distributed computation over subdomains.
+    """
+
     class PartitionArg:
+        """Structure containing arguments to be passed to device functions."""
+
         pass
 
     space_topology: SpaceTopology
-    """Topology of the function space being partitioned"""
+    """Topology of the function space being partitioned."""
 
     geo_partition: GeometryPartition
-    """Partition of the geometry controlling how to partition the space"""
+    """Partition of the geometry controlling how to partition the space."""
 
     def __init__(self, space_topology: SpaceTopology, geo_partition: GeometryPartition):
         self.space_topology = space_topology
         self.geo_partition = geo_partition
 
     def node_count(self):
-        """Returns number of nodes in this partition"""
+        """Return number of nodes in this partition."""
 
     def owned_node_count(self) -> int:
-        """Returns number of nodes in this partition, excluding exterior halo"""
+        """Return number of nodes in this partition, excluding exterior halo."""
 
     def interior_node_count(self) -> int:
-        """Returns number of interior nodes in this partition"""
+        """Return number of interior nodes in this partition."""
 
     def space_node_indices(self) -> wp.array:
         """Return the global function space indices for nodes in this partition"""
@@ -61,22 +69,25 @@ class SpacePartition:
 
     @cache.cached_arg_value
     def partition_arg_value(self, device):
+        """Return the partition argument structure for device functions."""
         arg = self.PartitionArg()
         self.fill_partition_arg(arg, device)
         return arg
 
     def fill_partition_arg(self, arg, device):
+        """Fill partition arguments for device functions."""
         pass
 
     @staticmethod
     def partition_node_index(args: "PartitionArg", space_node_index: int):
-        """Returns the index in the partition of a function space node, or ``NULL_NODE_INDEX`` if it does not exist"""
+        """Return the index in the partition of a function space node, or :data:`NULL_NODE_INDEX` if it does not exist."""
 
     def __str__(self) -> str:
         return self.name
 
     @property
     def name(self) -> str:
+        """Name of the space partition."""
         return f"{self.__class__.__name__}"
 
 
@@ -90,15 +101,15 @@ class WholeSpacePartition(SpacePartition):
         self._node_indices = None
 
     def node_count(self):
-        """Returns number of nodes in this partition"""
+        """Return number of nodes in this partition."""
         return self.space_topology.node_count()
 
     def owned_node_count(self) -> int:
-        """Returns number of nodes in this partition, excluding exterior halo"""
+        """Return number of nodes in this partition, excluding exterior halo."""
         return self.space_topology.node_count()
 
     def interior_node_count(self) -> int:
-        """Returns number of interior nodes in this partition"""
+        """Return number of interior nodes in this partition."""
         return self.space_topology.node_count()
 
     def space_node_indices(self):
@@ -132,15 +143,15 @@ class WholeSpacePartition(SpacePartition):
 
 class NodeCategory:
     OWNED_INTERIOR = wp.constant(0)
-    """Node is touched exclusively by this partition, not touched by frontier side"""
+    """Node is touched exclusively by this partition, not touched by frontier side."""
     OWNED_FRONTIER = wp.constant(1)
-    """Node is touched by a frontier side, but belongs to an element of this partition"""
+    """Node is touched by a frontier side, but belongs to an element of this partition."""
     HALO_LOCAL_SIDE = wp.constant(2)
-    """Node belongs to an element of another partition, but is touched by one of our frontier side"""
+    """Node belongs to an element of another partition, but is touched by one of our frontier sides."""
     HALO_OTHER_SIDE = wp.constant(3)
-    """Node belongs to an element of another partition, and is not touched by one of our frontier side"""
+    """Node belongs to an element of another partition, and is not touched by one of our frontier sides."""
     EXTERIOR = wp.constant(4)
-    """Node is never referenced by this partition"""
+    """Node is never referenced by this partition."""
 
     COUNT = 5
 
@@ -168,11 +179,11 @@ class NodePartition(SpacePartition):
         self._with_halo = with_halo
 
         self._category_offsets: wp.array = None
-        """Offsets for each node category"""
+        """Offsets for each node category."""
         self._node_indices: wp.array = None
-        """Mapping from local partition node indices to global space node indices"""
+        """Mapping from local partition node indices to global space node indices."""
         self._space_to_partition: wp.array = None
-        """Mapping from global space node indices to local partition node indices"""
+        """Mapping from global space node indices to local partition node indices."""
 
         self.rebuild(device, temporary_store)
 
@@ -180,15 +191,15 @@ class NodePartition(SpacePartition):
         self._compute_node_indices_from_sides(device, self._with_halo, self._max_node_count, temporary_store)
 
     def node_count(self) -> int:
-        """Returns number of nodes referenced by this partition, including exterior halo"""
+        """Return number of nodes referenced by this partition, including exterior halo."""
         return int(self._category_offsets.numpy()[NodeCategory.HALO_OTHER_SIDE + 1])
 
     def owned_node_count(self) -> int:
-        """Returns number of nodes in this partition, excluding exterior halo"""
+        """Return number of nodes in this partition, excluding exterior halo."""
         return int(self._category_offsets.numpy()[NodeCategory.OWNED_FRONTIER + 1])
 
     def interior_node_count(self) -> int:
-        """Returns number of interior nodes in this partition"""
+        """Return number of interior nodes in this partition."""
         return int(self._category_offsets.numpy()[NodeCategory.OWNED_INTERIOR + 1])
 
     def space_node_indices(self):
@@ -411,7 +422,7 @@ def make_space_partition(
     device=None,
     temporary_store: cache.TemporaryStore = None,
 ) -> SpacePartition:
-    """Computes the subset of nodes from a function space topology that touch a geometry partition
+    """Compute the subset of nodes from a function space topology that touch a geometry partition
 
     Either `space_topology` or `space` must be provided (and will be considered in that order).
 

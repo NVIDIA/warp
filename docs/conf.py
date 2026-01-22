@@ -18,14 +18,18 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import ast
+import importlib
 import inspect
 import operator
 import os
+import pkgutil
 import sys
 
 import docutils
 import sphinx
 from sphinx.ext.autosummary.generate import AutosummaryRenderer
+from sphinx.ext.napoleon.docstring import GoogleDocstring
 
 # -- Path setup --------------------------------------------------------------
 
@@ -34,6 +38,7 @@ WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
 
 sys.path.insert(0, WARP_PATH)
 import warp as wp  # noqa: E402
+import warp._src  # noqa: E402
 
 # Determine the Git version/tag from CI environment variables.
 # 1. Check for GitHub Actions' variable.
@@ -202,6 +207,16 @@ autosummary_filename_map = {
 }
 
 
+def normalize_docstring(doc: str) -> str:
+    """Normalize docstrings for consistent RST indentation and formatting."""
+    if not doc:
+        return ""
+    cleaned = inspect.cleandoc(doc)
+    if not cleaned:
+        return ""
+    return str(GoogleDocstring(cleaned))
+
+
 class AutosummaryRenderer(AutosummaryRenderer):
     # Module containing Warp's built-ins functions and requiring special handling.
     BUILTINS_TEMPLATE_FILE = "builtins.rst"
@@ -240,7 +255,7 @@ class AutosummaryRenderer(AutosummaryRenderer):
                         "return_type": return_type,
                         "is_exported": is_exported,
                         "is_differentiable": func.is_differentiable,
-                        "doc": func.doc,
+                        "doc": normalize_docstring(func.doc),
                     }
                 )
 
@@ -353,6 +368,70 @@ def filter_builtin_docstrings(app, what, name, obj, options, lines):
             return
 
 
+def build_constant_docs_cache():
+    """Build a cache of constant docstrings from all warp._src modules."""
+    out = {}
+
+    for _, modname, _ in pkgutil.walk_packages(warp._src.__path__, prefix=wp._src.__name__ + "."):
+        try:
+            module = importlib.import_module(modname)
+            source = inspect.getsource(module)
+        except Exception:
+            continue
+
+        tree = ast.parse(source)
+
+        for idx, node in enumerate(tree.body[:-1]):
+            docstring = ""
+            next_node = tree.body[idx + 1]
+            if isinstance(next_node, ast.Expr):
+                value = next_node.value
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    docstring = inspect.cleandoc(value.value)
+            if not docstring:
+                continue
+
+            # Handle regular assignments (ast.Assign)
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        out[target.id] = docstring
+                    elif isinstance(target, ast.Tuple):
+                        for elt in target.elts:
+                            if isinstance(elt, ast.Name):
+                                out[elt.id] = docstring
+            # Handle annotated assignments (ast.AnnAssign), e.g. `x: int = 1`
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                out[node.target.id] = docstring
+
+    return out
+
+
+CONSTANT_DOCS_CACHE = build_constant_docs_cache()
+
+
+def populate_reexported_docstrings(app, what, name, obj, options, lines):
+    """Populate docstrings for re-exported module-level constants.
+
+    When a constant is re-exported via `from module import X as X`, Sphinx's
+    autodoc cannot find its docstring. This function looks up the docstring
+    from the source module using string literals that follow constant
+    assignments.
+    """
+    if lines:
+        # Already has a docstring, nothing to do
+        return
+
+    if what != "data":
+        return
+
+    # Extract the simple name from the full qualified name
+    simple_name = name.split(".")[-1]
+
+    if simple_name in CONSTANT_DOCS_CACHE:
+        lines.append(CONSTANT_DOCS_CACHE[simple_name])
+
+
 def rewrite_internal_module_paths(app, doctree, docname):
     """Replace internal module paths with public paths in the rendered output.
 
@@ -367,4 +446,5 @@ def rewrite_internal_module_paths(app, doctree, docname):
 def setup(app):
     """Sphinx extension setup."""
     app.connect("autodoc-process-docstring", filter_builtin_docstrings)
+    app.connect("autodoc-process-docstring", populate_reexported_docstrings)
     app.connect("doctree-resolved", rewrite_internal_module_paths)

@@ -28,7 +28,7 @@ _wp_module_name_ = "warp.fem.geometry.nanogrid"
 
 
 class NanogridBase(Geometry):
-    """Base class for regular and adaptive Nanogrid"""
+    """Base class for regular and adaptive Nanogrid."""
 
     dimension = 3
 
@@ -60,9 +60,11 @@ class NanogridBase(Geometry):
         self._init_transform()
 
     def reference_cell(self) -> Element:
+        """Reference element for grid cells."""
         return Element.CUBE
 
     def reference_side(self) -> Element:
+        """Reference element for grid sides."""
         return Element.SQUARE
 
     def _init_transform(self):
@@ -85,48 +87,65 @@ class NanogridBase(Geometry):
 
     @property
     def transform(self):
+        """Transform matrix mapping index to world space."""
         return self._cell_grid_info.transform_matrix
 
     @property
     def cell_grid(self) -> wp.Volume:
+        """NanoVDB volume storing cell voxels."""
         return self._cell_grid
 
     @property
     def vertex_grid(self) -> wp.Volume:
+        """NanoVDB volume storing vertex voxels."""
         return self._node_grid
 
     @property
     def face_grid(self) -> wp.Volume:
+        """NanoVDB volume storing face voxels."""
         self._ensure_face_grid()
         return self._face_grid
 
     def cell_count(self):
+        """Number of cells in the grid."""
         return self._cell_ijk.shape[0]
 
     def vertex_count(self):
+        """Number of vertices in the grid."""
         return self._node_ijk.shape[0]
 
     def side_count(self):
+        """Number of sides in the grid."""
         self._ensure_face_grid()
         return self._face_ijk.shape[0]
 
     def boundary_side_count(self):
+        """Number of boundary sides in the grid."""
         self._ensure_face_grid()
         return self._boundary_face_indices.shape[0]
 
     @wp.struct
     class SideIndexArg:
+        """Arguments for side-index device functions."""
+
         boundary_face_indices: wp.array(dtype=int)
 
     def fill_side_index_arg(self, arg: SideIndexArg, device):
+        """Fill the arguments to be passed to side-index device functions."""
         self._ensure_face_grid()
         arg.boundary_face_indices = self._boundary_face_indices.to(device)
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
+        """Map a boundary side index to a side index."""
         return args.boundary_face_indices[boundary_side_index]
 
     def make_filtered_cell_lookup(grid_geo, filter_func: wp.Function = None):
+        """Create a filtered cell lookup function.
+
+        Args:
+            filter_func: Optional device predicate to filter candidate cells.
+        """
         suffix = f"{grid_geo.name}{filter_func.key if filter_func is not None else ''}"
 
         @cache.dynamic_func(suffix=suffix)
@@ -263,6 +282,8 @@ class NanogridBase(Geometry):
 
 @wp.struct
 class NanogridCellArg:
+    """Arguments for cell-related device functions."""
+
     # Utility device functions
     cell_grid: wp.uint64
     cell_ijk: wp.array(dtype=wp.vec3i)
@@ -272,6 +293,8 @@ class NanogridCellArg:
 
 @wp.struct
 class NanogridSideArg:
+    """Arguments for side-related device functions."""
+
     # Utility device functions
     cell_arg: NanogridCellArg
     face_ijk: wp.array(dtype=wp.vec3i)
@@ -280,15 +303,14 @@ class NanogridSideArg:
 
 
 class Nanogrid(NanogridBase):
-    """Sparse grid geometry"""
+    """Sparse grid geometry."""
 
     def __init__(self, grid: wp.Volume, temporary_store: Optional[cache.TemporaryStore] = None):
-        """
-        Constructs a sparse grid geometry from an in-memory NanoVDB volume.
+        """Construct a sparse grid geometry from an in-memory NanoVDB volume.
 
         Args:
             grid: The NanoVDB volume. Any type is accepted, but for indexing efficiency an index grid is recommended.
-                If `grid` is an 'on' index grid, cells will be created for active voxels only, otherwise cells will
+                If ``grid`` is an ``"on"`` index grid, cells will be created for active voxels only, otherwise cells will
                 be created for all leaf voxels.
             temporary_store: shared pool from which to allocate temporary arrays
         """
@@ -312,16 +334,19 @@ class Nanogrid(NanogridBase):
 
     @property
     def edge_grid(self) -> wp.Volume:
+        """NanoVDB volume storing edge voxels."""
         self._ensure_edge_grid()
         return self._edge_grid
 
     def edge_count(self):
+        """Number of edges in the grid."""
         self._ensure_edge_grid()
         return self._edge_count
 
     CellArg = NanogridCellArg
 
     def fill_cell_arg(self, arg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         arg.cell_grid = self._cell_grid.id
         arg.cell_ijk = self._cell_ijk
 
@@ -330,18 +355,22 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
+        """Return the world position of a cell sample point."""
         uvw = wp.vec3(args.cell_ijk[s.element_index]) + s.element_coords
         return wp.volume_index_to_world(args.cell_grid, uvw - wp.vec3(0.5))
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
+        """Return the deformation gradient for a cell sample."""
         return wp.inverse(args.inverse_transform)
 
     @wp.func
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        """Return the inverse deformation gradient for a cell sample."""
         return args.inverse_transform
 
     def supports_cell_lookup(self, device):
+        """Return whether cell lookups are supported on the given device."""
         return True
 
     @wp.func
@@ -363,26 +392,31 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def cell_coordinates(args: NanogridCellArg, cell_index: int, pos: wp.vec3):
+        """Return the cell coordinates corresponding to a world position."""
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         return Nanogrid._cell_coordinates_local(args, cell_index, uvw)
 
     @wp.func
     def cell_closest_point(args: NanogridCellArg, cell_index: int, pos: wp.vec3):
+        """Return the closest point on a cell to a world position."""
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         dist, coords = Nanogrid._cell_closest_point_local(args, cell_index, uvw)
         return coords, dist
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
+        """Return the measure (volume) of a cell."""
         return args.cell_volume
 
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
+        """Return the normal of a cell element."""
         return wp.vec3(0.0)
 
     SideArg = NanogridSideArg
 
     def fill_side_arg(self, arg: SideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         self._ensure_face_grid()
         self.fill_cell_arg(arg.cell_arg, device)
         arg.face_ijk = self._face_ijk.to(device)
@@ -391,6 +425,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_position(args: SideArg, s: Sample):
+        """Return the world position of a side sample point."""
         ijk = args.face_ijk[s.element_index]
         flags = args.face_flags[s.element_index]
         axis = Nanogrid._get_face_axis(flags)
@@ -403,6 +438,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
+        """Return the deformation gradient for a side sample."""
         flags = args.face_flags[s.element_index]
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
@@ -411,24 +447,29 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the inner cell."""
         return Nanogrid.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the outer cell."""
         return Nanogrid.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
+        """Return the measure (area) of a side."""
         axis = Nanogrid._get_face_axis(args.face_flags[s.element_index])
         return args.face_areas[axis]
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
+        """Return the ratio of side measure to neighboring cell measure."""
         axis = Nanogrid._get_face_axis(args.face_flags[s.element_index])
         return args.face_areas[axis] / args.cell_arg.cell_volume
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
+        """Return the normal vector of a side."""
         flags = args.face_flags[s.element_index]
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
@@ -438,6 +479,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_inner_cell_index(args: SideArg, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         ijk = args.face_ijk[side_index]
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
@@ -450,6 +492,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_outer_cell_index(args: SideArg, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         ijk = args.face_ijk[side_index]
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
@@ -462,6 +505,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
@@ -470,6 +514,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
@@ -483,6 +528,7 @@ class Nanogrid(NanogridBase):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         flags = args.face_flags[side_index]
         axis = Nanogrid._get_face_axis(flags)
         flip = Nanogrid._get_face_inner_offset(flags)
@@ -496,6 +542,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return side_arg.cell_arg
 
     @wp.func

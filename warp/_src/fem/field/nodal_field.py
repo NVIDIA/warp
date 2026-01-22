@@ -27,7 +27,7 @@ _wp_module_name_ = "warp.fem.field.nodal_field"
 
 
 class NodalFieldBase(DiscreteField):
-    """Base class for nodal field and nodal field traces. Does not hold values"""
+    """Base class for nodal field and nodal field traces. Does not hold values."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "EvalArg": lambda obj: obj._make_eval_arg(),
@@ -567,12 +567,12 @@ class NodalField(NodalFieldBase):
 
     @property
     def dof_values(self) -> wp.array:
-        """Returns a warp array containing the values at all degrees of freedom of the underlying space partition"""
+        """Return a warp array containing the values at all degrees of freedom of the underlying space partition."""
         return self._dof_values
 
     @dof_values.setter
     def dof_values(self, values):
-        """Sets the degrees-of-freedom values
+        """Set the degrees-of-freedom values.
 
         Args:
             values: Array that is convertible to a warp array of length ``self.space_partition.node_count()`` and data type ``self.space.dof_dtype``

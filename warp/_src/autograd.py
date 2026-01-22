@@ -56,8 +56,7 @@ def gradcheck(
     plot_absolute_error: bool = False,
     show_summary: bool = True,
 ) -> bool:
-    """
-    Checks whether the autodiff gradient of a Warp kernel matches finite differences.
+    """Check whether the autodiff gradient of a Warp kernel matches finite differences.
 
     Given the autodiff (:math:`\\nabla_\\text{AD}`) and finite difference gradients (:math:`\\nabla_\\text{FD}`), the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:
 
@@ -83,8 +82,8 @@ def gradcheck(
         eps: The finite-difference step size.
         atol: The absolute tolerance for the gradient check.
         rtol: The relative tolerance for the gradient check.
-        raise_exception: If True, raises a `ValueError` if the gradient check fails.
-        input_output_mask: List of tuples specifying the input-output pairs to compute the Jacobian for. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If None, computes the Jacobian for all input-output pairs.
+        raise_exception: If ``True``, raises a ``ValueError`` if the gradient check fails.
+        input_output_mask: List of tuples specifying the input-output pairs to compute the Jacobian for. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If ``None``, computes the Jacobian for all input-output pairs.
         device: The device to launch on (optional)
         max_blocks: The maximum number of CUDA thread blocks to use.
         block_dim: The number of threads per block.
@@ -95,7 +94,7 @@ def gradcheck(
         show_summary: If True, prints a summary table of the gradient check results.
 
     Returns:
-        True if the gradient check passes, False otherwise.
+        ``True`` if the gradient check passes, ``False`` otherwise.
     """
 
     if inputs is None:
@@ -259,8 +258,7 @@ def gradcheck_tape(
     reverse_launches: bool = False,
     skip_to_launch_index: int = 0,
 ) -> bool:
-    """
-    Checks whether the autodiff gradients for kernels recorded on the Warp tape match finite differences.
+    """Check whether the autodiff gradients for kernels recorded on the Warp tape match finite differences.
 
     Given the autodiff (:math:`\\nabla_\\text{AD}`) and finite difference gradients (:math:`\\nabla_\\text{FD}`),
     the check succeeds if the autodiff gradients contain no NaN values and the following condition holds:
@@ -282,10 +280,10 @@ def gradcheck_tape(
         eps: The finite-difference step size.
         atol: The absolute tolerance for the gradient check.
         rtol: The relative tolerance for the gradient check.
-        raise_exception: If True, raises a `ValueError` if the gradient check fails.
-        input_output_masks: Dictionary of input-output masks for each kernel in the tape, mapping from kernel keys to input-output masks. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If None, computes the Jacobian for all input-output pairs.
+        raise_exception: If ``True``, raises a ``ValueError`` if the gradient check fails.
+        input_output_masks: Dictionary of input-output masks for each kernel in the tape, mapping from kernel keys to input-output masks. Inputs and outputs can be identified either by their integer indices of where they appear in the kernel input/output arguments, or by the respective argument names as strings. If ``None``, computes the Jacobian for all input-output pairs.
         blacklist_kernels: List of kernel keys to exclude from the gradient check.
-        whitelist_kernels: List of kernel keys to include in the gradient check. If not empty or None, only kernels in this list are checked.
+        whitelist_kernels: List of kernel keys to include in the gradient check. If not empty or ``None``, only kernels in this list are checked.
         max_inputs_per_var: Maximum number of input dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all input dimensions if value <= 0.
         max_outputs_per_var: Maximum number of output dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all output dimensions if value <= 0.
         plot_relative_error: If True, visualizes the relative error of the Jacobians in a plot (requires ``matplotlib``).
@@ -294,7 +292,7 @@ def gradcheck_tape(
         reverse_launches: If True, reverses the order of the kernel launches on the tape to check.
 
     Returns:
-        True if the gradient check passes for all kernels on the tape, False otherwise.
+        ``True`` if the gradient check passes for all kernels on the tape, ``False`` otherwise.
     """
     if input_output_masks is None:
         input_output_masks = {}
@@ -366,9 +364,7 @@ def infer_device(xs: list):
 
 
 class FunctionMetadata:
-    """
-    Metadata holder for kernel functions or functions with Warp arrays as inputs/outputs.
-    """
+    """Metadata holder for kernel functions or functions with Warp arrays as inputs/outputs."""
 
     def __init__(
         self,
@@ -460,8 +456,8 @@ def jacobian_plot(
     colormap: str = "coolwarm",
     log_scale: bool = False,
 ):
-    """
-    Visualizes the Jacobians computed by :func:`jacobian` or :func:`jacobian_fd` in a combined image plot.
+    """Visualize the Jacobians computed by :func:`jacobian` or :func:`jacobian_fd` in a combined image plot.
+
     Requires the ``matplotlib`` package to be installed.
 
     Args:
@@ -683,8 +679,7 @@ def jacobian(
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
 ) -> dict[tuple[int, int], wp.array]:
-    """
-    Computes the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
+    """Compute the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
 
     The input function can be either a Warp kernel (e.g. a function decorated by :func:`@wp.kernel <warp.kernel>`) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
 
@@ -696,7 +691,7 @@ def jacobian(
 
         Only Warp arrays with ``requires_grad=True`` are considered for the Jacobian computation.
 
-        Function arguments of type :func:`wp.struct <warp.struct>` are not yet supported.
+        Function arguments of type :func:`@wp.struct <warp.struct>` are not yet supported.
 
     Args:
         function: The Warp kernel function, or a regular Python function that returns a Warp array or a list of Warp arrays.
@@ -819,8 +814,8 @@ def jacobian_fd(
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
 ) -> dict[tuple[int, int], wp.array]:
-    """
-    Computes the finite-difference Jacobian of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
+    """Compute the finite-difference Jacobian of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
+
     The method uses a central difference scheme to approximate the Jacobian.
 
     The input function can be either a Warp kernel (e.g. a function decorated by :func:`@wp.kernel <warp.kernel>`) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
@@ -833,7 +828,7 @@ def jacobian_fd(
 
         Only Warp arrays with ``requires_grad=True`` are considered for the Jacobian computation.
 
-        Function arguments of type :func:`wp.struct <warp.struct>` are not yet supported.
+        Function arguments of type :func:`@wp.struct <warp.struct>` are not yet supported.
 
     Args:
         function: The Warp kernel function, or a regular Python function that returns a Warp array or a list of Warp arrays.
@@ -1061,8 +1056,7 @@ def compute_error_kernel(
 
 
 def print_table(headers, cells):
-    """
-    Prints a table with the given headers and cells.
+    """Print a table with the given headers and cells.
 
     Args:
         headers: List of header strings.
@@ -1084,9 +1078,7 @@ def print_table(headers, cells):
 
 
 def zero_grads(arrays: list):
-    """
-    Zeros the gradients of all Warp arrays in the given list.
-    """
+    """Zero the gradients of all Warp arrays in the given list."""
     for array in arrays:
         if isinstance(array, wp.array) and array.requires_grad:
             array.grad.zero_()

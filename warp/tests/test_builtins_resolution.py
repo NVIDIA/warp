@@ -21,7 +21,7 @@ from warp.tests.unittest_utils import *
 
 
 def nps(dtype, value):
-    """Creates a NumPy scalar value based on the given data type."""
+    """Create a NumPy scalar value based on the given data type."""
     # Workaround to avoid deprecation warning messages for integer overflows.
     return np.array((value,)).astype(dtype)[0]
 

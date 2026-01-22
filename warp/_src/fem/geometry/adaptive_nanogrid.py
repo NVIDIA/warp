@@ -29,6 +29,8 @@ _GRID_LEVEL_BIT = wp.constant(wp.int32(19))  # follows nanogrid.GRID_AXIS_FLAG
 
 @wp.struct
 class AdaptiveNanogridCellArg:
+    """Arguments for cell-related device functions."""
+
     # Utility device functions
     cell_grid: wp.uint64
     cell_ijk: wp.array(dtype=wp.vec3i)
@@ -40,6 +42,8 @@ class AdaptiveNanogridCellArg:
 
 @wp.struct
 class AdaptiveNanogridSideArg:
+    """Arguments for side-related device functions."""
+
     # Utility device functions
     cell_arg: AdaptiveNanogridCellArg
     face_ijk: wp.array(dtype=wp.vec3i)
@@ -49,7 +53,7 @@ class AdaptiveNanogridSideArg:
 
 
 class AdaptiveNanogrid(NanogridBase):
-    """Adaptive sparse grid"""
+    """Adaptive sparse grid."""
 
     dimension = 3
 
@@ -60,14 +64,13 @@ class AdaptiveNanogrid(NanogridBase):
         level_count: int,
         temporary_store: cache.TemporaryStore,
     ):
-        """
-        Constructs an adaptive sparse grid geometry from an in-memory NanoVDB volume and a list of levels.
+        """Construct an adaptive sparse grid geometry from an in-memory NanoVDB volume and a list of levels.
 
-        It is not recommended to use this constructor directly; see the helper functions :func:`warp.fem.adaptive_nanogrid_from_field` and :func:`warp.fem.adaptive_nanogrid_from_hierarchy`
+        It is not recommended to use this constructor directly; see the helper functions :func:`warp.fem.adaptive_nanogrid_from_field` and :func:`warp.fem.adaptive_nanogrid_from_hierarchy`.
 
         Args:
             cell_grid: A warp volume (ideally backed by an index grid) whose voxels coordinates correspond to the lowest fine-resolution voxel of each cell.
-              The cell's extent is then given by the `cell_level` array. For instance, a voxel at coordinates ``ijk`` and level ``0`` corresponds to a fine cell at the same coordinates,
+              The cell's extent is then given by the ``cell_level`` array. For instance, a voxel at coordinates ``ijk`` and level ``0`` corresponds to a fine cell at the same coordinates,
               a voxel at coordinates ``2*ijk`` and level ``1`` corresponds to a cell spanning ``2^3`` voxels from ``2*ijk`` to ``2*ijk + (1,1,1)``, etc.
             cell_level: Refinement level for each voxel of the volume. Level 0 is the finest, level ``level_count-1`` is the coarsest.
             level_count: Number of levels in the grid
@@ -97,25 +100,30 @@ class AdaptiveNanogrid(NanogridBase):
 
     @property
     def stacked_face_grid(self) -> wp.Volume:
+        """NanoVDB volume storing stacked face voxels."""
         self._ensure_stacked_face_grid()
         return self._stacked_face_grid
 
     def stacked_face_count(self):
+        """Number of stacked faces in the grid."""
         self._ensure_stacked_face_grid()
         return self._stacked_face_count
 
     @property
     def stacked_edge_grid(self) -> wp.Volume:
+        """NanoVDB volume storing stacked edge voxels."""
         self._ensure_stacked_edge_grid()
         return self._stacked_edge_grid
 
     def stacked_edge_count(self):
+        """Number of stacked edges in the grid."""
         self._ensure_stacked_edge_grid()
         return self._stacked_edge_count
 
     CellArg = AdaptiveNanogridCellArg
 
     def fill_cell_arg(self, arg: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         arg.cell_grid = self._cell_grid.id
         arg.cell_ijk = self._cell_ijk
         arg.cell_level = self._cell_level
@@ -129,6 +137,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
+        """Return the world position of a cell sample point."""
         cell_idx = s.element_index
         scale = AdaptiveNanogrid._cell_scale(args, cell_idx)
         cell_coords = s.element_coords
@@ -139,15 +148,18 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
+        """Return the deformation gradient for a cell sample."""
         scale = AdaptiveNanogrid._cell_scale(args, s.element_index)
         return wp.inverse(args.inverse_transform) * scale
 
     @wp.func
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        """Return the inverse deformation gradient for a cell sample."""
         scale = AdaptiveNanogrid._cell_scale(args, s.element_index)
         return args.inverse_transform / scale
 
     def supports_cell_lookup(self, device):
+        """Return whether cell lookups are supported on the given device."""
         return True
 
     @wp.func
@@ -171,31 +183,37 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def cell_coordinates(args: AdaptiveNanogridCellArg, cell_index: int, pos: wp.vec3):
+        """Return the cell coordinates corresponding to a world position."""
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         return AdaptiveNanogrid._cell_coordinates_local(args, cell_index, uvw)
 
     @wp.func
     def cell_closest_point(args: AdaptiveNanogridCellArg, cell_index: int, pos: wp.vec3):
+        """Return the closest point on a cell to a world position."""
         uvw = wp.volume_world_to_index(args.cell_grid, pos) + wp.vec3(0.5)
         dist, coords = AdaptiveNanogrid._cell_closest_point_local(args, cell_index, uvw)
         return coords, dist
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
+        """Return the measure (volume) of a cell."""
         scale = AdaptiveNanogrid._cell_scale(args, s.element_index)
         return args.cell_volume * scale * scale * scale
 
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
+        """Return the normal of a cell element."""
         return wp.vec3(0.0)
 
     SideArg = AdaptiveNanogridSideArg
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return side_arg.cell_arg
 
     def fill_side_arg(self, arg: SideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         self._ensure_face_grid()
 
         self.fill_cell_arg(arg.cell_arg, device)
@@ -214,6 +232,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_position(args: SideArg, s: Sample):
+        """Return the world position of a side sample point."""
         ijk = args.face_ijk[s.element_index]
         flags = args.face_flags[s.element_index]
         axis = NanogridBase._get_face_axis(flags)
@@ -227,6 +246,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
+        """Return the deformation gradient for a side sample."""
         flags = args.face_flags[s.element_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
@@ -236,16 +256,19 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the inner cell."""
         s_cell = make_free_sample(AdaptiveNanogrid.side_inner_cell_index(args, s.element_index), Coords())
         return AdaptiveNanogrid.cell_inverse_deformation_gradient(args.cell_arg, s_cell)
 
     @wp.func
     def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the outer cell."""
         s_cell = make_free_sample(AdaptiveNanogrid.side_outer_cell_index(args, s.element_index), Coords())
         return AdaptiveNanogrid.cell_inverse_deformation_gradient(args.cell_arg, s_cell)
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
+        """Return the measure (area) of a side."""
         flags = args.face_flags[s.element_index]
         axis = NanogridBase._get_face_axis(flags)
         scale = AdaptiveNanogrid._get_face_scale(flags)
@@ -253,6 +276,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
+        """Return the ratio of side measure to neighboring cell measure."""
         flags = args.face_flags[s.element_index]
         axis = NanogridBase._get_face_axis(flags)
         scale = AdaptiveNanogrid._get_face_scale(flags)
@@ -260,6 +284,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
+        """Return the normal vector of a side."""
         flags = args.face_flags[s.element_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
@@ -269,10 +294,12 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_inner_cell_index(args: SideArg, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         return args.face_cell_indices[side_index][0]
 
     @wp.func
     def side_outer_cell_index(args: SideArg, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         return args.face_cell_indices[side_index][1]
 
     @wp.func
@@ -287,6 +314,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         flags = args.face_flags[side_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
@@ -307,6 +335,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         flags = args.face_flags[side_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
@@ -332,6 +361,7 @@ class AdaptiveNanogrid(NanogridBase):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         flags = args.face_flags[side_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)

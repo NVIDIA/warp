@@ -145,7 +145,7 @@ class BsrMatrix(Generic[_BlockType]):
 
     @property
     def scalar_values(self) -> wp.array:
-        """Accesses the ``values`` array as a 3d scalar array."""
+        """Access the ``values`` array as a 3d scalar array."""
         values_view = _as_3d_array(self.values, self.block_shape)
         values_view._ref = self.values  # keep ref in case we're garbage collected
         return values_view
@@ -201,8 +201,7 @@ class BsrMatrix(Generic[_BlockType]):
         _bsr_ensure_fits(self, nnz=nnz)
 
     def copy_nnz_async(self) -> None:
-        """
-        Starts the asynchronous transfer of the exact nnz from the device offsets array to host and records an event for completion.
+        """Start the asynchronous transfer of the exact nnz from the device offsets array to host and record an event for completion.
 
         Deprecated; prefer :meth:`notify_nnz_changed` instead, which will make sure to resize arrays if necessary.
         """
@@ -630,7 +629,7 @@ def bsr_from_triplets(
     values: Array[Scalar | BlockType[Rows, Cols, Scalar]],
     prune_numerical_zeros: bool = True,
 ):
-    """Constructs a BSR matrix with values defined by coordinate-oriented (COO) triplets.
+    """Construct a BSR matrix with values defined by coordinate-oriented (COO) triplets.
 
     The first dimension of the three input arrays must match and indicates the number of COO triplets.
 
@@ -755,7 +754,7 @@ class _BsrScalingExpression(_BsrExpression):
         return _BsrScalingExpression(self.mat, -self.scale)
 
     def transpose(self):
-        """Returns a transposed copy of this matrix"""
+        """Return a transposed copy of this matrix."""
         return _BsrScalingExpression(self.mat.transpose(), self.scale)
 
 
@@ -777,7 +776,7 @@ def bsr_row_index(
     row_count: int,
     block_index: int,
 ) -> int:
-    """Returns the index of the row containing a given block, or -1 if no such row exists.
+    """Return the index of the row containing a given block, or -1 if no such row exists.
 
     Args:
         offsets: Array of size at least ``1 + row_count`` containing the offsets of the blocks in each row.
@@ -794,8 +793,8 @@ def bsr_block_index(
     bsr_offsets: wp.array(dtype=int),
     bsr_columns: wp.array(dtype=int),
 ) -> int:
-    """
-    Returns the index of the block at block-coordinates (row, col), or -1 if no such block exists.
+    """Return the index of the block at block-coordinates (row, col), or -1 if no such block exists.
+
     Assumes that the segments of ``bsr_columns`` corresponding to each row are sorted.
 
     Args:
@@ -1123,8 +1122,7 @@ def bsr_set_transpose(
     src: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
     masked: bool = False,
 ):
-    """
-    Assign the transposed matrix ``src`` to matrix ``dest``.
+    """Assign the transposed matrix ``src`` to matrix ``dest``.
 
     Args:
         dest: Sparse matrix to populate.
@@ -1564,8 +1562,7 @@ def bsr_axpy(
     masked: bool = False,
     work_arrays: bsr_axpy_work_arrays | None = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
-    """
-    Perform the sparse matrix addition ``y := alpha * X + beta * y`` on BSR matrices ``x`` and ``y`` and return ``y``.
+    """Perform the sparse matrix addition ``y := alpha * X + beta * y`` on BSR matrices ``x`` and ``y`` and return ``y``.
 
     The ``x`` and ``y`` matrices are allowed to alias.
 
@@ -2087,16 +2084,15 @@ def bsr_mm(
     tile_size: int = 0,
     max_new_nnz: int | None = None,
 ) -> BsrMatrix[BlockType[Rows, Cols, Scalar]]:
-    """
-    Perform the sparse matrix-matrix multiplication ``z := alpha * x @ y + beta * z`` on BSR matrices ``x``, ``y`` and ``z``, and return ``z``.
+    """Perform the sparse matrix-matrix multiplication ``z := alpha * x @ y + beta * z`` on BSR matrices ``x``, ``y`` and ``z``, and return ``z``.
 
     The ``x``, ``y`` and ``z`` matrices are allowed to alias.
     If the matrix ``z`` is not provided as input, it will be allocated and treated as zero.
 
     This method can be graph-captured if either:
-     - `masked=True`
-     - `reuse_topology=True`
-     - `max_new_nnz` is provided
+     - ``masked=True``
+     - ``reuse_topology=True``
+     - ``max_new_nnz`` is provided
 
     Args:
         x: Read-only left operand of the matrix-matrix product.

@@ -118,6 +118,23 @@ def fabric_to_warp_dtype(type_info, attrib_name):
 
 
 class fabricarray(noncontiguous_array_base[T]):
+    """Array type for accessing data stored in Omniverse Runtime Fabric.
+
+    Fabric arrays provide a view into attribute data stored across multiple
+    buckets in Fabric, allowing Warp kernels to read and write Fabric data
+    directly without copying.
+
+    Args:
+        data: A dictionary or object with ``__fabric_arrays_interface__`` providing
+            Fabric interface information.
+        attrib: Name of the Fabric attribute to access.
+        dtype: Data type of the array elements.
+        ndim: Number of dimensions (1 for regular arrays, 2 for arrays of arrays).
+
+    See Also:
+        :class:`indexedfabricarray`, :func:`fabricarrayarray`
+    """
+
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
@@ -292,11 +309,36 @@ class fabricarray(noncontiguous_array_base[T]):
 # special case for fabric array of arrays
 # equivalent to calling fabricarray(..., ndim=2)
 def fabricarrayarray(**kwargs):
+    """Create a Fabric array of arrays (2D fabric array).
+
+    This is a convenience function equivalent to ``fabricarray(..., ndim=2)``.
+    Used for Fabric attributes that contain arrays of varying lengths per element.
+
+    See Also:
+        :class:`fabricarray`, :func:`indexedfabricarrayarray`
+    """
     kwargs["ndim"] = 2
     return fabricarray(**kwargs)
 
 
 class indexedfabricarray(noncontiguous_array_base[T]):
+    """Indexed view into a :class:`fabricarray`.
+
+    Provides access to a subset of elements from a Fabric array, selected by
+    an index array. This is similar to how :class:`warp.indexedarray` relates
+    to :class:`warp.array`.
+
+    Args:
+        fa: The underlying :class:`fabricarray` to index into.
+        indices: A :class:`warp.array` of integer indices specifying which
+            elements to access.
+        dtype: Data type of the array elements (inferred from ``fa`` if provided).
+        ndim: Number of dimensions (inferred from ``fa`` if provided).
+
+    See Also:
+        :class:`fabricarray`, :func:`indexedfabricarrayarray`
+    """
+
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
@@ -358,5 +400,12 @@ class indexedfabricarray(noncontiguous_array_base[T]):
 # special case for indexed fabric array of arrays
 # equivalent to calling fabricarray(..., ndim=2)
 def indexedfabricarrayarray(**kwargs):
+    """Create an indexed Fabric array of arrays (2D indexed fabric array).
+
+    This is a convenience function equivalent to ``indexedfabricarray(..., ndim=2)``.
+
+    See Also:
+        :class:`indexedfabricarray`, :func:`fabricarrayarray`
+    """
     kwargs["ndim"] = 2
     return indexedfabricarray(**kwargs)

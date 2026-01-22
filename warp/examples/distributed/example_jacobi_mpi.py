@@ -438,7 +438,7 @@ class Example:
                 )
 
     def check_results(self, tol: float = 1e-8) -> bool:
-        """Returns ``True`` if multi-GPU result is within ``tol`` of the single-GPU result.
+        """Return ``True`` if multi-GPU result is within ``tol`` of the single-GPU result.
 
         Comparison is performed on the host in a serial manner.
         """

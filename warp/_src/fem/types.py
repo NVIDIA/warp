@@ -25,28 +25,34 @@ vec3i = wp.vec3i
 vec4i = wp.vec4i
 
 Coords = wp.vec3
-"""Type representing coordinates within elements"""
+"""Type representing coordinates within elements."""
+
 OUTSIDE = -1.0e8
-"""Constant indicating an invalid element coordinate"""
+"""Constant indicating an invalid element coordinate."""
 
 ElementIndex = int
-"""Type representing the index of an element in the geometry"""
+"""Type representing the index of an element in the geometry."""
+
 QuadraturePointIndex = int
-"""Type representing the index of a quadrature point"""
+"""Type representing the index of a quadrature point."""
+
 NodeIndex = int
-"""Type representing the index of a node in a function space"""
+"""Type representing the index of a node in a function space."""
 
 NULL_ELEMENT_INDEX: ElementIndex = wp.constant(-1)
-"""Constant indicating an invalid element index"""
+"""Constant indicating an invalid element index."""
+
 NULL_QP_INDEX: QuadraturePointIndex = wp.constant(-1)
-"""Constant indicating an invalid quadrature point index"""
+"""Constant indicating an invalid quadrature point index."""
+
 NULL_NODE_INDEX: NodeIndex = wp.constant((1 << 31) - 1)  # this should be larger than normal nodes when sorting
-"""Constant indicating an invalid node index"""
+"""Constant indicating an invalid node index."""
 
 DofIndex = wp.vec2i
-"""Opaque descriptor for indexing degrees of freedom within elements"""
+"""Opaque descriptor for indexing degrees of freedom within elements."""
+
 NULL_DOF_INDEX: DofIndex = wp.constant(DofIndex(-1, -1))
-"""Constant indicating an invalid degree of freedom index"""
+"""Constant indicating an invalid degree of freedom index."""
 
 
 @wp.func
@@ -60,12 +66,12 @@ def get_node_coord(dof_idx: DofIndex):
 
 
 class ElementKind(IntEnum):
-    """Type of geometry elements"""
+    """Type of geometry elements."""
 
     CELL = 0
-    """Cells: elements that have the same dimension as the geometry"""
+    """Cell elements that have the same dimension as the geometry."""
     SIDE = 1
-    """Sides: elements that have one dimension less than the geometry"""
+    """Side elements that have one dimension less than the geometry."""
 
 
 @wp.struct
@@ -76,25 +82,25 @@ class NodeElementIndex:
 
 @wp.struct
 class Sample:
-    """Per-sample point context for evaluating fields and related operators in integrands"""
+    """Per-sample point context for evaluating fields and related operators in integrands."""
 
     element_index: ElementIndex
-    """Index of the geometry element the sample point is in"""
+    """Index of the geometry element the sample point is in."""
     element_coords: Coords
-    """Coordinates of the sample point inside the element"""
+    """Coordinate of the sample point inside the element."""
     qp_index: QuadraturePointIndex = NULL_QP_INDEX
-    """If the sample corresponds to a quadrature point, its global index"""
+    """If the sample corresponds to a quadrature point, its global index."""
     qp_weight: float = 0.0
-    """If the sample corresponds to a quadrature point, its weight"""
+    """If the sample corresponds to a quadrature point, its weight."""
     test_dof: DofIndex = NULL_DOF_INDEX
-    """For linear of bilinear form assembly, index of the test degree-of-freedom currently being considered"""
+    """For linear or bilinear form assembly, index of the test degree-of-freedom currently being considered."""
     trial_dof: DofIndex = NULL_DOF_INDEX
-    """For bilinear form assembly, index of the trial degree-of-freedom currently being considered"""
+    """For bilinear form assembly, index of the trial degree-of-freedom currently being considered."""
 
 
 @wp.func
 def make_free_sample(element_index: ElementIndex, element_coords: Coords):
-    """Returns a :class:`Sample` that is not associated to any quadrature point or dof"""
+    """Return a :class:`Sample` that is not associated to any quadrature point or dof."""
     return Sample(element_index, element_coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
 
 
@@ -104,6 +110,7 @@ class Field:
     """
 
     call_operator: "warp._src.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
+    """Current operator being resolved for this field argument."""
 
 
 class Domain:
@@ -112,3 +119,4 @@ class Domain:
     """
 
     call_operator: "warp._src.fem.operator.Operator" = None  # noqa: F821 Set in operator.py
+    """Current operator being resolved for this domain argument."""

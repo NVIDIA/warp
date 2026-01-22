@@ -170,13 +170,24 @@ class UsdRenderer:
         distant_light.GetExposureAttr().Set(10.0)
 
     def begin_frame(self, time):
+        """Set the current time code for subsequent writes.
+
+        Args:
+            time: Time in seconds.
+        """
         self.time = round(time * self.fps)
         self.stage.SetEndTimeCode(self.time)
 
     def end_frame(self):
+        """End the current frame (no-op for USD)."""
         pass
 
     def register_body(self, body_name):
+        """Create a transform prim for a body.
+
+        Args:
+            body_name: Name of the body prim under ``/root``.
+        """
         from pxr import UsdGeom  # noqa: PLC0415
 
         xform = UsdGeom.Xform.Define(self.stage, self.root.GetPath().AppendChild(body_name))
@@ -205,6 +216,20 @@ class UsdRenderer:
         custom_index: int = -1,
         visible: bool = True,
     ):
+        """Instance a previously defined shape.
+
+        Args:
+            name: Name for the instance prim.
+            shape: Shape prim path returned by a ``render_*`` method.
+            body: Optional parent body name.
+            pos: Position tuple ``(x, y, z)``.
+            rot: Orientation quaternion ``(x, y, z, w)``.
+            scale: Scale tuple.
+            color1: Optional color override (currently unused).
+            color2: Optional secondary color override (currently unused).
+            custom_index: Optional custom instance index (currently unused).
+            visible: Whether the instance is visible.
+        """
         if not visible:
             return
         sdf_path = self._resolve_path(name, body)
@@ -284,6 +309,13 @@ class UsdRenderer:
         return prim_path
 
     def render_ground(self, size: float = 100.0, plane=None):
+        """Render a ground plane.
+
+        Args:
+            size: Half-extent of the plane along each axis.
+            plane: Optional plane equation ``(nx, ny, nz, d)`` to orient and
+                offset the plane.
+        """
         from pxr import UsdGeom  # noqa: PLC0415
 
         mesh = UsdGeom.Mesh.Define(self.stage, self.root.GetPath().AppendChild("ground"))
@@ -593,6 +625,16 @@ class UsdRenderer:
         return prim_path
 
     def render_ref(self, name: str, path: str, pos: tuple, rot: tuple, scale: tuple, color: tuple | None = None):
+        """Reference an external USD asset.
+
+        Args:
+            name: Name for the reference prim.
+            path: Path to the USD file.
+            pos: Position tuple ``(x, y, z)``.
+            rot: Orientation quaternion ``(x, y, z, w)``.
+            scale: Scale tuple.
+            color: Optional display color applied to referenced prims.
+        """
         from pxr import Gf, Usd, UsdGeom  # noqa: PLC0415
 
         ref_path = "/root/" + name
@@ -628,6 +670,25 @@ class UsdRenderer:
         smooth_shading: bool = True,
         visible: bool = True,
     ):
+        """Create or update a mesh prim.
+
+        Args:
+            name: Name for the mesh prim.
+            points: Vertex positions.
+            indices: Triangle indices.
+            colors: Display colors (constant or per-vertex).
+            pos: Position tuple ``(x, y, z)``.
+            rot: Orientation quaternion ``(x, y, z, w)``.
+            scale: Scale tuple.
+            update_topology: Whether to update index data.
+            parent_body: Optional parent body name.
+            is_template: Whether to create an instanced template.
+            smooth_shading: Reserved for future use.
+            visible: Whether the mesh is visible.
+
+        Returns:
+            The prim path of the mesh or template.
+        """
         from pxr import Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
@@ -692,6 +753,25 @@ class UsdRenderer:
         color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
+        """Render an arrow composed of a cylinder and a cone.
+
+        Args:
+            name: Name for the arrow prim.
+            pos: Position tuple ``(x, y, z)``.
+            rot: Orientation quaternion ``(x, y, z, w)``.
+            base_radius: Radius of the arrow shaft.
+            base_height: Height of the arrow shaft.
+            cap_radius: Radius of the arrow head.
+            cap_height: Height of the arrow head.
+            parent_body: Optional parent body name.
+            is_template: Whether to create an instanced template.
+            up_axis: Up-axis index (0=X, 1=Y, 2=Z).
+            color: Optional display color.
+            visible: Whether the arrow is visible.
+
+        Returns:
+            The prim path of the arrow.
+        """
         from pxr import Gf, Sdf, UsdGeom  # noqa: PLC0415
 
         if is_template:
@@ -814,6 +894,15 @@ class UsdRenderer:
         radius: float = 0.01,
         visible: bool = True,
     ):
+        """Render a line strip as capsules.
+
+        Args:
+            name: Name for the line strip prim.
+            vertices: Polyline vertices.
+            color: Display color for the capsules.
+            radius: Capsule radius.
+            visible: Whether the line strip is visible.
+        """
         from pxr import Gf, UsdGeom  # noqa: PLC0415
 
         num_lines = int(len(vertices) - 1)
@@ -859,6 +948,19 @@ class UsdRenderer:
         instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
 
     def render_points(self, name: str, points, radius, colors=None, as_spheres: bool = True, visible: bool = True):
+        """Render points as spheres or USD points.
+
+        Args:
+            name: Name for the points prim.
+            points: Point positions.
+            radius: Scalar or per-point radius.
+            colors: Optional display colors.
+            as_spheres: Whether to render as sphere instances.
+            visible: Whether the points are visible.
+
+        Returns:
+            The prim path for the points.
+        """
         from pxr import Sdf, UsdGeom, Vt  # noqa: PLC0415
 
         instancer_path = self._resolve_path(name)
@@ -961,6 +1063,11 @@ class UsdRenderer:
                 _usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
 
     def save(self):
+        """Save the USD stage to disk.
+
+        Returns:
+            ``True`` if saving succeeded, ``False`` otherwise.
+        """
         try:
             self.stage.Save()
         except Exception as e:

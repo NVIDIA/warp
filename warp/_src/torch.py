@@ -158,7 +158,7 @@ def dtype_from_torch(torch_dtype):
 
 
 def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
-    """Evaluates whether the given torch dtype is compatible with the given Warp dtype."""
+    """Evaluate whether the given torch dtype is compatible with the given Warp dtype."""
     # initialize lookup table on first call to defer torch import
     if dtype_is_compatible.compatible_sets is None:
         import torch  # noqa: PLC0415

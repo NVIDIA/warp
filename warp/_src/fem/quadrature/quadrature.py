@@ -36,7 +36,7 @@ class QuadraturePointElementIndex:
 
 
 class Quadrature:
-    """Interface class for quadrature rules"""
+    """Interface class for quadrature rules."""
 
     @wp.struct
     class Arg:
@@ -94,7 +94,7 @@ class Quadrature:
         domain_element_index: ElementIndex,
         geo_element_index: ElementIndex,
     ):
-        """Number of quadrature points for a given element"""
+        """Number of quadrature points for a given element."""
         raise NotImplementedError()
 
     @staticmethod
@@ -105,7 +105,7 @@ class Quadrature:
         geo_element_index: ElementIndex,
         element_qp_index: int,
     ):
-        """Coordinates in element of the element's qp_index'th quadrature point"""
+        """Coordinate values in element of the element's qp_index'th quadrature point."""
         raise NotImplementedError()
 
     @staticmethod
@@ -116,7 +116,7 @@ class Quadrature:
         geo_element_index: ElementIndex,
         element_qp_index: int,
     ):
-        """Weight of the element's qp_index'th quadrature point"""
+        """Weight of the element's qp_index'th quadrature point."""
         raise NotImplementedError()
 
     @staticmethod
@@ -143,8 +143,9 @@ class Quadrature:
         element_qp_index: int,
     ):
         """Quadrature point index according to evaluation order.
+
         Quadrature points for distinct elements must have different evaluation indices.
-        Only required if evaluation_point_element_index is not overloaded
+        Only required if ``evaluation_point_element_index`` is not overloaded.
         """
         raise NotImplementedError()
 
@@ -154,10 +155,11 @@ class Quadrature:
     # By default cache the mapping from evaluation point indices to domain elements
 
     ElementIndexArg = wp.array(dtype=QuadraturePointElementIndex)
+    """Mapping from evaluation point indices to element indices."""
 
     @cache.cached_arg_value
     def element_index_arg_value(self, device):
-        """Builds a map from quadrature point evaluation indices to their index in the element to which they belong"""
+        """Build a map from quadrature point evaluation indices to their index in the element to which they belong."""
 
         @cache.dynamic_kernel(f"{self.name}{self.domain.name}")
         def quadrature_point_element_indices(
@@ -203,8 +205,9 @@ class Quadrature:
         element_index_arg: ElementIndexArg,
         qp_eval_index: QuadraturePointIndex,
     ):
-        """Maps from quadrature point evaluation indices to their index in the element to which they belong
-        If the quadrature point does not exist, should return NULL_ELEMENT_INDEX as the domain element index
+        """Map from quadrature point evaluation indices to their index in the element to which they belong.
+
+        If the quadrature point does not exist, should return :data:`NULL_ELEMENT_INDEX` as the domain element index.
         """
 
         element_index = element_index_arg[qp_eval_index]
@@ -213,7 +216,10 @@ class Quadrature:
 
 class _QuadratureWithRegularEvaluationPoints(Quadrature):
     """Helper subclass for quadrature formulas which use a uniform number of
-    evaluations points per element. Avoids building explicit mapping"""
+    evaluations points per element.
+
+    Avoids building explicit mapping.
+    """
 
     _dynamic_attribute_constructors: ClassVar = {
         "point_evaluation_index": lambda obj: obj._make_regular_point_evaluation_index(),
@@ -265,10 +271,12 @@ class _QuadratureWithRegularEvaluationPoints(Quadrature):
 
 
 class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
-    """Regular quadrature formula, using a constant set of quadrature points per element"""
+    """Regular quadrature formula, using a constant set of quadrature points per element."""
 
     @wp.struct
     class Arg:
+        """Structure containing arguments to be passed to device functions."""
+
         # Quadrature points and weights used to be passed as Warp constants,
         # but this tended to incur register spilling for high point counts
         points: wp.array(dtype=Coords)
@@ -336,23 +344,29 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     @cached_property
     def name(self):
+        """Unique name of the quadrature rule."""
         return f"{self.__class__.__name__}_{self.domain.name}_{self.family}_{self.order}"
 
     def total_point_count(self):
+        """Total number of quadrature points."""
         return self._formula.count * self.domain.element_count()
 
     def max_points_per_element(self):
+        """Maximum number of quadrature points per element."""
         return self._formula.count
 
     @property
     def points(self):
+        """Quadrature point coordinates in reference space."""
         return self._formula.points
 
     @property
     def weights(self):
+        """Quadrature weights for the reference element."""
         return self._formula.weights
 
     def fill_arg(self, arg: "RegularQuadrature.Arg", device):
+        """Fill the quadrature argument structure for device functions."""
         self._formula.fill_arg(arg, device)
 
     def _make_point_count(self):
@@ -449,12 +463,15 @@ class NodalQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     @cached_property
     def name(self):
+        """Unique name of the quadrature rule."""
         return f"{self.__class__.__name__}_{self._basis_space.name}_{self._space_partition.name}"
 
     def total_point_count(self):
+        """Total number of quadrature points."""
         return self._space_partition.node_count()
 
     def max_points_per_element(self):
+        """Maximum number of quadrature points per element."""
         return self._basis_space.topology.MAX_NODES_PER_ELEMENT
 
     def _make_arg(self):
@@ -467,6 +484,7 @@ class NodalQuadrature(_QuadratureWithRegularEvaluationPoints):
         return Arg
 
     def fill_arg(self, arg: "NodalQuadrature.Arg", device):
+        """Fill the quadrature argument structure for device functions."""
         self._basis_space.fill_basis_arg(arg.basis_arg, device)
         self._basis_space.topology.fill_topo_arg(arg.topo_arg, device)
         self._space_partition.fill_partition_arg(arg.partition_arg, device)
@@ -547,6 +565,8 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     @wp.struct
     class Arg:
+        """Structure containing arguments to be passed to device functions."""
+
         points_per_cell: int
         points: wp.array2d(dtype=Coords)
         weights: wp.array2d(dtype=float)
@@ -583,15 +603,19 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     @cached_property
     def name(self):
+        """Unique name of the quadrature rule."""
         return f"{self.__class__.__name__}_{self._whole_geo}_{self._points_per_cell}"
 
     def total_point_count(self):
+        """Total number of quadrature points."""
         return self._weights.size
 
     def max_points_per_element(self):
+        """Maximum number of quadrature points per element."""
         return self._points_per_cell
 
     def fill_arg(self, arg: "ExplicitQuadrature.Arg", device):
+        """Fill the quadrature argument structure for device functions."""
         arg.points_per_cell = self._points_per_cell
         arg.points = self._points.to(device)
         arg.weights = self._weights.to(device)
@@ -603,6 +627,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
     ):
+        """Return the number of quadrature points for a given element."""
         return qp_arg.points.shape[1]
 
     @wp.func
@@ -613,6 +638,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         element_index: ElementIndex,
         qp_index: int,
     ):
+        """Return quadrature point coordinates for a domain element."""
         return qp_arg.points[domain_element_index, qp_index]
 
     @wp.func
@@ -623,6 +649,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         element_index: ElementIndex,
         qp_index: int,
     ):
+        """Return quadrature point weights for a domain element."""
         return qp_arg.weights[domain_element_index, qp_index]
 
     @wp.func
@@ -633,6 +660,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         element_index: ElementIndex,
         qp_index: int,
     ):
+        """Return quadrature point indices for a domain element."""
         return qp_arg.points_per_cell * domain_element_index + qp_index
 
     @wp.func
@@ -643,6 +671,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         element_index: ElementIndex,
         qp_index: int,
     ):
+        """Return quadrature point coordinates for a geometry element."""
         return qp_arg.points[element_index, qp_index]
 
     @wp.func
@@ -653,6 +682,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         element_index: ElementIndex,
         qp_index: int,
     ):
+        """Return quadrature point weights for a geometry element."""
         return qp_arg.weights[element_index, qp_index]
 
     @wp.func
@@ -663,4 +693,5 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
         element_index: ElementIndex,
         qp_index: int,
     ):
+        """Return quadrature point indices for a geometry element."""
         return qp_arg.points_per_cell * element_index + qp_index

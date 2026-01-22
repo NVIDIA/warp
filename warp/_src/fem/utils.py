@@ -88,19 +88,17 @@ def compress_node_indices(
     unique_node_indices: wp.array(dtype=int) = None,
     temporary_store: cache.TemporaryStore = None,
 ) -> Union[tuple[cache.Temporary, cache.Temporary], tuple[cache.Temporary, cache.Temporary, int, cache.Temporary]]:
-    """
-    Compress an unsorted list of node indices into:
-     - the `node_offsets` array, giving for each node the start offset of corresponding indices in sorted_array_indices
-     - the `sorted_array_indices` array, listing the indices in the input array corresponding to each node
+    """Compress an unsorted list of node indices into:
+     - the ``node_offsets`` array, giving for each node the start offset of corresponding indices in ``sorted_array_indices``
+     - the ``sorted_array_indices`` array, listing the indices in the input array corresponding to each node
 
-    Plus if `return_unique_nodes` is ``True``,
-     - the `unique_node_count` array containing the number of unique node indices
-     - the `unique_node_indices` array containing the sorted list of unique node indices (i.e. the list of indices i for which node_offsets[i] < node_offsets[i+1])
+    Plus if ``return_unique_nodes`` is ``True``,
+     - the ``unique_node_count`` array containing the number of unique node indices
+     - the ``unique_node_indices`` array containing the sorted list of unique node indices (i.e. the list of indices i for which ``node_offsets[i] < node_offsets[i+1]``)
 
-    Node indices equal to NULL_NODE_INDEX will be ignored
+    Node indices equal to :data:`NULL_NODE_INDEX` will be ignored.
 
     If the ``node_offsets``, ``sorted_array_indices``, ``unique_node_count`` and ``unique_node_indices`` arrays are provided and adequately shaped, they will be used to store the results instead of creating new arrays.
-
     """
 
     index_count = node_indices.size
@@ -162,7 +160,7 @@ def compress_node_indices(
 
 
 def host_read_at_index(array: wp.array, index: int = -1, temporary_store: cache.TemporaryStore = None) -> int:
-    """Returns the value of the array element at the given index on host"""
+    """Return the value of the array element at the given index on host."""
 
     if index < 0:
         index += array.shape[0]
@@ -286,13 +284,13 @@ def _masked_indices_kernel(
 
 
 def grid_to_tris(Nx: int, Ny: int):
-    """Constructs a triangular mesh topology by dividing each cell of a dense 2D grid into two triangles.
+    """Construct a triangular mesh topology by dividing each cell of a dense 2D grid into two triangles.
 
-    The resulting triangles will be oriented counter-clockwise assuming that `y` is the fastest moving index direction
+    The resulting triangles will be oriented counter-clockwise assuming that ``y`` is the fastest moving index direction.
 
     Args:
-        Nx: Resolution of the grid along `x` dimension
-        Ny: Resolution of the grid along `y` dimension
+        Nx: Resolution of the grid along ``x`` dimension
+        Ny: Resolution of the grid along ``y`` dimension
 
     Returns:
         Array of shape (2 * Nx * Ny, 3) containing vertex indices for each triangle
@@ -317,7 +315,7 @@ def grid_to_tris(Nx: int, Ny: int):
 
 
 def grid_to_tets(Nx: int, Ny: int, Nz: int):
-    """Constructs a tetrahedral mesh topology by diving each cell of a dense 3D grid into five tetrahedrons
+    """Construct a tetrahedral mesh topology by diving each cell of a dense 3D grid into five tetrahedrons.
 
     The resulting tets have positive volume assuming that `z` is the fastest moving index direction
 
@@ -415,13 +413,13 @@ def grid_to_tets(Nx: int, Ny: int, Nz: int):
 
 
 def grid_to_quads(Nx: int, Ny: int):
-    """Constructs a quadrilateral mesh topology from a dense 2D grid
+    """Construct a quadrilateral mesh topology from a dense 2D grid.
 
-    The resulting quads will be indexed counter-clockwise
+    The resulting quads will be indexed counter-clockwise.
 
     Args:
-        Nx: Resolution of the grid along `x` dimension
-        Ny: Resolution of the grid along `y` dimension
+        Nx: Resolution of the grid along ``x`` dimension
+        Ny: Resolution of the grid along ``y`` dimension
 
     Returns:
         Array of shape (Nx * Ny, 4) containing vertex indices for each quadrilateral
@@ -449,15 +447,15 @@ def grid_to_quads(Nx: int, Ny: int):
 
 
 def grid_to_hexes(Nx: int, Ny: int, Nz: int):
-    """Constructs a hexahedral mesh topology from a dense 3D grid
+    """Construct a hexahedral mesh topology from a dense 3D grid.
 
-    The resulting hexes will be indexed following usual convention assuming that `z` is the fastest moving index direction
-    (counter-clockwise bottom vertices, then counter-clockwise top vertices)
+    The resulting hexes will be indexed following usual convention assuming that ``z`` is the fastest moving index direction
+    (counter-clockwise bottom vertices, then counter-clockwise top vertices).
 
     Args:
-        Nx: Resolution of the grid along `x` dimension
-        Ny: Resolution of the grid along `y` dimension
-        Nz: Resolution of the grid along `z` dimension
+        Nx: Resolution of the grid along ``x`` dimension
+        Ny: Resolution of the grid along ``y`` dimension
+        Nz: Resolution of the grid along ``z`` dimension
 
     Returns:
         Array of shape (Nx * Ny * Nz, 8) containing vertex indices for each hexahedron

@@ -29,13 +29,15 @@ _wp_module_name_ = "warp.fem.geometry.grid_2d"
 
 @wp.struct
 class Grid2DCellArg:
+    """Arguments for cell-related device functions."""
+
     res: wp.vec2i
     cell_size: wp.vec2
     origin: wp.vec2
 
 
 class Grid2D(Geometry):
-    """Two-dimensional regular grid geometry"""
+    """Two-dimensional regular grid geometry."""
 
     dimension = 2
 
@@ -43,7 +45,7 @@ class Grid2D(Geometry):
     LONG_AXIS = 1
 
     def __init__(self, res: wp.vec2i, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp.vec2] = None):
-        """Constructs a dense 2D grid
+        """Construct a dense 2D grid.
 
         Args:
             res: Resolution of the grid along each dimension
@@ -64,6 +66,7 @@ class Grid2D(Geometry):
 
     @cached_property
     def extents(self) -> wp.vec3:
+        """Extent of the grid along each axis."""
         # Avoid using native sub due to higher over of calling builtins from Python
         return wp.vec2(
             self.bounds_hi[0] - self.bounds_lo[0],
@@ -72,6 +75,7 @@ class Grid2D(Geometry):
 
     @cached_property
     def cell_size(self) -> wp.vec2:
+        """Size of a cell along each axis."""
         ex = self.extents
         return wp.vec2(
             ex[0] / self.res[0],
@@ -79,38 +83,48 @@ class Grid2D(Geometry):
         )
 
     def cell_count(self):
+        """Number of cells in the grid."""
         return self.res[0] * self.res[1]
 
     def vertex_count(self):
+        """Number of vertices in the grid."""
         return (self.res[0] + 1) * (self.res[1] + 1)
 
     def side_count(self):
+        """Number of sides in the grid."""
         return 2 * self.cell_count() + self.res[0] + self.res[1]
 
     def boundary_side_count(self):
+        """Number of boundary sides in the grid."""
         return 2 * (self.res[0] + self.res[1])
 
     def reference_cell(self) -> Element:
+        """Reference element for grid cells."""
         return Element.SQUARE
 
     def reference_side(self) -> Element:
+        """Reference element for grid sides."""
         return Element.LINE_SEGMENT
 
     @property
     def res(self):
+        """Grid resolution along each axis."""
         return self._res
 
     @property
     def origin(self):
+        """Lower bound of the grid in world coordinates."""
         return self.bounds_lo
 
     @cached_property
     def strides(self):
+        """Index strides for flattening 2D indices."""
         return wp.vec2i(self.res[1], 1)
 
     # Utility device functions
     CellArg = Grid2DCellArg
     Cell = wp.vec2i
+    """Index type for cell coordinates."""
 
     @wp.func
     def _to_2d_index(x_stride: int, index: int):
@@ -124,19 +138,25 @@ class Grid2D(Geometry):
 
     @wp.func
     def cell_index(res: wp.vec2i, cell: Cell):
+        """Return the flattened cell index for a cell coordinate."""
         return Grid2D._from_2d_index(res[1], cell)
 
     @wp.func
     def get_cell(res: wp.vec2i, cell_index: ElementIndex):
+        """Return the cell coordinate for a flattened cell index."""
         return Grid2D._to_2d_index(res[1], cell_index)
 
     @wp.struct
     class Side:
+        """Side descriptor for indexing sides."""
+
         axis: int  # normal; 0: horizontal, 1: vertical
         origin: wp.vec2i  # index of vertex at corner (0,0)
 
     @wp.struct
     class SideArg:
+        """Arguments for side-related device functions."""
+
         cell_count: int
         axis_offsets: wp.vec2i
         cell_arg: Grid2DCellArg
@@ -145,19 +165,23 @@ class Grid2D(Geometry):
 
     @wp.func
     def orient(axis: int, vec: Any):
+        """Orient a vector based on the side axis."""
         return wp.where(axis == 0, vec, type(vec)(vec[1], vec[0]))
 
     @wp.func
     def orient(axis: int, coord: int):
+        """Orient a coordinate based on the side axis."""
         return wp.where(axis == 0, coord, 1 - coord)
 
     @wp.func
     def is_flipped(side: Side):
+        """Return whether a side orientation should be flipped."""
         # Flip such that the boundary is CCW
         return (side.axis == 0) == (side.origin[Grid2D.ALT_AXIS] == 0)
 
     @wp.func
     def side_index(arg: SideArg, side: Side):
+        """Return the flattened side index for a side descriptor."""
         alt_axis = Grid2D.orient(side.axis, 0)
         if side.origin[0] == arg.cell_arg.res[alt_axis]:
             # Upper-boundary side
@@ -169,6 +193,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def get_side(arg: SideArg, side_index: ElementIndex):
+        """Return the side descriptor for a flattened side index."""
         if side_index < 2 * arg.cell_count:
             axis = side_index // arg.cell_count
             cell_index = side_index - axis * arg.cell_count
@@ -187,12 +212,14 @@ class Grid2D(Geometry):
     # Geometry device interface
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         args.res = self.res
         args.cell_size = self.cell_size
         args.origin = self.bounds_lo
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
+        """Return the world position of a cell sample point."""
         cell = Grid2D.get_cell(args.res, s.element_index)
         return (
             wp.vec2(
@@ -204,28 +231,38 @@ class Grid2D(Geometry):
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
+        """Return the deformation gradient for a cell sample."""
         return wp.diag(args.cell_size)
 
     @wp.func
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        """Return the inverse deformation gradient for a cell sample."""
         return wp.diag(wp.cw_div(wp.vec2(1.0), args.cell_size))
 
     @wp.func
     def cell_coordinates(args: Grid2DCellArg, cell_index: int, pos: wp.vec2):
+        """Return the cell coordinates corresponding to a world position."""
         uvw = wp.cw_div(pos - args.origin, args.cell_size)
         ij = Grid2D.get_cell(args.res, cell_index)
         return Coords(uvw[0] - float(ij[0]), uvw[1] - float(ij[1]), 0.0)
 
     @wp.func
     def cell_closest_point(args: Grid2DCellArg, cell_index: int, pos: wp.vec2):
+        """Return the closest point on a cell to a world position."""
         ij_world = wp.cw_mul(wp.vec2(Grid2D.get_cell(args.res, cell_index)), args.cell_size) + args.origin
         dist_sq, coords = project_on_box_at_origin(pos - ij_world, args.cell_size)
         return coords, dist_sq
 
     def supports_cell_lookup(self, device):
+        """Return whether cell lookups are supported on the given device."""
         return True
 
     def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
+        """Create a filtered cell lookup function.
+
+        Args:
+            filter_func: Optional device predicate to filter candidate cells.
+        """
         suffix = f"{self.name}{filter_func.key if filter_func is not None else ''}"
 
         @dynamic_func(suffix=suffix)
@@ -291,14 +328,17 @@ class Grid2D(Geometry):
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
+        """Return the measure (area) of a cell."""
         return args.cell_size[0] * args.cell_size[1]
 
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
+        """Return the normal of a cell element."""
         return wp.vec2(0.0)
 
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
+        """Value of the arguments to be passed to side-related device functions."""
         args = self.SideArg()
         args.axis_offsets = wp.vec2i(
             0,
@@ -309,6 +349,7 @@ class Grid2D(Geometry):
         return args
 
     def side_index_arg_value(self, device) -> SideIndexArg:
+        """Value of the arguments to be passed to side-index device functions."""
         return self.side_arg_value(device)
 
     @wp.func
@@ -331,6 +372,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_position(args: SideArg, s: Sample):
+        """Return the world position of a side sample point."""
         side = Grid2D.get_side(args, s.element_index)
 
         flip = Grid2D.is_flipped(side)
@@ -343,6 +385,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
+        """Return the deformation gradient for a side sample."""
         side = Grid2D.get_side(args, s.element_index)
 
         flip = Grid2D.is_flipped(side)
@@ -352,26 +395,31 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the inner cell."""
         return Grid2D.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the outer cell."""
         return Grid2D.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
+        """Return the measure (length) of a side."""
         side = Grid2D.get_side(args, s.element_index)
         long_axis = Grid2D.orient(side.axis, Grid2D.LONG_AXIS)
         return args.cell_arg.cell_size[long_axis]
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
+        """Return the ratio of side measure to neighboring cell measure."""
         side = Grid2D.get_side(args, s.element_index)
         alt_axis = Grid2D.orient(side.axis, Grid2D.ALT_AXIS)
         return 1.0 / args.cell_arg.cell_size[alt_axis]
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
+        """Return the normal vector of a side."""
         side = Grid2D.get_side(args, s.element_index)
 
         # intentionally not using is_flipped to account for normql sign switch with orient(axis=1)
@@ -383,6 +431,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         side = Grid2D.get_side(arg, side_index)
 
         inner_alt = wp.where(side.origin[Grid2D.ALT_AXIS] == 0, 0, side.origin[Grid2D.ALT_AXIS] - 1)
@@ -394,6 +443,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         side = Grid2D.get_side(arg, side_index)
 
         alt_axis = Grid2D.orient(side.axis, 0)
@@ -408,6 +458,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         side = Grid2D.get_side(args, side_index)
 
         inner_alt = wp.where(side.origin[Grid2D.ALT_AXIS] == 0, 0.0, 1.0)
@@ -420,6 +471,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         side = Grid2D.get_side(args, side_index)
 
         alt_axis = Grid2D.orient(side.axis, Grid2D.ALT_AXIS)
@@ -438,6 +490,7 @@ class Grid2D(Geometry):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         side = Grid2D.get_side(args, side_index)
         cell = Grid2D.get_cell(args.cell_arg.res, element_index)
 
@@ -452,10 +505,12 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return side_arg.cell_arg
 
     @wp.func
     def side_coordinates(args: SideArg, side_index: int, pos: wp.vec2):
+        """Return side coordinates corresponding to a world position."""
         cell_arg = args.cell_arg
         side = Grid2D.get_side(args, side_index)
         long_axis = Grid2D.orient(side.axis, Grid2D.LONG_AXIS)
@@ -468,6 +523,7 @@ class Grid2D(Geometry):
 
     @wp.func
     def side_closest_point(args: SideArg, side_index: int, pos: wp.vec2):
+        """Return the closest point on a side to a world position."""
         coord = Grid2D.side_coordinates(args, side_index, pos)
 
         cell_arg = args.cell_arg

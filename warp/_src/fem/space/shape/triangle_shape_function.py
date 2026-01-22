@@ -54,18 +54,20 @@ def _triangle_node_index(tx: int, ty: int, degree: int):
 
 
 class TriangleShapeFunction(ShapeFunction):
+    """Base class for shape functions defined on triangular elements."""
+
     VERTEX = wp.constant(0)
     EDGE = wp.constant(1)
     INTERIOR = wp.constant(2)
 
     VERTEX_NODE_COUNT: int
-    """Number of shape function nodes per vertex"""
+    """Number of shape function nodes per vertex."""
 
     EDGE_NODE_COUNT: int
-    """Number of shape function nodes per triangle edge (excluding vertex nodes)"""
+    """Number of shape function nodes per triangle edge (excluding vertex nodes)."""
 
     INTERIOR_NODE_COUNT: int
-    """Number of shape function nodes per triangle (excluding edge and vertex nodes)"""
+    """Number of shape function nodes per triangle (excluding edge and vertex nodes)."""
 
     @staticmethod
     def node_type_and_index(node_index_in_elt: int):
@@ -80,6 +82,8 @@ class TriangleShapeFunction(ShapeFunction):
 
 
 class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
+    """Polynomial Lagrange shape functions on triangular elements."""
+
     def __init__(self, degree: int):
         self.ORDER = wp.constant(degree)
 
@@ -364,6 +368,8 @@ class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
 
 
 class TriangleNonConformingPolynomialShapeFunctions(ShapeFunction):
+    """Non-conforming polynomial shape functions on triangular elements."""
+
     def __init__(self, degree: int):
         self._tri_shape = TrianglePolynomialShapeFunctions(degree=degree)
         self.ORDER = self._tri_shape.ORDER
@@ -484,6 +490,8 @@ class TriangleNonConformingPolynomialShapeFunctions(ShapeFunction):
 
 
 class TriangleNedelecFirstKindShapeFunctions(TriangleShapeFunction):
+    """Nédélec first-kind (edge) shape functions on triangular elements for H(curl) spaces."""
+
     value = ShapeFunction.Value.CovariantVector
 
     def __init__(self, degree: int):
@@ -584,6 +592,8 @@ class TriangleNedelecFirstKindShapeFunctions(TriangleShapeFunction):
 
 
 class TriangleRaviartThomasShapeFunctions(TriangleShapeFunction):
+    """Raviart-Thomas (face) shape functions on triangular elements for H(div) spaces."""
+
     value = ShapeFunction.Value.ContravariantVector
 
     def __init__(self, degree: int):
