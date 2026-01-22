@@ -510,6 +510,228 @@ def test_tile_operators(test, device):
     assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.75)
 
 
+# ============================================================================
+# tile * constant multiplication (where constant can be scalar, vec, or mat)
+# ============================================================================
+
+
+@wp.kernel
+def tile_const_mul_vec_times_scalar_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
+    # tile<vec3> * scalar -> tile<vec3>
+    a = wp.tile_load(input, shape=TILE_M)
+    b = a * 2.0
+    wp.tile_store(output, b)
+
+
+@wp.kernel
+def tile_const_mul_scalar_times_vec_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
+    # scalar * tile<vec3> -> tile<vec3>
+    a = wp.tile_load(input, shape=TILE_M)
+    b = 2.0 * a
+    wp.tile_store(output, b)
+
+
+@wp.kernel
+def tile_const_mul_float_times_vec_kernel(input: wp.array(dtype=float), output: wp.array(dtype=wp.vec3)):
+    # tile<float> * vec3 -> tile<vec3>
+    a = wp.tile_load(input, shape=TILE_M)
+    b = a * wp.vec3(1.0, 2.0, 3.0)
+    wp.tile_store(output, b)
+
+
+@wp.kernel
+def tile_const_mul_vec_times_float_kernel(input: wp.array(dtype=float), output: wp.array(dtype=wp.vec3)):
+    # vec3 * tile<float> -> tile<vec3>
+    a = wp.tile_load(input, shape=TILE_M)
+    b = wp.vec3(1.0, 2.0, 3.0) * a
+    wp.tile_store(output, b)
+
+
+def test_tile_const_mul(test, device):
+    """Test tile * constant multiplication with vec/mat types."""
+
+    # Test 1: tile<vec3> * scalar
+    vec_input = np.ones((TILE_M, 3), dtype=np.float32)
+    input_wp = wp.array(vec_input, dtype=wp.vec3, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_const_mul_vec_times_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    expected = vec_input * 2.0
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # backward pass
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full_like(vec_input, 2.0))
+
+    # Test 2: scalar * tile<vec3>
+    input_wp = wp.array(vec_input, dtype=wp.vec3, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_const_mul_scalar_times_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    assert_np_equal(output_wp.numpy(), expected)
+
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full_like(vec_input, 2.0))
+
+    # Test 3: tile<float> * vec3 -> tile<vec3>
+    float_input = np.full(TILE_M, 2.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_const_mul_float_times_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # 2.0 * vec3(1, 2, 3) = vec3(2, 4, 6)
+    expected = np.array([[2.0, 4.0, 6.0]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # backward: d/d(input) of (input * vec3(1,2,3)) with output_grad=ones
+    # = sum of vec3(1,2,3) = 6.0
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 6.0, dtype=np.float32))
+
+    # Test 4: vec3 * tile<float> -> tile<vec3>
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_const_mul_vec_times_float_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    assert_np_equal(output_wp.numpy(), expected)
+
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 6.0, dtype=np.float32))
+
+
+# ============================================================================
+# tile_map with non-tile constant second argument
+# ============================================================================
+
+
+@wp.kernel
+def tile_map_with_constant_kernel(input: wp.array(dtype=float), output: wp.array(dtype=wp.vec3)):
+    # tile_map(mul, tile<float>, vec3) -> tile<vec3>
+    a = wp.tile_load(input, shape=TILE_M)
+    b = wp.tile_map(wp.mul, a, wp.vec3(1.0, 2.0, 3.0))
+    wp.tile_store(output, b)
+
+
+def test_tile_map_with_constant(test, device):
+    """Test tile_map with a non-tile constant as second argument."""
+    float_input = np.full(TILE_M, 2.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_map_with_constant_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # 2.0 * vec3(1, 2, 3) = vec3(2, 4, 6)
+    expected = np.array([[2.0, 4.0, 6.0]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # backward
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 6.0, dtype=np.float32))
+
+
+# ============================================================================
+# variadic tile_map with non-tile constant arguments (mixed dtypes)
+# ============================================================================
+
+
+@wp.func
+def weighted_add_mixed(a: wp.float32, b: wp.float64, weight: wp.float64):
+    return wp.float64(a) + b * weight
+
+
+@wp.kernel
+def tile_n_map_with_constant_kernel(
+    x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float64), out: wp.array(dtype=wp.float64)
+):
+    # tile_map(op, tile<float32>, tile<float64>, constant<float64>)
+    x_tile = wp.tile_load(x, shape=TILE_M)
+    y_tile = wp.tile_load(y, shape=TILE_M)
+    weight = wp.float64(0.5)
+    out_tile = wp.tile_map(weighted_add_mixed, x_tile, y_tile, weight)
+    wp.tile_store(out, out_tile)
+
+
+def test_tile_n_map_with_constant(test, device):
+    """Test variadic tile_map with mixed dtypes and a non-tile constant argument."""
+    x_np = np.arange(TILE_M, dtype=np.float32)
+    y_np = np.arange(TILE_M, dtype=np.float64) * 2.0
+
+    x = wp.array(x_np, dtype=wp.float32, requires_grad=True, device=device)
+    y = wp.array(y_np, dtype=wp.float64, requires_grad=True, device=device)
+    out = wp.zeros(TILE_M, dtype=wp.float64, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_n_map_with_constant_kernel,
+            dim=1,
+            inputs=[x, y],
+            outputs=[out],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # weighted_add_mixed(x, y, 0.5) = float64(x) + y * 0.5
+    expected = x_np.astype(np.float64) + y_np * 0.5
+    assert_np_equal(out.numpy(), expected)
+
+    # backward
+    out.grad = wp.ones_like(out, device=device)
+    tape.backward()
+
+    # d/dx = 1, d/dy = weight = 0.5
+    assert_np_equal(x.grad.numpy(), np.ones(TILE_M, dtype=np.float32))
+    assert_np_equal(y.grad.numpy(), np.full(TILE_M, 0.5, dtype=np.float64))
+
+
 @wp.kernel
 def test_tile_tile_preserve_type_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
     a = x[0]
@@ -1714,6 +1936,9 @@ add_function_test(TestTile, "test_tile_n_map", test_tile_n_map, devices=devices)
 add_function_test(TestTile, "test_tile_n_map_mixed_types", test_tile_n_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)
 add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=devices)
+add_function_test(TestTile, "test_tile_const_mul", test_tile_const_mul, devices=devices)
+add_function_test(TestTile, "test_tile_map_with_constant", test_tile_map_with_constant, devices=devices)
+add_function_test(TestTile, "test_tile_n_map_with_constant", test_tile_n_map_with_constant, devices=devices)
 add_function_test(TestTile, "test_tile_tile", test_tile_tile, devices=get_cuda_test_devices())
 add_function_test(TestTile, "test_tile_untile", test_tile_untile, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices, check_output=False)
