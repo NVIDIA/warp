@@ -76,7 +76,9 @@ static PFN_cuDevicePrimaryCtxRetain_v7000 pfn_cuDevicePrimaryCtxRetain;
 static PFN_cuDevicePrimaryCtxRelease_v11000 pfn_cuDevicePrimaryCtxRelease;
 static PFN_cuDeviceCanAccessPeer_v4000 pfn_cuDeviceCanAccessPeer;
 static PFN_cuMemGetInfo_v3020 pfn_cuMemGetInfo;
+#if CUDA_VERSION >= 12080
 static PFN_cuMemcpyBatchAsync_v12080 pfn_cuMemcpyBatchAsync;
+#endif
 static PFN_cuCtxGetCurrent_v4000 pfn_cuCtxGetCurrent;
 static PFN_cuCtxSetCurrent_v4000 pfn_cuCtxSetCurrent;
 static PFN_cuCtxPushCurrent_v4000 pfn_cuCtxPushCurrent;
