@@ -39,11 +39,11 @@ def create_blocked_cholesky_kernel(block_size: int):
         L: wp.array(dtype=float, ndim=2),
         active_matrix_size_arr: wp.array(dtype=int, ndim=1),
     ):
-        """
-        Computes the Cholesky factorization of a symmetric positive definite matrix A in blocks.
-        It returns a lower-triangular matrix L such that A = L L^T.
+        """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
 
-        A is assumed to support block reading.
+        It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
+
+        ``A`` is assumed to support block reading.
         """
         _tid, tid_block = wp.tid()
         num_threads_per_block = wp.block_dim()
@@ -129,11 +129,9 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
         y: wp.array(dtype=float, ndim=2),
         active_matrix_size_arr: wp.array(dtype=int, ndim=1),
     ):
-        """
-        Solves A x = b given the Cholesky factor L (A = L L^T) using
-        blocked forward and backward substitution.
+        """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution.
 
-        b can be a vector or 2-D array with multiple right-hand sides.
+        ``b`` can be a vector or 2-D array with multiple right-hand sides.
         """
 
         active_matrix_size = active_matrix_size_arr[0]
@@ -174,9 +172,7 @@ def create_blocked_cholesky_solve_kernel(block_size: int):
 
 # TODO: Add batching support to solve multiple equation systems at once (one per thread block)
 class BlockCholeskySolver:
-    """
-    A class for solving linear systems using the Cholesky factorization.
-    """
+    """A class for solving linear systems using the Cholesky factorization."""
 
     def __init__(self, max_num_equations: int, block_size=16, device="cuda"):
         # Round up max_num_equations to next multiple of block_size
@@ -202,9 +198,9 @@ class BlockCholeskySolver:
         self.active_matrix_size_external = None
 
     def factorize(self, A: wp.array(dtype=float, ndim=2), num_active_equations: int):
-        """
-        Computes the Cholesky factorization of a symmetric positive definite matrix A in blocks.
-        It returns a lower-triangular matrix L such that A = L L^T.
+        """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
+
+        It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
         """
 
         assert num_active_equations <= self.max_num_equations, (
@@ -226,9 +222,9 @@ class BlockCholeskySolver:
         self.active_matrix_size_int = num_active_equations
 
     def factorize_dynamic(self, A: wp.array(dtype=float, ndim=2), num_active_equations: wp.array(dtype=int, ndim=1)):
-        """
-        Computes the Cholesky factorization of a symmetric positive definite matrix A in blocks.
-        It returns a lower-triangular matrix L such that A = L L^T.
+        """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
+
+        It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
         """
 
         self.active_matrix_size_external = num_active_equations
@@ -243,11 +239,9 @@ class BlockCholeskySolver:
         )
 
     def solve(self, rhs: wp.array(dtype=float, ndim=2), result: wp.array(dtype=float, ndim=2)):
-        """
-        Solves A x = b given the Cholesky factor L (A = L L^T) using
-        blocked forward and backward substitution.
+        """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution.
 
-        b can be a vector or 2-D array with multiple right-hand sides.
+        ``b`` can be a vector or 2-D array with multiple right-hand sides.
         """
 
         # Do safety checks but they can only be done if the matrix size is known on the host
@@ -278,9 +272,7 @@ class BlockCholeskySolver:
 
 
 class CholeskySolverNumPy:
-    """
-    A class for solving linear systems using the Cholesky factorization.
-    """
+    """A class for solving linear systems using the Cholesky factorization."""
 
     def __init__(self, max_num_equations: int):
         self.max_num_equations = max_num_equations
@@ -291,9 +283,9 @@ class CholeskySolverNumPy:
         self.y = np.zeros((self.max_num_equations, 1))  # temp memory
 
     def factorize(self, A: np.ndarray, num_active_equations: int):
-        """
-        Computes the Cholesky factorization of a symmetric positive definite matrix A.
-        It returns a lower-triangular matrix L such that A = L L^T.
+        """Compute the Cholesky factorization of a symmetric positive definite matrix ``A``.
+
+        It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
         """
         assert num_active_equations <= self.max_num_equations, (
             f"Number of active equations ({num_active_equations}) exceeds maximum allowed ({self.max_num_equations})"
@@ -313,11 +305,9 @@ class CholeskySolverNumPy:
         )
 
     def solve(self, rhs: np.ndarray, result: np.ndarray):
-        """
-        Solves A x = b given the Cholesky factor L (A = L L^T) using
-        forward and backward substitution.
+        """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using forward and backward substitution.
 
-        b can be a vector or 2-D array with multiple right-hand sides.
+        ``b`` can be a vector or 2-D array with multiple right-hand sides.
         """
         assert self.num_active_equations <= self.max_num_equations, (
             f"Number of active equations ({self.num_active_equations}) exceeds maximum allowed ({self.max_num_equations})"
@@ -408,7 +398,7 @@ def test_cholesky_solver(n, warp_solver: BlockCholeskySolver, headless: bool = F
 
 @wp.kernel
 def assign_int_kernel(arr: wp.array(dtype=int, ndim=1), value: int):
-    """Assigns an integer value into the first element of an array"""
+    """Assign an integer value into the first element of an array."""
     arr[0] = value
 
 

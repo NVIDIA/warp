@@ -97,7 +97,7 @@ def create_value_func(type):
 
 
 def get_function_args(func):
-    """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
+    """Ensure that all function arguments are annotated and return a dictionary mapping from argument name to its type."""
     argspec = warp._src.codegen.get_full_arg_spec(func)
 
     # use source-level argument annotations
@@ -143,6 +143,11 @@ def generate_unique_function_identifier(key: str) -> str:
 
 
 class Function:
+    """Represents a Warp function decorated with :func:`@wp.func <warp.func>`.
+
+    Functions can be called from kernels or other Warp functions.
+    """
+
     def __init__(
         self,
         func: Callable | None,
@@ -571,7 +576,7 @@ def extract_return_value(value_type: type, value_ctype: type, ret: Any) -> Any:
 
 
 class BuiltinParamKind(enum.Enum):
-    """Describes the kind of a built-in parameter.
+    """Describe the kind of a built-in parameter.
 
     This decides how it's being packed into its corresponding C type.
     """
@@ -741,6 +746,11 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
+    """Warp kernel object, typically created by decorating a Python function with :func:`@wp.kernel <warp.kernel>`.
+
+    Kernels can be launched on CPU or GPU devices using :func:`warp.launch`.
+    """
+
     def __init__(self, func, key=None, module=None, options=None, code_transformers=None, source=None):
         self.func = func
 
@@ -901,6 +911,12 @@ def func(
     name: str | None = None,
     module: Module | Literal["unique"] | str | None = None,
 ):
+    """Decorator to define a Warp function callable from kernels and other Warp functions.
+
+    See also:
+        :func:`warp.kernel` for defining kernels that can be launched on devices.
+    """
+
     def wrapper(f, *args, **kwargs):
         if name is None:
             key = warp._src.codegen.make_full_qualified_name(f)
@@ -1252,7 +1268,7 @@ def kernel(
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be generated.
         module: The :class:`warp._src.context.Module` to which the kernel belongs. Alternatively, if a string `"unique"` is provided, the kernel is assigned to a new module named after the kernel name and hash. If None, the module is inferred from the function's module.
-        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`wp.launch() <warp.launch>` must not exceed the ``maxThreadsPerBlock`` value specified here.
+        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`warp.launch` must not exceed the ``maxThreadsPerBlock`` value specified here.
 
     Returns:
         The registered kernel.
@@ -1358,6 +1374,12 @@ def struct(
     *,
     module: Module | Literal["unique"] | str | None = None,
 ) -> warp._src.codegen.Struct:
+    """Decorator to define a Warp struct for use in kernels and functions.
+
+    Structs allow grouping related data fields that can be passed to
+    :func:`@wp.kernel <warp.kernel>` and :func:`@wp.func <warp.func>` decorated functions.
+    """
+
     def wrapper(c, *args, **kwargs):
         if module is None:
             m = get_module(c.__module__)
@@ -1753,6 +1775,20 @@ user_modules: dict[str, Module] = {}
 
 
 def get_module(name: str) -> Module:
+    """Return or create the Warp module associated with a given name.
+
+    Each Warp module tracks kernels, functions, and structs defined within it.
+    If the module does not exist, a new one is created.
+
+    Args:
+        name: Name of the module to retrieve or create.
+
+    Returns:
+        The :class:`Module` object associated with the given name.
+
+    See Also:
+        :func:`load_module`, :func:`force_load`
+    """
     # some modules might be manually imported using `importlib` without being
     # registered into `sys.modules`
     parent = sys.modules.get(name, None)
@@ -2298,6 +2334,8 @@ def _check_and_raise_long_path_error(e: FileNotFoundError):
 # creates a hash of the function to use for checking
 # build cache
 class Module:
+    """Warp module containing kernels and functions to be compiled."""
+
     def __init__(self, name: str | None, loader=None):
         self.name = name if name is not None else "None"
 
@@ -3059,7 +3097,7 @@ class Event:
         INTERPROCESS = 0x4
 
     def __new__(cls, *args, **kwargs):
-        """Creates a new event instance."""
+        """Create a new event instance."""
         instance = super().__new__(cls)
         instance.owner = False
         return instance
@@ -3067,7 +3105,7 @@ class Event:
     def __init__(
         self, device: DeviceLike = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
     ):
-        """Initializes the event on a CUDA device.
+        """Initialize the event on a CUDA device.
 
         Args:
             device: The CUDA device whose streams this event may be recorded onto.
@@ -3166,6 +3204,12 @@ class Event:
 
 
 class Stream:
+    """CUDA stream wrapper for managing asynchronous GPU operations.
+
+    See also:
+        :func:`warp.get_stream`, :func:`warp.set_stream`, :class:`warp.ScopedStream`
+    """
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.cuda_stream = None
@@ -3188,7 +3232,7 @@ class Stream:
         Raises:
             RuntimeError: If function is called before Warp has completed
               initialization with a ``device`` that is not an instance of
-              :class:`Device <warp._src.context.Device>`.
+              :class:`~warp._src.context.Device`.
             RuntimeError: ``device`` is not a CUDA Device.
             RuntimeError: The stream could not be created on the device.
             TypeError: The requested stream priority is not an integer.
@@ -3267,7 +3311,7 @@ class Stream:
         return event
 
     def wait_event(self, event: Event, external: bool = False):
-        """Makes all future work in this stream wait until `event` has completed.
+        """Make all future work in this stream wait until ``event`` has completed.
 
         This function does not block the host thread.
 
@@ -3279,10 +3323,10 @@ class Stream:
         runtime.core.wp_cuda_stream_wait_event(self.cuda_stream, event.cuda_event, external)
 
     def wait_stream(self, other_stream: Stream, event: Event | None = None, external: bool = False):
-        """Records an event on `other_stream` and makes this stream wait on it.
+        """Record an event on ``other_stream`` and make this stream wait on it.
 
         All work added to this stream after this function has been called will
-        delay their execution until all preceding commands in `other_stream`
+        delay their execution until all preceding commands in ``other_stream``
         have completed.
 
         This function does not block the host thread.
@@ -3472,7 +3516,7 @@ class Device:
                 return self.default_allocator
 
     def _init_streams(self):
-        """Initializes the device's current stream and the device's null stream."""
+        """Initialize the device's current stream and the device's null stream."""
         # create a stream for asynchronous work
         self.set_stream(Stream(self))
 
@@ -5178,21 +5222,48 @@ class Runtime:
 
 # global entry points
 def is_cpu_available() -> bool:
+    """Check whether CPU execution is available.
+
+    Returns:
+        ``True`` if CPU execution is supported (LLVM backend is loaded), ``False`` otherwise.
+
+    See Also:
+        :func:`is_cuda_available`, :func:`is_device_available`
+    """
     init()
 
     return runtime.llvm is not None
 
 
 def is_cuda_available() -> bool:
+    """Check whether CUDA execution is available.
+
+    Returns:
+        ``True`` if at least one CUDA device is available, ``False`` otherwise.
+
+    See Also:
+        :func:`is_cpu_available`, :func:`is_device_available`, :func:`get_cuda_device_count`
+    """
     return get_cuda_device_count() > 0
 
 
 def is_device_available(device: Device) -> bool:
+    """Check whether a device is available in the current environment.
+
+    Parameters:
+        device: The :class:`~warp._src.context.Device` to check.
+
+    Returns:
+        ``True`` if the device is in the list returned by :func:`get_devices`, ``False`` otherwise.
+
+    See Also:
+        :func:`get_devices`, :func:`get_device`, :func:`is_cpu_available`, :func:`is_cuda_available`
+    """
     return device in get_devices()
 
 
 def is_cuda_driver_initialized() -> bool:
-    """Returns ``True`` if the CUDA driver is initialized.
+    """Return ``True`` if the CUDA driver is initialized.
 
     This is a stricter test than ``is_cuda_available()`` since a CUDA driver
     call to ``cuCtxGetCurrent`` is made, and the result is compared to
@@ -5226,7 +5297,7 @@ def get_cuda_supported_archs() -> list[int]:
 
 
 def get_devices() -> list[Device]:
-    """Returns a list of devices supported in this environment."""
+    """Return a list of devices supported in this environment."""
 
     init()
 
@@ -5239,7 +5310,7 @@ def get_devices() -> list[Device]:
 
 
 def get_cuda_device_count() -> int:
-    """Returns the number of CUDA devices supported in this environment."""
+    """Return the number of CUDA devices supported in this environment."""
 
     init()
 
@@ -5247,7 +5318,7 @@ def get_cuda_device_count() -> int:
 
 
 def get_cuda_device(ordinal: int | None = None) -> Device:
-    """Returns the CUDA device with the given ordinal or the current CUDA device if ordinal is None."""
+    """Return the CUDA device with the given ordinal or the current CUDA device if ordinal is ``None``."""
 
     init()
 
@@ -5258,7 +5329,7 @@ def get_cuda_device(ordinal: int | None = None) -> Device:
 
 
 def get_cuda_devices() -> list[Device]:
-    """Returns a list of CUDA devices supported in this environment."""
+    """Return a list of CUDA devices supported in this environment."""
 
     init()
 
@@ -5266,7 +5337,7 @@ def get_cuda_devices() -> list[Device]:
 
 
 def get_preferred_device() -> Device:
-    """Returns the preferred compute device, ``cuda:0`` if available and ``cpu`` otherwise."""
+    """Return the preferred compute device, ``cuda:0`` if available and ``cpu`` otherwise."""
 
     init()
 
@@ -5279,7 +5350,7 @@ def get_preferred_device() -> Device:
 
 
 def get_device(ident: DeviceLike = None) -> Device:
-    """Returns the device identified by the argument."""
+    """Return the device identified by the argument."""
 
     init()
 
@@ -5287,7 +5358,7 @@ def get_device(ident: DeviceLike = None) -> Device:
 
 
 def set_device(ident: DeviceLike) -> None:
-    """Sets the default device identified by the argument."""
+    """Set the default device identified by the argument."""
 
     init()
 
@@ -5327,7 +5398,7 @@ def is_mempool_supported(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are available on the device.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
     """
@@ -5343,7 +5414,7 @@ def is_mempool_enabled(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are enabled on the device.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
     """
@@ -5368,7 +5439,7 @@ def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:
     prior to graph capture.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the operation is to be performed.
           If ``None``, the default device will be used.
     """
@@ -5403,7 +5474,7 @@ def set_mempool_release_threshold(device: DeviceLike, threshold: int | float) ->
     For example, 1024**3 means one GiB of memory.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the operation is to be performed.
           If ``None``, the default device will be used.
         threshold: An integer representing a number of bytes, or a ``float`` between 0 and 1,
@@ -5438,7 +5509,7 @@ def get_mempool_release_threshold(device: DeviceLike = None) -> int:
     """Get the CUDA memory pool release threshold on the device.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
 
@@ -5467,7 +5538,7 @@ def get_mempool_used_mem_current(device: DeviceLike = None) -> int:
     """Get the amount of memory from the device's memory pool that is currently in use by the application.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
 
@@ -5496,7 +5567,7 @@ def get_mempool_used_mem_high(device: DeviceLike = None) -> int:
     """Get the application's memory usage high-water mark from the device's CUDA memory pool.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
 
@@ -5522,7 +5593,7 @@ def get_mempool_used_mem_high(device: DeviceLike = None) -> int:
 
 
 def is_peer_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can directly access the memory of `target_device` on this system.
+    """Check if ``peer_device`` can directly access the memory of ``target_device`` on this system.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
     CUDA pooled allocators, use :func:`is_mempool_access_supported()`.
@@ -5543,7 +5614,7 @@ def is_peer_access_supported(target_device: DeviceLike, peer_device: DeviceLike)
 
 
 def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can currently access the memory of `target_device`.
+    """Check if ``peer_device`` can currently access the memory of ``target_device``.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
     CUDA pooled allocators, use :func:`is_mempool_access_enabled()`.
@@ -5564,7 +5635,7 @@ def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -
 
 
 def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
-    """Enable or disable direct access from `peer_device` to the memory of `target_device`.
+    """Enable or disable direct access from ``peer_device`` to the memory of ``target_device``.
 
     Enabling peer access can improve the speed of peer-to-peer memory transfers, but can have
     a negative impact on memory consumption and allocation performance.
@@ -5596,7 +5667,7 @@ def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, 
 
 
 def is_mempool_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can directly access the memory pool of `target_device`.
+    """Check if ``peer_device`` can directly access the memory pool of ``target_device``.
 
     If mempool access is possible, it can be managed using :func:`set_mempool_access_enabled()`
     and :func:`is_mempool_access_enabled()`.
@@ -5614,7 +5685,7 @@ def is_mempool_access_supported(target_device: DeviceLike, peer_device: DeviceLi
 
 
 def is_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can currently access the memory pool of `target_device`.
+    """Check if ``peer_device`` can currently access the memory pool of ``target_device``.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
     default CUDA allocators, use :func:`is_peer_access_enabled()`.
@@ -5635,7 +5706,7 @@ def is_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike
 
 
 def set_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
-    """Enable or disable access from `peer_device` to the memory pool of `target_device`.
+    """Enable or disable access from ``peer_device`` to the memory pool of ``target_device``.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
     default CUDA allocators, use :func:`set_peer_access_enabled()`.
@@ -5932,7 +6003,7 @@ def zeros(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Return a zero-initialized array
+    """Return a zero-initialized array.
 
     Args:
         shape: Array dimensions
@@ -5955,7 +6026,7 @@ def zeros(
 def zeros_like(
     src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Return a zero-initialized array with the same type and dimension of another array
+    """Return a zero-initialized array with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -5982,7 +6053,7 @@ def ones(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Return a one-initialized array
+    """Return a one-initialized array.
 
     Args:
         shape: Array dimensions
@@ -6001,7 +6072,7 @@ def ones(
 def ones_like(
     src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Return a one-initialized array with the same type and dimension of another array
+    """Return a one-initialized array with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -6025,7 +6096,7 @@ def full(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Return an array with all elements initialized to the given value
+    """Return an array with all elements initialized to the given value.
 
     Args:
         shape: Array dimensions
@@ -6089,7 +6160,7 @@ def full_like(
     requires_grad: bool | None = None,
     pinned: bool | None = None,
 ) -> warp.array:
-    """Return an array with all elements initialized to the given value with the same type and dimension of another array
+    """Return an array with all elements initialized to the given value with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -6112,7 +6183,7 @@ def full_like(
 def clone(
     src: warp.array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Clone an existing array, allocates a copy of the src memory
+    """Clone an existing array, allocating a copy of the src memory.
 
     Args:
         src: The source array to copy
@@ -6139,7 +6210,7 @@ def empty(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Returns an uninitialized array
+    """Return an uninitialized array.
 
     Args:
         shape: Array dimensions
@@ -6167,7 +6238,7 @@ def empty(
 def empty_like(
     src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Return an uninitialized array with the same type and dimension of another array
+    """Return an uninitialized array with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -6205,7 +6276,7 @@ def from_numpy(
     device: DeviceLike | None = None,
     requires_grad: bool = False,
 ) -> warp.array:
-    """Returns a Warp array created from a NumPy array.
+    """Return a Warp array created from a NumPy array.
 
     Args:
         arr: The NumPy array providing the data to construct the Warp array.
@@ -6442,7 +6513,7 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
 
 
 class Launch:
-    """Represents all data required for a kernel launch so that launches can be replayed quickly.
+    """Represent all data required for a kernel launch so that launches can be replayed quickly.
 
     Users should not directly instantiate this class, instead use
     ``wp.launch(..., record_cmd=True)`` to record a launch.
@@ -6701,7 +6772,7 @@ def launch(
         stream: The stream to launch on.
         adjoint: Whether to run forward or backward pass (typically use ``False``).
         record_tape: When ``True``, the launch will be recorded the global
-          :class:`wp.Tape() <warp.Tape>` object when present.
+          :class:`warp.Tape` object when present.
         record_cmd: When ``True``, the launch will return a :class:`Launch`
           object. The launch will not occur until the user calls
           :meth:`Launch.launch()`.
@@ -7461,7 +7532,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
 
 def get_module_options(module: Any = None) -> dict[str, Any]:
-    """Returns a list of options for the current module."""
+    """Return a list of options for the current module."""
     if module is None:
         m = inspect.getmodule(inspect.stack()[1][0])
     else:
@@ -7641,6 +7712,13 @@ def assert_conditional_graph_support():
 
 
 def is_conditional_graph_supported() -> bool:
+    """Check whether conditional graph nodes are supported.
+
+    Conditional graph nodes require a CUDA driver 12.4+ and Warp to be built with CUDA Toolkit 12.4+.
+
+    Returns:
+        ``True`` if both the CUDA Toolkit and driver versions are at least 12.4, ``False`` otherwise.
+    """
     if runtime is None:
         init()
 
@@ -8294,7 +8372,7 @@ def resolve_exported_function_sig(f):
 
 
 def print_function(f, file, is_exported, noentry=False):  # pragma: no cover
-    """Writes a function definition to a file for use in reST documentation
+    """Write a function definition to a file for use in reST documentation.
 
     Args:
         f: The function being written
@@ -8457,7 +8535,7 @@ def export_functions_rst(file):  # pragma: no cover
 
 
 def export_stubs(file):  # pragma: no cover
-    """Generates stub file for auto-complete of builtin functions"""
+    """Generate stub file for auto-complete of builtin functions."""
     # =========================================================================
     # Step 1: Parse __init__.py to identify Python API imports and conflicts
     # =========================================================================

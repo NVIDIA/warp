@@ -66,10 +66,12 @@ class PicQuadrature(Quadrature):
 
     @property
     def name(self):
+        """Unique name of the quadrature rule."""
         return self.__class__.__name__
 
     @Quadrature.domain.setter
     def domain(self, domain: GeometryDomain):
+        """Set the quadrature domain, enforcing compatible geometry."""
         # Allow changing the quadrature domain as long as underlying geometry and element kind are the same
         if self.domain is not None and (
             domain.element_kind != self.domain.element_kind or domain.geometry.base != self.domain.geometry.base
@@ -82,18 +84,22 @@ class PicQuadrature(Quadrature):
 
     @wp.struct
     class Arg:
+        """Structure containing arguments to be passed to device functions."""
+
         cell_particle_offsets: wp.array(dtype=int)
         cell_particle_indices: wp.array(dtype=int)
         particle_fraction: wp.array(dtype=float)
         particle_coords: wp.array(dtype=Coords)
 
     def fill_arg(self, args: Arg, device):
+        """Fill the quadrature argument structure for device functions."""
         args.cell_particle_offsets = self._cell_particle_offsets.to(device)
         args.cell_particle_indices = self._cell_particle_indices.to(device)
         args.particle_fraction = self._particle_fraction.to(device)
         args.particle_coords = self.particle_coords.to(device)
 
     def total_point_count(self):
+        """Total number of quadrature points."""
         return self.particle_coords.shape[0]
 
     def active_cell_count(self):
@@ -101,6 +107,7 @@ class PicQuadrature(Quadrature):
         return self._cell_count.numpy()[0]
 
     def max_points_per_element(self):
+        """Maximum number of quadrature points per element."""
         if self._max_particles_per_cell is None:
             max_ppc = wp.zeros(shape=(1,), dtype=int, device=self._cell_particle_offsets.device)
             wp.launch(
@@ -114,12 +121,14 @@ class PicQuadrature(Quadrature):
 
     @wp.func
     def point_count(elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex):
+        """Return the number of quadrature points for a given element."""
         return qp_arg.cell_particle_offsets[element_index + 1] - qp_arg.cell_particle_offsets[element_index]
 
     @wp.func
     def point_coords(
         elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
     ):
+        """Return quadrature point coordinates for a given element."""
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return qp_arg.particle_coords[particle_index]
 
@@ -127,6 +136,7 @@ class PicQuadrature(Quadrature):
     def point_weight(
         elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
     ):
+        """Return quadrature point weights for a given element."""
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return qp_arg.particle_fraction[particle_index]
 
@@ -134,6 +144,7 @@ class PicQuadrature(Quadrature):
     def point_index(
         elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
     ):
+        """Return the global quadrature point index for a given element."""
         particle_index = qp_arg.cell_particle_indices[qp_arg.cell_particle_offsets[element_index] + index]
         return particle_index
 
@@ -141,6 +152,7 @@ class PicQuadrature(Quadrature):
     def point_evaluation_index(
         elt_arg: Any, qp_arg: Arg, domain_element_index: ElementIndex, element_index: ElementIndex, index: int
     ):
+        """Return the evaluation index for a given element point."""
         return qp_arg.cell_particle_offsets[element_index] + index
 
     def fill_element_mask(self, mask: "wp.array(dtype=int)"):

@@ -41,7 +41,7 @@ _wp_module_name_ = "warp.fem.field.virtual"
 
 
 class AdjointField(SpaceField):
-    """Adjoint of a discrete field with respect to its degrees of freedom"""
+    """Adjoint of a discrete field with respect to its degrees of freedom."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "EvalArg": lambda obj: obj._make_eval_arg(),
@@ -359,6 +359,9 @@ class TestField(AdjointField):
     defined for a different value type than the test function value type, as long as the node topology is similar.
     """
 
+    space_restriction: SpaceRestriction
+    """Space restriction that defines the active test nodes."""
+
     def __init__(self, space: FunctionSpace, space_restriction: SpaceRestriction):
         if space_restriction.domain.dimension == space.dimension - 1:
             space = space.trace()
@@ -387,7 +390,7 @@ class TestField(AdjointField):
 
 
 class TrialField(AdjointField):
-    """Field defined over a domain that can be used as a trial function"""
+    """Field defined over a domain that can be used as a trial function."""
 
     def __init__(
         self,
@@ -407,7 +410,7 @@ class TrialField(AdjointField):
         super().__init__(space, space_partition, domain)
 
     def partition_node_count(self) -> int:
-        """Returns the number of nodes in the associated space topology partition"""
+        """Return the number of nodes in the associated space topology partition."""
         return self.space_partition.node_count()
 
     @wp.func
@@ -664,6 +667,15 @@ class LocalAdjointField(SpaceField):
 
 
 class LocalTestField(LocalAdjointField):
+    """Local view of a :class:`TestField` for dispatched assembly.
+
+    Args:
+        test_field: Global test field to localize.
+    """
+
+    space_restriction: SpaceRestriction
+    """Space restriction associated with the localized test field."""
+
     def __init__(self, test_field: TestField):
         super().__init__(test_field)
         self.space_restriction = test_field.space_restriction

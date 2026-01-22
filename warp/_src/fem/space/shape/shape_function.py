@@ -26,20 +26,24 @@ _wp_module_name_ = "warp.fem.space.shape.shape_function"
 
 
 class ShapeFunction:
-    """Interface class for defining scalar-valued shape functions over a single element"""
+    """Interface class for defining scalar-valued shape functions over a single element."""
 
     ORDER: int
-    """Maximum degree of the polynomials used to define the shape function"""
+    """Maximum degree of the polynomials used to define the shape function."""
 
     NODES_PER_ELEMENT: int
-    """Number of shape function nodes"""
+    """Number of shape function nodes."""
 
     class Value(Enum):
         Scalar = 0
+        """Scalar-valued shape function."""
         CovariantVector = 1
+        """Covariant vector-valued shape function."""
         ContravariantVector = 2
+        """Contravariant vector-valued shape function."""
 
     value: Value = Value.Scalar
+    """Value type of the shape function."""
 
     @property
     def name(self) -> str:
@@ -47,28 +51,28 @@ class ShapeFunction:
         raise NotImplementedError()
 
     def make_node_coords_in_element(self):
-        """Creates a device function returning the coordinates of each node"""
+        """Create a device function returning the coordinates of each node."""
         raise NotImplementedError()
 
     def make_node_quadrature_weight(self):
-        """Creates a device function returning the weight of each node when use as a quadrature point over the element"""
+        """Create a device function returning the weight of each node when used as a quadrature point over the element."""
         raise NotImplementedError()
 
     def make_trace_node_quadrature_weight(self):
-        """Creates a device function returning the weight of each node when use as a quadrature point over the element boundary"""
+        """Create a device function returning the weight of each node when used as a quadrature point over the element boundary."""
         raise NotImplementedError()
 
     def make_element_inner_weight(self):
-        """Creates a device function returning the value of the shape function associated to a given node at given coordinates"""
+        """Create a device function returning the value of the shape function associated to a given node at given coordinates."""
         raise NotImplementedError()
 
     def make_element_inner_weight_gradient(self):
-        """Creates a device function returning the gradient of the shape function associated to a given node at given coordinates"""
+        """Create a device function returning the gradient of the shape function associated to a given node at given coordinates."""
         raise NotImplementedError()
 
 
 class ConstantShapeFunction(ShapeFunction):
-    """Shape function that is constant over the element"""
+    """Shape function that is constant over the element."""
 
     def __init__(self, element: Element):
         self._element_prototype = element.prototype

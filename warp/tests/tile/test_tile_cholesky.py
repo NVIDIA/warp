@@ -530,9 +530,9 @@ def test_tile_cholesky_block_cholesky(test, device):
         A: wp.array2d(dtype=float),
         L: wp.array2d(dtype=float),
     ):
-        """
-        Computes the Cholesky factorization of a symmetric positive definite matrix A in blocks.
-        It returns a lower-triangular matrix L such that A = L L^T.
+        """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
+
+        It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
         """
 
         # Process the matrix in blocks along its leading dimension.
@@ -576,10 +576,7 @@ def test_tile_cholesky_block_cholesky(test, device):
         scratch: wp.array2d(dtype=float),
         x: wp.array2d(dtype=float),
     ):
-        """
-        Solves A x = b given the Cholesky factor L (A = L L^T) using
-        blocked forward and backward substitution.
-        """
+        """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution."""
 
         # Forward substitution: solve L y = b
         for i in range(0, TILE_M, BLOCK_SIZE):

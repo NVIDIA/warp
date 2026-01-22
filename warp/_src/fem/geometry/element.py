@@ -25,13 +25,18 @@ _vec1 = wp.types.vector(length=1, dtype=float)
 
 
 class Element(IntEnum):
-    """Enumeration of reference element types"""
+    """Enumeration of reference element types."""
 
     LINE_SEGMENT = 1
+    """Line segment reference element."""
     SQUARE = 2
+    """Quadrilateral reference element."""
     CUBE = 3
+    """Hexahedral reference element."""
     TRIANGLE = 4
+    """Triangular reference element."""
     TETRAHEDRON = 5
+    """Tetrahedral reference element."""
 
     @property
     def prototype(self) -> "PrototypeElement":
@@ -47,7 +52,7 @@ class Element(IntEnum):
 
 class PrototypeElement:
     dimension = 0
-    """Intrinsic dimension of the element"""
+    """Intrinsic dimension of the element."""
 
     @staticmethod
     def measure() -> float:
@@ -56,12 +61,12 @@ class PrototypeElement:
 
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial) -> tuple[list[Coords], list[float]]:
-        """Returns a quadrature of a given order for a prototypical element"""
+        """Return a quadrature of a given order for a prototypical element."""
         raise NotImplementedError
 
     @classmethod
     def center(cls) -> Coords:
-        """Returns the coordinates for the center of the element"""
+        """Return the coordinates for the center of the element."""
         coords, _ = cls.instantiate_quadrature(order=0, family=None)
         return coords[0]
 

@@ -38,8 +38,7 @@ __all__ = [
 
 @wp.func
 def norm_l1(v: Any):
-    """
-    Computes the L1 norm of a vector v.
+    """Compute the L1 norm of a vector v.
 
     .. math:: \\|v\\|_1 = \\sum_i |v_i|
 
@@ -57,8 +56,7 @@ def norm_l1(v: Any):
 
 @wp.func
 def norm_l2(v: Any):
-    """
-    Computes the L2 norm of a vector v.
+    """Compute the L2 norm of a vector v.
 
     .. math:: \\|v\\|_2 = \\sqrt{\\sum_i v_i^2}
 
@@ -73,8 +71,7 @@ def norm_l2(v: Any):
 
 @wp.func
 def norm_huber(v: Any, delta: float = 1.0):
-    """
-    Computes the Huber norm of a vector v with a given delta.
+    """Compute the Huber norm of a vector v with a given delta.
 
     .. math::
         H(v) = \\begin{cases} \\frac{1}{2} \\|v\\|^2 & \\text{if } \\|v\\| \\leq \\delta \\\\ \\delta(\\|v\\| - \\frac{1}{2}\\delta) & \\text{otherwise} \\end{cases}
@@ -97,8 +94,7 @@ def norm_huber(v: Any, delta: float = 1.0):
 
 @wp.func
 def norm_pseudo_huber(v: Any, delta: float = 1.0):
-    """
-    Computes the "pseudo" Huber norm of a vector v with a given delta.
+    """Compute the "pseudo" Huber norm of a vector v with a given delta.
 
     .. math::
         H^\\prime(v) = \\delta \\sqrt{1 + \\frac{\\|v\\|^2}{\\delta^2}}
@@ -119,8 +115,7 @@ def norm_pseudo_huber(v: Any, delta: float = 1.0):
 
 @wp.func
 def smooth_normalize(v: Any, delta: float = 1.0):
-    """
-    Normalizes a vector using the pseudo-Huber norm.
+    """Normalize a vector using the pseudo-Huber norm.
 
     See :func:`norm_pseudo_huber`.
 
@@ -143,8 +138,7 @@ def create_transform_from_matrix_func(dtype):
     transform = wp._src.types.transformation(dtype)
 
     def transform_from_matrix(mat: mat44) -> transform:
-        """
-        Construct a transformation from a 4x4 matrix.
+        """Construct a transformation from a 4x4 matrix.
 
         .. math::
             M = \\begin{bmatrix}
@@ -191,8 +185,7 @@ def create_transform_to_matrix_func(dtype):
     transform = wp._src.types.transformation(dtype)
 
     def transform_to_matrix(xform: transform) -> mat44:
-        """
-        Convert a transformation to a 4x4 matrix.
+        """Convert a transformation to a 4x4 matrix.
 
         .. math::
             M = \\begin{bmatrix}
@@ -248,8 +241,7 @@ def create_transform_compose_func(dtype):
     vec3 = wp._src.types.vector(3, dtype)
 
     def transform_compose(position: vec3, rotation: quat, scale: vec3):
-        """
-        Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
+        """Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
 
         .. math::
             M = \\begin{bmatrix}
@@ -307,8 +299,7 @@ def create_transform_decompose_func(dtype):
     zero = dtype(0.0)
 
     def transform_decompose(m: mat44):
-        """
-        Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
+        """Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
 
         .. math::
             M = \\begin{bmatrix}

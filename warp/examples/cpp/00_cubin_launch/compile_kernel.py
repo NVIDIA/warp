@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Compile Warp kernel to CUBIN for C++ integration.
+"""Compile Warp kernel to CUBIN for C++ integration.
 
 This script demonstrates the simplest case: compiling a single kernel in the
 __main__ module to a single CUBIN file. The generated CUBIN can then be loaded
@@ -36,7 +35,7 @@ import warp as wp
 def saxpy(alpha: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32)):
     """SAXPY: Single-Precision A·X Plus Y
 
-    Computes: y = alpha * x + y
+    Computes: ``y = alpha * x + y``.
     """
     tid = wp.tid()
     y[tid] = alpha * x[tid] + y[tid]

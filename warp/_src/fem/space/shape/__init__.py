@@ -54,12 +54,12 @@ from .triangle_shape_function import (
 
 
 class ElementBasis(Enum):
-    """Choice of basis function to equip individual elements"""
+    """Choice of basis function to equip individual elements."""
 
     LAGRANGE = "P"
-    """Lagrange basis functions :math:`P_k` for simplices, tensor products :math:`Q_k` for squares and cubes"""
+    """Lagrange basis functions :math:`P_k` for simplices, tensor products :math:`Q_k` for squares and cubes."""
     SERENDIPITY = "S"
-    """Serendipity elements :math:`S_k`, corresponding to Lagrange nodes with interior points removed (for degree <= 3)"""
+    """Serendipity elements :math:`S_k`, corresponding to Lagrange nodes with interior points removed (for degree <= 3)."""
     NONCONFORMING_POLYNOMIAL = "dP"
     """Simplex Lagrange basis functions :math:`P_{kd}` embedded into non conforming reference elements (e.g. squares or cubes). Discontinuous only."""
     NEDELEC_FIRST_KIND = "N1"
@@ -75,8 +75,7 @@ def make_element_shape_function(
     element_basis: Optional[ElementBasis] = None,
     family: Optional[Polynomial] = None,
 ) -> ShapeFunction:
-    """
-    Equips a reference element with a shape function basis.
+    """Equip a reference element with a shape function basis.
 
     Args:
         element: the type of reference element on which to build the shape function

@@ -99,7 +99,7 @@ class BasisSpace:
     # Helpers for generating node positions
 
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
-        """Returns a temporary array containing the world position for each node"""
+        """Return a temporary array containing the world position for each node."""
 
         pos_type = cache.cached_vec_type(length=self.geometry.dimension, dtype=float)
 
@@ -151,31 +151,40 @@ class BasisSpace:
         return node_positions
 
     def make_node_coords_in_element(self):
+        """Create a device function returning node coordinates within an element."""
         raise NotImplementedError()
 
     def make_node_quadrature_weight(self):
+        """Create a device function returning node quadrature weights."""
         raise NotImplementedError()
 
     def make_element_inner_weight(self):
+        """Create a device function returning inner element shape weights."""
         raise NotImplementedError()
 
     def make_element_outer_weight(self):
+        """Create a device function returning outer element shape weights."""
         return self.make_element_inner_weight()
 
     def make_element_inner_weight_gradient(self):
+        """Create a device function returning gradients of inner element weights."""
         raise NotImplementedError()
 
     def make_element_outer_weight_gradient(self):
+        """Create a device function returning gradients of outer element weights."""
         return self.make_element_inner_weight_gradient()
 
     def make_trace_node_quadrature_weight(self):
+        """Create a device function returning trace node quadrature weights."""
         raise NotImplementedError()
 
     def trace(self) -> "TraceBasisSpace":
+        """Return a trace basis space on lower-dimensional elements."""
         return TraceBasisSpace(self)
 
     @property
     def weight_type(self):
+        """Data type of node weights returned by the basis."""
         if self.value is ShapeFunction.Value.Scalar:
             return float
 
@@ -183,6 +192,7 @@ class BasisSpace:
 
     @property
     def weight_gradient_type(self):
+        """Data type of node weight gradients returned by the basis."""
         if self.value is ShapeFunction.Value.Scalar:
             return wp.types.vector(length=self.geometry.cell_dimension, dtype=float)
 
@@ -208,13 +218,16 @@ class ShapeBasisSpace(BasisSpace):
 
     @property
     def value(self) -> ShapeFunction.Value:
+        """Value type of the underlying shape function."""
         return self.shape.value
 
     @cached_property
     def name(self):
+        """Unique name of the basis space."""
         return f"{self.topology.name}_{self._shape.name}"
 
     def make_node_coords_in_element(self):
+        """Create a device function returning node coordinates within an element."""
         shape_node_coords_in_element = self._shape.make_node_coords_in_element()
 
         @cache.dynamic_func(suffix=self.name)
@@ -230,6 +243,7 @@ class ShapeBasisSpace(BasisSpace):
         return node_coords_in_element
 
     def make_node_quadrature_weight(self):
+        """Create a device function returning node quadrature weights."""
         shape_node_quadrature_weight = self._shape.make_node_quadrature_weight()
 
         if shape_node_quadrature_weight is None:
@@ -248,6 +262,7 @@ class ShapeBasisSpace(BasisSpace):
         return node_quadrature_weight
 
     def make_element_inner_weight(self):
+        """Create a device function returning inner element shape weights."""
         shape_element_inner_weight = self._shape.make_element_inner_weight()
 
         @cache.dynamic_func(suffix=self.name)
@@ -269,6 +284,7 @@ class ShapeBasisSpace(BasisSpace):
         return element_inner_weight
 
     def make_element_inner_weight_gradient(self):
+        """Create a device function returning gradients of inner element weights."""
         shape_element_inner_weight_gradient = self._shape.make_element_inner_weight_gradient()
 
         @cache.dynamic_func(suffix=self.name)
@@ -290,6 +306,7 @@ class ShapeBasisSpace(BasisSpace):
         return element_inner_weight_gradient
 
     def make_trace_node_quadrature_weight(self, trace_basis):
+        """Create a device function returning trace node quadrature weights."""
         shape_trace_node_quadrature_weight = self._shape.make_trace_node_quadrature_weight()
 
         if shape_trace_node_quadrature_weight is None:
@@ -311,6 +328,7 @@ class ShapeBasisSpace(BasisSpace):
         return trace_node_quadrature_weight
 
     def trace(self) -> "TraceBasisSpace":
+        """Return a trace basis space on geometry sides."""
         if self.ORDER == 0:
             return PiecewiseConstantBasisSpaceTrace(self)
 
@@ -318,30 +336,35 @@ class ShapeBasisSpace(BasisSpace):
 
     @property
     def node_grid(self):
+        """Node grid for the basis, if defined by the topology."""
         if not hasattr(self._topology, "node_grid"):
             raise AttributeError(f"{self._topology.name} does not define a node grid")
         return self._topology.node_grid
 
     @property
     def node_triangulation(self):
+        """Triangulation of element nodes for visualization."""
         if not hasattr(self._shape, "element_node_triangulation"):
             raise AttributeError(f"Shape function {self._shape.name} does not define a node triangulation")
         return lambda: ShapeBasisSpace._node_triangulation(weakref.proxy(self))
 
     @property
     def node_tets(self):
+        """Tetrahedralization of element nodes for visualization."""
         if not hasattr(self._shape, "element_node_tets"):
             raise AttributeError(f"Shape function {self._shape.name} does not define node tets")
         return lambda: ShapeBasisSpace._node_tets(weakref.proxy(self))
 
     @property
     def node_hexes(self):
+        """Hexahedralization of element nodes for visualization."""
         if not hasattr(self._shape, "element_node_hexes"):
             raise AttributeError(f"Shape function {self._shape.name} does not define node hexes")
         return lambda: ShapeBasisSpace._node_hexes(weakref.proxy(self))
 
     @property
     def vtk_cells(self):
+        """VTK cell connectivity for visualization."""
         if not hasattr(self._shape, "element_vtk_cells"):
             raise AttributeError(f"Shape function {self._shape.name} does not define VTK cells")
         return lambda: ShapeBasisSpace._vtk_cells(weakref.proxy(self))
@@ -379,7 +402,7 @@ class ShapeBasisSpace(BasisSpace):
 
 
 class TraceBasisSpace(BasisSpace):
-    """Auto-generated trace space evaluating the cell-defined basis on the geometry sides"""
+    """Auto-generated trace space evaluating the cell-defined basis on the geometry sides."""
 
     def __init__(self, basis: BasisSpace):
         self.ORDER = basis.ORDER

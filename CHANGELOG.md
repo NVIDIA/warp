@@ -41,6 +41,8 @@
   ([GH-1137](https://github.com/NVIDIA/warp/issues/1137)).
 - Add a Random Number Generation section to the runtime documentation, describing seed management strategies
   to avoid correlated random number sequences ([GH-1043](https://github.com/NVIDIA/warp/issues/1043)).
+- Add missing docstrings across the API Reference and Language Reference documentation, including built-in
+  functions, type constructors, constants, and `warp.fem` symbols ([GH-1159](https://github.com/NVIDIA/warp/issues/1159)).
 
 ## [1.11.0] - 2026-01-02
 

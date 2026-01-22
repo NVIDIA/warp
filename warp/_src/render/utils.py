@@ -141,10 +141,14 @@ def solidify_mesh_kernel(
 def solidify_mesh(faces: np.ndarray, vertices: np.ndarray, thickness: Union[list, float]):
     """
     Triangulate mesh around given surface with given thickness.
-    :param faces: array of face indices (Nx3)
-    :param vertices: array of vertex positions (Mx3)
-    :param thickness: array of thickness values (Mx1) or single thickness value
-    :return: tuple of (faces, vertices)
+
+    Args:
+        faces: Array of face indices (Nx3).
+        vertices: Array of vertex positions (Mx3).
+        thickness: Array of thickness values (Mx1) or single thickness value.
+
+    Returns:
+        Tuple of (faces, vertices).
     """
     faces = np.array(faces).reshape(-1, 3)
     out_faces = wp.zeros((len(faces) * 8, 3), dtype=wp.int32)
