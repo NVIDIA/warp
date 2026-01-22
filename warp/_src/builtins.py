@@ -5472,10 +5472,7 @@ def tile_unary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any
 
     overload = op.get_overload([tile_a.type.dtype], {})
 
-    # necessary, in case return type is different from input tile types
-    tile_r = Var(label=None, type=return_type)
-
-    return ((overload, tile_a, tile_r), ())
+    return ((overload, tile_a), ())
 
 
 add_builtin(
@@ -5525,29 +5522,38 @@ def tile_binary_map_value_func(arg_types, arg_values):
     a = arg_types["a"]
     b = arg_types["b"]
 
-    # check all args are tiles
+    # 'a' must be a tile
     if not is_tile(a):
         raise TypeError(f"tile_map() 'a' argument must be a tile, got {a!r}")
 
-    if not is_tile(b):
-        raise TypeError(f"tile_map() 'b' argument must be a tile, got {b!r}")
+    # 'b' can be a tile or a non-tile constant (scalar/vec/mat)
+    b_is_tile = is_tile(b)
 
-    if len(a.shape) != len(b.shape):
-        raise ValueError(
-            f"tile_map() shapes must have the same number of dimensions, got {len(a.shape)} and {len(b.shape)}"
-        )
+    if b_is_tile:
+        # If both are tiles, shapes must match
+        if len(a.shape) != len(b.shape):
+            raise ValueError(
+                f"tile_map() shapes must have the same number of dimensions, got {len(a.shape)} and {len(b.shape)}"
+            )
 
-    for i in range(len(a.shape)):
-        if a.shape[i] != b.shape[i]:
-            raise ValueError(f"tile_map() shapes do not match on dimension {i}, got {a.shape} and {b.shape}")
+        for i in range(len(a.shape)):
+            if a.shape[i] != b.shape[i]:
+                raise ValueError(f"tile_map() shapes do not match on dimension {i}, got {a.shape} and {b.shape}")
+
+        b_dtype = b.dtype
+    else:
+        # b is a non-tile constant, validate it's a supported type
+        if not type_is_scalar(b) and not type_is_vector(b) and not type_is_matrix(b):
+            raise TypeError(f"tile_map() 'b' argument must be a tile, scalar, vector, or matrix, got {b!r}")
+        b_dtype = b
 
     if "op" in arg_values:
         op = arg_values["op"]
         try:
-            overload = op.get_overload([a.dtype, b.dtype], {})
+            overload = op.get_overload([a.dtype, b_dtype], {})
         except KeyError as exc:
             raise RuntimeError(
-                f"No overload of {op} found for tile element types {type_repr(a.dtype)}, {type_repr(b.dtype)}"
+                f"No overload of {op} found for tile element types {type_repr(a.dtype)}, {type_repr(b_dtype)}"
             ) from exc
 
         # build the right overload on demand
@@ -5563,9 +5569,9 @@ def tile_binary_map_value_func(arg_types, arg_values):
 
     else:
         # ensure types equal
-        if not types_equal(a.dtype, b.dtype):
+        if not types_equal(a.dtype, b_dtype):
             raise TypeError(
-                f"tile_map() arguments must have the same dtype for this operation, got {a.dtype} and {b.dtype}"
+                f"tile_map() arguments must have the same dtype for this operation, got {a.dtype} and {b_dtype}"
             )
 
         return tile(dtype=a.dtype, shape=a.shape)
@@ -5574,14 +5580,15 @@ def tile_binary_map_value_func(arg_types, arg_values):
 def tile_binary_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     op = arg_values["op"]
     tile_a = arg_values["a"]
-    tile_b = arg_values["b"]
+    arg_b = arg_values["b"]
 
-    overload = op.get_overload([tile_a.type.dtype, tile_b.type.dtype], {})
+    # Get dtype for b (either from tile or directly if it's a non-tile constant)
+    b_type = arg_types["b"]
+    b_dtype = b_type.dtype if is_tile(b_type) else b_type
 
-    # necessary, in case return type is different from input tile types
-    tile_r = Var(label=None, type=return_type)
+    overload = op.get_overload([tile_a.type.dtype, b_dtype], {})
 
-    return ((overload, tile_a, tile_b, tile_r), ())
+    return ((overload, tile_a, arg_b), ())
 
 
 add_builtin(
@@ -5589,7 +5596,7 @@ add_builtin(
     input_types={
         "op": Callable,
         "a": tile(dtype=Any, shape=tuple[int, ...]),
-        "b": tile(dtype=Any, shape=tuple[int, ...]),
+        "b": Any,
     },
     value_func=tile_binary_map_value_func,
     dispatch_func=tile_binary_map_dispatch_func,
@@ -5597,13 +5604,14 @@ add_builtin(
     native_func="tile_binary_map",
     doc="""Apply a binary function onto the tile.
 
-    This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
-    Both input tiles must have the same dimensions, and if using a builtin op, the same datatypes.
+    This function cooperatively applies a binary function to each element of the tile using all threads in the block.
+    The second argument can be a tile (must have same dimensions as 'a'), or a non-tile constant (scalar, vector, or matrix)
+    which will be broadcast across all elements.
 
-    :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
     :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+    :param b: The second argument: either a tile with matching dimensions, or a scalar/vector/matrix constant
+    :returns: A tile with the same dimensions as tile 'a'. Its datatype is specified by the return type of op
 
     Example:
 
@@ -5635,40 +5643,46 @@ def tile_n_map_value_func(arg_types, arg_values):
     if arg_types is None:
         return tile(dtype=Scalar, shape=tuple[int, ...])
 
-    # Get all the tile arguments from *args
+    # 'a' is the first tile (required)
+    a = arg_types["a"]
+    if not is_tile(a):
+        raise TypeError(f"tile_map() 'a' argument must be a tile, got {a!r}")
+
+    # Get the variadic arguments from *args
     args = arg_types.get("args", ())
 
-    # Check that we have at least 3 tiles
-    if len(args) < 3:
-        raise ValueError(f"tile_map() with variadic args requires at least 3 tiles, got {len(args)}")
+    # Build list of all argument types (a + args)
+    all_args = [a, *list(args)]
 
-    # Check all args are tiles
+    # Check that we have at least 3 total arguments for this variadic overload
+    if len(all_args) < 3:
+        raise ValueError(f"tile_map() with variadic args requires at least 3 arguments, got {len(all_args)}")
+
+    # Validate each arg: if it's a tile, check shape matches; if not, must be scalar/vec/mat
+    dtypes = [a.dtype]
     for i, arg in enumerate(args):
-        if not is_tile(arg):
-            raise TypeError(f"tile_map() argument {i} in *args must be a tile, got {arg!r}")
-
-    # Get the first tile as reference
-    first_tile = args[0]
-
-    # Check all tiles have the same shape
-    for i, arg in enumerate(args[1:], start=1):
-        if len(arg.shape) != len(first_tile.shape):
-            raise ValueError(
-                f"tile_map() shapes must have the same number of dimensions, got {len(first_tile.shape)} and {len(arg.shape)} for arguments 0 and {i}"
-            )
-
-        for dim_idx in range(len(first_tile.shape)):
-            if arg.shape[dim_idx] != first_tile.shape[dim_idx]:
+        if is_tile(arg):
+            # Check shape matches first tile
+            if len(arg.shape) != len(a.shape):
                 raise ValueError(
-                    f"tile_map() shapes do not match on dimension {dim_idx}, got {first_tile.shape} and {arg.shape} for arguments 0 and {i}"
+                    f"tile_map() shapes must have the same number of dimensions, got {len(a.shape)} and {len(arg.shape)} for arguments 0 and {i + 1}"
                 )
+            for dim_idx in range(len(a.shape)):
+                if arg.shape[dim_idx] != a.shape[dim_idx]:
+                    raise ValueError(
+                        f"tile_map() shapes do not match on dimension {dim_idx}, got {a.shape} and {arg.shape} for arguments 0 and {i + 1}"
+                    )
+            dtypes.append(arg.dtype)
+        else:
+            # Non-tile constant: validate it's a supported type
+            if not type_is_scalar(arg) and not type_is_vector(arg) and not type_is_matrix(arg):
+                raise TypeError(f"tile_map() argument {i + 1} must be a tile, scalar, vector, or matrix, got {arg!r}")
+            dtypes.append(arg)
 
     if "op" not in arg_values:
         raise ValueError("tile_map() with variadic args requires an 'op' argument")
 
     op = arg_values["op"]
-    # Build list of dtypes from all tiles
-    dtypes = [arg.dtype for arg in args]
 
     try:
         overload = op.get_overload(dtypes, {})
@@ -5685,36 +5699,45 @@ def tile_n_map_value_func(arg_types, arg_values):
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
         raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
 
-    return tile(dtype=value_type, shape=first_tile.shape)
+    return tile(dtype=value_type, shape=a.shape)
 
 
 def tile_n_map_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
     op = arg_values["op"]
-    args = arg_values["args"]
-    dtypes = [arg.type.dtype for arg in args]
+    tile_a = arg_values["a"]
+    args = arg_values.get("args", ())
+
+    # Get dtypes from the Vars themselves
+    dtypes = [tile_a.type.dtype]
+    for arg in args:
+        arg_type = arg.type
+        if is_tile(arg_type):
+            dtypes.append(arg_type.dtype)
+        else:
+            dtypes.append(arg_type)
 
     overload = op.get_overload(dtypes, {})
 
-    value_type = overload.value_func(None, None)
-
-    return ((overload, *args), (value_type,))
+    return ((overload, tile_a, *args), ())
 
 
 add_builtin(
     "tile_map",
-    input_types={"op": Callable, "*args": tile(dtype=Scalar, shape=tuple[int, ...])},
+    input_types={"op": Callable, "a": tile(dtype=Any, shape=tuple[int, ...]), "*args": Any},
     value_func=tile_n_map_value_func,
     dispatch_func=tile_n_map_dispatch_func,
     variadic=True,
     native_func="tile_map",
-    doc="""Apply a user-defined function to multiple tiles element-wise.
+    doc="""Apply a user-defined function to multiple arguments element-wise.
 
-    This function cooperatively applies a user-defined function to corresponding elements of three or more tiles using all threads in the block.
-    All input tiles must have the same dimensions. The operator must accept the same number of arguments as tiles provided.
+    This function cooperatively applies a user-defined function to corresponding elements using all threads in the block.
+    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same dimensions)
+    or non-tile constants (scalar, vector, or matrix) which will be broadcast across all elements.
 
     :param op: A callable function that accepts N arguments and returns one value, must be a user function
-    :param args: Three or more input tiles with matching dimensions. The operator (or one of its overloads) must be able to accept the tiles' dtypes
-    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+    :param a: The first input tile, determines the output shape
+    :param args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix constants
+    :returns: A tile with the same dimensions as tile 'a'. Its datatype is specified by the return type of op
 
     Example:
 
@@ -10445,26 +10468,56 @@ def tile_unary_value_func(arg_types, arg_values):
     return tile(dtype=t.dtype, shape=t.shape)
 
 
-def tile_scalar_mul_value_func(arg_types, arg_values):
+def tile_mul_value_func(arg_types, arg_values):
+    """Value function for tile * constant multiplication.
+
+    Handles two cases:
+    1. tile * constant: multiply each element by a scalar, vector, or matrix
+    2. constant * tile: multiply each element by a scalar, vector, or matrix
+
+    If the tile's element type is not scalar, the constant must be a scalar type
+    and vice versa (e.g., tile<float> * vec3f is valid, tile<vec3f> * float is
+    valid, but tile<vec3f> * vec3f is not). Underlying scalar types must match.
+    Result dtype follows standard scalar multiplication rules.
+    """
     if arg_types is None:
         return tile(dtype=Any, shape=tuple[int, ...])
 
     x = arg_types["x"]
     y = arg_types["y"]
 
-    # tile*scalar
-    if is_tile(x):
-        if x.dtype != y:
-            raise TypeError(f"Scalar factor type {y} does not match tile type {x.dtype} for tile*scalar")
+    x_is_tile = is_tile(x)
+    y_is_tile = is_tile(y)
 
-        return tile(dtype=x.dtype, shape=x.shape)
+    # Exactly one operand must be a tile
+    if x_is_tile and y_is_tile:
+        raise TypeError("tile * tile is not supported; use tile_map(wp.mul, a, b) instead")
 
-    # scalar*tile
-    if is_tile(y):
-        if y.dtype != x:
-            raise TypeError(f"Scalar factor type {x} does not match tile type {y.dtype} for scalar*tile")
+    if not (x_is_tile or y_is_tile):
+        raise TypeError("tile mul requires at least one tile operand")
 
-        return tile(dtype=y.dtype, shape=y.shape)
+    tile_type = x if x_is_tile else y
+    const_type = y if x_is_tile else x
+
+    # Constant must be scalar/vector/matrix
+    if not (type_is_scalar(const_type) or type_is_vector(const_type) or type_is_matrix(const_type)):
+        raise TypeError(f"The non-tile operand must be a scalar, vector, or matrix, got {const_type}")
+
+    # Underlying scalar-type compatibility
+    tile_scalar = getattr(tile_type.dtype, "_wp_scalar_type_", tile_type.dtype)
+    const_scalar = getattr(const_type, "_wp_scalar_type_", const_type)
+    if tile_scalar != const_scalar:
+        raise TypeError(f"Underlying scalar types don't match: tile has {tile_scalar}, constant has {const_scalar}")
+
+    # Disallow vec/mat * vec/mat (at least one side must be scalar)
+    if not type_is_scalar(tile_type.dtype) and not type_is_scalar(const_type):
+        raise TypeError(
+            f"Cannot multiply tile<{tile_type.dtype}> by {const_type}: at least one operand must be a scalar type"
+        )
+
+    # Result dtype: adopt const dtype if vector/matrix; otherwise keep the tile's dtype
+    result_dtype = const_type if (type_is_vector(const_type) or type_is_matrix(const_type)) else tile_type.dtype
+    return tile(dtype=result_dtype, shape=tile_type.shape)
 
 
 add_builtin(
@@ -10543,19 +10596,33 @@ add_builtin(
 
 add_builtin(
     "mul",
-    input_types={"x": tile(dtype=Any, shape=tuple[int, ...]), "y": Scalar},
-    value_func=tile_scalar_mul_value_func,
-    doc="Multiply each element of a tile by a scalar",
+    input_types={"x": tile(dtype=Any, shape=tuple[int, ...]), "y": Any},
+    value_func=tile_mul_value_func,
+    doc="""Multiply each element of a tile by a constant (scalar, vector, or matrix).
+
+    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
+    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.""",
     export=False,
     native_func="tile_mul",
     group="Operators",
 )
 
+
+# Dispatch function for const*tile that reorders args so tile comes first
+def tile_mul_const_first_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    # Reorder: (const, tile) -> (tile, const) for C++ tile_mul(Tile&, const S&)
+    return ((args["y"], args["x"]), ())
+
+
 add_builtin(
     "mul",
-    input_types={"x": Scalar, "y": tile(dtype=Any, shape=tuple[int, ...])},
-    value_func=tile_scalar_mul_value_func,
-    doc="Multiply each element of a tile by a scalar",
+    input_types={"x": Any, "y": tile(dtype=Any, shape=tuple[int, ...])},
+    value_func=tile_mul_value_func,
+    dispatch_func=tile_mul_const_first_dispatch_func,
+    doc="""Multiply each element of a tile by a constant (scalar, vector, or matrix).
+
+    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
+    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.""",
     export=False,
     native_func="tile_mul",
     group="Operators",

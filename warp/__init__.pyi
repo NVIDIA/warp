@@ -3745,16 +3745,17 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int
     ...
 
 @over
-def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]:
     """Apply a binary function onto the tile.
 
-    This function cooperatively applies a binary function to each element of the tiles using all threads in the block.
-    Both input tiles must have the same dimensions, and if using a builtin op, the same datatypes.
+    This function cooperatively applies a binary function to each element of the tile using all threads in the block.
+    The second argument can be a tile (must have same dimensions as 'a'), or a non-tile constant (scalar, vector, or matrix)
+    which will be broadcast across all elements.
 
-    :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin
+    :param op: A callable function that accepts two arguments and returns one argument, may be a user function or builtin
     :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :param b: The second input tile, the operator (or one of its overloads) must be able to accept the tile's dtype
-    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+    :param b: The second argument: either a tile with matching dimensions, or a scalar/vector/matrix constant
+    :returns: A tile with the same dimensions as tile 'a'. Its datatype is specified by the return type of op
 
     Example:
 
@@ -3780,15 +3781,17 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int
     ...
 
 @over
-def tile_map(op: Callable, *args: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
-    """Apply a user-defined function to multiple tiles element-wise.
+def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Scalar, tuple[int, ...]]:
+    """Apply a user-defined function to multiple arguments element-wise.
 
-    This function cooperatively applies a user-defined function to corresponding elements of three or more tiles using all threads in the block.
-    All input tiles must have the same dimensions. The operator must accept the same number of arguments as tiles provided.
+    This function cooperatively applies a user-defined function to corresponding elements using all threads in the block.
+    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same dimensions)
+    or non-tile constants (scalar, vector, or matrix) which will be broadcast across all elements.
 
     :param op: A callable function that accepts N arguments and returns one value, must be a user function
-    :param args: Three or more input tiles with matching dimensions. The operator (or one of its overloads) must be able to accept the tiles' dtypes
-    :returns: A tile with the same dimensions as the input tiles. Its datatype is specified by the return type of op
+    :param a: The first input tile, determines the output shape
+    :param args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix constants
+    :returns: A tile with the same dimensions as tile 'a'. Its datatype is specified by the return type of op
 
     Example:
 
@@ -5921,13 +5924,21 @@ def mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]:
     ...
 
 @over
-def mul(x: Tile[Any, tuple[int, ...]], y: Scalar) -> Tile[Any, tuple[int, ...]]:
-    """Multiply each element of a tile by a scalar"""
+def mul(x: Tile[Any, tuple[int, ...]], y: Any) -> Tile[Any, tuple[int, ...]]:
+    """Multiply each element of a tile by a constant (scalar, vector, or matrix).
+
+    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
+    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.
+    """
     ...
 
 @over
-def mul(x: Scalar, y: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
-    """Multiply each element of a tile by a scalar"""
+def mul(x: Any, y: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+    """Multiply each element of a tile by a constant (scalar, vector, or matrix).
+
+    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
+    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.
+    """
     ...
 
 @over
