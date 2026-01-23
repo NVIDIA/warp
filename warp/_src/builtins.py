@@ -11259,8 +11259,27 @@ def tile_matmul_value_func(arg_types, arg_values):
     return tile(dtype=a.dtype, shape=(a.shape[0], b.shape[1]), storage="shared")
 
 
-def _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder):
-    """Common dispatch logic for tile_matmul variants."""
+def tile_matmul_lto_dispatch_func(
+    arg_types: Mapping[str, type],
+    return_type: Any,
+    return_values: List[Var],
+    arg_values: Mapping[str, Var],
+    options: Mapping[str, Any],
+    builder: warp._src.context.ModuleBuilder,
+):
+    a = arg_values["a"]
+    b = arg_values["b"]
+    alpha = arg_values["alpha"]
+
+    if len(return_values) > 0:
+        # c = tile_matmul(a, b) case: fresh output, don't read from C
+        beta = 0.0
+        out = return_values[0]
+    else:
+        # tile_matmul(a, b, out=c) case: accumulate into C
+        beta = arg_values["beta"]
+        out = arg_values["out"]
+
     if not is_tile(out.type):
         raise TypeError(f"tile_matmul() 'out' argument must be a tile, got {out!r}")
 
@@ -11285,123 +11304,6 @@ def _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder):
     _, N = b.type.shape[0], b.type.shape[1]
     num_threads = options["block_dim"]
     arch = options["output_arch"]
-
-    return M, K, N, num_threads, arch
-
-
-def tile_matmul_lto_dispatch_func(
-    arg_types: Mapping[str, type],
-    return_type: Any,
-    return_values: List[Var],
-    arg_values: Mapping[str, Var],
-    options: Mapping[str, Any],
-    builder: warp._src.context.ModuleBuilder,
-):
-    """Dispatch for c = tile_matmul(a, b) - does not read from output."""
-    a = arg_values["a"]
-    b = arg_values["b"]
-    alpha = arg_values["alpha"]
-    beta = 0.0
-    out = return_values[0]
-
-    M, K, N, num_threads, arch = _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder)
-
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
-        return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
-    else:
-
-        def tile_flip_layout(layout):
-            if layout == "rowmajor":
-                return "colmajor"
-            elif layout == "colmajor":
-                return "rowmajor"
-
-        # generate the LTOs
-        #    C += A * B
-        (fun_forward, lto_forward) = warp._src.build.build_lto_dot(
-            M,
-            N,
-            K,
-            a.type.dtype,
-            b.type.dtype,
-            out.type.dtype,
-            a.type.layout,
-            b.type.layout,
-            out.type.layout,
-            arch,
-            num_threads,
-            builder,
-        )
-        if warp.config.enable_backward:
-            # adjA += adjC * B^T - Transpose ~= flipped layout
-            (fun_backward_A, lto_backward_A) = warp._src.build.build_lto_dot(
-                M,
-                K,
-                N,
-                out.type.dtype,
-                b.type.dtype,
-                a.type.dtype,
-                out.type.layout,
-                tile_flip_layout(b.type.layout),
-                a.type.layout,
-                arch,
-                num_threads,
-                builder,
-            )
-            # adjB += A^T * adjC - Transpose ~= flipped layout
-            (fun_backward_B, lto_backward_B) = warp._src.build.build_lto_dot(
-                K,
-                N,
-                M,
-                a.type.dtype,
-                out.type.dtype,
-                b.type.dtype,
-                tile_flip_layout(a.type.layout),
-                out.type.layout,
-                b.type.layout,
-                arch,
-                num_threads,
-                builder,
-            )
-        else:
-            # adjoints aren't computed, so we reuse fun_forward as a dummy arg
-            (fun_backward_A, lto_backward_A) = (fun_forward, None)
-            (fun_backward_B, lto_backward_B) = (fun_forward, None)
-
-        return (
-            (
-                Var(fun_forward, str, False, True, False),
-                Var(fun_backward_A, str, False, True, False),
-                Var(fun_backward_B, str, False, True, False),
-                a,
-                b,
-                out,
-                alpha,
-                beta,
-            ),
-            (),
-            [lto_forward, lto_backward_A, lto_backward_B],
-            0,
-        )
-
-
-def tile_matmul_acc_lto_dispatch_func(
-    arg_types: Mapping[str, type],
-    return_type: Any,
-    return_values: List[Var],
-    arg_values: Mapping[str, Var],
-    options: Mapping[str, Any],
-    builder: warp._src.context.ModuleBuilder,
-):
-    """Dispatch for tile_matmul(a, b, out=c) - accumulates into output."""
-    a = arg_values["a"]
-    b = arg_values["b"]
-    alpha = arg_values["alpha"]
-    beta = arg_values["beta"]
-    out = arg_values["out"]
-
-    M, K, N, num_threads, arch = _tile_matmul_dispatch_common(a, b, out, alpha, beta, options, builder)
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
@@ -11494,7 +11396,7 @@ add_builtin(
     },
     defaults={"alpha": 1.0, "beta": 1.0},
     value_func=tile_matmul_out_value_func,
-    lto_dispatch_func=tile_matmul_acc_lto_dispatch_func,
+    lto_dispatch_func=tile_matmul_lto_dispatch_func,
     native_func="tile_matmul_acc",
     variadic=False,
     doc="""Compute the matrix product ``a*b``.
