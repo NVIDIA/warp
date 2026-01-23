@@ -3738,9 +3738,37 @@ class Adjoint:
     # expression can be evaluated
     def replace_static_expressions(adj):
         class StaticExpressionReplacer(ast.NodeTransformer):
+            def __init__(self):
+                # Track loop variable names from enclosing for loops. This prevents
+                # wp.static() from capturing a global variable that shadows a loop variable.
+                # Uses a counter (not a set) to handle nested loops that reuse the same variable name.
+                self.loop_vars = {}
+
+            def visit_For(self, node):
+                # Track loop variable while visiting loop body (simple names only;
+                # tuple unpacking like `for x, y in ...` is rare in Warp kernels)
+                var_name = node.target.id if isinstance(node.target, ast.Name) else None
+                if var_name:
+                    self.loop_vars[var_name] = self.loop_vars.get(var_name, 0) + 1
+                result = self.generic_visit(node)
+                if var_name:
+                    self.loop_vars[var_name] -= 1
+                    if self.loop_vars[var_name] == 0:
+                        del self.loop_vars[var_name]
+                return result
+
             def visit_Call(self, node):
                 func, _ = adj.resolve_static_expression(node.func, eval_types=False)
                 if adj.is_static_expression(func):
+                    # If the static expression references an enclosing loop variable,
+                    # defer evaluation to codegen time when the loop constant is available
+                    expr_node = node.args[0] if node.args else (node.keywords[0].value if node.keywords else None)
+                    if expr_node:
+                        referenced = {n.id for n in ast.walk(expr_node) if isinstance(n, ast.Name)}
+                        if referenced & self.loop_vars.keys():
+                            adj.has_unresolved_static_expressions = True
+                            return self.generic_visit(node)
+
                     try:
                         # the static expression will execute as long as the static expression is valid and
                         # only depends on global or captured variables

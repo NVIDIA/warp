@@ -659,6 +659,90 @@ def test_unresolved_static_expression(test, device):
         test.assertEqual(output2.numpy()[0], 2)
 
 
+# Global variables used to test wp.static() loop variable handling
+_global_test_idx = 999
+_global_test_j = 888
+
+
+@wp.kernel
+def static_loop_var_kernel(results: wp.array(dtype=int)):
+    """Kernel where wp.static() should capture the loop variable, not the global."""
+    for _global_test_idx in range(3):
+        results[_global_test_idx] = wp.static(_global_test_idx)
+
+
+@wp.kernel
+def static_loop_var_in_expr_kernel(results: wp.array(dtype=int)):
+    """Kernel where loop variable is used in an arithmetic expression."""
+    for _global_test_idx in range(3):
+        # Even in complex expressions, the loop variable should be used
+        results[_global_test_idx] = wp.static(_global_test_idx * 2 + 1)
+
+
+@wp.kernel
+def static_nested_loop_kernel(results: wp.array(dtype=int)):
+    """Kernel with nested loops - both loop variables should be protected."""
+    for _global_test_idx in range(2):
+        for _global_test_j in range(2):
+            idx = _global_test_idx * 2 + _global_test_j
+            results[idx] = wp.static(_global_test_idx * 10 + _global_test_j)
+
+
+@wp.kernel
+def static_nested_loop_same_var_kernel(results: wp.array(dtype=int)):
+    """Kernel with nested loops reusing the same variable name.
+
+    Tests counter-based loop variable tracking: when inner and outer loops
+    use the same variable name, the global should still not be captured.
+    Per Python semantics, after the inner loop the variable has the inner
+    loop's final value.
+    """
+    idx = 0
+    for _global_test_idx in range(2):
+        for _global_test_idx in range(3):  # intentional shadowing for test
+            pass
+        # Per Python semantics, _global_test_idx is now 2 (inner loop's final value)
+        # Key: we should NOT capture the global value (999)
+        results[idx] = wp.static(_global_test_idx)
+        idx += 1
+
+
+def test_static_loop_variable_not_shadowed_by_global(test, device):
+    """Test that wp.static() inside a for loop correctly captures the loop variable.
+
+    When a global Python variable exists with the same name as a kernel loop variable,
+    wp.static() should use the loop variable's compile-time constant value (0, 1, 2, ...),
+    not the unrelated global variable. This prevents confusing behavior where the
+    presence of a global variable silently changes the kernel's output.
+    """
+    with wp.ScopedDevice(device):
+        # Test 1: Simple loop variable
+        results = wp.zeros(3, dtype=int)
+        wp.launch(static_loop_var_kernel, dim=1, inputs=[results])
+        np.testing.assert_array_equal(results.numpy(), np.array([0, 1, 2]), err_msg="Simple loop variable test failed")
+
+        # Test 2: Loop variable in arithmetic expression
+        results2 = wp.zeros(3, dtype=int)
+        wp.launch(static_loop_var_in_expr_kernel, dim=1, inputs=[results2])
+        np.testing.assert_array_equal(
+            results2.numpy(), np.array([1, 3, 5]), err_msg="Loop variable in expression test failed"
+        )
+
+        # Test 3: Nested loops - both variables protected
+        results3 = wp.zeros(4, dtype=int)
+        wp.launch(static_nested_loop_kernel, dim=1, inputs=[results3])
+        np.testing.assert_array_equal(results3.numpy(), np.array([0, 1, 10, 11]), err_msg="Nested loop test failed")
+
+        # Test 4: Nested loops reusing the same variable name
+        # Tests counter-based tracking: global should not be captured even with shadowing
+        results4 = wp.zeros(2, dtype=int)
+        wp.launch(static_nested_loop_same_var_kernel, dim=1, inputs=[results4])
+        # Per Python semantics: inner loop shadows outer, final value (2) persists
+        np.testing.assert_array_equal(
+            results4.numpy(), np.array([2, 2]), err_msg="Nested loop with same variable test failed"
+        )
+
+
 devices = get_test_devices()
 
 
@@ -689,6 +773,12 @@ add_function_test(TestStatic, "test_static_if_else_elif", test_static_if_else_el
 add_function_test(TestStatic, "test_static_constant_hash", test_static_constant_hash, devices=None)
 add_function_test(TestStatic, "test_static_function_hash", test_static_function_hash, devices=None)
 add_function_test(TestStatic, "test_static_len_query", test_static_len_query, devices=None)
+add_function_test(
+    TestStatic,
+    "test_static_loop_variable_not_shadowed_by_global",
+    test_static_loop_variable_not_shadowed_by_global,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
