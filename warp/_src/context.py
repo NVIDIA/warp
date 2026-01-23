@@ -8541,7 +8541,7 @@ def export_stubs(file):  # pragma: no cover
     # =========================================================================
     # Use warp_home (defined at module level) for robust path resolution
     init_path = os.path.join(warp_home, "__init__.py")
-    with open(init_path) as f:
+    with open(init_path, encoding="utf-8") as f:
         init_content = f.read()
 
     tree = ast.parse(init_content)

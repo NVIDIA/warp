@@ -127,7 +127,7 @@ logger.info("Starting Warp documentation build")
 
 # generate stubs for autocomplete
 logger.info("Generating API stubs for autocomplete")
-with open(os.path.join(base_path, "warp", "__init__.pyi"), "w") as stub_file:
+with open(os.path.join(base_path, "warp", "__init__.pyi"), "w", encoding="utf-8") as stub_file:
     export_stubs(stub_file)
 
 # code formatting of __init__.pyi

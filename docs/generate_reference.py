@@ -304,7 +304,7 @@ def get_symbols_per_category(
     # Python's `ast.parse()`. However this ignores comments, so we need
     # to process them in a separate pass.
 
-    with open(underlying_module.__file__) as f:
+    with open(underlying_module.__file__, encoding="utf-8") as f:
         code = f.read()
 
     # Find the category sections.
