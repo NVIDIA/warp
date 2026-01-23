@@ -232,7 +232,7 @@ add_function_test(TestTileMatmul, "test_tile_gemm_fp32", test_tile_gemm(wp.float
 add_function_test(TestTileMatmul, "test_tile_gemm_fp64", test_tile_gemm(wp.float64), devices=devices)
 add_function_test(TestTileMatmul, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)
 add_function_test(TestTileMatmul, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
-add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=["cpu"])
+add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
