@@ -184,6 +184,106 @@ WP_API const char* wp_volume_get_blind_data_info(
     uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count, uint32_t* value_size, char type_str[16]
 );
 
+// Texture2D functions (CUDA device)
+// Creates a 2D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
+// data: pointer to HOST data (will be copied into a CUDA array)
+// width, height: texture dimensions
+// num_channels: 1, 2, or 4
+// dtype: 0=uint8, 1=uint16, 2=float32
+// filter_mode: 0=nearest, 1=linear
+// address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
+WP_API bool wp_texture2d_create_device(
+    void* context,
+    int width,
+    int height,
+    int num_channels,
+    int dtype,
+    int filter_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
+    const void* data,
+    uint64_t* tex_handle_out,
+    uint64_t* array_handle_out
+);
+WP_API void wp_texture2d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
+
+// Texture2D functions (CPU host)
+// Creates a 2D texture from data on the host. Returns texture handle (pointer to internal data).
+// data: pointer to host data (will be copied internally)
+// width, height: texture dimensions
+// num_channels: 1, 2, or 4
+// dtype: 0=uint8, 1=uint16, 2=float32
+// filter_mode: 0=nearest, 1=linear
+// address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
+WP_API bool wp_texture2d_create_host(
+    int width,
+    int height,
+    int num_channels,
+    int dtype,
+    int filter_mode,
+    int address_mode_u,
+    int address_mode_v,
+    bool use_normalized_coords,
+    const void* data,
+    uint64_t* tex_handle_out
+);
+WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
+
+// Texture3D functions (CUDA device)
+// Creates a 3D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
+// data: pointer to HOST data (will be copied into a CUDA array)
+// width, height, depth: texture dimensions
+// num_channels: 1, 2, or 4
+// dtype: 0=uint8, 1=uint16, 2=float32
+// filter_mode: 0=nearest, 1=linear
+// address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
+WP_API bool wp_texture3d_create_device(
+    void* context,
+    int width,
+    int height,
+    int depth,
+    int num_channels,
+    int dtype,
+    int filter_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
+    const void* data,
+    uint64_t* tex_handle_out,
+    uint64_t* array_handle_out
+);
+WP_API void wp_texture3d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
+
+// Texture3D functions (CPU host)
+// Creates a 3D texture from data on the host. Returns texture handle (pointer to internal data).
+// data: pointer to host data (will be copied internally)
+// width, height, depth: texture dimensions
+// num_channels: 1, 2, or 4
+// dtype: 0=uint8, 1=uint16, 2=float32
+// filter_mode: 0=nearest, 1=linear
+// address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
+// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
+WP_API bool wp_texture3d_create_host(
+    int width,
+    int height,
+    int depth,
+    int num_channels,
+    int dtype,
+    int filter_mode,
+    int address_mode_u,
+    int address_mode_v,
+    int address_mode_w,
+    bool use_normalized_coords,
+    const void* data,
+    uint64_t* tex_handle_out
+);
+WP_API void wp_texture3d_destroy_host(uint64_t tex_handle);
+
 WP_API uint64_t wp_marching_cubes_create_device(void* context);
 WP_API void wp_marching_cubes_destroy_device(uint64_t id);
 WP_API int wp_marching_cubes_surface_device(

@@ -2053,6 +2053,9 @@ def type_size_in_bytes(dtype: type) -> int:
             size = getattr(dtype, "_length_", 1) * ctypes.sizeof(dtype._type_)
         elif isinstance(dtype, warp._src.codegen.Struct):
             size = ctypes.sizeof(dtype.ctype)
+        elif hasattr(dtype, "_wp_ctype_"):
+            # texture types (Texture2D, Texture3D) have _wp_ctype_ pointing to their ctypes struct
+            size = ctypes.sizeof(dtype._wp_ctype_)
         elif dtype is Any:
             raise TypeError("A concrete type is required")
         else:
@@ -2100,6 +2103,9 @@ def type_typestr(dtype: type) -> str:
         return "<u8"
     elif isinstance(dtype, warp._src.codegen.Struct):
         return f"|V{ctypes.sizeof(dtype.ctype)}"
+    elif hasattr(dtype, "_wp_ctype_"):
+        # texture types (Texture2D, Texture3D) have _wp_ctype_ pointing to their ctypes struct
+        return f"|V{ctypes.sizeof(dtype._wp_ctype_)}"
     elif issubclass(dtype, ctypes.Array):
         return type_typestr(dtype._wp_scalar_type_)
     else:
@@ -2880,6 +2886,25 @@ class array(Array[DType]):
             else:
                 raise RuntimeError(
                     "Invalid data argument for array of structs, expected a sequence of structs or a NumPy structured array"
+                )
+        elif hasattr(dtype, "_wp_ctype_"):
+            # texture types (Texture2D, Texture3D) have _wp_ctype_ pointing to their ctypes struct
+            if isinstance(data, (list, tuple)):
+                # construct from a sequence of textures
+                try:
+                    # convert each texture instance to its corresponding ctype
+                    ctype_list = [v.__ctype__() for v in data]
+                    # convert the list of ctypes to a contiguous ctypes array
+                    ctype_arr = (dtype._wp_ctype_ * len(ctype_list))(*ctype_list)
+                    # convert to numpy
+                    arr = np.frombuffer(ctype_arr, dtype=dtype._wp_ctype_)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Error while trying to construct Warp array from a sequence of textures: {e}"
+                    ) from e
+            else:
+                raise RuntimeError(
+                    f"Invalid data argument for array of {dtype.__name__}, expected a sequence of texture objects"
                 )
         else:
             # convert input data to the given dtype
@@ -6155,6 +6180,7 @@ simple_type_codes = {
     MeshQueryPoint: "mqp",
     MeshQueryRay: "mqr",
     BvhQuery: "bvhq",
+    # Texture2D and Texture3D are added at the end of the file to avoid circular imports
 }
 
 
@@ -6264,3 +6290,16 @@ def get_signature(arg_types: list[type], func_name: str | None = None, arg_names
 
 def is_generic_signature(sig):
     return "?" in sig
+
+
+# Import texture classes from texture module at the end to avoid circular imports
+# These are re-exported from types.py for backward compatibility
+from warp._src.texture import Texture as Texture  # noqa: E402
+from warp._src.texture import Texture2D as Texture2D  # noqa: E402
+from warp._src.texture import Texture3D as Texture3D  # noqa: E402
+from warp._src.texture import texture2d_t as texture2d_t  # noqa: E402
+from warp._src.texture import texture3d_t as texture3d_t  # noqa: E402
+
+# Add texture types to simple_type_codes now that they're imported
+simple_type_codes[Texture2D] = "t2"
+simple_type_codes[Texture3D] = "t3"

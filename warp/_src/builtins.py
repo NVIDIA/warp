@@ -7595,6 +7595,149 @@ add_builtin(
 
 
 # ---------------------------------
+# Textures
+
+_texture_supported_types = {float, vec2f, vec4f}
+
+
+def _is_texture_type_supported(dtype):
+    return dtype in _texture_supported_types
+
+
+def _check_texture_type_is_supported(dtype):
+    if not _is_texture_type_supported(dtype):
+        raise RuntimeError(f"unsupported texture type `{type_repr(dtype)}`. Supported types: float, vec2f, vec4f")
+
+
+def texture_sample_2d_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return Any
+
+    dtype = arg_values["dtype"]
+    _check_texture_type_is_supported(dtype)
+
+    return dtype
+
+
+def texture_sample_2d_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    dtype = args["dtype"]
+
+    func_args = tuple(v for k, v in args.items() if k != "dtype")
+    template_args = (dtype,)
+    return (func_args, template_args)
+
+
+# texture_sample for 2D textures with vec2 coordinates
+add_builtin(
+    "texture_sample",
+    input_types={"tex": Texture2D, "uv": vec2f, "dtype": Any},
+    value_func=texture_sample_2d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_2d_dispatch_func,
+    export=False,
+    group="Textures",
+    doc="""Sample the 2D texture at the given UV coordinates.
+
+    :param tex: The 2D texture to sample.
+    :param uv: UV coordinates as a vec2f. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] x [0, height] if ``normalized_coords=False``.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
+    is_differentiable=False,
+)
+
+# texture_sample for 2D textures with separate u, v coordinates
+add_builtin(
+    "texture_sample",
+    input_types={"tex": Texture2D, "u": float, "v": float, "dtype": Any},
+    value_func=texture_sample_2d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_2d_dispatch_func,
+    export=False,
+    group="Textures",
+    doc="""Sample the 2D texture at the given UV coordinates.
+
+    :param tex: The 2D texture to sample.
+    :param u: U coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
+    :param v: V coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
+    is_differentiable=False,
+)
+
+
+def texture_sample_3d_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return Any
+
+    dtype = arg_values["dtype"]
+    _check_texture_type_is_supported(dtype)
+
+    return dtype
+
+
+def texture_sample_3d_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    dtype = args["dtype"]
+
+    func_args = tuple(v for k, v in args.items() if k != "dtype")
+    template_args = (dtype,)
+    return (func_args, template_args)
+
+
+# texture_sample for 3D textures with vec3 coordinates
+add_builtin(
+    "texture_sample",
+    input_types={"tex": Texture3D, "uvw": vec3f, "dtype": Any},
+    value_func=texture_sample_3d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_3d_dispatch_func,
+    export=False,
+    group="Textures",
+    doc="""Sample the 3D texture at the given UVW coordinates.
+
+    :param tex: The 3D texture to sample.
+    :param uvw: UVW coordinates as a vec3f. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] x [0, height] x [0, depth] if ``normalized_coords=False``.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
+    is_differentiable=False,
+)
+
+# texture_sample for 3D textures with separate u, v, w coordinates
+add_builtin(
+    "texture_sample",
+    input_types={"tex": Texture3D, "u": float, "v": float, "w": float, "dtype": Any},
+    value_func=texture_sample_3d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_3d_dispatch_func,
+    export=False,
+    group="Textures",
+    doc="""Sample the 3D texture at the given UVW coordinates.
+
+    :param tex: The 3D texture to sample.
+    :param u: U coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
+    :param v: V coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
+    :param w: W coordinate. Range is [0, 1] if the texture was created with
+        ``normalized_coords=True`` (default), or [0, depth] if ``normalized_coords=False``.
+    :param dtype: The return type (float, vec2f, or vec4f).
+    :returns: The sampled value of the specified dtype.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
+    is_differentiable=False,
+)
+
+
+# ---------------------------------
 # Random
 
 add_builtin(

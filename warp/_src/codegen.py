@@ -388,10 +388,22 @@ class StructInstance:
         return tuple(npvalue)
 
 
+def _is_texture_type(var_type: type) -> bool:
+    """Check if var_type is a Texture subclass (Texture2D, Texture3D, etc.)."""
+    from warp._src.texture import Texture  # noqa: PLC0415
+
+    try:
+        return issubclass(var_type, Texture)
+    except TypeError:
+        return False
+
+
 def _make_struct_field_constructor(field: str, var_type: type):
     if isinstance(var_type, Struct):
         return lambda ctype: var_type.instance_type(ctype=getattr(ctype, field))
     elif isinstance(var_type, warp._src.types.array):
+        return lambda ctype: None
+    elif _is_texture_type(var_type):
         return lambda ctype: None
     elif issubclass(var_type, ctypes.Array):
         # for vector/matrices, the Python attribute aliases the ctype one
@@ -454,10 +466,23 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
 
         cls.__setattr__(inst, field, value)
 
+    def set_texture_value(inst, value):
+        # Texture2D, Texture3D, etc.
+        if value is None:
+            # create texture with null/default handle
+            setattr(inst._ctype, field, var_type._wp_ctype_())
+        else:
+            # texture instance
+            setattr(inst._ctype, field, value.__ctype__())
+
+        cls.__setattr__(inst, field, value)
+
     if isinstance(var_type, array):
         return set_array_value
     elif isinstance(var_type, Struct):
         return set_struct_value
+    elif _is_texture_type(var_type):
+        return set_texture_value
     elif issubclass(var_type, ctypes.Array):
         return set_vector_value
     else:
@@ -488,6 +513,8 @@ class Struct:
                 fields.append((label, var.type.ctype))
             elif issubclass(var.type, ctypes.Array):
                 fields.append((label, var.type))
+            elif _is_texture_type(var.type):
+                fields.append((label, var.type._wp_ctype_))
             else:
                 # HACK: fp16 requires conversion functions from warp.so
                 if var.type is warp.float16:
