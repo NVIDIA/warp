@@ -29,16 +29,20 @@ wp.set_module_options({"enable_backward": False})
 
 
 class GeometryPartition:
-    """Base class for geometry partitions, i.e. subset of cells and sides"""
+    """Base class for geometry partitions, i.e. subset of cells and sides."""
 
     class CellArg:
+        """Structure containing arguments to be passed to cell-related device functions."""
+
         pass
 
     class SideArg:
+        """Structure containing arguments to be passed to side-related device functions."""
+
         pass
 
     geometry: Geometry
-    """Underlying geometry"""
+    """Underlying geometry."""
 
     def __init__(self, geometry: Geometry):
         self.geometry = geometry
@@ -61,6 +65,7 @@ class GeometryPartition:
 
     @property
     def name(self) -> str:
+        """Name of the geometry partition."""
         return f"{self.geometry.name}_{self.__class__.__name__}"
 
     def __str__(self) -> str:
@@ -68,22 +73,26 @@ class GeometryPartition:
 
     @cache.cached_arg_value
     def cell_arg_value(self, device):
+        """Value of the arguments to be passed to cell-related device functions."""
         args = self.CellArg()
         self.fill_cell_arg(args, device)
         return args
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         if self.cell_arg_value is __class__.cell_arg_value:
             raise NotImplementedError()
         args.assign(self.cell_arg_value(device))
 
     @cache.cached_arg_value
     def side_arg_value(self, device):
+        """Value of the arguments to be passed to side-related device functions."""
         args = self.SideArg()
         self.fill_side_arg(args, device)
         return args
 
     def fill_side_arg(self, args: SideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         if self.side_arg_value is __class__.side_arg_value:
             raise NotImplementedError()
         args.assign(self.side_arg_value(device))
@@ -95,7 +104,7 @@ class GeometryPartition:
 
     @staticmethod
     def partition_cell_index(args: CellArg, cell_index: int):
-        """Index of a geometry cell in the partition (or ``NULL_ELEMENT_INDEX``)"""
+        """Index of a geometry cell in the partition (or :data:`NULL_ELEMENT_INDEX`)"""
         raise NotImplementedError()
 
     @staticmethod
@@ -115,7 +124,7 @@ class GeometryPartition:
 
 
 class WholeGeometryPartition(GeometryPartition):
-    """Trivial (NOP) partition"""
+    """Trivial (NOP) partition."""
 
     def __init__(
         self,
@@ -138,22 +147,28 @@ class WholeGeometryPartition(GeometryPartition):
 
     @property
     def side_arg_value(self):
+        """Return the side argument value for this partition."""
         return self.geometry.side_index_arg_value
 
     @property
     def fill_side_arg(self):
+        """Return the side-argument fill function for this partition."""
         return self.geometry.fill_side_index_arg
 
     def cell_count(self) -> int:
+        """Return the number of cells in the partition."""
         return self.geometry.cell_count()
 
     def side_count(self) -> int:
+        """Return the number of sides in the partition."""
         return self.geometry.side_count()
 
     def boundary_side_count(self) -> int:
+        """Return the number of boundary sides in the partition."""
         return self.geometry.boundary_side_count()
 
     def frontier_side_count(self) -> int:
+        """Return the number of frontier sides in the partition."""
         return 0
 
     @wp.struct
@@ -169,10 +184,12 @@ class WholeGeometryPartition(GeometryPartition):
 
     @property
     def name(self) -> str:
+        """Name of the geometry partition."""
         return self.geometry.name
 
     @wp.func
     def side_to_cell_arg(side_arg: Any):
+        """Convert a side argument to a cell argument."""
         return WholeGeometryPartition.CellArg()
 
 
@@ -192,6 +209,7 @@ class CellBasedGeometryPartition(GeometryPartition):
 
     @cached_property
     def SideArg(self):
+        """Argument structure for side-related device functions."""
         return self._make_side_arg()
 
     def _make_side_arg(self):
@@ -205,15 +223,19 @@ class CellBasedGeometryPartition(GeometryPartition):
         return SideArg
 
     def side_count(self) -> int:
+        """Return the number of sides in the partition."""
         return self._partition_side_indices.shape[0]
 
     def boundary_side_count(self) -> int:
+        """Return the number of boundary sides in the partition."""
         return self._boundary_side_indices.shape[0]
 
     def frontier_side_count(self) -> int:
+        """Return the number of frontier sides in the partition."""
         return self._frontier_side_indices.shape[0]
 
     def fill_side_arg(self, args: SideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         self.fill_cell_arg(args.cell_arg, device)
         args.partition_side_indices = self._partition_side_indices.to(device)
         args.boundary_side_indices = self._boundary_side_indices.to(device)
@@ -242,6 +264,15 @@ class CellBasedGeometryPartition(GeometryPartition):
         max_side_count: int = -1,
         temporary_store: cache.TemporaryStore = None,
     ):
+        """Compute partition, boundary, and frontier side indices from a cell mask.
+
+        Args:
+            cell_arg_value: Cell argument structure for the inclusion test.
+            cell_inclusion_test_func: Device function deciding whether a cell is in the partition.
+            device: Warp device to run the computation on.
+            max_side_count: Optional cap on the number of sides to allocate.
+            temporary_store: Optional temporary storage for intermediate arrays.
+        """
         self.side_arg_value.invalidate(self)
 
         if max_side_count == 0:
@@ -345,6 +376,16 @@ class CellBasedGeometryPartition(GeometryPartition):
 
 
 class LinearGeometryPartition(CellBasedGeometryPartition):
+    """Geometry partition that uniformly divides cells by index range.
+
+    Creates a partition by assigning contiguous ranges of cell indices to
+    each partition rank. Useful for simple domain decomposition where cells
+    are numbered sequentially.
+
+    See Also:
+        :class:`ExplicitGeometryPartition`, :class:`GeometryPartition`
+    """
+
     def __init__(
         self,
         geometry: Geometry,
@@ -353,13 +394,14 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
         device=None,
         temporary_store: cache.TemporaryStore = None,
     ):
-        """Creates a geometry partition by uniformly partionning cell indices
+        """Create a geometry partition by uniformly partitioning cell indices.
 
         Args:
-            geometry: the geometry to partition
-            partition_rank: the index of the partition being created
-            partition_count: the number of partitions that will be created over the geometry
-            device: Warp device on which to perform and store computations
+            geometry: The geometry to partition.
+            partition_rank: The index of the partition being created (0 to partition_count-1).
+            partition_count: The total number of partitions over the geometry.
+            device: Warp device on which to perform and store computations.
+            temporary_store: Optional temporary storage for intermediate arrays.
         """
         super().__init__(geometry)
 
@@ -377,6 +419,7 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
         )
 
     def cell_count(self) -> int:
+        """Return the number of cells in the partition."""
         return self.cell_end - self.cell_begin
 
     @wp.struct
@@ -385,6 +428,7 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
         cell_end: int
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         args.cell_begin = self.cell_begin
         args.cell_end = self.cell_end
 
@@ -408,6 +452,15 @@ class LinearGeometryPartition(CellBasedGeometryPartition):
 
 
 class ExplicitGeometryPartition(CellBasedGeometryPartition):
+    """Geometry partition defined by an explicit cell selection mask.
+
+    Creates a partition where the included cells are specified by a binary mask array.
+    This provides fine-grained control over which cells belong to the partition.
+
+    See Also:
+        :class:`LinearGeometryPartition`, :class:`GeometryPartition`
+    """
+
     def __init__(
         self,
         geometry: Geometry,
@@ -416,13 +469,17 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         max_side_count: int = -1,
         temporary_store: Optional[cache.TemporaryStore] = None,
     ):
-        """Creates a geometry partition from an active cell mask
+        """Create a geometry partition from an active cell mask.
 
         Args:
-            geometry: the geometry to partition
-            cell_mask: warp array of length ``geometry.cell_count()`` indicating which cells are selected. Array values must be either ``1`` (selected) or ``0`` (not selected).
-            max_cell_count: if positive, will be used to limit the number of cells to avoid device/host synchronization
-            max_side_count: if positive, will be used to limit the number of sides to avoid device/host synchronization
+            geometry: The geometry to partition.
+            cell_mask: Warp array of length ``geometry.cell_count()`` indicating which
+                cells are selected. Values must be ``1`` (selected) or ``0`` (not selected).
+            max_cell_count: If positive, limits the number of cells to avoid device/host
+                synchronization.
+            max_side_count: If positive, limits the number of sides to avoid device/host
+                synchronization.
+            temporary_store: Optional temporary storage for intermediate arrays.
         """
 
         super().__init__(geometry)
@@ -440,8 +497,7 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         cell_mask: "wp.array(dtype=int)",
         temporary_store: Optional[cache.TemporaryStore] = None,
     ):
-        """
-        Rebuilds the geometry partition from a new active cell mask
+        """Rebuild the geometry partition from a new active cell mask.
 
         Args:
             geometry: the geometry to partition
@@ -468,6 +524,7 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         )
 
     def cell_count(self) -> int:
+        """Return the number of cells in the partition."""
         return self._cells.shape[0]
 
     @wp.struct
@@ -476,15 +533,18 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         partition_cell_index: wp.array(dtype=int)
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         args.cell_index = self._cells.to(device)
         args.partition_cell_index = self._partition_cells.to(device)
 
     @wp.func
     def cell_index(args: CellArg, partition_cell_index: int):
+        """Return the geometry cell index for a partition cell."""
         return args.cell_index[partition_cell_index]
 
     @wp.func
     def partition_cell_index(args: CellArg, cell_index: int):
+        """Return the partition index for a geometry cell."""
         return args.partition_cell_index[cell_index]
 
     @wp.func

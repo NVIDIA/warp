@@ -22,26 +22,26 @@ _wp_module_name_ = "warp.fem.polynomial"
 
 
 class Polynomial(Enum):
-    """Polynomial family defining interpolation nodes over an interval"""
+    """Polynomial family defining interpolation nodes over an interval."""
 
     GAUSS_LEGENDRE = "GL"
-    """Gauss--Legendre 1D polynomial family (does not include endpoints)"""
+    """Gauss--Legendre 1D polynomial family (does not include endpoints)."""
 
     LOBATTO_GAUSS_LEGENDRE = "LGL"
-    """Lobatto--Gauss--Legendre 1D polynomial family (includes endpoints)"""
+    """Lobatto--Gauss--Legendre 1D polynomial family (includes endpoints)."""
 
     EQUISPACED_CLOSED = "closed"
-    """Closed 1D polynomial family with uniformly distributed nodes (includes endpoints)"""
+    """Closed 1D polynomial family with uniformly distributed nodes (includes endpoints)."""
 
     EQUISPACED_OPEN = "open"
-    """Open 1D polynomial family with uniformly distributed nodes (does not include endpoints)"""
+    """Open 1D polynomial family with uniformly distributed nodes (does not include endpoints)."""
 
     def __str__(self):
         return self.value
 
 
 def is_closed(family: Polynomial):
-    """Whether the polynomial roots include interval endpoints"""
+    """Whether the polynomial roots include interval endpoints."""
     return family == Polynomial.LOBATTO_GAUSS_LEGENDRE or family == Polynomial.EQUISPACED_CLOSED
 
 

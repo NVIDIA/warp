@@ -29,18 +29,20 @@ _wp_module_name_ = "warp.fem.geometry.grid_3d"
 
 @wp.struct
 class Grid3DCellArg:
+    """Arguments for cell-related device functions."""
+
     res: wp.vec3i
     cell_size: wp.vec3
     origin: wp.vec3
 
 
 class Grid3D(Geometry):
-    """Three-dimensional regular grid geometry"""
+    """Three-dimensional regular grid geometry."""
 
     dimension = 3
 
     def __init__(self, res: wp.vec3i, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
-        """Constructs a dense 3D grid
+        """Construct a dense 3D grid.
 
         Args:
             res: Resolution of the grid along each dimension
@@ -61,6 +63,7 @@ class Grid3D(Geometry):
 
     @cached_property
     def extents(self) -> wp.vec3:
+        """Extent of the grid along each axis."""
         # Avoid using native sub due to higher over of calling builtins from Python
         return wp.vec3(
             self.bounds_hi[0] - self.bounds_lo[0],
@@ -70,6 +73,7 @@ class Grid3D(Geometry):
 
     @cached_property
     def cell_size(self) -> wp.vec3:
+        """Size of a cell along each axis."""
         ex = self.extents
         return wp.vec3(
             ex[0] / self.res[0],
@@ -78,12 +82,15 @@ class Grid3D(Geometry):
         )
 
     def cell_count(self):
+        """Number of cells in the grid."""
         return self.res[0] * self.res[1] * self.res[2]
 
     def vertex_count(self):
+        """Number of vertices in the grid."""
         return (self.res[0] + 1) * (self.res[1] + 1) * (self.res[2] + 1)
 
     def side_count(self):
+        """Number of sides in the grid."""
         return (
             (self.res[0] + 1) * (self.res[1]) * (self.res[2])
             + (self.res[0]) * (self.res[1] + 1) * (self.res[2])
@@ -91,6 +98,7 @@ class Grid3D(Geometry):
         )
 
     def edge_count(self):
+        """Number of edges in the grid."""
         return (
             (self.res[0] + 1) * (self.res[1] + 1) * (self.res[2])
             + (self.res[0]) * (self.res[1] + 1) * (self.res[2] + 1)
@@ -98,30 +106,37 @@ class Grid3D(Geometry):
         )
 
     def boundary_side_count(self):
+        """Number of boundary sides in the grid."""
         return 2 * (self.res[1]) * (self.res[2]) + (self.res[0]) * 2 * (self.res[2]) + (self.res[0]) * (self.res[1]) * 2
 
     def reference_cell(self) -> Element:
+        """Reference element for grid cells."""
         return Element.CUBE
 
     def reference_side(self) -> Element:
+        """Reference element for grid sides."""
         return Element.SQUARE
 
     @property
     def res(self):
+        """Grid resolution along each axis."""
         return self._res
 
     @property
     def origin(self):
+        """Lower bound of the grid in world coordinates."""
         return self.bounds_lo
 
     @cached_property
     def strides(self):
+        """Index strides for flattening 3D indices."""
         return wp.vec3i(self.res[1] * self.res[2], self.res[2], 1)
 
     # Utility device functions
 
     CellArg = Grid3DCellArg
     Cell = wp.vec3i
+    """Index type for cell coordinates."""
 
     @wp.func
     def _to_3d_index(strides: wp.vec2i, index: int):
@@ -136,21 +151,27 @@ class Grid3D(Geometry):
 
     @wp.func
     def cell_index(res: wp.vec3i, cell: Cell):
+        """Return the flattened cell index for a cell coordinate."""
         strides = wp.vec2i(res[1] * res[2], res[2])
         return Grid3D._from_3d_index(strides, cell)
 
     @wp.func
     def get_cell(res: wp.vec3i, cell_index: ElementIndex):
+        """Return the cell coordinate for a flattened cell index."""
         strides = wp.vec2i(res[1] * res[2], res[2])
         return Grid3D._to_3d_index(strides, cell_index)
 
     @wp.struct
     class Side:
+        """Side descriptor for indexing sides."""
+
         axis: int  # normal
         origin: wp.vec3i  # index of vertex at corner (0,0,0)
 
     @wp.struct
     class SideArg:
+        """Arguments for side-related device functions."""
+
         cell_count: int
         axis_offsets: wp.vec3i
         cell_arg: Grid3DCellArg
@@ -227,12 +248,14 @@ class Grid3D(Geometry):
     # Geometry device interface
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         args.res = self.res
         args.origin = self.bounds_lo
         args.cell_size = self.cell_size
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
+        """Return the world position of a cell sample point."""
         cell = Grid3D.get_cell(args.res, s.element_index)
         return (
             wp.vec3(
@@ -245,28 +268,38 @@ class Grid3D(Geometry):
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
+        """Return the deformation gradient for a cell sample."""
         return wp.diag(args.cell_size)
 
     @wp.func
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        """Return the inverse deformation gradient for a cell sample."""
         return wp.diag(wp.cw_div(wp.vec3(1.0), args.cell_size))
 
     @wp.func
     def cell_coordinates(args: Grid3DCellArg, cell_index: int, pos: wp.vec3):
+        """Return the cell coordinates corresponding to a world position."""
         uvw = wp.cw_div(pos - args.origin, args.cell_size)
         ijk = Grid3D.get_cell(args.res, cell_index)
         return uvw - wp.vec3(ijk)
 
     @wp.func
     def cell_closest_point(args: Grid3DCellArg, cell_index: int, pos: wp.vec3):
+        """Return the closest point on a cell to a world position."""
         ijk_world = wp.cw_mul(wp.vec3(Grid3D.get_cell(args.res, cell_index)), args.cell_size) + args.origin
         dist_sq, coords = project_on_box_at_origin(pos - ijk_world, args.cell_size)
         return coords, dist_sq
 
     def supports_cell_lookup(self, device):
+        """Return whether cell lookups are supported on the given device."""
         return True
 
     def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
+        """Create a filtered cell lookup function.
+
+        Args:
+            filter_func: Optional device predicate to filter candidate cells.
+        """
         suffix = f"{self.name}{filter_func.key if filter_func is not None else ''}"
 
         @dynamic_func(suffix=suffix)
@@ -336,14 +369,17 @@ class Grid3D(Geometry):
 
     @wp.func
     def cell_measure(args: CellArg, s: Sample):
+        """Return the measure (volume) of a cell."""
         return args.cell_size[0] * args.cell_size[1] * args.cell_size[2]
 
     @wp.func
     def cell_normal(args: CellArg, s: Sample):
+        """Return the normal of a cell element."""
         return wp.vec3(0.0)
 
     @cached_arg_value
     def side_arg_value(self, device) -> SideArg:
+        """Value of the arguments to be passed to side-related device functions."""
         args = self.SideArg()
         axis_dims = wp.vec3i(
             self.res[1] * self.res[2],
@@ -360,6 +396,7 @@ class Grid3D(Geometry):
         return args
 
     def side_index_arg_value(self, device) -> SideIndexArg:
+        """Value of the arguments to be passed to side-index device functions."""
         return self.side_arg_value(device)
 
     @wp.func
@@ -389,6 +426,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_position(args: SideArg, s: Sample):
+        """Return the world position of a side sample point."""
         side = Grid3D.get_side(args, s.element_index)
 
         coord0 = wp.where(side.origin[0] == 0, 1.0 - s.element_coords[0], s.element_coords[0])
@@ -405,6 +443,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
+        """Return the deformation gradient for a side sample."""
         side = Grid3D.get_side(args, s.element_index)
 
         sign = wp.where(side.origin[0] == 0, -1.0, 1.0)
@@ -416,14 +455,17 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_inner_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the inner cell."""
         return Grid3D.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_outer_inverse_deformation_gradient(args: SideArg, s: Sample):
+        """Return the inverse deformation gradient for the outer cell."""
         return Grid3D.cell_inverse_deformation_gradient(args.cell_arg, s)
 
     @wp.func
     def side_measure(args: SideArg, s: Sample):
+        """Return the measure (area) of a side."""
         side = Grid3D.get_side(args, s.element_index)
         long_axis = Grid3D._local_to_world_axis(side.axis, 1)
         lat_axis = Grid3D._local_to_world_axis(side.axis, 2)
@@ -431,12 +473,14 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_measure_ratio(args: SideArg, s: Sample):
+        """Return the ratio of side measure to neighboring cell measure."""
         side = Grid3D.get_side(args, s.element_index)
         alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
         return 1.0 / args.cell_arg.cell_size[alt_axis]
 
     @wp.func
     def side_normal(args: SideArg, s: Sample):
+        """Return the normal vector of a side."""
         side = Grid3D.get_side(args, s.element_index)
 
         sign = wp.where(side.origin[0] == 0, -1.0, 1.0)
@@ -446,6 +490,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         side = Grid3D.get_side(arg, side_index)
 
         inner_alt = wp.where(side.origin[0] == 0, 0, side.origin[0] - 1)
@@ -457,6 +502,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         side = Grid3D.get_side(arg, side_index)
 
         alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
@@ -472,6 +518,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         side = Grid3D.get_side(args, side_index)
 
         inner_alt = wp.where(side.origin[0] == 0, 0.0, 1.0)
@@ -482,6 +529,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         side = Grid3D.get_side(args, side_index)
 
         alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
@@ -498,6 +546,7 @@ class Grid3D(Geometry):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         side = Grid3D.get_side(args, side_index)
         cell = Grid3D.get_cell(args.cell_arg.res, element_index)
 
@@ -512,10 +561,12 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return side_arg.cell_arg
 
     @wp.func
     def side_coordinates(args: SideArg, side_index: int, pos: wp.vec3):
+        """Return side coordinates corresponding to a world position."""
         cell_arg = args.cell_arg
         side = Grid3D.get_side(args, side_index)
 
@@ -528,6 +579,7 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_closest_point(args: SideArg, side_index: int, pos: wp.vec3):
+        """Return the closest point on a side to a world position."""
         coord = Grid3D.side_coordinates(args, side_index, pos)
 
         cell_arg = args.cell_arg

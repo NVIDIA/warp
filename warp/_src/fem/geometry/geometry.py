@@ -73,24 +73,25 @@ class Geometry:
 
     @property
     def base(self) -> "Geometry":
-        """Returns the base geometry from which this geometry derives its topology. Usually `self`"""
+        """Return the base geometry from which this geometry derives its topology. Usually `self`."""
         return self
 
     @property
     def name(self) -> str:
+        """Name of the geometry."""
         return self.__class__.__name__
 
     def __str__(self) -> str:
         return self.name
 
     CellArg: Struct
-    """Structure containing arguments to be passed to device functions evaluating cell-related quantities"""
+    """Structure containing arguments to be passed to device functions evaluating cell-related quantities."""
 
     SideArg: Struct
-    """Structure containing arguments to be passed to device functions evaluating side-related quantities"""
+    """Structure containing arguments to be passed to device functions evaluating side-related quantities."""
 
     SideIndexArg: Struct
-    """Structure containing arguments to be passed to device functions for indexing sides"""
+    """Structure containing arguments to be passed to device functions for indexing sides."""
 
     @cache.cached_arg_value
     def cell_arg_value(self, device) -> "Geometry.CellArg":
@@ -129,6 +130,7 @@ class Geometry:
 
     @wp.func
     def cell_measure_ratio(args: Any, s: Sample):
+        """Device function returning the ratio between cell and neighbor measures."""
         return 1.0
 
     @staticmethod
@@ -180,7 +182,7 @@ class Geometry:
         raise NotImplementedError
 
     @staticmethod
-    def side_inner_inverse_deformation_gradient(args: "Geometry.Siderg", side_index: ElementIndex, coords: Coords):
+    def side_inner_inverse_deformation_gradient(args: "Geometry.SideArg", side_index: ElementIndex, coords: Coords):
         """Device function returning the matrix right-transforming a gradient w.r.t. inner cell space to a gradient w.r.t. world space
         (i.e. the inverse deformation gradient)
         """
@@ -235,7 +237,7 @@ class Geometry:
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        """Device function converting coordinates on a cell to coordinates on a side, or ``OUTSIDE``"""
+        """Device function converting coordinates on a cell to coordinates on a side, or :data:`OUTSIDE`"""
         raise NotImplementedError
 
     @staticmethod
@@ -531,6 +533,11 @@ class Geometry:
         return self._make_element_closest_point(element_kind=ElementKind.SIDE, assume_linear=assume_linear)
 
     def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
+        """Create a filtered cell lookup function.
+
+        Args:
+            filter_func: Optional device predicate to filter candidate cells.
+        """
         suffix = f"{self.name}{filter_func.key if filter_func is not None else ''}"
         pos_type = cache.cached_vec_type(self.dimension, dtype=float)
 
@@ -571,6 +578,7 @@ class Geometry:
 
     @cached_property
     def cell_lookup(self) -> wp.Function:
+        """Device function for looking up the closest cell to a position."""
         unfiltered_cell_lookup = self.make_filtered_cell_lookup(filter_func=None)
 
         # overloads
@@ -629,11 +637,11 @@ class Geometry:
         return compute_cell_bounds
 
     def supports_cell_lookup(self, device) -> bool:
+        """Return whether cell lookups are supported on the given device."""
         return self.bvh_id(device) != _NULL_BVH_ID
 
     def update_bvh(self, device=None):
-        """
-        Refits the geometry's BVH if it exists on `device`, or builds it from scratch otherwise.
+        """Refit the geometry's BVH if it exists on ``device``, or build it from scratch otherwise.
 
         Refitting the BVH is cheaper than rebuilding it from scratch, and is generally preferred
         when the geometry positions are modified without significant changes to the topology.
@@ -663,8 +671,7 @@ class Geometry:
         bvh.refit()
 
     def build_bvh(self, device=None):
-        """
-        Rebuilds the geometry's Bounding Volume Hierarchy (BVH) for `device` from scratch.
+        """Rebuild the geometry's Bounding Volume Hierarchy (BVH) for ``device`` from scratch.
 
         Many geometries rely on a BVH for the :func:`lookup` and :func:`partition_lookup` operators to be functional.
 
@@ -701,6 +708,7 @@ class Geometry:
         Geometry.side_arg_value.invalidate(self, device)
 
     def bvh_id(self, device):
+        """Return the BVH identifier for the given device, or ``0`` if unavailable."""
         if self._bvhs is None:
             return _NULL_BVH_ID
 

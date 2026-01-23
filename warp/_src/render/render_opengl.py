@@ -686,6 +686,7 @@ class ShapeInstancer:
 
     @classmethod
     def initialize_gl(cls):
+        """Import and cache pyglet OpenGL bindings."""
         if cls.gl is None:  # Only import if not already imported
             from pyglet import gl  # noqa: PLC0415
 
@@ -996,6 +997,7 @@ class OpenGLRenderer:
 
     @classmethod
     def initialize_gl(cls):
+        """Import and cache pyglet OpenGL bindings."""
         if cls.gl is None:  # Only import if not already imported
             from pyglet import gl  # noqa: PLC0415
 
@@ -1455,10 +1457,12 @@ class OpenGLRenderer:
 
     @property
     def paused(self):
+        """Whether rendering is paused."""
         return self._paused
 
     @paused.setter
     def paused(self, value):
+        """Set the paused state and update the window title."""
         self._paused = value
         if value:
             self.window.set_caption(f"{self._title} (paused)")
@@ -1467,9 +1471,11 @@ class OpenGLRenderer:
 
     @property
     def has_exit(self):
+        """Whether the event loop has requested exit."""
         return self.app.event_loop.has_exit
 
     def clear(self):
+        """Release OpenGL resources and reset renderer state."""
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -1514,15 +1520,18 @@ class OpenGLRenderer:
         self._update_shape_instances = False
 
     def close(self):
+        """Close the window and release renderer resources."""
         self.clear()
         self.window.close()
 
     @property
     def tiled_rendering(self):
+        """Whether tiled rendering is enabled."""
         return self._tiled_rendering
 
     @tiled_rendering.setter
     def tiled_rendering(self, value):
+        """Enable or disable tiled rendering."""
         if value:
             assert self._tile_instances is not None, "Tiled rendering is not set up. Call setup_tiled_rendering first."
         self._tiled_rendering = value
@@ -1546,27 +1555,30 @@ class OpenGLRenderer:
         See :meth:`get_pixels` which allows to retrieve the pixels of for each tile.
         See :meth:`update_tile` which allows to update the shape instances, projection matrix, view matrix, tile size, or tile position for a given tile.
 
-        :param instances: A list of lists of shape instance ids. Each list of shape instance ids
-            will be rendered into a separate tile.
-        :param rescale_window: If True, the window will be resized to fit the tiles.
-        :param tile_width: The width of each tile in pixels (optional).
-        :param tile_height: The height of each tile in pixels (optional).
-        :param tile_ncols: The number of tiles rendered horizontally (optional). Will be considered
-            if `tile_width` is set to compute the tile positions, unless `tile_positions` is defined.
-        :param tile_positions: A list of (x, y) tuples specifying the position of each tile in pixels.
-            If None, the tiles will be arranged in a square grid, or, if `tile_ncols` and `tile_nrows`
-            is set, in a grid with the specified number of columns and rows.
-        :param tile_sizes: A list of (width, height) tuples specifying the size of each tile in pixels.
-            If None, the tiles will have the same size as specified by `tile_width` and `tile_height`.
-        :param projection_matrices: A list of projection matrices for each tile (each view matrix is
-            either a flattened 16-dimensional array or a 4x4 matrix).
-            If the entire array is None, or only a view instances, the projection matrices for all, or these
-            instances, respectively, will be derived from the current render settings.
-        :param view_matrices: A list of view matrices for each tile (each view matrix is either a flattened
-            16-dimensional array or a 4x4 matrix).
-            If the entire array is None, or only a view instances, the view matrices for all, or these
-            instances, respectively, will be derived from the current camera settings and be
-            updated when the camera is moved.
+        Args:
+            instances: A list of lists of shape instance ids. Each list of shape instance ids
+                will be rendered into a separate tile.
+            rescale_window: If True, the window will be resized to fit the tiles.
+            tile_width: The width of each tile in pixels (optional).
+            tile_height: The height of each tile in pixels (optional).
+            tile_ncols: The number of tiles rendered horizontally (optional). Will be considered
+                if ``tile_width`` is set to compute the tile positions, unless ``tile_positions`` is defined.
+            tile_nrows: The number of tiles rendered vertically (optional). Will be considered
+                if ``tile_height`` is set to compute the tile positions, unless ``tile_positions`` is defined.
+            tile_positions: A list of (x, y) tuples specifying the position of each tile in pixels.
+                If None, the tiles will be arranged in a square grid, or, if ``tile_ncols`` and ``tile_nrows``
+                are set, in a grid with the specified number of columns and rows.
+            tile_sizes: A list of (width, height) tuples specifying the size of each tile in pixels.
+                If None, the tiles will have the same size as specified by ``tile_width`` and ``tile_height``.
+            projection_matrices: A list of projection matrices for each tile (each view matrix is
+                either a flattened 16-dimensional array or a 4x4 matrix).
+                If the entire array is None, or only a view instances, the projection matrices for all, or these
+                instances, respectively, will be derived from the current render settings.
+            view_matrices: A list of view matrices for each tile (each view matrix is either a flattened
+                16-dimensional array or a 4x4 matrix).
+                If the entire array is None, or only a view instances, the view matrices for all, or these
+                instances, respectively, will be derived from the current camera settings and be
+                updated when the camera is moved.
         """
 
         assert len(instances) > 0 and all(isinstance(i, list) for i in instances), "Invalid tile instances."
@@ -1641,12 +1653,13 @@ class OpenGLRenderer:
         Update the shape instances, projection matrix, view matrix, tile size, or tile position
         for a given tile given its index.
 
-        :param tile_id: The index of the tile to update.
-        :param instances: A list of shape instance ids (optional).
-        :param projection_matrix: A projection matrix (optional).
-        :param view_matrix: A view matrix (optional).
-        :param tile_size: A (width, height) tuple specifying the size of the tile in pixels (optional).
-        :param tile_position: A (x, y) tuple specifying the position of the tile in pixels (optional).
+        Args:
+            tile_id: The index of the tile to update.
+            instances: A list of shape instance ids (optional).
+            projection_matrix: A projection matrix (optional).
+            view_matrix: A view matrix (optional).
+            tile_size: A (width, height) tuple specifying the size of the tile in pixels (optional).
+            tile_position: A (x, y) tuple specifying the position of the tile in pixels (optional).
         """
 
         assert self._tile_instances is not None, "Tiled rendering is not set up. Call setup_tiled_rendering first."
@@ -1759,11 +1772,14 @@ class OpenGLRenderer:
         """
         Compute a projection matrix given the field of view, aspect ratio, near plane, and far plane.
 
-        :param fov: The field of view in degrees.
-        :param aspect_ratio: The aspect ratio (width / height).
-        :param near_plane: The near plane.
-        :param far_plane: The far plane.
-        :return: A projection matrix.
+        Args:
+            fov: The field of view in degrees.
+            aspect_ratio: The aspect ratio (width / height).
+            near_plane: The near plane.
+            far_plane: The far plane.
+
+        Returns:
+            A projection matrix.
         """
 
         from pyglet.math import Mat4 as PyMat4  # noqa: PLC0415
@@ -1771,6 +1787,7 @@ class OpenGLRenderer:
         return np.array(PyMat4.perspective_projection(aspect_ratio, near_plane, far_plane, fov))
 
     def update_projection_matrix(self):
+        """Update the projection matrix from current camera settings."""
         if self.screen_height == 0:
             return
         aspect_ratio = self.screen_width / self.screen_height
@@ -1780,29 +1797,45 @@ class OpenGLRenderer:
 
     @property
     def camera_pos(self):
+        """Current camera position vector."""
         return self._camera_pos
 
     @camera_pos.setter
     def camera_pos(self, value):
+        """Set camera position and refresh the view matrix."""
         self.update_view_matrix(cam_pos=value)
 
     @property
     def camera_front(self):
+        """Current camera forward vector."""
         return self._camera_front
 
     @camera_front.setter
     def camera_front(self, value):
+        """Set camera forward vector and refresh the view matrix."""
         self.update_view_matrix(cam_front=value)
 
     @property
     def camera_up(self):
+        """Current camera up vector."""
         return self._camera_up
 
     @camera_up.setter
     def camera_up(self, value):
+        """Set camera up vector and refresh the view matrix."""
         self.update_view_matrix(cam_up=value)
 
     def compute_view_matrix(self, cam_pos, cam_front, cam_up):
+        """Compute the view matrix from camera vectors.
+
+        Args:
+            cam_pos: Camera position in world space.
+            cam_front: Camera forward direction.
+            cam_up: Camera up direction.
+
+        Returns:
+            The 4x4 view matrix as a NumPy array.
+        """
         from pyglet.math import Mat4, Vec3  # noqa: PLC0415
 
         model = np.array(self._model_matrix).reshape((4, 4))
@@ -1815,6 +1848,14 @@ class OpenGLRenderer:
         return np.array(Mat4.look_at(cp, cp + cf, up), dtype=np.float32)
 
     def update_view_matrix(self, cam_pos=None, cam_front=None, cam_up=None, stiffness=1.0):
+        """Update camera vectors and recompute the view matrix.
+
+        Args:
+            cam_pos: New camera position (optional).
+            cam_front: New camera forward direction (optional).
+            cam_up: New camera up direction (optional).
+            stiffness: Smoothing factor for camera updates.
+        """
         from pyglet.math import Vec3  # noqa: PLC0415
 
         if cam_pos is not None:
@@ -1828,6 +1869,7 @@ class OpenGLRenderer:
 
     @staticmethod
     def compute_model_matrix(camera_axis: int, scaling: float):
+        """Compute the model matrix for the given up-axis and scaling."""
         if camera_axis == 0:
             return np.array((0, 0, scaling, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 0, 1), dtype=np.float32)
         elif camera_axis == 2:
@@ -1836,6 +1878,12 @@ class OpenGLRenderer:
         return np.array((scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, scaling, 0, 0, 0, 0, 1), dtype=np.float32)
 
     def update_model_matrix(self, model_matrix: Mat44 | None = None):
+        """Update the model matrix and upload it to shaders.
+
+        Args:
+            model_matrix: Optional 4x4 matrix override. If ``None``, uses the
+                current up-axis and scaling.
+        """
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -1858,38 +1906,52 @@ class OpenGLRenderer:
 
     @property
     def num_tiles(self):
+        """Number of tiles configured for tiled rendering."""
         return len(self._tile_instances)
 
     @property
     def tile_width(self):
+        """Tile width in pixels, or ``None`` if unset."""
         return self._tile_width
 
     @property
     def tile_height(self):
+        """Tile height in pixels, or ``None`` if unset."""
         return self._tile_height
 
     @property
     def num_shapes(self):
+        """Number of registered shape geometries."""
         return len(self._shapes)
 
     @property
     def num_instances(self):
+        """Number of active shape instances."""
         return self._instance_count
 
     @property
     def scaling(self):
+        """Global scene scaling factor."""
         return self._scaling
 
     @scaling.setter
     def scaling(self, scaling):
+        """Set the global scene scaling factor."""
         self._scaling = scaling
         self.update_model_matrix()
 
     def begin_frame(self, t: float | None = None):
+        """Mark the start of a frame and set time.
+
+        Args:
+            t: Optional time value to assign to ``self.time``. If ``None``, the
+                current clock time is used.
+        """
         self._last_begin_frame_time = time.time()
         self.time = t or self.clock_time
 
     def end_frame(self):
+        """Finalize the current frame and render it."""
         self._last_end_frame_time = time.time()
         if self._add_shape_instances:
             self.allocate_shape_instances()
@@ -1900,6 +1962,7 @@ class OpenGLRenderer:
             self.update()
 
     def update(self):
+        """Advance the event loop and render a frame if enabled."""
         self.clock_time = time.time() - self._start_time
         update_duration = self.clock_time - self._last_time
         frame_duration = self._last_end_frame_time - self._last_begin_frame_time
@@ -2273,6 +2336,12 @@ Instances: {len(self._instances)}"""
             self.update_view_matrix()
 
     def register_input_processor(self, callback):
+        """Register a callback to process input each frame.
+
+        Args:
+            callback: Function called with the key handler. Return
+                ``pyglet.event.EVENT_HANDLED`` to stop further processing.
+        """
         self._input_processors.append(callback)
 
     def _key_press_callback(self, symbol, modifiers):
@@ -2305,6 +2374,11 @@ Instances: {len(self._instances)}"""
             self.enable_backface_culling = not self.enable_backface_culling
 
     def register_key_press_callback(self, callback):
+        """Register a callback for key press events.
+
+        Args:
+            callback: Function called as ``callback(symbol, modifiers)``.
+        """
         self._key_callbacks.append(callback)
 
     def _window_resize_callback(self, width, height):
@@ -2314,6 +2388,18 @@ Instances: {len(self._instances)}"""
         self._setup_framebuffer()
 
     def register_shape(self, geo_hash, vertices, indices, color1=None, color2=None):
+        """Register a shape geometry and upload buffers.
+
+        Args:
+            geo_hash: Hashable identifier used to deduplicate geometry.
+            vertices: Vertex array for the mesh.
+            indices: Index array defining triangles.
+            color1: Primary color for the shape.
+            color2: Secondary color for the shape.
+
+        Returns:
+            Integer shape ID.
+        """
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -2365,6 +2451,11 @@ Instances: {len(self._instances)}"""
         return shape
 
     def deregister_shape(self, shape):
+        """Remove a registered shape and free its buffers.
+
+        Args:
+            shape: Shape ID returned by :meth:`register_shape`.
+        """
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -2398,6 +2489,23 @@ Instances: {len(self._instances)}"""
         custom_index: int = -1,
         visible: bool = True,
     ):
+        """Add an instance of a registered shape.
+
+        Args:
+            name: Name for the instance.
+            shape: Shape ID returned by :meth:`register_shape`.
+            body: Optional body name or ID to bind the instance to.
+            pos: Position tuple ``(x, y, z)``.
+            rot: Orientation quaternion ``(x, y, z, w)``.
+            scale: Scale tuple.
+            color1: Primary color override.
+            color2: Secondary color override.
+            custom_index: Optional custom instance ID.
+            visible: Whether the instance is visible.
+
+        Returns:
+            Integer instance ID.
+        """
         if color1 is None:
             color1 = self._shapes[shape][2]
         if color2 is None:
@@ -2413,6 +2521,11 @@ Instances: {len(self._instances)}"""
         return instance
 
     def remove_shape_instance(self, name: str):
+        """Remove a shape instance by name.
+
+        Args:
+            name: Instance name passed to :meth:`add_shape_instance`.
+        """
         if name not in self._instances:
             return
 
@@ -2426,6 +2539,7 @@ Instances: {len(self._instances)}"""
         del self._instances[name]
 
     def update_instance_colors(self):
+        """Upload per-instance colors to GPU buffers."""
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -2457,6 +2571,7 @@ Instances: {len(self._instances)}"""
         gl.glBufferData(gl.GL_ARRAY_BUFFER, colors2.nbytes, colors2.ctypes.data, gl.GL_STATIC_DRAW)
 
     def allocate_shape_instances(self):
+        """Allocate GPU buffers and Warp arrays for instances."""
         gl = OpenGLRenderer.gl
 
         self._switch_context()
@@ -2586,6 +2701,7 @@ Instances: {len(self._instances)}"""
         return False
 
     def update_shape_instances(self):
+        """Rebuild instance buffers after instance updates."""
         with self._shape_shader:
             self._update_shape_instances = False
             self._wp_instance_transforms = wp.array(
@@ -2594,6 +2710,12 @@ Instances: {len(self._instances)}"""
             self.update_body_transforms(None)
 
     def update_body_transforms(self, body_tf: wp.array):
+        """Update instance transforms from body transforms.
+
+        Args:
+            body_tf: Optional array of body transforms. If ``None``, only the
+                instance transforms are applied.
+        """
         if self._instance_transform_cuda_buffer is None:
             return
 
@@ -2626,6 +2748,14 @@ Instances: {len(self._instances)}"""
         self._instance_transform_cuda_buffer.unmap()
 
     def register_body(self, name):
+        """Register a body name and return its integer ID.
+
+        Args:
+            name: Body name to register.
+
+        Returns:
+            Integer body ID.
+        """
         # register body name and return its ID
         if name not in self._body_name:
             self._body_name[name] = len(self._body_name)
@@ -2639,9 +2769,11 @@ Instances: {len(self._instances)}"""
         return self._body_name[body]
 
     def is_running(self):
+        """Whether the renderer event loop is still running."""
         return not self.app.event_loop.has_exit
 
     def save(self):
+        """Block until the window is closed, keeping rendering active."""
         # save just keeps the window open to allow the user to interact with the scene
         while not self.app.event_loop.has_exit:
             self.update()
@@ -3380,6 +3512,12 @@ Instances: {len(self._instances)}"""
         self._render_lines(name, lines, color, radius)
 
     def update_shape_vertices(self, shape, points):
+        """Update vertex positions for a registered shape.
+
+        Args:
+            shape: Shape ID returned by :meth:`register_shape`.
+            points: Vertex positions as a :class:`warp.array` or array-like.
+        """
         if isinstance(points, wp.array):
             wp_points = points.to(self._device)
         else:

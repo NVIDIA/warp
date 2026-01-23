@@ -34,7 +34,7 @@ class SpaceTopology:
     """
 
     dimension: int
-    """Embedding dimension of the function space"""
+    """Embedding dimension of the function space."""
 
     MAX_NODES_PER_ELEMENT: int
     """maximum number of interpolation nodes per element of the geometry.
@@ -79,10 +79,12 @@ class SpaceTopology:
         return arg
 
     def fill_topo_arg(self, arg, device):
+        """Fill topology arguments for device functions."""
         pass
 
     @cached_property
     def name(self):
+        """Unique name of the topology."""
         return f"{self.__class__.__name__}_{self.MAX_NODES_PER_ELEMENT}"
 
     def __str__(self):
@@ -94,7 +96,7 @@ class SpaceTopology:
         topo_arg: "TopologyArg",
         element_index: ElementIndex,
     ) -> int:
-        """Returns the actual number of nodes in a given element"""
+        """Return the actual number of nodes in a given element."""
         raise NotImplementedError
 
     @staticmethod
@@ -113,11 +115,11 @@ class SpaceTopology:
         topo_arg: "TopologyArg",
         side_index: ElementIndex,
     ) -> tuple[int, int]:
-        """Returns the number of nodes for both the inner and outer cells of a given sides"""
+        """Return the number of nodes for both the inner and outer cells of a given sides."""
         raise NotImplementedError
 
     def element_node_indices(self, out: Optional[wp.array] = None) -> wp.array:
-        """Returns a temporary array containing the global index for each node of each element"""
+        """Return a temporary array containing the global index for each node of each element."""
 
         @cache.dynamic_kernel(suffix=self.name)
         def fill_element_node_indices(
@@ -175,15 +177,15 @@ class SpaceTopology:
         return self.dimension == self.geometry.dimension - 1
 
     def full_space_topology(self) -> "SpaceTopology":
-        """Returns the full space topology from which this topology is derived"""
+        """Return the full space topology from which this topology is derived."""
         return self
 
     def __eq__(self, other: "SpaceTopology") -> bool:
-        """Checks whether two topologies are compatible"""
+        """Check whether two topologies are compatible."""
         return self.geometry == other.geometry and self.name == other.name
 
     def is_derived_from(self, other: "SpaceTopology") -> bool:
-        """Checks whether two topologies are equal, or `self` is the trace of `other`"""
+        """Check whether two topologies are equal, or ``self`` is the trace of ``other``."""
         if self.dimension == other.dimension:
             return self == other
         if self.dimension + 1 == other.dimension:
@@ -251,7 +253,7 @@ class SpaceTopology:
 
 
 class TraceSpaceTopology(SpaceTopology):
-    """Auto-generated trace topology defining the node indices associated to the geometry sides"""
+    """Auto-generated trace topology defining the node indices associated to the geometry sides."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "inner_cell_index": lambda obj: obj._make_inner_cell_index(),
@@ -380,7 +382,7 @@ class TraceSpaceTopology(SpaceTopology):
         return trace_element_node_sign
 
     def full_space_topology(self) -> SpaceTopology:
-        """Returns the full space topology from which this topology is derived"""
+        """Return the full space topology from which this topology is derived."""
         return self._topo
 
     def __eq__(self, other: "TraceSpaceTopology") -> bool:
@@ -388,7 +390,7 @@ class TraceSpaceTopology(SpaceTopology):
 
 
 class RegularDiscontinuousSpaceTopologyMixin:
-    """Helper for defining discontinuous topologies (per-element nodes)"""
+    """Helper for defining discontinuous topologies (per-element nodes)."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -417,7 +419,7 @@ class RegularDiscontinuousSpaceTopologyMixin:
 
 
 class RegularDiscontinuousSpaceTopology(RegularDiscontinuousSpaceTopologyMixin, SpaceTopology):
-    """Topology for generic discontinuous spaces"""
+    """Topology for generic discontinuous spaces."""
 
     pass
 

@@ -110,22 +110,24 @@ def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
 
 
 class TetrahedronShapeFunction(ShapeFunction):
+    """Base class for shape functions defined on tetrahedral elements."""
+
     VERTEX = wp.constant(0)
     EDGE = wp.constant(1)
     FACE = wp.constant(2)
     INTERIOR = wp.constant(3)
 
     VERTEX_NODE_COUNT: int
-    """Number of shape function nodes per vertex"""
+    """Number of shape function nodes per vertex."""
 
     EDGE_NODE_COUNT: int
-    """Number of shape function nodes per tet edge (excluding vertex nodes)"""
+    """Number of shape function nodes per tet edge (excluding vertex nodes)."""
 
     FACE_NODE_COUNT: int
-    """Number of shape function nodes per tet face (excluding edge and vertex nodes)"""
+    """Number of shape function nodes per tet face (excluding edge and vertex nodes)."""
 
     INTERIOR_NODE_COUNT: int
-    """Number of shape function nodes per tet (excluding face, edge and vertex nodes)"""
+    """Number of shape function nodes per tet (excluding face, edge and vertex nodes)."""
 
     @staticmethod
     def node_type_and_index(node_index_in_elt: int):
@@ -161,6 +163,8 @@ class TetrahedronShapeFunction(ShapeFunction):
 
 
 class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
+    """Polynomial Lagrange shape functions on tetrahedral elements."""
+
     def __init__(self, degree: int):
         self.ORDER = wp.constant(degree)
 
@@ -510,6 +514,8 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
 
 class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
+    """Non-conforming polynomial shape functions on tetrahedral elements."""
+
     def __init__(self, degree: int):
         self._tet_shape = TetrahedronPolynomialShapeFunctions(degree=degree)
         self.ORDER = self._tet_shape.ORDER
@@ -628,6 +634,8 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
 
 
 class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
+    """Nédélec first-kind (edge) shape functions on tetrahedral elements for H(curl) spaces."""
+
     value = ShapeFunction.Value.CovariantVector
 
     def __init__(self, degree: int):
@@ -734,6 +742,8 @@ class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
 
 
 class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
+    """Raviart-Thomas (face) shape functions on tetrahedral elements for H(div) spaces."""
+
     value = ShapeFunction.Value.ContravariantVector
 
     def __init__(self, degree: int):

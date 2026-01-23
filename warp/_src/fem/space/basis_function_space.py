@@ -32,7 +32,7 @@ _wp_module_name_ = "warp.fem.space.basis_function_space"
 
 
 class CollocatedFunctionSpace(FunctionSpace):
-    """Function space where values are collocated at nodes"""
+    """Function space whose values are collocated at nodes."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "node_basis_element": lambda obj: obj._make_node_basis_element(),
@@ -74,15 +74,22 @@ class CollocatedFunctionSpace(FunctionSpace):
 
     @cached_property
     def name(self):
+        """Unique name of the function space."""
         return f"{self._basis.name}_{self.dof_mapper}".replace(".", "_")
 
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
+        """Return node positions for this space."""
         return self.basis.node_positions(out=out)
 
     def make_field(
         self,
         space_partition: Optional[SpacePartition] = None,
     ) -> "wp._src.fem.NodalField":
+        """Create a discrete field over this function space.
+
+        Args:
+            space_partition: Optional partition of the function space nodes.
+        """
         from warp._src.fem.field import NodalField  # noqa: PLC0415 (circular import)
 
         if space_partition is None:
@@ -91,6 +98,7 @@ class CollocatedFunctionSpace(FunctionSpace):
         return NodalField(space=self, space_partition=space_partition)
 
     def trace(self) -> "CollocatedFunctionSpace":
+        """Return the trace of this space on lower-dimensional elements."""
         return CollocatedFunctionSpaceTrace(self)
 
     def _make_node_basis_element(self):
@@ -110,6 +118,7 @@ class CollocatedFunctionSpace(FunctionSpace):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
+        """Return the local value map for inner element evaluation."""
         return CollocatedFunctionSpace.LocalValueMap(1.0)
 
     @wp.func
@@ -118,6 +127,7 @@ class CollocatedFunctionSpace(FunctionSpace):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
+        """Return the local value map for outer element evaluation."""
         return CollocatedFunctionSpace.LocalValueMap(1.0)
 
     def _make_space_value(self):
@@ -166,7 +176,7 @@ class CollocatedFunctionSpace(FunctionSpace):
 
 
 class CollocatedFunctionSpaceTrace(CollocatedFunctionSpace):
-    """Trace of a :class:`CollocatedFunctionSpace`"""
+    """Trace of a :class:`CollocatedFunctionSpace`."""
 
     def __init__(self, space: CollocatedFunctionSpace):
         self._space = space
@@ -181,7 +191,7 @@ class CollocatedFunctionSpaceTrace(CollocatedFunctionSpace):
 
 
 class VectorValuedFunctionSpace(FunctionSpace):
-    """Function space whose values are vectors"""
+    """Function space whose values are vectors."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "value_basis_element": lambda obj: obj._make_value_basis_element(),
@@ -210,15 +220,22 @@ class VectorValuedFunctionSpace(FunctionSpace):
 
     @property
     def name(self):
+        """Unique name of the function space."""
         return self.basis.name
 
     def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
+        """Return node positions for this space."""
         return self.basis.node_positions(out=out)
 
     def make_field(
         self,
         space_partition: Optional[SpacePartition] = None,
     ) -> "wp._src.fem.NodalField":
+        """Create a discrete field over this function space.
+
+        Args:
+            space_partition: Optional partition of the function space nodes.
+        """
         from warp._src.fem.field import NodalField  # noqa: PLC0415 (circular import)
 
         if space_partition is None:
@@ -228,6 +245,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
 
     @wp.func
     def node_basis_element(dof_coord: int):
+        """Basis element for node degrees of freedom."""
         return 1.0
 
     def _make_value_basis_element(self):
@@ -286,7 +304,7 @@ class VectorValuedFunctionSpace(FunctionSpace):
 
 
 class CovariantFunctionSpace(VectorValuedFunctionSpace):
-    """Function space whose values are covariant vectors"""
+    """Function space whose values are covariant vectors."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map(),
@@ -299,6 +317,7 @@ class CovariantFunctionSpace(VectorValuedFunctionSpace):
         cache.setup_dynamic_attributes(self, cls=__class__)
 
     def trace(self) -> "CovariantFunctionSpaceTrace":
+        """Return the trace of this space on lower-dimensional elements."""
         return CovariantFunctionSpaceTrace(self)
 
     def _make_local_value_map(self):
@@ -319,7 +338,7 @@ class CovariantFunctionSpace(VectorValuedFunctionSpace):
 
 
 class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
-    """Trace of a :class:`CovariantFunctionSpace`"""
+    """Trace of a :class:`CovariantFunctionSpace`."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),
@@ -371,7 +390,7 @@ class CovariantFunctionSpaceTrace(VectorValuedFunctionSpace):
 
 
 class ContravariantFunctionSpace(VectorValuedFunctionSpace):
-    """Function space whose values are contravariant vectors"""
+    """Function space whose values are contravariant vectors."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map(),
@@ -384,6 +403,7 @@ class ContravariantFunctionSpace(VectorValuedFunctionSpace):
         cache.setup_dynamic_attributes(self, cls=__class__)
 
     def trace(self) -> "ContravariantFunctionSpaceTrace":
+        """Return the trace of this space on lower-dimensional elements."""
         return ContravariantFunctionSpaceTrace(self)
 
     def _make_local_value_map(self):
@@ -400,7 +420,7 @@ class ContravariantFunctionSpace(VectorValuedFunctionSpace):
 
 
 class ContravariantFunctionSpaceTrace(VectorValuedFunctionSpace):
-    """Trace of a :class:`ContravariantFunctionSpace`"""
+    """Trace of a :class:`ContravariantFunctionSpace`."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "local_value_map_inner": lambda obj: obj._make_local_value_map_inner(),

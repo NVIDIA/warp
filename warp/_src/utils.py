@@ -86,14 +86,13 @@ def warn(message, category=None, stacklevel=1, once=False):
 
 # expand a 7-vec to a tuple of arrays
 def transform_expand(t):
+    """Expand a flat 7-element sequence into a :class:`warp.transformf` (position + quaternion)."""
     return wp.transform(np.array(t[0:3]), np.array(t[3:7]))
 
 
 @wp.func
 def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
-    """
-    Compute the quaternion that rotates vector a to vector b
-    """
+    """Compute the quaternion that rotates vector ``a`` to vector ``b``."""
     a = wp.normalize(a)
     b = wp.normalize(b)
     c = wp.cross(a, b)
@@ -741,8 +740,9 @@ def broadcast_shapes(shapes: list[tuple[int]]) -> tuple[int]:
         2. one of the dimensions is 1.
 
     Example:
-        >>> broadcast_shapes([(3, 1, 4), (5, 4)])
-        (3, 5, 4)
+        .. code-block:: python
+
+            broadcast_shapes([(3, 1, 4), (5, 4)])  # Returns (3, 5, 4)
 
     Returns:
         The broadcasted shape.
@@ -808,7 +808,7 @@ def map(
         [-0.5  0.   0.5]
 
     Note that only one of the inputs must be a Warp array. For example, it is possible
-    vectorize the function :func:`warp.transform_point() <warp._src.lang.transform_point>` over a collection of points
+    vectorize the function :func:`~warp._src.lang.transform_point` over a collection of points
     with a given input transform as follows:
 
     .. code-block:: python
@@ -880,7 +880,7 @@ def map(
     referenced_modules: dict[str, ModuleType] = {}
 
     def type_to_code(wp_type) -> str:
-        """Returns the string representation of a given Warp type."""
+        """Return the string representation of a given Warp type."""
         if is_array(wp_type):
             return f"warp.array(ndim={wp_type.ndim}, dtype={type_to_code(wp_type.dtype)})"
         if isinstance(wp_type, Struct):
@@ -1256,7 +1256,7 @@ class ScopedDevice:
     """
 
     def __init__(self, device: DeviceLike):
-        """Initializes the context manager with a device.
+        """Initialize the context manager with a device.
 
         Args:
             device: The device that will temporarily become the default device
@@ -1300,7 +1300,7 @@ class ScopedStream:
     """
 
     def __init__(self, stream: wp.Stream | None, sync_enter: bool = True, sync_exit: bool = False):
-        """Initializes the context manager with a stream and synchronization options.
+        """Initialize the context manager with a stream and synchronization options.
 
         Args:
             stream: The stream that will temporarily become the device's
@@ -1333,15 +1333,33 @@ class ScopedStream:
 
 
 TIMING_KERNEL = 1
+"""Timing flag for user-defined kernel launches."""
+
 TIMING_KERNEL_BUILTIN = 2
+"""Timing flag for built-in kernel operations (e.g., array fill, copy)."""
+
 TIMING_MEMCPY = 4
+"""Timing flag for memory copy operations."""
+
 TIMING_MEMSET = 8
+"""Timing flag for memory set operations."""
+
 TIMING_GRAPH = 16
+"""Timing flag for CUDA graph launches."""
+
 TIMING_ALL = 0xFFFFFFFF
+"""Timing flag to capture all CUDA activities."""
 
 
 # timer utils
 class ScopedTimer:
+    """Context manager for timing code blocks.
+
+    This context manager measures the execution time of the enclosed code block
+    and can optionally print the elapsed time, collect detailed profiling data,
+    or record NVTX ranges.
+    """
+
     _thread_local = threading.local()
 
     enabled = True
@@ -1373,7 +1391,7 @@ class ScopedTimer:
             synchronize: Synchronize the CPU thread with any outstanding CUDA work to return accurate GPU timings
             cuda_filter: Filter flags for CUDA activity timing, e.g. ``warp.TIMING_KERNEL`` or ``warp.TIMING_ALL``
             report_func: A callback function to print the activity report.
-              If ``None``,  :func:`wp.timing_print() <timing_print>` will be used.
+              If ``None``,  :func:`warp.timing_print` will be used.
             skip_tape: If true, the timer will not be recorded in the tape
 
         Attributes:
@@ -1478,6 +1496,25 @@ class ScopedTimer:
 
 # Allow temporarily enabling/disabling mempool allocators
 class ScopedMempool:
+    """Context manager to temporarily enable or disable memory pool allocators.
+
+    On context exit, the original mempool setting is restored.
+
+    Args:
+        device: The device on which to modify the mempool setting.
+        enable: Whether to enable (``True``) or disable (``False``) the mempool.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedMempool(device, enable=True):
+                # Memory allocations here use the memory pool
+                arr = wp.zeros(1000, dtype=wp.float32, device=device)
+
+    See Also:
+        :func:`is_mempool_enabled`, :func:`set_mempool_enabled`
+    """
+
     def __init__(self, device: DeviceLike, enable: bool):
         self.device = wp.get_device(device)
         self.enable = enable
@@ -1492,6 +1529,25 @@ class ScopedMempool:
 
 # Allow temporarily enabling/disabling mempool access
 class ScopedMempoolAccess:
+    """Context manager to temporarily enable or disable mempool access between devices.
+
+    Mempool access controls whether ``peer_device`` can access allocations from the memory
+    pool of ``target_device``. By default, pool allocations are only accessible on the
+    owning device. When enabled, access applies to all allocations from the pool (not just
+    future ones) and is independent of peer access.
+
+    On context exit, the original access setting is restored.
+
+    Args:
+        target_device: The device whose mempool will be accessed.
+        peer_device: The device that will access the target's mempool.
+        enable: Whether to enable (``True``) or disable (``False``) access.
+
+    See Also:
+        :func:`is_mempool_access_enabled`, :func:`set_mempool_access_enabled`,
+        :class:`ScopedPeerAccess`
+    """
+
     def __init__(self, target_device: DeviceLike, peer_device: DeviceLike, enable: bool):
         self.target_device = target_device
         self.peer_device = peer_device
@@ -1507,6 +1563,25 @@ class ScopedMempoolAccess:
 
 # Allow temporarily enabling/disabling peer access
 class ScopedPeerAccess:
+    """Context manager to temporarily enable or disable peer access between CUDA devices.
+
+    Peer access allows direct memory access between GPUs without going through host memory.
+    When enabled, access applies to all allocations on ``target_device`` (not just future ones).
+
+    This setting applies to memory allocated using the default CUDA allocator.
+
+    On context exit, the original peer access setting is restored.
+
+    Args:
+        target_device: The device whose memory will be accessed.
+        peer_device: The device that will access the target's memory.
+        enable: Whether to enable (``True``) or disable (``False``) peer access.
+
+    See Also:
+        :func:`is_peer_access_enabled`, :func:`set_peer_access_enabled`,
+        :class:`ScopedMempoolAccess`
+    """
+
     def __init__(self, target_device: DeviceLike, peer_device: DeviceLike, enable: bool):
         self.target_device = target_device
         self.peer_device = peer_device
@@ -1521,6 +1596,35 @@ class ScopedPeerAccess:
 
 
 class ScopedCapture:
+    """Context manager to capture a sequence of operations into a CUDA graph.
+
+    CUDA graphs allow a sequence of GPU operations to be captured and replayed
+    with reduced launch overhead. The captured graph is available as the ``graph``
+    attribute after exiting the context.
+
+    Args:
+        device: Device on which to capture operations.
+        stream: Stream on which to capture operations.
+        force_module_load: If ``True``, force all modules to load before capture begins.
+        external: If ``True``, indicates an external graph capture is already active.
+
+    Attributes:
+        graph: The captured CUDA graph, available after context exit.
+        active: Whether capture is currently in progress.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedCapture() as capture:
+                wp.launch(my_kernel, dim=n, inputs=[arr])
+
+            # Replay the captured graph
+            wp.capture_launch(capture.graph)
+
+    See Also:
+        :func:`capture_begin`, :func:`capture_end`, :func:`capture_launch`
+    """
+
     def __init__(self, device: DeviceLike = None, stream=None, force_module_load=None, external=False):
         self.device = device
         self.stream = stream
@@ -1579,7 +1683,7 @@ def check_p2p():
 
 
 class timing_result_t(ctypes.Structure):
-    """CUDA timing struct for fetching values from C++"""
+    """CUDA timing struct for fetching values from C++."""
 
     _fields_ = (
         ("context", ctypes.c_void_p),

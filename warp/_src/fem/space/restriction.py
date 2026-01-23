@@ -30,14 +30,14 @@ wp.set_module_options({"enable_backward": False})
 
 
 class SpaceRestriction:
-    """Restriction of a space partition to a given GeometryDomain"""
+    """Restriction of a space partition to a given :class:`GeometryDomain`."""
 
     space_partition: SpacePartition
-    """Partition of the function space nodes that will be restricted"""
+    """Partition of the function space nodes that will be restricted."""
     space_topology: SpaceTopology
-    """Topology of the full function space"""
+    """Topology of the full function space."""
     domain: GeometryDomain
-    """Domain to which the space partition is being restricted"""
+    """Domain to which the space partition is being restricted."""
 
     def __init__(
         self,
@@ -74,6 +74,7 @@ class SpaceRestriction:
         self.rebuild(device=device, temporary_store=temporary_store)
 
     def rebuild(self, device: Optional["wp.DeviceLike"] = None, temporary_store: Optional[cache.TemporaryStore] = None):
+        """Rebuild internal indices for the space restriction."""
         max_nodes_per_element = self.space_topology.MAX_NODES_PER_ELEMENT
 
         @cache.dynamic_kernel(
@@ -164,27 +165,32 @@ class SpaceRestriction:
         self._node_count = min(self.space_partition.node_count(), self._dof_partition_indices.shape[0])
 
     def node_count_sync(self) -> int:
-        """Ensures that the node count is synchronized with the device and returns it"""
+        """Ensure that the node count is synchronized with the device and return it."""
         if self._node_count_dev is not None:
             self._node_count = int(host_read_at_index(self._node_count_dev, index=0))
             self._node_count_dev = None
         return self.node_count()
 
     def node_count(self) -> int:
-        """Upper bound for the node count, use `node_count_sync` to get the actual value"""
+        """Upper bound for the node count, use ``node_count_sync`` to get the actual value."""
         return self._node_count
 
     def partition_element_offsets(self):
+        """Return offsets into the per-node element index arrays."""
         return self._dof_partition_element_offsets
 
     def node_partition_indices(self):
+        """Return partition node indices referenced by this restriction."""
         return self._dof_partition_indices
 
     def total_node_element_count(self):
+        """Return the total number of node-element references."""
         return self._dof_element_indices.size
 
     @wp.struct
     class NodeArg:
+        """Structure containing node restriction indices for device functions."""
+
         dof_element_offsets: wp.array(dtype=int)
         dof_element_indices: wp.array(dtype=int)
         dof_partition_indices: wp.array(dtype=int)
@@ -192,11 +198,13 @@ class SpaceRestriction:
 
     @cache.cached_arg_value
     def node_arg_value(self, device):
+        """Return the node argument structure for device functions."""
         arg = SpaceRestriction.NodeArg()
         self.fill_node_arg(arg, device)
         return arg
 
     def fill_node_arg(self, arg: NodeArg, device):
+        """Fill node arguments for device functions."""
         arg.dof_element_offsets = self._dof_partition_element_offsets.to(device)
         arg.dof_element_indices = self._dof_element_indices.to(device)
         arg.dof_partition_indices = self._dof_partition_indices.to(device)
@@ -204,18 +212,22 @@ class SpaceRestriction:
 
     @wp.func
     def node_partition_index(args: NodeArg, restriction_node_index: int):
+        """Return the partition node index for a restriction node."""
         return args.dof_partition_indices[restriction_node_index]
 
     @wp.func
     def node_partition_index_from_element_offset(args: NodeArg, element_offset: int):
+        """Return the partition node index for a given element offset."""
         return wp.lower_bound(args.dof_element_offsets, element_offset + 1) - 1
 
     @wp.func
     def node_element_range(args: NodeArg, partition_node_index: int):
+        """Return the element offset range for a partition node."""
         return args.dof_element_offsets[partition_node_index], args.dof_element_offsets[partition_node_index + 1]
 
     @wp.func
     def node_element_index(args: NodeArg, node_element_offset: int):
+        """Return the node-element index pair for a given element offset."""
         domain_element_index = args.dof_element_indices[node_element_offset]
         index_in_element = args.dof_indices_in_element[node_element_offset]
         return NodeElementIndex(domain_element_index, index_in_element)

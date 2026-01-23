@@ -81,6 +81,11 @@ class SGD:
         self.t = 0
 
     def set_params(self, params):
+        """Set parameters to optimize and allocate momentum buffers.
+
+        Args:
+            params: List of :class:`warp.array` objects to optimize, or ``None``.
+        """
         self.params = params
         if params is not None and isinstance(params, list) and len(params) > 0:
             if len(self.b) != len(params):
@@ -94,11 +99,17 @@ class SGD:
                     wp.overload(sgd_step_kernel, {"g": param, "b": param, "params": param})
 
     def reset_internal_state(self):
+        """Reset momentum buffers and timestep to zero."""
         for b_i in self.b:
             b_i.zero_()
         self.t = 0
 
     def step(self, grad):
+        """Apply one SGD step using the provided gradients.
+
+        Args:
+            grad: List of gradient arrays matching ``params``.
+        """
         assert self.params is not None
         for i in range(len(self.params)):
             SGD.step_detail(
@@ -116,6 +127,19 @@ class SGD:
 
     @staticmethod
     def step_detail(g, b, lr, momentum, dampening, weight_decay, nesterov, t, params):
+        """Apply an SGD update to a single parameter array.
+
+        Args:
+            g: Gradient array.
+            b: Momentum buffer.
+            lr: Learning rate.
+            momentum: Momentum factor.
+            dampening: Momentum dampening factor.
+            weight_decay: Weight decay coefficient.
+            nesterov: Whether to use Nesterov momentum.
+            t: Current step index.
+            params: Parameter array to update in-place.
+        """
         assert params.dtype == g.dtype
         assert params.dtype == b.dtype
         assert params.shape == g.shape

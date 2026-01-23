@@ -30,8 +30,7 @@ wp.set_module_options({"enable_backward": False})
 
 
 class LinearOperator:
-    """
-    Linear operator to be used as left-hand-side of linear iterative solvers.
+    """Linear operator to be used as left-hand-side of linear iterative solvers.
 
     Args:
         shape: Tuple containing the number of rows and columns of the operator
@@ -52,7 +51,7 @@ class LinearOperator:
             ...
 
     For performance reasons, by default the iterative linear solvers in this module will try to capture the calls
-    for one or more iterations in CUDA graphs. If the `matvec` routine of a custom :class:`LinearOperator`
+    for one or more iterations in CUDA graphs. If the ``matvec`` routine of a custom :class:`LinearOperator`
     cannot be graph-captured, the ``use_cuda_graph=False`` parameter should be passed to the solver function.
 
     """
@@ -88,14 +87,13 @@ _Matrix = Union[wp.array, sparse.BsrMatrix, LinearOperator]
 
 
 def aslinearoperator(A: _Matrix) -> LinearOperator:
-    """
-    Casts the dense or sparse matrix `A` as a :class:`LinearOperator`
+    """Cast the dense or sparse matrix ``A`` as a :class:`LinearOperator`.
 
-    `A` must be of one of the following types:
+    ``A`` must be of one of the following types:
 
         - :class:`warp.sparse.BsrMatrix`
-        - two-dimensional `warp.array`; then `A` is assumed to be a dense matrix
-        - one-dimensional `warp.array`; then `A` is assumed to be a diagonal matrix
+        - two-dimensional ``warp.array``; then ``A`` is assumed to be a dense matrix
+        - one-dimensional ``warp.array``; then ``A`` is assumed to be a diagonal matrix
         - :class:`warp.optim.linear.LinearOperator`; no casting necessary
     """
 
@@ -150,7 +148,7 @@ def aslinearoperator(A: _Matrix) -> LinearOperator:
 
 
 def preconditioner(A: _Matrix, ptype: str = "diag") -> LinearOperator:
-    """Constructs and returns a preconditioner for an input matrix.
+    """Construct and return a preconditioner for an input matrix.
 
     Args:
         A: The matrix for which to build the preconditioner
@@ -221,9 +219,7 @@ def _as_scalar_array(x: wp.array):
 
 
 class TiledDot:
-    """
-    Computes the dot product of two arrays in a way that is compatible with CUDA sub-graphs.
-    """
+    """Compute the dot product of two arrays in a way that is compatible with CUDA sub-graphs."""
 
     def __init__(self, max_length: int, scalar_type: type, tile_size=512, device=None, max_column_count: int = 1):
         self.tile_size = tile_size
@@ -355,7 +351,7 @@ def cg(
     check_every=10,
     use_cuda_graph=True,
 ) -> Union[tuple[int, float, float], tuple[wp.array, wp.array, wp.array]]:
-    """Computes an approximate solution to a symmetric, positive-definite linear system
+    """Compute an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Gradient algorithm.
 
     Args:
@@ -480,7 +476,7 @@ def cr(
     check_every=10,
     use_cuda_graph=True,
 ) -> tuple[int, float, float]:
-    """Computes an approximate solution to a symmetric, positive-definite linear system
+    """Compute an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Residual algorithm.
 
     Args:
@@ -631,7 +627,7 @@ def bicgstab(
     use_cuda_graph=True,
     is_left_preconditioner=False,
 ):
-    """Computes an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).
+    """Compute an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).
 
     Args:
         A: the linear system's left-hand-side
@@ -802,7 +798,7 @@ def gmres(
     use_cuda_graph=True,
     is_left_preconditioner=False,
 ):
-    """Computes an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).
+    """Compute an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).
 
     Args:
         A: the linear system's left-hand-side

@@ -116,6 +116,17 @@ def get_func(func, suffix: Any, code_transformers=None, allow_overloads=False):
 
 
 def dynamic_func(suffix: Any, code_transformers=None, allow_overloads=False):
+    """Return a decorator that caches a specialized :class:`wp.Function`.
+
+    Args:
+        suffix: Hashable key used to specialize and cache the function.
+        code_transformers: Optional list of code transformers applied during code generation.
+        allow_overloads: Whether to include argument types in the cache key.
+
+    Returns:
+        A decorator that registers and returns a cached :class:`wp.Function`.
+    """
+
     def wrap_func(func: Callable):
         return get_func(func, suffix=suffix, code_transformers=code_transformers, allow_overloads=allow_overloads)
 
@@ -142,6 +153,16 @@ def get_kernel(
 
 
 def dynamic_kernel(suffix: Any, kernel_options: Optional[dict[str, Any]] = None, allow_overloads=False):
+    """Return a decorator that caches a specialized :class:`wp.Kernel`.
+
+    Args:
+        suffix: Hashable key used to specialize and cache the kernel.
+        kernel_options: Optional kernel options merged into the generated module.
+        allow_overloads: Whether to include argument types in the cache key.
+
+    Returns:
+        A decorator that registers and returns a cached :class:`wp.Kernel`.
+    """
     if kernel_options is None:
         kernel_options = {}
 
@@ -313,7 +334,7 @@ def get_integrand_kernel(
 
 
 def pod_type_key(pod_type: type):
-    """Hashable key for POD (single or sequence of scalars) types"""
+    """Hashable key for POD (single or sequence of scalars) types."""
 
     pod_type = type_to_warp(pod_type)
     if hasattr(pod_type, "_wp_scalar_type_"):
@@ -535,9 +556,19 @@ class TemporaryStore:
         self.clear()
 
     def clear(self):
+        """Clear all cached temporary pools."""
         self._temporaries = {}
 
     def borrow(self, shape, dtype, pinned: bool = False, device=None, requires_grad: bool = False) -> Temporary:
+        """Borrow a temporary array from the pool.
+
+        Args:
+            shape: Desired shape of the temporary.
+            dtype: Desired data type of the temporary.
+            pinned: Whether to allocate pinned host memory.
+            device: Device on which to allocate the temporary.
+            requires_grad: Whether to allocate a gradient array.
+        """
         dtype = type_to_warp(dtype)
         device = wp.get_device(device)
 
@@ -560,6 +591,7 @@ class TemporaryStore:
 
     @staticmethod
     def add_temporary_convenience_methods(temporary: wp.array) -> Temporary:
+        """Attach ``release`` and ``detach`` convenience methods to a temporary."""
         ref = weakref.ref(temporary)
         temporary.release = TemporaryStore._release_temporary.__get__(ref)
         temporary.detach = TemporaryStore._detach_temporary.__get__(ref)
@@ -580,7 +612,7 @@ class TemporaryStore:
 
     @staticmethod
     def _detach_temporary(temporary_ref: "weakref.ReferenceType[Temporary]") -> Temporary:
-        """Detaches the temporary so it is never returned to the pool"""
+        """Detach the temporary so it is never returned to the pool."""
         temporary = temporary_ref()
         if temporary is None:
             return None
@@ -592,7 +624,7 @@ class TemporaryStore:
 
     @staticmethod
     def _release_temporary(temporary_ref: "weakref.ReferenceType[Temporary]"):
-        """Returns the temporary array to the pool"""
+        """Return the temporary array to the pool."""
 
         from warp._src.context import runtime  # noqa: PLC0415
 
@@ -628,14 +660,13 @@ def borrow_temporary(
     requires_grad: bool = False,
     device=None,
 ) -> Temporary:
-    """
-    Borrows and returns a temporary array with specified attributes from a shared pool.
+    """Borrow and return a temporary array with specified attributes from a shared pool.
 
     If an array with sufficient capacity and matching desired attributes is already available in the pool, it will be returned.
     Otherwise, a new allocation will be performed.
 
     Args:
-        temporary_store: the shared pool to borrow the temporary from. If `temporary_store` is ``None``, the global default temporary store, if set, will be used.
+        temporary_store: the shared pool to borrow the temporary from. If ``temporary_store`` is ``None``, the global default temporary store, if set, will be used.
         shape: desired dimensions for the temporary array
         dtype: desired data type for the temporary array
         pinned: whether a pinned allocation is desired
@@ -657,12 +688,11 @@ def borrow_temporary_like(
     array: Union[wp.array, Temporary],
     temporary_store: Optional[TemporaryStore],
 ) -> Temporary:
-    """
-    Borrows and returns a temporary array with the same attributes as another array or temporary.
+    """Borrow and return a temporary array with the same attributes as another array or temporary.
 
     Args:
         array: Warp or temporary array to read the desired attributes from
-        temporary_store: the shared pool to borrow the temporary from. If `temporary_store` is ``None``, the global default temporary store, if set, will be used.
+        temporary_store: the shared pool to borrow the temporary from. If ``temporary_store`` is ``None``, the global default temporary store, if set, will be used.
     """
     return borrow_temporary(
         temporary_store=temporary_store,
@@ -678,14 +708,12 @@ _device_events = {}
 
 
 def capture_event(device=None):
-    """
-    Records a CUDA event on the current stream and returns it,
-    reusing previously created events if possible.
+    """Record a CUDA event on the current stream and return it, reusing previously created events if possible.
 
     If the current device is not a CUDA device, returns ``None``.
 
     The event can be returned to the shared per-device pool for future reuse by
-    calling :func:`synchronize_event`
+    calling :func:`synchronize_event`.
     """
 
     device = wp.get_device(device)
