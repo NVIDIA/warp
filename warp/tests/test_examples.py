@@ -446,7 +446,7 @@ add_example_test(
     TestTileExamples,
     name="tile.example_tile_mcgp",
     devices=test_devices,
-    test_options={"height": 128, "headless": True, "usd_required": True},
+    test_options={"height": 128, "headless": True},
     test_options_cpu={"slices": 2},
     test_options_cuda={"slices": 5},
 )
