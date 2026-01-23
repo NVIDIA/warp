@@ -169,6 +169,20 @@ CUresult cuIpcGetMemHandle_f(CUipcMemHandle* pHandle, CUdeviceptr dptr);
 CUresult cuIpcOpenMemHandle_f(CUdeviceptr* pdptr, CUipcMemHandle handle, unsigned int flags);
 CUresult cuIpcCloseMemHandle_f(CUdeviceptr dptr);
 
+// Texture functions
+CUresult cuArrayCreate_f(CUarray* pHandle, const CUDA_ARRAY_DESCRIPTOR* pAllocateArray);
+CUresult cuArrayDestroy_f(CUarray hArray);
+CUresult cuArray3DCreate_f(CUarray* pHandle, const CUDA_ARRAY3D_DESCRIPTOR* pAllocateArray);
+CUresult cuMemcpy2D_f(const CUDA_MEMCPY2D* pCopy);
+CUresult cuMemcpy3D_f(const CUDA_MEMCPY3D* pCopy);
+CUresult cuTexObjectCreate_f(
+    CUtexObject* pTexObject,
+    const CUDA_RESOURCE_DESC* pResDesc,
+    const CUDA_TEXTURE_DESC* pTexDesc,
+    const CUDA_RESOURCE_VIEW_DESC* pResViewDesc
+);
+CUresult cuTexObjectDestroy_f(CUtexObject texObject);
+
 bool init_cuda_driver();
 bool is_cuda_driver_initialized();
 

@@ -288,6 +288,16 @@ Volumes
    volume_world_to_index
    volume_world_to_index_dir
 
+Textures
+--------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+   :template: builtins.rst
+
+   texture_sample
+
 Random
 ------
 

@@ -128,6 +128,15 @@ static PFN_cuIpcGetMemHandle_v4010 pfn_cuIpcGetMemHandle;
 static PFN_cuIpcOpenMemHandle_v11000 pfn_cuIpcOpenMemHandle;
 static PFN_cuIpcCloseMemHandle_v4010 pfn_cuIpcCloseMemHandle;
 
+// Texture functions
+static PFN_cuArrayCreate_v3020 pfn_cuArrayCreate;
+static PFN_cuArrayDestroy_v2000 pfn_cuArrayDestroy;
+static PFN_cuArray3DCreate_v3020 pfn_cuArray3DCreate;
+static PFN_cuMemcpy2D_v3020 pfn_cuMemcpy2D;
+static PFN_cuMemcpy3D_v3020 pfn_cuMemcpy3D;
+static PFN_cuTexObjectCreate_v5000 pfn_cuTexObjectCreate;
+static PFN_cuTexObjectDestroy_v5000 pfn_cuTexObjectDestroy;
+
 static bool cuda_driver_initialized = false;
 
 bool ContextGuard::always_restore = false;
@@ -277,6 +286,15 @@ bool init_cuda_driver()
     get_driver_entry_point("cuIpcGetMemHandle", 4010, &(void*&)pfn_cuIpcGetMemHandle);
     get_driver_entry_point("cuIpcOpenMemHandle", 11000, &(void*&)pfn_cuIpcOpenMemHandle);
     get_driver_entry_point("cuIpcCloseMemHandle", 4010, &(void*&)pfn_cuIpcCloseMemHandle);
+
+    // Texture functions
+    get_driver_entry_point("cuArrayCreate", 3020, &(void*&)pfn_cuArrayCreate);
+    get_driver_entry_point("cuArrayDestroy", 2000, &(void*&)pfn_cuArrayDestroy);
+    get_driver_entry_point("cuArray3DCreate", 3020, &(void*&)pfn_cuArray3DCreate);
+    get_driver_entry_point("cuMemcpy2D", 3020, &(void*&)pfn_cuMemcpy2D);
+    get_driver_entry_point("cuMemcpy3D", 3020, &(void*&)pfn_cuMemcpy3D);
+    get_driver_entry_point("cuTexObjectCreate", 5000, &(void*&)pfn_cuTexObjectCreate);
+    get_driver_entry_point("cuTexObjectDestroy", 5000, &(void*&)pfn_cuTexObjectDestroy);
 
     if (pfn_cuInit)
         cuda_driver_initialized = check_cu(pfn_cuInit(0));
@@ -732,6 +750,48 @@ CUresult cuIpcOpenMemHandle_f(CUdeviceptr* pdptr, CUipcMemHandle handle, unsigne
 CUresult cuIpcCloseMemHandle_f(CUdeviceptr dptr)
 {
     return pfn_cuIpcCloseMemHandle ? pfn_cuIpcCloseMemHandle(dptr) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+// Texture functions
+CUresult cuArrayCreate_f(CUarray* pHandle, const CUDA_ARRAY_DESCRIPTOR* pAllocateArray)
+{
+    return pfn_cuArrayCreate ? pfn_cuArrayCreate(pHandle, pAllocateArray) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuArrayDestroy_f(CUarray hArray)
+{
+    return pfn_cuArrayDestroy ? pfn_cuArrayDestroy(hArray) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuArray3DCreate_f(CUarray* pHandle, const CUDA_ARRAY3D_DESCRIPTOR* pAllocateArray)
+{
+    return pfn_cuArray3DCreate ? pfn_cuArray3DCreate(pHandle, pAllocateArray) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMemcpy2D_f(const CUDA_MEMCPY2D* pCopy)
+{
+    return pfn_cuMemcpy2D ? pfn_cuMemcpy2D(pCopy) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMemcpy3D_f(const CUDA_MEMCPY3D* pCopy)
+{
+    return pfn_cuMemcpy3D ? pfn_cuMemcpy3D(pCopy) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuTexObjectCreate_f(
+    CUtexObject* pTexObject,
+    const CUDA_RESOURCE_DESC* pResDesc,
+    const CUDA_TEXTURE_DESC* pTexDesc,
+    const CUDA_RESOURCE_VIEW_DESC* pResViewDesc
+)
+{
+    return pfn_cuTexObjectCreate ? pfn_cuTexObjectCreate(pTexObject, pResDesc, pTexDesc, pResViewDesc)
+                                 : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuTexObjectDestroy_f(CUtexObject texObject)
+{
+    return pfn_cuTexObjectDestroy ? pfn_cuTexObjectDestroy(texObject) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 #endif  // WP_ENABLE_CUDA
