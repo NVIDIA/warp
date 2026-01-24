@@ -42,13 +42,13 @@ actively maintained set of Warp tutorials:
 
    * - Notebook
      - Colab Link
-   * - `Introduction to NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb>`_
+   * - `Introduction to NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb>`_
      - .. image:: https://colab.research.google.com/assets/colab-badge.svg
-          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb
           :alt: Open In Colab
-   * - `GPU-Accelerated Ising Model Simulation in NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb>`_
+   * - `GPU-Accelerated Ising Model Simulation in NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb>`_
      - .. image:: https://colab.research.google.com/assets/colab-badge.svg
-          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb
           :alt: Open In Colab
 
 Additionally, several notebooks in the `notebooks <https://github.com/NVIDIA/warp/tree/main/notebooks>`_ directory
