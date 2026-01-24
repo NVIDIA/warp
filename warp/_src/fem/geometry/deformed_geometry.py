@@ -29,6 +29,8 @@ _mat32 = wp.types.matrix(shape=(3, 2), dtype=float)
 
 
 class DeformedGeometry(Geometry):
+    """Geometry obtained by deforming a base geometry with a displacement field."""
+
     _dynamic_attribute_constructors_phase_1: ClassVar = {
         "CellArg": lambda obj: obj._make_cell_arg(),
         "SideArg": lambda obj: obj._make_side_arg(),
@@ -54,7 +56,7 @@ class DeformedGeometry(Geometry):
     }
 
     def __init__(self, field: "wp.fem.GeometryField", relative: bool = True, build_bvh: bool = False):
-        """Constructs a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
+        """Construct a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
         The deformation field does not need to be isoparameteric.
 
         See also: :meth:`warp.fem.GeometryField.make_deformed_geometry`
@@ -99,10 +101,12 @@ class DeformedGeometry(Geometry):
 
     @property
     def name(self) -> str:
+        """Unique name of the deformed geometry."""
         return f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}"
 
     @property
     def base(self) -> Geometry:
+        """Base geometry prior to deformation."""
         return self.field.geometry.base
 
     # Geometry device interface
@@ -117,6 +121,7 @@ class DeformedGeometry(Geometry):
         return CellArg
 
     def fill_cell_arg(self, args: "DeformedGeometry.CellArg", device):
+        """Fill arguments for cell-related device functions."""
         self.base.fill_cell_arg(args.base_arg, device)
         self.field.fill_eval_arg(args.field_arg, device)
         args.cell_bvh = self.bvh_id(device)
@@ -160,6 +165,7 @@ class DeformedGeometry(Geometry):
         return SideArg
 
     def fill_side_arg(self, args: "DeformedGeometry.SideArg", device):
+        """Fill arguments for side-related device functions."""
         self.base.fill_side_arg(args.base_arg, device)
         self.field.fill_eval_arg(args.field_arg, device)
         self.field_trace.fill_eval_arg(args.trace_arg, device)

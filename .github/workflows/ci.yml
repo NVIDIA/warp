@@ -64,9 +64,7 @@ jobs:
           version: "0.8.23"
       
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
+        run: uv python install
       
       - name: Cache build artifacts
         if: matrix.platform != 'macos'
@@ -137,9 +135,7 @@ jobs:
           version: "0.8.23"
       
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
+        run: uv python install
       
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
@@ -192,9 +188,7 @@ jobs:
           version: "0.8.23"
       
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
+        run: uv python install
       
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
@@ -225,9 +219,7 @@ jobs:
         with:
           version: "0.8.23"
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
+        run: uv python install
       - name: Download Warp binaries
         uses: actions/download-artifact@v4
         with:
@@ -235,7 +227,7 @@ jobs:
           path: warp/bin/
       - name: Build Sphinx documentation
         run: |
-          uv run --extra docs build_docs.py --quick
+          uv run --extra docs build_docs.py
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         id: build-docs-output
@@ -281,9 +273,7 @@ jobs:
         with:
           version: "0.8.23"
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
+        run: uv python install
       - name: Download native headers
         uses: actions/download-artifact@v4
         with:
@@ -337,3 +327,18 @@ jobs:
           fi
 
           echo "SUCCESS: All symbols are correctly namespaced."
+
+  # Validate that the type stub file (warp/__init__.pyi) passes pyright's type checking.
+  pyright-stubs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.8.23"
+      - name: Set up Python
+        run: uv python install
+      - name: Run pyright on stub file
+        run: uvx pyright warp/__init__.pyi

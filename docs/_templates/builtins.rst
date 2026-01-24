@@ -17,5 +17,5 @@
       * Differentiable
 {%- endif %}
 
-   {{ overload.doc }}
+   {{ overload.doc | indent(width=3, first=false, blank=true) }}
 {%- endfor %}

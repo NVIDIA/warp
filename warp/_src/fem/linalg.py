@@ -23,66 +23,127 @@ _wp_module_name_ = "warp.fem.linalg"
 
 @wp.func
 def generalized_outer(x: wp.types.vector(Any, wp.Scalar), y: wp.types.vector(Any, wp.Scalar)):
-    r"""Generalized outer product allowing for vector or scalar arguments
+    """Compute a generalized outer product.
 
-    +---------+--------+--------+
-    |  x \ y  | scalar | vector |
-    +---------+--------+--------+
-    | scalar  | x y    | x y    |
-    | vector  | x y    | x y^T  |
-    +---------+--------+--------+
+    Args:
+        x: Vector input.
+        y: Vector input.
 
+    Returns:
+        Matrix (``x y^T``).
     """
     return wp.outer(x, y)
 
 
 @wp.func
 def generalized_outer(x: wp.Scalar, y: wp.types.vector(Any, wp.Scalar)):
+    """Compute a generalized outer product.
+
+    Args:
+        x: Scalar input.
+        y: Vector input.
+
+    Returns:
+        Vector (``x y``).
+    """
     return x * y
 
 
 @wp.func
 def generalized_outer(x: wp.types.vector(Any, wp.Scalar), y: wp.Scalar):
+    """Compute a generalized outer product.
+
+    Args:
+        x: Vector input.
+        y: Scalar input.
+
+    Returns:
+        Vector (``x y``).
+    """
     return x * y
 
 
 @wp.func
 def generalized_outer(x: wp.quatf, y: wp.types.vector(Any, wp.Scalar)):
+    """Compute a generalized outer product.
+
+    Args:
+        x: Quaternion input.
+        y: Vector input.
+
+    Returns:
+        Matrix (``x y^T``).
+    """
     return generalized_outer(wp.vec4(x[0], x[1], x[2], x[3]), y)
 
 
 @wp.func
 def generalized_inner(x: wp.types.vector(Any, wp.Scalar), y: wp.types.vector(Any, wp.Scalar)):
-    r"""Generalized inner product allowing for vector, tensor and scalar arguments
+    """Compute a generalized inner product.
 
-    +---------+--------+--------+--------+
-    |  x \ y  | scalar | vector | matrix |
-    +---------+--------+--------+--------+
-    | scalar  | x y    | N/A    | N/A    |
-    | vector  | N/A    | y^T x  | x^T y  |
-    | matrix  | N/A    | y^T x  | x : y  |
-    +---------+--------+--------+--------+
+    Args:
+        x: Vector input.
+        y: Vector input.
+
+    Returns:
+        Scalar (``y^T x``).
     """
     return wp.dot(x, y)
 
 
 @wp.func
 def generalized_inner(x: wp.Scalar, y: wp.Scalar):
+    """Compute a generalized inner product.
+
+    Args:
+        x: Scalar input.
+        y: Scalar input.
+
+    Returns:
+        Scalar (``x y``).
+    """
     return x * y
 
 
 @wp.func
 def generalized_inner(x: wp.types.matrix((Any, Any), wp.Scalar), y: wp.types.vector(Any, wp.Scalar)):
+    """Compute a generalized inner product.
+
+    Args:
+        x: Matrix input.
+        y: Vector input.
+
+    Returns:
+        Vector (``y^T x``).
+    """
     return y @ x
 
 
 @wp.func
 def generalized_inner(x: wp.types.vector(Any, wp.Scalar), y: wp.types.matrix((Any, Any), wp.Scalar)):
+    """Compute a generalized inner product.
+
+    Args:
+        x: Vector input.
+        y: Matrix input.
+
+    Returns:
+        Vector (``x^T y``).
+    """
     return x @ y
 
 
 @wp.func
 def generalized_inner(x: wp.types.matrix((Any, Any), wp.Scalar), y: wp.types.matrix((Any, Any), wp.Scalar)):
+    """Compute a generalized inner product.
+
+    Args:
+        x: Matrix input.
+        y: Matrix input.
+
+    Returns:
+        Scalar (``x : y``).
+    """
     return wp.ddot(x, y)
 
 
@@ -117,31 +178,31 @@ def basis_coefficient(val: wp.types.matrix((Any, Any), wp.Scalar), i: int, j: in
 
 @wp.func
 def symmetric_part(x: Any):
-    """Symmetric part of a square tensor"""
+    """Symmetric part of a square tensor."""
     return 0.5 * (x + wp.transpose(x))
 
 
 @wp.func
 def spherical_part(x: wp.mat22):
-    """Spherical part of a square tensor"""
+    """Spherical part of a square tensor."""
     return 0.5 * wp.trace(x) * wp.identity(n=2, dtype=float)
 
 
 @wp.func
 def spherical_part(x: wp.mat33):
-    """Spherical part of a square tensor"""
+    """Spherical part of a square tensor."""
     return (wp.trace(x) / 3.0) * wp.identity(n=3, dtype=float)
 
 
 @wp.func
 def skew_part(x: wp.mat22):
-    """Skew part of a 2x2 tensor as corresponding rotation angle"""
+    """Skew part of a 2x2 tensor as corresponding rotation angle."""
     return 0.5 * (x[1, 0] - x[0, 1])
 
 
 @wp.func
 def skew_part(x: wp.mat33):
-    """Skew part of a 3x3 tensor as the corresponding rotation vector"""
+    """Skew part of a 3x3 tensor as the corresponding rotation vector."""
     a = 0.5 * (x[2, 1] - x[1, 2])
     b = 0.5 * (x[0, 2] - x[2, 0])
     c = 0.5 * (x[1, 0] - x[0, 1])
@@ -178,7 +239,7 @@ def householder_qr_decomposition(A: Any):
 
 @wp.func
 def householder_make_hessenberg(A: Any):
-    """Transforms a square matrix to Hessenberg form (single lower diagonal) using Householder reflections
+    """Transform a square matrix to Hessenberg form (single lower diagonal) using Householder reflections.
 
     Returns:
         Q and H such that Q H Q^T = A, Q orthonormal, H under Hessenberg form
@@ -209,7 +270,7 @@ def householder_make_hessenberg(A: Any):
 
 @wp.func
 def solve_triangular(R: Any, b: Any):
-    """Solves for R x = b where R is an upper triangular matrix
+    """Solve for R x = b where R is an upper triangular matrix.
 
     Returns x
     """
@@ -225,7 +286,14 @@ def solve_triangular(R: Any, b: Any):
 
 @wp.func
 def inverse_qr(A: Any):
-    # Computes a square matrix inverse using QR factorization
+    """Compute the inverse of a square matrix using QR factorization.
+
+    Args:
+        A: Square matrix to invert.
+
+    Returns:
+        Inverse of ``A``.
+    """
 
     Q, R = householder_qr_decomposition(A)
 
@@ -261,7 +329,7 @@ def _givens_rotation(a: Any, b: Any):
 @wp.func
 def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
     """
-    Computes the eigenvalues and eigen vectors of a symmetric tridiagonal matrix using the
+    Compute the eigenvalues and eigen vectors of a symmetric tridiagonal matrix using the
     Symmetric tridiagonal QR algorithm with implicit Wilkinson shift
 
     Args:
@@ -345,7 +413,7 @@ def tridiagonal_symmetric_eigenvalues_qr(D: Any, L: Any, Q: Any, tol: Any):
 @wp.func
 def symmetric_eigenvalues_qr(A: Any, tol: Any):
     """
-    Computes the eigenvalues and eigen vectors of a square symmetric matrix A using the QR algorithm
+    Compute the eigenvalues and eigen vectors of a square symmetric matrix A using the QR algorithm
 
     Args:
         A: square symmetric matrix
@@ -369,7 +437,7 @@ def symmetric_eigenvalues_qr(A: Any, tol: Any):
 
 
 def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
-    """Performs y = alpha*x + beta*y"""
+    """Compute ``y = alpha*x + beta*y``."""
     from warp._src.context import runtime  # noqa: PLC0415
 
     dtype = type_scalar_type(y.dtype)

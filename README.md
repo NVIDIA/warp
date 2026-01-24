@@ -43,9 +43,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-manylinux_2_34_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-manylinux_2_28_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_34_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_28_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -103,8 +103,8 @@ actively maintained set of Warp tutorials:
 
 | Notebook | Colab Link |
 |----------|------------|
-| [Introduction to NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) |
-| [GPU-Accelerated Ising Model Simulation in NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/9c334fcfcbbaf8d0cff91d012cdb2c11bf0f3dba/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) |
+| [Introduction to NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) |
+| [GPU-Accelerated Ising Model Simulation in NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) |
 
 Additionally, several notebooks in the [notebooks](https://github.com/NVIDIA/warp/tree/main/notebooks) directory
 provide additional examples and cover key Warp features:
@@ -251,13 +251,13 @@ python -m warp.tests
         <tr>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_diffray.png"></a></td>
             <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_fluid_checkpoint.png"></a></td>
-            <td></td>
+            <td><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_particle_repulsion.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_particle_repulsion.png"></a></td>
             <td></td>
         </tr>
         <tr>
             <td align="center">diffray</td>
             <td align="center">fluid checkpoint</td>
-            <td align="center"></td>
+            <td align="center">particle repulsion</td>
             <td align="center"></td>
         </tr>
     </tbody>
@@ -360,7 +360,7 @@ Review the license terms of these open source projects before use.
 ## Contributing
 
 Contributions and pull requests from the community are welcome.
-Please see the [Contribution Guide](https://nvidia.github.io/warp/modules/contribution_guide.html) for more
+Please see the [Contribution Guide](https://nvidia.github.io/warp/user_guide/contribution_guide.html) for more
 information on contributing to the development of Warp.
 
 ## Publications & Citation

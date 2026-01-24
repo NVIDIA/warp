@@ -54,7 +54,7 @@ class TetmeshSideArg:
 
 
 class Tetmesh(Geometry):
-    """Tetrahedral mesh geometry"""
+    """Tetrahedral mesh geometry."""
 
     dimension = 3
 
@@ -65,13 +65,12 @@ class Tetmesh(Geometry):
         build_bvh: bool = False,
         temporary_store: Optional[TemporaryStore] = None,
     ):
-        """
-        Constructs a tetrahedral mesh.
+        """Construct a tetrahedral mesh.
 
         Args:
             tet_vertex_indices: warp array of shape (num_tets, 4) containing vertex indices for each tet
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
-            build_bvh: Whether to also build the tet BVH, which is necessary for the global `fem.lookup` operator to function without initial guess
+            build_bvh: Whether to also build the tet BVH, which is necessary for the global ``fem.lookup`` operator to function without initial guess
             temporary_store: shared pool from which to allocate temporary arrays
         """
 
@@ -95,40 +94,50 @@ class Tetmesh(Geometry):
             self.build_bvh(self.positions.device)
 
     def cell_count(self):
+        """Number of cells in the mesh."""
         return self.tet_vertex_indices.shape[0]
 
     def vertex_count(self):
+        """Number of vertices in the mesh."""
         return self.positions.shape[0]
 
     def side_count(self):
+        """Number of sides in the mesh."""
         return self._face_vertex_indices.shape[0]
 
     def edge_count(self):
+        """Number of edges in the mesh."""
         if self._tet_edge_indices is None:
             self._compute_tet_edges()
         return self._edge_count
 
     def boundary_side_count(self):
+        """Number of boundary sides in the mesh."""
         return self._boundary_face_indices.shape[0]
 
     def reference_cell(self) -> Element:
+        """Reference element for mesh cells."""
         return Element.TETRAHEDRON
 
     def reference_side(self) -> Element:
+        """Reference element for mesh sides."""
         return Element.TRIANGLE
 
     @property
     def tet_edge_indices(self) -> wp.array:
+        """Edge indices for each tet element."""
         if self._tet_edge_indices is None:
             self._compute_tet_edges()
         return self._tet_edge_indices
 
     @property
     def face_tet_indices(self) -> wp.array:
+        """Tet indices for each face."""
         return self._face_tet_indices
 
     @property
     def face_vertex_indices(self) -> wp.array:
+        """Vertex indices for each face."""
         return self._face_vertex_indices
 
     CellArg = TetmeshCellArg
@@ -136,17 +145,21 @@ class Tetmesh(Geometry):
 
     @wp.struct
     class SideIndexArg:
+        """Arguments for side-index device functions."""
+
         boundary_face_indices: wp.array(dtype=int)
 
     # Geometry device interface
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         args.tet_vertex_indices = self.tet_vertex_indices.to(device)
         args.positions = self.positions.to(device)
         args.tet_bvh = self.bvh_id(device)
 
     @wp.func
     def cell_position(args: CellArg, s: Sample):
+        """Return the world position of a cell sample point."""
         tet_idx = args.tet_vertex_indices[s.element_index]
         w0 = 1.0 - s.element_coords[0] - s.element_coords[1] - s.element_coords[2]
         return (
@@ -158,6 +171,7 @@ class Tetmesh(Geometry):
 
     @wp.func
     def cell_deformation_gradient(args: CellArg, s: Sample):
+        """Return the deformation gradient for a cell sample."""
         p0 = args.positions[args.tet_vertex_indices[s.element_index, 0]]
         p1 = args.positions[args.tet_vertex_indices[s.element_index, 1]]
         p2 = args.positions[args.tet_vertex_indices[s.element_index, 2]]
@@ -166,10 +180,12 @@ class Tetmesh(Geometry):
 
     @wp.func
     def cell_inverse_deformation_gradient(args: CellArg, s: Sample):
+        """Return the inverse deformation gradient for a cell sample."""
         return wp.inverse(Tetmesh.cell_deformation_gradient(args, s))
 
     @wp.func
     def cell_closest_point(args: CellArg, tet_index: int, pos: wp.vec3):
+        """Return the closest point on a cell to a world position."""
         vidx = args.tet_vertex_indices[tet_index]
         p0 = args.positions[vidx[0]]
 
@@ -182,6 +198,7 @@ class Tetmesh(Geometry):
         return coords, dist
 
     def fill_side_index_arg(self, args: SideIndexArg, device):
+        """Fill the arguments to be passed to side-index device functions."""
         args.boundary_face_indices = self._boundary_face_indices.to(device)
 
     @wp.func
@@ -191,12 +208,14 @@ class Tetmesh(Geometry):
         return args.boundary_face_indices[boundary_side_index]
 
     def fill_side_arg(self, args: SideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         self.fill_cell_arg(args.cell_arg, device)
         args.face_vertex_indices = self._face_vertex_indices.to(device)
         args.face_tet_indices = self._face_tet_indices.to(device)
 
     @wp.func
     def side_position(args: SideArg, s: Sample):
+        """Return the world position of a side sample point."""
         face_idx = args.face_vertex_indices[s.element_index]
         return (
             s.element_coords[0] * args.cell_arg.positions[face_idx[0]]
@@ -215,6 +234,7 @@ class Tetmesh(Geometry):
 
     @wp.func
     def side_closest_point(args: SideArg, tri_index: ElementIndex, pos: wp.vec3):
+        """Return the closest point on a side to a world position."""
         vidx = args.topology.face_vertex_indices[tri_index]
         p0 = args.positions[vidx[0]]
 
@@ -227,19 +247,23 @@ class Tetmesh(Geometry):
 
     @wp.func
     def side_deformation_gradient(args: SideArg, s: Sample):
+        """Return the deformation gradient for a side sample."""
         e1, e2 = Tetmesh._side_vecs(args, s.element_index)
         return wp.matrix_from_cols(e1, e2)
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         return arg.face_tet_indices[side_index][0]
 
     @wp.func
     def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         return arg.face_tet_indices[side_index][1]
 
     @wp.func
     def face_to_tet_coords(args: SideArg, side_index: ElementIndex, tet_index: ElementIndex, side_coords: Coords):
+        """Convert face coordinates to tet coordinates."""
         fvi = args.face_vertex_indices[side_index]
 
         tv1 = args.cell_arg.tet_vertex_indices[tet_index, 1]
@@ -262,16 +286,19 @@ class Tetmesh(Geometry):
 
     @wp.func
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         inner_cell_index = Tetmesh.side_inner_cell_index(args, side_index)
         return Tetmesh.face_to_tet_coords(args, side_index, inner_cell_index, side_coords)
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         outer_cell_index = Tetmesh.side_outer_cell_index(args, side_index)
         return Tetmesh.face_to_tet_coords(args, side_index, outer_cell_index, side_coords)
 
     @wp.func
     def side_from_cell_coords(args: SideArg, side_index: ElementIndex, tet_index: ElementIndex, tet_coords: Coords):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         fvi = args.face_vertex_indices[side_index]
 
         tv1 = args.cell_arg.tet_vertex_indices[tet_index, 1]
@@ -309,6 +336,7 @@ class Tetmesh(Geometry):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
@@ -745,10 +773,12 @@ class Tetmesh(Geometry):
 
     @wp.func
     def cell_bvh_id(cell_arg: TetmeshCellArg):
+        """Return the BVH identifier for the mesh cells."""
         return cell_arg.tet_bvh
 
     @wp.func
     def cell_bounds(cell_arg: TetmeshCellArg, cell_index: ElementIndex):
+        """Return the axis-aligned bounds of a cell."""
         vidx = cell_arg.tet_vertex_indices[cell_index]
         p0 = cell_arg.positions[vidx[0]]
         p1 = cell_arg.positions[vidx[1]]

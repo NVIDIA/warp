@@ -164,6 +164,34 @@ def find_cuda_sdk() -> str | None:
     return None
 
 
+def validate_libmathdx_path(libmathdx_path: str) -> bool:
+    """Validate that libmathdx path exists and has required directory structure.
+
+    Args:
+        libmathdx_path: Path to libmathdx installation to validate.
+
+    Returns:
+        True if valid, False otherwise (with error message printed).
+    """
+    if not os.path.isdir(libmathdx_path):
+        print(f"Error: libmathdx path does not exist or is not a directory: {libmathdx_path}")
+        return False
+
+    # Check for required subdirectories
+    libmathdx_lib_subdir = "lib/x64" if platform.system() == "Windows" else "lib"
+    required_dirs = {
+        "include": os.path.join(libmathdx_path, "include"),
+        libmathdx_lib_subdir: os.path.join(libmathdx_path, libmathdx_lib_subdir),
+    }
+
+    for name, path in required_dirs.items():
+        if not os.path.isdir(path):
+            print(f"Error: libmathdx installation is missing '{name}' directory: {path}")
+            return False
+
+    return True
+
+
 def find_libmathdx(cuda_toolkit_major_version: int, base_path: str) -> str | None:
     libmathdx_path = os.environ.get("LIBMATHDX_HOME")
 
@@ -261,80 +289,137 @@ def generate_exports_header_file(base_path: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Warp build script")
-    parser.add_argument("--msvc_path", type=str, help="Path to MSVC compiler (optional if already on PATH)")
-    parser.add_argument("--sdk_path", type=str, help="Path to WinSDK (optional if already on PATH)")
-    parser.add_argument("--cuda_path", type=str, help="Path to CUDA SDK")
-    parser.add_argument("--libmathdx_path", type=str, help="Path to libmathdx (optional if LIBMATHDX_HOME is defined)")
+    parser = argparse.ArgumentParser(
+        description="Build Warp native libraries with optional CUDA, LLVM, and MathDx support",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    # General options
     parser.add_argument(
         "--mode",
         type=str,
-        default="release",
-        help="Build configuration, default 'release'",
         choices=["release", "debug"],
+        default="release",
+        help="Build configuration mode",
     )
-
     parser.add_argument(
-        "--clang_build_toolchain",
-        action="store_true",
-        help="(Linux only) Use Clang compiler for building both CPU and GPU code during library compilation (default: use host compiler and NVCC)",
+        "-j",
+        "--jobs",
+        type=int,
+        default=4,
+        help="Number of concurrent build tasks",
     )
-    parser.set_defaults(clang_build_toolchain=False)
-
-    # Note argparse.BooleanOptionalAction can be used here when Python 3.9+ becomes the minimum supported version
-    parser.add_argument("--verbose", action="store_true", help="Verbose building output, default enabled")
-    parser.add_argument("--no_verbose", dest="verbose", action="store_false")
-    parser.set_defaults(verbose=True)
-
     parser.add_argument(
-        "--verify_fp",
-        action="store_true",
-        help="Verify kernel inputs and outputs are finite after each launch, default disabled",
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable verbose build output",
     )
-    parser.add_argument("--no_verify_fp", dest="verify_fp", action="store_false")
-    parser.set_defaults(verify_fp=False)
-
-    parser.add_argument("--fast_math", action="store_true", help="Enable fast math on library, default disabled")
-    parser.add_argument("--no_fast_math", dest="fast_math", action="store_false")
-    parser.set_defaults(fast_math=False)
-
-    parser.add_argument("--quick", action="store_true", help="Only generate PTX code")
-    parser.set_defaults(quick=False)
-
-    parser.add_argument("-j", "--jobs", type=int, default=4, help="Number of concurrent build tasks.")
-
-    group_clang_llvm = parser.add_argument_group("Clang/LLVM Options")
-    group_clang_llvm.add_argument("--llvm_path", type=str, help="Path to an existing LLVM installation")
-    group_clang_llvm.add_argument(
-        "--build_llvm", action="store_true", help="Build Clang/LLVM compiler from source, default disabled"
-    )
-    group_clang_llvm.add_argument("--no_build_llvm", dest="build_llvm", action="store_false")
-    group_clang_llvm.set_defaults(build_llvm=False)
-    group_clang_llvm.add_argument(
-        "--llvm_source_path", type=str, help="Path to the LLVM project source code (optional, repo cloned if not set)"
-    )
-    group_clang_llvm.add_argument(
-        "--debug_llvm", action="store_true", help="Enable LLVM compiler code debugging, default disabled"
-    )
-    group_clang_llvm.add_argument("--no_debug_llvm", dest="debug_llvm", action="store_false")
-    group_clang_llvm.set_defaults(debug_llvm=False)
-    group_clang_llvm.add_argument(
-        "--standalone", action="store_true", help="Use standalone LLVM-based JIT compiler, default enabled"
-    )
-    group_clang_llvm.add_argument("--no_standalone", dest="standalone", action="store_false")
-    group_clang_llvm.set_defaults(standalone=True)
-
-    parser.add_argument("--libmathdx", action="store_true", help="Build Warp with MathDx support, default enabled")
-    parser.add_argument("--no_libmathdx", dest="libmathdx", action="store_false")
-    parser.set_defaults(libmathdx=True)
-
     parser.add_argument(
-        "--compile_time_trace",
-        action="store_true",
-        help="Output a 'build_warp_time_trace.json' trace file for the NVCC compilation process, default disabled",
+        "--compile-time-trace",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Generate compilation profiling trace file 'build_warp_time_trace.json' (does not affect output binary)",
+    )
+
+    # Toolchain paths
+    group_toolchain = parser.add_argument_group("Toolchain Paths")
+    group_toolchain.add_argument(
+        "--msvc-path",
+        type=str,
+        help="Path to MSVC compiler (Windows only, optional if on PATH)",
+    )
+    group_toolchain.add_argument(
+        "--sdk-path",
+        type=str,
+        help="Path to Windows SDK (Windows only, optional if on PATH)",
+    )
+    group_toolchain.add_argument(
+        "--cuda-path",
+        type=str,
+        help="Path to CUDA Toolkit installation (auto-detected via WARP_CUDA_PATH, CUDA_HOME, CUDA_PATH, or nvcc)",
+    )
+    group_toolchain.add_argument(
+        "--libmathdx-path",
+        type=str,
+        help="Path to NVIDIA libmathdx installation (optional if LIBMATHDX_HOME is set)",
+    )
+
+    # Build options
+    group_build = parser.add_argument_group("Build Options")
+    group_build.add_argument(
+        "--clang-build-toolchain",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Use Clang for both CPU and GPU compilation (Linux only, experimental)",
+    )
+    group_build.add_argument(
+        "--use-libmathdx",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Build with NVIDIA libmathdx (includes cuBLASDx/cuFFTDx/cuSOLVERDx) for tile operations: matrix multiplication, FFT, and linear solvers",
+    )
+    group_build.add_argument(
+        "--verify-fp",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Verify floating-point values are finite after each kernel launch",
+    )
+    group_build.add_argument(
+        "--fast-math",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enable fast math optimizations (may reduce numerical accuracy)",
+    )
+    group_build.add_argument(
+        "--quick",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Fast build mode: compile for minimal GPU architectures (PTX-only for sm_75), disable CUDA forward compatibility",
+    )
+
+    # Clang/LLVM options
+    group_clang_llvm = parser.add_argument_group(
+        "Clang/LLVM Options",
+        "Options for building LLVM compiler support (used for CPU kernels, optionally for GPU via runtime config)",
+    )
+    group_clang_llvm.add_argument(
+        "--standalone",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Build warp-clang library for CPU kernel compilation (disabling makes only CUDA devices available)",
+    )
+    group_clang_llvm.add_argument(
+        "--llvm-path",
+        type=str,
+        help="Path to existing LLVM installation (used for warp-clang library and adds bin to PATH for --clang-build-toolchain)",
+    )
+    group_clang_llvm.add_argument(
+        "--build-llvm",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Build Clang/LLVM from source (takes ~60 minutes)",
+    )
+    group_clang_llvm.add_argument(
+        "--llvm-source-path",
+        type=str,
+        help="Path to LLVM source code for building (only used with --build-llvm; defaults to external/llvm-project submodule)",
+    )
+    group_clang_llvm.add_argument(
+        "--debug-llvm",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Build LLVM with debug symbols and assertions enabled",
     )
 
     args = parser.parse_args(argv)
+
+    # Validate mutually exclusive LLVM options
+    if args.llvm_path and args.build_llvm:
+        print("Error: --llvm-path and --build-llvm are mutually exclusive.")
+        print("  Use --llvm-path to use an existing LLVM installation")
+        print("  Use --build-llvm to build LLVM from source")
+        return 1
 
     # Warn if building on Intel Mac (cross-compiling for ARM64)
     if platform.system() == "Darwin" and platform.machine() == "x86_64":
@@ -359,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
     # propagate verbosity to build subsystem
     build_dll.verbose_cmd = args.verbose
 
-    # check LLVM build dependencies early if --build_llvm is set
+    # check LLVM build dependencies early if --build-llvm is set
     if args.build_llvm:
         try:
             build_llvm.check_build_dependencies(verbose=args.verbose)
@@ -375,18 +460,25 @@ def main(argv: list[str] | None = None) -> int:
             args.cuda_path = find_cuda_sdk()
 
         # libmathdx needs to be used with a build of Warp that supports CUDA
-        if args.libmathdx:
+        if args.use_libmathdx:
             if not args.libmathdx_path and args.cuda_path:
                 major, _ = build_dll.get_cuda_toolkit_version(args.cuda_path)
                 args.libmathdx_path = find_libmathdx(major, base_path)
         else:
             args.libmathdx_path = None
 
+    # Validate libmathdx path (from any source: CLI, environment, or Packman)
+    if args.libmathdx_path:
+        if not validate_libmathdx_path(args.libmathdx_path):
+            return 1
+
     # setup MSVC and WinSDK paths
     if platform.system() == "Windows":
         if args.msvc_path or args.sdk_path:
             # user provided MSVC and Windows SDK
-            assert args.msvc_path and args.sdk_path, "--msvc_path and --sdk_path must be used together."
+            if not (args.msvc_path and args.sdk_path):
+                print("Error: --msvc-path and --sdk-path must be used together")
+                return 1
             args.host_compiler = build_dll.set_msvc_env(msvc_path=args.msvc_path, sdk_path=args.sdk_path)
         else:
             # attempt to find MSVC in environment (will set vcvars)
@@ -455,8 +547,14 @@ def main(argv: list[str] | None = None) -> int:
             ]
             warp_cu_paths = [os.path.join(build_path, cu) for cu in cuda_sources]
 
-        if args.libmathdx and args.libmathdx_path is None:
-            print("Warning: libmathdx not found, building without MathDx support")
+            # libmathdx is only needed when building with CUDA
+            if args.use_libmathdx and args.libmathdx_path is None:
+                print("Error: libmathdx not found. MathDx support is enabled but libmathdx could not be located.")
+                print("  Either:")
+                print("    - Install libmathdx and set LIBMATHDX_HOME environment variable")
+                print("    - Use --libmathdx-path to specify the installation path")
+                print("    - Use --no-use-libmathdx to build without MathDx support")
+                return 1
 
         warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
         build_dll.build_dll(args, dll_path=warp_dll_path, cpp_paths=warp_cpp_paths, cu_paths=warp_cu_paths)

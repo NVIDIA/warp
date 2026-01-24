@@ -283,6 +283,12 @@ add_example_test(
     devices=cuda_test_devices,
     test_options={"headless": True, "train_iters": 5, "num_frames": 300, "pillow_required": True},
 )
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_particle_repulsion",
+    devices=cuda_test_devices,
+    test_options={"headless": True, "num_frames": 100},
+)
 
 
 class TestFemExamples(unittest.TestCase):
@@ -440,7 +446,7 @@ add_example_test(
     TestTileExamples,
     name="tile.example_tile_mcgp",
     devices=test_devices,
-    test_options={"height": 128, "headless": True, "usd_required": True},
+    test_options={"height": 128, "headless": True},
     test_options_cpu={"slices": 2},
     test_options_cuda={"slices": 5},
 )

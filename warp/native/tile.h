@@ -201,6 +201,17 @@ template <typename T> struct is_same<T, T> {
     static constexpr bool value = true;
 };
 
+// Helper to detect tile types (tile_register_t or tile_shared_t)
+// Tiles have nested Type and Layout types
+template <typename T, typename = void> struct is_tile_type {
+    static constexpr bool value = false;
+};
+
+template <typename T>
+struct is_tile_type<T, decltype(void(sizeof(typename T::Type)), void(sizeof(typename T::Layout)))> {
+    static constexpr bool value = true;
+};
+
 // Helper for dependent static_assert failures
 template <typename T> struct always_false {
     static constexpr bool value = false;
@@ -795,6 +806,16 @@ template <typename Tile> auto tile_register_like(Tile* t = nullptr)
     using L = typename Tile::Layout;
 
     return tile_register_t<T, tile_layout_register_t<typename L::Shape>>(T {});
+}
+
+// Overload that takes explicit shape; T can be a tile type or a non-tile type (scalar/vec/mat)
+template <typename Shape, typename T> inline CUDA_CALLABLE auto tile_register_like()
+{
+    if constexpr (is_tile_type<T>::value) {
+        return tile_register_t<typename T::Type, tile_layout_register_t<Shape>>();
+    } else {
+        return tile_register_t<T, tile_layout_register_t<Shape>>();
+    }
 }
 
 // helper to construct a register tile from a type and a list of dims
@@ -2917,19 +2938,60 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     );
 }
 
-// unary map
-template <typename Tile, typename Fwd, typename ReturnTile>
-inline CUDA_CALLABLE auto tile_map(Fwd op, Tile& a, ReturnTile& r)
+// ============================================================================
+// Helpers to convert tile_map arguments to register tiles
+// These allow tile_map to accept both tiles and scalar constants as arguments
+// ============================================================================
+
+// Convert an argument to a register tile. If already a tile, copies to register.
+// If a non-tile constant (scalar, vec, or mat), creates a constant register tile with the given shape.
+template <typename Shape, typename T> inline CUDA_CALLABLE auto to_tile(T& x)
 {
-    // verify shapes and sizes are compatible
-    using ShapeIn = typename Tile::Layout::Shape;
-    using ShapeOut = typename ReturnTile::Layout::Shape;
+    if constexpr (is_tile_type<T>::value) {
+        return x.copy_to_register();
+    } else {
+        // x is a non-tile constant, create a constant tile
+        return tile_register_t<T, tile_layout_register_t<Shape>>(x);
+    }
+}
 
-    static_assert(ShapeIn::N == ShapeOut::N, "Number of tile dimensions must match for unary map");
-    static_assert(ShapeIn::size() == ShapeOut::size(), "Tile sizes must match for unary map");
+// Const version for non-tile constants passed by const ref
+template <typename Shape, typename T> inline CUDA_CALLABLE auto to_tile(const T& x)
+{
+    if constexpr (is_tile_type<T>::value) {
+        return x.copy_to_register();
+    } else {
+        return tile_register_t<T, tile_layout_register_t<Shape>>(x);
+    }
+}
 
-    auto out = tile_register_like<ReturnTile>();
+
+// Adjoint counterpart to to_tile: accumulates adjoints from register tile back to original argument
+template <typename Shape, typename T, typename AdjReg>
+inline CUDA_CALLABLE void adj_to_tile(T& adj_arg, AdjReg& adj_reg)
+{
+    if constexpr (is_tile_type<T>::value) {
+        adj_arg.grad_add(adj_reg);
+    } else {
+        // Scalar: accumulate all elements into the scalar adjoint
+        using Layout = typename AdjReg::Layout;
+        for (int i = 0; i < Layout::NumRegs; ++i) {
+            adj_arg += adj_reg.data[i];
+        }
+    }
+}
+
+// ============================================================================
+
+// unary map - return type deduced from operation result
+template <typename Tile, typename Fwd> inline CUDA_CALLABLE auto tile_map(Fwd op, Tile& a)
+{
+    using Shape = typename Tile::Layout::Shape;
     auto a_reg = a.copy_to_register();
+
+    // Deduce return type from operation result
+    using ReturnType = decltype(op(a_reg.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
 
     using Layout = typename decltype(out)::Layout;
 
@@ -2960,25 +3022,18 @@ inline CUDA_CALLABLE void adj_tile_map(Fwd op, Tile& a, Adj adj_op, Tile& adj_a,
     adj_a.grad_add(adj_a_reg);
 }
 
-// binary map
-template <typename TileA, typename TileB, typename Fwd, typename ReturnTile>
-inline CUDA_CALLABLE auto tile_map(Fwd op, TileA& a, TileB& b, ReturnTile& r)
+// binary map - TileA is always a tile, B can be a tile or scalar constant
+// Return type deduced from operation result
+template <typename TileA, typename B, typename Fwd> inline CUDA_CALLABLE auto tile_map(Fwd op, TileA& a, const B& b)
 {
-    // verify shapes and sizes are compatible
-    using ShapeA = typename TileA::Layout::Shape;
-    using ShapeB = typename TileB::Layout::Shape;
-    using ShapeOut = typename ReturnTile::Layout::Shape;
-
-    static_assert(ShapeA::N == ShapeOut::N, "Number of tile dimensions must match for binary map");
-    static_assert(ShapeB::N == ShapeOut::N, "Number of tile dimensions must match for binary map");
-
-    static_assert(ShapeA::size() == ShapeOut::size(), "Tile sizes must match for binary map");
-    static_assert(ShapeB::size() == ShapeOut::size(), "Tile sizes must match for binary map");
-
-    auto out = tile_register_like<ReturnTile>();
+    using Shape = typename TileA::Layout::Shape;
 
     auto a_reg = a.copy_to_register();
-    auto b_reg = b.copy_to_register();
+    auto b_reg = to_tile<Shape>(b);
+
+    // Deduce return type from operation result
+    using ReturnType = decltype(op(a_reg.data[0], b_reg.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
 
     using Layout = typename decltype(out)::Layout;
 
@@ -2990,16 +3045,17 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, TileA& a, TileB& b, ReturnTile& r)
     return out;
 }
 
-template <typename TileA, typename TileB, typename Fwd, typename Adj, typename AdjTile>
+template <typename TileA, typename B, typename AdjB, typename Fwd, typename Adj, typename AdjTile>
 inline CUDA_CALLABLE void
-adj_tile_map(Fwd op, TileA& a, TileB& b, Adj adj_op, TileA& adj_a, TileB& adj_b, AdjTile& adj_ret)
+adj_tile_map(Fwd op, TileA& a, const B& b, Adj adj_op, TileA& adj_a, AdjB& adj_b, AdjTile& adj_ret)
 {
-    auto a_reg = a.copy_to_register();
-    auto b_reg = b.copy_to_register();
+    using Shape = typename TileA::Layout::Shape;
 
-    // allocate storage for adjoints
+    auto a_reg = a.copy_to_register();
+    auto b_reg = to_tile<Shape>(b);
+
     auto adj_a_reg = tile_register_like<TileA>();
-    auto adj_b_reg = tile_register_like<TileB>();
+    auto adj_b_reg = tile_register_like<Shape, AdjB>();
 
     auto adj_ret_reg = adj_ret.grad_to_register();
 
@@ -3011,22 +3067,24 @@ adj_tile_map(Fwd op, TileA& a, TileB& b, Adj adj_op, TileA& adj_a, TileB& adj_b,
     }
 
     adj_a.grad_add(adj_a_reg);
-    adj_b.grad_add(adj_b_reg);
+    adj_to_tile<Shape>(adj_b, adj_b_reg);
 }
 
 // ============================================================================
-// Variadic tile_map (N = 3 to 8 tiles) - for user-defined functions only
+// Variadic tile_map (N = 3 to 8 inputs) - for user-defined functions only
+// T1 is always a tile (provides shape), other args can be tiles or scalar constants
 // ============================================================================
 
 // N = 3
-template <typename ReturnType, typename Fwd, typename T1, typename T2, typename T3>
+template <typename Fwd, typename T1, typename T2, typename T3>
 inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3)
 {
     using Shape = typename T1::Layout::Shape;
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3035,15 +3093,16 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3)
 }
 
 // N = 4
-template <typename ReturnType, typename Fwd, typename T1, typename T2, typename T3, typename T4>
+template <typename Fwd, typename T1, typename T2, typename T3, typename T4>
 inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4)
 {
     using Shape = typename T1::Layout::Shape;
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3052,16 +3111,17 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4)
 }
 
 // N = 5
-template <typename ReturnType, typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5>
+template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5>
 inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5)
 {
     using Shape = typename T1::Layout::Shape;
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3070,25 +3130,18 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
 }
 
 // N = 6
-template <
-    typename ReturnType,
-    typename Fwd,
-    typename T1,
-    typename T2,
-    typename T3,
-    typename T4,
-    typename T5,
-    typename T6>
+template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
 inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5, T6& t6)
 {
     using Shape = typename T1::Layout::Shape;
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
-    auto r6 = t6.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    auto r6 = to_tile<Shape>(t6);
+    using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0], r6.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3097,27 +3150,19 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
 }
 
 // N = 7
-template <
-    typename ReturnType,
-    typename Fwd,
-    typename T1,
-    typename T2,
-    typename T3,
-    typename T4,
-    typename T5,
-    typename T6,
-    typename T7>
+template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
 inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5, T6& t6, T7& t7)
 {
     using Shape = typename T1::Layout::Shape;
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
-    auto r6 = t6.copy_to_register();
-    auto r7 = t7.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    auto r6 = to_tile<Shape>(t6);
+    auto r7 = to_tile<Shape>(t7);
+    using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0], r6.data[0], r7.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3127,7 +3172,6 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
 
 // N = 8
 template <
-    typename ReturnType,
     typename Fwd,
     typename T1,
     typename T2,
@@ -3140,15 +3184,17 @@ template <
 inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t5, T6& t6, T7& t7, T8& t8)
 {
     using Shape = typename T1::Layout::Shape;
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
-    auto r6 = t6.copy_to_register();
-    auto r7 = t7.copy_to_register();
-    auto r8 = t8.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    auto r6 = to_tile<Shape>(t6);
+    auto r7 = to_tile<Shape>(t7);
+    auto r8 = to_tile<Shape>(t8);
+    using ReturnType
+        = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0], r6.data[0], r7.data[0], r8.data[0]));
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3162,20 +3208,21 @@ template <typename Fwd, typename T1, typename T2, typename T3, typename Adj, typ
 inline CUDA_CALLABLE void
 adj_tile_map(Fwd op, T1& t1, T2& t2, T3& t3, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, AdjTile& adj_ret)
 {
+    using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
     auto adj_r1 = tile_register_like<T1>();
-    auto adj_r2 = tile_register_like<T2>();
-    auto adj_r3 = tile_register_like<T3>();
+    auto adj_r2 = tile_register_like<Shape, T2>();
+    auto adj_r3 = tile_register_like<Shape, T3>();
     auto adj_ret_reg = adj_ret.grad_to_register();
     using Layout = typename decltype(r1)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
         adj_op(r1.data[i], r2.data[i], r3.data[i], adj_r1.data[i], adj_r2.data[i], adj_r3.data[i], adj_ret_reg.data[i]);
     adj_t1.grad_add(adj_r1);
-    adj_t2.grad_add(adj_r2);
-    adj_t3.grad_add(adj_r3);
+    adj_to_tile<Shape>(adj_t2, adj_r2);
+    adj_to_tile<Shape>(adj_t3, adj_r3);
 }
 
 // N = 4
@@ -3184,14 +3231,15 @@ inline CUDA_CALLABLE void adj_tile_map(
     Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, T4& adj_t4, AdjTile& adj_ret
 )
 {
+    using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
     auto adj_r1 = tile_register_like<T1>();
-    auto adj_r2 = tile_register_like<T2>();
-    auto adj_r3 = tile_register_like<T3>();
-    auto adj_r4 = tile_register_like<T4>();
+    auto adj_r2 = tile_register_like<Shape, T2>();
+    auto adj_r3 = tile_register_like<Shape, T3>();
+    auto adj_r4 = tile_register_like<Shape, T4>();
     auto adj_ret_reg = adj_ret.grad_to_register();
     using Layout = typename decltype(r1)::Layout;
     WP_PRAGMA_UNROLL
@@ -3201,9 +3249,9 @@ inline CUDA_CALLABLE void adj_tile_map(
             adj_r4.data[i], adj_ret_reg.data[i]
         );
     adj_t1.grad_add(adj_r1);
-    adj_t2.grad_add(adj_r2);
-    adj_t3.grad_add(adj_r3);
-    adj_t4.grad_add(adj_r4);
+    adj_to_tile<Shape>(adj_t2, adj_r2);
+    adj_to_tile<Shape>(adj_t3, adj_r3);
+    adj_to_tile<Shape>(adj_t4, adj_r4);
 }
 
 // N = 5
@@ -3224,16 +3272,17 @@ inline CUDA_CALLABLE void adj_tile_map(
     AdjTile& adj_ret
 )
 {
+    using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
     auto adj_r1 = tile_register_like<T1>();
-    auto adj_r2 = tile_register_like<T2>();
-    auto adj_r3 = tile_register_like<T3>();
-    auto adj_r4 = tile_register_like<T4>();
-    auto adj_r5 = tile_register_like<T5>();
+    auto adj_r2 = tile_register_like<Shape, T2>();
+    auto adj_r3 = tile_register_like<Shape, T3>();
+    auto adj_r4 = tile_register_like<Shape, T4>();
+    auto adj_r5 = tile_register_like<Shape, T5>();
     auto adj_ret_reg = adj_ret.grad_to_register();
     using Layout = typename decltype(r1)::Layout;
     WP_PRAGMA_UNROLL
@@ -3243,10 +3292,10 @@ inline CUDA_CALLABLE void adj_tile_map(
             adj_r4.data[i], adj_r5.data[i], adj_ret_reg.data[i]
         );
     adj_t1.grad_add(adj_r1);
-    adj_t2.grad_add(adj_r2);
-    adj_t3.grad_add(adj_r3);
-    adj_t4.grad_add(adj_r4);
-    adj_t5.grad_add(adj_r5);
+    adj_to_tile<Shape>(adj_t2, adj_r2);
+    adj_to_tile<Shape>(adj_t3, adj_r3);
+    adj_to_tile<Shape>(adj_t4, adj_r4);
+    adj_to_tile<Shape>(adj_t5, adj_r5);
 }
 
 // N = 6
@@ -3278,18 +3327,19 @@ inline CUDA_CALLABLE void adj_tile_map(
     AdjTile& adj_ret
 )
 {
+    using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
-    auto r6 = t6.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    auto r6 = to_tile<Shape>(t6);
     auto adj_r1 = tile_register_like<T1>();
-    auto adj_r2 = tile_register_like<T2>();
-    auto adj_r3 = tile_register_like<T3>();
-    auto adj_r4 = tile_register_like<T4>();
-    auto adj_r5 = tile_register_like<T5>();
-    auto adj_r6 = tile_register_like<T6>();
+    auto adj_r2 = tile_register_like<Shape, T2>();
+    auto adj_r3 = tile_register_like<Shape, T3>();
+    auto adj_r4 = tile_register_like<Shape, T4>();
+    auto adj_r5 = tile_register_like<Shape, T5>();
+    auto adj_r6 = tile_register_like<Shape, T6>();
     auto adj_ret_reg = adj_ret.grad_to_register();
     using Layout = typename decltype(r1)::Layout;
     WP_PRAGMA_UNROLL
@@ -3299,11 +3349,11 @@ inline CUDA_CALLABLE void adj_tile_map(
             adj_r3.data[i], adj_r4.data[i], adj_r5.data[i], adj_r6.data[i], adj_ret_reg.data[i]
         );
     adj_t1.grad_add(adj_r1);
-    adj_t2.grad_add(adj_r2);
-    adj_t3.grad_add(adj_r3);
-    adj_t4.grad_add(adj_r4);
-    adj_t5.grad_add(adj_r5);
-    adj_t6.grad_add(adj_r6);
+    adj_to_tile<Shape>(adj_t2, adj_r2);
+    adj_to_tile<Shape>(adj_t3, adj_r3);
+    adj_to_tile<Shape>(adj_t4, adj_r4);
+    adj_to_tile<Shape>(adj_t5, adj_r5);
+    adj_to_tile<Shape>(adj_t6, adj_r6);
 }
 
 // N = 7
@@ -3338,20 +3388,21 @@ inline CUDA_CALLABLE void adj_tile_map(
     AdjTile& adj_ret
 )
 {
+    using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
-    auto r6 = t6.copy_to_register();
-    auto r7 = t7.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    auto r6 = to_tile<Shape>(t6);
+    auto r7 = to_tile<Shape>(t7);
     auto adj_r1 = tile_register_like<T1>();
-    auto adj_r2 = tile_register_like<T2>();
-    auto adj_r3 = tile_register_like<T3>();
-    auto adj_r4 = tile_register_like<T4>();
-    auto adj_r5 = tile_register_like<T5>();
-    auto adj_r6 = tile_register_like<T6>();
-    auto adj_r7 = tile_register_like<T7>();
+    auto adj_r2 = tile_register_like<Shape, T2>();
+    auto adj_r3 = tile_register_like<Shape, T3>();
+    auto adj_r4 = tile_register_like<Shape, T4>();
+    auto adj_r5 = tile_register_like<Shape, T5>();
+    auto adj_r6 = tile_register_like<Shape, T6>();
+    auto adj_r7 = tile_register_like<Shape, T7>();
     auto adj_ret_reg = adj_ret.grad_to_register();
     using Layout = typename decltype(r1)::Layout;
     WP_PRAGMA_UNROLL
@@ -3362,12 +3413,12 @@ inline CUDA_CALLABLE void adj_tile_map(
             adj_ret_reg.data[i]
         );
     adj_t1.grad_add(adj_r1);
-    adj_t2.grad_add(adj_r2);
-    adj_t3.grad_add(adj_r3);
-    adj_t4.grad_add(adj_r4);
-    adj_t5.grad_add(adj_r5);
-    adj_t6.grad_add(adj_r6);
-    adj_t7.grad_add(adj_r7);
+    adj_to_tile<Shape>(adj_t2, adj_r2);
+    adj_to_tile<Shape>(adj_t3, adj_r3);
+    adj_to_tile<Shape>(adj_t4, adj_r4);
+    adj_to_tile<Shape>(adj_t5, adj_r5);
+    adj_to_tile<Shape>(adj_t6, adj_r6);
+    adj_to_tile<Shape>(adj_t7, adj_r7);
 }
 
 // N = 8
@@ -3405,22 +3456,23 @@ inline CUDA_CALLABLE void adj_tile_map(
     AdjTile& adj_ret
 )
 {
+    using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
-    auto r2 = t2.copy_to_register();
-    auto r3 = t3.copy_to_register();
-    auto r4 = t4.copy_to_register();
-    auto r5 = t5.copy_to_register();
-    auto r6 = t6.copy_to_register();
-    auto r7 = t7.copy_to_register();
-    auto r8 = t8.copy_to_register();
+    auto r2 = to_tile<Shape>(t2);
+    auto r3 = to_tile<Shape>(t3);
+    auto r4 = to_tile<Shape>(t4);
+    auto r5 = to_tile<Shape>(t5);
+    auto r6 = to_tile<Shape>(t6);
+    auto r7 = to_tile<Shape>(t7);
+    auto r8 = to_tile<Shape>(t8);
     auto adj_r1 = tile_register_like<T1>();
-    auto adj_r2 = tile_register_like<T2>();
-    auto adj_r3 = tile_register_like<T3>();
-    auto adj_r4 = tile_register_like<T4>();
-    auto adj_r5 = tile_register_like<T5>();
-    auto adj_r6 = tile_register_like<T6>();
-    auto adj_r7 = tile_register_like<T7>();
-    auto adj_r8 = tile_register_like<T8>();
+    auto adj_r2 = tile_register_like<Shape, T2>();
+    auto adj_r3 = tile_register_like<Shape, T3>();
+    auto adj_r4 = tile_register_like<Shape, T4>();
+    auto adj_r5 = tile_register_like<Shape, T5>();
+    auto adj_r6 = tile_register_like<Shape, T6>();
+    auto adj_r7 = tile_register_like<Shape, T7>();
+    auto adj_r8 = tile_register_like<Shape, T8>();
     auto adj_ret_reg = adj_ret.grad_to_register();
     using Layout = typename decltype(r1)::Layout;
     WP_PRAGMA_UNROLL
@@ -3431,42 +3483,40 @@ inline CUDA_CALLABLE void adj_tile_map(
             adj_r7.data[i], adj_r8.data[i], adj_ret_reg.data[i]
         );
     adj_t1.grad_add(adj_r1);
-    adj_t2.grad_add(adj_r2);
-    adj_t3.grad_add(adj_r3);
-    adj_t4.grad_add(adj_r4);
-    adj_t5.grad_add(adj_r5);
-    adj_t6.grad_add(adj_r6);
-    adj_t7.grad_add(adj_r7);
-    adj_t8.grad_add(adj_r8);
+    adj_to_tile<Shape>(adj_t2, adj_r2);
+    adj_to_tile<Shape>(adj_t3, adj_r3);
+    adj_to_tile<Shape>(adj_t4, adj_r4);
+    adj_to_tile<Shape>(adj_t5, adj_r5);
+    adj_to_tile<Shape>(adj_t6, adj_r6);
+    adj_to_tile<Shape>(adj_t7, adj_r7);
+    adj_to_tile<Shape>(adj_t8, adj_r8);
 }
 
 // We wrap the operator in a lambda so that we don't have to do overload resolution for things like e.g.: wp.sin()
 // this is important because many of the builtin operators don't follow particular conventions on references for
-// the `adj_ret` parameter, which means it's not possible to figure out the overload we need using simple casting
-// The r argument is a dummy return tile argument, because we can't template on the return tile type in a macro
-// definition. So if we want users to be able to define functions that return a tile type that is different from the
-// input type, we must pass an extra dummy return tile argument that is used define the return type of tile_map.
+// the `adj_ret` parameter, which means it's not possible to figure out the overload we need using simple casting.
+// The return type is automatically deduced from the operation result using decltype.
 
-#define tile_unary_map(op, a, r) tile_map([](auto x) { return op(x);}, a, r)
-#define adj_tile_unary_map(op, a, r, adj_op, adj_a, adj_r, adj_ret) adj_tile_map([](auto x) { return op(x);}, a, [](auto x, auto& adj_x, auto adj_ret) { adj_op(x, adj_x, adj_ret);}, adj_a, adj_ret)
+#define tile_unary_map(op, a) tile_map([](auto x) { return op(x);}, a)
+#define adj_tile_unary_map(op, a, adj_op, adj_a, adj_ret) adj_tile_map([](auto x) { return op(x);}, a, [](auto x, auto& adj_x, auto adj_ret) { adj_op(x, adj_x, adj_ret);}, adj_a, adj_ret)
 
-#define tile_binary_map(op, a, b, r) tile_map([](auto x, auto y) { return op(x, y);}, a, b, r)
-#define adj_tile_binary_map(op, a, b, r, adj_op, adj_a, adj_b, adj_r, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
+#define tile_binary_map(op, a, b) tile_map([](auto x, auto y) { return op(x, y);}, a, b)
+#define adj_tile_binary_map(op, a, b, adj_op, adj_a, adj_b, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
 
 // -tile (unary neg)
-template <typename Tile> inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a, a); }
+template <typename Tile> inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a); }
 
 template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_neg(Tile& a, Tile& adj_a, AdjTile& adj_ret)
 {
-    adj_tile_unary_map(wp::neg, a, a, wp::adj_neg, adj_a, adj_a, adj_ret);
+    adj_tile_unary_map(wp::neg, a, wp::adj_neg, adj_a, adj_ret);
 }
 
 
 // tile + tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_add(TileA& a, TileB& b)
 {
-    return tile_binary_map(add, a, b, a);
+    return tile_binary_map(add, a, b);
 }
 
 // add overloads get called in user function adjoints generated by codegen (adj_tile += adj_ret)
@@ -3497,69 +3547,40 @@ inline CUDA_CALLABLE auto add(tile_shared_t<T, L, Owner>& a, const tile_register
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_add(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
 {
-    adj_tile_binary_map(add, a, b, a, adj_add, adj_a, adj_b, adj_a, adj_c);
+    adj_tile_binary_map(add, a, b, adj_add, adj_a, adj_b, adj_c);
 }
 
 // tile - tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_sub(TileA& a, TileB& b)
 {
-    return tile_binary_map(sub, a, b, a);
+    return tile_binary_map(sub, a, b);
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_sub(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
 {
-    adj_tile_binary_map(sub, a, b, a, adj_sub, adj_a, adj_b, adj_a, adj_c);
+    adj_tile_binary_map(sub, a, b, adj_sub, adj_a, adj_b, adj_c);
 }
 
 
-// tile*scalar
-template <typename Tile> inline CUDA_CALLABLE auto tile_mul(Tile& a, const typename Tile::Type& s)
+// tile * scalar/vec/mat (Python always generates calls with tile first)
+template <typename Tile, typename S> inline CUDA_CALLABLE auto tile_mul(Tile& a, const S& s)
 {
-    // promote scalar to a constant tile
-    auto s_tile = tile_register_t<typename Tile::Type, tile_layout_register_t<typename Tile::Layout::Shape>>(s);
-
-    return tile_binary_map(mul, a, s_tile, a);
+    // tile_binary_map will automatically promote scalar s to a constant tile
+    return tile_binary_map(mul, a, s);
 }
 
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void
-adj_tile_mul(Tile& a, const typename Tile::Type& s, Tile& adj_a, typename Tile::Type& adj_s, AdjTile& adj_c)
+template <typename Tile, typename S, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_mul(Tile& a, const S& s, Tile& adj_a, S& adj_s, AdjTile& adj_c)
 {
-    auto s_tile = tile_register_like<Tile>();
-    auto adj_s_tile = tile_register_like<Tile>();
-
-    using Layout = typename decltype(adj_s_tile)::Layout;
-
-    // initialize to constant
-    s_tile = s;
-
-    adj_tile_binary_map(mul, a, s_tile, a, adj_mul, adj_a, adj_s_tile, adj_a, adj_c);
-
-    for (int i = 0; i < Layout::NumRegs; ++i) {
-        adj_s += adj_s_tile.data[i];
-    }
-}
-
-
-// scalar*tile
-template <typename Tile> inline CUDA_CALLABLE auto tile_mul(const typename Tile::Type& s, Tile& a)
-{
-    return tile_mul(a, s);
-}
-
-template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void
-adj_tile_mul(const typename Tile::Type& s, Tile& a, typename Tile::Type& adj_s, Tile& adj_a, AdjTile& adj_c)
-{
-    adj_tile_mul(a, s, adj_a, adj_s, adj_c);
+    adj_tile_binary_map(mul, a, s, adj_mul, adj_a, adj_s, adj_c);
 }
 
 
 // tile & tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_bit_and(TileA& a, TileB& b)
 {
-    return tile_binary_map(bit_and, a, b, a);
+    return tile_binary_map(bit_and, a, b);
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
@@ -3570,7 +3591,7 @@ inline CUDA_CALLABLE void adj_tile_bit_and(TileA& a, TileB& b, AdjTileA& adj_a, 
 // tile | tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_bit_or(TileA& a, TileB& b)
 {
-    return tile_binary_map(bit_or, a, b, a);
+    return tile_binary_map(bit_or, a, b);
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
@@ -3581,7 +3602,7 @@ inline CUDA_CALLABLE void adj_tile_bit_or(TileA& a, TileB& b, AdjTileA& adj_a, A
 // tile ^ tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_bit_xor(TileA& a, TileB& b)
 {
-    return tile_binary_map(bit_xor, a, b, a);
+    return tile_binary_map(bit_xor, a, b);
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
@@ -4431,6 +4452,7 @@ inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
 }
 
 template <
+    bool Accumulate,
     typename LayoutA,
     typename LayoutB,
     typename LayoutC,
@@ -4458,7 +4480,10 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
             sum = muladd<decltype(sum)>(a, b, sum);
         }
 
-        C(coord) = alpha * sum + beta * C(coord);
+        if constexpr (Accumulate)
+            C(coord) = alpha * sum + beta * C(coord);
+        else
+            C(coord) = alpha * sum;
     }
 }
 
@@ -4580,6 +4605,7 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileL& L, TileX& X, TileY& Y)
 }  // namespace partition_gemm
 
 
+// tile_matmul: C = alpha * A @ B (does not read from C)
 template <
     typename Fwd,
     typename AdjA,
@@ -4605,6 +4631,49 @@ TileC& tile_matmul(
     static_assert(ShapeC::dim(0) == ShapeA::dim(0), "Expected ShapeC::dim(0) == ShapeA::dim(0)");
     static_assert(ShapeC::dim(1) == ShapeB::dim(1), "Expected ShapeC::dim(1) == ShapeB::dim(1)");
 
+    using T = typename TileC::Type;
+
+    T alphaT = T(alpha);
+    T betaT = T(beta);
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+    partitioned_gemm::scalar_matmul<false, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
+        A.data, B.data, C.data, alphaT, betaT
+    );
+#else
+    fun_forward(&alphaT, A.data.ptr, B.data.ptr, &betaT, C.data.ptr);
+#endif
+
+    WP_TILE_SYNC();
+
+    return C;
+}
+
+// tile_matmul_acc: C = alpha * A @ B + beta * C (accumulates into C)
+template <
+    typename Fwd,
+    typename AdjA,
+    typename AdjB,
+    typename TileA,
+    typename TileB,
+    typename TileC,
+    typename Alpha,
+    typename Beta>
+TileC& tile_matmul_acc(
+    Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C, Alpha& alpha, Beta& beta
+)
+{
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+    using ShapeC = typename TileC::Layout::Shape;
+
+    static_assert(ShapeA::N == 2, "Expected ShapeA::N == 2");
+    static_assert(ShapeB::N == 2, "Expected ShapeB::N == 2");
+    static_assert(ShapeC::N == 2, "Expected ShapeC::N == 2");
+
+    static_assert(ShapeA::dim(1) == ShapeB::dim(0), "Expected ShapeA::dim(1) == ShapeB::dim(0)");
+    static_assert(ShapeC::dim(0) == ShapeA::dim(0), "Expected ShapeC::dim(0) == ShapeA::dim(0)");
+    static_assert(ShapeC::dim(1) == ShapeB::dim(1), "Expected ShapeC::dim(1) == ShapeB::dim(1)");
 
     using T = typename TileC::Type;
 
@@ -4612,7 +4681,7 @@ TileC& tile_matmul(
     T betaT = T(beta);
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
-    partitioned_gemm::scalar_matmul<typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
+    partitioned_gemm::scalar_matmul<true, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
         A.data, B.data, C.data, alphaT, betaT
     );
 #else
@@ -4625,7 +4694,7 @@ TileC& tile_matmul(
 }
 
 
-// backward for the wp.tile_matmul(a, b, out) syntax
+// backward for tile_matmul_acc (the wp.tile_matmul(a, b, out) syntax)
 template <
     typename Fwd,
     typename AdjA,
@@ -4637,7 +4706,7 @@ template <
     typename Beta,
     typename AdjAlpha,
     typename AdjBeta>
-void adj_tile_matmul(
+void adj_tile_matmul_acc(
     Fwd fun_forward,
     AdjA fun_backward_A,
     AdjB fun_backward_B,
@@ -4669,10 +4738,13 @@ void adj_tile_matmul(
     auto At = tile_transpose(A);
     auto Bt = tile_transpose(B);
 
-    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
+    // Backward always accumulates into gradients (beta=1.0)
+    partitioned_gemm::scalar_matmul<
+        true, typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
         adj_C.grad, Bt.data, adj_A.grad, alpha_A, beta_A
     );
-    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
+    partitioned_gemm::scalar_matmul<
+        true, typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
         At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
     );
 #else
@@ -4688,7 +4760,7 @@ void adj_tile_matmul(
     WP_TILE_SYNC();
 }
 
-// backward for the out = wp.tile_matmul(a, b) syntax
+// backward for tile_matmul (the out = wp.tile_matmul(a, b) syntax)
 template <
     typename Fwd,
     typename AdjA,
@@ -4733,10 +4805,13 @@ void adj_tile_matmul(
     auto At = tile_transpose(A);
     auto Bt = tile_transpose(B);
 
-    partitioned_gemm::scalar_matmul<typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
+    // Backward always accumulates into gradients (beta=1.0)
+    partitioned_gemm::scalar_matmul<
+        true, typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
         adj_C.grad, Bt.data, adj_A.grad, alpha_A, beta_A
     );
-    partitioned_gemm::scalar_matmul<typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
+    partitioned_gemm::scalar_matmul<
+        true, typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
         At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
     );
 #else

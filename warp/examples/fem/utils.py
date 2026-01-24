@@ -47,7 +47,7 @@ wp.set_module_options({"max_unroll": 6})
 
 
 def gen_trimesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp.vec2] = None):
-    """Constructs a triangular mesh by diving each cell of a dense 2D grid into two triangles
+    """Construct a triangular mesh by diving each cell of a dense 2D grid into two triangles.
 
     Args:
         res: Resolution of the grid along each dimension
@@ -78,7 +78,7 @@ def gen_trimesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp
 
 
 def gen_tetmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
-    """Constructs a tetrahedral mesh by diving each cell of a dense 3D grid into five tetrahedrons
+    """Construct a tetrahedral mesh by diving each cell of a dense 3D grid into five tetrahedrons.
 
     Args:
         res: Resolution of the grid along each dimension
@@ -111,7 +111,7 @@ def gen_tetmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp
 
 
 def gen_quadmesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[wp.vec2] = None):
-    """Constructs a quadrilateral mesh from a dense 2D grid
+    """Construct a quadrilateral mesh from a dense 2D grid.
 
     Args:
         res: Resolution of the grid along each dimension
@@ -141,7 +141,7 @@ def gen_quadmesh(res, bounds_lo: Optional[wp.vec2] = None, bounds_hi: Optional[w
 
 
 def gen_hexmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None):
-    """Constructs a quadrilateral mesh from a dense 2D grid
+    """Construct a quadrilateral mesh from a dense 2D grid.
 
     Args:
         res: Resolution of the grid along each dimension
@@ -174,7 +174,7 @@ def gen_hexmesh(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp
 
 
 def gen_volume(res, bounds_lo: Optional[wp.vec3] = None, bounds_hi: Optional[wp.vec3] = None, device=None) -> wp.Volume:
-    """Constructs a wp.Volume from a dense 3D grid
+    """Construct a wp.Volume from a dense 3D grid.
 
     Args:
         res: Resolution of the grid along each dimension
@@ -232,7 +232,7 @@ def bsr_cg(
     M: BsrMatrix = None,
     mv_routine_uses_multiple_cuda_contexts: bool = False,
 ) -> tuple[float, int]:
-    """Solves the linear system A x = b using an iterative solver, optionally with diagonal preconditioning
+    """Solve the linear system ``A x = b`` using an iterative solver, optionally with diagonal preconditioning.
 
     Args:
         A: system left-hand side
@@ -332,9 +332,9 @@ def bsr_cg(
 
 
 class SaddleSystem(LinearOperator):
-    """Builds a linear operator corresponding to the saddle-point linear system [A B^T; B 0]
+    """Build a linear operator corresponding to the saddle-point linear system ``[A B^T; B 0]``.
 
-    If use_diag_precond` is ``True``,  builds the corresponding diagonal preconditioner `[diag(A); diag(B diag(A)^-1 B^T)]`
+    If ``use_diag_precond`` is ``True``, builds the corresponding diagonal preconditioner ``[diag(A); diag(B diag(A)^-1 B^T)]``.
     """
 
     def __init__(
@@ -458,7 +458,7 @@ def bsr_solve_saddle(
     quiet=False,
     method: str = "cg",
 ) -> tuple[float, int]:
-    """Solves the saddle-point linear system [A B^T; B 0] (x_u; x_p) = (b_u; b_p) using an iterative solver, optionally with diagonal preconditioning
+    """Solve the saddle-point linear system ``[A B^T; B 0] (x_u; x_p) = (b_u; b_p)`` using an iterative solver, optionally with diagonal preconditioning.
 
     Args:
         saddle_system: Saddle point system
@@ -529,7 +529,7 @@ def _compute_schur_inverse_diagonal(
 
 
 def invert_diagonal_bsr_matrix(A: BsrMatrix):
-    """Inverts each block of a block-diagonal mass matrix"""
+    """Invert each block of a block-diagonal mass matrix."""
 
     values = A.values
     if not wp.types.type_is_matrix(values.dtype):

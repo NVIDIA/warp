@@ -128,7 +128,7 @@ _FACE_TRANSLATION_F = wp.constant(wp.types.matrix(shape=(4, 2), dtype=float)(FAC
 
 
 class Hexmesh(Geometry):
-    """Hexahedral mesh geometry"""
+    """Hexahedral mesh geometry."""
 
     dimension = 3
 
@@ -140,8 +140,7 @@ class Hexmesh(Geometry):
         build_bvh: bool = False,
         temporary_store: Optional[TemporaryStore] = None,
     ):
-        """
-        Constructs a hexahedral mesh.
+        """Construct a hexahedral mesh.
 
         Args:
             hex_vertex_indices: warp array of shape (num_hexes, 8) containing vertex indices for each hex
@@ -186,40 +185,50 @@ class Hexmesh(Geometry):
             self.build_bvh(self.positions.device)
 
     def cell_count(self):
+        """Number of cells in the mesh."""
         return self.hex_vertex_indices.shape[0]
 
     def vertex_count(self):
+        """Number of vertices in the mesh."""
         return self.positions.shape[0]
 
     def side_count(self):
+        """Number of sides in the mesh."""
         return self._face_vertex_indices.shape[0]
 
     def edge_count(self):
+        """Number of edges in the mesh."""
         if self._hex_edge_indices is None:
             self._compute_hex_edges()
         return self._edge_count
 
     def boundary_side_count(self):
+        """Number of boundary sides in the mesh."""
         return self._boundary_face_indices.shape[0]
 
     def reference_cell(self) -> Element:
+        """Reference element for mesh cells."""
         return Element.CUBE
 
     def reference_side(self) -> Element:
+        """Reference element for mesh sides."""
         return Element.SQUARE
 
     @property
     def hex_edge_indices(self) -> wp.array:
+        """Edge indices for each hex element."""
         if self._hex_edge_indices is None:
             self._compute_hex_edges()
         return self._hex_edge_indices
 
     @property
     def face_hex_indices(self) -> wp.array:
+        """Hex indices for each face."""
         return self._face_hex_indices
 
     @property
     def face_vertex_indices(self) -> wp.array:
+        """Vertex indices for each face."""
         return self._face_vertex_indices
 
     CellArg = HexmeshCellArg
@@ -227,11 +236,14 @@ class Hexmesh(Geometry):
 
     @wp.struct
     class SideIndexArg:
+        """Arguments for side-index device functions."""
+
         boundary_face_indices: wp.array(dtype=int)
 
     # Geometry device interface
 
     def fill_cell_arg(self, args: CellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         args.hex_vertex_indices = self.hex_vertex_indices.to(device)
         args.positions = self.positions.to(device)
         args.hex_bvh = self.bvh_id(device)
@@ -304,6 +316,7 @@ class Hexmesh(Geometry):
         return wp.matrix_from_cols(p1 - p0, p2 - p0, p3 - p0)
 
     def fill_side_index_arg(self, args: SideIndexArg, device):
+        """Fill the arguments to be passed to side-index device functions."""
         args.boundary_face_indices = self._boundary_face_indices.to(device)
 
     @wp.func
@@ -313,6 +326,7 @@ class Hexmesh(Geometry):
         return args.boundary_face_indices[boundary_side_index]
 
     def fill_side_arg(self, args: SideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         self.fill_cell_arg(args.cell_arg, device)
         args.face_vertex_indices = self._face_vertex_indices.to(device)
         args.face_hex_indices = self._face_hex_indices.to(device)
@@ -320,6 +334,7 @@ class Hexmesh(Geometry):
 
     @wp.func
     def side_position(args: SideArg, s: Sample):
+        """Return the world position of a side sample point."""
         face_idx = args.face_vertex_indices[s.element_index]
 
         w_p = s.element_coords
@@ -356,10 +371,12 @@ class Hexmesh(Geometry):
 
     @wp.func
     def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         return arg.face_hex_indices[side_index][0]
 
     @wp.func
     def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         return arg.face_hex_indices[side_index][1]
 
     @wp.func
@@ -405,11 +422,13 @@ class Hexmesh(Geometry):
 
     @wp.func
     def face_to_hex_coords(local_face_index: int, face_orientation: int, side_coords: Coords):
+        """Convert face coordinates to hex coordinates."""
         local_coords = Hexmesh._local_from_oriented_face_coords(face_orientation, side_coords)
         return Hexmesh._local_face_hex_coords(local_coords, local_face_index)
 
     @wp.func
     def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         local_face_index = args.face_hex_face_orientation[side_index][0]
         face_orientation = args.face_hex_face_orientation[side_index][1]
 
@@ -417,6 +436,7 @@ class Hexmesh(Geometry):
 
     @wp.func
     def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         local_face_index = args.face_hex_face_orientation[side_index][2]
         face_orientation = args.face_hex_face_orientation[side_index][3]
 
@@ -424,6 +444,7 @@ class Hexmesh(Geometry):
 
     @wp.func
     def side_from_cell_coords(args: SideArg, side_index: ElementIndex, hex_index: ElementIndex, hex_coords: Coords):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         if Hexmesh.side_inner_cell_index(args, side_index) == hex_index:
             local_face_index = args.face_hex_face_orientation[side_index][0]
             face_orientation = args.face_hex_face_orientation[side_index][1]
@@ -438,6 +459,7 @@ class Hexmesh(Geometry):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return side_arg.cell_arg
 
     def _build_topology(self, temporary_store: TemporaryStore):
@@ -932,10 +954,12 @@ class Hexmesh(Geometry):
 
     @wp.func
     def cell_bvh_id(cell_arg: HexmeshCellArg):
+        """Return the BVH identifier for the mesh cells."""
         return cell_arg.hex_bvh
 
     @wp.func
     def cell_bounds(cell_arg: HexmeshCellArg, cell_index: ElementIndex):
+        """Return the axis-aligned bounds of a cell."""
         vidx = cell_arg.hex_vertex_indices[cell_index]
         p0 = cell_arg.positions[vidx[0]]
         p1 = cell_arg.positions[vidx[1]]

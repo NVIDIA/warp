@@ -28,7 +28,7 @@
 include:
   - /.gitlab/ci/common.yml
   - project: "omniverse/warp-gitlab-ci"
-    ref: "ershi/gitlab-ci-updates"
+    ref: "main"
     file: "/.gitlab/ci/cuda-13-build.yml"
 
 workflow:
@@ -47,21 +47,14 @@ stages:
 
 linux-aarch64 build:
   stage: build
-  image: quay.io/pypa/manylinux_2_34_aarch64:latest
+  image: $WARP_BUILDER_IMAGE_CU13
   extends:
     - .lnx-aarch64-cpu-medium
     - .save_warp_bin_artifact
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - yum update -y && yum install curl wget -y
     - gcc --version
-    - wget -qO- https://astral.sh/uv/install.sh | sh
-    - export PATH="$HOME/.local/bin:$CUDA_BIN:$PATH"
-    - mv "$PACKMAN_CONFIG_FILE" "$CI_PROJECT_DIR/tools/packman/config.packman.xml"
-    - tools/packman/packman pull --platform linux-aarch64 --include-tag cuda-13 deps/cuda-toolkit-deps.packman.xml
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uv run build_lib.py --cuda_path $CUDA
+    - uv run build_lib.py --cuda-path=/usr/local/cuda
     - mkdir -p warp/bin/linux-aarch64
     - mv warp/bin/warp.so warp/bin/linux-aarch64
     - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
@@ -82,7 +75,7 @@ windows-x86_64 build:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run build_lib.py --msvc_path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk_path=_build\host-deps\winsdk --cuda_path=_build\target-deps\cuda
+      uv run build_lib.py --msvc-path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk-path=_build\host-deps\winsdk --cuda-path=_build\target-deps\cuda
 
 # ==============================================================================
 # Linting and Code Quality Jobs
@@ -133,11 +126,9 @@ check un-namespaced symbols linux-x86_64:
 # ==============================================================================
 
 # Creates wheel files for PyPI
-# Note that compared to the job in .gitlab-ci.yml, there is no aarch64 job
-# due to problems building a debug binary
 create pypi wheels:
   stage: package
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  image: $UV_BOOKWORM_SLIM_IMAGE
   needs:
     - linux-aarch64 build
     - windows-x86_64 build
@@ -158,7 +149,7 @@ create pypi wheels:
     - find . -type f -exec chmod 664 {} +
     - find . -type d -exec chmod 775 {} +
   artifacts:
-    name: $PARENT_COMMIT_REF_SLUG-$PARENT_COMMIT_SHORT_SHA
+    name: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     expose_as: "Python Wheels"
     paths:
       - "dist/"
@@ -173,7 +164,7 @@ create pypi wheels:
 
 publish wheels to gitlab pypi registry:
   stage: deploy
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  image: $UV_BOOKWORM_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -188,6 +179,7 @@ publish wheels to gitlab pypi registry:
 # Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
+  image: $UV_BOOKWORM_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -195,11 +187,15 @@ publish wheels to gitlab package registry:
     - if: $PARENT_COMMIT_TAG
     - when: manual # Can be triggered in all other scenarios
       allow_failure: true
-  before_script:
-    - apt-get update && apt-get install curl --no-install-recommends -y
   script:
     - |
-      for file in $(find . -name '*.whl'); do
+      # Fail if no wheels found
+      wheels=$(find dist -name '*.whl')
+      if [ -z "$wheels" ]; then
+        echo "ERROR: No wheel files found in dist/"
+        exit 1
+      fi
+      for file in $wheels; do
           filename=$(basename -- "$file")
           curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/warp/${CI_COMMIT_REF_SLUG}/${filename}"
       done
@@ -207,20 +203,15 @@ publish wheels to gitlab package registry:
 
 publish wheels to github release:
   stage: deploy
-  image: ubuntu:22.04
+  image: $MINIFORGE_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
     - if: $PARENT_COMMIT_TAG
   before_script:
-    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
-    - apt-get update && apt-get install wget ca-certificates --no-install-recommends -y
-    - wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-    - bash Miniforge3.sh -b -p "${HOME}/conda"
-    - source "${HOME}/conda/etc/profile.d/conda.sh"
-    - conda activate
-    - conda install gh --channel conda-forge
-    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+    - !reference [.snippets, section-start-install-deps]
+    - conda install gh --channel conda-forge --yes
+    - !reference [.snippets, section-end-install-deps]
   script:
     - gh release upload $PARENT_COMMIT_TAG ./dist/*.whl

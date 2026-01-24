@@ -34,6 +34,8 @@ _wp_module_name_ = "warp.fem.geometry.quadmesh"
 
 @wp.struct
 class QuadmeshCellArg:
+    """Arguments for cell-related device functions."""
+
     quad_vertex_indices: wp.array2d(dtype=int)
 
     quad_bvh: wp.uint64
@@ -41,13 +43,15 @@ class QuadmeshCellArg:
 
 @wp.struct
 class QuadmeshSideArg:
+    """Arguments for side-related device functions."""
+
     cell_arg: QuadmeshCellArg
     edge_vertex_indices: wp.array(dtype=wp.vec2i)
     edge_quad_indices: wp.array(dtype=wp.vec2i)
 
 
 class Quadmesh(Geometry):
-    """Quadrilateral mesh geometry"""
+    """Quadrilateral mesh geometry."""
 
     def __init__(
         self,
@@ -56,8 +60,7 @@ class Quadmesh(Geometry):
         build_bvh: bool = False,
         temporary_store: Optional[TemporaryStore] = None,
     ):
-        """
-        Constructs a D-dimensional quadrilateral mesh.
+        """Construct a D-dimensional quadrilateral mesh.
 
         Args:
             quad_vertex_indices: warp array of shape (num_tris, 4) containing vertex indices for each quad, in counter-clockwise order
@@ -91,33 +94,43 @@ class Quadmesh(Geometry):
             self.build_bvh(self.positions.device)
 
     def cell_count(self):
+        """Number of cells in the mesh."""
         return self.quad_vertex_indices.shape[0]
 
     def vertex_count(self):
+        """Number of vertices in the mesh."""
         return self.positions.shape[0]
 
     def side_count(self):
+        """Number of sides in the mesh."""
         return self._edge_vertex_indices.shape[0]
 
     def boundary_side_count(self):
+        """Number of boundary sides in the mesh."""
         return self._boundary_edge_indices.shape[0]
 
     def reference_cell(self) -> Element:
+        """Reference element for mesh cells."""
         return Element.SQUARE
 
     def reference_side(self) -> Element:
+        """Reference element for mesh sides."""
         return Element.LINE_SEGMENT
 
     @property
     def edge_quad_indices(self) -> wp.array:
+        """Quad indices for each edge."""
         return self._edge_quad_indices
 
     @property
     def edge_vertex_indices(self) -> wp.array:
+        """Vertex indices for each edge."""
         return self._edge_vertex_indices
 
     @wp.struct
     class SideIndexArg:
+        """Arguments for side-index device functions."""
+
         boundary_edge_indices: wp.array(dtype=int)
 
     def fill_cell_topo_arg(self, args: QuadmeshCellArg, device):
@@ -130,14 +143,17 @@ class Quadmesh(Geometry):
         args.edge_quad_indices = self._edge_quad_indices.to(device)
 
     def fill_cell_arg(self, args: "Quadmesh.CellArg", device):
+        """Fill the arguments to be passed to cell-related device functions."""
         self.fill_cell_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
 
     def fill_side_arg(self, args: "Quadmesh.SideArg", device):
+        """Fill the arguments to be passed to side-related device functions."""
         self.fill_side_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
 
     def fill_side_index_arg(self, args: "SideIndexArg", device):
+        """Fill the arguments to be passed to side-index device functions."""
         args.boundary_edge_indices = self._boundary_edge_indices.to(device)
 
     @wp.func
@@ -385,6 +401,7 @@ class Quadmesh(Geometry):
 
     @wp.func
     def cell_position(args: Any, s: Sample):
+        """Return the world position of a cell sample point."""
         quad_idx = args.topology.quad_vertex_indices[s.element_index]
 
         w_p = s.element_coords
@@ -419,6 +436,7 @@ class Quadmesh(Geometry):
 
     @wp.func
     def side_position(args: Any, s: Sample):
+        """Return the world position of a side sample point."""
         edge_idx = args.topology.edge_vertex_indices[s.element_index]
         return (1.0 - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[0] * args.positions[
             edge_idx[1]
@@ -426,6 +444,7 @@ class Quadmesh(Geometry):
 
     @wp.func
     def side_deformation_gradient(args: Any, s: Sample):
+        """Return the deformation gradient for a side sample."""
         edge_idx = args.topology.edge_vertex_indices[s.element_index]
         v0 = args.positions[edge_idx[0]]
         v1 = args.positions[edge_idx[1]]
@@ -433,6 +452,7 @@ class Quadmesh(Geometry):
 
     @wp.func
     def side_closest_point(args: Any, side_index: ElementIndex, pos: Any):
+        """Return the closest point on a side to a world position."""
         edge_idx = args.topology.edge_vertex_indices[side_index]
         p0 = args.positions[edge_idx[0]]
 
@@ -444,19 +464,23 @@ class Quadmesh(Geometry):
 
     @wp.func
     def side_inner_cell_index(arg: Any, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         return arg.topology.edge_quad_indices[side_index][0]
 
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         return arg.topology.edge_quad_indices[side_index][1]
 
     @wp.func
     def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         inner_cell_index = Quadmesh3D.side_inner_cell_index(args, side_index)
         return Quadmesh._edge_to_quad_coords(args.topology, side_index, inner_cell_index, side_coords)
 
     @wp.func
     def side_outer_cell_coords(args: Any, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         outer_cell_index = Quadmesh3D.side_outer_cell_index(args, side_index)
         return Quadmesh._edge_to_quad_coords(args.topology, side_index, outer_cell_index, side_coords)
 
@@ -467,14 +491,17 @@ class Quadmesh(Geometry):
         quad_index: ElementIndex,
         quad_coords: Coords,
     ):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         return Quadmesh._quad_to_edge_coords(args.topology, side_index, quad_index, quad_coords)
 
     @wp.func
     def cell_bvh_id(cell_arg: Any):
+        """Return the BVH identifier for the mesh cells."""
         return cell_arg.topology.quad_bvh
 
     @wp.func
     def cell_bounds(cell_arg: Any, cell_index: ElementIndex):
+        """Return the axis-aligned bounds of a cell."""
         vidx = cell_arg.topology.quad_vertex_indices[cell_index]
         p0 = cell_arg.positions[vidx[0]]
         p1 = cell_arg.positions[vidx[1]]
@@ -486,18 +513,22 @@ class Quadmesh(Geometry):
 
 @wp.struct
 class Quadmesh2DCellArg:
+    """Arguments for cell-related device functions."""
+
     topology: QuadmeshCellArg
     positions: wp.array(dtype=wp.vec2)
 
 
 @wp.struct
 class Quadmesh2DSideArg:
+    """Arguments for side-related device functions."""
+
     topology: QuadmeshSideArg
     positions: wp.array(dtype=wp.vec2)
 
 
 class Quadmesh2D(Quadmesh):
-    """Two-dimensional quadrilateral mesh"""
+    """Two-dimensional quadrilateral mesh."""
 
     dimension = 2
     CellArg = Quadmesh2DCellArg
@@ -505,6 +536,7 @@ class Quadmesh2D(Quadmesh):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return Quadmesh2DCellArg(side_arg.topology.cell_arg, side_arg.positions)
 
     @wp.kernel
@@ -539,18 +571,22 @@ class Quadmesh2D(Quadmesh):
 
 @wp.struct
 class Quadmesh3DCellArg:
+    """Arguments for cell-related device functions."""
+
     topology: QuadmeshCellArg
     positions: wp.array(dtype=wp.vec3)
 
 
 @wp.struct
 class Quadmesh3DSideArg:
+    """Arguments for side-related device functions."""
+
     topology: QuadmeshSideArg
     positions: wp.array(dtype=wp.vec3)
 
 
 class Quadmesh3D(Quadmesh):
-    """Three-dimensional quadrilateral mesh"""
+    """Three-dimensional quadrilateral mesh."""
 
     dimension = 3
     CellArg = Quadmesh3DCellArg
@@ -558,6 +594,7 @@ class Quadmesh3D(Quadmesh):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return Quadmesh3DCellArg(side_arg.topology.cell_arg, side_arg.positions)
 
     @wp.kernel

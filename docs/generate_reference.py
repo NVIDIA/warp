@@ -304,7 +304,7 @@ def get_symbols_per_category(
     # Python's `ast.parse()`. However this ignores comments, so we need
     # to process them in a separate pass.
 
-    with open(underlying_module.__file__) as f:
+    with open(underlying_module.__file__, encoding="utf-8") as f:
         code = f.read()
 
     # Find the category sections.
@@ -727,9 +727,5 @@ if __name__ == "__main__":
         datefmt="%H:%M:%S",
         handlers=[logging.StreamHandler()],
     )
-    try:
-        run()
-        logger.info("API reference stub generation completed successfully")
-    except Exception as e:
-        logger.error(f"API reference stub generation failed: {e}", exc_info=True)
-        sys.exit(1)
+    run()
+    logger.info("API reference stub generation completed successfully")

@@ -31,6 +31,8 @@ _wp_module_name_ = "warp.fem.space.shape.cube_shape_function"
 
 
 class CubeShapeFunction(ShapeFunction):
+    """Base class for shape functions defined on hexahedral (cube) elements."""
+
     VERTEX = 0
     EDGE = 1
     FACE = 2
@@ -61,6 +63,8 @@ class CubeShapeFunction(ShapeFunction):
 
 
 class CubeTripolynomialShapeFunctions(CubeShapeFunction):
+    """Tripolynomial (tensor-product Lagrange) shape functions on hexahedral elements."""
+
     def __init__(self, degree: int, family: Polynomial):
         self.family = family
 
@@ -787,6 +791,8 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
 
 
 class CubeNonConformingPolynomialShapeFunctions(ShapeFunction):
+    """Non-conforming polynomial shape functions on hexahedral elements using embedded tetrahedra."""
+
     # embeds the largest regular tet centered at (0.5, 0.5, 0.5) into the reference cube
 
     _tet_height = 2.0 / 3.0
@@ -883,6 +889,8 @@ class CubeNonConformingPolynomialShapeFunctions(ShapeFunction):
 
 
 class CubeNedelecFirstKindShapeFunctions(CubeShapeFunction):
+    """Nédélec first-kind (edge) shape functions on hexahedral elements for H(curl) spaces."""
+
     value = ShapeFunction.Value.CovariantVector
 
     def __init__(self, degree: int):
@@ -998,6 +1006,8 @@ class CubeNedelecFirstKindShapeFunctions(CubeShapeFunction):
 
 
 class CubeRaviartThomasShapeFunctions(CubeShapeFunction):
+    """Raviart-Thomas (face) shape functions on hexahedral elements for H(div) spaces."""
+
     value = ShapeFunction.Value.ContravariantVector
 
     def __init__(self, degree: int):

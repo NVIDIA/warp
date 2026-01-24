@@ -177,7 +177,7 @@ def dtype_from_paddle(paddle_dtype):
 
 
 def dtype_is_compatible(paddle_dtype: paddle.dtype, warp_dtype) -> bool:
-    """Evaluates whether the given paddle dtype is compatible with the given Warp dtype."""
+    """Evaluate whether the given paddle dtype is compatible with the given Warp dtype."""
     # initialize lookup table on first call to defer paddle import
     if dtype_is_compatible.compatible_sets is None:
         import paddle  # noqa: PLC0415

@@ -241,6 +241,11 @@ def test_bsr_get_set_diag(test, device):
     assert_np_equal(diag_np[2], vals_np[4], tol=0.00001)
     assert_np_equal(diag_np[3], vals_np[3], tol=0.00001)
 
+    # Passing out should produce the same result as allocating internally.
+    sentinel = wp.full(shape=(nrow,), value=bsr.values.dtype(7.0), dtype=bsr.values.dtype, device=device)
+    bsr_get_diag(bsr, out=sentinel)
+    assert_np_equal(diag_np, sentinel.numpy(), tol=0.00001)
+
     # Test set_diag/get_diag round-trips with various block types
 
     # Array of blocks

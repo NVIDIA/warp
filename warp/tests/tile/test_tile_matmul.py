@@ -162,6 +162,65 @@ def test_tile_transpose_matmul(test, device):
     assert_np_equal(output.numpy(), input.numpy().T @ input.numpy(), 1e-6)
 
 
+@wp.kernel
+def test_tile_matmul_return_form_kernel(
+    A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)
+):
+    """Test the c = wp.tile_matmul(a, b) form which returns a fresh tile."""
+    a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+    b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+
+    # Use the return form (not the accumulate form)
+    # This tests that we don't read from the uninitialized output tile
+    c = wp.tile_matmul(a, b)
+
+    wp.tile_store(C, c)
+
+
+def test_tile_matmul_return_form(test, device):
+    """Test that c = wp.tile_matmul(a, b) works correctly with verify_fp.
+
+    This specifically tests a fix where the return form was incorrectly
+    reading from the uninitialized output tile (which could contain NaN
+    when verify_fp is enabled, causing the result to be NaN).
+    """
+    # Enable verify_fp to trigger NaN initialization of tiles
+    old_verify_fp = wp.config.verify_fp
+    wp.config.verify_fp = True
+
+    try:
+        M = TILE_M
+        K = TILE_K
+        N = TILE_N
+
+        rng = np.random.default_rng(42)
+        A = rng.random((M, K), dtype=np.float32)
+        B = rng.random((K, N), dtype=np.float32)
+        expected = A @ B
+
+        A_wp = wp.array(A, device=device)
+        B_wp = wp.array(B, device=device)
+        C_wp = wp.zeros((M, N), dtype=float, device=device)
+
+        wp.launch_tiled(
+            test_tile_matmul_return_form_kernel,
+            dim=[1],
+            inputs=[A_wp, B_wp, C_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+        result = C_wp.numpy()
+
+        # Check that result doesn't contain NaN (which would happen with the bug)
+        test.assertFalse(np.any(np.isnan(result)), "Result contains NaN values")
+
+        # Check correctness
+        assert_np_equal(result, expected, tol=1e-5)
+    finally:
+        wp.config.verify_fp = old_verify_fp
+
+
 class TestTileMatmul(unittest.TestCase):
     pass
 
@@ -173,6 +232,7 @@ add_function_test(TestTileMatmul, "test_tile_gemm_fp32", test_tile_gemm(wp.float
 add_function_test(TestTileMatmul, "test_tile_gemm_fp64", test_tile_gemm(wp.float64), devices=devices)
 add_function_test(TestTileMatmul, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)
 add_function_test(TestTileMatmul, "test_tile_transpose_matmul", test_tile_transpose_matmul, devices=devices)
+add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()

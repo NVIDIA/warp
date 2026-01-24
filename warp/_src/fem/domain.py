@@ -36,13 +36,13 @@ GeometryOrPartition = Union[Geometry, GeometryPartition]
 
 
 class GeometryDomain:
-    """Interface class for domains, i.e. (partial) views of elements in a Geometry"""
+    """Interface class for domains, i.e. (partial) views of elements in a :class:`Geometry`."""
 
     geometry_partition: GeometryPartition
-    """Geometry partition containing the elements of the domain"""
+    """Geometry partition containing the elements of the domain."""
 
     geometry: Geometry
-    """Underlying geometry"""
+    """Underlying geometry."""
 
     def __init__(self, geometry: GeometryOrPartition):
         if isinstance(geometry, GeometryPartition):
@@ -54,6 +54,7 @@ class GeometryDomain:
 
     @cached_property
     def name(self) -> str:
+        """Unique name of the domain."""
         return f"{self.geometry_partition.name}_{self.__class__.__name__}"
 
     def __str__(self) -> str:
@@ -91,6 +92,7 @@ class GeometryDomain:
         return args
 
     def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: DeviceLike):
+        """Fill the element index arguments for device functions."""
         arg.assign(self.element_index_arg_value(device))
 
     def element_arg_value(self, device: DeviceLike) -> StructInstance:
@@ -100,46 +102,47 @@ class GeometryDomain:
         return args
 
     def fill_element_arg(self, arg: "GeometryDomain.ElementArg", device: DeviceLike):
+        """Fill the element arguments for device functions."""
         arg.assign(self.element_arg_value(device))
 
     ElementIndexArg: Struct
-    """Structure containing arguments to be passed to device functions computing element indices"""
+    """Structure containing arguments to be passed to device functions computing element indices."""
 
     element_index: wp.Function
-    """Device function for retrieving an ElementIndex from a linearized index"""
+    """Device function for retrieving an :class:`ElementIndex` from a linearized index."""
 
     element_partition_index: wp.Function
-    """Device function for retrieving linearized index in the domain's partition from an ElementIndex"""
+    """Device function for retrieving linearized index in the domain's partition from an :class:`ElementIndex`."""
 
     ElementArg: Struct
-    """Structure containing arguments to be passed to device functions computing element geometry"""
+    """Structure containing arguments to be passed to device functions computing element geometry."""
 
     element_measure: wp.Function
-    """Device function returning the measure determinant (e.g. volume, area) at a given point"""
+    """Device function returning the measure determinant (e.g. volume, area) at a given point."""
 
     element_measure_ratio: wp.Function
-    """Device function returning the ratio of the measure of a side to that of its neighbour cells"""
+    """Device function returning the ratio of the measure of a side to that of its neighbour cells."""
 
     element_position: wp.Function
-    """Device function returning the element position at a sample point"""
+    """Device function returning the element position at a sample point."""
 
     element_deformation_gradient: wp.Function
-    """Device function returning the gradient of the position with respect to the element's reference space"""
+    """Device function returning the gradient of the position with respect to the element's reference space."""
 
     element_normal: wp.Function
-    """Device function returning the element normal at a sample point"""
+    """Device function returning the element normal at a sample point."""
 
     element_closest_point: wp.Function
-    """Device function returning the coordinates of the closest point in a given element to a world position"""
+    """Device function returning the coordinates of the closest point in a given element to a world position."""
 
     element_coordinates: wp.Function
-    """Device function returning the coordinates corresponding to a world position in a given element reference system"""
+    """Device function returning the coordinates corresponding to a world position in a given element reference system."""
 
     element_lookup: wp.Function
-    """Device function returning the sample point in the domain's geometry corresponding to a world position"""
+    """Device function returning the sample point in the domain's geometry corresponding to a world position."""
 
     element_partition_lookup: wp.Function
-    """Device function returning the sample point in the domain's geometry partition corresponding to a world position"""
+    """Device function returning the sample point in the domain's geometry partition corresponding to a world position."""
 
     def notify_operator_usage(self, ops: set[Operator]):
         """Makes the Domain aware that the operators `ops` will be applied"""
@@ -147,6 +150,7 @@ class GeometryDomain:
 
     @cached_property
     def DomainArg(self):
+        """Argument structure combining element geometry and indices."""
         return self._make_domain_arg()
 
     def _make_domain_arg(self):
@@ -159,90 +163,112 @@ class GeometryDomain:
 
 
 class Cells(GeometryDomain):
-    """A Domain containing all cells of the geometry or geometry partition"""
+    """A Domain containing all cells of the geometry or geometry partition."""
 
     def __init__(self, geometry: GeometryOrPartition):
         super().__init__(geometry)
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements contained in the domain."""
         return ElementKind.CELL
 
     @property
     def dimension(self) -> int:
+        """Dimension of elements in the domain."""
         return self.geometry.dimension
 
     def reference_element(self) -> Element:
+        """Reference element for the domain cells."""
         return self.geometry.reference_cell()
 
     def element_count(self) -> int:
+        """Number of elements in the domain."""
         return self.geometry_partition.cell_count()
 
     def geometry_element_count(self) -> int:
+        """Number of elements in the underlying geometry."""
         return self.geometry.cell_count()
 
     @property
     def ElementIndexArg(self) -> Struct:
+        """Structure containing arguments for element indexing."""
         return self.geometry_partition.CellArg
 
     def element_index_arg_value(self, device: DeviceLike) -> StructInstance:
+        """Value of the element index arguments for device functions."""
         return self.geometry_partition.cell_arg_value(device)
 
     def fill_element_index_arg(self, arg: ElementIndexArg, device: DeviceLike):
+        """Fill the element index arguments for device functions."""
         self.geometry_partition.fill_cell_arg(arg, device)
 
     @property
     def element_index(self) -> wp.Function:
+        """Device function mapping partition indices to element indices."""
         return self.geometry_partition.cell_index
 
     @property
     def element_partition_index(self) -> wp.Function:
+        """Device function mapping element indices to partition indices."""
         return self.geometry_partition.partition_cell_index
 
     def element_arg_value(self, device: DeviceLike) -> StructInstance:
+        """Value of the element arguments for device functions."""
         return self.geometry.cell_arg_value(device)
 
     def fill_element_arg(self, arg: "ElementArg", device: DeviceLike):
+        """Fill the element arguments for device functions."""
         self.geometry.fill_cell_arg(arg, device)
 
     @property
     def ElementArg(self) -> Struct:
+        """Structure containing arguments for element geometry."""
         return self.geometry.CellArg
 
     @property
     def element_position(self) -> wp.Function:
+        """Device function returning element positions."""
         return self.geometry.cell_position
 
     @property
     def element_deformation_gradient(self) -> wp.Function:
+        """Device function returning element deformation gradients."""
         return self.geometry.cell_deformation_gradient
 
     @property
     def element_measure(self) -> wp.Function:
+        """Device function returning element measures."""
         return self.geometry.cell_measure
 
     @property
     def element_measure_ratio(self) -> wp.Function:
+        """Device function returning element measure ratios."""
         return self.geometry.cell_measure_ratio
 
     @property
     def element_normal(self) -> wp.Function:
+        """Device function returning element normals."""
         return self.geometry.cell_normal
 
     @property
     def element_closest_point(self) -> wp.Function:
+        """Device function returning closest points on elements."""
         return self.geometry.cell_closest_point
 
     @property
     def element_coordinates(self) -> wp.Function:
+        """Device function returning element coordinates for a position."""
         return self.geometry.cell_coordinates
 
     @property
     def element_lookup(self) -> wp.Function:
+        """Device function for looking up elements from positions."""
         return self.geometry.cell_lookup
 
     @cached_property
     def element_partition_lookup(self) -> wp.Function:
+        """Device function for partition-restricted element lookup."""
         pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self.geometry_partition.name)
@@ -267,13 +293,16 @@ class Cells(GeometryDomain):
         return cell_partition_lookup
 
     def supports_lookup(self, device):
+        """Return whether element lookup is supported on the given device."""
         return self.geometry.supports_cell_lookup(device)
 
     @property
     def domain_cell_arg(self) -> wp.Function:
+        """Device function mapping domain arguments to cell-domain arguments."""
         return Cells._identity_fn
 
     def cell_domain(self):
+        """Return the corresponding cell domain."""
         return self
 
     @wp.func
@@ -282,7 +311,7 @@ class Cells(GeometryDomain):
 
 
 class Sides(GeometryDomain):
-    """A Domain containing all (interior and boundary) sides of the geometry or geometry partition"""
+    """A Domain containing all (interior and boundary) sides of the geometry or geometry partition."""
 
     def __init__(self, geometry: GeometryOrPartition):
         super().__init__(geometry)
@@ -292,99 +321,125 @@ class Sides(GeometryDomain):
         self.element_filtered_lookup = None
 
     def supports_lookup(self, device):
+        """Return whether element lookup is supported on the given device."""
         return False
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements contained in the domain."""
         return ElementKind.SIDE
 
     @property
     def dimension(self) -> int:
+        """Dimension of elements in the domain."""
         return self.geometry.dimension - 1
 
     def reference_element(self) -> Element:
+        """Reference element for the domain sides."""
         return self.geometry.reference_side()
 
     def element_count(self) -> int:
+        """Number of elements in the domain."""
         return self.geometry_partition.side_count()
 
     def geometry_element_count(self) -> int:
+        """Number of elements in the underlying geometry."""
         return self.geometry.side_count()
 
     @property
     def ElementIndexArg(self) -> Struct:
+        """Structure containing arguments for element indexing."""
         return self.geometry_partition.SideArg
 
     def element_index_arg_value(self, device: DeviceLike) -> StructInstance:
+        """Value of the element index arguments for device functions."""
         return self.geometry_partition.side_arg_value(device)
 
     def fill_element_index_arg(self, arg: "ElementIndexArg", device: DeviceLike):
+        """Fill the element index arguments for device functions."""
         self.geometry_partition.fill_side_arg(arg, device)
 
     @property
     def element_index(self) -> wp.Function:
+        """Device function mapping partition indices to element indices."""
         return self.geometry_partition.side_index
 
     @property
     def ElementArg(self) -> Struct:
+        """Structure containing arguments for element geometry."""
         return self.geometry.SideArg
 
     def element_arg_value(self, device: DeviceLike) -> StructInstance:
+        """Value of the element arguments for device functions."""
         return self.geometry.side_arg_value(device)
 
     def fill_element_arg(self, arg: "ElementArg", device: DeviceLike):
+        """Fill the element arguments for device functions."""
         self.geometry.fill_side_arg(arg, device)
 
     @property
     def element_position(self) -> wp.Function:
+        """Device function returning element positions."""
         return self.geometry.side_position
 
     @property
     def element_deformation_gradient(self) -> wp.Function:
+        """Device function returning element deformation gradients."""
         return self.geometry.side_deformation_gradient
 
     @property
     def element_measure(self) -> wp.Function:
+        """Device function returning element measures."""
         return self.geometry.side_measure
 
     @property
     def element_measure_ratio(self) -> wp.Function:
+        """Device function returning element measure ratios."""
         return self.geometry.side_measure_ratio
 
     @property
     def element_normal(self) -> wp.Function:
+        """Device function returning element normals."""
         return self.geometry.side_normal
 
     @property
     def element_closest_point(self) -> wp.Function:
+        """Device function returning closest points on elements."""
         return self.geometry.side_closest_point
 
     @property
     def element_coordinates(self) -> wp.Function:
+        """Device function returning element coordinates for a position."""
         return self.geometry.side_coordinates
 
     @property
     def element_inner_cell_index(self) -> wp.Function:
+        """Device function returning inner cell indices for sides."""
         return self.geometry.side_inner_cell_index
 
     @property
     def element_outer_cell_index(self) -> wp.Function:
+        """Device function returning outer cell indices for sides."""
         return self.geometry.side_outer_cell_index
 
     @property
     def element_inner_cell_coords(self) -> wp.Function:
+        """Device function returning inner-cell coordinates of side points."""
         return self.geometry.side_inner_cell_coords
 
     @property
     def element_outer_cell_coords(self) -> wp.Function:
+        """Device function returning outer-cell coordinates of side points."""
         return self.geometry.side_outer_cell_coords
 
     @property
     def cell_to_element_coords(self) -> wp.Function:
+        """Device function converting cell coordinates to side coordinates."""
         return self.geometry.side_from_cell_coords
 
     @cached_property
     def domain_cell_arg(self) -> wp.Function:
+        """Device function mapping domain arguments to cell-domain arguments."""
         CellDomainArg = self.cell_domain().DomainArg
 
         @cache.dynamic_func(suffix=self.name)
@@ -397,45 +452,52 @@ class Sides(GeometryDomain):
         return domain_cell_arg
 
     def cell_domain(self):
+        """Return the corresponding cell domain."""
         return Cells(self.geometry_partition)
 
 
 class BoundarySides(Sides):
-    """A Domain containing boundary sides of the geometry or geometry partition"""
+    """A Domain containing boundary sides of the geometry or geometry partition."""
 
     def __init__(self, geometry: GeometryOrPartition):
         super().__init__(geometry)
 
     def element_count(self) -> int:
+        """Number of elements in the domain."""
         return self.geometry_partition.boundary_side_count()
 
     def geometry_element_count(self) -> int:
+        """Number of elements in the underlying geometry."""
         return self.geometry.boundary_side_count()
 
     @property
     def element_index(self) -> wp.Function:
+        """Device function mapping partition indices to element indices."""
         return self.geometry_partition.boundary_side_index
 
 
 class FrontierSides(Sides):
-    """A Domain containing frontier sides of the geometry partition (sides shared with at least another partition)"""
+    """A Domain containing frontier sides of the geometry partition (sides shared with at least another partition)."""
 
     def __init__(self, geometry: GeometryOrPartition):
         super().__init__(geometry)
 
     def element_count(self) -> int:
+        """Number of elements in the domain."""
         return self.geometry_partition.frontier_side_count()
 
     def geometry_element_count(self) -> int:
+        """Number of elements in the underlying geometry."""
         raise RuntimeError("Frontier sides not defined at the geometry level")
 
     @property
     def element_index(self) -> wp.Function:
+        """Device function mapping partition indices to element indices."""
         return self.geometry_partition.frontier_side_index
 
 
 class Subdomain(GeometryDomain):
-    """Subdomain -- restriction of domain to a subset of its elements"""
+    """Restriction of domain to a subset of its elements."""
 
     def __init__(
         self,
@@ -486,6 +548,7 @@ class Subdomain(GeometryDomain):
 
     @property
     def name(self) -> str:
+        """Name of the subdomain."""
         return f"{self._domain.name}_Subdomain"
 
     def __eq__(self, other) -> bool:
@@ -497,13 +560,16 @@ class Subdomain(GeometryDomain):
 
     @property
     def element_kind(self) -> ElementKind:
+        """Kind of elements contained in the domain."""
         return self._domain.element_kind
 
     @property
     def dimension(self) -> int:
+        """Dimension of elements in the domain."""
         return self._domain.dimension
 
     def element_count(self) -> int:
+        """Number of elements in the domain."""
         return self._element_indices.shape[0]
 
     def _make_element_index_arg(self):
@@ -516,11 +582,13 @@ class Subdomain(GeometryDomain):
 
     @cache.cached_arg_value
     def element_index_arg_value(self, device: DeviceLike):
+        """Value of the element index arguments for device functions."""
         arg = self.ElementIndexArg()
         self.fill_element_index_arg(arg, device)
         return arg
 
     def fill_element_index_arg(self, arg: "GeometryDomain.ElementIndexArg", device: DeviceLike):
+        """Fill the element index arguments for device functions."""
         self._domain.fill_element_index_arg(arg.domain_arg, device)
         arg.element_indices = self._element_indices.to(device)
 
@@ -539,13 +607,16 @@ class Subdomain(GeometryDomain):
         return element_partition_index
 
     def supports_lookup(self, device):
+        """Return whether element lookup is supported on the given device."""
         return self._domain.supports_lookup(device)
 
     def cell_domain(self):
+        """Return the corresponding cell domain."""
         return self._domain.cell_domain()
 
     @cached_property
     def domain_cell_arg(self) -> wp.Function:
+        """Device function mapping domain arguments to cell-domain arguments."""
         CellDomainArg = self.cell_domain().DomainArg
 
         @cache.dynamic_func(suffix=self.name)

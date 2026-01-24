@@ -18,6 +18,6 @@
 #ifndef WP_VERSION_H
 #define WP_VERSION_H
 
-#define WP_VERSION_STRING "1.11.0"
+#define WP_VERSION_STRING "1.11.1rc1"
 
 #endif  // WP_VERSION_H

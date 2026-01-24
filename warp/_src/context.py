@@ -20,6 +20,7 @@ import ctypes
 import enum
 import functools
 import hashlib
+import importlib
 import inspect
 import io
 import itertools
@@ -27,6 +28,7 @@ import json
 import operator
 import os
 import platform
+import re
 import shutil
 import sys
 import threading
@@ -46,6 +48,17 @@ from typing import (
     get_args,
     get_origin,
 )
+from typing import (
+    overload as typing_overload,
+)
+
+try:
+    from typing import ParamSpec
+except ImportError:
+    # Python 3.9 - ParamSpec not available, use TypeVar as fallback
+    def ParamSpec(name):
+        return TypeVar(name)
+
 
 import numpy as np
 
@@ -53,7 +66,7 @@ import warp
 import warp._src.build
 import warp._src.codegen
 import warp.config
-from warp._src.codegen import synchronized
+from warp._src.codegen import WarpCodegenTypeError, synchronized
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -84,7 +97,7 @@ def create_value_func(type):
 
 
 def get_function_args(func):
-    """Ensures that all function arguments are annotated and returns a dictionary mapping from argument name to its type."""
+    """Ensure that all function arguments are annotated and return a dictionary mapping from argument name to its type."""
     argspec = warp._src.codegen.get_full_arg_spec(func)
 
     # use source-level argument annotations
@@ -130,6 +143,11 @@ def generate_unique_function_identifier(key: str) -> str:
 
 
 class Function:
+    """Represents a Warp function decorated with :func:`@wp.func <warp.func>`.
+
+    Functions can be called from kernels or other Warp functions.
+    """
+
     def __init__(
         self,
         func: Callable | None,
@@ -558,7 +576,7 @@ def extract_return_value(value_type: type, value_ctype: type, ret: Any) -> Any:
 
 
 class BuiltinParamKind(enum.Enum):
-    """Describes the kind of a built-in parameter.
+    """Describe the kind of a built-in parameter.
 
     This decides how it's being packed into its corresponding C type.
     """
@@ -728,6 +746,11 @@ class KernelHooks:
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
+    """Warp kernel object, typically created by decorating a Python function with :func:`@wp.kernel <warp.kernel>`.
+
+    Kernels can be launched on CPU or GPU devices using :func:`warp.launch`.
+    """
+
     def __init__(self, func, key=None, module=None, options=None, code_transformers=None, source=None):
         self.func = func
 
@@ -857,14 +880,43 @@ class Kernel:
 
 # ----------------------
 
+# Type variables for the @func decorator overloads below.
+# Using ParamSpec preserves the decorated function's signature for static type checkers,
+# so IDEs show the original parameters instead of generic (*args, **kwargs).
+# Note: ParamSpec requires Python 3.10+; on 3.9 this falls back to TypeVar.
+_FuncParams = ParamSpec("_FuncParams")
+_FuncReturn = TypeVar("_FuncReturn")
 
-# decorator to register function, @func
+
+@typing_overload
+def func(f: Callable[_FuncParams, _FuncReturn]) -> Callable[_FuncParams, _FuncReturn]:
+    """Register a Warp function (bare decorator: ``@wp.func``)."""
+    ...
+
+
+@typing_overload
+def func(
+    f: None = None,
+    *,
+    name: str | None = None,
+    module: Module | Literal["unique"] | str | None = None,
+) -> Callable[[Callable[_FuncParams, _FuncReturn]], Callable[_FuncParams, _FuncReturn]]:
+    """Register a Warp function (decorator with arguments: ``@wp.func(...)``)."""
+    ...
+
+
 def func(
     f: Callable | None = None,
     *,
     name: str | None = None,
     module: Module | Literal["unique"] | str | None = None,
 ):
+    """Decorator to define a Warp function callable from kernels and other Warp functions.
+
+    See also:
+        :func:`warp.kernel` for defining kernels that can be launched on devices.
+    """
+
     def wrapper(f, *args, **kwargs):
         if name is None:
             key = warp._src.codegen.make_full_qualified_name(f)
@@ -1216,7 +1268,7 @@ def kernel(
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be generated.
         module: The :class:`warp._src.context.Module` to which the kernel belongs. Alternatively, if a string `"unique"` is provided, the kernel is assigned to a new module named after the kernel name and hash. If None, the module is inferred from the function's module.
-        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`wp.launch() <warp.launch>` must not exceed the ``maxThreadsPerBlock`` value specified here.
+        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`warp.launch` must not exceed the ``maxThreadsPerBlock`` value specified here.
 
     Returns:
         The registered kernel.
@@ -1322,6 +1374,12 @@ def struct(
     *,
     module: Module | Literal["unique"] | str | None = None,
 ) -> warp._src.codegen.Struct:
+    """Decorator to define a Warp struct for use in kernels and functions.
+
+    Structs allow grouping related data fields that can be passed to
+    :func:`@wp.kernel <warp.kernel>` and :func:`@wp.func <warp.func>` decorated functions.
+    """
+
     def wrapper(c, *args, **kwargs):
         if module is None:
             m = get_module(c.__module__)
@@ -1717,6 +1775,20 @@ user_modules: dict[str, Module] = {}
 
 
 def get_module(name: str) -> Module:
+    """Return or create the Warp module associated with a given name.
+
+    Each Warp module tracks kernels, functions, and structs defined within it.
+    If the module does not exist, a new one is created.
+
+    Args:
+        name: Name of the module to retrieve or create.
+
+    Returns:
+        The :class:`Module` object associated with the given name.
+
+    See Also:
+        :func:`load_module`, :func:`force_load`
+    """
     # some modules might be manually imported using `importlib` without being
     # registered into `sys.modules`
     parent = sys.modules.get(name, None)
@@ -2013,8 +2085,7 @@ class ModuleBuilder:
         kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:
-            if kernel.adj.return_var.ctype() != "void":
-                raise TypeError(f"Error, kernels can't have return values, got: {kernel.adj.return_var}")
+            raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
 
     def build_function(self, func):
         if func in self.functions:
@@ -2263,6 +2334,8 @@ def _check_and_raise_long_path_error(e: FileNotFoundError):
 # creates a hash of the function to use for checking
 # build cache
 class Module:
+    """Warp module containing kernels and functions to be compiled."""
+
     def __init__(self, name: str | None, loader=None):
         self.name = name if name is not None else "None"
 
@@ -3024,7 +3097,7 @@ class Event:
         INTERPROCESS = 0x4
 
     def __new__(cls, *args, **kwargs):
-        """Creates a new event instance."""
+        """Create a new event instance."""
         instance = super().__new__(cls)
         instance.owner = False
         return instance
@@ -3032,7 +3105,7 @@ class Event:
     def __init__(
         self, device: DeviceLike = None, cuda_event=None, enable_timing: bool = False, interprocess: bool = False
     ):
-        """Initializes the event on a CUDA device.
+        """Initialize the event on a CUDA device.
 
         Args:
             device: The CUDA device whose streams this event may be recorded onto.
@@ -3131,6 +3204,12 @@ class Event:
 
 
 class Stream:
+    """CUDA stream wrapper for managing asynchronous GPU operations.
+
+    See also:
+        :func:`warp.get_stream`, :func:`warp.set_stream`, :class:`warp.ScopedStream`
+    """
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.cuda_stream = None
@@ -3153,7 +3232,7 @@ class Stream:
         Raises:
             RuntimeError: If function is called before Warp has completed
               initialization with a ``device`` that is not an instance of
-              :class:`Device <warp._src.context.Device>`.
+              :class:`~warp._src.context.Device`.
             RuntimeError: ``device`` is not a CUDA Device.
             RuntimeError: The stream could not be created on the device.
             TypeError: The requested stream priority is not an integer.
@@ -3232,7 +3311,7 @@ class Stream:
         return event
 
     def wait_event(self, event: Event, external: bool = False):
-        """Makes all future work in this stream wait until `event` has completed.
+        """Make all future work in this stream wait until ``event`` has completed.
 
         This function does not block the host thread.
 
@@ -3244,10 +3323,10 @@ class Stream:
         runtime.core.wp_cuda_stream_wait_event(self.cuda_stream, event.cuda_event, external)
 
     def wait_stream(self, other_stream: Stream, event: Event | None = None, external: bool = False):
-        """Records an event on `other_stream` and makes this stream wait on it.
+        """Record an event on ``other_stream`` and make this stream wait on it.
 
         All work added to this stream after this function has been called will
-        delay their execution until all preceding commands in `other_stream`
+        delay their execution until all preceding commands in ``other_stream``
         have completed.
 
         This function does not block the host thread.
@@ -3437,7 +3516,7 @@ class Device:
                 return self.default_allocator
 
     def _init_streams(self):
-        """Initializes the device's current stream and the device's null stream."""
+        """Initialize the device's current stream and the device's null stream."""
         # create a stream for asynchronous work
         self.set_stream(Stream(self))
 
@@ -5143,21 +5222,48 @@ class Runtime:
 
 # global entry points
 def is_cpu_available() -> bool:
+    """Check whether CPU execution is available.
+
+    Returns:
+        ``True`` if CPU execution is supported (LLVM backend is loaded), ``False`` otherwise.
+
+    See Also:
+        :func:`is_cuda_available`, :func:`is_device_available`
+    """
     init()
 
     return runtime.llvm is not None
 
 
 def is_cuda_available() -> bool:
+    """Check whether CUDA execution is available.
+
+    Returns:
+        ``True`` if at least one CUDA device is available, ``False`` otherwise.
+
+    See Also:
+        :func:`is_cpu_available`, :func:`is_device_available`, :func:`get_cuda_device_count`
+    """
     return get_cuda_device_count() > 0
 
 
 def is_device_available(device: Device) -> bool:
+    """Check whether a device is available in the current environment.
+
+    Parameters:
+        device: The :class:`~warp._src.context.Device` to check.
+
+    Returns:
+        ``True`` if the device is in the list returned by :func:`get_devices`, ``False`` otherwise.
+
+    See Also:
+        :func:`get_devices`, :func:`get_device`, :func:`is_cpu_available`, :func:`is_cuda_available`
+    """
     return device in get_devices()
 
 
 def is_cuda_driver_initialized() -> bool:
-    """Returns ``True`` if the CUDA driver is initialized.
+    """Return ``True`` if the CUDA driver is initialized.
 
     This is a stricter test than ``is_cuda_available()`` since a CUDA driver
     call to ``cuCtxGetCurrent`` is made, and the result is compared to
@@ -5191,7 +5297,7 @@ def get_cuda_supported_archs() -> list[int]:
 
 
 def get_devices() -> list[Device]:
-    """Returns a list of devices supported in this environment."""
+    """Return a list of devices supported in this environment."""
 
     init()
 
@@ -5204,7 +5310,7 @@ def get_devices() -> list[Device]:
 
 
 def get_cuda_device_count() -> int:
-    """Returns the number of CUDA devices supported in this environment."""
+    """Return the number of CUDA devices supported in this environment."""
 
     init()
 
@@ -5212,7 +5318,7 @@ def get_cuda_device_count() -> int:
 
 
 def get_cuda_device(ordinal: int | None = None) -> Device:
-    """Returns the CUDA device with the given ordinal or the current CUDA device if ordinal is None."""
+    """Return the CUDA device with the given ordinal or the current CUDA device if ordinal is ``None``."""
 
     init()
 
@@ -5223,7 +5329,7 @@ def get_cuda_device(ordinal: int | None = None) -> Device:
 
 
 def get_cuda_devices() -> list[Device]:
-    """Returns a list of CUDA devices supported in this environment."""
+    """Return a list of CUDA devices supported in this environment."""
 
     init()
 
@@ -5231,7 +5337,7 @@ def get_cuda_devices() -> list[Device]:
 
 
 def get_preferred_device() -> Device:
-    """Returns the preferred compute device, ``cuda:0`` if available and ``cpu`` otherwise."""
+    """Return the preferred compute device, ``cuda:0`` if available and ``cpu`` otherwise."""
 
     init()
 
@@ -5244,7 +5350,7 @@ def get_preferred_device() -> Device:
 
 
 def get_device(ident: DeviceLike = None) -> Device:
-    """Returns the device identified by the argument."""
+    """Return the device identified by the argument."""
 
     init()
 
@@ -5252,7 +5358,7 @@ def get_device(ident: DeviceLike = None) -> Device:
 
 
 def set_device(ident: DeviceLike) -> None:
-    """Sets the default device identified by the argument."""
+    """Set the default device identified by the argument."""
 
     init()
 
@@ -5292,7 +5398,7 @@ def is_mempool_supported(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are available on the device.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
     """
@@ -5308,7 +5414,7 @@ def is_mempool_enabled(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are enabled on the device.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
     """
@@ -5333,7 +5439,7 @@ def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:
     prior to graph capture.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the operation is to be performed.
           If ``None``, the default device will be used.
     """
@@ -5368,7 +5474,7 @@ def set_mempool_release_threshold(device: DeviceLike, threshold: int | float) ->
     For example, 1024**3 means one GiB of memory.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the operation is to be performed.
           If ``None``, the default device will be used.
         threshold: An integer representing a number of bytes, or a ``float`` between 0 and 1,
@@ -5403,7 +5509,7 @@ def get_mempool_release_threshold(device: DeviceLike = None) -> int:
     """Get the CUDA memory pool release threshold on the device.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
 
@@ -5432,7 +5538,7 @@ def get_mempool_used_mem_current(device: DeviceLike = None) -> int:
     """Get the amount of memory from the device's memory pool that is currently in use by the application.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
 
@@ -5461,7 +5567,7 @@ def get_mempool_used_mem_high(device: DeviceLike = None) -> int:
     """Get the application's memory usage high-water mark from the device's CUDA memory pool.
 
     Parameters:
-        device: The :class:`Device <warp._src.context.Device>` or device identifier
+        device: The :class:`~warp._src.context.Device` or device identifier
           for which the query is to be performed.
           If ``None``, the default device will be used.
 
@@ -5487,7 +5593,7 @@ def get_mempool_used_mem_high(device: DeviceLike = None) -> int:
 
 
 def is_peer_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can directly access the memory of `target_device` on this system.
+    """Check if ``peer_device`` can directly access the memory of ``target_device`` on this system.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
     CUDA pooled allocators, use :func:`is_mempool_access_supported()`.
@@ -5508,7 +5614,7 @@ def is_peer_access_supported(target_device: DeviceLike, peer_device: DeviceLike)
 
 
 def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can currently access the memory of `target_device`.
+    """Check if ``peer_device`` can currently access the memory of ``target_device``.
 
     This applies to memory allocated using default CUDA allocators.  For memory allocated using
     CUDA pooled allocators, use :func:`is_mempool_access_enabled()`.
@@ -5529,7 +5635,7 @@ def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -
 
 
 def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
-    """Enable or disable direct access from `peer_device` to the memory of `target_device`.
+    """Enable or disable direct access from ``peer_device`` to the memory of ``target_device``.
 
     Enabling peer access can improve the speed of peer-to-peer memory transfers, but can have
     a negative impact on memory consumption and allocation performance.
@@ -5561,7 +5667,7 @@ def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, 
 
 
 def is_mempool_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can directly access the memory pool of `target_device`.
+    """Check if ``peer_device`` can directly access the memory pool of ``target_device``.
 
     If mempool access is possible, it can be managed using :func:`set_mempool_access_enabled()`
     and :func:`is_mempool_access_enabled()`.
@@ -5579,7 +5685,7 @@ def is_mempool_access_supported(target_device: DeviceLike, peer_device: DeviceLi
 
 
 def is_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
-    """Check if `peer_device` can currently access the memory pool of `target_device`.
+    """Check if ``peer_device`` can currently access the memory pool of ``target_device``.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
     default CUDA allocators, use :func:`is_peer_access_enabled()`.
@@ -5600,7 +5706,7 @@ def is_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike
 
 
 def set_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
-    """Enable or disable access from `peer_device` to the memory pool of `target_device`.
+    """Enable or disable access from ``peer_device`` to the memory pool of ``target_device``.
 
     This applies to memory allocated using CUDA pooled allocators.  For memory allocated using
     default CUDA allocators, use :func:`set_peer_access_enabled()`.
@@ -5897,7 +6003,7 @@ def zeros(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Return a zero-initialized array
+    """Return a zero-initialized array.
 
     Args:
         shape: Array dimensions
@@ -5920,7 +6026,7 @@ def zeros(
 def zeros_like(
     src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Return a zero-initialized array with the same type and dimension of another array
+    """Return a zero-initialized array with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -5947,7 +6053,7 @@ def ones(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Return a one-initialized array
+    """Return a one-initialized array.
 
     Args:
         shape: Array dimensions
@@ -5966,7 +6072,7 @@ def ones(
 def ones_like(
     src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Return a one-initialized array with the same type and dimension of another array
+    """Return a one-initialized array with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -5990,7 +6096,7 @@ def full(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Return an array with all elements initialized to the given value
+    """Return an array with all elements initialized to the given value.
 
     Args:
         shape: Array dimensions
@@ -6054,7 +6160,7 @@ def full_like(
     requires_grad: bool | None = None,
     pinned: bool | None = None,
 ) -> warp.array:
-    """Return an array with all elements initialized to the given value with the same type and dimension of another array
+    """Return an array with all elements initialized to the given value with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -6077,7 +6183,7 @@ def full_like(
 def clone(
     src: warp.array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Clone an existing array, allocates a copy of the src memory
+    """Clone an existing array, allocating a copy of the src memory.
 
     Args:
         src: The source array to copy
@@ -6104,7 +6210,7 @@ def empty(
     pinned: bool = False,
     **kwargs,
 ) -> warp.array:
-    """Returns an uninitialized array
+    """Return an uninitialized array.
 
     Args:
         shape: Array dimensions
@@ -6132,7 +6238,7 @@ def empty(
 def empty_like(
     src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
 ) -> warp.array:
-    """Return an uninitialized array with the same type and dimension of another array
+    """Return an uninitialized array with the same type and dimension of another array.
 
     Args:
         src: The template array to use for shape, data type, and device
@@ -6170,7 +6276,7 @@ def from_numpy(
     device: DeviceLike | None = None,
     requires_grad: bool = False,
 ) -> warp.array:
-    """Returns a Warp array created from a NumPy array.
+    """Return a Warp array created from a NumPy array.
 
     Args:
         arr: The NumPy array providing the data to construct the Warp array.
@@ -6407,7 +6513,7 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
 
 
 class Launch:
-    """Represents all data required for a kernel launch so that launches can be replayed quickly.
+    """Represent all data required for a kernel launch so that launches can be replayed quickly.
 
     Users should not directly instantiate this class, instead use
     ``wp.launch(..., record_cmd=True)`` to record a launch.
@@ -6666,7 +6772,7 @@ def launch(
         stream: The stream to launch on.
         adjoint: Whether to run forward or backward pass (typically use ``False``).
         record_tape: When ``True``, the launch will be recorded the global
-          :class:`wp.Tape() <warp.Tape>` object when present.
+          :class:`warp.Tape` object when present.
         record_cmd: When ``True``, the launch will return a :class:`Launch`
           object. The launch will not occur until the user calls
           :meth:`Launch.launch()`.
@@ -7426,7 +7532,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
 
 def get_module_options(module: Any = None) -> dict[str, Any]:
-    """Returns a list of options for the current module."""
+    """Return a list of options for the current module."""
     if module is None:
         m = inspect.getmodule(inspect.stack()[1][0])
     else:
@@ -7606,6 +7712,13 @@ def assert_conditional_graph_support():
 
 
 def is_conditional_graph_supported() -> bool:
+    """Check whether conditional graph nodes are supported.
+
+    Conditional graph nodes require a CUDA driver 12.4+ and Warp to be built with CUDA Toolkit 12.4+.
+
+    Returns:
+        ``True`` if both the CUDA Toolkit and driver versions are at least 12.4, ``False`` otherwise.
+    """
     if runtime is None:
         init()
 
@@ -8176,7 +8289,7 @@ def type_str(t):
     elif t == Callable:
         return "Callable"
     elif isinstance(t, int):
-        return str(t)
+        return f"Literal[{t}]"
     elif isinstance(t, (list, tuple)):
         return "tuple[" + ", ".join(map(type_str, t)) + "]"
     elif isinstance(t, warp.array):
@@ -8259,7 +8372,7 @@ def resolve_exported_function_sig(f):
 
 
 def print_function(f, file, is_exported, noentry=False):  # pragma: no cover
-    """Writes a function definition to a file for use in reST documentation
+    """Write a function definition to a file for use in reST documentation.
 
     Args:
         f: The function being written
@@ -8422,9 +8535,134 @@ def export_functions_rst(file):  # pragma: no cover
 
 
 def export_stubs(file):  # pragma: no cover
-    """Generates stub file for auto-complete of builtin functions"""
+    """Generate stub file for auto-complete of builtin functions."""
+    # =========================================================================
+    # Step 1: Parse __init__.py to identify Python API imports and conflicts
+    # =========================================================================
+    # Use warp_home (defined at module level) for robust path resolution
+    init_path = os.path.join(warp_home, "__init__.py")
+    with open(init_path, encoding="utf-8") as f:
+        init_content = f.read()
 
-    # Add copyright notice
+    tree = ast.parse(init_content)
+
+    # Collect all imports: symbol_name -> (module_path, original_name, is_relative)
+    python_api_imports: dict[str, tuple[str, str, bool]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            is_relative = node.level > 0
+            for alias in node.names:
+                if alias.name == "*":
+                    # Expand wildcard imports to get actual symbol names
+                    try:
+                        if is_relative:
+                            full_module = "warp" + ("." + module if module else "")
+                        else:
+                            full_module = module
+                        mod = importlib.import_module(full_module)
+                        # Use __all__ if defined, otherwise public names
+                        names = getattr(mod, "__all__", [n for n in dir(mod) if not n.startswith("_")])
+                        for sym_name in names:
+                            python_api_imports[sym_name] = (module, sym_name, is_relative)
+                    except ImportError:
+                        pass
+                else:
+                    name = alias.asname if alias.asname else alias.name
+                    original = alias.name
+                    python_api_imports[name] = (module, original, is_relative)
+
+    # Identify conflicts: symbols in both Python API and kernel builtins
+    conflicts = set(python_api_imports.keys()) & set(builtin_functions.keys())
+
+    # Cache Python API objects for conflicting symbols (avoids duplicate imports)
+    python_api_objects: dict[str, Any] = {}
+    for name in conflicts:
+        module_path, original_name, is_relative = python_api_imports[name]
+        try:
+            if is_relative:
+                # Relative import from warp/__init__.py
+                # e.g., "from . import config" -> import warp, getattr(warp, "config")
+                abs_module = "warp" + ("." + module_path if module_path else "")
+                mod = importlib.import_module(abs_module)
+            else:
+                mod = importlib.import_module(module_path)
+            python_api_objects[name] = getattr(mod, original_name, None)
+        except (ImportError, AttributeError):
+            python_api_objects[name] = None
+
+    # Scalar type names (re-export always sufficient)
+    scalar_type_names = {t.__name__ for t in warp._src.types.scalar_and_bool_types}
+
+    def is_codegen_internal_class(obj) -> bool:
+        """Check if a class is primarily for internal code generation.
+
+        Classes with callable ctype() or cinit() methods are internal types
+        used during code generation, not meant for direct Python runtime use.
+        """
+        if not inspect.isclass(obj):
+            return False
+        ctype_attr = getattr(obj, "ctype", None)
+        cinit_attr = getattr(obj, "cinit", None)
+        return callable(ctype_attr) or callable(cinit_attr)
+
+    def prefers_builtin_stub(name: str) -> bool:
+        """Check if kernel builtin stubs should be preferred over Python API re-export.
+
+        Returns True for symbols where:
+        - Python API is a class (not a function) that's not a scalar type
+        - All kernel builtin overloads have export=False (kernel-only)
+        - Either the class is for internal code generation (e.g., tile),
+          or multiple overloads exist (constructor pattern, e.g., spatial_vector)
+        """
+        obj = python_api_objects.get(name)
+        if not inspect.isclass(obj) or name in scalar_type_names:
+            return False
+
+        builtin = builtin_functions.get(name)
+        if builtin is None or not hasattr(builtin, "overloads"):
+            return False
+
+        # All overloads must be kernel-only (not exported to Python runtime)
+        if not all(not overload.export for overload in builtin.overloads):
+            return False
+
+        # Prefer builtin if it's a codegen-internal class or has multiple constructor overloads
+        return is_codegen_internal_class(obj) or len(builtin.overloads) > 1
+
+    prefer_builtin = {name for name in conflicts if prefers_builtin_stub(name)}
+
+    def needs_merged_stubs(name: str) -> bool:
+        """Check if symbol needs merged @overload stubs (Python + kernel signatures)."""
+        obj = python_api_objects.get(name)
+        if obj is None or inspect.isclass(obj) or name in scalar_type_names:
+            return False
+
+        builtin = builtin_functions.get(name)
+        if builtin is None or builtin.hidden:
+            return False
+
+        # Compare parameter counts
+        try:
+            sig = inspect.signature(obj)
+            py_count = sum(
+                1
+                for p in sig.parameters.values()
+                if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            )
+        except (ValueError, TypeError):
+            return False
+
+        kernel_count = len(builtin.input_types or {})
+        return abs(py_count - kernel_count) > 1
+
+    # Categorize conflicts
+    function_conflicts = {name for name in conflicts if needs_merged_stubs(name)}
+    reexport_only = conflicts - function_conflicts - prefer_builtin
+
+    # =========================================================================
+    # Step 2: Write header
+    # =========================================================================
     print(
         """# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -8448,12 +8686,23 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
+    print("from collections.abc import Sequence", file=file)
     print("from typing import Any", file=file)
     print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
-    print("from typing import Sequence", file=file)
+    print("from typing import Literal", file=file)
     print("from typing import overload as over", file=file)
+    print(file=file)
+    # Import builtins with underscore prefix to avoid re-exporting (PEP 484).
+    # This is needed because warp._src.types.bool shadows Python's bool.
+    print("import builtins as _builtins", file=file)
+    print(file=file)
+
+    # Import type aliases needed for generic class definitions
+    print("from warp._src.types import Int as Int", file=file)
+    print("from warp._src.types import Float as Float", file=file)
+    print("from warp._src.types import Scalar as Scalar", file=file)
     print(file=file)
 
     # type hints, these need to be mirrored into the stubs file
@@ -8463,41 +8712,114 @@ def export_stubs(file):  # pragma: no cover
     print('DType = TypeVar("DType")', file=file)
     print('Shape = TypeVar("Shape")', file=file)
 
-    print("Vector = Generic[Length, Scalar]", file=file)
-    print("Matrix = Generic[Rows, Cols, Scalar]", file=file)
-    print("Quaternion = Generic[Float]", file=file)
-    print("Transformation = Generic[Float]", file=file)
-    print("Array = Generic[DType]", file=file)
-    print("FabricArray = Generic[DType]", file=file)
-    print("IndexedFabricArray = Generic[DType]", file=file)
-    print("Tile = Generic[DType, Shape]", file=file)
+    # Generic type stubs - must be proper class definitions, not type alias assignments.
+    # Using "class Foo(Generic[...]): ..." syntax makes these valid types for Mypy.
+    print("class Vector(Generic[Length, Scalar]): ...", file=file)
+    print("class Matrix(Generic[Rows, Cols, Scalar]): ...", file=file)
+    print("class Quaternion(Generic[Float]): ...", file=file)
+    print("class Transformation(Generic[Float]): ...", file=file)
+    print("class Array(Generic[DType]): ...", file=file)
+    print("class FabricArray(Generic[DType]): ...", file=file)
+    print("class IndexedFabricArray(Generic[DType]): ...", file=file)
+    print("class Tile(Generic[DType, Shape]): ...", file=file)
 
-    # prepend __init__.py
-    with open(os.path.join(os.path.dirname(file.name), "__init__.py")) as header_file:
-        # strip comment lines
-        lines = [line for line in header_file if not line.startswith("#")]
-        header = "".join(lines)
+    # =========================================================================
+    # Step 3: Copy __init__.py, but skip re-exports for function conflicts
+    # =========================================================================
+    # Pattern to match: "from module import name as name" or "from module import name"
+    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
 
-    print(header, file=file)
+    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
+    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
+    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
+
+    # Type aliases already imported in the header (skip to avoid duplicates)
+    header_imported_types = {"Int", "Float", "Scalar"}
+
+    init_lines = init_content.split("\n")
+    for line in init_lines:
+        if line.startswith("#"):
+            continue  # Skip comment lines
+
+        # Check if this line imports a symbol we handle specially
+        match = import_pattern.search(line)
+        if match:
+            original_name = match.group(1)
+            alias_name = match.group(2) if match.group(2) else original_name
+            if alias_name in function_conflicts:
+                # Skip this import - we'll generate merged stubs later
+                print(f"# Skipped: {line.strip()} (merged stubs generated below)", file=file)
+                continue
+            if alias_name in prefer_builtin:
+                # Skip this import - kernel builtin stubs are preferred
+                print(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)", file=file)
+                continue
+            if alias_name in class_stub_types:
+                # Skip this import - class stubs are generated below
+                continue
+            if alias_name in header_imported_types:
+                # Skip this import - already imported in header for generic class definitions
+                continue
+
+        print(line, file=file)
+
     print(file=file)
 
-    def add_builtin_function_stub(f):
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+    def get_return_type_str(f):
+        """Get the return type string for a builtin function."""
+        return_type = f.value_type
+        if f.value_func:
+            try:
+                return_type = f.value_func(None, None)
+            except Exception:
+                pass  # Keep f.value_type as fallback
+        return type_str(return_type)
 
-        return_str = ""
-
+    def add_builtin_function_stub(f, use_overload=True):
         if f.hidden:  # or f.generic:
             return
 
-        return_type = f.value_type
-        if f.value_func:
-            return_type = f.value_func(None, None)
-        if return_type:
-            return_str = " -> " + type_str(return_type)
+        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+        rt_str = get_return_type_str(f)
+        return_str = f" -> {rt_str}"
 
-        print("@over", file=file)
+        if use_overload:
+            print("@over", file=file)
         print(f"def {f.key}({args}){return_str}:", file=file)
         print(f'    """{f.doc}', file=file)
+        print('    """', file=file)
+        print("    ...\n\n", file=file)
+
+    def add_merged_builtin_function_stub(overloads):
+        """Generate a single stub with union return type for overloads with identical input_types.
+
+        This is used for functions like wp.tid() where the return type depends on
+        usage context (unpacking syntax) rather than input parameters, which type
+        checkers cannot distinguish between.
+        """
+        first = overloads[0]
+
+        # Warn if doc strings differ
+        if not all(f.doc == first.doc for f in overloads):
+            warp._src.utils.warn(
+                f"Merging overloads for '{first.key}' with differing docstrings. "
+                "Consider aligning docstrings for consistency.",
+                stacklevel=3,
+            )
+
+        # Collect unique return types from all overloads (preserving order)
+        seen = set()
+        return_types = []
+        for f in overloads:
+            rt_str = get_return_type_str(f)
+            if rt_str is not None and rt_str not in seen:
+                seen.add(rt_str)
+                return_types.append(rt_str)
+
+        args = ", ".join(f"{k}: {type_str(v)}" for k, v in first.input_types.items())
+        return_str = " -> " + " | ".join(return_types) if return_types else ""
+        print(f"def {first.key}({args}){return_str}:", file=file)
+        print(f'    """{first.doc}', file=file)
         print('    """', file=file)
         print("    ...\n\n", file=file)
 
@@ -8623,8 +8945,6 @@ def export_stubs(file):  # pragma: no cover
             cls = getattr(warp._src.types, f"vec{length}{suffix}")
             add_vector_type_stub(cls, "vector")
 
-        print(f"vec{length} = vec{length}f", file=file)
-
     # Matrix types.
     suffixes = ("h", "f", "d")
     for length in (2, 3, 4):
@@ -8633,15 +8953,11 @@ def export_stubs(file):  # pragma: no cover
             cls = getattr(warp._src.types, f"mat{shape}{suffix}")
             add_matrix_type_stub(cls, "matrix")
 
-        print(f"mat{shape} = mat{shape}f", file=file)
-
     # Quaternion types.
     suffixes = ("h", "f", "d")
     for suffix in suffixes:
         cls = getattr(warp._src.types, f"quat{suffix}")
         add_vector_type_stub(cls, "quaternion")
-
-    print("quat = quatf", file=file)
 
     # Transformation types.
     suffixes = ("h", "f", "d")
@@ -8649,14 +8965,94 @@ def export_stubs(file):  # pragma: no cover
         cls = getattr(warp._src.types, f"transform{suffix}")
         add_transform_type_stub(cls, "transformation")
 
-    print("transform = transformf", file=file)
+    # =========================================================================
+    # Step 4: Generate merged stubs for function conflicts
+    # =========================================================================
+    def format_annotation(ann) -> str:
+        """Format a type annotation for stubs, cleaning up module prefixes."""
+        # Handle string annotations directly (PEP 563)
+        if isinstance(ann, str):
+            s = ann
+        else:
+            s = inspect.formatannotation(ann)
+        # Clean up module prefixes
+        s = s.replace("warp._src.types.", "").replace("warp._src.context.", "")
+        s = s.replace("warp.", "").replace("typing.", "")
+        # NoneType -> None
+        s = s.replace("NoneType", "None")
+        # Avoid shadowing warp's bool type
+        s = re.sub(r"\bbool\b", "_builtins.bool", s)
+        return s
 
-    for g in builtin_functions.values():
-        if hasattr(g, "overloads"):
-            for f in g.overloads:
+    def format_signature(func) -> str | None:
+        """Format function signature for stubs with unquoted type annotations."""
+        try:
+            sig = str(inspect.signature(func))
+        except (ValueError, TypeError):
+            return None
+        # Remove quotes around type annotations (PEP 563 stringified annotations)
+        sig = re.sub(r": '([^']+)'", r": \1", sig)
+        sig = re.sub(r" -> '([^']+)'", r" -> \1", sig)
+        # Fix <class 'X'> -> X for type defaults
+        sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
+        # Clean up module prefixes and bool shadowing
+        return format_annotation(sig)
+
+    if function_conflicts:
+        print("\n# " + "=" * 70, file=file)
+        print("# Merged stubs for symbols with both Python API and kernel-scope versions", file=file)
+        print("# " + "=" * 70 + "\n", file=file)
+
+    for name in sorted(function_conflicts):
+        python_func = python_api_objects[name]
+        builtin = builtin_functions[name]
+
+        # Python API overload
+        if sig_str := format_signature(python_func):
+            doc = (python_func.__doc__ or "").strip().split("\n")[0] or "Python API version."
+            print(f'@over\ndef {name}{sig_str}:\n    """{doc}"""\n    ...\n', file=file)
+
+        # Kernel-scope overloads
+        for f in getattr(builtin, "overloads", [builtin]):
+            if not getattr(f, "hidden", False):
                 add_builtin_function_stub(f)
+
+    # =========================================================================
+    # Step 5: Generate stubs for non-conflicting builtins
+    # =========================================================================
+    for g in builtin_functions.values():
+        # Skip conflicts - already handled above
+        if g.key in reexport_only:
+            continue  # Python API re-export is sufficient
+        if g.key in function_conflicts:
+            continue  # Already generated merged stubs
+
+        if hasattr(g, "overloads"):
+            # Only use @overload decorator when there are multiple non-hidden overloads
+            non_hidden_overloads = [f for f in g.overloads if not f.hidden]
+
+            if len(non_hidden_overloads) > 1:
+                # Check if all overloads have identical input_types.
+                # This indicates overloads that differ only in return type based on
+                # usage context (e.g., wp.tid()), which type checkers can't distinguish.
+                # These should be merged into a single function with a union return type.
+                first = non_hidden_overloads[0]
+                first_inputs = tuple(sorted(first.input_types.items()))
+                all_same_inputs = all(
+                    tuple(sorted(f.input_types.items())) == first_inputs for f in non_hidden_overloads
+                )
+
+                if all_same_inputs:
+                    add_merged_builtin_function_stub(non_hidden_overloads)
+                    continue
+
+            # Otherwise emit separate @overload stubs as usual
+            use_overload = len(non_hidden_overloads) > 1
+            for f in non_hidden_overloads:
+                add_builtin_function_stub(f, use_overload=use_overload)
         elif isinstance(g, Function):
-            add_builtin_function_stub(g)
+            # Single function without overloads - no @overload decorator needed
+            add_builtin_function_stub(g, use_overload=False)
 
 
 def export_builtins(file: io.TextIOBase):  # pragma: no cover

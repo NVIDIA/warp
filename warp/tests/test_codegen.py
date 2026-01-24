@@ -467,6 +467,47 @@ def test_error_unmatched_arguments(test, device):
         wp.launch(kernel, dim=1, device=device)
 
 
+def test_error_kernel_return_value(test, device):
+    # kernels can return without a value
+    @wp.kernel
+    def f0(x: float):
+        return
+
+    wp.launch(f0, dim=1, inputs=[3.0], device=device)
+
+    # kernels can't return a value
+    @wp.kernel
+    def f1(x: float) -> float:
+        return x
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+        wp.launch(f1, dim=1, inputs=[3.0], device=device)
+
+    # types that have no C-equivalent can't be returned from kernels either
+    @wp.kernel
+    def f2(x: float) -> wp.vec4f:
+        return wp.vec4f(x)
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+        wp.launch(f2, dim=1, inputs=[3.0], device=device)
+
+    # also when the return type is not defined, no value can be returned
+    @wp.kernel
+    def f3(x: float):
+        return x
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+        wp.launch(f3, dim=1, inputs=[3.0], device=device)
+
+    # TODO: specifying a return type without returning a value is benign, but should be reported to avoid confusion
+    # @wp.kernel
+    # def f4(x: float) -> float:
+    #     return
+
+    # with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+    #     wp.launch(f4, dim=1, inputs=[3.0], device=device)
+
+
 def test_error_mutating_constant_in_dynamic_loop(test, device):
     @wp.kernel
     def dynamic_loop_kernel(n: int, input: wp.array(dtype=float)):
@@ -976,6 +1017,12 @@ add_function_test(
 )
 add_function_test(
     TestCodeGen, func=test_error_unmatched_arguments, name="test_error_unmatched_arguments", devices=devices
+)
+add_function_test(
+    TestCodeGen,
+    func=test_error_kernel_return_value,
+    name="test_error_kernel_return_value",
+    devices=devices,
 )
 add_function_test(
     TestCodeGen,

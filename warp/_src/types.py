@@ -54,9 +54,225 @@ Cols = TypeVar("Cols")
 DType = TypeVar("DType")
 Shape = TypeVar("Shape", bound=tuple[int, ...])
 
-Int = TypeVar("Int")
-Float = TypeVar("Float")
-Scalar = TypeVar("Scalar")
+
+# =============================================================================
+# Scalar types - defined early so TypeVars can reference them
+# =============================================================================
+
+
+class scalar_base:
+    def __init__(self, x=0):
+        self.value = x
+
+    def __bool__(self) -> builtins.bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __add__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.add(self, y)
+
+    def __radd__(self, y):
+        return warp.add(y, self)
+
+    def __sub__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.sub(self, y)
+
+    def __rsub__(self, y):
+        return warp.sub(y, self)
+
+    def __mul__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.mul(self, y)
+
+    def __rmul__(self, x):
+        return warp.mul(x, self)
+
+    def __truediv__(self, y):
+        if is_array(y):
+            return NotImplemented
+
+        return warp.div(self, y)
+
+    def __rtruediv__(self, x):
+        return warp.div(x, self)
+
+    def __mod__(self, x):
+        if is_array(x):
+            return NotImplemented
+
+        return warp.mod(self, x)
+
+    def __rmod__(self, x):
+        return warp.mod(x, self)
+
+    def __pos__(self):
+        return warp.pos(self)
+
+    def __neg__(self):
+        return warp.neg(self)
+
+
+class float_base(scalar_base):
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
+
+
+class int_base(scalar_base):
+    def __index__(self) -> int:
+        return int(self._type_(self.value).value)
+
+    def __str__(self) -> str:
+        return str(self._type_(self.value).value)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
+
+
+class bool:
+    """Boolean scalar type for use in Warp kernels and arrays."""
+
+    _length_ = 1
+    _type_ = ctypes.c_bool
+
+    def __init__(self, x=False):
+        self.value = x
+
+    def __bool__(self) -> builtins.bool:
+        return self.value != 0
+
+    def __float__(self) -> float:
+        return float(self.value != 0)
+
+    def __int__(self) -> int:
+        return int(self.value != 0)
+
+    def __str__(self) -> str:
+        return str(self.value != 0)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self!s})"
+
+
+class float16(float_base):
+    """16-bit half-precision floating-point scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+
+class float32(float_base):
+    """32-bit single-precision floating-point scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_float
+
+
+class float64(float_base):
+    """64-bit double-precision floating-point scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_double
+
+
+class int8(int_base):
+    """8-bit signed integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_int8
+
+
+class uint8(int_base):
+    """8-bit unsigned integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_uint8
+
+
+class int16(int_base):
+    """16-bit signed integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_int16
+
+
+class uint16(int_base):
+    """16-bit unsigned integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+
+class int32(int_base):
+    """32-bit signed integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_int32
+
+
+class uint32(int_base):
+    """32-bit unsigned integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_uint32
+
+
+class int64(int_base):
+    """64-bit signed integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_int64
+
+
+class uint64(int_base):
+    """64-bit unsigned integer scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_uint64
+
+
+# Scalar type tuples - defined here as canonical source, used by TypeVars below
+int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
+float_types = (float16, float32, float64)
+scalar_types = int_types + float_types
+scalar_and_bool_types = (*scalar_types, bool)
+
+# TypeVars with proper constraints now that scalar types are defined
+# Note: TypeVar constraints must be listed explicitly (Pyright doesn't support unpacking)
+# Keep these in sync with the tuples above when adding new scalar types
+Int = TypeVar("Int", int, int8, uint8, int16, uint16, int32, uint32, int64, uint64)
+Float = TypeVar("Float", float, float16, float32, float64)
+Scalar = TypeVar(
+    "Scalar",
+    int,
+    float,
+    int8,
+    uint8,
+    int16,
+    uint16,
+    int32,
+    uint32,
+    int64,
+    uint64,
+    float16,
+    float32,
+    float64,
+)
 
 
 class Vector(Generic[Length, Scalar]):
@@ -242,7 +458,7 @@ def flatten(value: Sequence) -> tuple[list, tuple[int, ...]]:
 
 
 class BuiltinOpDispatchKind(enum.Enum):
-    """Describes the kind of operation to perform."""
+    """Describe the kind of operation to perform."""
 
     DIRECT = 1  # Standard operation on the whole type.
     BROADCAST_SCALAR = 2  # Broadcasting operation with a scalar value.
@@ -333,6 +549,7 @@ def _rbinary_op(self, op, x, t, cw=True):
 
 @functools.cache
 def vector(length, dtype):
+    """Create a vector type with the given length and data type."""
     # canonicalize dtype
     if dtype is int:
         dtype = int32
@@ -546,6 +763,7 @@ def vector(length, dtype):
 
 @functools.cache
 def matrix(shape, dtype):
+    """Create a matrix type with the given shape and data type."""
     assert len(shape) == 2
 
     # canonicalize dtype
@@ -969,6 +1187,32 @@ def matrix(shape, dtype):
 
 
 def matrix_from_cols(*args: Sequence[Vector]):
+    """Construct a matrix with each vector argument as a column.
+
+    The resulting matrix has dimensions ``(vector_length, num_vectors)``, where
+    the i-th column of the matrix contains the elements of the i-th vector argument.
+
+    Args:
+        *args: Variable number of vectors to use as matrix columns.
+            All vectors must have the same length and dtype.
+
+    Returns:
+        A matrix with shape ``(vector_length, num_vectors)``.
+
+    Example:
+        .. code-block:: python
+
+            a = wp.vec3f(1.0, 2.0, 3.0)
+            b = wp.vec3f(4.0, 5.0, 6.0)
+            m = wp.matrix_from_cols(a, b)
+            # m is a 3x2 matrix:
+            # [[1.0, 4.0],
+            #  [2.0, 5.0],
+            #  [3.0, 6.0]]
+
+    See Also:
+        :func:`matrix_from_rows`
+    """
     if not all(is_vector(x) for x in args):
         raise RuntimeError("all arguments are expected to be vectors")
 
@@ -996,6 +1240,31 @@ def matrix_from_cols(*args: Sequence[Vector]):
 
 
 def matrix_from_rows(*args: Sequence[Vector]):
+    """Construct a matrix with each vector argument as a row.
+
+    The resulting matrix has dimensions ``(num_vectors, vector_length)``, where
+    the i-th row of the matrix contains the elements of the i-th vector argument.
+
+    Args:
+        *args: Variable number of vectors to use as matrix rows.
+            All vectors must have the same length and dtype.
+
+    Returns:
+        A matrix with shape ``(num_vectors, vector_length)``.
+
+    Example:
+        .. code-block:: python
+
+            a = wp.vec3f(1.0, 2.0, 3.0)
+            b = wp.vec3f(4.0, 5.0, 6.0)
+            m = wp.matrix_from_rows(a, b)
+            # m is a 2x3 matrix:
+            # [[1.0, 2.0, 3.0],
+            #  [4.0, 5.0, 6.0]]
+
+    See Also:
+        :func:`matrix_from_cols`
+    """
     if not all(is_vector(x) for x in args):
         raise RuntimeError("all arguments are expected to be vectors")
 
@@ -1027,169 +1296,9 @@ class void:
         pass
 
 
-class scalar_base:
-    def __init__(self, x=0):
-        self.value = x
-
-    def __bool__(self) -> builtins.bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def __add__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.add(self, y)
-
-    def __radd__(self, y):
-        return warp.add(y, self)
-
-    def __sub__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.sub(self, y)
-
-    def __rsub__(self, y):
-        return warp.sub(y, self)
-
-    def __mul__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.mul(self, y)
-
-    def __rmul__(self, x):
-        return warp.mul(x, self)
-
-    def __truediv__(self, y):
-        if is_array(y):
-            return NotImplemented
-
-        return warp.div(self, y)
-
-    def __rtruediv__(self, x):
-        return warp.div(x, self)
-
-    def __mod__(self, x):
-        if is_array(x):
-            return NotImplemented
-
-        return warp.mod(self, x)
-
-    def __rmod__(self, x):
-        return warp.mod(x, self)
-
-    def __pos__(self):
-        return warp.pos(self)
-
-    def __neg__(self):
-        return warp.neg(self)
-
-
-class float_base(scalar_base):
-    def __str__(self) -> str:
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self!s})"
-
-
-class int_base(scalar_base):
-    def __index__(self) -> int:
-        return int(self._type_(self.value).value)
-
-    def __str__(self) -> str:
-        return str(self._type_(self.value).value)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self!s})"
-
-
-class bool:
-    _length_ = 1
-    _type_ = ctypes.c_bool
-
-    def __init__(self, x=False):
-        self.value = x
-
-    def __bool__(self) -> builtins.bool:
-        return self.value != 0
-
-    def __float__(self) -> float:
-        return float(self.value != 0)
-
-    def __int__(self) -> int:
-        return int(self.value != 0)
-
-    def __str__(self) -> str:
-        return str(self.value != 0)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self!s})"
-
-
-class float16(float_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint16
-
-
-class float32(float_base):
-    _length_ = 1
-    _type_ = ctypes.c_float
-
-
-class float64(float_base):
-    _length_ = 1
-    _type_ = ctypes.c_double
-
-
-class int8(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int8
-
-
-class uint8(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint8
-
-
-class int16(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int16
-
-
-class uint16(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint16
-
-
-class int32(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int32
-
-
-class uint32(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint32
-
-
-class int64(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_int64
-
-
-class uint64(int_base):
-    _length_ = 1
-    _type_ = ctypes.c_uint64
-
-
 def quaternion(dtype=Any):
+    """Create a quaternion type with the given data type."""
+
     class quat_t(vector(length=4, dtype=dtype)):
         pass
         # def __init__(self, *args):
@@ -1206,18 +1315,20 @@ def quaternion(dtype=Any):
 
 
 class quath(quaternion(dtype=float16)):
-    pass
+    """Quaternion with float16 (half-precision) components for 3D rotations."""
 
 
 class quatf(quaternion(dtype=float32)):
-    pass
+    """Quaternion with float32 (single-precision) components for 3D rotations."""
 
 
 class quatd(quaternion(dtype=float64)):
-    pass
+    """Quaternion with float64 (double-precision) components for 3D rotations."""
 
 
 def transformation(dtype=Any):
+    """Create a rigid-body transformation type with the given data type."""
+
     class transform_t(vector(length=7, dtype=dtype)):
         _wp_init_from_components_sig_ = inspect.Signature(
             (
@@ -1298,207 +1409,207 @@ def transformation(dtype=Any):
 
 
 class transformh(transformation(dtype=float16)):
-    pass
+    """Rigid-body transformation (position + quaternion) with float16 components."""
 
 
 class transformf(transformation(dtype=float32)):
-    pass
+    """Rigid-body transformation (position + quaternion) with float32 components."""
 
 
 class transformd(transformation(dtype=float64)):
-    pass
+    """Rigid-body transformation (position + quaternion) with float64 components."""
 
 
 class vec2h(vector(length=2, dtype=float16)):
-    pass
+    """2D vector with float16 (half-precision) components."""
 
 
 class vec3h(vector(length=3, dtype=float16)):
-    pass
+    """3D vector with float16 (half-precision) components."""
 
 
 class vec4h(vector(length=4, dtype=float16)):
-    pass
+    """4D vector with float16 (half-precision) components."""
 
 
 class vec2f(vector(length=2, dtype=float32)):
-    pass
+    """2D vector with float32 (single-precision) components."""
 
 
 class vec3f(vector(length=3, dtype=float32)):
-    pass
+    """3D vector with float32 (single-precision) components."""
 
 
 class vec4f(vector(length=4, dtype=float32)):
-    pass
+    """4D vector with float32 (single-precision) components."""
 
 
 class vec2d(vector(length=2, dtype=float64)):
-    pass
+    """2D vector with float64 (double-precision) components."""
 
 
 class vec3d(vector(length=3, dtype=float64)):
-    pass
+    """3D vector with float64 (double-precision) components."""
 
 
 class vec4d(vector(length=4, dtype=float64)):
-    pass
+    """4D vector with float64 (double-precision) components."""
 
 
 class vec2b(vector(length=2, dtype=int8)):
-    pass
+    """2D vector with int8 (signed byte) components."""
 
 
 class vec3b(vector(length=3, dtype=int8)):
-    pass
+    """3D vector with int8 (signed byte) components."""
 
 
 class vec4b(vector(length=4, dtype=int8)):
-    pass
+    """4D vector with int8 (signed byte) components."""
 
 
 class vec2ub(vector(length=2, dtype=uint8)):
-    pass
+    """2D vector with uint8 (unsigned byte) components."""
 
 
 class vec3ub(vector(length=3, dtype=uint8)):
-    pass
+    """3D vector with uint8 (unsigned byte) components."""
 
 
 class vec4ub(vector(length=4, dtype=uint8)):
-    pass
+    """4D vector with uint8 (unsigned byte) components."""
 
 
 class vec2s(vector(length=2, dtype=int16)):
-    pass
+    """2D vector with int16 (signed short) components."""
 
 
 class vec3s(vector(length=3, dtype=int16)):
-    pass
+    """3D vector with int16 (signed short) components."""
 
 
 class vec4s(vector(length=4, dtype=int16)):
-    pass
+    """4D vector with int16 (signed short) components."""
 
 
 class vec2us(vector(length=2, dtype=uint16)):
-    pass
+    """2D vector with uint16 (unsigned short) components."""
 
 
 class vec3us(vector(length=3, dtype=uint16)):
-    pass
+    """3D vector with uint16 (unsigned short) components."""
 
 
 class vec4us(vector(length=4, dtype=uint16)):
-    pass
+    """4D vector with uint16 (unsigned short) components."""
 
 
 class vec2i(vector(length=2, dtype=int32)):
-    pass
+    """2D vector with int32 (signed integer) components."""
 
 
 class vec3i(vector(length=3, dtype=int32)):
-    pass
+    """3D vector with int32 (signed integer) components."""
 
 
 class vec4i(vector(length=4, dtype=int32)):
-    pass
+    """4D vector with int32 (signed integer) components."""
 
 
 class vec2ui(vector(length=2, dtype=uint32)):
-    pass
+    """2D vector with uint32 (unsigned integer) components."""
 
 
 class vec3ui(vector(length=3, dtype=uint32)):
-    pass
+    """3D vector with uint32 (unsigned integer) components."""
 
 
 class vec4ui(vector(length=4, dtype=uint32)):
-    pass
+    """4D vector with uint32 (unsigned integer) components."""
 
 
 class vec2l(vector(length=2, dtype=int64)):
-    pass
+    """2D vector with int64 (signed long) components."""
 
 
 class vec3l(vector(length=3, dtype=int64)):
-    pass
+    """3D vector with int64 (signed long) components."""
 
 
 class vec4l(vector(length=4, dtype=int64)):
-    pass
+    """4D vector with int64 (signed long) components."""
 
 
 class vec2ul(vector(length=2, dtype=uint64)):
-    pass
+    """2D vector with uint64 (unsigned long) components."""
 
 
 class vec3ul(vector(length=3, dtype=uint64)):
-    pass
+    """3D vector with uint64 (unsigned long) components."""
 
 
 class vec4ul(vector(length=4, dtype=uint64)):
-    pass
+    """4D vector with uint64 (unsigned long) components."""
 
 
 class mat22h(matrix(shape=(2, 2), dtype=float16)):
-    pass
+    """2x2 matrix with float16 (half-precision) components."""
 
 
 class mat33h(matrix(shape=(3, 3), dtype=float16)):
-    pass
+    """3x3 matrix with float16 (half-precision) components."""
 
 
 class mat44h(matrix(shape=(4, 4), dtype=float16)):
-    pass
+    """4x4 matrix with float16 (half-precision) components."""
 
 
 class mat22f(matrix(shape=(2, 2), dtype=float32)):
-    pass
+    """2x2 matrix with float32 (single-precision) components."""
 
 
 class mat33f(matrix(shape=(3, 3), dtype=float32)):
-    pass
+    """3x3 matrix with float32 (single-precision) components."""
 
 
 class mat44f(matrix(shape=(4, 4), dtype=float32)):
-    pass
+    """4x4 matrix with float32 (single-precision) components."""
 
 
 class mat22d(matrix(shape=(2, 2), dtype=float64)):
-    pass
+    """2x2 matrix with float64 (double-precision) components."""
 
 
 class mat33d(matrix(shape=(3, 3), dtype=float64)):
-    pass
+    """3x3 matrix with float64 (double-precision) components."""
 
 
 class mat44d(matrix(shape=(4, 4), dtype=float64)):
-    pass
+    """4x4 matrix with float64 (double-precision) components."""
 
 
 class spatial_vectorh(vector(length=6, dtype=float16)):
-    pass
+    """6D spatial vector with float16 components for rigid-body dynamics."""
 
 
 class spatial_vectorf(vector(length=6, dtype=float32)):
-    pass
+    """6D spatial vector with float32 components for rigid-body dynamics."""
 
 
 class spatial_vectord(vector(length=6, dtype=float64)):
-    pass
+    """6D spatial vector with float64 components for rigid-body dynamics."""
 
 
 class spatial_matrixh(matrix(shape=(6, 6), dtype=float16)):
-    pass
+    """6x6 spatial matrix with float16 components for rigid-body dynamics."""
 
 
 class spatial_matrixf(matrix(shape=(6, 6), dtype=float32)):
-    pass
+    """6x6 spatial matrix with float32 components for rigid-body dynamics."""
 
 
 class spatial_matrixd(matrix(shape=(6, 6), dtype=float64)):
-    pass
+    """6x6 spatial matrix with float64 components for rigid-body dynamics."""
 
 
 # built-in type aliases that default to 32bit precision
@@ -1513,11 +1624,6 @@ transform = transformf
 spatial_vector = spatial_vectorf
 spatial_matrix = spatial_matrixf
 
-
-int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
-float_types = (float16, float32, float64)
-scalar_types = int_types + float_types
-scalar_and_bool_types = (*scalar_types, bool)
 
 vector_types = (
     vec2b,
@@ -1888,6 +1994,7 @@ class pointer_t:
 
 
 def type_ctype(dtype):
+    """Return the ctypes type corresponding to a Warp dtype."""
     if dtype is float:
         return ctypes.c_float
     elif dtype is int:
@@ -1917,6 +2024,7 @@ def type_length(obj):
 
 
 def type_size(dtype):
+    """Return the number of elements in a type (1 for scalars, length for vectors/matrices)."""
     if dtype is float or dtype is int or isinstance(dtype, warp._src.codegen.Struct):
         return 1
     else:
@@ -1935,6 +2043,7 @@ _type_size_cache = {
 
 
 def type_size_in_bytes(dtype: type) -> int:
+    """Return the size in bytes of a Warp dtype."""
     size = _type_size_cache.get(dtype)
 
     if size is None:
@@ -2023,8 +2132,8 @@ def scalar_short_name(t):
     return None
 
 
-# converts any known type to a human readable string, good for error messages, reporting etc
 def type_repr(t) -> str:
+    """Convert a Warp type to a human-readable string representation."""
     if is_array(t):
         if hasattr(t, "device") and t.device is None:
             # array is used as a type annotation - display ndim instead of shape
@@ -2078,6 +2187,7 @@ def type_repr(t) -> str:
 
 
 def type_is_int(t):
+    """Return ``True`` if the type is an integer type."""
     if t is int:
         t = int32
 
@@ -2085,116 +2195,133 @@ def type_is_int(t):
 
 
 def type_is_float(t):
+    """Return ``True`` if the type is a floating-point type."""
     if t is float:
         t = float32
 
     return t in float_types
 
 
-# returns True if the passed *type* is a scalar
 def type_is_scalar(t):
+    """Return ``True`` if the type is a scalar (integer or floating-point)."""
     return type_is_int(t) or type_is_float(t)
 
 
-# returns True if the passed *type* is a vector
 def type_is_vector(t):
+    """Return ``True`` if the type is a vector type."""
     return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Vector
 
 
-# returns True if the passed *type* is a quaternion
 def type_is_quaternion(t):
+    """Return ``True`` if the type is a quaternion type."""
     return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Quaternion
 
 
-# returns True if the passed *type* is a matrix
 def type_is_matrix(t):
+    """Return ``True`` if the type is a matrix type."""
     return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Matrix
 
 
-# returns True if the passed *type* is a transformation
 def type_is_transformation(t):
+    """Return ``True`` if the type is a transformation type."""
     return isinstance(t, type) and getattr(t, "_wp_generic_type_hint_", None) is Transformation
 
 
 def type_is_composite(t):
+    """Return ``True`` if the type is a composite type (vector, matrix, quaternion, or transformation)."""
     return isinstance(t, type) and hasattr(t, "_wp_generic_type_hint_")
 
 
 value_types = (int, float, builtins.bool, *scalar_and_bool_types)
 
 
-# returns true for all value types (int, float, bool, scalars, vectors, matrices)
 def type_is_value(t: Any) -> builtins.bool:
+    """Return ``True`` if the type is a value type (scalar, vector, matrix, quaternion, or transformation)."""
     return t in value_types or type_is_composite(t)
 
 
 def type_is_struct(t: Any) -> builtins.bool:
+    """Return ``True`` if the type is a Warp struct type."""
     return isinstance(t, warp._src.codegen.Struct)
 
 
 def type_is_array(t: Any) -> builtins.bool:
+    """Return ``True`` if the type is one of the Warp array types."""
     return t in array_types
 
 
 def type_is_tuple(t: Any) -> builtins.bool:
+    """Return ``True`` if the type is a Warp tuple type."""
     return t is tuple_t
 
 
 def type_is_slice(t: Any) -> builtins.bool:
+    """Return ``True`` if the type is a Warp slice type."""
     return t is slice_t
 
 
-# equivalent of the above but for values
 def is_int(x: Any) -> builtins.bool:
+    """Return ``True`` if the value is an integer type instance."""
     return type_is_int(type(x))
 
 
 def is_float(x: Any) -> builtins.bool:
+    """Return ``True`` if the value is a floating-point type instance."""
     return type_is_float(type(x))
 
 
 def is_scalar(x: Any) -> builtins.bool:
+    """Return ``True`` if the value is a scalar type instance."""
     return type_is_scalar(type(x))
 
 
 def is_vector(x):
+    """Return ``True`` if the value is a vector instance."""
     return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Vector
 
 
 def is_quaternion(x):
+    """Return ``True`` if the value is a quaternion instance."""
     return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Quaternion
 
 
 def is_matrix(x):
+    """Return ``True`` if the value is a matrix instance."""
     return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Matrix
 
 
 def is_transformation(x):
+    """Return ``True`` if the value is a transformation instance."""
     return not isinstance(x, type) and getattr(x, "_wp_generic_type_hint_", None) is Transformation
 
 
 def is_composite(x):
+    """Return ``True`` if the value is a composite type instance (vector, matrix, quaternion, or transformation)."""
     return not isinstance(x, type) and hasattr(x, "_wp_generic_type_hint_")
 
 
 def is_value(x: Any) -> builtins.bool:
+    """Return ``True`` if the value is a value type instance (scalar, vector, matrix, quaternion, or transformation)."""
     return isinstance(x, value_types) or is_composite(x)
 
 
 def is_struct(x) -> builtins.bool:
+    """Return ``True`` if the value is a Warp struct instance."""
     return isinstance(x, warp._src.codegen.StructInstance)
 
 
 def is_array(x) -> builtins.bool:
-    """Return true if the passed *instance* is one of the array types."""
+    """Return ``True`` if the value is one of the Warp array type instances."""
     return isinstance(x, array_types)
 
 
 def is_tuple(x) -> builtins.bool:
+    """Return ``True`` if the value is a Warp tuple instance."""
     return isinstance(x, tuple_t)
 
 
 def is_slice(x) -> builtins.bool:
+    """Return ``True`` if the value is a Warp slice instance."""
     return isinstance(x, slice_t)
 
 
@@ -2223,9 +2350,9 @@ def scalars_equal_generic(a, b, match_generic=True):
             return True
         if a is Int and b is Int:
             return True
-        if a is Scalar and b in scalar_and_bool_types:
+        if a is Scalar and b in scalar_types:
             return True
-        if b is Scalar and a in scalar_and_bool_types:
+        if b is Scalar and a in scalar_types:
             return True
         if a is Scalar and b is Scalar:
             return True
@@ -2339,6 +2466,7 @@ def scalars_equal(a, b):
 
 
 def types_equal(a, b):
+    """Return ``True`` if two Warp types are equal."""
     return types_equal_generic(a, b, match_generic=False)
 
 
@@ -2357,7 +2485,7 @@ def strides_from_shape(shape: tuple, dtype):
 
 
 def check_array_shape(shape: tuple):
-    """Checks that the size in each dimension is positive and less than 2^31."""
+    """Check that the size in each dimension is positive and less than 2^31."""
 
     for dim_index, dim_size in enumerate(shape):
         if dim_size < 0:
@@ -2370,7 +2498,7 @@ def check_array_shape(shape: tuple):
 
 
 def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
-    """Get native array descriptor (array_t) from __array_interface__ or __cuda_array_interface__ dictionary"""
+    """Get native array descriptor (array_t) from ``__array_interface__`` or ``__cuda_array_interface__`` dictionary."""
 
     ptr = interface.get("data")[0]
     shape = interface.get("shape")
@@ -2463,7 +2591,7 @@ class array(Array[DType]):
         grad: array | None = None,
         requires_grad: builtins.bool = False,
     ):
-        """Constructs a new Warp array object
+        """Construct a new Warp array object.
 
         When the ``data`` argument is a valid list, tuple, or ndarray the array will be constructed from this object's data.
         For objects that are not stored sequentially in memory (e.g.: a list), then the data will first
@@ -3299,11 +3427,11 @@ class array(Array[DType]):
         }
 
     def mark_init(self):
-        """Resets this array's read flag"""
+        """Reset this array's read flag."""
         self._is_read = False
 
     def mark_read(self):
-        """Marks this array as having been read from in a kernel or recorded function on the tape."""
+        """Mark this array as having been read from in a kernel or recorded function on the tape."""
         # no additional checks required: it is always safe to set an array to READ
         self._is_read = True
 
@@ -3314,7 +3442,7 @@ class array(Array[DType]):
             parent = parent._ref
 
     def mark_write(self, **kwargs):
-        """Detect if we are writing to an array that has already been read from"""
+        """Detect if we are writing to an array that has already been read from."""
         if self._is_read:
             if "arg_name" and "kernel_name" and "filename" and "lineno" in kwargs:
                 print(
@@ -3326,7 +3454,7 @@ class array(Array[DType]):
                 )
 
     def zero_(self):
-        """Zeroes-out the array entries."""
+        """Zero out the array entries."""
         if self.is_contiguous:
             # simple memset is usually faster than generic fill
             self.device.memset(self.ptr, 0, self.size * type_size_in_bytes(self.dtype))
@@ -3410,14 +3538,14 @@ class array(Array[DType]):
         self.mark_init()
 
     def assign(self, src):
-        """Wraps ``src`` in an :class:`warp.array` if it is not already one and copies the contents to ``self``."""
+        """Wrap ``src`` in an :class:`warp.array` if it is not already one and copy the contents to ``self``."""
         if is_array(src):
             warp.copy(self, src)
         else:
             warp.copy(self, array(data=src, dtype=self.dtype, copy=False, device="cpu"))
 
     def numpy(self):
-        """Converts the array to a :class:`numpy.ndarray` (aliasing memory through the array interface protocol)
+        """Convert the array to a :class:`numpy.ndarray` (aliasing memory through the array interface protocol)
         If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be
         automatically performed to ensure that any outstanding work is completed.
         """
@@ -3470,7 +3598,7 @@ class array(Array[DType]):
         return p
 
     def list(self):
-        """Returns a flattened list of items in the array as a Python list."""
+        """Return a flattened list of items in the array as a Python list."""
         a = self.numpy()
 
         if isinstance(self.dtype, warp._src.codegen.Struct):
@@ -3490,7 +3618,7 @@ class array(Array[DType]):
             return a.flatten().tolist()
 
     def to(self, device, requires_grad=None):
-        """Returns a Warp array with this array's data moved to the specified device, no-op if already on device."""
+        """Return a Warp array with this array's data moved to the specified device, no-op if already on device."""
         device = warp.get_device(device)
         if self.device == device:
             return self
@@ -3498,7 +3626,7 @@ class array(Array[DType]):
             return warp.clone(self, device=device, requires_grad=requires_grad)
 
     def flatten(self):
-        """Returns a zero-copy view of the array collapsed to 1-D. Only supported for contiguous arrays."""
+        """Return a zero-copy view of the array collapsed to 1-D. Only supported for contiguous arrays."""
         if self.ndim == 1:
             return self
 
@@ -3523,7 +3651,7 @@ class array(Array[DType]):
         return a
 
     def reshape(self, shape):
-        """Returns a reshaped array. Only supported for contiguous arrays.
+        """Return a reshaped array. Only supported for contiguous arrays.
 
         Args:
             shape : An int or tuple of ints specifying the shape of the returned array.
@@ -3587,7 +3715,7 @@ class array(Array[DType]):
         return a
 
     def view(self, dtype):
-        """Returns a zero-copy view of this array's memory with a different data type.
+        """Return a zero-copy view of this array's memory with a different data type.
         The array's contents are not modified in any way.
 
         Args:
@@ -3680,7 +3808,7 @@ class array(Array[DType]):
         return a
 
     def contiguous(self):
-        """Returns a contiguous array with this array's data. No-op if array is already contiguous."""
+        """Return a contiguous array with this array's data. No-op if array is already contiguous."""
         if self.is_contiguous:
             return self
 
@@ -3689,7 +3817,7 @@ class array(Array[DType]):
         return a
 
     def transpose(self, axes=None):
-        """Returns an zero-copy view of the array with axes transposed.
+        """Return a zero-copy view of the array with axes transposed.
 
         Note: The transpose operation will return an array with a non-contiguous access pattern.
 
@@ -3770,7 +3898,7 @@ class array(Array[DType]):
         elif isinstance(self._allocator, warp._src.context.CudaMempoolAllocator):
             raise RuntimeError(
                 "Currently, IPC is only supported for arrays using the default memory allocator.\n"
-                "See https://nvidia.github.io/warp/modules/allocators.html for instructions on how to disable\n"
+                "See https://nvidia.github.io/warp/deep_dive/allocators.html for instructions on how to disable\n"
                 f"the mempool allocator on device {self.device}."
             )
 
@@ -3784,29 +3912,52 @@ class array(Array[DType]):
 
 # aliases for arrays with small dimensions
 def array1d(*args, **kwargs):
+    """Create or annotate a 1-dimensional :class:`warp.array`."""
     kwargs["ndim"] = 1
     return array(*args, **kwargs)
 
 
-# equivalent to calling array(..., ndim=2)
 def array2d(*args, **kwargs):
+    """Create or annotate a 2-dimensional :class:`warp.array`."""
     kwargs["ndim"] = 2
     return array(*args, **kwargs)
 
 
-# equivalent to calling array(..., ndim=3)
 def array3d(*args, **kwargs):
+    """Create or annotate a 3-dimensional :class:`warp.array`."""
     kwargs["ndim"] = 3
     return array(*args, **kwargs)
 
 
-# equivalent to calling array(..., ndim=4)
 def array4d(*args, **kwargs):
+    """Create or annotate a 4-dimensional :class:`warp.array`."""
     kwargs["ndim"] = 4
     return array(*args, **kwargs)
 
 
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
+    """Create an array from a raw memory pointer (deprecated).
+
+    .. deprecated::
+        Use the :class:`array` constructor with a ``ptr`` argument instead.
+
+    For OmniGraph applications, use :func:`from_omni_graph_ptr`.
+    To create an array from a C pointer, use the :class:`array` constructor
+    with the ``ptr`` argument as a ``uint64`` representing the memory address.
+
+    Args:
+        ptr: Pointer to existing memory allocation.
+        length: Number of elements in the array.
+        dtype: Data type of array elements.
+        shape: Shape of the array.
+        device: Device where the memory resides.
+
+    Returns:
+        A :class:`warp.array` wrapping the existing memory.
+
+    See Also:
+        :class:`array`, :func:`from_ipc_handle`
+    """
     warp._src.utils.warn(
         """This version of wp.from_ptr() is deprecated. OmniGraph
     applications should use from_omni_graph_ptr() instead. To create an array
@@ -4021,6 +4172,8 @@ def check_index_array(indices, expected_device):
 
 
 class indexedarray(noncontiguous_array_base):
+    """Array providing indexed access to a subset of elements in a source :class:`warp.array`."""
+
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
@@ -4124,24 +4277,25 @@ class indexedarray(noncontiguous_array_base):
 
 # aliases for indexedarrays with small dimensions
 def indexedarray1d(*args, **kwargs):
+    """Create or annotate a 1-dimensional :class:`warp.indexedarray`."""
     kwargs["ndim"] = 1
     return indexedarray(*args, **kwargs)
 
 
-# equivalent to calling indexedarray(..., ndim=2)
 def indexedarray2d(*args, **kwargs):
+    """Create or annotate a 2-dimensional :class:`warp.indexedarray`."""
     kwargs["ndim"] = 2
     return indexedarray(*args, **kwargs)
 
 
-# equivalent to calling indexedarray(..., ndim=3)
 def indexedarray3d(*args, **kwargs):
+    """Create or annotate a 3-dimensional :class:`warp.indexedarray`."""
     kwargs["ndim"] = 3
     return indexedarray(*args, **kwargs)
 
 
-# equivalent to calling indexedarray(..., ndim=4)
 def indexedarray4d(*args, **kwargs):
+    """Create or annotate a 4-dimensional :class:`warp.indexedarray`."""
     kwargs["ndim"] = 4
     return indexedarray(*args, **kwargs)
 
@@ -4257,10 +4411,12 @@ class tile(Tile[DType, Shape]):
 
 
 def type_is_tile(t):
+    """Return ``True`` if the type is a tile type."""
     return t is tile
 
 
 def is_tile(t):
+    """Return ``True`` if the value is a tile instance."""
     return isinstance(t, tile)
 
 
@@ -4268,6 +4424,8 @@ bvh_constructor_values = {"sah": 0, "median": 1, "lbvh": 2}
 
 
 class Bvh:
+    """Bounding Volume Hierarchy (BVH) for accelerated spatial queries."""
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.id = None
@@ -4345,7 +4503,7 @@ class Bvh:
             In a standard BVH, all objects share one global tree, so queries must traverse the entire hierarchy and filter
             results in user space. Grouped BVH introduces a group identifier for each object and makes sure that objects
             from the same group occupy an entire subtree whose root can be quickly identified by calling
-            :func:`bvh_get_group_root <warp._src.lang.bvh_get_group_root>`.
+            :func:`~warp._src.lang.bvh_get_group_root`.
 
             By starting traversal directly from a group's root node, queries are confined to that group's objects only,
             avoiding unnecessary intersection tests with other groups. This design significantly reduces query overhead
@@ -4509,6 +4667,8 @@ class Bvh:
 
 
 class Mesh:
+    """Triangle mesh for collision detection, ray casting, and spatial queries."""
+
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
     vars: ClassVar[dict[str, _Var]] = {
@@ -4718,10 +4878,12 @@ class Mesh:
 
 
 class Volume:
-    #: Enum value to specify nearest-neighbor interpolation during sampling
+    """Sparse volumetric data structure based on NanoVDB for efficient 3D sampling."""
+
     CLOSEST = constant(0)
-    #: Enum value to specify trilinear interpolation during sampling
+    """Enum value to specify nearest-neighbor interpolation during sampling"""
     LINEAR = constant(1)
+    """Enum value to specify trilinear interpolation during sampling"""
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -4893,7 +5055,7 @@ class Volume:
         """Linear part of the index-to-world transform"""
 
     def get_grid_info(self) -> Volume.GridInfo:
-        """Returns the metadata associated with this Volume"""
+        """Return the metadata associated with this Volume."""
 
         grid_index = ctypes.c_uint32(0)
         grid_count = ctypes.c_uint32(0)
@@ -5677,11 +5839,11 @@ class MeshQueryPoint:
         v (float32): Barycentric v coordinate of the closest point.
 
     See Also:
-        :func:`mesh_query_point <warp._src.lang.mesh_query_point>`,
-        :func:`mesh_query_point_no_sign <warp._src.lang.mesh_query_point_no_sign>`,
-        :func:`mesh_query_furthest_point_no_sign <warp._src.lang.mesh_query_furthest_point_no_sign>`,
-        :func:`mesh_query_point_sign_normal <warp._src.lang.mesh_query_point_sign_normal>`,
-        :func:`mesh_query_point_sign_winding_number <warp._src.lang.mesh_query_point_sign_winding_number>`
+        :func:`~warp._src.lang.mesh_query_point`,
+        :func:`~warp._src.lang.mesh_query_point_no_sign`,
+        :func:`~warp._src.lang.mesh_query_furthest_point_no_sign`,
+        :func:`~warp._src.lang.mesh_query_point_sign_normal`,
+        :func:`~warp._src.lang.mesh_query_point_sign_winding_number`
     """
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
@@ -5731,6 +5893,8 @@ class MeshQueryRay:
 
 
 class HashGrid:
+    """Hash-based spatial grid for accelerated neighbor queries on point data."""
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.id = None
@@ -5762,7 +5926,7 @@ class HashGrid:
         self.reserved = False
 
     def build(self, points, radius):
-        """Updates the hash grid data structure.
+        """Update the hash grid data structure.
 
         This method rebuilds the underlying datastructure and should be called any time the set
         of points changes.

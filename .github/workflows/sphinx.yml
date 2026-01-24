@@ -37,15 +37,13 @@ jobs:
         with:
           version: "0.8.23"
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
+        run: uv python install
       - name: Build Warp without CUDA Support
         run: |
           uv run build_lib.py
       - name: Build Sphinx documentation
         run: |
-          uv run --extra docs build_docs.py --quick
+          uv run --extra docs build_docs.py
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

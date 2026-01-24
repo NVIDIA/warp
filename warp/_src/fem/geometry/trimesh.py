@@ -39,6 +39,8 @@ _wp_module_name_ = "warp.fem.geometry.trimesh"
 
 @wp.struct
 class TrimeshCellArg:
+    """Arguments for cell-related device functions."""
+
     tri_vertex_indices: wp.array2d(dtype=int)
 
     # for global cell lookup
@@ -47,13 +49,15 @@ class TrimeshCellArg:
 
 @wp.struct
 class TrimeshSideArg:
+    """Arguments for side-related device functions."""
+
     cell_arg: TrimeshCellArg
     edge_vertex_indices: wp.array(dtype=wp.vec2i)
     edge_tri_indices: wp.array(dtype=wp.vec2i)
 
 
 class Trimesh(Geometry):
-    """Triangular mesh geometry"""
+    """Triangular mesh geometry."""
 
     def __init__(
         self,
@@ -62,14 +66,13 @@ class Trimesh(Geometry):
         build_bvh: bool = False,
         temporary_store: Optional[TemporaryStore] = None,
     ):
-        """
-        Constructs a D-dimensional triangular mesh.
+        """Construct a D-dimensional triangular mesh.
 
         Args:
             tri_vertex_indices: warp array of shape (num_tris, 3) containing vertex indices for each tri
             positions: warp array of shape (num_vertices, D) containing the position of each vertex
             temporary_store: shared pool from which to allocate temporary arrays
-            build_bvh: Whether to also build the triangle BVH, which is necessary for the global `fem.lookup` operator to function without initial guess
+            build_bvh: Whether to also build the triangle BVH, which is necessary for the global ``fem.lookup`` operator to function without initial guess
         """
 
         self.tri_vertex_indices = tri_vertex_indices
@@ -95,33 +98,43 @@ class Trimesh(Geometry):
             self.build_bvh(self.positions.device)
 
     def cell_count(self):
+        """Number of cells in the mesh."""
         return self.tri_vertex_indices.shape[0]
 
     def vertex_count(self):
+        """Number of vertices in the mesh."""
         return self.positions.shape[0]
 
     def side_count(self):
+        """Number of sides in the mesh."""
         return self._edge_vertex_indices.shape[0]
 
     def boundary_side_count(self):
+        """Number of boundary sides in the mesh."""
         return self._boundary_edge_indices.shape[0]
 
     def reference_cell(self) -> Element:
+        """Reference element for mesh cells."""
         return Element.TRIANGLE
 
     def reference_side(self) -> Element:
+        """Reference element for mesh sides."""
         return Element.LINE_SEGMENT
 
     @property
     def edge_tri_indices(self) -> wp.array:
+        """Triangle indices for each edge."""
         return self._edge_tri_indices
 
     @property
     def edge_vertex_indices(self) -> wp.array:
+        """Vertex indices for each edge."""
         return self._edge_vertex_indices
 
     @wp.struct
     class SideIndexArg:
+        """Arguments for side-index device functions."""
+
         boundary_edge_indices: wp.array(dtype=int)
 
     def _fill_cell_topo_arg(self, args: TrimeshCellArg, device):
@@ -134,14 +147,17 @@ class Trimesh(Geometry):
         args.edge_tri_indices = self._edge_tri_indices.to(device)
 
     def fill_cell_arg(self, args: TrimeshCellArg, device):
+        """Fill the arguments to be passed to cell-related device functions."""
         self._fill_cell_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
 
     def fill_side_arg(self, args: TrimeshSideArg, device):
+        """Fill the arguments to be passed to side-related device functions."""
         self._fill_side_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
 
     def fill_side_index_arg(self, args: SideIndexArg, device):
+        """Fill the arguments to be passed to side-index device functions."""
         args.boundary_edge_indices = self._boundary_edge_indices.to(device)
 
     @wp.func
@@ -388,10 +404,12 @@ class Trimesh(Geometry):
 
     @wp.func
     def cell_bvh_id(cell_arg: Any):
+        """Return the BVH identifier for the mesh cells."""
         return cell_arg.topology.tri_bvh
 
     @wp.func
     def cell_bounds(cell_arg: Any, cell_index: ElementIndex):
+        """Return the axis-aligned bounds of a cell."""
         p0 = cell_arg.positions[cell_arg.topology.tri_vertex_indices[cell_index, 0]]
         p1 = cell_arg.positions[cell_arg.topology.tri_vertex_indices[cell_index, 1]]
         p2 = cell_arg.positions[cell_arg.topology.tri_vertex_indices[cell_index, 2]]
@@ -400,6 +418,7 @@ class Trimesh(Geometry):
 
     @wp.func
     def cell_position(args: Any, s: Sample):
+        """Return the world position of a cell sample point."""
         tri_idx = args.topology.tri_vertex_indices[s.element_index]
         return (
             s.element_coords[0] * args.positions[tri_idx[0]]
@@ -409,6 +428,7 @@ class Trimesh(Geometry):
 
     @wp.func
     def cell_deformation_gradient(args: Any, s: Sample):
+        """Return the deformation gradient for a cell sample."""
         tri_idx = args.topology.tri_vertex_indices[s.element_index]
         p0 = args.positions[tri_idx[0]]
         p1 = args.positions[tri_idx[1]]
@@ -417,6 +437,7 @@ class Trimesh(Geometry):
 
     @wp.func
     def cell_closest_point(args: Any, tri_index: ElementIndex, pos: Any):
+        """Return the closest point on a cell to a world position."""
         vidx = args.topology.tri_vertex_indices[tri_index]
         p0 = args.positions[vidx[0]]
 
@@ -429,6 +450,7 @@ class Trimesh(Geometry):
 
     @wp.func
     def side_position(args: Any, s: Sample):
+        """Return the world position of a side sample point."""
         edge_idx = args.topology.edge_vertex_indices[s.element_index]
         return (1.0 - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[0] * args.positions[
             edge_idx[1]
@@ -436,6 +458,7 @@ class Trimesh(Geometry):
 
     @wp.func
     def side_deformation_gradient(args: Any, s: Sample):
+        """Return the deformation gradient for a side sample."""
         edge_idx = args.topology.edge_vertex_indices[s.element_index]
         v0 = args.positions[edge_idx[0]]
         v1 = args.positions[edge_idx[1]]
@@ -443,6 +466,7 @@ class Trimesh(Geometry):
 
     @wp.func
     def side_closest_point(args: Any, side_index: ElementIndex, pos: Any):
+        """Return the closest point on a side to a world position."""
         edge_idx = args.topology.edge_vertex_indices[side_index]
         p0 = args.positions[edge_idx[0]]
 
@@ -454,19 +478,23 @@ class Trimesh(Geometry):
 
     @wp.func
     def side_inner_cell_index(arg: Any, side_index: ElementIndex):
+        """Return the inner cell index for a side."""
         return arg.topology.edge_tri_indices[side_index][0]
 
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
+        """Return the outer cell index for a side."""
         return arg.topology.edge_tri_indices[side_index][1]
 
     @wp.func
     def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Coords):
+        """Return inner-cell coordinates corresponding to side coordinates."""
         inner_cell_index = Trimesh.side_inner_cell_index(args, side_index)
         return Trimesh._edge_to_tri_coords(args.topology, side_index, inner_cell_index, side_coords)
 
     @wp.func
     def side_outer_cell_coords(args: Any, side_index: ElementIndex, side_coords: Coords):
+        """Return outer-cell coordinates corresponding to side coordinates."""
         outer_cell_index = Trimesh.side_outer_cell_index(args, side_index)
         return Trimesh._edge_to_tri_coords(args.topology, side_index, outer_cell_index, side_coords)
 
@@ -477,17 +505,22 @@ class Trimesh(Geometry):
         tri_index: ElementIndex,
         tri_coords: Coords,
     ):
+        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
         return Trimesh._tri_to_edge_coords(args.topology, side_index, tri_index, tri_coords)
 
 
 @wp.struct
 class Trimesh2DCellArg:
+    """Arguments for cell-related device functions."""
+
     topology: TrimeshCellArg
     positions: wp.array(dtype=wp.vec2)
 
 
 @wp.struct
 class Trimesh2DSideArg:
+    """Arguments for side-related device functions."""
+
     topology: TrimeshSideArg
     positions: wp.array(dtype=wp.vec2)
 
@@ -501,6 +534,7 @@ class Trimesh2D(Trimesh):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return Trimesh2DCellArg(side_arg.topology.cell_arg, side_arg.positions)
 
     @wp.kernel
@@ -533,12 +567,16 @@ class Trimesh2D(Trimesh):
 
 @wp.struct
 class Trimesh3DCellArg:
+    """Arguments for cell-related device functions."""
+
     topology: TrimeshCellArg
     positions: wp.array(dtype=wp.vec3)
 
 
 @wp.struct
 class Trimesh3DSideArg:
+    """Arguments for side-related device functions."""
+
     topology: TrimeshSideArg
     positions: wp.array(dtype=wp.vec3)
 
@@ -552,6 +590,7 @@ class Trimesh3D(Trimesh):
 
     @wp.func
     def side_to_cell_arg(side_arg: SideArg):
+        """Return the cell argument associated with a side argument."""
         return Trimesh3DCellArg(side_arg.topology.cell_arg, side_arg.positions)
 
     @wp.kernel

@@ -236,11 +236,22 @@ The documentation can then be built by running the following from the project ro
 .. code-block:: bash
 
     python -m pip install -e .[docs]
-    python build_docs.py --quick
+    python build_docs.py
 
-The ``-quick`` flag skip running the `doctest tests <https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html>`__,
-which take some time to run. If your changes modify core library functionality, it can be a good idea to run ``build_docs.py``
-without the ``-quick`` flag to ensure that the documentation code snippets are still up to date.
+The default behavior skips running the
+`doctest tests <https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html>`__,
+which take approximately 2 minutes to run.
+If your changes modify core library functionality, it can be a good idea to run ``build_docs.py``
+with the ``--doctest`` flag to ensure that the documentation code snippets are still up to date.
+The ``--no-html`` flag can also be used to skip building the HTML documentation, e.g.
+
+.. code-block:: bash
+
+    # Run only the doctest tests
+    python build_docs.py --no-html --doctest
+
+    # Build the HTML documentation AND run the doctest tests
+    python build_docs.py --doctest
 
 Running ``build_docs.py`` also regenerates both the stub file (``warp/__init__.pyi``) and the reStructuredText files for the
 reference pages. After building the documentation, it is recommended to run a ``git status`` to

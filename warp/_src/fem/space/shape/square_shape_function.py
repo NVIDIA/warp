@@ -30,19 +30,21 @@ _wp_module_name_ = "warp.fem.space.shape.square_shape_function"
 
 
 class SquareShapeFunction(ShapeFunction):
+    """Base class for shape functions defined on quadrilateral (square) elements."""
+
     VERTEX = 0
     EDGE_X = 1
     EDGE_Y = 2
     INTERIOR = 3
 
     VERTEX_NODE_COUNT: int
-    """Number of shape function nodes per vertex"""
+    """Number of shape function nodes per vertex."""
 
     EDGE_NODE_COUNT: int
-    """Number of shape function nodes per triangle edge (excluding vertex nodes)"""
+    """Number of shape function nodes per square edge (excluding vertex nodes)."""
 
     INTERIOR_NODE_COUNT: int
-    """Number of shape function nodes per triangle (excluding edge and vertex nodes)"""
+    """Number of shape function nodes per square (excluding edge and vertex nodes)."""
 
     @wp.func
     def _vertex_coords_f(vidx_in_cell: int):
@@ -52,6 +54,8 @@ class SquareShapeFunction(ShapeFunction):
 
 
 class SquareBipolynomialShapeFunctions(SquareShapeFunction):
+    """Bipolynomial (tensor-product Lagrange) shape functions on quadrilateral elements."""
+
     def __init__(self, degree: int, family: Polynomial):
         self.family = family
 
@@ -614,6 +618,8 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
 
 
 class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
+    """Non-conforming polynomial shape functions on quadrilateral elements using embedded triangles."""
+
     # embeds the largest equilateral triangle centered at (0.5, 0.5) into the reference square
     _tri_height = 0.75
     _tri_side = 2.0 / math.sqrt(3.0) * _tri_height
@@ -724,6 +730,8 @@ class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
 
 
 class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
+    """Nédélec first-kind (edge) shape functions on quadrilateral elements for H(curl) spaces."""
+
     value = ShapeFunction.Value.CovariantVector
 
     def __init__(self, degree: int):
@@ -826,6 +834,8 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
 
 
 class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
+    """Raviart-Thomas (face) shape functions on quadrilateral elements for H(div) spaces."""
+
     value = ShapeFunction.Value.ContravariantVector
 
     def __init__(self, degree: int):

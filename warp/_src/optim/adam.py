@@ -118,6 +118,11 @@ class Adam:
         self.t = 0
 
     def set_params(self, params):
+        """Set parameters to optimize and allocate moment buffers.
+
+        Args:
+            params: List of :class:`warp.array` objects to optimize, or ``None``.
+        """
         self.params = params
         if params is not None and isinstance(params, list) and len(params) > 0:
             if len(self.m) != len(params):
@@ -142,6 +147,7 @@ class Adam:
                     self.v[i] = wp.zeros(shape=param.shape, dtype=dtype, device=param.device)
 
     def reset_internal_state(self):
+        """Reset moment buffers and timestep to zero."""
         for m_i in self.m:
             m_i.zero_()
         for v_i in self.v:
@@ -149,6 +155,11 @@ class Adam:
         self.t = 0
 
     def step(self, grad):
+        """Apply one Adam step using the provided gradients.
+
+        Args:
+            grad: List of gradient arrays matching ``params``.
+        """
         assert self.params is not None
         for i in range(len(self.params)):
             Adam.step_detail(
@@ -158,6 +169,19 @@ class Adam:
 
     @staticmethod
     def step_detail(g, m, v, lr, beta1, beta2, t, eps, params):
+        """Apply an Adam update to a single parameter array.
+
+        Args:
+            g: Gradient array.
+            m: First-moment buffer.
+            v: Second-moment buffer.
+            lr: Learning rate.
+            beta1: Exponential decay for the first moment.
+            beta2: Exponential decay for the second moment.
+            t: Current step index.
+            eps: Numerical stability term.
+            params: Parameter array to update in-place.
+        """
         assert params.dtype == g.dtype
         assert params.shape == g.shape
         kernel_inputs = [g, m, v, lr, beta1, beta2, t, eps, params]

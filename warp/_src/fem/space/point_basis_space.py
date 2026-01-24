@@ -35,7 +35,7 @@ from .topology import SpaceTopology
 
 
 class UnstructuredPointTopology(SpaceTopology):
-    """Topology for unstructured points defined from quadrature formula. See :class:`PointBasisSpace`"""
+    """Topology for unstructured points defined from quadrature formula. See :class:`PointBasisSpace`."""
 
     _dynamic_attribute_constructors: ClassVar = {
         "TopologyArg": lambda obj: obj._make_topology_arg(),
@@ -124,6 +124,20 @@ class UnstructuredPointTopology(SpaceTopology):
 
 
 class PointBasisSpace(BasisSpace):
+    """Unstructured basis space with radial basis kernel functions.
+
+    This basis space places nodes at quadrature point locations and uses
+    radial kernel functions (defaulting to Dirac delta) to define the basis.
+    Useful for particle-in-cell (PIC) methods and meshless discretizations.
+
+    The kernel function receives the squared distance from the sample point
+    to each node center, allowing for smooth interpolation kernels like
+    Gaussian or spline-based functions.
+
+    See Also:
+        :class:`BasisSpace`, :class:`PicQuadrature`
+    """
+
     _dynamic_attribute_constructors: ClassVar = {
         "ValueStruct": lambda obj: obj._make_value_struct(),
         "squared_distance": lambda obj: obj._make_squared_distance(),
@@ -139,8 +153,9 @@ class PointBasisSpace(BasisSpace):
         distance_space: str = "reference",
         max_nodes_per_element: int = -1,
     ):
-        """
-        An unstructured :class:`BasisSpace` with radial basis kernels (by default, the Dirac delta function)
+        """Create a point basis space with radial basis kernels.
+
+        By default uses the Dirac delta function as the kernel.
 
         Args:
             quadrature: Quadrature formula defining the node locations and quadrature weights
@@ -186,10 +201,12 @@ class PointBasisSpace(BasisSpace):
 
     @property
     def name(self):
+        """Unique name of the basis space."""
         return f"{self._topology.name}_{self.kernel_func.key}_{self._distance_space}"
 
     @property
     def value(self) -> ShapeFunction.Value:
+        """Value type of the basis space."""
         return ShapeFunction.Value.Scalar
 
     def _make_value_struct(self):
@@ -210,15 +227,20 @@ class PointBasisSpace(BasisSpace):
 
     @property
     def BasisArg(self) -> "PointBasisSpace.BasisArg":
+        """Argument structure for basis-related device functions."""
         return self.ValueStruct
 
     def fill_basis_arg(self, arg: "PointBasisSpace.BasisArg", device):
+        """Fill basis arguments for device functions."""
         arg.assign(self._kernel_arg)
 
     def basis_arg_value(self, device) -> "PointBasisSpace.BasisArg":
+        """Return the basis argument structure for device functions."""
         return self._kernel_arg
 
     def make_node_coords_in_element(self):
+        """Create a device function returning node coordinates within an element."""
+
         @cache.dynamic_func(suffix=self.name)
         def node_coords_in_element(
             elt_arg: self._quadrature.domain.ElementArg,
@@ -235,6 +257,8 @@ class PointBasisSpace(BasisSpace):
         return node_coords_in_element
 
     def make_node_quadrature_weight(self):
+        """Create a device function returning node quadrature weights."""
+
         @cache.dynamic_func(
             suffix=self.name,
         )
@@ -312,6 +336,8 @@ class PointBasisSpace(BasisSpace):
         return squared_distance_gradient_world
 
     def make_element_inner_weight(self):
+        """Create a device function returning inner element shape weights."""
+
         @cache.dynamic_func(
             suffix=self.name,
             code_transformers=[cache.ExpandStarredArgumentStruct({"basis_arg": self.ValueStruct})],
@@ -338,6 +364,7 @@ class PointBasisSpace(BasisSpace):
         return element_inner_weight
 
     def make_element_inner_weight_gradient(self):
+        """Create a device function returning gradients of inner element weights."""
         if wp.static(self.kernel_grad_func is None):
             gradient_vec = cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=float)
 
@@ -385,12 +412,16 @@ class PointBasisSpace(BasisSpace):
         return element_inner_weight_gradient
 
     def make_element_outer_weight(self):
+        """Create a device function returning outer element shape weights."""
         return self.make_element_inner_weight()
 
     def make_element_outer_weight_gradient(self):
+        """Create a device function returning gradients of outer element weights."""
         return self.make_element_inner_weight_gradient()
 
     def make_trace_node_quadrature_weight(self, trace_basis):
+        """Create a device function returning trace node quadrature weights."""
+
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(
             elt_arg: trace_basis.geometry.SideArg,

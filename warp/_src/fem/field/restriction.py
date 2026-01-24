@@ -21,7 +21,7 @@ _wp_module_name_ = "warp.fem.field.restriction"
 
 
 class FieldRestriction:
-    """Restriction of a discrete field to a given GeometryDomain"""
+    """Restriction of a discrete field to a given :class:`~warp.fem.GeometryDomain`."""
 
     def __init__(self, space_restriction: SpaceRestriction, field: DiscreteField):
         if field.space.dimension - 1 == space_restriction.space_topology.dimension:
