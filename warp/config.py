@@ -190,14 +190,14 @@ if each nested loop is below the ``max_unroll`` threshold.
 This setting can be overridden at the module level by setting the ``"max_unroll"`` module option.
 """
 
-enable_tiles_in_stack_memory: _Optional[bool] = None
+enable_tiles_in_stack_memory: _Optional[bool] = True
 """Use stack memory instead of static memory for tile allocations on the CPU.
 
 Static memory in kernels is not well supported on some architectures (notably AArch64). We work
 around it by reserving stack memory on kernel entry and pointing a reserved callee-saved
 register to it (AArch64) or a single static pointer (x86-64).
 
-When set to ``None`` (the default), this flag automatically enables stack memory on ``aarch64``
+When set to ``None``, this flag automatically enables stack memory on ``aarch64``
 platforms (Linux ARM) and disables it on other architectures. To explicitly enable or disable
 this behavior regardless of architecture, set this flag to ``True`` or ``False``.
 """

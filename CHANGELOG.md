@@ -13,6 +13,8 @@
 - Rename all `build_lib.py` CLI flags to use kebab-case for consistency (e.g., `--cuda_path` to `--cuda-path`,
   `--llvm_source_path` to `--llvm-source-path`). Rename `--libmathdx` to `--use-libmathdx` for clarity.
 - Permit constant arguments in `wp.tile_map()` ([GH-1136](https://github.com/NVIDIA/warp/issues/1136)).
+- Enable "shared" tile allocations on the stack for all CPU architectures, by defaulting
+  `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
 
 ### Fixed
 
