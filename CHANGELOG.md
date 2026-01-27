@@ -6,6 +6,8 @@
 
 ### Removed
 
+- Remove deprecated support for constructing matrices from vectors via `wp.matrix()` at the Python and kernel scopes.
+
 ### Deprecated
 
 ### Changed

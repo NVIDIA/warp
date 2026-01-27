@@ -831,13 +831,10 @@ def matrix(shape, dtype):
                 for i in range(self._length_):
                     super().__setitem__(i, mat_t.scalar_import(args[i]))
             elif num_args == self._shape_[0]:
-                # row vectors
                 if any(type_is_vector(x) for x in args):
-                    warp.utils.warn(
-                        "In the future, the matrix constructor won't support taking row vectors as input arguments. "
-                        "Use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead.",
-                        DeprecationWarning,
-                        stacklevel=2,
+                    # row vectors
+                    raise TypeError(
+                        "Passing vectors to `wp.matrix()` isn't supported, use `wp.matrix_from_rows()` or `wp.matrix_from_cols()` instead."
                     )
 
                 for i, row in enumerate(args):
