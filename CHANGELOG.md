@@ -38,6 +38,7 @@
 - Fix reporting of returning a value from a kernel ([GH-1109](https://github.com/NVIDIA/warp/issues/1109)).
 - Fix JAX FFI multi-gpu graph caching ([GH-1181](https://github.com/NVIDIA/warp/pull/1181)).
 - Fix tile * constant multiplication when one operand is a vector or matrix type ([GH-1175](https://github.com/NVIDIA/warp/issues/1175)).
+- Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
 
 ### Documentation
 
