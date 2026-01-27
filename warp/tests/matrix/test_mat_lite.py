@@ -24,11 +24,11 @@ mat32d = wp.types.matrix(shape=(3, 2), dtype=wp.float64)
 @wp.kernel
 def test_matrix_constructor_value_func():
     a = wp.mat22()
-    b = wp.types.matrix(a, shape=(2, 2))
+    b = wp.matrix(a, shape=(2, 2))
     c = mat32d()
     d = mat32d(c, shape=(3, 2))
     e = mat32d(wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0))
-    f = mat32d(
+    f = wp.matrix_from_rows(
         wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
         wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
     )

@@ -109,7 +109,7 @@ def test_operators_vec3():
     col1 = vec3(0.0, 2.0, 0.0)
     col2 = vec3(0.0, 0.0, 3.0)
 
-    m = mat33(col0, col1, col2)
+    m = wp.matrix_from_cols(col0, col1, col2)
 
     expect_eq(m * vec3(1.0, 0.0, 0.0), col0)
     expect_eq(m * vec3(0.0, 1.0, 0.0), col1)
@@ -134,7 +134,7 @@ def test_operators_vec4():
     col2 = vec4(0.0, 0.0, 3.0, 0.0)
     col3 = vec4(0.0, 0.0, 0.0, 4.0)
 
-    m = mat44(col0, col1, col2, col3)
+    m = wp.matrix_from_cols(col0, col1, col2, col3)
 
     expect_eq(m * vec4(1.0, 0.0, 0.0, 0.0), col0)
     expect_eq(m * vec4(0.0, 1.0, 0.0, 0.0), col1)
