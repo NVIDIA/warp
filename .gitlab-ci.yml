@@ -412,7 +412,7 @@ linux-x86_64-blackwell test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu12 --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - arch/x86_64
     - gpu/B40
