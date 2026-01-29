@@ -6708,7 +6708,9 @@ def tile_fft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]) -> None:
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
 
-    Note that computing the adjoint is not yet supported.
+    The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
+    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
         * vec2f, vec2d
@@ -6723,7 +6725,9 @@ def tile_ifft(inout: Tile[Vector[Literal[2], Float], tuple[int, int]]) -> None:
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
 
-    Note that computing the adjoint is not yet supported.
+    The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
+    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
         * vec2f, vec2d

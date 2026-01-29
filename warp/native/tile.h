@@ -4834,7 +4834,8 @@ void adj_tile_matmul(
 
 // TODO(lcambier): use a properly overaligned complex type that matches cuFFTDx's expectation
 // and remove the need for __align__(16) dtypes data[...]
-#define tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
+// backward_function_name is the LTO for the inverse direction, used by the adjoint
+#define tile_fft(function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
      do { \
          void function_name(dtype*, char*); \
          char* buffer = (char*)wp::tile_shared_storage_t::alloc(shared_memory_size); \
@@ -4851,22 +4852,24 @@ void adj_tile_matmul(
 
 #define tile_ifft tile_fft
 
-// adj_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept are all ignored
+// The adjoint of FFT is IFFT, so we use backward_function_name (the IFFT LTO) on adj_Xinout
+// adj_function_name, adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept are ignored
 
 #define adj_tile_fft(                                                                                                  \
-    function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name, adj_dtype,                   \
-    adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                                                        \
+    function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name,      \
+    adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                 \
 ) \
      do { \
-         tile_ifft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
+         tile_fft(backward_function_name, function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
      } while (0)
 
+// The adjoint of IFFT is FFT, so we use backward_function_name (the FFT LTO) on adj_Xinout
 #define adj_tile_ifft(                                                                                                 \
-    function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name, adj_dtype,                   \
-    adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                                                        \
+    function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name,      \
+    adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                 \
 ) \
      do { \
-         tile_fft(function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
+         tile_fft(backward_function_name, function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
      } while (0)
 
 #endif  // !defined(__CUDA_ARCH__)
