@@ -7827,7 +7827,7 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
     return graph
 
 
-def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = False):
+def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = True):
     """Export a CUDA graph to a DOT file for visualization
 
     Args:
@@ -7835,7 +7835,7 @@ def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = False):
         path: Path to save the DOT file
         verbose: Whether to include additional debug information in the output
     """
-    if not runtime.core.wp_capture_debug_dot_print(graph.graph, path.encode(), 0 if verbose else 1):
+    if not runtime.core.wp_capture_debug_dot_print(graph.graph, path.encode(), 1 if verbose else 0):
         raise RuntimeError(f"Graph debug dot print error: {runtime.get_error_string()}")
 
 
