@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add differentiability support for `wp.tile_fft()` and `wp.tile_ifft()` calls recorded on the tape 
+  ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
+
 ### Removed
 
 - Remove deprecated support for constructing matrices from vectors via `wp.matrix()` at the Python and kernel scopes.

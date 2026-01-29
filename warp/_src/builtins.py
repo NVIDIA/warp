@@ -11593,24 +11593,24 @@ add_builtin(
 ##
 ## FFT
 ##
-def tile_fft_generic_value_func(arg_types, arg_values):
+def tile_fft_generic_value_func(arg_types, arg_values, func_name="tile_fft"):
     if arg_types is None:
         return None
 
     if len(arg_types) != 1:
-        raise TypeError(f"tile_fft() takes exactly 1 positional argument but {len(arg_types)} were given")
+        raise TypeError(f"{func_name}() takes exactly 1 positional argument but {len(arg_types)} were given")
 
     inout = arg_types["inout"]
 
     if not is_tile(inout):
-        raise TypeError(f"tile_fft() argument must be a tile, got {inout!r}")
+        raise TypeError(f"{func_name}() argument must be a tile, got {inout!r}")
 
     if inout.storage != "register":
-        raise ValueError(f"tile_fft() argument must have 'register' storage, got {inout.storage}")
+        raise ValueError(f"{func_name}() argument must have 'register' storage, got {inout.storage}")
 
     if inout.dtype not in [vec2f, vec2d]:
         raise TypeError(
-            f"tile_fft() argument must be a tile of vec2f or vec2d (interpreted as complex) entries, got {inout.dtype!r}"
+            f"{func_name}() argument must be a tile of vec2f or vec2d (interpreted as complex) entries, got {inout.dtype!r}"
         )
 
     return None
@@ -11630,9 +11630,13 @@ def tile_fft_generic_lto_dispatch_func(
 
     # see libcufftdx.hpp
     if direction == "forward":
-        dir = 0  # CUFFTDX_DIRECTION_FORWARD
+        fwd_dir = 0  # CUFFTDX_DIRECTION_FORWARD
+        bwd_direction = "inverse"
+        bwd_dir = 1  # CUFFTDX_DIRECTION_INVERSE
     elif direction == "inverse":
-        dir = 1  # CUFFTDX_DIRECTION_INVERSE
+        fwd_dir = 1  # CUFFTDX_DIRECTION_INVERSE
+        bwd_direction = "forward"
+        bwd_dir = 0  # CUFFTDX_DIRECTION_FORWARD
     else:
         raise ValueError(f"Invalid direction: {direction!r}.  Expected 'forward' or 'inverse'.")
 
@@ -11655,14 +11659,26 @@ def tile_fft_generic_lto_dispatch_func(
         # CPU/no-MathDx dispatch
         return ([], [], [], 0)
     else:
-        # generate the LTO
-        lto_symbol, lto_code_data, shared_memory_bytes = warp._src.build.build_lto_fft(
-            arch, size, ept, direction, dir, precision, builder
+        # generate the forward LTO
+        lto_symbol_fwd, lto_code_data_fwd, shared_memory_bytes = warp._src.build.build_lto_fft(
+            arch, size, ept, direction, fwd_dir, precision, builder
         )
+
+        if warp.config.enable_backward:
+            # generate the backward LTO (inverse direction for adjoint)
+            # shared memory requirements are identical since tile sizes match
+            lto_symbol_bwd, lto_code_data_bwd, _ = warp._src.build.build_lto_fft(
+                arch, size, ept, bwd_direction, bwd_dir, precision, builder
+            )
+        else:
+            # adjoints aren't computed, so we reuse forward symbol as a dummy arg
+            lto_symbol_bwd = lto_symbol_fwd
+            lto_code_data_bwd = None
 
         return (
             (
-                Var(lto_symbol, str, False, True, False),
+                Var(lto_symbol_fwd, str, False, True, False),
+                Var(lto_symbol_bwd, str, False, True, False),
                 Var(dtype, str, False, True, False),
                 Var(str(shared_memory_bytes), str, False, True, False),
                 Var(str(batch), str, False, True, False),
@@ -11670,7 +11686,7 @@ def tile_fft_generic_lto_dispatch_func(
                 inout,
             ),
             [],
-            [lto_code_data],
+            [lto_code_data_fwd, lto_code_data_bwd],
             shared_memory_bytes,
         )
 
@@ -11678,14 +11694,16 @@ def tile_fft_generic_lto_dispatch_func(
 add_builtin(
     "tile_fft",
     input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
-    value_func=tile_fft_generic_value_func,
+    value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_fft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
     doc="""Compute the forward FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
 
-    Note that computing the adjoint is not yet supported.
+    The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
+    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
         * vec2f, vec2d
@@ -11695,20 +11713,21 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    is_differentiable=False,
 )
 
 add_builtin(
     "tile_ifft",
     input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
-    value_func=tile_fft_generic_value_func,
+    value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_ifft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
     doc="""Compute the inverse FFT along the second dimension of a 2D tile of data.
 
     This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
 
-    Note that computing the adjoint is not yet supported.
+    The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
+    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
         * vec2f, vec2d
@@ -11718,7 +11737,6 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    is_differentiable=False,
 )
 
 
