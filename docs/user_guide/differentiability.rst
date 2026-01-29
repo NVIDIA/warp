@@ -303,6 +303,70 @@ to compute the second rows, :math:`\mathbf{e}=[\begin{smallmatrix}0 & 1 & 0 & \d
         
         tape.zero()
 
+Using ``grad()`` for Efficient Jacobian Computation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For kernels that compute the output of a single Warp function, :func:`grad() <grad>` provides
+a more efficient alternative to the tape-based approach described above. Instead of running the backward
+pass once per row of the Jacobian, you can compute all partial derivatives in a single kernel launch
+by calling ``wp.grad(func)`` directly.
+
+.. testcode::
+
+    import warp as wp
+    import numpy as np
+
+    @wp.func
+    def squared_norm(x: float, y: float):
+        return x * x + y * y
+
+    @wp.kernel(enable_backward=False)
+    def compute_jacobian(
+        x: wp.array(dtype=float),
+        y: wp.array(dtype=float),
+        z: wp.array(dtype=float),
+        J: wp.array2d(dtype=float),
+    ):
+        i = wp.tid()
+
+        # Compute the forward pass
+        z[i] = squared_norm(x[i], y[i])
+
+        # Compute the Jacobian row inline using wp.grad()
+        grad_x, grad_y = wp.grad(squared_norm)(x[i], y[i])
+        J[i, 0] = grad_x
+        J[i, 1] = grad_y
+
+
+    N = 5
+    x = wp.array(np.arange(N, dtype=np.float32), dtype=float)
+    y = wp.array(np.arange(N, dtype=np.float32), dtype=float)
+    z = wp.zeros(N, dtype=float)
+    J = wp.zeros((N, 2), dtype=float)
+
+    wp.launch(compute_jacobian, dim=N, inputs=[x, y], outputs=[z, J])
+
+    print("z =", z.numpy())
+    print("J =")
+    print(J.numpy())
+
+.. testoutput::
+
+    z = [ 0.  2.  8. 18. 32.]
+    J =
+    [[0. 0.]
+     [2. 2.]
+     [4. 4.]
+     [6. 6.]
+     [8. 8.]]
+
+In this example, each thread computes both the function output ``z[i] = x[i]^2 + y[i]^2`` and
+the corresponding row of the Jacobian :math:`[\frac{\partial z}{\partial x}, \frac{\partial z}{\partial y}] = [2x, 2y]`
+in a single pass.
+
+This approach works best when the Jacobian for a single function call is needed. The tape-based approach computes
+the Jacobian of an arbitrary sequence of transformations between input and output buffers.
+
 .. _custom-gradient-functions:
 
 Custom Gradient Functions
