@@ -379,7 +379,7 @@ def test_unresolved_func(test, device):
     from warp.tests.aux_test_unresolved_func import unresolved_func_kernel  # noqa: PLC0415
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
-    with test.assertRaisesRegex(RuntimeError, "Could not find function wp.missing_func"):
+    with test.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"):
         wp.launch(unresolved_func_kernel, dim=1, inputs=[], device=device)
 
     # remove all references to the bad module so that subsequent calls to wp.force_load()
@@ -400,6 +400,37 @@ def test_unresolved_symbol(test, device):
     # won't try to load it unless we explicitly re-import it again
     del wp._src.context.user_modules["warp.tests.aux_test_unresolved_symbol"]
     del sys.modules["warp.tests.aux_test_unresolved_symbol"]
+
+
+def test_invalid_namespace_path(test, device):
+    """Test that invalid namespace paths in kernel function calls are rejected."""
+
+    # Test 1: Invalid intermediate namespace (wp.foo.bar.tid)
+    def kernel_invalid_intermediate():
+        tid = wp.foo.bar.tid()
+        print(tid)
+
+    kernel = wp.Kernel(func=kernel_invalid_intermediate)
+    with test.assertRaisesRegex(AttributeError, r"`foo` is not an attribute of"):
+        wp.launch(kernel, dim=1, device=device)
+
+    # Test 2: Valid submodule but function doesn't exist there (wp.types.tid)
+    def kernel_submodule_missing_func():
+        tid = wp.types.tid()
+        print(tid)
+
+    kernel = wp.Kernel(func=kernel_submodule_missing_func)
+    with test.assertRaisesRegex(AttributeError, r"Could not find function wp.types.tid"):
+        wp.launch(kernel, dim=1, device=device)
+
+    # Test 3: Missing function on warp module (wp.nonexistent_func)
+    def kernel_missing_func():
+        x = wp.nonexistent_func()
+        print(x)
+
+    kernel = wp.Kernel(func=kernel_missing_func)
+    with test.assertRaisesRegex(AttributeError, r"Could not find function wp.nonexistent_func"):
+        wp.launch(kernel, dim=1, device=device)
 
 
 def test_error_global_var(test, device):
@@ -1011,6 +1042,7 @@ add_kernel_test(TestCodeGen, name="test_continue_unroll", kernel=test_continue_u
 
 add_function_test(TestCodeGen, func=test_unresolved_func, name="test_unresolved_func", devices=devices)
 add_function_test(TestCodeGen, func=test_unresolved_symbol, name="test_unresolved_symbol", devices=devices)
+add_function_test(TestCodeGen, func=test_invalid_namespace_path, name="test_invalid_namespace_path", devices=devices)
 add_function_test(TestCodeGen, func=test_error_global_var, name="test_error_global_var", devices=devices)
 add_function_test(
     TestCodeGen, func=test_error_collection_construct, name="test_error_collection_construct", devices=devices

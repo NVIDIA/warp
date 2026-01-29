@@ -2841,8 +2841,28 @@ class Adjoint:
             caller = func
             func = None
 
+            # Handle module callers: check if attribute exists on the module
+            if isinstance(caller, types.ModuleType):
+                if hasattr(caller, attr):
+                    # Attribute exists on the module - use it
+                    func = getattr(caller, attr)
+                    if not isinstance(func, warp._src.context.Function):
+                        # It's not a Function, might be a type - let subsequent logic handle it
+                        caller = func
+                        func = None
+                elif caller is warp and attr in warp._src.context.builtin_functions:
+                    # Fallback: for the warp module, check builtin_functions
+                    # (builtins like tid() are not actual attributes of the warp module)
+                    func = warp._src.context.builtin_functions[attr]
+                else:
+                    # Attribute doesn't exist on this module
+                    raise WarpCodegenAttributeError(
+                        f"Could not find function {'.'.join(path)} as a built-in or user-defined function. "
+                        "Note that user functions must be annotated with a @wp.func decorator to be called from a kernel."
+                    )
+
             # try and lookup function name in builtins (e.g.: using `dot` directly without wp prefix)
-            if attr in warp._src.context.builtin_functions:
+            if func is None and attr in warp._src.context.builtin_functions:
                 func = warp._src.context.builtin_functions[attr]
 
             # vector class type e.g.: wp.vec3f constructor
@@ -3540,6 +3560,12 @@ class Adjoint:
             for i in range(1, len(path)):
                 if hasattr(expr, path[i]):
                     expr = getattr(expr, path[i])
+                elif i < len(path) - 1:
+                    # Intermediate attribute doesn't exist - path is invalid.
+                    # Only the last element is allowed to be missing (e.g., for builtin functions
+                    # like wp.tid() where 'tid' is not an attribute of the warp module but is
+                    # looked up in builtin_functions by emit_Call).
+                    return None
 
         return expr
 
