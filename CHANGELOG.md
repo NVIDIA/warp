@@ -12,6 +12,8 @@
   `CUBE_CORNER_OFFSETS`, `EDGE_TO_CORNERS`, `CASE_TO_TRI_RANGE`, and `TRI_LOCAL_INDICES`. These enable
   custom marching cubes implementations for advanced use cases like sparse volume extraction
   ([GH-1151](https://github.com/NVIDIA/warp/issues/1151)).
+- Add `wp.utils.graph_coloring_assign()`, `wp.utils.graph_coloring_balance()`, and `wp.graph_coloring_get_groups()`
+  to the public API for graph coloring ([GH-1145](https://github.com/NVIDIA/warp/issues/1145)).
 
 ### Removed
 
