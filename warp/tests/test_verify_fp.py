@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import warp as wp
@@ -63,6 +64,9 @@ def nan_kernel(foos: wp.array(dtype=TestStruct)):
 
 
 def test_nan(test, device):
+    if sys.platform == "win32":
+        test.skipTest("Skipping test on Windows due to unreliable stdout capture")
+
     foos = wp.zeros((10,), dtype=TestStruct, device=device)
 
     capture = StdOutCapture()
@@ -79,9 +83,7 @@ def test_nan(test, device):
     output = capture.end()
 
     # Check that the output contains warnings about "nan" being produced.
-    # Older Windows C runtimes have a bug where stdout sometimes does not get properly flushed.
-    if output != "" or sys.platform != "win32":
-        test.assertRegex(output, r"nan")
+    test.assertRegex(output, r"nan")
 
 
 devices = get_test_devices()

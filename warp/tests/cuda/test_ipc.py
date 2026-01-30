@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import multiprocessing as mp
+import sys
 import unittest
 
 import warp as wp
@@ -43,6 +44,8 @@ def test_ipc_get_event_handle(test, device):
 
 
 def test_ipc_event_missing_interprocess_flag(test, device):
+    if sys.platform == "win32":
+        test.skipTest("Skipping test on Windows due to unreliable stdout capture")
     if device.is_ipc_supported is False:
         test.skipTest(f"IPC is not supported on {device}")
 
@@ -55,9 +58,7 @@ def test_ipc_event_missing_interprocess_flag(test, device):
     finally:
         output = capture.end()
 
-    # Older Windows C runtimes have a bug where stdout sometimes does not get properly flushed.
-    if sys.platform != "win32":
-        test.assertRegex(output, r"Warp UserWarning: IPC event handle appears to be invalid.")
+    test.assertRegex(output, r"Warp UserWarning: IPC event handle appears to be invalid.")
 
 
 @wp.kernel
