@@ -730,7 +730,7 @@ class TestTypes(unittest.TestCase):
 
         self.assertEqual(repr(v2), "vec2i([1, 2])")
         self.assertEqual(repr(v3), "vec3f([1.0, 2.0, 3.0])")
-        self.assertEqual(repr(v4), "vec4d([1.0, 2.0, 3.0, 4.0])")
+        self.assertEqual(repr(v4), "vec4d([float64(1.0), float64(2.0), float64(3.0), float64(4.0)])")
 
         # Test matrices
         m22 = wp.mat22f(1.0, 2.0, 3.0, 4.0)

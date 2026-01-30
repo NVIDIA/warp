@@ -78,8 +78,8 @@ class Grid2D(Geometry):
         """Size of a cell along each axis."""
         ex = self.extents
         return wp.vec2(
-            ex[0] / self.res[0],
-            ex[1] / self.res[1],
+            ex[0] / float(self.res[0]),
+            ex[1] / float(self.res[1]),
         )
 
     def cell_count(self):

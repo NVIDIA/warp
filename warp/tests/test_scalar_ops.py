@@ -87,11 +87,11 @@ def test_py_math_ops(test, device, dtype):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     a = wptype(1)
-    test.assertAlmostEqual(wp.abs(a), 1)
+    test.assertAlmostEqual(float(wp.abs(a)), 1)
 
     if dtype in np_float_types:
-        test.assertAlmostEqual(wp.sin(a), 0.84147098480789650488, places=3)
-        test.assertAlmostEqual(wp.radians(a), 0.01745329251994329577, places=5)
+        test.assertAlmostEqual(float(wp.sin(a)), 0.84147098480789650488, places=3)
+        test.assertAlmostEqual(float(wp.radians(a)), 0.01745329251994329577, places=5)
 
 
 def test_py_array_ops(test, device, dtype):
