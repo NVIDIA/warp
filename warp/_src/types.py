@@ -132,6 +132,60 @@ class float_base(scalar_base):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self!s})"
 
+    def __eq__(self, x):
+        try:
+            return float(self) == float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ne__(self, x):
+        try:
+            return float(self) != float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ge__(self, x):
+        try:
+            return float(self) >= float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __gt__(self, x):
+        try:
+            return float(self) > float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __le__(self, x):
+        try:
+            return float(self) <= float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __lt__(self, x):
+        try:
+            return float(self) < float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __pow__(self, x):
+        if is_array(x):
+            return NotImplemented
+
+        return warp.pow(self, x)
+
+    def __rpow__(self, x):
+        return warp.pow(x, self)
+
+    def __abs__(self):
+        return type(self)(abs(float(self)))
+
+    def __round__(self, ndigits=None):
+        return type(self)(round(float(self), ndigits))
+
+    def __hash__(self):
+        return hash(float(self))
+
 
 class int_base(scalar_base):
     def __index__(self) -> int:
@@ -142,6 +196,48 @@ class int_base(scalar_base):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self!s})"
+
+    def __eq__(self, x):
+        try:
+            return int(self) == int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ne__(self, x):
+        try:
+            return int(self) != int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ge__(self, x):
+        try:
+            return int(self) >= int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __gt__(self, x):
+        try:
+            return int(self) > int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __le__(self, x):
+        try:
+            return int(self) <= int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __lt__(self, x):
+        try:
+            return int(self) < int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __abs__(self):
+        return type(self)(abs(int(self)))
+
+    def __hash__(self):
+        return hash(int(self))
 
 
 class bool:

@@ -68,6 +68,21 @@ def test_py_arithmetic_ops(test, device, dtype):
     test.assertAlmostEqual(a % wptype(2), make_scalar(0))
 
 
+def test_py_pow_ops(test, device, dtype):
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+
+    if dtype in np_float_types:
+        a = wptype(2)
+        test.assertAlmostEqual(float(a ** wptype(3)), 8.0)
+        test.assertAlmostEqual(float(wptype(3) ** a), 9.0)
+    else:
+        a = wptype(2)
+        with test.assertRaises(TypeError):
+            a ** wptype(3)
+        with test.assertRaises(TypeError):
+            wptype(3) ** a
+
+
 def test_py_math_ops(test, device, dtype):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
@@ -122,6 +137,7 @@ for dtype in np_scalar_types:
     add_function_test(
         TestScalarOps, f"test_py_arithmetic_ops_{dtype.__name__}", test_py_arithmetic_ops, devices=None, dtype=dtype
     )
+    add_function_test(TestScalarOps, f"test_py_pow_ops_{dtype.__name__}", test_py_pow_ops, devices=None, dtype=dtype)
     add_function_test(TestScalarOps, f"test_py_math_ops_{dtype.__name__}", test_py_math_ops, devices=None, dtype=dtype)
     add_function_test(
         TestScalarOps, f"test_py_array_ops_{dtype.__name__}", test_py_array_ops, devices=None, dtype=dtype
