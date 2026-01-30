@@ -1171,14 +1171,26 @@ def jax_kernel(
 
     check_jax_version()
 
+    if isinstance(output_dims, dict):
+        hashable_output_dims = tuple(sorted(output_dims.items()))
+    elif hasattr(output_dims, "__len__"):
+        hashable_output_dims = tuple(output_dims)
+    else:
+        hashable_output_dims = output_dims
+
+    if hasattr(launch_dims, "__len__"):
+        hashable_launch_dims = tuple(launch_dims)
+    else:
+        hashable_launch_dims = launch_dims
+
     if not enable_backward:
         key = (
             kernel.func,
             kernel.sig,
             num_outputs,
             vmap_method,
-            tuple(launch_dims) if launch_dims else launch_dims,
-            tuple(sorted(output_dims.items())) if output_dims else output_dims,
+            hashable_launch_dims,
+            hashable_output_dims,
             module_preload_mode,
         )
 
@@ -1481,13 +1493,20 @@ def jax_callable(
     if graph_cache_max is None:
         graph_cache_max = FfiCallable.default_graph_cache_max
 
+    if isinstance(output_dims, dict):
+        hashable_output_dims = tuple(sorted(output_dims.items()))
+    elif hasattr(output_dims, "__len__"):
+        hashable_output_dims = tuple(output_dims)
+    else:
+        hashable_output_dims = output_dims
+
     # Note: we don't include graph_cache_max in the key, it is applied below.
     key = (
         func,
         num_outputs,
         graph_mode,
         vmap_method,
-        tuple(sorted(output_dims.items())) if isinstance(output_dims, dict) else output_dims,
+        hashable_output_dims,
         module_preload_mode,
     )
 
