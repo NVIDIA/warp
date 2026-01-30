@@ -306,7 +306,9 @@ Device Management
    get_cuda_device
    get_cuda_device_count
    get_cuda_devices
+   get_cuda_driver_version
    get_cuda_supported_archs
+   get_cuda_toolkit_version
    get_device
    get_devices
    get_preferred_device

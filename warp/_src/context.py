@@ -9288,3 +9288,33 @@ def get_warp_clang_version():
     if runtime is None:
         init()
     return runtime.get_warp_clang_version()
+
+
+def get_cuda_toolkit_version() -> tuple[int, int] | None:
+    """Return the CUDA Toolkit version used to build the Warp native library.
+
+    Returns:
+        A tuple of ``(major, minor)`` version numbers (e.g., ``(12, 4)`` for CUDA 12.4),
+        or ``None`` if CUDA support is not available.
+
+    See Also:
+        :func:`get_cuda_driver_version`
+    """
+    if runtime is None:
+        init()
+    return runtime.toolkit_version
+
+
+def get_cuda_driver_version() -> tuple[int, int] | None:
+    """Return the CUDA driver version installed on the system.
+
+    Returns:
+        A tuple of ``(major, minor)`` version numbers (e.g., ``(12, 4)`` for CUDA 12.4),
+        or ``None`` if the CUDA driver is not available or not initialized.
+
+    See Also:
+        :func:`get_cuda_toolkit_version`
+    """
+    if runtime is None:
+        init()
+    return runtime.driver_version

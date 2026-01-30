@@ -6,6 +6,8 @@
 
 - Add differentiability support for `wp.tile_fft()` and `wp.tile_ifft()` calls recorded on the tape 
   ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
+- Add `wp.get_cuda_toolkit_version()` and `wp.get_cuda_driver_version()` to query CUDA versions
+  ([GH-1172](https://github.com/NVIDIA/warp/issues/1172)).
 
 ### Removed
 
