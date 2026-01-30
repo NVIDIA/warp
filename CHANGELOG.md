@@ -79,6 +79,9 @@
 - Keep `Texture.id` as a device-independent texture handle, and make `Texture.cuda_texture`
   CUDA-only with a clear error on host textures to avoid ambiguity
   ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
+- Built-in functions now return Warp scalar types (`wp.float16`, `wp.float64`, `wp.int8`, etc.) instead
+  of Python native types for non-native scalar types. Native scalar types (`wp.int32`, `wp.float32`, `wp.bool`) continue
+  to return Python `int`, `float`, and `bool` ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
 
 ### Fixed
 

@@ -252,6 +252,10 @@ float_types = (float16, float32, float64)
 scalar_types = int_types + float_types
 scalar_and_bool_types = (*scalar_types, bool)
 
+# Native scalar types that map directly to Python's int/float/bool.
+# These types return Python native values for backward compatibility.
+native_scalar_types = (int32, float32, bool)
+
 # TypeVars with proper constraints now that scalar types are defined
 # Note: TypeVar constraints must be listed explicitly (Pyright doesn't support unpacking)
 # Keep these in sync with the tuples above when adding new scalar types
