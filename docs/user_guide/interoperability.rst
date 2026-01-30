@@ -1214,6 +1214,32 @@ and it can also be passed to each call:
         d = jax_callback(c, vmap_method="expand_dims")  # uses "expand_dims"
         ...
 
+Basic VMAP Example
+..................
+
+.. code-block:: python
+
+    import warp as wp
+    from warp.jax_experimental import jax_kernel
+
+    import jax
+    import jax.numpy as jp
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
+        tid = wp.tid()
+        output[tid] = a[tid] + b[tid]
+
+    jax_add = jax_kernel(add_kernel)
+
+    # batched inputs
+    a = jp.arange(3 * 4, dtype=jp.float32).reshape((3, 4))
+    b = jp.ones(3 * 4, dtype=jp.float32).reshape((3, 4))
+
+    (output,) = jax.jit(jax.vmap(jax_add))(a, b)
+    print(output)
+
+
 VMAP Example with In-Out Arguments
 ..................................
 
