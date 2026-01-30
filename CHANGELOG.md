@@ -82,6 +82,8 @@
 - Built-in functions now return Warp scalar types (`wp.float16`, `wp.float64`, `wp.int8`, etc.) instead
   of Python native types for non-native scalar types. Native scalar types (`wp.int32`, `wp.float32`, `wp.bool`) continue
   to return Python `int`, `float`, and `bool` ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
+- Indexing into vectors and matrices with non-native scalar types now returns Warp scalar instances
+  ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
 
 ### Fixed
 

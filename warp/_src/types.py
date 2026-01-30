@@ -703,7 +703,10 @@ def vector(length, dtype):
 
         def __getitem__(self, key):
             if isinstance(key, int):
-                return vec_t.scalar_export(super().__getitem__(key))
+                value = vec_t.scalar_export(super().__getitem__(key))
+                if dtype in native_scalar_types:
+                    return value
+                return self._wp_scalar_type_(value)
             elif isinstance(key, slice):
                 if self._wp_scalar_type_ is float16:
                     values = tuple(vec_t.scalar_export(x) for x in super().__getitem__(key))
@@ -1113,7 +1116,10 @@ def matrix(shape, dtype):
                 if ndim == 0:
                     row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
                     col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
-                    return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+                    value = mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+                    if dtype in native_scalar_types:
+                        return value
+                    return self._wp_scalar_type_(value)
 
                 if ndim == 1:
                     if isinstance(key[1], slice):
