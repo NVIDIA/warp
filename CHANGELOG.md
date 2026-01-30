@@ -3,6 +3,7 @@
 ## [Unreleased] - 2026-??
 
 ### Added
+- Add support for JAX vmap with FFI `jax_kernel()` and `jax_callable()`.
 
 - Add differentiability support for `wp.tile_fft()` and `wp.tile_ifft()` calls recorded on the tape 
   ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
@@ -44,6 +45,7 @@
 - Fix JAX FFI multi-gpu graph caching ([GH-1181](https://github.com/NVIDIA/warp/pull/1181)).
 - Fix tile * constant multiplication when one operand is a vector or matrix type ([GH-1175](https://github.com/NVIDIA/warp/issues/1175)).
 - Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
+- Fix hashing errors when creating `jax_kernel()` and `jax_callable()`.
 
 ### Documentation
 
