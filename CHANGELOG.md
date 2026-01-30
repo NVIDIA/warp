@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add `wp.get_cuda_toolkit_version()` and `wp.get_cuda_driver_version()` to query CUDA versions
+  ([GH-1172](https://github.com/NVIDIA/warp/issues/1172)).
+
 ### Removed
 
 - Remove deprecated support for constructing matrices from vectors via `wp.matrix()` at the Python and kernel scopes.
