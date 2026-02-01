@@ -118,7 +118,7 @@ These examples are designed to run from within the Warp repository.
 
 ### Requirements
 
-- **Python 3.8+**
+- **Python 3.9+**
 - **CUDA Toolkit**:
   - `00_cubin_launch`: **12.0+** (Warp's minimum requirement)
   - `01_source_include`: **12.8+** (required for `sm_120` compilation)
