@@ -1130,6 +1130,7 @@ class Adjoint:
         adj.has_local_matrix_vars = False
         adj.has_atomic_ops = False
         adj.has_unrollable_loops = False
+        adj.disable_loop_unroll_workaround = False  # Set to True to prevent unrolling
 
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
@@ -1212,6 +1213,7 @@ class Adjoint:
         adj.has_local_matrix_vars = False
         adj.has_atomic_ops = False
         adj.has_unrollable_loops = False
+        adj.disable_loop_unroll_workaround = False
 
         # update symbol map for each argument
         for a in adj.args:
@@ -2611,6 +2613,15 @@ class Adjoint:
             elif adj.contains_break(loop.body):
                 if warp.config.verbose:
                     print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+                ok_to_unroll = False
+
+            # Check if loop unrolling should be disabled due to compiler bug workaround (Issue #1200)
+            if adj.disable_loop_unroll_workaround:
+                if warp.config.verbose:
+                    print(
+                        f"Notice: Disabling loop unroll due to compiler bug workaround (Issue #1200). "
+                        f"Kernel combines matrices + atomics which can crash at -O3 with unrolling."
+                    )
                 ok_to_unroll = False
 
             if ok_to_unroll:

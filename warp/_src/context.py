@@ -2088,21 +2088,23 @@ class ModuleBuilder:
         # Check for known compiler bugs after building (Issue #1200)
         # Only apply for CUDA builds (output_arch is set for CUDA targets)
         if warp.config.auto_detect_cuda_compiler_bugs and self.options.get("output_arch") is not None:
-            # Compute effective optimization level
-            opt = self.options.get("optimization_level")
-            if opt is None:
-                opt = warp.config.optimization_level or 3
-            
-            if kernel.adj.detect_issue_1200_pattern() and opt == 3:
+            # Check if this kernel has the problematic pattern
+            if kernel.adj.has_local_matrix_vars and kernel.adj.has_atomic_ops:
+                # Set flag to disable loop unrolling for this kernel only
+                # This prevents the crash without affecting other kernels in the module
+                kernel.adj.disable_loop_unroll_workaround = True
+                
                 warnings.warn(
                     f"Kernel '{kernel.key}': Detected pattern triggering CUDA compiler bug "
-                    f"(issue #1200: matrices + atomics + unrolling at -O3). "
-                    f"Reducing optimization level to 2. "
+                    f"(issue #1200: matrices + atomics). "
+                    f"Disabling loop unrolling for this kernel to prevent crashes at -O3. "
                     f"Set warp.config.auto_detect_cuda_compiler_bugs=False to disable.",
                     RuntimeWarning,
                     stacklevel=6
                 )
-                self.options["optimization_level"] = 2
+                
+                # Rebuild kernel with unrolling disabled
+                kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
@@ -2768,10 +2770,6 @@ class Module:
 
                 # write cuda sources
                 cu_source = builder.codegen("cuda")
-
-                # Update optimization level if it was modified during kernel build (e.g. compiler bug workaround)
-                if builder.options.get("optimization_level") is not None:
-                    opt = builder.options["optimization_level"]
 
                 with open(source_code_path, "w") as cu_file:
                     cu_file.write(cu_source)
