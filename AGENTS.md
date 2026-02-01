@@ -32,8 +32,14 @@ Key decorators: `@wp.kernel` (parallel GPU/CPU code), `@wp.func` (reusable funct
 IMPORTANT: Warp uses `unittest`, not pytest.
 
 - Rebuild native libraries (only needed after changes to `warp/native/` C++/CUDA code) with `build_lib.py`
+  - Standard build: `uv run build_lib.py` (~10-20 minutes)
+  - Quick build: `uv run build_lib.py --quick` for rapid iteration (~2-4 minutes)
+    - Compiles for minimal GPU architectures and disables CUDA forward compatibility
+    - IMPORTANT: Only use if your CUDA driver version ≥ CUDA Toolkit version being used for build
+    - Example: Toolkit 13.1 with Driver 13.0 will NOT work; Driver 13.1+ required
+    - Check versions: `nvidia-smi` (driver) and CUDA Toolkit being used (set via WARP_CUDA_PATH, CUDA_HOME, CUDA_PATH env vars, or `which nvcc` if unset)
 - Run all tests (~10-20 min): `uv run --extra dev -m warp.tests -s autodetect`
-- Run specific test file (preferred): `uv run warp/tests/test_modules_lite.py`
+- Run all tests in a specific file (preferred for targeted fixes): `uv run warp/tests/test_modules_lite.py`
 - New test modules should be added to `default_suite` in `warp/tests/unittest_suites.py`.
 - NEVER call `wp.clear_kernel_cache()` outside `if __name__ == "__main__":` blocks—parallel test runners will conflict.
 
