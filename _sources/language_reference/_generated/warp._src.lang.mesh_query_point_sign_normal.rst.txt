@@ -1,0 +1,23 @@
+﻿warp.\_src.lang.mesh\_query\_point\_sign\_normal
+================================================
+
+.. function:: warp._src.lang.mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
+   
+   Identifies the sign of the distance (inside/outside) using the angle-weighted pseudo normal.
+   This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
+   It is also comparatively fast to compute.
+   
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
+                   fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3.
+   

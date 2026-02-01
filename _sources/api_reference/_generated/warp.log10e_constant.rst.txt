@@ -1,0 +1,6 @@
+﻿warp.log10e
+===========
+
+.. currentmodule:: warp
+
+.. autodata:: log10e

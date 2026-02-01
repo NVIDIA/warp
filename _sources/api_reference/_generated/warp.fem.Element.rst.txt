@@ -1,0 +1,44 @@
+﻿warp.fem.Element
+================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Element
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Element.conjugate
+      ~Element.bit_length
+      ~Element.bit_count
+      ~Element.to_bytes
+      ~Element.from_bytes
+      ~Element.as_integer_ratio
+      ~Element.is_integer
+      ~Element.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Element.real
+      ~Element.imag
+      ~Element.numerator
+      ~Element.denominator
+      ~Element.prototype
+      ~Element.LINE_SEGMENT
+      ~Element.SQUARE
+      ~Element.CUBE
+      ~Element.TRIANGLE
+      ~Element.TETRAHEDRON
+   
+   

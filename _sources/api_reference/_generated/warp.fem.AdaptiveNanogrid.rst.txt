@@ -1,0 +1,92 @@
+﻿warp.fem.AdaptiveNanogrid
+=========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: AdaptiveNanogrid
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AdaptiveNanogrid.__init__
+      ~AdaptiveNanogrid.boundary_side_count
+      ~AdaptiveNanogrid.build_bvh
+      ~AdaptiveNanogrid.bvh_id
+      ~AdaptiveNanogrid.cell_arg_value
+      ~AdaptiveNanogrid.cell_count
+      ~AdaptiveNanogrid.fill_cell_arg
+      ~AdaptiveNanogrid.fill_side_arg
+      ~AdaptiveNanogrid.fill_side_index_arg
+      ~AdaptiveNanogrid.make_filtered_cell_lookup
+      ~AdaptiveNanogrid.reference_cell
+      ~AdaptiveNanogrid.reference_side
+      ~AdaptiveNanogrid.side_arg_value
+      ~AdaptiveNanogrid.side_count
+      ~AdaptiveNanogrid.side_index_arg_value
+      ~AdaptiveNanogrid.stacked_edge_count
+      ~AdaptiveNanogrid.stacked_face_count
+      ~AdaptiveNanogrid.supports_cell_lookup
+      ~AdaptiveNanogrid.update_bvh
+      ~AdaptiveNanogrid.vertex_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~AdaptiveNanogrid.CellArg
+      ~AdaptiveNanogrid.FACE_AXIS_MASK
+      ~AdaptiveNanogrid.FACE_INNER_OFFSET_BIT
+      ~AdaptiveNanogrid.FACE_OUTER_OFFSET_BIT
+      ~AdaptiveNanogrid.GRID_AXIS_FLAG
+      ~AdaptiveNanogrid.SideArg
+      ~AdaptiveNanogrid.SideIndexArg
+      ~AdaptiveNanogrid.base
+      ~AdaptiveNanogrid.boundary_side_index
+      ~AdaptiveNanogrid.cell_closest_point
+      ~AdaptiveNanogrid.cell_coordinates
+      ~AdaptiveNanogrid.cell_deformation_gradient
+      ~AdaptiveNanogrid.cell_dimension
+      ~AdaptiveNanogrid.cell_grid
+      ~AdaptiveNanogrid.cell_inverse_deformation_gradient
+      ~AdaptiveNanogrid.cell_lookup
+      ~AdaptiveNanogrid.cell_measure
+      ~AdaptiveNanogrid.cell_measure_ratio
+      ~AdaptiveNanogrid.cell_normal
+      ~AdaptiveNanogrid.cell_position
+      ~AdaptiveNanogrid.coarse_ijk
+      ~AdaptiveNanogrid.dimension
+      ~AdaptiveNanogrid.encode_axis_and_level
+      ~AdaptiveNanogrid.face_grid
+      ~AdaptiveNanogrid.find_cell
+      ~AdaptiveNanogrid.fine_ijk
+      ~AdaptiveNanogrid.name
+      ~AdaptiveNanogrid.side_closest_point
+      ~AdaptiveNanogrid.side_coordinates
+      ~AdaptiveNanogrid.side_deformation_gradient
+      ~AdaptiveNanogrid.side_from_cell_coords
+      ~AdaptiveNanogrid.side_inner_cell_coords
+      ~AdaptiveNanogrid.side_inner_cell_index
+      ~AdaptiveNanogrid.side_inner_inverse_deformation_gradient
+      ~AdaptiveNanogrid.side_measure
+      ~AdaptiveNanogrid.side_measure_ratio
+      ~AdaptiveNanogrid.side_normal
+      ~AdaptiveNanogrid.side_outer_cell_coords
+      ~AdaptiveNanogrid.side_outer_cell_index
+      ~AdaptiveNanogrid.side_outer_inverse_deformation_gradient
+      ~AdaptiveNanogrid.side_position
+      ~AdaptiveNanogrid.side_to_cell_arg
+      ~AdaptiveNanogrid.stacked_edge_grid
+      ~AdaptiveNanogrid.stacked_face_grid
+      ~AdaptiveNanogrid.transform
+      ~AdaptiveNanogrid.vertex_grid
+   
+   

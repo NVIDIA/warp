@@ -1,0 +1,14 @@
+﻿warp.\_src.lang.volume\_sample\_grad
+====================================
+
+.. function:: warp._src.lang.volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+   
+   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.

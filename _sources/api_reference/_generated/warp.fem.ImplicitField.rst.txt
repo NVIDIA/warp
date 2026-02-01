@@ -1,0 +1,54 @@
+﻿warp.fem.ImplicitField
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ImplicitField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ImplicitField.__init__
+      ~ImplicitField.divergence_valid
+      ~ImplicitField.eval_arg_value
+      ~ImplicitField.eval_degree
+      ~ImplicitField.eval_div_inner
+      ~ImplicitField.eval_div_outer
+      ~ImplicitField.eval_grad_inner
+      ~ImplicitField.eval_grad_outer
+      ~ImplicitField.eval_inner
+      ~ImplicitField.eval_outer
+      ~ImplicitField.eval_reference_grad_inner
+      ~ImplicitField.eval_reference_grad_outer
+      ~ImplicitField.fill_eval_arg
+      ~ImplicitField.gradient_valid
+      ~ImplicitField.make_deformed_geometry
+      ~ImplicitField.notify_operator_usage
+      ~ImplicitField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImplicitField.degree
+      ~ImplicitField.divergence_dtype
+      ~ImplicitField.dtype
+      ~ImplicitField.element_kind
+      ~ImplicitField.geometry
+      ~ImplicitField.gradient_dtype
+      ~ImplicitField.name
+      ~ImplicitField.reference_gradient_dtype
+      ~ImplicitField.values
+      ~ImplicitField.EvalArg
+      ~ImplicitField.ElementEvalArg
+   
+   

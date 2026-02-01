@@ -1,0 +1,28 @@
+﻿warp.MeshQueryRay
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: MeshQueryRay
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MeshQueryRay.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeshQueryRay.vars
+   
+   

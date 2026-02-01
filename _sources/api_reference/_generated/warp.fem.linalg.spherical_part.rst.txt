@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.spherical\_part
+===============================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autodata:: spherical_part

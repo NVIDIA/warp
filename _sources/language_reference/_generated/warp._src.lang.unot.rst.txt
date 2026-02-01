@@ -1,0 +1,137 @@
+﻿warp.\_src.lang.unot
+====================
+
+.. function:: warp._src.lang.unot(a: bool) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+
+.. function:: warp._src.lang.unot(a: int8) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: uint8) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: int16) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: uint16) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: uint32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: int64) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: uint64) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the integer is 0, ``False`` otherwise.
+   
+
+.. function:: warp._src.lang.unot(a: Array[Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute logical NOT of ``a``.
+   
+   :returns: ``True`` if the array is empty or null, ``False`` otherwise.
+   

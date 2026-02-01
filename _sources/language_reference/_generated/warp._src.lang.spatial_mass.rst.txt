@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_mass
+=============================
+
+.. function:: warp._src.lang.spatial_mass(I_s: Array[Matrix[Literal[6],Literal[6],Float]], joint_start: int32, joint_count: int32, M_start: int32, M: Array[Float]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the composite rigid-body mass matrix for a kinematic chain.

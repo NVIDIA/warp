@@ -1,0 +1,35 @@
+﻿warp.\_src.lang.rshift
+======================
+
+.. function:: warp._src.lang.rshift(a: Int, b: Int) -> Int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute ``a`` right-shifted by ``b`` bits.
+
+.. function:: warp._src.lang.rshift(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute ``a`` right-shifted by ``b`` bits.
+   
+   Apply the operation element-wise to vectors.
+
+.. function:: warp._src.lang.rshift(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute ``a`` right-shifted by ``b`` bits.
+   
+   Apply the operation element-wise to matrices.

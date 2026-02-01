@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_bottom
+===============================
+
+.. function:: warp._src.lang.spatial_bottom(svec: Vector[Literal[6],Float]) -> Vector[Literal[3],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract the bottom (second) part of a 6D screw vector.

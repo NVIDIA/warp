@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.array
+=====================
+
+.. function:: warp._src.lang.array(ptr: uint64, shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct an array from a memory pointer, shape, and data type.

@@ -1,0 +1,45 @@
+﻿warp.fem.RegularQuadrature
+==========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: RegularQuadrature
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RegularQuadrature.__init__
+      ~RegularQuadrature.arg_value
+      ~RegularQuadrature.element_index_arg_value
+      ~RegularQuadrature.evaluation_point_count
+      ~RegularQuadrature.fill_arg
+      ~RegularQuadrature.max_points_per_element
+      ~RegularQuadrature.point_coords
+      ~RegularQuadrature.point_count
+      ~RegularQuadrature.point_evaluation_index
+      ~RegularQuadrature.point_index
+      ~RegularQuadrature.point_weight
+      ~RegularQuadrature.total_point_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RegularQuadrature.Arg
+      ~RegularQuadrature.ElementIndexArg
+      ~RegularQuadrature.domain
+      ~RegularQuadrature.evaluation_point_element_index
+      ~RegularQuadrature.name
+      ~RegularQuadrature.points
+      ~RegularQuadrature.weights
+   
+   

@@ -1,0 +1,31 @@
+﻿warp.Tape
+=========
+
+.. currentmodule:: warp
+
+.. autoclass:: Tape
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Tape.__init__
+      ~Tape.backward
+      ~Tape.get_adjoint
+      ~Tape.record_func
+      ~Tape.record_launch
+      ~Tape.record_scope_begin
+      ~Tape.record_scope_end
+      ~Tape.reset
+      ~Tape.visualize
+      ~Tape.zero
+   
+   
+
+   
+   
+   

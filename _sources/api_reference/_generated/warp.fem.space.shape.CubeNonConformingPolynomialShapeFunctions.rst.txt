@@ -1,0 +1,36 @@
+﻿warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions
+==============================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeNonConformingPolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeNonConformingPolynomialShapeFunctions.__init__
+      ~CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight
+      ~CubeNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~CubeNonConformingPolynomialShapeFunctions.make_node_coords_in_element
+      ~CubeNonConformingPolynomialShapeFunctions.make_node_quadrature_weight
+      ~CubeNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeNonConformingPolynomialShapeFunctions.name
+      ~CubeNonConformingPolynomialShapeFunctions.value
+      ~CubeNonConformingPolynomialShapeFunctions.ORDER
+      ~CubeNonConformingPolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

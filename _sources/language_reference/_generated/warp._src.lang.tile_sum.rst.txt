@@ -1,0 +1,74 @@
+﻿warp.\_src.lang.tile\_sum
+=========================
+
+.. function:: warp._src.lang.tile_sum(a: Tile[Any,tuple[int, ...]], axis: int32) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Cooperatively compute the sum of the tile elements.
+   
+   Reduce across a tile axis using all threads in the block.
+   
+   :param a: The input tile. Must reside in shared memory.
+   :param axis: The tile axis to compute the sum across. Must be a compile-time constant.
+   
+   :returns: A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           t = wp.tile_ones(dtype=float, shape=(8, 8))
+           s = wp.tile_sum(t, axis=0)
+   
+           print(s)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
+   
+
+.. function:: warp._src.lang.tile_sum(a: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[Literal[1]]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Cooperatively compute the sum of the tile elements.
+   
+   Reduce across all elements using all threads in the block.
+   
+   :param a: The tile to compute the sum of
+   
+   :returns: A single-element tile holding the sum.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           t = wp.tile_ones(dtype=float, shape=(16, 16))
+           s = wp.tile_sum(t)
+   
+           print(s)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [256] = tile(shape=(1), storage=register)
+   

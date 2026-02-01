@@ -1,0 +1,6 @@
+﻿warp.jax\_experimental.ffi.register\_ffi\_callback
+==================================================
+
+.. currentmodule:: warp.jax_experimental.ffi
+
+.. autofunction:: register_ffi_callback

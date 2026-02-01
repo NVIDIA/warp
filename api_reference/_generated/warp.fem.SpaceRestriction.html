@@ -1,0 +1,818 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>warp.fem.SpaceRestriction &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.fem.SpaceRestriction';</script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="warp.fem.SpaceTopology" href="warp.fem.SpaceTopology.html" />
+    <link rel="prev" title="warp.fem.SpacePartition" href="warp.fem.SpacePartition.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
+<li class="toctree-l1 current active"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../warp_fem.html" class="nav-link">warp.fem</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.fem.SpaceRestriction</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="warp-fem-spacerestriction">
+<h1>warp.fem.SpaceRestriction<a class="headerlink" href="#warp-fem-spacerestriction" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">SpaceRestriction</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">space_partition</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L32-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction" title="Link to this definition">#</a></dt>
+<dd><p>Restriction of a space partition to a given <a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp.fem.GeometryDomain"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryDomain</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp._src.fem.space.partition.SpacePartition"><em>SpacePartition</em></a>)</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>)</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">space_partition</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L42-L75"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.__init__" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space_partition</strong> (<a class="reference internal" href="warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp._src.fem.space.partition.SpacePartition"><em>SpacePartition</em></a>)</p></li>
+<li><p><strong>domain</strong> (<a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>)</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.__init__" title="warp.fem.SpaceRestriction.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(space_partition, domain[, device, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.fill_node_arg" title="warp.fem.SpaceRestriction.fill_node_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_node_arg</span></code></a>(arg, device)</p></td>
+<td><p>Fill node arguments for device functions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_arg_value" title="warp.fem.SpaceRestriction.node_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_arg_value</span></code></a>(device)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_count" title="warp.fem.SpaceRestriction.node_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_count</span></code></a>()</p></td>
+<td><p>Upper bound for the node count, use <code class="docutils literal notranslate"><span class="pre">node_count_sync</span></code> to get the actual value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_count_sync" title="warp.fem.SpaceRestriction.node_count_sync"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_count_sync</span></code></a>()</p></td>
+<td><p>Ensure that the node count is synchronized with the device and return it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_partition_indices" title="warp.fem.SpaceRestriction.node_partition_indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_partition_indices</span></code></a>()</p></td>
+<td><p>Return partition node indices referenced by this restriction.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.partition_element_offsets" title="warp.fem.SpaceRestriction.partition_element_offsets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">partition_element_offsets</span></code></a>()</p></td>
+<td><p>Return offsets into the per-node element index arrays.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.rebuild" title="warp.fem.SpaceRestriction.rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild</span></code></a>([device, temporary_store])</p></td>
+<td><p>Rebuild internal indices for the space restriction.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.total_node_element_count" title="warp.fem.SpaceRestriction.total_node_element_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">total_node_element_count</span></code></a>()</p></td>
+<td><p>Return the total number of node-element references.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.NodeArg" title="warp.fem.SpaceRestriction.NodeArg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NodeArg</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_element_index" title="warp.fem.SpaceRestriction.node_element_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_element_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_element_range" title="warp.fem.SpaceRestriction.node_element_range"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_element_range</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_partition_index" title="warp.fem.SpaceRestriction.node_partition_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_partition_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.node_partition_index_from_element_offset" title="warp.fem.SpaceRestriction.node_partition_index_from_element_offset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_partition_index_from_element_offset</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.space_partition" title="warp.fem.SpaceRestriction.space_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_partition</span></code></a></p></td>
+<td><p>Partition of the function space nodes that will be restricted.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.space_topology" title="warp.fem.SpaceRestriction.space_topology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_topology</span></code></a></p></td>
+<td><p>Topology of the full function space.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.SpaceRestriction.domain" title="warp.fem.SpaceRestriction.domain"><code class="xref py py-obj docutils literal notranslate"><span class="pre">domain</span></code></a></p></td>
+<td><p>Domain to which the space partition is being restricted.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.space_partition">
+<span class="sig-name descname"><span class="pre">space_partition</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp._src.fem.space.partition.SpacePartition"><span class="pre">SpacePartition</span></a></em><a class="headerlink" href="#warp.fem.SpaceRestriction.space_partition" title="Link to this definition">#</a></dt>
+<dd><p>Partition of the function space nodes that will be restricted.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.space_topology">
+<span class="sig-name descname"><span class="pre">space_topology</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><span class="pre">SpaceTopology</span></a></em><a class="headerlink" href="#warp.fem.SpaceRestriction.space_topology" title="Link to this definition">#</a></dt>
+<dd><p>Topology of the full function space.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.domain">
+<span class="sig-name descname"><span class="pre">domain</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><span class="pre">GeometryDomain</span></a></em><a class="headerlink" href="#warp.fem.SpaceRestriction.domain" title="Link to this definition">#</a></dt>
+<dd><p>Domain to which the space partition is being restricted.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.rebuild">
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L76-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.rebuild" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild internal indices for the space restriction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_count_sync">
+<span class="sig-name descname"><span class="pre">node_count_sync</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L167-L173"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_count_sync" title="Link to this definition">#</a></dt>
+<dd><p>Ensure that the node count is synchronized with the device and return it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_count">
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L174-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_count" title="Link to this definition">#</a></dt>
+<dd><p>Upper bound for the node count, use <code class="docutils literal notranslate"><span class="pre">node_count_sync</span></code> to get the actual value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.partition_element_offsets">
+<span class="sig-name descname"><span class="pre">partition_element_offsets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L178-L181"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.partition_element_offsets" title="Link to this definition">#</a></dt>
+<dd><p>Return offsets into the per-node element index arrays.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_partition_indices">
+<span class="sig-name descname"><span class="pre">node_partition_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L182-L185"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_partition_indices" title="Link to this definition">#</a></dt>
+<dd><p>Return partition node indices referenced by this restriction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.total_node_element_count">
+<span class="sig-name descname"><span class="pre">total_node_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L186-L189"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.total_node_element_count" title="Link to this definition">#</a></dt>
+<dd><p>Return the total number of node-element references.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.NodeArg">
+<span class="sig-name descname"><span class="pre">NodeArg</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp._src.codegen.Struct</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.SpaceRestriction.NodeArg" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_arg_value">
+<span class="sig-name descname"><span class="pre">node_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/cache.py#L354-L365"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_arg_value" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.fill_node_arg">
+<span class="sig-name descname"><span class="pre">fill_node_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/space/restriction.py#L206-L212"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.fill_node_arg" title="Link to this definition">#</a></dt>
+<dd><p>Fill node arguments for device functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>arg</strong> (<em>NodeArg</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_partition_index">
+<span class="sig-name descname"><span class="pre">node_partition_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">SpaceRestriction__node_partition_index(args:</span> <span class="pre">warp._src.fem.space.restriction.SpaceRestriction.NodeArg,</span> <span class="pre">restriction_node_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.SpaceRestriction.node_partition_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>NodeArg</em>)</p></li>
+<li><p><strong>restriction_node_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_partition_index_from_element_offset">
+<span class="sig-name descname"><span class="pre">node_partition_index_from_element_offset</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">SpaceRestriction__node_partition_index_from_element_offset(args:</span> <span class="pre">warp._src.fem.space.restriction.SpaceRestriction.NodeArg,</span> <span class="pre">element_offset:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.SpaceRestriction.node_partition_index_from_element_offset" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>NodeArg</em>)</p></li>
+<li><p><strong>element_offset</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_element_range">
+<span class="sig-name descname"><span class="pre">node_element_range</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">SpaceRestriction__node_element_range(args:</span> <span class="pre">warp._src.fem.space.restriction.SpaceRestriction.NodeArg,</span> <span class="pre">partition_node_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.SpaceRestriction.node_element_range" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>NodeArg</em>)</p></li>
+<li><p><strong>partition_node_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_element_index">
+<span class="sig-name descname"><span class="pre">node_element_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">SpaceRestriction__node_element_index(args:</span> <span class="pre">warp._src.fem.space.restriction.SpaceRestriction.NodeArg,</span> <span class="pre">node_element_offset:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.SpaceRestriction.node_element_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>NodeArg</em>)</p></li>
+<li><p><strong>node_element_offset</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="warp.fem.SpacePartition.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">warp.fem.SpacePartition</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="warp.fem.SpaceTopology.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">warp.fem.SpaceTopology</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction"><code class="docutils literal notranslate"><span class="pre">SpaceRestriction</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.space_partition"><code class="docutils literal notranslate"><span class="pre">space_partition</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.space_topology"><code class="docutils literal notranslate"><span class="pre">space_topology</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.domain"><code class="docutils literal notranslate"><span class="pre">domain</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.rebuild"><code class="docutils literal notranslate"><span class="pre">rebuild()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_count_sync"><code class="docutils literal notranslate"><span class="pre">node_count_sync()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_count"><code class="docutils literal notranslate"><span class="pre">node_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.partition_element_offsets"><code class="docutils literal notranslate"><span class="pre">partition_element_offsets()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_partition_indices"><code class="docutils literal notranslate"><span class="pre">node_partition_indices()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.total_node_element_count"><code class="docutils literal notranslate"><span class="pre">total_node_element_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.NodeArg"><code class="docutils literal notranslate"><span class="pre">NodeArg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_arg_value"><code class="docutils literal notranslate"><span class="pre">node_arg_value()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.fill_node_arg"><code class="docutils literal notranslate"><span class="pre">fill_node_arg()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_partition_index"><code class="docutils literal notranslate"><span class="pre">node_partition_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_partition_index_from_element_offset"><code class="docutils literal notranslate"><span class="pre">node_partition_index_from_element_offset</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_element_range"><code class="docutils literal notranslate"><span class="pre">node_element_range</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.SpaceRestriction.node_element_index"><code class="docutils literal notranslate"><span class="pre">node_element_index</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/api_reference/_generated/warp.fem.SpaceRestriction.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

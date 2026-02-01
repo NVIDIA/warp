@@ -1,0 +1,55 @@
+﻿warp.fem.space.ContravariantFunctionSpace
+=========================================
+
+.. currentmodule:: warp.fem.space
+
+.. autoclass:: ContravariantFunctionSpace
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ContravariantFunctionSpace.__init__
+      ~ContravariantFunctionSpace.divergence_valid
+      ~ContravariantFunctionSpace.dof_value
+      ~ContravariantFunctionSpace.gradient_valid
+      ~ContravariantFunctionSpace.local_value_map_inner
+      ~ContravariantFunctionSpace.local_value_map_outer
+      ~ContravariantFunctionSpace.make_field
+      ~ContravariantFunctionSpace.node_count
+      ~ContravariantFunctionSpace.node_positions
+      ~ContravariantFunctionSpace.space_divergence
+      ~ContravariantFunctionSpace.space_gradient
+      ~ContravariantFunctionSpace.space_value
+      ~ContravariantFunctionSpace.trace
+      ~ContravariantFunctionSpace.value_basis_element
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ContravariantFunctionSpace.basis
+      ~ContravariantFunctionSpace.degree
+      ~ContravariantFunctionSpace.dimension
+      ~ContravariantFunctionSpace.element_kind
+      ~ContravariantFunctionSpace.geometry
+      ~ContravariantFunctionSpace.name
+      ~ContravariantFunctionSpace.node_basis_element
+      ~ContravariantFunctionSpace.topology
+      ~ContravariantFunctionSpace.dtype
+      ~ContravariantFunctionSpace.dof_dtype
+      ~ContravariantFunctionSpace.weight_dtype
+      ~ContravariantFunctionSpace.LocalValueMap
+      ~ContravariantFunctionSpace.VALUE_DOF_COUNT
+      ~ContravariantFunctionSpace.NODE_DOF_COUNT
+      ~ContravariantFunctionSpace.ORDER
+   
+   

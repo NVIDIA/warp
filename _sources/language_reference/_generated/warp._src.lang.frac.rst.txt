@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.frac
+====================
+
+.. function:: warp._src.lang.frac(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Retrieve the fractional part of ``x``.
+   
+   In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.

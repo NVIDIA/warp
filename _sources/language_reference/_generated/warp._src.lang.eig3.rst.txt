@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.eig3
+====================
+
+.. function:: warp._src.lang.eig3(A: Matrix[Literal[3],Literal[3],Float]) -> tuple[Matrix[Literal[3],Literal[3],Float], Vector[Literal[3],Float]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the eigendecomposition of a 3x3 matrix ``A``.
+   
+   The eigenvectors are returned as the columns of ``Q``, while the corresponding eigenvalues are returned in ``d``.
+
+.. function:: warp._src.lang.eig3(A: Matrix[Literal[3],Literal[3],Float], Q: Matrix[Literal[3],Literal[3],Float], d: Vector[Literal[3],Float]) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the eigendecomposition of a 3x3 matrix ``A``.
+   
+   The eigenvectors are returned as the columns of ``Q``, while the corresponding eigenvalues are returned in ``d``.

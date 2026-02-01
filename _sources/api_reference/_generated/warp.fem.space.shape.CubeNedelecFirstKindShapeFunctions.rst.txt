@@ -1,0 +1,40 @@
+﻿warp.fem.space.shape.CubeNedelecFirstKindShapeFunctions
+=======================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeNedelecFirstKindShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeNedelecFirstKindShapeFunctions.__init__
+      ~CubeNedelecFirstKindShapeFunctions.make_element_inner_weight
+      ~CubeNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient
+      ~CubeNedelecFirstKindShapeFunctions.make_node_coords_in_element
+      ~CubeNedelecFirstKindShapeFunctions.make_node_quadrature_weight
+      ~CubeNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeNedelecFirstKindShapeFunctions.EDGE
+      ~CubeNedelecFirstKindShapeFunctions.FACE
+      ~CubeNedelecFirstKindShapeFunctions.INTERIOR
+      ~CubeNedelecFirstKindShapeFunctions.VERTEX
+      ~CubeNedelecFirstKindShapeFunctions.name
+      ~CubeNedelecFirstKindShapeFunctions.value
+      ~CubeNedelecFirstKindShapeFunctions.ORDER
+      ~CubeNedelecFirstKindShapeFunctions.NODES_PER_ELEMENT
+   
+   

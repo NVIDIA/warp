@@ -1,0 +1,880 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>FEM Toolkit &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'domain_modules/fem';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Rendering" href="render.html" />
+    <link rel="prev" title="Sparse Matrices" href="sparse.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">FEM Toolkit</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="fem-toolkit">
+<h1>FEM Toolkit<a class="headerlink" href="#fem-toolkit" title="Link to this heading">#</a></h1>
+<p>The <a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> module is designed to facilitate solving physical systems described as differential
+equations. For example, it can solve PDEs for diffusion, convection, fluid flow, and elasticity problems
+using finite-element-based (FEM) Galerkin methods and allows users to quickly experiment with various FEM
+formulations and discretization schemes.</p>
+<section id="integrands">
+<h2>Integrands<a class="headerlink" href="#integrands" title="Link to this heading">#</a></h2>
+<p>The core functionality of the FEM toolkit is the ability to integrate constant, linear, and bilinear forms
+over various domains and using arbitrary interpolation basis.</p>
+<p>The main mechanism is the <a class="reference internal" href="../api_reference/_generated/warp.fem.integrand_decorator.html#warp.fem.integrand" title="warp.fem.integrand"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrand()</span></code></a> decorator, for instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@integrand</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">linear_form</span><span class="p">(</span>
+    <span class="n">s</span><span class="p">:</span> <span class="n">Sample</span><span class="p">,</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">v</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">domain</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">v</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+
+<span class="nd">@integrand</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">diffusion_form</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">Sample</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span> <span class="n">nu</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">nu</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span>
+        <span class="n">grad</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
+        <span class="n">grad</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">),</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Integrands are normal Warp kernels, meaning that they may contain arbitrary Warp functions.
+However, they accept a few special parameters:</p>
+<blockquote>
+<div><ul>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-data docutils literal notranslate"><span class="pre">Sample</span></code></a> contains information about the current integration sample point, such as the element index and coordinates in element.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.Field.html#warp.fem.Field" title="warp.fem.Field"><code class="xref py py-class docutils literal notranslate"><span class="pre">Field</span></code></a> designates an abstract field, which will be replaced at call time by the actual field type such as a discrete field, <a class="reference internal" href="../api_reference/_generated/warp.fem.field.TestField.html#warp.fem.field.TestField" title="warp.fem.field.TestField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.TestField</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.fem.field.TrialField.html#warp.fem.field.TrialField" title="warp.fem.field.TrialField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.TrialField</span></code></a> defined over some <a class="reference internal" href="../api_reference/_generated/warp.fem.FunctionSpace.html#warp.fem.FunctionSpace" title="warp.fem.FunctionSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">FunctionSpace</span></code></a>,
+an <a class="reference internal" href="../api_reference/_generated/warp.fem.ImplicitField.html#warp.fem.ImplicitField" title="warp.fem.ImplicitField"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImplicitField</span></code></a> wrapping an arbitrary function, or any other of the available <a class="reference internal" href="#fields"><span class="std std-ref">Fields</span></a>.
+A field <cite>u</cite> can then be evaluated at a given sample <cite>s</cite> using the usual call operator as <code class="docutils literal notranslate"><span class="pre">u(s)</span></code>.
+Several other operators are available, such as the gradient <a class="reference internal" href="../api_reference/_generated/warp.fem.grad.html#warp.fem.grad" title="warp.fem.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a>; see the <a class="reference internal" href="#operators"><span class="std std-ref">Operators</span></a> section.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.Domain.html#warp.fem.Domain" title="warp.fem.Domain"><code class="xref py py-class docutils literal notranslate"><span class="pre">Domain</span></code></a> designates an abstract integration domain. Evaluating a domain at a sample <cite>s</cite> as <code class="docutils literal notranslate"><span class="pre">domain(s)</span></code> yields the corresponding world position,
+and several operators are also provided domains, for example evaluating the normal at a given sample:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@integrand</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">boundary_form</span><span class="p">(</span>
+    <span class="n">s</span><span class="p">:</span> <span class="n">Sample</span><span class="p">,</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Domain</span><span class="p">,</span>
+    <span class="n">u</span><span class="p">:</span> <span class="n">Field</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">nor</span> <span class="o">=</span> <span class="n">normal</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">nor</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+<p>Integrands cannot be used directly with <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a>, but must be called through <a class="reference internal" href="../api_reference/_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate()</span></code></a> instead.
+The <a class="reference internal" href="../api_reference/_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-data docutils literal notranslate"><span class="pre">Sample</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.Domain.html#warp.fem.Domain" title="warp.fem.Domain"><code class="xref py py-class docutils literal notranslate"><span class="pre">Domain</span></code></a> arguments of the root integrand (<cite>integrand</cite> parameter passed to <a class="reference internal" href="../api_reference/_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate()</span></code></a> call) will get automatically populated.
+<a class="reference internal" href="../api_reference/_generated/warp.fem.Field.html#warp.fem.Field" title="warp.fem.Field"><code class="xref py py-class docutils literal notranslate"><span class="pre">Field</span></code></a> arguments must be passed as a dictionary in the <cite>fields</cite> parameter of the launcher function, and all other standard Warp types arguments must be
+passed as a dictionary in the <cite>values</cite> parameter of the launcher function, for instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;nu&quot;</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="basic-workflow">
+<h2>Basic Workflow<a class="headerlink" href="#basic-workflow" title="Link to this heading">#</a></h2>
+<p>The typical steps for solving a linearized PDE with <a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> are as follow:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Define a <a class="reference internal" href="../api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a> (grid, mesh, etc). At the moment, 2D and 3D regular grids, NanoVDB volumes, and triangle, quadrilateral, tetrahedron and hexahedron unstructured meshes are supported.</p></li>
+<li><p>Define one or more <a class="reference internal" href="../api_reference/_generated/warp.fem.FunctionSpace.html#warp.fem.FunctionSpace" title="warp.fem.FunctionSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">FunctionSpace</span></code></a>, by equipping the geometry elements with shape functions. See <a class="reference internal" href="../api_reference/_generated/warp.fem.make_polynomial_space.html#warp.fem.make_polynomial_space" title="warp.fem.make_polynomial_space"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_polynomial_space()</span></code></a>. At the moment, continuous/discontinuous Lagrange (<span class="math notranslate nohighlight">\(P_{k[d]}, Q_{k[d]}\)</span>) and Serendipity (<span class="math notranslate nohighlight">\(S_k\)</span>) shape functions of order <span class="math notranslate nohighlight">\(k \leq 3\)</span> are supported, as well as linear Nédélec (first kind) and Raviart-Thomas vector-valued shape functions.</p></li>
+<li><p>Define an integration domain, for instance the geometry’s cells (<a class="reference internal" href="../api_reference/_generated/warp.fem.Cells.html#warp.fem.Cells" title="warp.fem.Cells"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cells</span></code></a>) or boundary sides (<a class="reference internal" href="../api_reference/_generated/warp.fem.BoundarySides.html#warp.fem.BoundarySides" title="warp.fem.BoundarySides"><code class="xref py py-class docutils literal notranslate"><span class="pre">BoundarySides</span></code></a>).</p></li>
+<li><p>Integrate linear forms to build the system’s right-hand-side. Define a test function over the function space using <a class="reference internal" href="../api_reference/_generated/warp.fem.make_test.html#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_test()</span></code></a>,
+a <a class="reference internal" href="../api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature" title="warp.fem.Quadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">Quadrature</span></code></a> formula (or let the module choose one based on the function space degree), and call <a class="reference internal" href="../api_reference/_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> with the linear form integrand.
+The result is a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> containing the integration result for each of the function space degrees of freedom.</p></li>
+<li><p>Integrate bilinear forms to build the system’s left-hand-side. Define a trial function over the function space using <a class="reference internal" href="../api_reference/_generated/warp.fem.make_trial.html#warp.fem.make_trial" title="warp.fem.make_trial"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_trial()</span></code></a>,
+then call <a class="reference internal" href="../api_reference/_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> with the bilinear form integrand.
+The result is a <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix</span></code></a> containing the integration result for each pair of test and trial function space degrees of freedom.
+Note that the trial and test functions do not have to be defined over the same function space, so that Mixed FEM is supported.</p></li>
+<li><p>Solve the resulting linear system using the solver of your choice, for instance one of the built-in <a class="reference internal" href="sparse.html#iterative-linear-solvers"><span class="std std-ref">Iterative Linear Solvers</span></a>.</p></li>
+</ul>
+</div></blockquote>
+<p>The following excerpt from the introductory example <code class="docutils literal notranslate"><span class="pre">warp/examples/fem/example_diffusion.py</span></code> outlines this procedure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Grid geometry</span>
+<span class="n">geo</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">cell_size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Domain and function spaces</span>
+<span class="n">domain</span> <span class="o">=</span> <span class="n">Cells</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geo</span><span class="p">)</span>
+<span class="n">scalar_space</span> <span class="o">=</span> <span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Right-hand-side (forcing term)</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">make_test</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">)</span>
+<span class="n">rhs</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">linear_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">})</span>
+
+<span class="c1"># Weakly-imposed boundary conditions on Y sides</span>
+<span class="n">boundary</span> <span class="o">=</span> <span class="n">BoundarySides</span><span class="p">(</span><span class="n">geo</span><span class="p">)</span>
+<span class="n">bd_test</span> <span class="o">=</span> <span class="n">make_test</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
+<span class="n">bd_trial</span> <span class="o">=</span> <span class="n">make_trial</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
+<span class="n">bd_matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">y_mass_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">bd_trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">bd_test</span><span class="p">})</span>
+
+<span class="c1"># Diffusion form</span>
+<span class="n">trial</span> <span class="o">=</span> <span class="n">make_trial</span><span class="p">(</span><span class="n">space</span><span class="o">=</span><span class="n">scalar_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">)</span>
+<span class="n">matrix</span> <span class="o">=</span> <span class="n">integrate</span><span class="p">(</span><span class="n">diffusion_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;u&quot;</span><span class="p">:</span> <span class="n">trial</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">},</span> <span class="n">values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;nu&quot;</span><span class="p">:</span> <span class="n">viscosity</span><span class="p">})</span>
+
+<span class="c1"># Assemble linear system (add diffusion and boundary condition matrices)</span>
+<span class="n">matrix</span> <span class="o">+=</span> <span class="n">bd_matrix</span> <span class="o">*</span> <span class="n">boundary_strength</span>
+
+<span class="c1"># Solve linear system using Conjugate Gradient</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">rhs</span><span class="p">)</span>
+<span class="n">bsr_cg</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">rhs</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a> function does not check that the passed integrands are actually linear or bilinear forms; it is up to the user to ensure that they are.
+To solve non-linear PDEs, one can use an iterative procedure and pass the current value of the studied function <a class="reference internal" href="../api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField" title="warp.fem.DiscreteField"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteField</span></code></a> argument to the integrand, in which
+arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields.
+This strategy is demonstrated in the <code class="docutils literal notranslate"><span class="pre">example_mixed_elasticity.py</span></code> example.</p>
+</div>
+</section>
+<section id="introductory-examples">
+<h2>Introductory Examples<a class="headerlink" href="#introductory-examples" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> ships with a list of examples in the <code class="docutils literal notranslate"><span class="pre">warp/examples/fem</span></code> directory demonstrating how to solve classical model problems.</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">example_diffusion.py</span></code>: 2D diffusion with homogeneous Neumann and Dirichlet boundary conditions</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_diffusion_3d.py</span></code>: 3D variant of the diffusion problem</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">example_convection_diffusion.py</span></code>: 2D convection-diffusion using semi-Lagrangian advection</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_convection_diffusion_dg.py</span></code>: 2D convection-diffusion using Discontinuous Galerkin with upwind transport and Symmetric Interior Penalty</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_burgers.py</span></code>: 2D inviscid Burgers using Discontinuous Galerkin with upwind transport and slope limiter</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_stokes.py</span></code>: 2D incompressible Stokes flow using mixed <span class="math notranslate nohighlight">\(P_k/P_{k-1}\)</span> or <span class="math notranslate nohighlight">\(Q_k/P_{(k-1)d}\)</span> elements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_navier_stokes.py</span></code>: 2D Navier-Stokes flow using mixed <span class="math notranslate nohighlight">\(P_k/P_{k-1}\)</span> elements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_mixed_elasticity.py</span></code>: 2D nonlinear elasticity using mixed continuous/discontinuous <span class="math notranslate nohighlight">\(S_k/P_{(k-1)d}\)</span> elements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_distortion_energy.py</span></code>: Parameterization of a 3D surface minimizing a 2D nonlinear distortion energy</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_magnetostatics.py</span></code>: 2D magnetostatics using a curl-curl formulation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_elastic_shape_optimization.py</span></code>: Shape optimization of a 2D elastic cantilever beam</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_darcy_ls_optimization.py</span></code>: Level-set-based optimization of a 2D Darcy flow</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="advanced-usages">
+<h2>Advanced Usages<a class="headerlink" href="#advanced-usages" title="Link to this heading">#</a></h2>
+<section id="high-order-curved-geometries">
+<h3>High-order (curved) geometries<a class="headerlink" href="#high-order-curved-geometries" title="Link to this heading">#</a></h3>
+<p>It is possible to convert any <a class="reference internal" href="../api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a> (grids and explicit meshes) into a curved, high-order variant by deforming them
+with an arbitrary-order displacement field using the <a class="reference internal" href="../api_reference/_generated/warp.fem.GeometryField.html#warp.fem.GeometryField.make_deformed_geometry" title="warp.fem.GeometryField.make_deformed_geometry"><code class="xref py py-meth docutils literal notranslate"><span class="pre">make_deformed_geometry()</span></code></a> method.
+The process looks as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define a base geometry</span>
+<span class="n">base_geo</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Grid3D</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+
+<span class="c1"># Define a displacement field on the base geometry</span>
+<span class="n">deformation_space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">base_geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="n">deformation_degree</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">deformation_field</span> <span class="o">=</span> <span class="n">deformation_space</span><span class="o">.</span><span class="n">make_field</span><span class="p">()</span>
+
+<span class="c1"># Populate the field value by interpolating an expression</span>
+<span class="n">fem</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">deformation_field_expr</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">deformation_field</span><span class="p">)</span>
+
+<span class="c1"># Construct the deformed geometry from the displacement field</span>
+<span class="n">deform_geo</span> <span class="o">=</span> <span class="n">deformation_field</span><span class="o">.</span><span class="n">make_deformed_geometry</span><span class="p">()</span>
+
+<span class="c1"># Define new function spaces on the deformed geometry</span>
+<span class="n">scalar_space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">deformed_geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="n">scalar_space_degree</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See <code class="docutils literal notranslate"><span class="pre">example_deformed_geometry.py</span></code> for a complete example.
+It is also possible to define the deformation field from an <a class="reference internal" href="../api_reference/_generated/warp.fem.ImplicitField.html#warp.fem.ImplicitField" title="warp.fem.ImplicitField"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImplicitField</span></code></a>, as done in <code class="docutils literal notranslate"><span class="pre">example_magnetostatics.py</span></code>.</p>
+</section>
+<section id="particle-based-quadrature-and-position-lookups">
+<span id="lookups"></span><h3>Particle-based quadrature and position lookups<a class="headerlink" href="#particle-based-quadrature-and-position-lookups" title="Link to this heading">#</a></h3>
+<p>The global <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.partition_lookup.html#warp.fem.partition_lookup" title="warp.fem.partition_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">partition_lookup</span></code></a> operators allow generating a <a class="reference internal" href="../api_reference/_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-data docutils literal notranslate"><span class="pre">Sample</span></code></a> from an arbitrary position; this is illustrated in
+the <code class="docutils literal notranslate"><span class="pre">example_streamlines.py</span></code> example for generating 3D streamlines by tracing through a velocity field.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Non-grid-based geometry types require building a Bounding Volume Hierarchy (BVH) acceleration structure for <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> and similar operators to be functional.
+This can be done by calling <a class="reference internal" href="../api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.build_bvh" title="warp.fem.Geometry.build_bvh"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Geometry.build_bvh()</span></code></a> or passing <code class="docutils literal notranslate"><span class="pre">build_bvh=True</span></code> to the geometry constructor.
+In case the geometry vertex positions are later modified, the BVH can be refit using <a class="reference internal" href="../api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.update_bvh" title="warp.fem.Geometry.update_bvh"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Geometry.update_bvh()</span></code></a>.</p>
+</div>
+<p>This operator is also leveraged by the <a class="reference internal" href="../api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a> to provide a way to define Particle-In-Cell quadratures from a set of arbitrary particles,
+making it possible to implement MPM-type methods.
+The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
+This is illustrated by the <code class="docutils literal notranslate"><span class="pre">example_stokes_transfer.py</span></code> and <code class="docutils literal notranslate"><span class="pre">example_apic_fluid.py</span></code> examples.</p>
+</section>
+<section id="nonconforming-fields">
+<h3>Nonconforming fields<a class="headerlink" href="#nonconforming-fields" title="Link to this heading">#</a></h3>
+<p>Fields defined on a given <a class="reference internal" href="../api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a> cannot be directly used for integrating over a distinct geometry;
+however, they may be wrapped in a <a class="reference internal" href="../api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField" title="warp.fem.NonconformingField"><code class="xref py py-class docutils literal notranslate"><span class="pre">NonconformingField</span></code></a> for this purpose.
+This is leveraged by the <code class="docutils literal notranslate"><span class="pre">example_nonconforming_contact.py</span></code> to simulate contacting bodies that are discretized separately.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently <a class="reference internal" href="../api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField" title="warp.fem.NonconformingField"><code class="xref py py-class docutils literal notranslate"><span class="pre">NonconformingField</span></code></a> does not support wrapping a trial field, so it is not yet possible to define
+bilinear forms over different geometries.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The mapping between the different geometries is position based, so a <a class="reference internal" href="../api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField" title="warp.fem.NonconformingField"><code class="xref py py-class docutils literal notranslate"><span class="pre">NonconformingField</span></code></a> is not able to accurately capture discontinuous function spaces.
+Moreover, the integration domain must support the <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> operator (see <a class="reference internal" href="#lookups"><span class="std std-ref">Particle-based quadrature and position lookups</span></a>).</p>
+</div>
+</section>
+<section id="partitioning">
+<h3>Partitioning<a class="headerlink" href="#partitioning" title="Link to this heading">#</a></h3>
+<p>The FEM toolkit makes it possible to perform integration on a subset of the domain elements,
+possibly re-indexing degrees of freedom so that the linear system contains the local ones only.
+This is useful for distributed computation (see <code class="docutils literal notranslate"><span class="pre">warp/examples/fem/example_diffusion_mgpu.py</span></code>), or simply to limit the simulation domain to a subset of active cells (see <code class="docutils literal notranslate"><span class="pre">warp/examples/fem/example_stokes_transfer.py</span></code>).</p>
+<p>A partition of the simulation geometry can be defined using subclasses of <a class="reference internal" href="../api_reference/_generated/warp.fem.GeometryPartition.html#warp.fem.GeometryPartition" title="warp.fem.GeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryPartition</span></code></a>
+such as <a class="reference internal" href="../api_reference/_generated/warp.fem.LinearGeometryPartition.html#warp.fem.LinearGeometryPartition" title="warp.fem.LinearGeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearGeometryPartition</span></code></a>  or <a class="reference internal" href="../api_reference/_generated/warp.fem.ExplicitGeometryPartition.html#warp.fem.ExplicitGeometryPartition" title="warp.fem.ExplicitGeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">ExplicitGeometryPartition</span></code></a>.</p>
+<p>Function spaces can then be partitioned according to the geometry partition using <a class="reference internal" href="../api_reference/_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_space_partition()</span></code></a>.
+The resulting <a class="reference internal" href="../api_reference/_generated/warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp.fem.SpacePartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">SpacePartition</span></code></a> object allows translating between space-wide and partition-wide node indices,
+and differentiating interior, frontier and exterior nodes.</p>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.fem.Subdomain.html#warp.fem.Subdomain" title="warp.fem.Subdomain"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subdomain</span></code></a> class can be used to integrate over a subset of elements while keeping the full set of degrees of freedom,
+i.e, without reindexing; this is illustrated in the <code class="docutils literal notranslate"><span class="pre">example_streamlines.py</span></code> example to define inflow and outflow boundaries.</p>
+</section>
+<section id="adaptivity">
+<h3>Adaptivity<a class="headerlink" href="#adaptivity" title="Link to this heading">#</a></h3>
+<p>While unstructured mesh refinement is currently out of scope, <a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> provides an adaptive version of the sparse grid geometry, <a class="reference internal" href="../api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid" title="warp.fem.AdaptiveNanogrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveNanogrid</span></code></a>,
+with power-of-two voxel scales. Helpers for building such geometries from hierarchy of grids or a refinement oracle are also provided, see
+<a class="reference internal" href="../api_reference/_generated/warp.fem.adaptive_nanogrid_from_field.html#warp.fem.adaptive_nanogrid_from_field" title="warp.fem.adaptive_nanogrid_from_field"><code class="xref py py-func docutils literal notranslate"><span class="pre">adaptive_nanogrid_from_field()</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.adaptive_nanogrid_from_hierarchy.html#warp.fem.adaptive_nanogrid_from_hierarchy" title="warp.fem.adaptive_nanogrid_from_hierarchy"><code class="xref py py-func docutils literal notranslate"><span class="pre">adaptive_nanogrid_from_hierarchy()</span></code></a>.
+An example is provided in <code class="docutils literal notranslate"><span class="pre">warp/examples/fem/example_adaptive_grid.py</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The existence of “T-junctions” at resolution boundaries mean that usual tri-polynomial shape functions will no longer be globally
+continuous. Discontinuous–Galerkin or similar techniques may be used to take into account the “jump” at multi-resolution faces.</p>
+</div>
+</section>
+<section id="memory-management">
+<h3>Memory management<a class="headerlink" href="#memory-management" title="Link to this heading">#</a></h3>
+<p>Several <a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> functions require allocating temporary buffers to perform their computations.
+If such functions are called many times in a tight loop, those many allocations and de-allocations may degrade performance,
+though this is a lot less significant when <a class="reference internal" href="../deep_dive/allocators.html#mempool-allocators"><span class="std std-ref">Stream-Ordered Memory Pool Allocators</span></a> are in use.
+To overcome this issue, a <a class="reference internal" href="../api_reference/_generated/warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp.fem.TemporaryStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">TemporaryStore</span></code></a> object may be created to persist and reuse temporary allocations across calls,
+either globally using <a class="reference internal" href="../api_reference/_generated/warp.fem.set_default_temporary_store.html#warp.fem.set_default_temporary_store" title="warp.fem.set_default_temporary_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_default_temporary_store()</span></code></a> or at a per-function granularity using the corresponding argument.</p>
+</section>
+</section>
+<section id="fields">
+<span id="id1"></span><h2>Fields<a class="headerlink" href="#fields" title="Link to this heading">#</a></h2>
+<p>Fields represent functions defined over a geometry. The following field types are available:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField" title="warp.fem.DiscreteField"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteField</span></code></a>: A field defined by interpolating values at the nodes of a function space.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.ImplicitField.html#warp.fem.ImplicitField" title="warp.fem.ImplicitField"><code class="xref py py-class docutils literal notranslate"><span class="pre">ImplicitField</span></code></a>: A field wrapping an arbitrary function.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.UniformField.html#warp.fem.UniformField" title="warp.fem.UniformField"><code class="xref py py-class docutils literal notranslate"><span class="pre">UniformField</span></code></a>: A constant field with the same value everywhere.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField" title="warp.fem.NonconformingField"><code class="xref py py-class docutils literal notranslate"><span class="pre">NonconformingField</span></code></a>: A wrapper for evaluating fields defined on a different geometry.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.GeometryField.html#warp.fem.GeometryField" title="warp.fem.GeometryField"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryField</span></code></a>: A field representing the deformation of a geometry.</p></li>
+</ul>
+<p>Fields can be evaluated at a <a class="reference internal" href="../api_reference/_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-data docutils literal notranslate"><span class="pre">Sample</span></code></a> using the call operator, e.g., <code class="docutils literal notranslate"><span class="pre">u(s)</span></code> evaluates field <code class="docutils literal notranslate"><span class="pre">u</span></code> at sample <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p>
+<p>Additionally, test and trial fields (<a class="reference internal" href="../api_reference/_generated/warp.fem.field.TestField.html#warp.fem.field.TestField" title="warp.fem.field.TestField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.TestField</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.field.TrialField.html#warp.fem.field.TrialField" title="warp.fem.field.TrialField"><code class="xref py py-class docutils literal notranslate"><span class="pre">field.TrialField</span></code></a>) are created using
+<a class="reference internal" href="../api_reference/_generated/warp.fem.make_test.html#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_test()</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.make_trial.html#warp.fem.make_trial" title="warp.fem.make_trial"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_trial()</span></code></a> for building linear and bilinear forms.</p>
+</section>
+<section id="operators">
+<span id="id2"></span><h2>Operators<a class="headerlink" href="#operators" title="Link to this heading">#</a></h2>
+<p>The following operators are available for use within integrands:</p>
+<p><strong>Field operators:</strong></p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.grad.html#warp.fem.grad" title="warp.fem.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a>: Gradient of a field.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.div.html#warp.fem.div" title="warp.fem.div"><code class="xref py py-obj docutils literal notranslate"><span class="pre">div</span></code></a>: Divergence of a vector field.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.curl.html#warp.fem.curl" title="warp.fem.curl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">curl</span></code></a>: Curl of a vector field.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.D.html#warp.fem.D" title="warp.fem.D"><code class="xref py py-obj docutils literal notranslate"><span class="pre">D</span></code></a>: Generic derivative operator.</p></li>
+</ul>
+<p><strong>Domain operators:</strong></p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.position.html#warp.fem.position" title="warp.fem.position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">position</span></code></a>: World position at a sample (same as calling <code class="docutils literal notranslate"><span class="pre">domain(s)</span></code>).</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.normal.html#warp.fem.normal" title="warp.fem.normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normal</span></code></a>: Normal vector at a sample on a boundary.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.measure.html#warp.fem.measure" title="warp.fem.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a>: Integration measure (area or volume element).</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.measure_ratio.html#warp.fem.measure_ratio" title="warp.fem.measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure_ratio</span></code></a>: Ratio of measures between a domain and its reference element.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.deformation_gradient.html#warp.fem.deformation_gradient" title="warp.fem.deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deformation_gradient</span></code></a>: Deformation gradient of the domain.</p></li>
+</ul>
+<p><strong>Discontinuous Galerkin operators</strong> (for use on interior sides):</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.inner.html#warp.fem.inner" title="warp.fem.inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inner</span></code></a>: Value on the inner side of an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.outer.html#warp.fem.outer" title="warp.fem.outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">outer</span></code></a>: Value on the outer side of an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.average.html#warp.fem.average" title="warp.fem.average"><code class="xref py py-obj docutils literal notranslate"><span class="pre">average</span></code></a>: Average of values across an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.jump.html#warp.fem.jump" title="warp.fem.jump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jump</span></code></a>: Jump of values across an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.grad_average.html#warp.fem.grad_average" title="warp.fem.grad_average"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_average</span></code></a>: Average of gradients across an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.grad_jump.html#warp.fem.grad_jump" title="warp.fem.grad_jump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_jump</span></code></a>: Jump of gradients across an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.grad_outer.html#warp.fem.grad_outer" title="warp.fem.grad_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_outer</span></code></a>: Gradient on the outer side of an interface.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.fem.div_outer.html#warp.fem.div_outer" title="warp.fem.div_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">div_outer</span></code></a>: Divergence on the outer side of an interface.</p></li>
+</ul>
+</section>
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading">#</a></h2>
+<p>Most function spaces define a <code class="docutils literal notranslate"><span class="pre">vtk_cells</span></code> method that returns a list of VTK-compatible cell types and node indices.
+This can be used to visualize discrete fields in VTK-aware viewers such as <code class="docutils literal notranslate"><span class="pre">pyvista</span></code>, for instance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pyvista</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.fem</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fem</span>
+
+
+<span class="nd">@fem</span><span class="o">.</span><span class="n">integrand</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">ackley</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">Sample</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">Domain</span><span class="p">):</span>
+   <span class="n">x</span> <span class="o">=</span> <span class="n">domain</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+   <span class="k">return</span> <span class="p">(</span>
+      <span class="o">-</span><span class="mf">20.0</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.2</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">length_sq</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+      <span class="o">-</span> <span class="n">wp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])))</span>
+      <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">e</span>
+      <span class="o">+</span> <span class="mf">20.0</span>
+   <span class="p">)</span>
+
+
+<span class="c1"># Define field</span>
+<span class="n">geo</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">Grid2D</span><span class="p">(</span><span class="n">res</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2i</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span> <span class="n">bounds_lo</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="o">-</span><span class="mf">4.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">4.0</span><span class="p">),</span> <span class="n">bounds_hi</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">))</span>
+<span class="n">space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_space</span><span class="p">(</span><span class="n">geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">field</span> <span class="o">=</span> <span class="n">space</span><span class="o">.</span><span class="n">make_field</span><span class="p">()</span>
+<span class="n">fem</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">ackley</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">field</span><span class="p">)</span>
+
+<span class="c1"># Extract cells, nodes and values</span>
+<span class="n">cells</span><span class="p">,</span> <span class="n">types</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">vtk_cells</span><span class="p">()</span>
+<span class="n">nodes</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">node_positions</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">field</span><span class="o">.</span><span class="n">dof_values</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">nodes</span><span class="p">,</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]))</span>
+
+<span class="c1"># Visualize with pyvista</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">pyvista</span><span class="o">.</span><span class="n">UnstructuredGrid</span><span class="p">(</span><span class="n">cells</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="n">positions</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">point_data</span><span class="p">[</span><span class="s2">&quot;scalars&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+<span class="n">plotter</span> <span class="o">=</span> <span class="n">pyvista</span><span class="o">.</span><span class="n">Plotter</span><span class="p">()</span>
+<span class="n">plotter</span><span class="o">.</span><span class="n">add_mesh</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+<span class="n">plotter</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="sparse.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Sparse Matrices</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="render.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Rendering</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrands">Integrands</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-workflow">Basic Workflow</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introductory-examples">Introductory Examples</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-usages">Advanced Usages</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#high-order-curved-geometries">High-order (curved) geometries</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#particle-based-quadrature-and-position-lookups">Particle-based quadrature and position lookups</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nonconforming-fields">Nonconforming fields</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#partitioning">Partitioning</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adaptivity">Adaptivity</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#memory-management">Memory management</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fields">Fields</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#operators">Operators</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#visualization">Visualization</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/domain_modules/fem.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

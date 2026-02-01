@@ -1,0 +1,46 @@
+﻿warp.array
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: array
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~array.__init__
+      ~array.assign
+      ~array.contiguous
+      ~array.cptr
+      ~array.fill_
+      ~array.flatten
+      ~array.ipc_handle
+      ~array.list
+      ~array.mark_init
+      ~array.mark_read
+      ~array.mark_write
+      ~array.numpy
+      ~array.reshape
+      ~array.to
+      ~array.transpose
+      ~array.view
+      ~array.zero_
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~array.grad
+      ~array.requires_grad
+      ~array.vars
+   
+   

@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.norm\_huber
+===========================
+
+.. function:: warp._src.lang.norm_huber(v: Any, delta: float) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the Huber norm of a vector v with a given delta.
+   
+   .. math::
+       H(v) = \begin{cases} \frac{1}{2} \|v\|^2 & \text{if } \|v\| \leq \delta \\ \delta(\|v\| - \frac{1}{2}\delta) & \text{otherwise} \end{cases}
+   
+   .. image:: /img/norm_huber.svg
+       :align: center
+   
+   :param v: The vector to compute the Huber norm of.
+   :type v: Vector[Any,Float]
+   :param delta: The threshold value, defaults to 1.0.
+   :type delta: float
+   
+   :returns: The Huber norm of the vector.
+   :rtype: float
+   

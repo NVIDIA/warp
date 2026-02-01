@@ -1,0 +1,6 @@
+﻿warp.fem.grad\_average
+======================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: grad_average

@@ -1,0 +1,58 @@
+﻿warp.\_src.lang.neg
+===================
+
+.. function:: warp._src.lang.neg(x: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Negate ``x``.
+
+.. function:: warp._src.lang.neg(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Negate ``x``.
+
+.. function:: warp._src.lang.neg(x: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Negate ``x``.
+
+.. function:: warp._src.lang.neg(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Negate ``x``.
+
+.. function:: warp._src.lang.neg(x: Tile[Any,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Negate ``x``.
+   
+   Negate tiles element-wise.

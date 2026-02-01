@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.cross
+=====================
+
+.. function:: warp._src.lang.cross(a: Vector[Literal[3],Scalar], b: Vector[Literal[3],Scalar]) -> Vector[Literal[3],Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the cross product of two 3D vectors.

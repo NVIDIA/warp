@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.tile\_diag\_add
+===============================
+
+.. function:: warp._src.lang.tile_diag_add(a: Tile[Any,tuple[int, int]], d: Tile[Any,tuple[int]]) -> Tile[Any,tuple[int, int]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Add a square matrix and a diagonal matrix ``d`` represented as a 1D tile.

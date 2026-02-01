@@ -1,0 +1,14 @@
+﻿warp.\_src.lang.rint
+====================
+
+.. function:: warp._src.lang.rint(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
+   
+   It is generally faster than :func:`~warp._src.lang.round`.
+   Equivalent to :func:`numpy.rint`.

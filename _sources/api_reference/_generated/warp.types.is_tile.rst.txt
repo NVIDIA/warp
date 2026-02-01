@@ -1,0 +1,6 @@
+﻿warp.types.is\_tile
+===================
+
+.. currentmodule:: warp.types
+
+.. autofunction:: is_tile

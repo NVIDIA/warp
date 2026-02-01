@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.randf
+=====================
+
+.. function:: warp._src.lang.randf(state: uint32) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random float.
+   
+   Sample in the range [0.0, 1.0).
+
+.. function:: warp._src.lang.randf(state: uint32, low: float32, high: float32) -> float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random float.
+   
+   Sample in the range [low, high).

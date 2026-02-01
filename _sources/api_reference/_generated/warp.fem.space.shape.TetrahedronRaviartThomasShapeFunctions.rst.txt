@@ -1,0 +1,47 @@
+﻿warp.fem.space.shape.TetrahedronRaviartThomasShapeFunctions
+===========================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TetrahedronRaviartThomasShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TetrahedronRaviartThomasShapeFunctions.__init__
+      ~TetrahedronRaviartThomasShapeFunctions.make_element_inner_weight
+      ~TetrahedronRaviartThomasShapeFunctions.make_element_inner_weight_gradient
+      ~TetrahedronRaviartThomasShapeFunctions.make_node_coords_in_element
+      ~TetrahedronRaviartThomasShapeFunctions.make_node_quadrature_weight
+      ~TetrahedronRaviartThomasShapeFunctions.make_trace_node_quadrature_weight
+      ~TetrahedronRaviartThomasShapeFunctions.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TetrahedronRaviartThomasShapeFunctions.EDGE
+      ~TetrahedronRaviartThomasShapeFunctions.FACE
+      ~TetrahedronRaviartThomasShapeFunctions.INTERIOR
+      ~TetrahedronRaviartThomasShapeFunctions.VERTEX
+      ~TetrahedronRaviartThomasShapeFunctions.edge_vidx
+      ~TetrahedronRaviartThomasShapeFunctions.name
+      ~TetrahedronRaviartThomasShapeFunctions.opposite_edge_vidx
+      ~TetrahedronRaviartThomasShapeFunctions.value
+      ~TetrahedronRaviartThomasShapeFunctions.VERTEX_NODE_COUNT
+      ~TetrahedronRaviartThomasShapeFunctions.EDGE_NODE_COUNT
+      ~TetrahedronRaviartThomasShapeFunctions.FACE_NODE_COUNT
+      ~TetrahedronRaviartThomasShapeFunctions.INTERIOR_NODE_COUNT
+      ~TetrahedronRaviartThomasShapeFunctions.ORDER
+      ~TetrahedronRaviartThomasShapeFunctions.NODES_PER_ELEMENT
+   
+   

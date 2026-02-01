@@ -1,0 +1,45 @@
+﻿warp.fem.space.shape.SquareSerendipityShapeFunctions
+====================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: SquareSerendipityShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SquareSerendipityShapeFunctions.__init__
+      ~SquareSerendipityShapeFunctions.element_node_triangulation
+      ~SquareSerendipityShapeFunctions.element_vtk_cells
+      ~SquareSerendipityShapeFunctions.make_element_inner_weight
+      ~SquareSerendipityShapeFunctions.make_element_inner_weight_gradient
+      ~SquareSerendipityShapeFunctions.make_node_coords_in_element
+      ~SquareSerendipityShapeFunctions.make_node_quadrature_weight
+      ~SquareSerendipityShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SquareSerendipityShapeFunctions.EDGE_X
+      ~SquareSerendipityShapeFunctions.EDGE_Y
+      ~SquareSerendipityShapeFunctions.INTERIOR
+      ~SquareSerendipityShapeFunctions.VERTEX
+      ~SquareSerendipityShapeFunctions.name
+      ~SquareSerendipityShapeFunctions.value
+      ~SquareSerendipityShapeFunctions.VERTEX_NODE_COUNT
+      ~SquareSerendipityShapeFunctions.EDGE_NODE_COUNT
+      ~SquareSerendipityShapeFunctions.INTERIOR_NODE_COUNT
+      ~SquareSerendipityShapeFunctions.ORDER
+      ~SquareSerendipityShapeFunctions.NODES_PER_ELEMENT
+   
+   

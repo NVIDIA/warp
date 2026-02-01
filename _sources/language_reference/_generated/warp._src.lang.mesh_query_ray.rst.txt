@@ -1,0 +1,23 @@
+﻿warp.\_src.lang.mesh\_query\_ray
+================================
+
+.. function:: warp._src.lang.mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the closest ray hit on the :class:`warp.Mesh` with identifier ``id``.
+   
+   The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+   When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+   If ``root`` is -1 (default), traversal starts at the mesh's global root.
+   
+   :param id: The mesh identifier
+   :param start: The start point of the ray
+   :param dir: The ray direction (should be normalized)
+   :param max_t: The maximum distance along the ray to check for intersections
+   :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+   

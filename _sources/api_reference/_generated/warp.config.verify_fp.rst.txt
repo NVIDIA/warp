@@ -1,0 +1,6 @@
+﻿warp.config.verify\_fp
+======================
+
+.. currentmodule:: warp.config
+
+.. autodata:: verify_fp

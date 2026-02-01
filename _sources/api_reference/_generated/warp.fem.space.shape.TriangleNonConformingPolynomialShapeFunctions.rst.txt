@@ -1,0 +1,36 @@
+﻿warp.fem.space.shape.TriangleNonConformingPolynomialShapeFunctions
+==================================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TriangleNonConformingPolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TriangleNonConformingPolynomialShapeFunctions.__init__
+      ~TriangleNonConformingPolynomialShapeFunctions.make_element_inner_weight
+      ~TriangleNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~TriangleNonConformingPolynomialShapeFunctions.make_node_coords_in_element
+      ~TriangleNonConformingPolynomialShapeFunctions.make_node_quadrature_weight
+      ~TriangleNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TriangleNonConformingPolynomialShapeFunctions.name
+      ~TriangleNonConformingPolynomialShapeFunctions.value
+      ~TriangleNonConformingPolynomialShapeFunctions.ORDER
+      ~TriangleNonConformingPolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

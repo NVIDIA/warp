@@ -1,0 +1,29 @@
+﻿warp.mat33d
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: mat33d
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~mat33d.__init__
+      ~mat33d.from_ptr
+      ~mat33d.get_col
+      ~mat33d.get_row
+      ~mat33d.scalar_export
+      ~mat33d.scalar_import
+      ~mat33d.set_col
+      ~mat33d.set_row
+   
+   
+
+   
+   
+   

@@ -1,0 +1,28 @@
+﻿warp.fem.Domain
+===============
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Domain
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Domain.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Domain.call_operator
+   
+   

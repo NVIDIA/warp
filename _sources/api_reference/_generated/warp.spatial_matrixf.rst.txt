@@ -1,0 +1,29 @@
+﻿warp.spatial\_matrixf
+=====================
+
+.. currentmodule:: warp
+
+.. autoclass:: spatial_matrixf
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~spatial_matrixf.__init__
+      ~spatial_matrixf.from_ptr
+      ~spatial_matrixf.get_col
+      ~spatial_matrixf.get_row
+      ~spatial_matrixf.scalar_export
+      ~spatial_matrixf.scalar_import
+      ~spatial_matrixf.set_col
+      ~spatial_matrixf.set_row
+   
+   
+
+   
+   
+   

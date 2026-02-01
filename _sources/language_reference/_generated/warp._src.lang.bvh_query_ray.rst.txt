@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.bvh\_query\_ray
+===============================
+
+.. function:: warp._src.lang.bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct a ray query against a BVH object.
+   
+   This query can be used to iterate over all bounds that intersect the ray.
+   To start a query from a specific node, set ``root`` to the index of the node. The root
+   can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
+   When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+   If ``root`` is -1 (default), traversal starts at the BVH's global root.
+   The query will only traverse down from that node, limiting traversal to that subtree.
+   
+   :param id: The BVH identifier
+   :param start: The start of the ray in BVH space
+   :param dir: The direction of the ray in BVH space (should be normalized)
+   :param root: The root to begin the query from (optional, default: -1)
+   

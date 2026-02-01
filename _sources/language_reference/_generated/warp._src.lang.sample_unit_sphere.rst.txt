@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.sample\_unit\_sphere
+====================================
+
+.. function:: warp._src.lang.sample_unit_sphere(state: uint32) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Uniformly sample a unit sphere.

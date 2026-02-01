@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.matrix\_from\_rows
+==================================
+
+.. function:: warp._src.lang.matrix_from_rows(*args: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a matrix with each vector argument as a row.

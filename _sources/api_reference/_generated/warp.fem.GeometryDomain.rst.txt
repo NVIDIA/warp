@@ -1,0 +1,54 @@
+﻿warp.fem.GeometryDomain
+=======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: GeometryDomain
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryDomain.__init__
+      ~GeometryDomain.element_arg_value
+      ~GeometryDomain.element_count
+      ~GeometryDomain.element_index_arg_value
+      ~GeometryDomain.fill_element_arg
+      ~GeometryDomain.fill_element_index_arg
+      ~GeometryDomain.geometry_element_count
+      ~GeometryDomain.notify_operator_usage
+      ~GeometryDomain.reference_element
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeometryDomain.DomainArg
+      ~GeometryDomain.dimension
+      ~GeometryDomain.element_kind
+      ~GeometryDomain.name
+      ~GeometryDomain.geometry_partition
+      ~GeometryDomain.geometry
+      ~GeometryDomain.ElementIndexArg
+      ~GeometryDomain.element_index
+      ~GeometryDomain.element_partition_index
+      ~GeometryDomain.ElementArg
+      ~GeometryDomain.element_measure
+      ~GeometryDomain.element_measure_ratio
+      ~GeometryDomain.element_position
+      ~GeometryDomain.element_deformation_gradient
+      ~GeometryDomain.element_normal
+      ~GeometryDomain.element_closest_point
+      ~GeometryDomain.element_coordinates
+      ~GeometryDomain.element_lookup
+      ~GeometryDomain.element_partition_lookup
+   
+   

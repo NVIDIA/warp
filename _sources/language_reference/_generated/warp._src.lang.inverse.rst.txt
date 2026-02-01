@@ -1,0 +1,34 @@
+﻿warp.\_src.lang.inverse
+=======================
+
+.. function:: warp._src.lang.inverse(a: Matrix[Literal[2],Literal[2],Float]) -> Matrix[Any,Any,Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of matrix ``a``.
+
+.. function:: warp._src.lang.inverse(a: Matrix[Literal[3],Literal[3],Float]) -> Matrix[Any,Any,Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of matrix ``a``.
+
+.. function:: warp._src.lang.inverse(a: Matrix[Literal[4],Literal[4],Float]) -> Matrix[Any,Any,Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of matrix ``a``.

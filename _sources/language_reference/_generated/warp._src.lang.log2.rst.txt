@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.log2
+====================
+
+.. function:: warp._src.lang.log2(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the binary logarithm (base-2) of ``x``, where ``x`` is positive.

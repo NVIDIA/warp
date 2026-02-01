@@ -1,0 +1,71 @@
+﻿warp.\_src.lang.len
+===================
+
+.. function:: warp._src.lang.len(a: Vector[Any,Scalar]) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the number of elements in a vector.
+
+.. function:: warp._src.lang.len(a: Quaternion[Float]) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the number of elements in a quaternion.
+
+.. function:: warp._src.lang.len(a: Matrix[Any,Any,Scalar]) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the number of rows in a matrix.
+
+.. function:: warp._src.lang.len(a: Transformation[Float]) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the number of elements in a transformation.
+
+.. function:: warp._src.lang.len(a: Array[Any]) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the size of the first dimension in an array.
+
+.. function:: warp._src.lang.len(a: Tile[Any,tuple[int, ...]]) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the number of rows in a tile.
+
+.. function:: warp._src.lang.len(a: tuple) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the number of elements in a tuple.

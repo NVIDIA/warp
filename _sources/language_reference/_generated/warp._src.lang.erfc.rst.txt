@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.erfc
+====================
+
+.. function:: warp._src.lang.erfc(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the complementary error function of ``x``.

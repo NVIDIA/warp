@@ -1,0 +1,29 @@
+﻿warp.mat44f
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: mat44f
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~mat44f.__init__
+      ~mat44f.from_ptr
+      ~mat44f.get_col
+      ~mat44f.get_row
+      ~mat44f.scalar_export
+      ~mat44f.scalar_import
+      ~mat44f.set_col
+      ~mat44f.set_row
+   
+   
+
+   
+   
+   

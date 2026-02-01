@@ -1,0 +1,49 @@
+﻿warp.\_src.lang.isfinite
+========================
+
+.. function:: warp._src.lang.isfinite(a: Scalar) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if all elements of ``a`` are finite.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+.. function:: warp._src.lang.isfinite(a: Vector[Any,Scalar]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if all elements of ``a`` are finite.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+.. function:: warp._src.lang.isfinite(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if all elements of ``a`` are finite.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+.. function:: warp._src.lang.isfinite(a: Matrix[Any,Any,Scalar]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if all elements of ``a`` are finite.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.

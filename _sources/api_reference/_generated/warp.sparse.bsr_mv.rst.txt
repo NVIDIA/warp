@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_mv
+===================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_mv

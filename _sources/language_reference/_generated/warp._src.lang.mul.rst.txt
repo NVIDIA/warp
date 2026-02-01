@@ -1,0 +1,217 @@
+﻿warp.\_src.lang.mul
+===================
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+
+.. function:: warp._src.lang.mul(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a vector by a scalar.
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a vector by a scalar.
+
+.. function:: warp._src.lang.mul(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a quaternion by a scalar.
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a quaternion by a scalar.
+
+.. function:: warp._src.lang.mul(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Compute the Hamilton product of two quaternions.
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a matrix by a scalar.
+
+.. function:: warp._src.lang.mul(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a matrix by a scalar.
+
+.. function:: warp._src.lang.mul(a: Matrix[Any,Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Compute a matrix-vector product.
+
+.. function:: warp._src.lang.mul(a: Vector[Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Compute a row-vector-by-matrix product.
+
+.. function:: warp._src.lang.mul(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Compute a matrix-matrix product.
+
+.. function:: warp._src.lang.mul(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Compose transformations (apply ``b`` then ``a``).
+
+.. function:: warp._src.lang.mul(a: Scalar, b: Transformation[Float]) -> Transformation[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a transformation by a scalar.
+   
+   The result has an unnormalized quaternion.
+
+.. function:: warp._src.lang.mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale a transformation by a scalar.
+   
+   The result has an unnormalized quaternion.
+
+.. function:: warp._src.lang.mul(x: Tile[Any,tuple[int, ...]], y: Any) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale each element of a tile by a scalar.
+   
+   If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
+   Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.
+
+.. function:: warp._src.lang.mul(x: Any, y: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two values.
+   
+   Scale each element of a tile by a scalar.
+   
+   If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
+   Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.

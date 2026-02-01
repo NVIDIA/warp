@@ -1,0 +1,57 @@
+﻿warp.fem.Subdomain
+==================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Subdomain
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Subdomain.__init__
+      ~Subdomain.cell_domain
+      ~Subdomain.element_arg_value
+      ~Subdomain.element_count
+      ~Subdomain.element_index_arg_value
+      ~Subdomain.fill_element_arg
+      ~Subdomain.fill_element_index_arg
+      ~Subdomain.geometry_element_count
+      ~Subdomain.notify_operator_usage
+      ~Subdomain.reference_element
+      ~Subdomain.supports_lookup
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Subdomain.DomainArg
+      ~Subdomain.dimension
+      ~Subdomain.domain_cell_arg
+      ~Subdomain.element_kind
+      ~Subdomain.name
+      ~Subdomain.geometry_partition
+      ~Subdomain.geometry
+      ~Subdomain.ElementIndexArg
+      ~Subdomain.element_index
+      ~Subdomain.element_partition_index
+      ~Subdomain.ElementArg
+      ~Subdomain.element_measure
+      ~Subdomain.element_measure_ratio
+      ~Subdomain.element_position
+      ~Subdomain.element_deformation_gradient
+      ~Subdomain.element_normal
+      ~Subdomain.element_closest_point
+      ~Subdomain.element_coordinates
+      ~Subdomain.element_lookup
+      ~Subdomain.element_partition_lookup
+   
+   

@@ -1,0 +1,30 @@
+﻿warp.Function
+=============
+
+.. currentmodule:: warp
+
+.. autoclass:: Function
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Function.__init__
+      ~Function.add_overload
+      ~Function.build
+      ~Function.call_builtin
+      ~Function.get_builtin
+      ~Function.get_overload
+      ~Function.is_builtin
+      ~Function.is_simple
+      ~Function.mangle
+   
+   
+
+   
+   
+   

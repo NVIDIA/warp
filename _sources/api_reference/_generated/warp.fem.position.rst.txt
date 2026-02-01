@@ -1,0 +1,6 @@
+﻿warp.fem.position
+=================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: position

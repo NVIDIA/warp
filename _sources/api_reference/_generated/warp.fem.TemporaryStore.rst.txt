@@ -1,0 +1,25 @@
+﻿warp.fem.TemporaryStore
+=======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: TemporaryStore
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TemporaryStore.__init__
+      ~TemporaryStore.add_temporary_convenience_methods
+      ~TemporaryStore.borrow
+      ~TemporaryStore.clear
+   
+   
+
+   
+   
+   

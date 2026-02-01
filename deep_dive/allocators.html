@@ -1,0 +1,756 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Allocators &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'deep_dive/allocators';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Concurrency" href="concurrency.html" />
+    <link rel="prev" title="Code Generation" href="codegen.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Allocators</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="allocators">
+<h1>Allocators<a class="headerlink" href="#allocators" title="Link to this heading">#</a></h1>
+<section id="stream-ordered-memory-pool-allocators">
+<span id="mempool-allocators"></span><h2>Stream-Ordered Memory Pool Allocators<a class="headerlink" href="#stream-ordered-memory-pool-allocators" title="Link to this heading">#</a></h2>
+<section id="introduction">
+<h3>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">#</a></h3>
+<p>Warp 0.14.0 added support for <a class="reference external" href="https://developer.nvidia.com/blog/using-cuda-stream-ordered-memory-allocator-part-1">stream-ordered memory pool allocators for CUDA arrays</a>.  As of Warp 0.15.0, these allocators are enabled by default on
+all CUDA devices that support them.  “Stream-ordered memory pool allocator” is quite a mouthful, so let’s unpack it one bit at a time.</p>
+<p>Whenever you create an array, the memory needs to be allocated on the device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Each of the calls above allocates a block of device memory large enough to hold the array and optionally initializes the contents with
+the specified values.
+<a class="reference internal" href="../api_reference/_generated/warp.empty.html#warp.empty" title="warp.empty"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.empty()</span></code></a> is the only function that does not initialize the contents in any way, it just allocates the memory.</p>
+<p>Memory pool allocators grab a block of memory from a larger pool of reserved memory, which is generally faster than asking
+the operating system for a brand new chunk of storage.  This is an important benefit of these pooled allocators—they are faster.</p>
+<p>Stream-ordered means that each allocation is scheduled on a <a class="reference internal" href="concurrency.html#streams"><span class="std std-ref">CUDA stream</span></a>, which represents a sequence of instructions that execute in order on the GPU.  The main benefit is that it allows memory to be allocated in CUDA graphs, which was previously not possible:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>From now on, we will refer to these allocators as <em>mempool allocators</em> for short.</p>
+</section>
+<section id="configuration">
+<h3>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">#</a></h3>
+<p>Mempool allocators are a feature of CUDA that is supported on most modern devices and operating systems.  However,
+there can be systems where they are not supported, such as certain virtual machine setups.  Warp is designed with resiliency in mind,
+so existing code written prior to the introduction of these new allocators should continue to function regardless of whether they
+are supported by the underlying system or not.</p>
+<p>Warp’s startup message gives the status of these allocators, for example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Warp 0.15.1 initialized:
+CUDA Toolkit 11.5, Driver 12.2
+Devices:
+    &quot;cpu&quot;      : &quot;x86_64&quot;
+    &quot;cuda:0&quot;   : &quot;NVIDIA GeForce RTX 4090&quot; (24 GiB, sm_89, mempool enabled)
+    &quot;cuda:1&quot;   : &quot;NVIDIA GeForce RTX 3090&quot; (24 GiB, sm_86, mempool enabled)
+</pre></div>
+</div>
+<p>Note the <code class="docutils literal notranslate"><span class="pre">mempool</span> <span class="pre">enabled</span></code> text next to each CUDA device.  This means that memory pools are enabled on the device.  Whenever you create
+an array on that device, it will be allocated using the mempool allocator.  If you see <code class="docutils literal notranslate"><span class="pre">mempool</span> <span class="pre">supported</span></code>, it means that memory
+pools are supported but were not enabled on startup.  If you see <code class="docutils literal notranslate"><span class="pre">mempool</span> <span class="pre">not</span> <span class="pre">supported</span></code>, it means that memory pools can’t be used
+on this device.</p>
+<p>There is a configuration flag that controls whether memory pools should be automatically enabled during <a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_mempools_at_init</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The flag defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>, but can be set to <code class="docutils literal notranslate"><span class="pre">False</span></code> if desired.  Changing this configuration flag after <a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a> is called has no effect.</p>
+<p>After <a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a>, you can check if the memory pool is enabled on each device like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>You can also independently control enablement on each device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_supported</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It’s possible to temporarily enable or disable memory pools using a scoped manager:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In the snippet above, array <code class="docutils literal notranslate"><span class="pre">a</span></code> will be allocated using the mempool allocator and array <code class="docutils literal notranslate"><span class="pre">b</span></code> will be allocated using the default allocator.</p>
+<p>In most cases, it shouldn’t be necessary to fiddle with these enablement functions, but they are there if you need them.
+By default, Warp will enable memory pools on startup if they are supported, which will bring the benefits of improved allocation speed automatically.
+Most Warp code should continue to function with or without mempool allocators, with the exception of memory allocations
+during graph capture, which will raise an exception if memory pools are not enabled.</p>
+</section>
+<section id="querying-memory-usage">
+<h3>Querying Memory Usage<a class="headerlink" href="#querying-memory-usage" title="Link to this heading">#</a></h3>
+<p>The amount of memory the application is currently using from a specific memory
+pool can be queried using <a class="reference internal" href="../api_reference/_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current" title="warp.get_mempool_used_mem_current"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_mempool_used_mem_current()</span></code></a>.
+This can be different from the amount of memory reserved for the pool itself.
+Similarly, the high-water mark of used memory can be queried using
+<a class="reference internal" href="../api_reference/_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high" title="warp.get_mempool_used_mem_high"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_mempool_used_mem_high()</span></code></a>.</p>
+</section>
+<section id="allocation-performance">
+<h3>Allocation Performance<a class="headerlink" href="#allocation-performance" title="Link to this heading">#</a></h3>
+<p>Allocating and releasing memory are rather expensive operations that can add overhead to a program.  We can’t avoid them, since we need to allocate storage for our data somewhere, but there are some simple strategies that can reduce the overall impact of allocations on performance.</p>
+<p>Consider the following example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>On each iteration of the loop, we allocate an array and run a kernel on the data.  This program has 100 allocations and 100 deallocations.  When we assign a new value to <code class="docutils literal notranslate"><span class="pre">a</span></code>, the previous value gets garbage collected by Python, which triggers the deallocation.</p>
+<section id="reusing-memory">
+<h4>Reusing Memory<a class="headerlink" href="#reusing-memory" title="Link to this heading">#</a></h4>
+<p>If the size of the array remains fixed, consider reusing the memory on subsequent iterations.  We can allocate the array only once and just re-initialize its contents on each iteration:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate the array</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="c1"># reset the contents</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This works well if the array size does not change on each iteration.  If the size changes but the upper bound is known, we can still pre-allocate a buffer large enough to store all the elements at any iteration.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate a big enough buffer</span>
+<span class="n">buffer</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">MAX_N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="c1"># get a buffer slice of size n &lt;= MAX_N</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">get_size</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">buffer</span><span class="p">[:</span><span class="n">n</span><span class="p">]</span>
+    <span class="c1"># reset the contents</span>
+    <span class="n">a</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Reusing memory this way can improve performance, but may also add undesirable complexity to our code.  The mempool allocators have a useful feature that can improve allocation performance without modifying our original code in any way.</p>
+</section>
+<section id="release-threshold">
+<h4>Release Threshold<a class="headerlink" href="#release-threshold" title="Link to this heading">#</a></h4>
+<p>The memory pool release threshold determines how much reserved memory the allocator should hold on to before releasing it back to the operating system.  For programs that frequently allocate and release memory, setting a higher release threshold can improve the performance of allocations.</p>
+<p>By default, the release threshold is set to 0.  Setting it to a higher number will reduce the cost of allocations if memory was previously acquired and returned to the pool.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># set the release threshold to reduce re-allocation overhead</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_release_threshold</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Threshold values between 0 and 1 are interpreted as fractions of available memory.  For example, 0.5 means half of the device’s physical memory and 1.0 means all of the memory.  Greater values are interpreted as an absolute number of bytes.  For example, 1024**3 means one GiB of memory.</p>
+<p>This is a simple optimization that can improve the performance of programs without modifying the existing code in any way.</p>
+</section>
+</section>
+<section id="graph-allocations">
+<h3>Graph Allocations<a class="headerlink" href="#graph-allocations" title="Link to this heading">#</a></h3>
+<p>Mempool allocators can be used in CUDA graphs, which means that you can capture Warp code that creates arrays:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Capturing allocations is similar to capturing other operations like kernel launches or memory copies.  During capture, the operations don’t actually execute, but are recorded.  To execute the captured operations, we must launch the graph using <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>.  This is important to keep in mind if you want to use an array that was allocated during graph capture.  The array doesn’t actually exist until the captured graph is launched.  In the snippet above, we would get an error if we tried to print the array before calling <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>.</p>
+<p>More generally, the ability to allocate memory during graph capture greatly increases the range of code that can be captured in a graph.  This includes any code that creates temporary allocations.  CUDA graphs can be used to re-run operations with minimal CPU overhead, which can yield dramatic performance improvements.</p>
+</section>
+<section id="memory-pool-access">
+<span id="mempool-access"></span><h3>Memory Pool Access<a class="headerlink" href="#memory-pool-access" title="Link to this heading">#</a></h3>
+<p>On multi-GPU systems that support <a class="reference internal" href="../user_guide/devices.html#peer-access"><span class="std std-ref">peer access</span></a>, we can enable directly accessing a memory pool from a different device:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">is_mempool_access_supported</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_mempool_access_enabled</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will allow the memory pool of device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> to be directly accessed on device <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>.  Memory pool access is directional, which means that enabling access to <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> from <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> does not automatically enable access to <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> from <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>.</p>
+<p>The benefit of enabling memory pool access is that it allows direct memory transfers (DMA) between the devices.  This is generally a faster way to copy data, since otherwise the transfer needs to be done using a CPU staging buffer.</p>
+<p>The drawback is that enabling memory pool access can slightly reduce the performance of allocations and deallocations.  However, for applications that rely on copying memory between devices, there should be a net benefit.</p>
+<p>It’s possible to temporarily enable or disable memory pool access using a scoped manager:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempoolAccess</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+    <span class="c1"># use direct memory transfer between GPUs</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that memory pool access only applies to memory allocated using mempool allocators.
+For memory allocated using default CUDA allocators, we can enable CUDA <a class="reference internal" href="../user_guide/devices.html#peer-access"><span class="std std-ref">peer access</span></a> using <a class="reference internal" href="../api_reference/_generated/warp.set_peer_access_enabled.html#warp.set_peer_access_enabled" title="warp.set_peer_access_enabled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_peer_access_enabled()</span></code></a> to get similar benefits.</p>
+<p>Because enabling memory pool access can have drawbacks, Warp does not automatically enable it, even if it’s supported.  Programs that don’t require copying data between GPUs are therefore not affected in any way.</p>
+</section>
+<section id="limitations">
+<h3>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h3>
+<section id="mempool-to-mempool-copies-between-gpus-during-graph-capture">
+<h4>Mempool-to-Mempool Copies Between GPUs During Graph Capture<a class="headerlink" href="#mempool-to-mempool-copies-between-gpus-during-graph-capture" title="Link to this heading">#</a></h4>
+<p>Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph; copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.</p>
+<p>There are two workarounds.  If mempool access is supported, you can simply enable mempool access between the devices prior to graph capture, as shown in <a class="reference internal" href="#mempool-access"><span class="std std-ref">Memory Pool Access</span></a>.</p>
+<p>If mempool access is not supported, you will need to pre-allocate the arrays involved in the copy using the default CUDA allocators.  This will need to be done before capture begins:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate the arrays with mempools disabled</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">a0</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedMempool</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="n">a1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">a1</span><span class="p">,</span> <span class="n">a0</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This is due to a limitation in CUDA, which we envision being fixed in the future.</p>
+</section>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="codegen.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Code Generation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="concurrency.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Concurrency</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#stream-ordered-memory-pool-allocators">Stream-Ordered Memory Pool Allocators</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#introduction">Introduction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#querying-memory-usage">Querying Memory Usage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#allocation-performance">Allocation Performance</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#reusing-memory">Reusing Memory</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#release-threshold">Release Threshold</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#graph-allocations">Graph Allocations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#memory-pool-access">Memory Pool Access</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#limitations">Limitations</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#mempool-to-mempool-copies-between-gpus-during-graph-capture">Mempool-to-Mempool Copies Between GPUs During Graph Capture</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/deep_dive/allocators.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,983 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Profiling &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'deep_dive/profiling';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Sparse Matrices" href="../domain_modules/sparse.html" />
+    <link rel="prev" title="Concurrency" href="concurrency.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concurrency.html">Concurrency</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Profiling</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="profiling">
+<h1>Profiling<a class="headerlink" href="#profiling" title="Link to this heading">#</a></h1>
+<section id="scopedtimer">
+<h2><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code><a class="headerlink" href="#scopedtimer" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> objects can be used to gain some basic insight into the performance of Warp applications:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">inc_loop</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">num_iters</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iters</span><span class="p">):</span>
+        <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1.0</span>
+
+<span class="n">n</span> <span class="o">=</span> <span class="mi">10_000_000</span>
+<span class="n">devices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_cuda_devices</span><span class="p">()</span>
+
+<span class="c1"># pre-allocate host arrays for readback</span>
+<span class="n">host_arrays</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">devices</span>
+<span class="p">]</span>
+
+<span class="c1"># code for profiling</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Demo&quot;</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">device</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">devices</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_loop</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="mi">500</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_loop</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="mi">1000</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_loop</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="mi">1500</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">host_arrays</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The only required argument for the <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> constructor is a string label,
+which can be used to distinguish multiple timed code sections when reading the output.
+The snippet above will print a message like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">Demo took 0.52 ms</span>
+</pre></div>
+</div>
+<p>By default, <code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code> measures the elapsed time on the CPU and does not introduce any CUDA synchronization.  Since most CUDA operations are asynchronous, the result does not include the time spent executing kernels and memory transfers on the CUDA device.  It’s still a useful measurement, because it shows how long it took to schedule the CUDA operations on the CPU.</p>
+<p>To get the total amount of time including the device executions time, create the <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a>
+with the <code class="docutils literal notranslate"><span class="pre">synchronize=True</span></code> flag.
+This is equivalent to calling <a class="reference internal" href="../api_reference/_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a> before and after the timed section of code.
+Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.
+Synchronizing at the end ensures that all timed work finishes before stopping the timer.
+With the example above, the result might look like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">Demo took 4.91 ms</span>
+</pre></div>
+</div>
+<p>The timing values will vary slightly from run to run and will depend on the system hardware and current load.  The sample results presented here were obtained on a system with one RTX 4090 GPU, one RTX 3090 GPU, and an AMD Ryzen Threadripper Pro 5965WX CPU.  For each GPU, the code allocates and initializes an array with 10 million floating point elements.  It then launches the <code class="docutils literal notranslate"><span class="pre">inc_loop</span></code> kernel three times on the array.  The kernel increments each array element a given number of times - 500, 1000, and 1500.  Finally, the code copies the array contents to the CPU.</p>
+<p>Profiling complex programs with many asynchronous and concurrent operations can be tricky.
+Profiling tools like <a class="reference external" href="https://developer.nvidia.com/nsight-systems">NVIDIA Nsight Systems</a> can present the results
+in a visual way and capture a plethora of timing information for deeper study.
+For profiling tools capable of visualizing NVTX ranges, <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> can be created with the <code class="docutils literal notranslate"><span class="pre">use_nvtx=True</span></code>
+argument.
+This will mark the CPU execution range on the timeline for easier visual inspection.
+The color can be customized using the <code class="docutils literal notranslate"><span class="pre">color</span></code> argument, as shown below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Demo&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>To use NVTX integration, you will need to install the <a class="reference external" href="https://github.com/NVIDIA/NVTX/tree/release-v3/python">NVIDIA NVTX Python package</a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">nvtx</span>
+</pre></div>
+</div>
+<p>The package allows you to insert custom NVTX ranges into your code (<code class="docutils literal notranslate"><span class="pre">nvtx.annotate</span></code>) and customize the <a class="reference external" href="https://github.com/NVIDIA/NVTX/blob/release-v3/python/nvtx/colors.py">colors</a>.</p>
+<p>Here is what the demo code looks like in Nsight Systems (click to enlarge the image):</p>
+<a class="reference internal image-reference" href="../_images/profiling_nosync.png"><img alt="../_images/profiling_nosync.png" class="align-center" src="../_images/profiling_nosync.png" style="width: 95%;" />
+</a>
+<p>There are a few noteworthy observations we can make from this capture.  Scheduling and launching the work on the CPU takes about half a millisecond, as shown in the <cite>NVTX / Start &amp; End</cite> row.  This time also includes the allocation of arrays on both CUDA devices.  We can see that the execution on each device is asynchronous with respect to the host, since CUDA operations start running before the yellow <cite>Demo</cite> NVTX range finishes.  We can also see that the operations on different CUDA devices execute concurrently, including kernels and memory transfers.  The kernels run faster on the first CUDA device (RTX 4090) than the second device (RTX 3090).  Memory transfers take about the same time on each device.  Using pinned CPU arrays for the transfer destinations allows the transfers to run asynchronously without involving the CPU.</p>
+<p>Check out the <a class="reference internal" href="concurrency.html"><span class="doc">concurrency documentation</span></a> for more information about asynchronous operations.</p>
+<p>Note that synchronization was not enabled in this run, so the NVTX range only spans the CPU operations used to schedule the CUDA work.  When synchronization is enabled, the timer will wait for all CUDA work to complete, so the NVTX range will span the synchronization of both devices:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Demo&quot;</span><span class="p">,</span> <span class="n">use_nvtx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span> <span class="n">synchronize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="../_images/profiling_sync.png"><img alt="../_images/profiling_sync.png" class="align-center" src="../_images/profiling_sync.png" style="width: 95%;" />
+</a>
+</section>
+<section id="cuda-activity-profiling">
+<h2>CUDA Activity Profiling<a class="headerlink" href="#cuda-activity-profiling" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> supports timing individual CUDA activities like kernels and memory operations.
+This is done by measuring the time taken between <a class="reference internal" href="concurrency.html#cuda-events"><span class="std std-ref">CUDA events</span></a> on the device.
+To get information about CUDA activities, pass the <code class="docutils literal notranslate"><span class="pre">cuda_filter</span></code> argument to the <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> constructor.
+The <code class="docutils literal notranslate"><span class="pre">cuda_filter</span></code> argument can be a bitwise combination of the following values:</p>
+<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<caption><span class="caption-text">CUDA profiling flags</span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<colgroup>
+<col style="width: 33.3%" />
+<col style="width: 66.7%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api_reference/_generated/warp.TIMING_KERNEL.html#warp.TIMING_KERNEL" title="warp.TIMING_KERNEL"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.TIMING_KERNEL</span></code></a></p></td>
+<td><p>Warp kernels (this includes all kernels written in Python as <a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api_reference/_generated/warp.TIMING_KERNEL_BUILTIN.html#warp.TIMING_KERNEL_BUILTIN" title="warp.TIMING_KERNEL_BUILTIN"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.TIMING_KERNEL_BUILTIN</span></code></a></p></td>
+<td><p>Builtin kernels (this includes kernels used by the Warp library under the hood)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api_reference/_generated/warp.TIMING_MEMCPY.html#warp.TIMING_MEMCPY" title="warp.TIMING_MEMCPY"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.TIMING_MEMCPY</span></code></a></p></td>
+<td><p>CUDA memory transfers (host-to-device, device-to-host, device-to-device, and peer-to-peer)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api_reference/_generated/warp.TIMING_MEMSET.html#warp.TIMING_MEMSET" title="warp.TIMING_MEMSET"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.TIMING_MEMSET</span></code></a></p></td>
+<td><p>CUDA memset operations (e.g., zeroing out memory in <a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../api_reference/_generated/warp.TIMING_GRAPH.html#warp.TIMING_GRAPH" title="warp.TIMING_GRAPH"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.TIMING_GRAPH</span></code></a></p></td>
+<td><p>CUDA graph launches</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../api_reference/_generated/warp.TIMING_ALL.html#warp.TIMING_ALL" title="warp.TIMING_ALL"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.TIMING_ALL</span></code></a></p></td>
+<td><p>Combines all of the above for convenience.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>When a non-zero <code class="docutils literal notranslate"><span class="pre">cuda_filter</span></code> argument is specified, Warp will inject CUDA events for timing purposes and
+report the results when the <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> finishes.
+This adds some overhead to the code, so should be used only during profiling.</p>
+<p>CUDA event timing resolution is about 0.5 microseconds.
+The reported execution time of short operations will likely be longer than the operations actually took on the device.
+This is due to the timing resolution and the overhead of added instrumentation code.
+For more precise analysis of short operations, a tool like Nsight Systems can report more accurate data.</p>
+<p>Enabling CUDA profiling with the demo code can be done like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Demo&quot;</span><span class="p">,</span> <span class="n">cuda_filter</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">TIMING_ALL</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>This adds additional information to the output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CUDA</span> <span class="n">timeline</span><span class="p">:</span>
+<span class="o">----------------+---------+------------------------</span>
+<span class="n">Time</span>            <span class="o">|</span> <span class="n">Device</span>  <span class="o">|</span> <span class="n">Activity</span>
+<span class="o">----------------+---------+------------------------</span>
+    <span class="mf">0.021504</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">0</span>  <span class="o">|</span> <span class="n">memset</span>
+    <span class="mf">0.163840</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">0</span>  <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">0.306176</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">0</span>  <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">0.451584</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">0</span>  <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">2.455520</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">0</span>  <span class="o">|</span> <span class="n">memcpy</span> <span class="n">DtoH</span>
+    <span class="mf">0.051200</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">1</span>  <span class="o">|</span> <span class="n">memset</span>
+    <span class="mf">0.374784</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">1</span>  <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">0.707584</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">1</span>  <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">1.042432</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">1</span>  <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">2.136096</span> <span class="n">ms</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">1</span>  <span class="o">|</span> <span class="n">memcpy</span> <span class="n">DtoH</span>
+
+<span class="n">CUDA</span> <span class="n">activity</span> <span class="n">summary</span><span class="p">:</span>
+<span class="o">----------------+---------+------------------------</span>
+<span class="n">Total</span> <span class="n">time</span>      <span class="o">|</span> <span class="n">Count</span>   <span class="o">|</span> <span class="n">Activity</span>
+<span class="o">----------------+---------+------------------------</span>
+    <span class="mf">0.072704</span> <span class="n">ms</span> <span class="o">|</span>       <span class="mi">2</span> <span class="o">|</span> <span class="n">memset</span>
+    <span class="mf">3.046400</span> <span class="n">ms</span> <span class="o">|</span>       <span class="mi">6</span> <span class="o">|</span> <span class="n">forward</span> <span class="n">kernel</span> <span class="n">inc_loop</span>
+    <span class="mf">4.591616</span> <span class="n">ms</span> <span class="o">|</span>       <span class="mi">2</span> <span class="o">|</span> <span class="n">memcpy</span> <span class="n">DtoH</span>
+
+<span class="n">CUDA</span> <span class="n">device</span> <span class="n">summary</span><span class="p">:</span>
+<span class="o">----------------+---------+------------------------</span>
+<span class="n">Total</span> <span class="n">time</span>      <span class="o">|</span> <span class="n">Count</span>   <span class="o">|</span> <span class="n">Device</span>
+<span class="o">----------------+---------+------------------------</span>
+    <span class="mf">3.398624</span> <span class="n">ms</span> <span class="o">|</span>       <span class="mi">5</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">0</span>
+    <span class="mf">4.312096</span> <span class="n">ms</span> <span class="o">|</span>       <span class="mi">5</span> <span class="o">|</span> <span class="n">cuda</span><span class="p">:</span><span class="mi">1</span>
+<span class="n">Demo</span> <span class="n">took</span> <span class="mf">0.92</span> <span class="n">ms</span>
+</pre></div>
+</div>
+<p>The first section is the <cite>CUDA timeline</cite>, which lists all captured activities in issue order.  We see a <cite>memset</cite> on device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>, which corresponds to clearing the memory in <a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a>.  This is followed by three launches of the <code class="docutils literal notranslate"><span class="pre">inc_loop</span></code> kernel on <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> and a memory transfer from device to host issued by <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>.  The remaining entries repeat similar operations on device <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>.</p>
+<p>The next section is the <cite>CUDA activity summary</cite>, which reports the cumulative time taken by each activity type.  Here, the <cite>memsets</cite>, kernel launches, and memory transfer operations are grouped together.  This is a good way to see where time is being spent overall.  The <cite>memsets</cite> are quite fast.  The <code class="docutils literal notranslate"><span class="pre">inc_loop</span></code> kernel launches took about three milliseconds of combined GPU time.  The memory transfers took the longest, over four milliseconds.</p>
+<p>The <cite>CUDA device summary</cite> shows the total time taken per device.
+We see that device <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> took about 3.4 ms to complete the tasks and device <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code> took about 4.3 ms.
+This summary can be used to assess the workload distribution in multi-GPU applications.</p>
+<p>The final line shows the time taken by the CPU, as with the default <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> options
+(without synchronization in this case).</p>
+<section id="customizing-the-output">
+<h3>Customizing the output<a class="headerlink" href="#customizing-the-output" title="Link to this heading">#</a></h3>
+<p>It is possible to customize how the activity timing results are reported.
+The function <a class="reference internal" href="../api_reference/_generated/warp.timing_print.html#warp.timing_print" title="warp.timing_print"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.timing_print()</span></code></a> is used by default.
+To use a different reporting function, pass it as the <code class="docutils literal notranslate"><span class="pre">report_func</span></code> argument to <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a>.
+The custom report function should take a list of <a class="reference internal" href="../api_reference/_generated/warp.TimingResult.html#warp.TimingResult" title="warp.TimingResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.TimingResult</span></code></a> objects as the first argument.
+Each result in the list corresponds to a single activity and the list represents the complete recorded timeline.
+By manually traversing the list, you can customize the formatting of the output, apply custom sorting rules,
+and aggregate the results as desired.
+The second argument is a string indent that should be printed at the beginning of each line.
+This is for compatibility with <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> indenting rules used with nested timers.</p>
+<p>Here is an example of a custom reporting function, which aggregates the total time spend in forward and backward kernels:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">print_custom_report</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+    <span class="n">forward_time</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">backward_time</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="c1"># aggregate all forward kernels</span>
+        <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;forward kernel&quot;</span><span class="p">):</span>
+            <span class="n">forward_time</span> <span class="o">+=</span> <span class="n">r</span><span class="o">.</span><span class="n">elapsed</span>
+        <span class="c1"># aggregate all backward kernels</span>
+        <span class="k">elif</span> <span class="n">r</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;backward kernel&quot;</span><span class="p">):</span>
+            <span class="n">backward_time</span> <span class="o">+=</span> <span class="n">r</span><span class="o">.</span><span class="n">elapsed</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">indent</span><span class="si">}</span><span class="s2">Forward kernels  : </span><span class="si">{</span><span class="n">forward_time</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">indent</span><span class="si">}</span><span class="s2">Backward kernels : </span><span class="si">{</span><span class="n">backward_time</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> ms&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let’s apply it to one of the Warp examples:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.examples.optim.example_cloth_throw</span><span class="w"> </span><span class="kn">import</span> <span class="n">Example</span>
+
+<span class="n">example</span> <span class="o">=</span> <span class="n">Example</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">example</span><span class="o">.</span><span class="n">use_graph</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># disable graphs so we get timings for individual kernels</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedTimer</span><span class="p">(</span><span class="s2">&quot;Example&quot;</span><span class="p">,</span> <span class="n">cuda_filter</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">TIMING_KERNEL</span><span class="p">,</span> <span class="n">report_func</span><span class="o">=</span><span class="n">print_custom_report</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="n">example</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This produces a report like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Forward</span> <span class="n">kernels</span>  <span class="p">:</span> <span class="mf">187.098367</span> <span class="n">ms</span>
+<span class="n">Backward</span> <span class="n">kernels</span> <span class="p">:</span> <span class="mf">245.070177</span> <span class="n">ms</span>
+</pre></div>
+</div>
+</section>
+<section id="using-the-activity-timing-functions-directly">
+<h3>Using the activity timing functions directly<a class="headerlink" href="#using-the-activity-timing-functions-directly" title="Link to this heading">#</a></h3>
+<p>It is also possible to capture activity timings without using the <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> at all.
+Simply call <a class="reference internal" href="../api_reference/_generated/warp.timing_begin.html#warp.timing_begin" title="warp.timing_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.timing_begin()</span></code></a> to start recording activity timings and
+<a class="reference internal" href="../api_reference/_generated/warp.timing_end.html#warp.timing_end" title="warp.timing_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.timing_end()</span></code></a> to stop and get a list of recorded activities.
+You can use <a class="reference internal" href="../api_reference/_generated/warp.timing_print.html#warp.timing_print" title="warp.timing_print"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.timing_print()</span></code></a> to print the default activity report or
+generate your own report from the list of results.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">timing_begin</span><span class="p">(</span><span class="n">cuda_filter</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">TIMING_ALL</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">timing_end</span><span class="p">()</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">timing_print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="limitations">
+<h3>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h3>
+<p>Currently, detailed activity timing is only available for CUDA devices, but support for CPU timing may be added in the future.</p>
+<p>The activity profiling only records activities initiated using the Warp API.  It does not capture CUDA activity initiated by other frameworks.  A profiling tool like Nsight Systems can be used to examine whole program activities.</p>
+</section>
+</section>
+<section id="cuda-events-timing">
+<span id="cuda-events-profiling"></span><h2>CUDA Events Timing<a class="headerlink" href="#cuda-events-timing" title="Link to this heading">#</a></h2>
+<p>CUDA events can be used for timing purposes outside of the <code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code>.  Here is an example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">device</span><span class="p">:</span>
+
+    <span class="c1"># ensure the module is loaded</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">load_module</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># create events with enabled timing</span>
+    <span class="n">e1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">10000000</span>
+
+    <span class="c1"># start timing...</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">e1</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+    <span class="c1"># ...end timing</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">e2</span><span class="p">)</span>
+
+    <span class="c1"># get elapsed time between the two events</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_event_elapsed_time</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">elapsed</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The events must be created with the flag <code class="docutils literal notranslate"><span class="pre">enable_timing=True</span></code>.
+The first event is recorded at the start of the timed code and the second event is recorded at the end.
+The function <a class="reference internal" href="../api_reference/_generated/warp.get_event_elapsed_time.html#warp.get_event_elapsed_time" title="warp.get_event_elapsed_time"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_event_elapsed_time()</span></code></a> is used to compute the time difference between the two events.
+We must ensure that both events have completed on the device before calling <a class="reference internal" href="../api_reference/_generated/warp.get_event_elapsed_time.html#warp.get_event_elapsed_time" title="warp.get_event_elapsed_time"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_event_elapsed_time()</span></code></a>.
+By default, this function will synchronize on the second event using <a class="reference internal" href="../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.synchronize_event()</span></code></a>.
+If that is not desired, the user may pass the <code class="docutils literal notranslate"><span class="pre">synchronize=False</span></code> flag and must use some other means of ensuring that both events have completed prior to calling the function.</p>
+<p>Note that timing very short operations may yield inflated results, due to the timing resolution of CUDA events and the overhead of the profiling code.
+In most cases, CUDA activity profiling with <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a> will have less overhead and better precision.
+For the most accurate results, a profiling tool such as NVIDIA Nsight Systems should be used.
+The main benefit of using the manual event timing API is that it allows timing arbitrary sections of code rather than individual activities.</p>
+<section id="timing-in-cuda-graphs">
+<h3>Timing in CUDA Graphs<a class="headerlink" href="#timing-in-cuda-graphs" title="Link to this heading">#</a></h3>
+<p>Events created with the <code class="docutils literal notranslate"><span class="pre">enable_timing=True</span></code> flag can be used for timing inside of CUDA graphs. We record the events during graph capture as usual, but the timings won’t be available until the graph is launched and synchronized.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">device</span><span class="p">:</span>
+
+    <span class="c1"># ensure the module is loaded</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">load_module</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># create events with enabled timing</span>
+    <span class="n">e1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">10000000</span>
+
+    <span class="c1"># begin graph capture</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+        <span class="c1"># start timing...</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">e1</span><span class="p">)</span>
+
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+        <span class="c1"># ...end timing</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">e2</span><span class="p">)</span>
+
+    <span class="c1"># launch the graph</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+
+    <span class="c1"># get elapsed time between the two events during the launch</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_event_elapsed_time</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">elapsed</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="nsight-compute-profiling">
+<h2>Nsight Compute Profiling<a class="headerlink" href="#nsight-compute-profiling" title="Link to this heading">#</a></h2>
+<p>While Nsight Systems provides a system-wide visualization of software and hardware activity for an application,
+<a class="reference external" href="https://developer.nvidia.com/nsight-compute">Nsight Compute</a> can be used for detailed CUDA kernel performance
+analysis. A possible workflow cycle might consist of the following steps:</p>
+<ol class="arabic simple">
+<li><p>Use Nsight Systems to identify the most time-consuming kernels.</p></li>
+<li><p>Use Nsight Compute to profile just a few executions of the kernels identified in the previous step to obtain
+detailed recommendations for optimization actions.</p></li>
+<li><p>Re-check the overall performance by repeating the cycle.</p></li>
+</ol>
+<p>Before profiling kernels with Nsight Compute, it is important that the module(s) containing the kernels of interest
+are compiled with line information. This can be set at a global level by using the <a class="reference internal" href="../api_reference/_generated/warp.config.lineinfo.html#warp.config.lineinfo" title="warp.config.lineinfo"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.lineinfo</span></code></a> setting
+or on a per-module basis using the <code class="docutils literal notranslate"><span class="pre">lineinfo</span></code> flag (see <a class="reference internal" href="../user_guide/configuration.html#module-settings"><span class="std std-ref">Module Settings</span></a>),
+e.g. <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;lineinfo&quot;:</span> <span class="pre">True})</span></code>.
+This allows Nsight Compute to correlate assembly (SASS) with high-level Python or CUDA-C code at the expense of
+larger files in the kernel cache (approximately double the file size without line information).</p>
+<p>Elevated application privileges may be required to access the necessary hardware counters to profile kernels
+with Nsight Compute (<a class="reference external" href="https://developer.nvidia.com/ERR_NVGPUCTRPERM">Instructions</a>)</p>
+<p>Nsight Compute can be run as an interactive profiler and as a command-line profiler. The command-line profiler can store
+reports in a file that can be opened later with the UI executable (<code class="docutils literal notranslate"><span class="pre">ncu-ui</span></code>).</p>
+<section id="source-code-correlation-options">
+<h3>Source code correlation options<a class="headerlink" href="#source-code-correlation-options" title="Link to this heading">#</a></h3>
+<p>By default, Warp emits line directives in the CUDA-C code that help correlate SASS instructions with the Python
+Warp kernel or function code that produced it. This can sometimes complicate the analysis of data in Nsight Compute as
+one line of Python code might be correlated to tens or hundreds of SASS instructions.
+It can sometimes be helpful to correlate SASS instructions directly with CUDA-C source code in the kernel cache
+by setting <a class="reference internal" href="../api_reference/_generated/warp.config.line_directives.html#warp.config.line_directives" title="warp.config.line_directives"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.line_directives</span></code></a> to <code class="docutils literal notranslate"><span class="pre">False</span></code>. Comments in the CUDA-C code indicate the Python
+code that produced it.</p>
+</section>
+<section id="example-profiling-kernels-from-example-sph-py">
+<h3>Example: Profiling kernels from <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code><a class="headerlink" href="#example-profiling-kernels-from-example-sph-py" title="Link to this heading">#</a></h3>
+<p>First, we need to modify the <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py">example</a>
+to compile with line information.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.render</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">lineinfo</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>Rather than profiling the full example in Nsight Systems, we decide to profile the first 10 frames of the simulation and
+also skip writing particle positions to a USD file so that we can focus on the GPU-related optimizations:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nsys<span class="w"> </span>profile<span class="w"> </span>--stats<span class="o">=</span><span class="nb">true</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>The output tells us that the <code class="docutils literal notranslate"><span class="pre">get_acceleration</span></code> and the <code class="docutils literal notranslate"><span class="pre">compute_density</span></code> kernels take up the majority of the
+time on the GPU. We also see from the output that their full names become
+<code class="docutils literal notranslate"><span class="pre">get_acceleration_a9fb4286_cuda_kernel_forward</span></code> and <code class="docutils literal notranslate"><span class="pre">compute_density_99e58138_cuda_kernel_forward</span></code>, but the exact
+names may vary between different systems and Warp versions.</p>
+<p>Next, we use Nsight Compute to profile the kernels. Let’s focus on the <code class="docutils literal notranslate"><span class="pre">get_acceleration</span></code> kernel first.
+A basic command to use the command-line profiler to save the report to <code class="docutils literal notranslate"><span class="pre">example_sph.ncu-rep</span></code> is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>-k<span class="w"> </span>get_acceleration_a9fb4286_cuda_kernel_forward<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>This command takes a much longer time to execute than the Nsight Systems command since Nsight Compute performs
+multiple passes of each kernel launch to collect different metrics.
+To speed up the profiling, we can use the <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">[</span> <span class="pre">--launch-count</span> <span class="pre">]</span> <span class="pre">arg</span></code> option to limit the number of collected profile
+results:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>-k<span class="w"> </span>get_acceleration_a9fb4286_cuda_kernel_forward<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>-c<span class="w"> </span><span class="m">5</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>Additionally, we can add the <code class="docutils literal notranslate"><span class="pre">-f</span></code> option to overwrite the output file and <code class="docutils literal notranslate"><span class="pre">--open-in-ui</span></code> to automatically open the
+report in the UI:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>--open-in-ui<span class="w"> </span>-f<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>-k<span class="w"> </span>get_acceleration_a9fb4286_cuda_kernel_forward<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>-c<span class="w"> </span><span class="m">5</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>The following screenshot shows the Python/SASS correlation view from the Nsight Compute report (click to enlarge):</p>
+<a class="reference internal image-reference" href="../_images/nsight_compute_python_vs_sass.png"><img alt="../_images/nsight_compute_python_vs_sass.png" class="align-center" src="../_images/nsight_compute_python_vs_sass.png" style="width: 95%;" />
+</a>
+<p>Please consult the <a class="reference external" href="https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#profiler-report">Nsight Compute User Guide</a>
+for more information on how to navigate the report in the UI.
+If the <a class="reference external" href="https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#source-comparison">source comparison</a> window
+only shows low-level SASS code, it is likely that the modules were not compiled with line information.</p>
+<p>We can profile the <code class="docutils literal notranslate"><span class="pre">compute_density</span></code> kernel in a similar manner by changing the kernel name in the command to
+<code class="docutils literal notranslate"><span class="pre">compute_density_99e58138_cuda_kernel_forward</span></code>.</p>
+</section>
+<section id="profiling-all-kernels-in-an-application">
+<h3>Profiling all kernels in an application<a class="headerlink" href="#profiling-all-kernels-in-an-application" title="Link to this heading">#</a></h3>
+<p>In the previous example, we used the <code class="docutils literal notranslate"><span class="pre">-k</span></code> option to selectively profile the most time-consuming kernels according
+to the Nsight Systems analysis. If we simply wanted to profile the first 20 kernel launches in the application,
+we can drop the <code class="docutils literal notranslate"><span class="pre">-k</span></code> option and increase the value of the <code class="docutils literal notranslate"><span class="pre">-c</span></code> option to 20:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>--open-in-ui<span class="w"> </span>-f<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>-c<span class="w"> </span><span class="m">20</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+</section>
+<section id="preserving-source-code-context-in-nsight-compute-reports">
+<h3>Preserving source code context in Nsight Compute reports<a class="headerlink" href="#preserving-source-code-context-in-nsight-compute-reports" title="Link to this heading">#</a></h3>
+<p>It is convenient to permanently import the Python or CUDA-C source files into the report by using the
+<code class="docutils literal notranslate"><span class="pre">-import-source</span> <span class="pre">1</span></code> option when running <code class="docutils literal notranslate"><span class="pre">ncu</span></code>, e.g.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>--open-in-ui<span class="w"> </span>--import-source<span class="w"> </span><span class="m">1</span><span class="w"> </span>-f<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>-k<span class="w"> </span>get_acceleration_a9fb4286_cuda_kernel_forward<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>-c<span class="w"> </span><span class="m">5</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>This ensures that a snapshot of the source files is taken at the time the profiling report was created,
+which prevents subsequent source-code modifications from affecting the SASS/source correlation information.
+For example, adding a single-line comment line to the top of
+<code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code> after running the profiling command will make the Python/SASS correlation in Nsight Compute incorrect
+by one line if the source files were not imported into the report.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">--source-folders</span> <span class="pre">arg</span></code> option is also required to tell Nsight Compute which directories to search for the source
+files to import into the report when the profiling command is not run from the same directory as the source files.
+This is typically true when profiling with CUDA-C/SASS correlation (<a class="reference internal" href="../api_reference/_generated/warp.config.line_directives.html#warp.config.line_directives" title="warp.config.line_directives"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.line_directives</span></code></a> set to
+<code class="docutils literal notranslate"><span class="pre">False</span></code>), unless <a class="reference internal" href="../api_reference/_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir" title="warp.config.kernel_cache_dir"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code></a> has been set to the current working directory. An example
+profiling command that directs Nsight Compute to search for the source files in kernel cache directory on Linux is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>--open-in-ui<span class="w"> </span>--import-source<span class="w"> </span><span class="m">1</span><span class="w"> </span>--source-folders<span class="w"> </span>~/.cache/warp/<span class="w"> </span>-f<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>-k<span class="w"> </span>get_acceleration_a9fb4286_cuda_kernel_forward<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>-c<span class="w"> </span><span class="m">5</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage_path<span class="w"> </span>None<span class="w"> </span>--num_frames<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>For similar reasons, it may sometimes be necessary to clear the kernel cache using <a class="reference internal" href="../api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.clear_kernel_cache()</span></code></a>
+to force an update of the <code class="docutils literal notranslate"><span class="pre">#line</span></code> directives added into the CUDA-C code. This is because there can be changes to
+Python source files that do not affect the module hash but make the line-correlation information incorrect.</p>
+</section>
+</section>
+<section id="profiling-module-compilation">
+<h2>Profiling Module Compilation<a class="headerlink" href="#profiling-module-compilation" title="Link to this heading">#</a></h2>
+<p>Versions of Warp built with at least CUDA 12.8 support the generation of
+<a class="reference external" href="https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview?tab=t.0#heading=h.yr4qxyxotyw">Trace Event Format</a>
+files when compiling modules for the GPU. This feature can be used to identify
+bottlenecks in the runtime compilation process.</p>
+<p>By setting the global configuration option <a class="reference internal" href="../api_reference/_generated/warp.config.compile_time_trace.html#warp.config.compile_time_trace" title="warp.config.compile_time_trace"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.compile_time_trace</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code>,
+an additional JSON file with the suffix <code class="docutils literal notranslate"><span class="pre">_compile-time-trace.json</span></code> will be
+generated in the corresponding kernel cache directory (see <a class="reference internal" href="../api_reference/_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir" title="warp.config.kernel_cache_dir"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code></a>)
+when modules are compiled. This file can be opened in a viewer like a Chronium browser’s built in
+profiler (e.g. <code class="docutils literal notranslate"><span class="pre">chrome://tracing/</span></code> or <code class="docutils literal notranslate"><span class="pre">edge://tracing/</span></code>) or the <a class="reference external" href="https://ui.perfetto.dev/">Perfetto UI</a>.</p>
+<p>For more information about profiling the compilation process, see the NVIDIA Developer blog post
+<a class="reference external" href="https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/">Optimizing Compile Times for CUDA C++</a>.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="concurrency.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Concurrency</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../domain_modules/sparse.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Sparse Matrices</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scopedtimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-activity-profiling">CUDA Activity Profiling</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#customizing-the-output">Customizing the output</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#using-the-activity-timing-functions-directly">Using the activity timing functions directly</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-events-timing">CUDA Events Timing</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#timing-in-cuda-graphs">Timing in CUDA Graphs</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nsight-compute-profiling">Nsight Compute Profiling</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#source-code-correlation-options">Source code correlation options</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-profiling-kernels-from-example-sph-py">Example: Profiling kernels from <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#profiling-all-kernels-in-an-application">Profiling all kernels in an application</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#preserving-source-code-context-in-nsight-compute-reports">Preserving source code context in Nsight Compute reports</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#profiling-module-compilation">Profiling Module Compilation</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/deep_dive/profiling.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

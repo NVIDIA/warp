@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.volume\_world\_to\_index
+========================================
+
+.. function:: warp._src.lang.volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.

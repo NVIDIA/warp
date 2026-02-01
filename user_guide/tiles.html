@@ -1,0 +1,1030 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tiles &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/tiles';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Interoperability" href="interoperability.html" />
+    <link rel="prev" title="Generics" href="generics.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Tiles</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="tiles">
+<h1>Tiles<a class="headerlink" href="#tiles" title="Link to this heading">#</a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Tile-based operations in Warp are under preview, APIs are subject to change.</p>
+</div>
+<p>Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
+With Warp 1.5.0 <a class="footnote-reference brackets" href="#id2" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>, developers now have access to new tile-based programming primitives in Warp kernels.
+Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing.</p>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
+<p>Tile-based operations are fully supported on versions of Warp built with CUDA Toolkit 12.6.3 or newer due to the use
+of the MathDx library to back linear-algebra tile operations
+like <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_cholesky</span></code></a>,
+<a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_fft</span></code></a>, and <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul</span></code></a>.
+See <a class="reference internal" href="#building-with-mathdx">Building with MathDx</a> for more details when building the Warp locally with support for
+these linear-algebra tile operations.</p>
+</section>
+<section id="execution-model">
+<h2>Execution Model<a class="headerlink" href="#execution-model" title="Link to this heading">#</a></h2>
+<p>Warp’s execution model allows users to specify a grid of logical threads with up to 4 dimensions for kernel execution at launch time.
+With the introduction of tile primitives, users can now specify the <em>block size</em> for kernel launches,
+which partitions the thread grid into smaller sets of threads that are executed on a single compute unit.</p>
+<p>Inside kernels, tile operations are executed cooperatively across each block of threads, allowing them to take advantage of efficient memory access, local memory, and dedicated hardware units like <a class="reference external" href="https://www.nvidia.com/en-us/data-center/tensor-cores/">Tensor Cores</a>.</p>
+<p>In the following example, we launch a grid of threads where each block is responsible for loading a row of data from a 2D array and computing its sum:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">64</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+
+    <span class="c1"># obtain our block index</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="c1"># load a row from global memory</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">TILE_SIZE</span><span class="p">)</span>
+
+    <span class="c1"># cooperatively compute the sum of the tile elements; s is a single element tile</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="c1"># store s in global memory</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">s</span><span class="p">)</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="n">a_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">a_np</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;b = </span><span class="si">{</span><span class="n">b</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>b = [   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]
+</pre></div>
+</div>
+<p>Here, we have used the new <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch_tiled()</span></code></a> function which assigns <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> threads to each of the elements in the launch grid. Each block of <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> threads then loads an entire row of 256 values from the global memory array and computes its sum (cooperatively).</p>
+</section>
+<section id="tile-properties">
+<h2>Tile Properties<a class="headerlink" href="#tile-properties" title="Link to this heading">#</a></h2>
+<p>In Warp, tile objects are arrays of data where the tile elements may be scalars, vectors, matrices, or user-defined structures. Tiles can have up to four dimensions. We can load 2D tiles directly from 2D global memory arrays as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">TILE_N</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">64</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+
+    <span class="c1"># obtain our 2d block index</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="c1"># load a 2d tile from global memory</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">j</span><span class="o">*</span><span class="n">TILE_N</span><span class="p">))</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="o">...</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">TILE_N</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here, we divide the array <code class="docutils literal notranslate"><span class="pre">a</span></code> into 2D tiles of shape 16 x 16.
+Each block cooperatively loads a tile from the input array and computes its sum.</p>
+</section>
+<section id="tile-storage">
+<h2>Tile Storage<a class="headerlink" href="#tile-storage" title="Link to this heading">#</a></h2>
+<p>When tiles are created, they are placed in either <em>register</em> or <em>shared</em> memory.
+In general, Warp tries to determine the best storage location for tiles.
+By default, tiles are allocated in register storage, but some operations such as matrix multiplication may migrate data from register to shared as necessary.</p>
+<section id="register-tiles">
+<h3>Register Tiles<a class="headerlink" href="#register-tiles" title="Link to this heading">#</a></h3>
+<p>Values in register tiles are stored across the entire block.
+For example, if the block dimension at launch is set to 64, a register tile with <code class="docutils literal notranslate"><span class="pre">shape=(1,</span> <span class="pre">256)</span></code> will result in each thread storing 4 elements.
+Register-based storage is the fastest storage on most hardware, but an individual thread cannot randomly access data that is assigned to another thread efficiently
+because the tile storage is spread across the threads in the block.
+For this reason, operations on tiles tend to be expressed as higher-level maps, reductions, and reshaping operations that may transfer values through shared memory.</p>
+</section>
+<section id="shared-memory-tiles">
+<h3>Shared Memory Tiles<a class="headerlink" href="#shared-memory-tiles" title="Link to this heading">#</a></h3>
+<p>Some operations like matrix multiplication require access to an entire tile of values.
+In this case, the tile data may be stored in shared memory, which allows efficient random access.
+Warp will automatically migrate tiles to shared memory as necessary for specific operations, some of which
+require thread synchronization. For instance, when writing to a tile element, (e.g. <code class="docutils literal notranslate"><span class="pre">tile[row,</span> <span class="pre">col]</span> <span class="pre">=</span> <span class="pre">val</span></code>),
+Warp does not a priori know if the current thread is assigned to <code class="docutils literal notranslate"><span class="pre">(row,</span> <span class="pre">col)</span></code>, so the tile is stored in shared
+memory to allow random accessing. A thread synchronization must also follow, to prevent downstream race conditions.</p>
+<p>Note that shared memory is a limited resource, and so the tile size must be set appropriately to avoid exceeding the hardware limitations.
+Otherwise, kernel compilation may fail.</p>
+<p>Note that shared memory tile allocations are guaranteed to be 16-byte aligned.</p>
+</section>
+</section>
+<section id="example-general-matrix-multiply-gemm">
+<h2>Example: General Matrix Multiply (GEMM)<a class="headerlink" href="#example-general-matrix-multiply-gemm" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="c1"># tile size</span>
+<span class="n">TILE_M</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">TILE_N</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">TILE_K</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="c1"># num threads per-tile</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">64</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tile_gemm</span><span class="p">(</span><span class="n">A</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">B</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">C</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+
+    <span class="c1"># output tile index</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="nb">sum</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="n">M</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">B</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">K</span> <span class="o">/</span> <span class="n">TILE_K</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_K</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">k</span><span class="o">*</span><span class="n">TILE_K</span><span class="p">))</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_K</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">k</span><span class="o">*</span><span class="n">TILE_K</span><span class="p">,</span> <span class="n">j</span><span class="o">*</span><span class="n">TILE_N</span><span class="p">))</span>
+
+        <span class="c1"># sum += a*b</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">tile_matmul</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="nb">sum</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="nb">sum</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">j</span><span class="o">*</span><span class="n">TILE_N</span><span class="p">))</span>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="c1"># generate some tile aligned matrix dimensions</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">TILE_M</span> <span class="o">*</span> <span class="mi">7</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">TILE_K</span> <span class="o">*</span> <span class="mi">6</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">TILE_N</span> <span class="o">*</span> <span class="mi">5</span>
+
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="n">M</span><span class="p">,</span> <span class="n">K</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">B</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="n">K</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">M</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="n">A_wp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+    <span class="n">B_wp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+    <span class="n">C_wp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">C</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span>
+            <span class="n">tile_gemm</span><span class="p">,</span>
+            <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">M</span> <span class="o">/</span> <span class="n">TILE_M</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">N</span> <span class="o">/</span> <span class="n">TILE_N</span><span class="p">)),</span>
+            <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">A_wp</span><span class="p">,</span> <span class="n">B_wp</span><span class="p">,</span> <span class="n">C_wp</span><span class="p">],</span>
+            <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
+
+    <span class="k">assert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">C_wp</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">A</span><span class="nd">@B</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Example matrix multiplication passed&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="tile-operations">
+<h2>Tile Operations<a class="headerlink" href="#tile-operations" title="Link to this heading">#</a></h2>
+<section id="construction">
+<h3>Construction<a class="headerlink" href="#construction" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_zeros</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_ones.html#warp._src.lang.tile_ones" title="warp._src.lang.tile_ones"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ones</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_full.html#warp._src.lang.tile_full" title="warp._src.lang.tile_full"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_full</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_randi.html#warp._src.lang.tile_randi" title="warp._src.lang.tile_randi"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_randi</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_randf.html#warp._src.lang.tile_randf" title="warp._src.lang.tile_randf"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_randf</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_arange.html#warp._src.lang.tile_arange" title="warp._src.lang.tile_arange"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_arange</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-func docutils literal notranslate"><span class="pre">untile</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_broadcast.html#warp._src.lang.tile_broadcast" title="warp._src.lang.tile_broadcast"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_broadcast</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_reshape.html#warp._src.lang.tile_reshape" title="warp._src.lang.tile_reshape"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_reshape</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_squeeze.html#warp._src.lang.tile_squeeze" title="warp._src.lang.tile_squeeze"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_squeeze</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_astype.html#warp._src.lang.tile_astype" title="warp._src.lang.tile_astype"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_astype</span></code></a></p></li>
+</ul>
+</section>
+<section id="load-store">
+<h3>Load/Store<a class="headerlink" href="#load-store" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_load</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_store</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_atomic_add</span></code></a></p></li>
+</ul>
+</section>
+<section id="maps-reductions">
+<h3>Maps/Reductions<a class="headerlink" href="#maps-reductions" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_map.html#warp._src.lang.tile_map" title="warp._src.lang.tile_map"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_map</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_reduce.html#warp._src.lang.tile_reduce" title="warp._src.lang.tile_reduce"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_reduce</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_sum</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_min.html#warp._src.lang.tile_min" title="warp._src.lang.tile_min"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_min</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_max.html#warp._src.lang.tile_max" title="warp._src.lang.tile_max"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_max</span></code></a></p></li>
+</ul>
+</section>
+<section id="linear-algebra">
+<h3>Linear Algebra<a class="headerlink" href="#linear-algebra" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_transpose.html#warp._src.lang.tile_transpose" title="warp._src.lang.tile_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_transpose</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_cholesky_solve.html#warp._src.lang.tile_cholesky_solve" title="warp._src.lang.tile_cholesky_solve"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code></a></p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_diag_add.html#warp._src.lang.tile_diag_add" title="warp._src.lang.tile_diag_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_diag_add</span></code></a></p></li>
+</ul>
+</section>
+</section>
+<section id="tiles-and-simt-code">
+<h2>Tiles and SIMT Code<a class="headerlink" href="#tiles-and-simt-code" title="Link to this heading">#</a></h2>
+<p>Traditionally, Warp kernels are primarily written in the SIMT programming model, where each thread’s execution happens independently.
+Tiles, on the other hand, allow threads to work <strong>cooperatively</strong> to perform operations.
+Warp exposes the <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile</span></code></a>, and <a class="reference internal" href="../language_reference/_generated/warp._src.lang.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.untile</span></code></a> methods to convert data between per-thread value types and
+the equivalent tile representation. For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">64</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">():</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="c1"># perform some per-thread computation</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">i</span><span class="o">*</span><span class="mf">2.0</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+    <span class="c1"># tile the value x across the block</span>
+    <span class="c1"># returns a tile with shape=(1, TILE_THREADS)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="o">...</span>
+
+<span class="c1"># launch as regular SIMT kernel</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="n">N</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, we have launched a regular SIMT grid with <code class="docutils literal notranslate"><span class="pre">N</span></code> logical threads using <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>.
+The kernel performs some per-thread computations and then converts the scalar <code class="docutils literal notranslate"><span class="pre">x</span></code> value into a tile object using <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile</span></code></a>.
+This function takes a single value as input and returns a tile with the same dimensions as the number of threads in the block (as set by the <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> argument in <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>),
+which implies that each thread in the block is assigned to a particular tile element.
+From here, the tile can be used in other regular cooperative operations such as reductions, GEMMs, etc.</p>
+<p>Similarly, we can <cite>untile</cite> tile objects back to their per-thread scalar equivalent values.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.</p>
+</div>
+<p>Extra consideration is needed when using tiles in SIMT kernels that are meant to run on both the GPU and the CPU.
+On the CPU, <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is set to 1, which can change the behavior of kernels using <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a>. Consider the following example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">TILE_DIM</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tile_reduce_blockwise_simt_kernel</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="n">TILE_DIM</span> <span class="o">*</span> <span class="mi">3</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">tile_reduce_blockwise_simt_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_DIM</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[ 6  0  0  0 22  0  0  0 38  0  0  0]
+</pre></div>
+</div>
+<p>Here, we launch <code class="docutils literal notranslate"><span class="pre">N=12</span></code> logical threads. The tile size is 4, so there are three blocks in total that are created with <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a>.
+The tile reduction operation stores the block’s sum in the first thread of the block, so we see 6, 22, and 38 stored at indices 0, 4, and 8.
+If we instead launch this kernel on the CPU, we get the following output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 0  1  2  3  4  5  6  7  8  9 10 11]
+</pre></div>
+</div>
+<p>When launching on the CPU, <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is set to 1, so the tile generated with <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a> has a size of 1, and the reduction of each tile simply returns the value of the tile.
+So if you are designing a kernel that is meant to get the same result running on the GPU or the CPU, it should be designed to be independent of the value of <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.
+For instance, if we want a full array reduction that works consistently across devices, we can use <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_atomic_add()</span></code></a> to accumulate results from all blocks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">TILE_DIM</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tile_reduce_simt_kernel</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="c1"># update global sum</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_atomic_add</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+
+<span class="n">N</span> <span class="o">=</span> <span class="n">TILE_DIM</span> <span class="o">*</span> <span class="mi">3</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">tile_reduce_simt_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_DIM</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[66]
+</pre></div>
+</div>
+<section id="type-preservation">
+<h3>Type Preservation<a class="headerlink" href="#type-preservation" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile</span></code></a> includes the optional parameter <code class="docutils literal notranslate"><span class="pre">preserve_type</span></code>, which is <code class="docutils literal notranslate"><span class="pre">False</span></code> by default.
+When <code class="docutils literal notranslate"><span class="pre">preserve_type</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, this function expands non-scalar inputs into a multi-dimensional tile.
+Vectors are expanded into a 2D tile of scalar values with shape <code class="docutils literal notranslate"><span class="pre">(length(vector),</span> <span class="pre">block_dim)</span></code>,
+while matrices are expanded into a 3D tile of scalar values with shape <code class="docutils literal notranslate"><span class="pre">(rows,</span> <span class="pre">cols,</span> <span class="pre">block_dim)</span></code>.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">preserve_type</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, this function outputs a 1D tile of length <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> with the same
+data type as the input value. So if you tile a vector across the block with <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>, a 1D
+tile of vectors will be returned. This is useful for collective operations that operate on the entire
+vector or matrix rather than their individual components, as in the following example demonstrating
+a matrix tile reduction:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">TILE_DIM</span> <span class="o">=</span> <span class="mi">32</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">matrix_reduction_kernel</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">)):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">I</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">preserve_type</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">sum</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_reduce</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="nb">sum</span><span class="p">)</span>
+
+<span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">mat33</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">matrix_reduction_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">TILE_DIM</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">y</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_DIM</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[496.   0.   0.]
+ [  0. 496.   0.]
+ [  0.   0. 496.]]
+</pre></div>
+</div>
+</section>
+<section id="example-using-tiles-to-accelerate-array-wide-reductions">
+<h3>Example: Using tiles to accelerate array-wide reductions<a class="headerlink" href="#example-using-tiles-to-accelerate-array-wide-reductions" title="Link to this heading">#</a></h3>
+<p>Prior to the addition of tile support in Warp, array-wide reductions were commonly performed in a single kernel
+using a built-in atomic function like <a class="reference internal" href="../language_reference/_generated/warp._src.lang.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a>.
+This could be very inefficient when compared to optimized mechanisms like
+<a class="reference external" href="https://nvidia.github.io/cccl/cub/api/classcub_1_1BlockReduce.html">cub::BlockReduce</a>.
+Consider the following sum-of-squares reduction on an array:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w">  </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reduce_array_simt</span><span class="p">(</span>
+    <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">result</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<span class="p">):</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="n">local_val</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span><span class="o">*</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">local_val</span><span class="p">)</span>
+
+<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">reduce_array_simt</span><span class="p">,</span> <span class="p">(</span><span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">result</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The above kernel in Warp 1.6.1 runs in about 27.5 ms on an RTX 3090 GPU.
+We can use tiles to accelerate this reduction by first creating a tile from the scalar <code class="docutils literal notranslate"><span class="pre">local_val</span></code>
+and then using <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_sum()</span></code></a> to cooperatively compute
+the tile sum using shared memory. We can then accumulate the result of the reduced
+tile into global memory using <a class="reference internal" href="../language_reference/_generated/warp._src.lang.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_atomic_add()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w">  </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reduce_array_tile</span><span class="p">(</span>
+    <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">result</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<span class="p">):</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="n">local_val</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span><span class="o">*</span><span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">local_val</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_atomic_add</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+
+<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">reduce_array_tile</span><span class="p">,</span> <span class="p">(</span><span class="mi">4096</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">result</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The reduction kernel using tiles runs in about 0.528 ms, a 52x improvement over the original kernel.</p>
+<p>Further speed improvements could be obtained by experimenting with different block sizes.
+If we reduce the block size from the default of 256 threads to 128 threads
+in this example by adding <code class="docutils literal notranslate"><span class="pre">block_dim=128</span></code> to the <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>,
+the kernel only takes about 0.436 ms to complete, while the pure SIMT kernel is
+relatively unaffected.</p>
+</section>
+</section>
+<section id="automatic-differentiation">
+<h2>Automatic Differentiation<a class="headerlink" href="#automatic-differentiation" title="Link to this heading">#</a></h2>
+<p>Warp can automatically generate the backward version of tile-based programs.
+In general, tile programs must obey the same rules for auto-diff as regular Warp programs, e.g. avoiding in-place operations, etc.
+Please see the <a class="reference internal" href="differentiability.html#differentiability"><span class="std std-ref">Differentiability</span></a> section for more details.</p>
+</section>
+<section id="failed-to-compile-lto-error-message">
+<span id="mathdx"></span><h2><code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span></code> Error Message<a class="headerlink" href="#failed-to-compile-lto-error-message" title="Link to this heading">#</a></h2>
+<p>Some tile operations invoke MathDx APIs to generate and compile link-time objects (LTOs) at runtime.
+If the compilation fails, you may see an error message that mentions <code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span></code>.
+A common cause of this error is that the tile sizes involved are too large for the current device, as shared memory
+is a limited resource.</p>
+<p>To get more information about the error, you can set the <code class="docutils literal notranslate"><span class="pre">LIBMATHDX_LOG_LEVEL</span></code> environment
+variable to 5 and rerun the program. Batching the problem into smaller tiles may be required to work around the shared
+memory limitations.
+In the case of FFT operations, using more threads per block may help (see the
+<a class="reference external" href="https://docs.nvidia.com/cuda/cufftdx/requirements_func.html">cuFFTDx requirements</a> for more details).</p>
+</section>
+<section id="building-with-mathdx">
+<h2>Building with MathDx<a class="headerlink" href="#building-with-mathdx" title="Link to this heading">#</a></h2>
+<p>Most tile operations described in <a class="reference internal" href="#linear-algebra">Linear Algebra</a> require Warp to be built with the MathDx library.
+Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
+leveraging MathDx APIs.</p>
+<p>When building Warp locally using <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>, the script will attempt to automatically download <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code>
+from the <a class="reference external" href="https://developer.nvidia.com/cublasdx-downloads">cuBLASDx Downloads Page</a>.
+A path to an existing <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> installation can also be specified using the <code class="docutils literal notranslate"><span class="pre">--libmathdx-path</span></code> option
+when running <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> or by defining the path in the <code class="docutils literal notranslate"><span class="pre">LIBMATHDX_HOME</span></code> environment variable.</p>
+<p>Please note that CUDA Toolkit 12.6.3 or higher is required for full MathDx support when building Warp from source.
+Warp + MathDx will compile with earlier CUDA 12 versions, but matrix multiplication, triangular solves, Cholesky factorization,
+and the Cholesky solver will fail at runtime.</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="https://developer.nvidia.com/blog/introducing-tile-based-programming-in-warp-1-5-0/">Technical Blog: Introducing Tile-Based Programming in Warp 1.5.0</a></p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="generics.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Generics</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="interoperability.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Interoperability</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#execution-model">Execution Model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-properties">Tile Properties</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-storage">Tile Storage</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#register-tiles">Register Tiles</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#shared-memory-tiles">Shared Memory Tiles</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-general-matrix-multiply-gemm">Example: General Matrix Multiply (GEMM)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-operations">Tile Operations</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#construction">Construction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-store">Load/Store</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-reductions">Maps/Reductions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-algebra">Linear Algebra</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tiles-and-simt-code">Tiles and SIMT Code</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#type-preservation">Type Preservation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-using-tiles-to-accelerate-array-wide-reductions">Example: Using tiles to accelerate array-wide reductions</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#automatic-differentiation">Automatic Differentiation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#failed-to-compile-lto-error-message"><code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span></code> Error Message</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-with-mathdx">Building with MathDx</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/user_guide/tiles.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

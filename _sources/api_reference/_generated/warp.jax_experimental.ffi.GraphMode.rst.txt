@@ -1,0 +1,43 @@
+﻿warp.jax\_experimental.ffi.GraphMode
+====================================
+
+.. currentmodule:: warp.jax_experimental.ffi
+
+.. autoclass:: GraphMode
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GraphMode.conjugate
+      ~GraphMode.bit_length
+      ~GraphMode.bit_count
+      ~GraphMode.to_bytes
+      ~GraphMode.from_bytes
+      ~GraphMode.as_integer_ratio
+      ~GraphMode.is_integer
+      ~GraphMode.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GraphMode.real
+      ~GraphMode.imag
+      ~GraphMode.numerator
+      ~GraphMode.denominator
+      ~GraphMode.NONE
+      ~GraphMode.JAX
+      ~GraphMode.WARP
+      ~GraphMode.WARP_STAGED
+      ~GraphMode.WARP_STAGED_EX
+   
+   

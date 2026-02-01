@@ -1,0 +1,55 @@
+﻿warp.fem.space.CovariantFunctionSpace
+=====================================
+
+.. currentmodule:: warp.fem.space
+
+.. autoclass:: CovariantFunctionSpace
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CovariantFunctionSpace.__init__
+      ~CovariantFunctionSpace.divergence_valid
+      ~CovariantFunctionSpace.dof_value
+      ~CovariantFunctionSpace.gradient_valid
+      ~CovariantFunctionSpace.local_value_map_inner
+      ~CovariantFunctionSpace.local_value_map_outer
+      ~CovariantFunctionSpace.make_field
+      ~CovariantFunctionSpace.node_count
+      ~CovariantFunctionSpace.node_positions
+      ~CovariantFunctionSpace.space_divergence
+      ~CovariantFunctionSpace.space_gradient
+      ~CovariantFunctionSpace.space_value
+      ~CovariantFunctionSpace.trace
+      ~CovariantFunctionSpace.value_basis_element
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CovariantFunctionSpace.basis
+      ~CovariantFunctionSpace.degree
+      ~CovariantFunctionSpace.dimension
+      ~CovariantFunctionSpace.element_kind
+      ~CovariantFunctionSpace.geometry
+      ~CovariantFunctionSpace.name
+      ~CovariantFunctionSpace.node_basis_element
+      ~CovariantFunctionSpace.topology
+      ~CovariantFunctionSpace.dtype
+      ~CovariantFunctionSpace.dof_dtype
+      ~CovariantFunctionSpace.weight_dtype
+      ~CovariantFunctionSpace.LocalValueMap
+      ~CovariantFunctionSpace.VALUE_DOF_COUNT
+      ~CovariantFunctionSpace.NODE_DOF_COUNT
+      ~CovariantFunctionSpace.ORDER
+   
+   

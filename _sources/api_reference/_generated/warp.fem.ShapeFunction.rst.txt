@@ -1,0 +1,36 @@
+﻿warp.fem.ShapeFunction
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ShapeFunction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ShapeFunction.__init__
+      ~ShapeFunction.make_element_inner_weight
+      ~ShapeFunction.make_element_inner_weight_gradient
+      ~ShapeFunction.make_node_coords_in_element
+      ~ShapeFunction.make_node_quadrature_weight
+      ~ShapeFunction.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ShapeFunction.name
+      ~ShapeFunction.value
+      ~ShapeFunction.ORDER
+      ~ShapeFunction.NODES_PER_ELEMENT
+   
+   

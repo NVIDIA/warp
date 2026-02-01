@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_set\_from\_triplets
+====================================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_set_from_triplets

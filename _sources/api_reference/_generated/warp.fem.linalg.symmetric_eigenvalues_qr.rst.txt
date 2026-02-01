@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.symmetric\_eigenvalues\_qr
+==========================================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autodata:: symmetric_eigenvalues_qr

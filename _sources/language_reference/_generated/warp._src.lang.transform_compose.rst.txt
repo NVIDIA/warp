@@ -1,0 +1,37 @@
+﻿warp.\_src.lang.transform\_compose
+==================================
+
+.. function:: warp._src.lang.transform_compose(position: Vector[Literal[3],float32], rotation: Quaternion[float32], scale: Vector[Literal[3],float32]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
+   
+   .. math::
+       M = \begin{bmatrix}
+       s_x R_{00} & s_y R_{01} & s_z R_{02} & p_x \\
+       s_x R_{10} & s_y R_{11} & s_z R_{12} & p_y \\
+       s_x R_{20} & s_y R_{21} & s_z R_{22} & p_z \\
+       0 & 0 & 0 & 1
+       \end{bmatrix}
+   
+   Where:
+   
+   * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+   * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+   * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
+   
+   :param position: The 3D position vector.
+   :type position: Vector[3, Float]
+   :param rotation: The quaternion orientation.
+   :type rotation: Quaternion[Float]
+   :param scale: The 3D scale vector.
+   :type scale: Vector[3, Float]
+   
+   :returns: The transformation matrix.
+   :rtype: Matrix[4, 4, Float]
+   

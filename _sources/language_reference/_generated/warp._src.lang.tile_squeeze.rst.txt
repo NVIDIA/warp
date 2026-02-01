@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.tile\_squeeze
+=============================
+
+.. function:: warp._src.lang.tile_squeeze(t: Tile[Any,tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Create a squeezed view of a tile with the same data.
+   
+   :param t: Input tile to squeeze
+   :param axis: A subset of the entries of length one in the shape (optional)
+   
+   :returns: The input tile but with all or a subset of the dimensions of length one removed.
+   

@@ -1,0 +1,35 @@
+﻿warp.\_src.lang.tile\_scan\_max\_inclusive
+==========================================
+
+.. function:: warp._src.lang.tile_scan_max_inclusive(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Inclusive max scan across the tile.
+   
+   This function cooperatively performs an inclusive max scan (cumulative maximum) across the tile.
+   
+   :param a: The input tile. Must be a tile of type float32, int32, or uint32.
+   
+   :returns: A new tile containing the inclusive max scan result.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def scan_example(input: wp.array(dtype=int)):
+           t = wp.tile_load(input, shape=(4,))
+           s = wp.tile_scan_max_inclusive(t)
+           print(s)
+   
+       input = wp.array([3, 1, 4, 2], dtype=int)
+       wp.launch_tiled(scan_example, dim=[1], inputs=[input], block_dim=16)
+   
+   .. code-block:: text
+   
+       [3, 3, 4, 4] = tile(shape=(4), storage=register)
+   

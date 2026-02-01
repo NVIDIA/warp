@@ -1,0 +1,58 @@
+﻿warp.fem.field.TrialField
+=========================
+
+.. currentmodule:: warp.fem.field
+
+.. autoclass:: TrialField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TrialField.__init__
+      ~TrialField.divergence_valid
+      ~TrialField.eval_arg_value
+      ~TrialField.eval_degree
+      ~TrialField.eval_div_inner
+      ~TrialField.eval_div_outer
+      ~TrialField.eval_grad_inner
+      ~TrialField.eval_grad_outer
+      ~TrialField.eval_inner
+      ~TrialField.eval_outer
+      ~TrialField.eval_reference_grad_inner
+      ~TrialField.eval_reference_grad_outer
+      ~TrialField.fill_eval_arg
+      ~TrialField.gradient_valid
+      ~TrialField.make_deformed_geometry
+      ~TrialField.notify_operator_usage
+      ~TrialField.partition_node_count
+      ~TrialField.rebind
+      ~TrialField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TrialField.degree
+      ~TrialField.divergence_dtype
+      ~TrialField.dof_dtype
+      ~TrialField.dtype
+      ~TrialField.element_kind
+      ~TrialField.geometry
+      ~TrialField.gradient_dtype
+      ~TrialField.name
+      ~TrialField.reference_gradient_dtype
+      ~TrialField.space
+      ~TrialField.space_partition
+      ~TrialField.EvalArg
+      ~TrialField.ElementEvalArg
+   
+   

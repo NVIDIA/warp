@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.volume\_lookup
+==============================
+
+.. function:: warp._src.lang.volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type ``dtype``.
+   
+   If the voxel at this index does not exist, this function returns the background value.

@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.qr3
+===================
+
+.. function:: warp._src.lang.qr3(A: Matrix[Literal[3],Literal[3],Float]) -> tuple[Matrix[Literal[3],Literal[3],Float], Matrix[Literal[3],Literal[3],Float]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the QR decomposition of a 3x3 matrix ``A``.
+   
+   The orthogonal matrix is returned in ``Q``, while the upper triangular matrix is returned in ``R``.
+
+.. function:: warp._src.lang.qr3(A: Matrix[Literal[3],Literal[3],Float], Q: Matrix[Literal[3],Literal[3],Float], R: Matrix[Literal[3],Literal[3],Float]) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the QR decomposition of a 3x3 matrix ``A``.
+   
+   The orthogonal matrix is returned in ``Q``, while the upper triangular matrix is returned in ``R``.

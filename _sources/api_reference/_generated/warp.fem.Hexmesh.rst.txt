@@ -1,0 +1,79 @@
+﻿warp.fem.Hexmesh
+================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Hexmesh
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Hexmesh.__init__
+      ~Hexmesh.boundary_side_count
+      ~Hexmesh.build_bvh
+      ~Hexmesh.bvh_id
+      ~Hexmesh.cell_arg_value
+      ~Hexmesh.cell_count
+      ~Hexmesh.cell_deformation_gradient
+      ~Hexmesh.cell_inverse_deformation_gradient
+      ~Hexmesh.cell_measure
+      ~Hexmesh.cell_normal
+      ~Hexmesh.cell_position
+      ~Hexmesh.edge_count
+      ~Hexmesh.fill_cell_arg
+      ~Hexmesh.fill_side_arg
+      ~Hexmesh.fill_side_index_arg
+      ~Hexmesh.make_filtered_cell_lookup
+      ~Hexmesh.reference_cell
+      ~Hexmesh.reference_side
+      ~Hexmesh.side_arg_value
+      ~Hexmesh.side_count
+      ~Hexmesh.side_index_arg_value
+      ~Hexmesh.side_inner_inverse_deformation_gradient
+      ~Hexmesh.side_measure
+      ~Hexmesh.side_measure_ratio
+      ~Hexmesh.side_normal
+      ~Hexmesh.side_outer_inverse_deformation_gradient
+      ~Hexmesh.supports_cell_lookup
+      ~Hexmesh.update_bvh
+      ~Hexmesh.vertex_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Hexmesh.CellArg
+      ~Hexmesh.SideArg
+      ~Hexmesh.SideIndexArg
+      ~Hexmesh.base
+      ~Hexmesh.boundary_side_index
+      ~Hexmesh.cell_bounds
+      ~Hexmesh.cell_bvh_id
+      ~Hexmesh.cell_dimension
+      ~Hexmesh.cell_lookup
+      ~Hexmesh.cell_measure_ratio
+      ~Hexmesh.dimension
+      ~Hexmesh.face_hex_indices
+      ~Hexmesh.face_to_hex_coords
+      ~Hexmesh.face_vertex_indices
+      ~Hexmesh.hex_edge_indices
+      ~Hexmesh.name
+      ~Hexmesh.side_deformation_gradient
+      ~Hexmesh.side_from_cell_coords
+      ~Hexmesh.side_inner_cell_coords
+      ~Hexmesh.side_inner_cell_index
+      ~Hexmesh.side_outer_cell_coords
+      ~Hexmesh.side_outer_cell_index
+      ~Hexmesh.side_position
+      ~Hexmesh.side_to_cell_arg
+   
+   

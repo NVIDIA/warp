@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_get\_rotation
+========================================
+
+.. function:: warp._src.lang.transform_get_rotation(xform: Transformation[Float]) -> Quaternion[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract the rotational part of transform ``xform``.

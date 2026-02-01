@@ -1,0 +1,26 @@
+﻿warp.\_src.lang.tile\_cholesky\_inplace
+=======================================
+
+.. function:: warp._src.lang.tile_cholesky_inplace(A: Tile[Float,tuple[int, int]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the Cholesky factorization ``L`` of a matrix ``A``.
+   
+   ``L`` is lower triangular and satisfies ``LL^T = A``.
+   
+   Only the lower triangular portion of ``A`` is used for the decomposition;
+   the upper triangular part may be left unspecified.
+   
+   Note: This inplace variant does not support automatic differentiation (adjoint computation),
+   but offers improved performance and uses half the shared memory compared to the standard version.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is replaced by ``L``, such that ``LL^T = A``; the upper part is untouched.
+   

@@ -1,0 +1,43 @@
+﻿warp.fem.SpaceRestriction
+=========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: SpaceRestriction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SpaceRestriction.__init__
+      ~SpaceRestriction.fill_node_arg
+      ~SpaceRestriction.node_arg_value
+      ~SpaceRestriction.node_count
+      ~SpaceRestriction.node_count_sync
+      ~SpaceRestriction.node_partition_indices
+      ~SpaceRestriction.partition_element_offsets
+      ~SpaceRestriction.rebuild
+      ~SpaceRestriction.total_node_element_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SpaceRestriction.NodeArg
+      ~SpaceRestriction.node_element_index
+      ~SpaceRestriction.node_element_range
+      ~SpaceRestriction.node_partition_index
+      ~SpaceRestriction.node_partition_index_from_element_offset
+      ~SpaceRestriction.space_partition
+      ~SpaceRestriction.space_topology
+      ~SpaceRestriction.domain
+   
+   

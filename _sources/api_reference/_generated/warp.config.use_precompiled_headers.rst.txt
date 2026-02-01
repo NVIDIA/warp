@@ -1,0 +1,6 @@
+﻿warp.config.use\_precompiled\_headers
+=====================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: use_precompiled_headers

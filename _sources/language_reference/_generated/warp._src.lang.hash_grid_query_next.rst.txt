@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.hash\_grid\_query\_next
+=======================================
+
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next point in the hash grid query.
+   
+   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.

@@ -1,0 +1,29 @@
+﻿warp.\_src.lang.tile\_ones
+==========================
+
+.. function:: warp._src.lang.tile_ones(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Allocate a tile of one-initialized items.
+   
+   :param shape: Shape of the output tile
+   :param dtype: Data type of output tile's elements
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   (default) or ``"shared"`` for shared memory.
+   
+   :returns: A one-initialized tile with shape and data type as specified.
+   
+
+.. function:: warp._src.lang.tile_ones(shape: int32, dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Allocate a tile of one-initialized items.

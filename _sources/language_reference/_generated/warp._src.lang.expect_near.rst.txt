@@ -1,0 +1,49 @@
+﻿warp.\_src.lang.expect\_near
+============================
+
+.. function:: warp._src.lang.expect_near(a: Float, b: Float, tolerance: Float) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
+   
+   Compare scalar values.
+
+.. function:: warp._src.lang.expect_near(a: Vector[Any,Float], b: Vector[Any,Float], tolerance: Float) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
+   
+   Compare each vector element.
+
+.. function:: warp._src.lang.expect_near(a: Quaternion[Float], b: Quaternion[Float], tolerance: Float) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
+   
+   Compare each quaternion component.
+
+.. function:: warp._src.lang.expect_near(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], tolerance: Float) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
+   
+   Compare each matrix element.

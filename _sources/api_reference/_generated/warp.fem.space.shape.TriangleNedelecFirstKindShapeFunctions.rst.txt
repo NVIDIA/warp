@@ -1,0 +1,43 @@
+﻿warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions
+===========================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TriangleNedelecFirstKindShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TriangleNedelecFirstKindShapeFunctions.__init__
+      ~TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight
+      ~TriangleNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient
+      ~TriangleNedelecFirstKindShapeFunctions.make_node_coords_in_element
+      ~TriangleNedelecFirstKindShapeFunctions.make_node_quadrature_weight
+      ~TriangleNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight
+      ~TriangleNedelecFirstKindShapeFunctions.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TriangleNedelecFirstKindShapeFunctions.EDGE
+      ~TriangleNedelecFirstKindShapeFunctions.INTERIOR
+      ~TriangleNedelecFirstKindShapeFunctions.VERTEX
+      ~TriangleNedelecFirstKindShapeFunctions.name
+      ~TriangleNedelecFirstKindShapeFunctions.value
+      ~TriangleNedelecFirstKindShapeFunctions.VERTEX_NODE_COUNT
+      ~TriangleNedelecFirstKindShapeFunctions.EDGE_NODE_COUNT
+      ~TriangleNedelecFirstKindShapeFunctions.INTERIOR_NODE_COUNT
+      ~TriangleNedelecFirstKindShapeFunctions.ORDER
+      ~TriangleNedelecFirstKindShapeFunctions.NODES_PER_ELEMENT
+   
+   

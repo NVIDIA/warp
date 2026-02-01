@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.bvh\_query\_aabb\_tiled
+=======================================
+
+.. function:: warp._src.lang.bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+   
+   This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+   
+   :param id: The BVH identifier
+   :param low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
+   :param high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)
+   

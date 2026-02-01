@@ -1,0 +1,744 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Limitations &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/limitations';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Contribution Guide" href="contribution_guide.html" />
+    <link rel="prev" title="Debugging" href="debugging.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Limitations</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="limitations">
+<h1>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h1>
+<p>This section summarizes various limitations and currently unsupported features in Warp.
+Problems, questions, and feature requests can be opened on <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>.</p>
+<section id="unsupported-features">
+<h2>Unsupported Features<a class="headerlink" href="#unsupported-features" title="Link to this heading">#</a></h2>
+<p>To achieve good performance on GPUs some dynamic language features are not supported:</p>
+<ul class="simple">
+<li><p>Lambda functions</p></li>
+<li><p>List comprehensions</p></li>
+<li><p>Exceptions</p></li>
+<li><p>Recursion</p></li>
+<li><p>Runtime evaluation of expressions, e.g.: eval()</p></li>
+<li><p>Dynamic structures such as lists, sets, dictionaries, etc.</p></li>
+</ul>
+</section>
+<section id="kernels-and-user-functions">
+<h2>Kernels and User Functions<a class="headerlink" href="#kernels-and-user-functions" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Strings cannot be passed into kernels.</p></li>
+<li><p>Short-circuit evaluation is not supported</p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> does not support <a class="reference internal" href="../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float16</span></code></a> on GPUs with compute capability below 7.0.
+On such devices, the function will return <code class="docutils literal notranslate"><span class="pre">0.0</span></code> without modifying the target memory.</p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> cannot be called from user functions.</p></li>
+<li><p>Modifying the value of a <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> during runtime will not trigger
+recompilation of the affected kernels if the modules have already been loaded
+(e.g. through a <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or a <a class="reference internal" href="../api_reference/_generated/warp.load_module.html#warp.load_module" title="warp.load_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_module()</span></code></a>).</p></li>
+<li><p>A <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> can suffer precision loss if used with <a class="reference internal" href="../api_reference/_generated/warp.float64.html#warp.float64" title="warp.float64"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float64</span></code></a>
+as it is initially assigned to a <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float32</span></code></a> variable in the generated code.</p></li>
+<li><p>Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> values behave like raw integers in Warp kernels: bitwise negation (<code class="docutils literal notranslate"><span class="pre">~</span></code>)
+produces the integer negation, not a masked combination of flags as in standard Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> behavior.</p></li>
+</ul>
+<p>A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
+signed integer. Therefore, no single dimension of a grid should exceed <span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p>
+<p>By default, Warp will try to process one element from the Warp grid in one CUDA thread.
+This is not always possible for kernels launched with multi-dimensional grid bounds, as there are
+<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#features-and-technical-specifications-technical-specifications-per-compute-capability">hardware limitations</a>
+on CUDA block dimensions.</p>
+<p>Warp will automatically fall back to using
+<a class="reference external" href="https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/">grid-stride loops</a> when
+it is not possible for a CUDA thread to process only one element from the Warp grid.
+When this happens, some CUDA threads may process more than one element from the Warp grid.
+Users can also set the <code class="docutils literal notranslate"><span class="pre">max_blocks</span></code> parameter to fine-tune the grid-striding behavior of kernels, even for kernels that are otherwise
+able to process one Warp-grid element per CUDA thread.</p>
+</section>
+<section id="differentiability">
+<h2>Differentiability<a class="headerlink" href="#differentiability" title="Link to this heading">#</a></h2>
+<p>Please see the <a class="reference internal" href="differentiability.html#limitations-and-workarounds"><span class="std std-ref">Limitations and Workarounds</span></a> section in the Differentiability page for auto-differentiation limitations.</p>
+</section>
+<section id="arrays">
+<h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Arrays can have a maximum of four dimensions.</p></li>
+<li><p>Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
+<span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p></li>
+<li><p>There are currently no data types that support complex numbers.</p></li>
+</ul>
+</section>
+<section id="structs">
+<h2>Structs<a class="headerlink" href="#structs" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>Structs cannot have generic members, i.e. of type <code class="docutils literal notranslate"><span class="pre">typing.Any</span></code>.</p></li>
+<li><p>Structs do not support inheritance. Consider using composition instead.</p></li>
+</ul>
+</section>
+<section id="volumes">
+<h2>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>The sparse-volume <em>topology</em> cannot be changed after the tiles for the <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> have been allocated.</p></li>
+</ul>
+</section>
+<section id="multiple-processes">
+<h2>Multiple Processes<a class="headerlink" href="#multiple-processes" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>A CUDA context created in the parent process cannot be used in a <em>forked</em> child process.
+Use the spawn start method instead, or avoid creating CUDA contexts in the parent process.</p></li>
+<li><p>There can be issues with using same user kernel cache directory when running with multiple processes.
+A workaround is to use a separate cache directory for every process.
+See the <a class="reference internal" href="configuration.html#configuration"><span class="std std-ref">Configuration</span></a> section for how the cache directory may be changed.</p></li>
+</ul>
+</section>
+<section id="scalar-math-functions">
+<h2>Scalar Math Functions<a class="headerlink" href="#scalar-math-functions" title="Link to this heading">#</a></h2>
+<p>This section details some limitations and differences from CPython semantics for scalar math functions.</p>
+<section id="modulus-operator">
+<h3>Modulus Operator<a class="headerlink" href="#modulus-operator" title="Link to this heading">#</a></h3>
+<p>Deviation from Python behavior can occur when the modulus operator (<code class="docutils literal notranslate"><span class="pre">%</span></code>) is used with a negative dividend or divisor
+(also see <a class="reference internal" href="../language_reference/_generated/warp._src.lang.mod.html#warp._src.lang.mod" title="warp._src.lang.mod"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mod()</span></code></a>).
+The behavior of the modulus operator in a Warp kernel follows that of C++11: The sign of the result follows the sign of
+<em>dividend</em>. In Python, the sign of the result follows the sign of the <em>divisor</em>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">modulus_test</span><span class="p">():</span>
+    <span class="c1"># Kernel-scope behavior:</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mi">3</span> <span class="o">%</span> <span class="mi">2</span> <span class="c1"># a is -1</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">%</span> <span class="o">-</span><span class="mi">2</span> <span class="c1"># b is 1</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">%</span> <span class="mi">0</span>  <span class="c1"># Undefined behavior</span>
+
+<span class="c1"># Python-scope behavior:</span>
+<span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mi">3</span> <span class="o">%</span> <span class="mi">2</span> <span class="c1"># a is 1</span>
+<span class="n">b</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">%</span> <span class="o">-</span><span class="mi">2</span> <span class="c1"># b is -1</span>
+<span class="n">c</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">%</span> <span class="mi">0</span>  <span class="c1"># ZeroDivisionError</span>
+</pre></div>
+</div>
+</section>
+<section id="power-operator">
+<h3>Power Operator<a class="headerlink" href="#power-operator" title="Link to this heading">#</a></h3>
+<p>The power operator (<code class="docutils literal notranslate"><span class="pre">**</span></code>) in Warp kernels only works on floating-point numbers (also see <a class="reference external" href="https://docs.python.org/3/library/functions.html#pow" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.pow()</span></code></a>).
+In Python, the power operator can also be used on integers.</p>
+</section>
+<section id="inverse-sine-and-cosine">
+<h3>Inverse Sine and Cosine<a class="headerlink" href="#inverse-sine-and-cosine" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.asin.html#warp._src.lang.asin" title="warp._src.lang.asin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.asin()</span></code></a> and <a class="reference internal" href="../language_reference/_generated/warp._src.lang.acos.html#warp._src.lang.acos" title="warp._src.lang.acos"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.acos()</span></code></a> automatically clamp the input to fall in the range [-1, 1].
+In Python, using <a class="reference external" href="https://docs.python.org/3/library/math.html#math.asin" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">math.asin()</span></code></a> or <a class="reference external" href="https://docs.python.org/3/library/math.html#math.acos" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">math.acos()</span></code></a>
+with an input outside [-1, 1] raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> exception.</p>
+</section>
+<section id="rounding">
+<h3>Rounding<a class="headerlink" href="#rounding" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../language_reference/_generated/warp._src.lang.round.html#warp._src.lang.round" title="warp._src.lang.round"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.round()</span></code></a> rounds halfway cases away from zero, but Python’s
+<a class="reference external" href="https://docs.python.org/3/library/functions.html#round" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">round()</span></code></a> rounds halfway cases to the nearest even
+choice (Banker’s rounding). Use <a class="reference internal" href="../language_reference/_generated/warp._src.lang.rint.html#warp._src.lang.rint" title="warp._src.lang.rint"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rint()</span></code></a> when Banker’s rounding is
+desired. Unlike Python, the return type in Warp of both of these rounding
+functions is the same type as the input:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">halfway_rounding_test</span><span class="p">():</span>
+    <span class="c1"># Kernel-scope behavior:</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span> <span class="c1"># a is 1.0</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># b is 0.0</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span> <span class="c1"># c is 2.0</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>  <span class="c1"># d is 2.0</span>
+
+<span class="c1"># Python-scope behavior:</span>
+<span class="n">a</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span> <span class="c1"># a is 0</span>
+<span class="n">c</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span> <span class="c1"># c is 2</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="variable-scope">
+<h2>Variable Scope<a class="headerlink" href="#variable-scope" title="Link to this heading">#</a></h2>
+<p>When writing Warp kernels, variable scope might behave differently than in standard Python.
+This can sometimes lead to unexpected results.</p>
+<p>In standard Python, variables are only accessible within the block where they are defined.
+Consider this example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">cond</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">cond</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="mi">123</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="mi">234</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This code works as expected in standard Python.
+Regardless of the value of <code class="docutils literal notranslate"><span class="pre">cond</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> is defined before being printed.</p>
+<p>However, consider a slightly modified example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">cond</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">cond</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="mi">123</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="c1"># No error even when `cond` is `False`.</span>
+</pre></div>
+</div>
+<p>In standard Python, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, the call to <code class="docutils literal notranslate"><span class="pre">print(out)</span></code> would raise an <code class="docutils literal notranslate"><span class="pre">UnboundLocalError</span></code> because
+<code class="docutils literal notranslate"><span class="pre">out</span></code> is only defined inside the <code class="docutils literal notranslate"><span class="pre">if</span></code> block.</p>
+<p>In Warp, the behavior is different. The call to <code class="docutils literal notranslate"><span class="pre">print(out)</span></code> <em>will not</em> raise an error, even if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>.
+Warp effectively makes <code class="docutils literal notranslate"><span class="pre">out</span></code> accessible outside the <code class="docutils literal notranslate"><span class="pre">if</span></code> block.
+However, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> will be uninitialized, leading to undefined behavior.</p>
+</section>
+<section id="arrays-in-structs">
+<h2>Arrays in Structs<a class="headerlink" href="#arrays-in-structs" title="Link to this heading">#</a></h2>
+<p>Modifying flags on arrays stored in structs may not trigger an update to the underlying struct memory, e.g.:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MyStruct</span><span class="p">:</span>
+    <span class="n">arr</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="n">s</span> <span class="o">=</span> <span class="n">MyStruct</span><span class="p">()</span>
+<span class="n">s</span><span class="o">.</span><span class="n">arr</span> <span class="o">=</span> <span class="n">a</span>
+
+<span class="c1"># modify original array</span>
+<span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>In this case the array stored in the struct will not have the <cite>requires_grad=True</cite> value propagated to it,
+which could lead to gradients not being computed during backward kernel launches.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="debugging.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Debugging</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="contribution_guide.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Contribution Guide</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#unsupported-features">Unsupported Features</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernels-and-user-functions">Kernels and User Functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiability">Differentiability</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#structs">Structs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#volumes">Volumes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#multiple-processes">Multiple Processes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scalar-math-functions">Scalar Math Functions</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#modulus-operator">Modulus Operator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#power-operator">Power Operator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inverse-sine-and-cosine">Inverse Sine and Cosine</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rounding">Rounding</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#variable-scope">Variable Scope</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays-in-structs">Arrays in Structs</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/user_guide/limitations.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

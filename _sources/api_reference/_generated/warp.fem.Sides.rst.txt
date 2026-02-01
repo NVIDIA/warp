@@ -1,0 +1,62 @@
+﻿warp.fem.Sides
+==============
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Sides
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Sides.__init__
+      ~Sides.cell_domain
+      ~Sides.element_arg_value
+      ~Sides.element_count
+      ~Sides.element_index_arg_value
+      ~Sides.fill_element_arg
+      ~Sides.fill_element_index_arg
+      ~Sides.geometry_element_count
+      ~Sides.notify_operator_usage
+      ~Sides.reference_element
+      ~Sides.supports_lookup
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Sides.DomainArg
+      ~Sides.ElementArg
+      ~Sides.ElementIndexArg
+      ~Sides.cell_to_element_coords
+      ~Sides.dimension
+      ~Sides.domain_cell_arg
+      ~Sides.element_closest_point
+      ~Sides.element_coordinates
+      ~Sides.element_deformation_gradient
+      ~Sides.element_index
+      ~Sides.element_inner_cell_coords
+      ~Sides.element_inner_cell_index
+      ~Sides.element_kind
+      ~Sides.element_measure
+      ~Sides.element_measure_ratio
+      ~Sides.element_normal
+      ~Sides.element_outer_cell_coords
+      ~Sides.element_outer_cell_index
+      ~Sides.element_position
+      ~Sides.name
+      ~Sides.geometry_partition
+      ~Sides.geometry
+      ~Sides.element_partition_index
+      ~Sides.element_lookup
+      ~Sides.element_partition_lookup
+   
+   

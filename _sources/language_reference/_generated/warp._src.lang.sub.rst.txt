@@ -1,0 +1,67 @@
+﻿warp.\_src.lang.sub
+===================
+
+.. function:: warp._src.lang.sub(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Subtract ``b`` from ``a``.
+
+.. function:: warp._src.lang.sub(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Subtract ``b`` from ``a``.

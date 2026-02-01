@@ -1,0 +1,14 @@
+﻿warp.\_src.lang.acos
+====================
+
+.. function:: warp._src.lang.acos(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute arccos of ``x`` in radians.
+   
+   Inputs are automatically clamped to [-1.0, 1.0].

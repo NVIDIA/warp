@@ -1,0 +1,37 @@
+﻿warp.fem.space.shape.ConstantShapeFunction
+==========================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: ConstantShapeFunction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ConstantShapeFunction.__init__
+      ~ConstantShapeFunction.element_vtk_cells
+      ~ConstantShapeFunction.make_element_inner_weight
+      ~ConstantShapeFunction.make_element_inner_weight_gradient
+      ~ConstantShapeFunction.make_node_coords_in_element
+      ~ConstantShapeFunction.make_node_quadrature_weight
+      ~ConstantShapeFunction.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ConstantShapeFunction.name
+      ~ConstantShapeFunction.value
+      ~ConstantShapeFunction.ORDER
+      ~ConstantShapeFunction.NODES_PER_ELEMENT
+   
+   

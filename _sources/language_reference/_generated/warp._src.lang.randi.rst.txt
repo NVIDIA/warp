@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.randi
+=====================
+
+.. function:: warp._src.lang.randi(state: uint32) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random integer.
+   
+   Sample in the range [-2^31, 2^31).
+
+.. function:: warp._src.lang.randi(state: uint32, low: int32, high: int32) -> int
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random integer.
+   
+   Sample in the range [low, high).

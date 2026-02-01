@@ -1,0 +1,6 @@
+﻿warp.utils.array\_inner
+=======================
+
+.. currentmodule:: warp.utils
+
+.. autofunction:: array_inner

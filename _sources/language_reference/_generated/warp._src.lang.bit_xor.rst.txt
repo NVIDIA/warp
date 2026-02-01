@@ -1,0 +1,47 @@
+﻿warp.\_src.lang.bit\_xor
+========================
+
+.. function:: warp._src.lang.bit_xor(a: Int, b: Int) -> Int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the bitwise XOR of ``a`` and ``b``.
+
+.. function:: warp._src.lang.bit_xor(a: Vector[Any,Int], b: Vector[Any,Int]) -> Vector[Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the bitwise XOR of ``a`` and ``b``.
+   
+   Apply the operation element-wise to vectors.
+
+.. function:: warp._src.lang.bit_xor(a: Matrix[Any,Any,Int], b: Matrix[Any,Any,Int]) -> Matrix[Any,Any,Int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the bitwise XOR of ``a`` and ``b``.
+   
+   Apply the operation element-wise to matrices.
+
+.. function:: warp._src.lang.bit_xor(a: Tile[Any,tuple[int, ...]], b: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the bitwise XOR of ``a`` and ``b``.
+   
+   Apply the operation element-wise to tiles.

@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.outer
+=====================
+
+.. function:: warp._src.lang.outer(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the outer product ``a*b^T`` for two vectors.

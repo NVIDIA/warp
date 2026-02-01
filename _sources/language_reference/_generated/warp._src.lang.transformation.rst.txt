@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.transformation
+==============================
+
+.. function:: warp._src.lang.transformation(p: Vector[Literal[3],Float], q: Quaternion[Float], dtype: Float) -> Transformation[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a transformation.
+   
+   Use translation ``p`` and rotation ``q``.
+
+.. function:: warp._src.lang.transformation(*args: Float, dtype: Float) -> Transformation[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a transformation.
+   
+   Build a spatial transform vector from components.

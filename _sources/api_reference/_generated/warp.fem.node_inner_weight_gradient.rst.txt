@@ -1,0 +1,6 @@
+﻿warp.fem.node\_inner\_weight\_gradient
+======================================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: node_inner_weight_gradient

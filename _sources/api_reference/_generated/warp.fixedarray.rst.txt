@@ -1,0 +1,46 @@
+﻿warp.fixedarray
+===============
+
+.. currentmodule:: warp
+
+.. autoclass:: fixedarray
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~fixedarray.__init__
+      ~fixedarray.assign
+      ~fixedarray.contiguous
+      ~fixedarray.cptr
+      ~fixedarray.fill_
+      ~fixedarray.flatten
+      ~fixedarray.ipc_handle
+      ~fixedarray.list
+      ~fixedarray.mark_init
+      ~fixedarray.mark_read
+      ~fixedarray.mark_write
+      ~fixedarray.numpy
+      ~fixedarray.reshape
+      ~fixedarray.to
+      ~fixedarray.transpose
+      ~fixedarray.view
+      ~fixedarray.zero_
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~fixedarray.grad
+      ~fixedarray.requires_grad
+      ~fixedarray.vars
+   
+   

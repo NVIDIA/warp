@@ -1,0 +1,23 @@
+﻿warp.\_src.lang.dot
+===================
+
+.. function:: warp._src.lang.dot(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the dot product.
+
+.. function:: warp._src.lang.dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the dot product.

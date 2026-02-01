@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.cosh
+====================
+
+.. function:: warp._src.lang.cosh(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the cosh of ``x``.

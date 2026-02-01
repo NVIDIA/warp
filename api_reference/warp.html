@@ -1,0 +1,1675 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>warp &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/warp';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="warp.DeviceLike" href="_generated/warp.DeviceLike.html" />
+    <link rel="prev" title="Rendering" href="../domain_modules/render.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-warp">
+<span id="warp"></span><h1>warp<a class="headerlink" href="#module-warp" title="Link to this heading">#</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">warp</span></code> package provides array types and functions for creating and manipulating
+multi-dimensional data on CPU and CUDA devices. It includes kernel and function decorators
+(<a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">kernel()</span></code></a>, <a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">func()</span></code></a>) for defining parallel code, along with a comprehensive set
+of built-in types and functions for use within kernels (see <a class="reference internal" href="../language_reference/builtins.html"><span class="doc">Built-Ins</span></a>).</p>
+<p>The package provides device management, kernel launch and synchronization functions, automatic
+differentiation via <a class="reference internal" href="_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tape</span></code></a> recording, type introspection and construction utilities, and
+module compilation and caching.</p>
+<p>Additional functionality is available in optional submodules that must be explicitly
+imported, such as <a class="reference internal" href="warp_render.html#module-warp.render" title="warp.render"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.render</span></code></a> for visualization, <a class="reference internal" href="warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> for finite
+element methods, and <a class="reference internal" href="warp_sparse.html#module-warp.sparse" title="warp.sparse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.sparse</span></code></a> for sparse linear algebra.</p>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">#</a></h2>
+<p>These modules are automatically available when you <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp</span></code>.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="warp_config.html#module-warp.config" title="warp.config"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.config</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_types.html#module-warp.types" title="warp.types"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.types</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_utils.html#module-warp.utils" title="warp.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.utils</span></code></a></p></li>
+</ul>
+</section>
+<section id="additional-submodules">
+<h2>Additional Submodules<a class="headerlink" href="#additional-submodules" title="Link to this heading">#</a></h2>
+<p>These modules must be explicitly imported (e.g., <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp.autograd</span></code>).</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="warp_autograd.html#module-warp.autograd" title="warp.autograd"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.autograd</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_jax_experimental.html#module-warp.jax_experimental" title="warp.jax_experimental"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_optim.html#module-warp.optim" title="warp.optim"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.optim</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_render.html#module-warp.render" title="warp.render"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.render</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_sparse.html#module-warp.sparse" title="warp.sparse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.sparse</span></code></a></p></li>
+</ul>
+</section>
+<section id="type-annotations">
+<h2>Type Annotations<a class="headerlink" href="#type-annotations" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.DeviceLike.html#warp.DeviceLike" title="warp.DeviceLike"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DeviceLike</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.Device.html#warp.Device" title="warp._src.context.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> | <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Float.html#warp.Float" title="warp.Float"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Float</span></code></a></p></td>
+<td><p>Type variable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Int.html#warp.Int" title="warp.Int"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Int</span></code></a></p></td>
+<td><p>Type variable.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Scalar.html#warp.Scalar" title="warp.Scalar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scalar</span></code></a></p></td>
+<td><p>Type variable.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="data-types">
+<h2>Data Types<a class="headerlink" href="#data-types" title="Link to this heading">#</a></h2>
+<section id="scalars">
+<h3>Scalars<a class="headerlink" href="#scalars" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bool.html#warp.bool" title="warp.bool"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code></a></p></td>
+<td><p>Boolean scalar type for use in Warp kernels and arrays.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.float16.html#warp.float16" title="warp.float16"><code class="xref py py-obj docutils literal notranslate"><span class="pre">float16</span></code></a></p></td>
+<td><p>16-bit half-precision floating-point scalar type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-obj docutils literal notranslate"><span class="pre">float32</span></code></a></p></td>
+<td><p>32-bit single-precision floating-point scalar type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.float64.html#warp.float64" title="warp.float64"><code class="xref py py-obj docutils literal notranslate"><span class="pre">float64</span></code></a></p></td>
+<td><p>64-bit double-precision floating-point scalar type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.int8.html#warp.int8" title="warp.int8"><code class="xref py py-obj docutils literal notranslate"><span class="pre">int8</span></code></a></p></td>
+<td><p>8-bit signed integer scalar type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.int16.html#warp.int16" title="warp.int16"><code class="xref py py-obj docutils literal notranslate"><span class="pre">int16</span></code></a></p></td>
+<td><p>16-bit signed integer scalar type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-obj docutils literal notranslate"><span class="pre">int32</span></code></a></p></td>
+<td><p>32-bit signed integer scalar type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.int64.html#warp.int64" title="warp.int64"><code class="xref py py-obj docutils literal notranslate"><span class="pre">int64</span></code></a></p></td>
+<td><p>64-bit signed integer scalar type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.uint8.html#warp.uint8" title="warp.uint8"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uint8</span></code></a></p></td>
+<td><p>8-bit unsigned integer scalar type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.uint16.html#warp.uint16" title="warp.uint16"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uint16</span></code></a></p></td>
+<td><p>16-bit unsigned integer scalar type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.uint32.html#warp.uint32" title="warp.uint32"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uint32</span></code></a></p></td>
+<td><p>32-bit unsigned integer scalar type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uint64</span></code></a></p></td>
+<td><p>64-bit unsigned integer scalar type.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="vectors">
+<h3>Vectors<a class="headerlink" href="#vectors" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec2.html#warp.vec2" title="warp.vec2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.vec2f.html#warp.vec2f" title="warp._src.types.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">vec2f</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">vec3f</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec4.html#warp.vec4" title="warp.vec4"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.vec4f.html#warp.vec4f" title="warp._src.types.vec4f"><code class="xref py py-class docutils literal notranslate"><span class="pre">vec4f</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec2b.html#warp.vec2b" title="warp.vec2b"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2b</span></code></a></p></td>
+<td><p>2D vector with int8 (signed byte) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec2d.html#warp.vec2d" title="warp.vec2d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2d</span></code></a></p></td>
+<td><p>2D vector with float64 (double-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2f</span></code></a></p></td>
+<td><p>2D vector with float32 (single-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec2h.html#warp.vec2h" title="warp.vec2h"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2h</span></code></a></p></td>
+<td><p>2D vector with float16 (half-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec2i.html#warp.vec2i" title="warp.vec2i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2i</span></code></a></p></td>
+<td><p>2D vector with int32 (signed integer) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec2l.html#warp.vec2l" title="warp.vec2l"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2l</span></code></a></p></td>
+<td><p>2D vector with int64 (signed long) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec2s.html#warp.vec2s" title="warp.vec2s"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2s</span></code></a></p></td>
+<td><p>2D vector with int16 (signed short) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec2ub.html#warp.vec2ub" title="warp.vec2ub"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2ub</span></code></a></p></td>
+<td><p>2D vector with uint8 (unsigned byte) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec2ui.html#warp.vec2ui" title="warp.vec2ui"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2ui</span></code></a></p></td>
+<td><p>2D vector with uint32 (unsigned integer) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec2ul.html#warp.vec2ul" title="warp.vec2ul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2ul</span></code></a></p></td>
+<td><p>2D vector with uint64 (unsigned long) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec2us.html#warp.vec2us" title="warp.vec2us"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec2us</span></code></a></p></td>
+<td><p>2D vector with uint16 (unsigned short) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec3b.html#warp.vec3b" title="warp.vec3b"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3b</span></code></a></p></td>
+<td><p>3D vector with int8 (signed byte) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec3d.html#warp.vec3d" title="warp.vec3d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3d</span></code></a></p></td>
+<td><p>3D vector with float64 (double-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3f</span></code></a></p></td>
+<td><p>3D vector with float32 (single-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec3h.html#warp.vec3h" title="warp.vec3h"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3h</span></code></a></p></td>
+<td><p>3D vector with float16 (half-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec3i.html#warp.vec3i" title="warp.vec3i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3i</span></code></a></p></td>
+<td><p>3D vector with int32 (signed integer) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec3l.html#warp.vec3l" title="warp.vec3l"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3l</span></code></a></p></td>
+<td><p>3D vector with int64 (signed long) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec3s.html#warp.vec3s" title="warp.vec3s"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3s</span></code></a></p></td>
+<td><p>3D vector with int16 (signed short) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec3ub.html#warp.vec3ub" title="warp.vec3ub"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3ub</span></code></a></p></td>
+<td><p>3D vector with uint8 (unsigned byte) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec3ui.html#warp.vec3ui" title="warp.vec3ui"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3ui</span></code></a></p></td>
+<td><p>3D vector with uint32 (unsigned integer) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec3ul.html#warp.vec3ul" title="warp.vec3ul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3ul</span></code></a></p></td>
+<td><p>3D vector with uint64 (unsigned long) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec3us.html#warp.vec3us" title="warp.vec3us"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec3us</span></code></a></p></td>
+<td><p>3D vector with uint16 (unsigned short) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec4b.html#warp.vec4b" title="warp.vec4b"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4b</span></code></a></p></td>
+<td><p>4D vector with int8 (signed byte) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec4d.html#warp.vec4d" title="warp.vec4d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4d</span></code></a></p></td>
+<td><p>4D vector with float64 (double-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec4f.html#warp.vec4f" title="warp.vec4f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4f</span></code></a></p></td>
+<td><p>4D vector with float32 (single-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec4h.html#warp.vec4h" title="warp.vec4h"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4h</span></code></a></p></td>
+<td><p>4D vector with float16 (half-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec4i.html#warp.vec4i" title="warp.vec4i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4i</span></code></a></p></td>
+<td><p>4D vector with int32 (signed integer) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec4l.html#warp.vec4l" title="warp.vec4l"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4l</span></code></a></p></td>
+<td><p>4D vector with int64 (signed long) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec4s.html#warp.vec4s" title="warp.vec4s"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4s</span></code></a></p></td>
+<td><p>4D vector with int16 (signed short) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec4ub.html#warp.vec4ub" title="warp.vec4ub"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4ub</span></code></a></p></td>
+<td><p>4D vector with uint8 (unsigned byte) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec4ui.html#warp.vec4ui" title="warp.vec4ui"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4ui</span></code></a></p></td>
+<td><p>4D vector with uint32 (unsigned integer) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.vec4ul.html#warp.vec4ul" title="warp.vec4ul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4ul</span></code></a></p></td>
+<td><p>4D vector with uint64 (unsigned long) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.vec4us.html#warp.vec4us" title="warp.vec4us"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vec4us</span></code></a></p></td>
+<td><p>4D vector with uint16 (unsigned short) components.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="matrices">
+<h3>Matrices<a class="headerlink" href="#matrices" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mat22.html#warp.mat22" title="warp.mat22"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat22</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.mat22f.html#warp.mat22f" title="warp._src.types.mat22f"><code class="xref py py-class docutils literal notranslate"><span class="pre">mat22f</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mat33.html#warp.mat33" title="warp.mat33"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat33</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.mat33f.html#warp.mat33f" title="warp._src.types.mat33f"><code class="xref py py-class docutils literal notranslate"><span class="pre">mat33f</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mat44.html#warp.mat44" title="warp.mat44"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat44</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.mat44f.html#warp.mat44f" title="warp._src.types.mat44f"><code class="xref py py-class docutils literal notranslate"><span class="pre">mat44f</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mat22d.html#warp.mat22d" title="warp.mat22d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat22d</span></code></a></p></td>
+<td><p>2x2 matrix with float64 (double-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mat22f.html#warp.mat22f" title="warp.mat22f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat22f</span></code></a></p></td>
+<td><p>2x2 matrix with float32 (single-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mat22h.html#warp.mat22h" title="warp.mat22h"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat22h</span></code></a></p></td>
+<td><p>2x2 matrix with float16 (half-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mat33d.html#warp.mat33d" title="warp.mat33d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat33d</span></code></a></p></td>
+<td><p>3x3 matrix with float64 (double-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mat33f.html#warp.mat33f" title="warp.mat33f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat33f</span></code></a></p></td>
+<td><p>3x3 matrix with float32 (single-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mat33h.html#warp.mat33h" title="warp.mat33h"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat33h</span></code></a></p></td>
+<td><p>3x3 matrix with float16 (half-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mat44d.html#warp.mat44d" title="warp.mat44d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat44d</span></code></a></p></td>
+<td><p>4x4 matrix with float64 (double-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mat44f.html#warp.mat44f" title="warp.mat44f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat44f</span></code></a></p></td>
+<td><p>4x4 matrix with float32 (single-precision) components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mat44h.html#warp.mat44h" title="warp.mat44h"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mat44h</span></code></a></p></td>
+<td><p>4x4 matrix with float16 (half-precision) components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.matrix_from_cols.html#warp.matrix_from_cols" title="warp.matrix_from_cols"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix_from_cols</span></code></a></p></td>
+<td><p>Construct a matrix with each vector argument as a column.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.matrix_from_rows.html#warp.matrix_from_rows" title="warp.matrix_from_rows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix_from_rows</span></code></a></p></td>
+<td><p>Construct a matrix with each vector argument as a row.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="quaternions">
+<h3>Quaternions<a class="headerlink" href="#quaternions" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat.html#warp.quat" title="warp.quat"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.quatf.html#warp.quatf" title="warp._src.types.quatf"><code class="xref py py-class docutils literal notranslate"><span class="pre">quatf</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quatd.html#warp.quatd" title="warp.quatd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quatd</span></code></a></p></td>
+<td><p>Quaternion with float64 (double-precision) components for 3D rotations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quatf</span></code></a></p></td>
+<td><p>Quaternion with float32 (single-precision) components for 3D rotations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quath.html#warp.quath" title="warp.quath"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quath</span></code></a></p></td>
+<td><p>Quaternion with float16 (half-precision) components for 3D rotations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_between_vectors.html#warp.quat_between_vectors" title="warp.quat_between_vectors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_between_vectors</span></code></a></p></td>
+<td><p>Compute the quaternion that rotates vector <code class="docutils literal notranslate"><span class="pre">a</span></code> to vector <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="transformations">
+<h3>Transformations<a class="headerlink" href="#transformations" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform.html#warp.transform" title="warp.transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.transformf.html#warp.transformf" title="warp._src.types.transformf"><code class="xref py py-class docutils literal notranslate"><span class="pre">transformf</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transformd.html#warp.transformd" title="warp.transformd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transformd</span></code></a></p></td>
+<td><p>Rigid-body transformation (position + quaternion) with float64 components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transformf.html#warp.transformf" title="warp.transformf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transformf</span></code></a></p></td>
+<td><p>Rigid-body transformation (position + quaternion) with float32 components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.transformh.html#warp.transformh" title="warp.transformh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transformh</span></code></a></p></td>
+<td><p>Rigid-body transformation (position + quaternion) with float16 components.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.transform_expand.html#warp.transform_expand" title="warp.transform_expand"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_expand</span></code></a></p></td>
+<td><p>Expand a flat 7-element sequence into a <a class="reference internal" href="_generated/warp.transformf.html#warp.transformf" title="warp.transformf"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.transformf</span></code></a> (position + quaternion).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="spatial-vectors-and-matrices">
+<h3>Spatial Vectors and Matrices<a class="headerlink" href="#spatial-vectors-and-matrices" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_matrix.html#warp.spatial_matrix" title="warp.spatial_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_matrix</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.spatial_matrixf.html#warp.spatial_matrixf" title="warp._src.types.spatial_matrixf"><code class="xref py py-class docutils literal notranslate"><span class="pre">spatial_matrixf</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_matrixd.html#warp.spatial_matrixd" title="warp.spatial_matrixd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_matrixd</span></code></a></p></td>
+<td><p>6x6 spatial matrix with float64 components for rigid-body dynamics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_matrixf.html#warp.spatial_matrixf" title="warp.spatial_matrixf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_matrixf</span></code></a></p></td>
+<td><p>6x6 spatial matrix with float32 components for rigid-body dynamics.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_matrixh.html#warp.spatial_matrixh" title="warp.spatial_matrixh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_matrixh</span></code></a></p></td>
+<td><p>6x6 spatial matrix with float16 components for rigid-body dynamics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_vector.html#warp.spatial_vector" title="warp.spatial_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_vector</span></code></a></p></td>
+<td><p>alias of <a class="reference internal" href="_generated/warp.spatial_vectorf.html#warp.spatial_vectorf" title="warp._src.types.spatial_vectorf"><code class="xref py py-class docutils literal notranslate"><span class="pre">spatial_vectorf</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_vectord.html#warp.spatial_vectord" title="warp.spatial_vectord"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_vectord</span></code></a></p></td>
+<td><p>6D spatial vector with float64 components for rigid-body dynamics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.spatial_vectorf.html#warp.spatial_vectorf" title="warp.spatial_vectorf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_vectorf</span></code></a></p></td>
+<td><p>6D spatial vector with float32 components for rigid-body dynamics.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.spatial_vectorh.html#warp.spatial_vectorh" title="warp.spatial_vectorh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_vectorh</span></code></a></p></td>
+<td><p>6D spatial vector with float16 components for rigid-body dynamics.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="arrays">
+<h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a></p></td>
+<td><p>A fixed-size multi-dimensional array containing values of the same type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fixedarray.html#warp.fixedarray" title="warp.fixedarray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fixedarray</span></code></a></p></td>
+<td><p>A fixed-size, stack allocated, array containing values of the same type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile.html#warp.tile" title="warp.tile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile</span></code></a></p></td>
+<td><p>A Warp tile object.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.array1d.html#warp.array1d" title="warp.array1d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array1d</span></code></a></p></td>
+<td><p>Create or annotate a 1-dimensional <a class="reference internal" href="_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.array2d.html#warp.array2d" title="warp.array2d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array2d</span></code></a></p></td>
+<td><p>Create or annotate a 2-dimensional <a class="reference internal" href="_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.array3d.html#warp.array3d" title="warp.array3d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array3d</span></code></a></p></td>
+<td><p>Create or annotate a 3-dimensional <a class="reference internal" href="_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.array4d.html#warp.array4d" title="warp.array4d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array4d</span></code></a></p></td>
+<td><p>Create or annotate a 4-dimensional <a class="reference internal" href="_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.clone.html#warp.clone" title="warp.clone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clone</span></code></a></p></td>
+<td><p>Clone an existing array, allocating a copy of the src memory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a></p></td>
+<td><p>Copy array contents from <cite>src</cite> to <cite>dest</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.empty.html#warp.empty" title="warp.empty"><code class="xref py py-obj docutils literal notranslate"><span class="pre">empty</span></code></a></p></td>
+<td><p>Return an uninitialized array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.empty_like.html#warp.empty_like" title="warp.empty_like"><code class="xref py py-obj docutils literal notranslate"><span class="pre">empty_like</span></code></a></p></td>
+<td><p>Return an uninitialized array with the same type and dimension of another array.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.from_ptr.html#warp.from_ptr" title="warp.from_ptr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_ptr</span></code></a></p></td>
+<td><p>Create an array from a raw memory pointer (deprecated).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.full.html#warp.full" title="warp.full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">full</span></code></a></p></td>
+<td><p>Return an array with all elements initialized to the given value.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.full_like.html#warp.full_like" title="warp.full_like"><code class="xref py py-obj docutils literal notranslate"><span class="pre">full_like</span></code></a></p></td>
+<td><p>Return an array with all elements initialized to the given value with the same type and dimension of another array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ones.html#warp.ones" title="warp.ones"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ones</span></code></a></p></td>
+<td><p>Return a one-initialized array.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ones_like.html#warp.ones_like" title="warp.ones_like"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ones_like</span></code></a></p></td>
+<td><p>Return a one-initialized array with the same type and dimension of another array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zeros</span></code></a></p></td>
+<td><p>Return a zero-initialized array.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.zeros_like.html#warp.zeros_like" title="warp.zeros_like"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zeros_like</span></code></a></p></td>
+<td><p>Return a zero-initialized array with the same type and dimension of another array.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="indexed-arrays">
+<h3>Indexed Arrays<a class="headerlink" href="#indexed-arrays" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedarray</span></code></a></p></td>
+<td><p>Array providing indexed access to a subset of elements in a source <a class="reference internal" href="_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.indexedarray1d.html#warp.indexedarray1d" title="warp.indexedarray1d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedarray1d</span></code></a></p></td>
+<td><p>Create or annotate a 1-dimensional <a class="reference internal" href="_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.indexedarray</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.indexedarray2d.html#warp.indexedarray2d" title="warp.indexedarray2d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedarray2d</span></code></a></p></td>
+<td><p>Create or annotate a 2-dimensional <a class="reference internal" href="_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.indexedarray</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.indexedarray3d.html#warp.indexedarray3d" title="warp.indexedarray3d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedarray3d</span></code></a></p></td>
+<td><p>Create or annotate a 3-dimensional <a class="reference internal" href="_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.indexedarray</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.indexedarray4d.html#warp.indexedarray4d" title="warp.indexedarray4d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedarray4d</span></code></a></p></td>
+<td><p>Create or annotate a 4-dimensional <a class="reference internal" href="_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.indexedarray</span></code></a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="spatial-acceleration">
+<h2>Spatial Acceleration<a class="headerlink" href="#spatial-acceleration" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Bvh</span></code></a></p></td>
+<td><p>Bounding Volume Hierarchy (BVH) for accelerated spatial queries.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.BvhQuery.html#warp.BvhQuery" title="warp.BvhQuery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BvhQuery</span></code></a></p></td>
+<td><p>Object used to track state during BVH traversal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.BvhQueryTiled.html#warp.BvhQueryTiled" title="warp.BvhQueryTiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BvhQueryTiled</span></code></a></p></td>
+<td><p>Object used to track state during thread-block parallel BVH traversal.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HashGrid</span></code></a></p></td>
+<td><p>Hash-based spatial grid for accelerated neighbor queries on point data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HashGridQuery</span></code></a></p></td>
+<td><p>Object used to track state during neighbor traversal.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Mesh</span></code></a></p></td>
+<td><p>Triangle mesh for collision detection, ray casting, and spatial queries.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.MeshQueryAABB.html#warp.MeshQueryAABB" title="warp.MeshQueryAABB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MeshQueryAABB</span></code></a></p></td>
+<td><p>Object used to track state during mesh traversal.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.MeshQueryAABBTiled.html#warp.MeshQueryAABBTiled" title="warp.MeshQueryAABBTiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MeshQueryAABBTiled</span></code></a></p></td>
+<td><p>Object used to track state during thread-block parallel mesh traversal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.MeshQueryPoint.html#warp.MeshQueryPoint" title="warp.MeshQueryPoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MeshQueryPoint</span></code></a></p></td>
+<td><p>Output for the mesh query point functions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.MeshQueryRay.html#warp.MeshQueryRay" title="warp.MeshQueryRay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MeshQueryRay</span></code></a></p></td>
+<td><p>Output for the mesh query ray functions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Volume</span></code></a></p></td>
+<td><p>Sparse volumetric data structure based on NanoVDB for efficient 3D sampling.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="runtime">
+<h2>Runtime<a class="headerlink" href="#runtime" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_kernel_cache</span></code></a></p></td>
+<td><p>Clear the kernel cache directory of previously generated source code and compiler artifacts.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_lto_cache</span></code></a></p></td>
+<td><p>Clear the LTO cache directory of previously generated LTO code.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a></p></td>
+<td><p>Initialize the Warp runtime.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_cpu_available.html#warp.is_cpu_available" title="warp.is_cpu_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cpu_available</span></code></a></p></td>
+<td><p>Check whether CPU execution is available.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_cuda_available.html#warp.is_cuda_available" title="warp.is_cuda_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cuda_available</span></code></a></p></td>
+<td><p>Check whether CUDA execution is available.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="kernel-programming">
+<h2>Kernel Programming<a class="headerlink" href="#kernel-programming" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenAttributeError.html#warp.WarpCodegenAttributeError" title="warp.WarpCodegenAttributeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenAttributeError</span></code></a></p></td>
+<td><p>Attribute error during Warp kernel code generation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenError.html#warp.WarpCodegenError" title="warp.WarpCodegenError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenError</span></code></a></p></td>
+<td><p>General error during Warp kernel code generation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenIndexError.html#warp.WarpCodegenIndexError" title="warp.WarpCodegenIndexError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenIndexError</span></code></a></p></td>
+<td><p>Index error during Warp kernel code generation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenKeyError.html#warp.WarpCodegenKeyError" title="warp.WarpCodegenKeyError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenKeyError</span></code></a></p></td>
+<td><p>Key error during Warp kernel code generation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenTypeError.html#warp.WarpCodegenTypeError" title="warp.WarpCodegenTypeError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenTypeError</span></code></a></p></td>
+<td><p>Type error during Warp kernel code generation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenValueError.html#warp.WarpCodegenValueError" title="warp.WarpCodegenValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenValueError</span></code></a></p></td>
+<td><p>Value error during Warp kernel code generation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func</span></code></a></p></td>
+<td><p>Decorator to define a Warp function callable from kernels and other Warp functions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_grad</span></code></a></p></td>
+<td><p>Decorator to register a custom gradient function for a given forward function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_native</span></code></a></p></td>
+<td><p>Decorator to register native code snippet, &#64;func_native</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_replay</span></code></a></p></td>
+<td><p>Decorator to register a custom replay function for a given forward function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
+<td><p>Return a callable that computes the gradient of the given function.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel</span></code></a></p></td>
+<td><p>Decorator to register a Warp kernel from a Python function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a></p></td>
+<td><p>Map a function over the elements of one or more arrays.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-obj docutils literal notranslate"><span class="pre">overload</span></code></a></p></td>
+<td><p>Overload a generic kernel with the given argument types.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">static</span></code></a></p></td>
+<td><p>Evaluate a static expression and replace the expression with its result.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.struct.html#warp.struct" title="warp.struct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">struct</span></code></a></p></td>
+<td><p>Decorator to define a Warp struct for use in kernels and functions.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="kernel-execution">
+<h2>Kernel Execution<a class="headerlink" href="#kernel-execution" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Function.html#warp.Function" title="warp.Function"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Function</span></code></a></p></td>
+<td><p>Represents a Warp function decorated with <a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Kernel.html#warp.Kernel" title="warp.Kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Kernel</span></code></a></p></td>
+<td><p>Warp kernel object, typically created by decorating a Python function with <a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Launch.html#warp.Launch" title="warp.Launch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Launch</span></code></a></p></td>
+<td><p>Represent all data required for a kernel launch so that launches can be replayed quickly.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Module.html#warp.Module" title="warp.Module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Module</span></code></a></p></td>
+<td><p>Warp module containing kernels and functions to be compiled.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch</span></code></a></p></td>
+<td><p>Launch a Warp kernel on the target device</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_tiled</span></code></a></p></td>
+<td><p>A helper method for launching a grid with an extra trailing dimension equal to the block size.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize</span></code></a></p></td>
+<td><p>Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="automatic-differentiation">
+<h2>Automatic Differentiation<a class="headerlink" href="#automatic-differentiation" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tape</span></code></a></p></td>
+<td><p>Record kernel launches within a Tape scope to enable automatic differentiation.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="device-management">
+<h2>Device Management<a class="headerlink" href="#device-management" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Device</span></code></a></p></td>
+<td><p>A device to allocate Warp arrays and to launch kernels on.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedDevice</span></code></a></p></td>
+<td><p>A context manager to temporarily change the current default device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_device.html#warp.get_cuda_device" title="warp.get_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_device</span></code></a></p></td>
+<td><p>Return the CUDA device with the given ordinal or the current CUDA device if ordinal is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_device_count.html#warp.get_cuda_device_count" title="warp.get_cuda_device_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_device_count</span></code></a></p></td>
+<td><p>Return the number of CUDA devices supported in this environment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_devices.html#warp.get_cuda_devices" title="warp.get_cuda_devices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_devices</span></code></a></p></td>
+<td><p>Return a list of CUDA devices supported in this environment.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_supported_archs</span></code></a></p></td>
+<td><p>Return a sorted list of CUDA compute architectures that can be used as compilation targets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_device.html#warp.get_device" title="warp.get_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device</span></code></a></p></td>
+<td><p>Return the device identified by the argument.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_devices.html#warp.get_devices" title="warp.get_devices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_devices</span></code></a></p></td>
+<td><p>Return a list of devices supported in this environment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_preferred_device.html#warp.get_preferred_device" title="warp.get_preferred_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_preferred_device</span></code></a></p></td>
+<td><p>Return the preferred compute device, <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> if available and <code class="docutils literal notranslate"><span class="pre">cpu</span></code> otherwise.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_device_available.html#warp.is_device_available" title="warp.is_device_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_device_available</span></code></a></p></td>
+<td><p>Check whether a device is available in the current environment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.map_cuda_device.html#warp.map_cuda_device" title="warp.map_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_cuda_device</span></code></a></p></td>
+<td><p>Assign a device alias to a CUDA context.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device</span></code></a></p></td>
+<td><p>Set the default device identified by the argument.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize_device</span></code></a></p></td>
+<td><p>Synchronize the calling CPU thread with any outstanding CUDA work on the specified device</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.unmap_cuda_device.html#warp.unmap_cuda_device" title="warp.unmap_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unmap_cuda_device</span></code></a></p></td>
+<td><p>Remove a CUDA device with the given alias.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="module-management">
+<h2>Module Management<a class="headerlink" href="#module-management" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compile_aot_module</span></code></a></p></td>
+<td><p>Compile a module (ahead of time) for a given device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.force_load.html#warp.force_load" title="warp.force_load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">force_load</span></code></a></p></td>
+<td><p>Force user-defined kernels to be compiled and loaded (low-level API).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_module.html#warp.get_module" title="warp.get_module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_module</span></code></a></p></td>
+<td><p>Return or create the Warp module associated with a given name.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_module_options.html#warp.get_module_options" title="warp.get_module_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_module_options</span></code></a></p></td>
+<td><p>Return a list of options for the current module.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.load_aot_module.html#warp.load_aot_module" title="warp.load_aot_module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_aot_module</span></code></a></p></td>
+<td><p>Load a previously compiled module (ahead of time).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.load_module.html#warp.load_module" title="warp.load_module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_module</span></code></a></p></td>
+<td><p>Force a user-defined module to be compiled and loaded.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_module_options</span></code></a></p></td>
+<td><p>Set options for the current module.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="cuda-stream-management">
+<h2>CUDA Stream Management<a class="headerlink" href="#cuda-stream-management" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedStream</span></code></a></p></td>
+<td><p>A context manager to temporarily change the current stream on a device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Stream</span></code></a></p></td>
+<td><p>CUDA stream wrapper for managing asynchronous GPU operations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_stream.html#warp.get_stream" title="warp.get_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_stream</span></code></a></p></td>
+<td><p>Return the stream currently used by the given device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_stream.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_stream</span></code></a></p></td>
+<td><p>Convenience function for calling <a class="reference internal" href="_generated/warp.Device.html#warp.Device.set_stream" title="warp.Device.set_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Device.set_stream()</span></code></a> on the given <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize_stream</span></code></a></p></td>
+<td><p>Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.wait_stream.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wait_stream</span></code></a></p></td>
+<td><p>Convenience function for calling <a class="reference internal" href="_generated/warp.Stream.html#warp.Stream.wait_stream" title="warp.Stream.wait_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_stream()</span></code></a> on the current stream.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="cuda-event-management">
+<h2>CUDA Event Management<a class="headerlink" href="#cuda-event-management" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Event</span></code></a></p></td>
+<td><p>A CUDA event that can be recorded onto a stream.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_event_elapsed_time.html#warp.get_event_elapsed_time" title="warp.get_event_elapsed_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_event_elapsed_time</span></code></a></p></td>
+<td><p>Get the elapsed time between two recorded events.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.record_event.html#warp.record_event" title="warp.record_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">record_event</span></code></a></p></td>
+<td><p>Convenience function for calling <a class="reference internal" href="_generated/warp.Stream.html#warp.Stream.record_event" title="warp.Stream.record_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.record_event()</span></code></a> on the current stream.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize_event</span></code></a></p></td>
+<td><p>Synchronize the calling CPU thread with an event recorded on a CUDA stream.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.wait_event.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wait_event</span></code></a></p></td>
+<td><p>Convenience function for calling <a class="reference internal" href="_generated/warp.Stream.html#warp.Stream.wait_event" title="warp.Stream.wait_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_event()</span></code></a> on the current stream.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="cuda-memory-management">
+<h2>CUDA Memory Management<a class="headerlink" href="#cuda-memory-management" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedMempool.html#warp.ScopedMempool" title="warp.ScopedMempool"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedMempool</span></code></a></p></td>
+<td><p>Context manager to temporarily enable or disable memory pool allocators.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ScopedMempoolAccess.html#warp.ScopedMempoolAccess" title="warp.ScopedMempoolAccess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedMempoolAccess</span></code></a></p></td>
+<td><p>Context manager to temporarily enable or disable mempool access between devices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedPeerAccess.html#warp.ScopedPeerAccess" title="warp.ScopedPeerAccess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedPeerAccess</span></code></a></p></td>
+<td><p>Context manager to temporarily enable or disable peer access between CUDA devices.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_release_threshold.html#warp.get_mempool_release_threshold" title="warp.get_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_release_threshold</span></code></a></p></td>
+<td><p>Get the CUDA memory pool release threshold on the device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current" title="warp.get_mempool_used_mem_current"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_current</span></code></a></p></td>
+<td><p>Get the amount of memory from the device's memory pool that is currently in use by the application.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high" title="warp.get_mempool_used_mem_high"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_high</span></code></a></p></td>
+<td><p>Get the application's memory usage high-water mark from the device's CUDA memory pool.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_enabled.html#warp.is_mempool_access_enabled" title="warp.is_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_enabled</span></code></a></p></td>
+<td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can currently access the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_supported.html#warp.is_mempool_access_supported" title="warp.is_mempool_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_supported</span></code></a></p></td>
+<td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can directly access the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_enabled.html#warp.is_mempool_enabled" title="warp.is_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_enabled</span></code></a></p></td>
+<td><p>Check if CUDA memory pool allocators are enabled on the device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_supported.html#warp.is_mempool_supported" title="warp.is_mempool_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_supported</span></code></a></p></td>
+<td><p>Check if CUDA memory pool allocators are available on the device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_enabled.html#warp.is_peer_access_enabled" title="warp.is_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_enabled</span></code></a></p></td>
+<td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can currently access the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_supported.html#warp.is_peer_access_supported" title="warp.is_peer_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_supported</span></code></a></p></td>
+<td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can directly access the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code> on this system.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_access_enabled.html#warp.set_mempool_access_enabled" title="warp.set_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_access_enabled</span></code></a></p></td>
+<td><p>Enable or disable access from <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> to the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_enabled.html#warp.set_mempool_enabled" title="warp.set_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_enabled</span></code></a></p></td>
+<td><p>Enable or disable CUDA memory pool allocators on the device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_release_threshold.html#warp.set_mempool_release_threshold" title="warp.set_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_release_threshold</span></code></a></p></td>
+<td><p>Set the CUDA memory pool release threshold on the device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_peer_access_enabled.html#warp.set_peer_access_enabled" title="warp.set_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_peer_access_enabled</span></code></a></p></td>
+<td><p>Enable or disable direct access from <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> to the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="cuda-graph-management">
+<h2>CUDA Graph Management<a class="headerlink" href="#cuda-graph-management" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a></p></td>
+<td><p>Context manager to capture a sequence of operations into a CUDA graph.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capture_begin</span></code></a></p></td>
+<td><p>Begin capture of a CUDA graph</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.capture_debug_dot_print.html#warp.capture_debug_dot_print" title="warp.capture_debug_dot_print"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capture_debug_dot_print</span></code></a></p></td>
+<td><p>Export a CUDA graph to a DOT file for visualization</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capture_end</span></code></a></p></td>
+<td><p>End the capture of a CUDA graph.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capture_if</span></code></a></p></td>
+<td><p>Create a dynamic branch based on a condition.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capture_launch</span></code></a></p></td>
+<td><p>Launch a previously captured CUDA graph</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-obj docutils literal notranslate"><span class="pre">capture_while</span></code></a></p></td>
+<td><p>Create a dynamic loop based on a condition.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_conditional_graph_supported.html#warp.is_conditional_graph_supported" title="warp.is_conditional_graph_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_conditional_graph_supported</span></code></a></p></td>
+<td><p>Check whether conditional graph nodes are supported.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="cuda-interprocess-communication">
+<h2>CUDA Interprocess Communication<a class="headerlink" href="#cuda-interprocess-communication" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.event_from_ipc_handle.html#warp.event_from_ipc_handle" title="warp.event_from_ipc_handle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">event_from_ipc_handle</span></code></a></p></td>
+<td><p>Create an event from an IPC handle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.from_ipc_handle.html#warp.from_ipc_handle" title="warp.from_ipc_handle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_ipc_handle</span></code></a></p></td>
+<td><p>Create an array from an IPC handle.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="profiling">
+<h2>Profiling<a class="headerlink" href="#profiling" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></p></td>
+<td><p>Context manager for timing code blocks.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.TimingResult.html#warp.TimingResult" title="warp.TimingResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimingResult</span></code></a></p></td>
+<td><p>Timing result for a single activity.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.timing_begin.html#warp.timing_begin" title="warp.timing_begin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timing_begin</span></code></a></p></td>
+<td><p>Begin detailed activity timing.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.timing_end.html#warp.timing_end" title="warp.timing_end"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timing_end</span></code></a></p></td>
+<td><p>End detailed activity timing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.timing_print.html#warp.timing_print" title="warp.timing_print"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timing_print</span></code></a></p></td>
+<td><p>Print timing results.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="timing-flags">
+<h3>Timing Flags<a class="headerlink" href="#timing-flags" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.TIMING_ALL.html#warp.TIMING_ALL" title="warp.TIMING_ALL"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIMING_ALL</span></code></a></p></td>
+<td><p>Timing flag to capture all CUDA activities.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.TIMING_GRAPH.html#warp.TIMING_GRAPH" title="warp.TIMING_GRAPH"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIMING_GRAPH</span></code></a></p></td>
+<td><p>Timing flag for CUDA graph launches.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.TIMING_KERNEL.html#warp.TIMING_KERNEL" title="warp.TIMING_KERNEL"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIMING_KERNEL</span></code></a></p></td>
+<td><p>Timing flag for user-defined kernel launches.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.TIMING_KERNEL_BUILTIN.html#warp.TIMING_KERNEL_BUILTIN" title="warp.TIMING_KERNEL_BUILTIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIMING_KERNEL_BUILTIN</span></code></a></p></td>
+<td><p>Timing flag for built-in kernel operations (e.g., array fill, copy).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.TIMING_MEMCPY.html#warp.TIMING_MEMCPY" title="warp.TIMING_MEMCPY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIMING_MEMCPY</span></code></a></p></td>
+<td><p>Timing flag for memory copy operations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.TIMING_MEMSET.html#warp.TIMING_MEMSET" title="warp.TIMING_MEMSET"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIMING_MEMSET</span></code></a></p></td>
+<td><p>Timing flag for memory set operations.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="numpy-interop">
+<h2>NumPy Interop<a class="headerlink" href="#numpy-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.dtype_from_numpy.html#warp.dtype_from_numpy" title="warp.dtype_from_numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_numpy</span></code></a></p></td>
+<td><p>Return the Warp dtype corresponding to a NumPy dtype.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy" title="warp.dtype_to_numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_numpy</span></code></a></p></td>
+<td><p>Return the NumPy dtype corresponding to a Warp dtype.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.from_numpy.html#warp.from_numpy" title="warp.from_numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_numpy</span></code></a></p></td>
+<td><p>Return a Warp array created from a NumPy array.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="dlpack-interop">
+<h2>DLPack Interop<a class="headerlink" href="#dlpack-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.from_dlpack.html#warp.from_dlpack" title="warp.from_dlpack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_dlpack</span></code></a></p></td>
+<td><p>Convert a source array or DLPack capsule into a Warp array without copying.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.to_dlpack.html#warp.to_dlpack" title="warp.to_dlpack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_dlpack</span></code></a></p></td>
+<td><p>Convert a Warp array to another type of DLPack-compatible array.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="jax-interop">
+<h2>JAX Interop<a class="headerlink" href="#jax-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.device_from_jax.html#warp.device_from_jax" title="warp.device_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_from_jax</span></code></a></p></td>
+<td><p>Return the Warp device corresponding to a Jax device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.device_to_jax.html#warp.device_to_jax" title="warp.device_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_to_jax</span></code></a></p></td>
+<td><p>Return the Jax device corresponding to a Warp device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.dtype_from_jax.html#warp.dtype_from_jax" title="warp.dtype_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_jax</span></code></a></p></td>
+<td><p>Return the Warp dtype corresponding to a Jax dtype.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.dtype_to_jax.html#warp.dtype_to_jax" title="warp.dtype_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_jax</span></code></a></p></td>
+<td><p>Return the Jax dtype corresponding to a Warp dtype.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.from_jax.html#warp.from_jax" title="warp.from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_jax</span></code></a></p></td>
+<td><p>Convert a Jax array to a Warp array without copying the data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.to_jax.html#warp.to_jax" title="warp.to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_jax</span></code></a></p></td>
+<td><p>Convert a Warp array to a Jax array without copying the data.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="pytorch-interop">
+<h2>PyTorch Interop<a class="headerlink" href="#pytorch-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.device_from_torch.html#warp.device_from_torch" title="warp.device_from_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_from_torch</span></code></a></p></td>
+<td><p>Return the Warp device corresponding to a Torch device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.device_to_torch.html#warp.device_to_torch" title="warp.device_to_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_to_torch</span></code></a></p></td>
+<td><p>Return the Torch device string corresponding to a Warp device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.dtype_from_torch.html#warp.dtype_from_torch" title="warp.dtype_from_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_torch</span></code></a></p></td>
+<td><p>Return the Warp dtype corresponding to a Torch dtype.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.dtype_to_torch.html#warp.dtype_to_torch" title="warp.dtype_to_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_torch</span></code></a></p></td>
+<td><p>Return the Torch dtype corresponding to a Warp dtype.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.from_torch.html#warp.from_torch" title="warp.from_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_torch</span></code></a></p></td>
+<td><p>Convert a Torch tensor to a Warp array without copying the data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.stream_from_torch.html#warp.stream_from_torch" title="warp.stream_from_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stream_from_torch</span></code></a></p></td>
+<td><p>Convert from a Torch CUDA stream to a Warp CUDA stream.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.stream_to_torch.html#warp.stream_to_torch" title="warp.stream_to_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stream_to_torch</span></code></a></p></td>
+<td><p>Convert from a Warp CUDA stream to a Torch CUDA stream.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.to_torch.html#warp.to_torch" title="warp.to_torch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_torch</span></code></a></p></td>
+<td><p>Convert a Warp array to a Torch tensor without copying the data.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="omniverse-runtime-fabric-interop">
+<h2>Omniverse Runtime Fabric Interop<a class="headerlink" href="#omniverse-runtime-fabric-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fabricarray.html#warp.fabricarray" title="warp.fabricarray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fabricarray</span></code></a></p></td>
+<td><p>Array type for accessing data stored in Omniverse Runtime Fabric.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.indexedfabricarray.html#warp.indexedfabricarray" title="warp.indexedfabricarray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedfabricarray</span></code></a></p></td>
+<td><p>Indexed view into a <a class="reference internal" href="_generated/warp.fabricarray.html#warp.fabricarray" title="warp.fabricarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">fabricarray</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fabricarrayarray.html#warp.fabricarrayarray" title="warp.fabricarrayarray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fabricarrayarray</span></code></a></p></td>
+<td><p>Create a Fabric array of arrays (2D fabric array).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.indexedfabricarrayarray.html#warp.indexedfabricarrayarray" title="warp.indexedfabricarrayarray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indexedfabricarrayarray</span></code></a></p></td>
+<td><p>Create an indexed Fabric array of arrays (2D indexed fabric array).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="paddle-interop">
+<h2>Paddle Interop<a class="headerlink" href="#paddle-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.device_from_paddle.html#warp.device_from_paddle" title="warp.device_from_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_from_paddle</span></code></a></p></td>
+<td><p>Return the Warp device corresponding to a Paddle device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.device_to_paddle.html#warp.device_to_paddle" title="warp.device_to_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_to_paddle</span></code></a></p></td>
+<td><p>Return the Paddle device string corresponding to a Warp device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.dtype_from_paddle.html#warp.dtype_from_paddle" title="warp.dtype_from_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_paddle</span></code></a></p></td>
+<td><p>Return the Warp dtype corresponding to a Paddle dtype.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.dtype_to_paddle.html#warp.dtype_to_paddle" title="warp.dtype_to_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_paddle</span></code></a></p></td>
+<td><p>Return the Paddle dtype corresponding to a Warp dtype.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.from_paddle.html#warp.from_paddle" title="warp.from_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_paddle</span></code></a></p></td>
+<td><p>Convert a Paddle tensor to a Warp array without copying the data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.stream_from_paddle.html#warp.stream_from_paddle" title="warp.stream_from_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stream_from_paddle</span></code></a></p></td>
+<td><p>Convert from a Paddle CUDA stream to a Warp CUDA stream.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.to_paddle.html#warp.to_paddle" title="warp.to_paddle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_paddle</span></code></a></p></td>
+<td><p>Convert a Warp array to a Paddle tensor without copying the data.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="constants">
+<h2>Constants<a class="headerlink" href="#constants" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-obj docutils literal notranslate"><span class="pre">constant</span></code></a></p></td>
+<td><p>Function to declare compile-time constants accessible from Warp kernels</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.E.html#warp.E" title="warp.E"><code class="xref py py-obj docutils literal notranslate"><span class="pre">E</span></code></a></p></td>
+<td><p>Euler's number e (approximately 2.718).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.HALF_PI.html#warp.HALF_PI" title="warp.HALF_PI"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HALF_PI</span></code></a></p></td>
+<td><p>Half of pi (approximately 1.571).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.INF.html#warp.INF" title="warp.INF"><code class="xref py py-obj docutils literal notranslate"><span class="pre">INF</span></code></a></p></td>
+<td><p>Positive infinity.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.LN2.html#warp.LN2" title="warp.LN2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LN2</span></code></a></p></td>
+<td><p>Natural logarithm of 2 (approximately 0.693).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.LN10.html#warp.LN10" title="warp.LN10"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LN10</span></code></a></p></td>
+<td><p>Natural logarithm of 10 (approximately 2.303).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.LOG10E.html#warp.LOG10E" title="warp.LOG10E"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOG10E</span></code></a></p></td>
+<td><p>Base-10 logarithm of e (approximately 0.434).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.LOG2E.html#warp.LOG2E" title="warp.LOG2E"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOG2E</span></code></a></p></td>
+<td><p>Base-2 logarithm of e (approximately 1.443).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.NAN.html#warp.NAN" title="warp.NAN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NAN</span></code></a></p></td>
+<td><p>Not a Number (NaN).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.PHI.html#warp.PHI" title="warp.PHI"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PHI</span></code></a></p></td>
+<td><p>Golden ratio (approximately 1.618).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.PI.html#warp.PI" title="warp.PI"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PI</span></code></a></p></td>
+<td><p>Pi (approximately 3.14159).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.TAU.html#warp.TAU" title="warp.TAU"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TAU</span></code></a></p></td>
+<td><p>Tau, the circle constant equal to 2*pi (approximately 6.283).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.e_constant.html#warp.e" title="warp.e"><code class="xref py py-obj docutils literal notranslate"><span class="pre">e</span></code></a></p></td>
+<td><p>Euler's number e (approximately 2.718).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.half_pi_constant.html#warp.half_pi" title="warp.half_pi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">half_pi</span></code></a></p></td>
+<td><p>Half of pi (approximately 1.571).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.inf_constant.html#warp.inf" title="warp.inf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inf</span></code></a></p></td>
+<td><p>Positive infinity.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ln2_constant.html#warp.ln2" title="warp.ln2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ln2</span></code></a></p></td>
+<td><p>Natural logarithm of 2 (approximately 0.693).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ln10_constant.html#warp.ln10" title="warp.ln10"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ln10</span></code></a></p></td>
+<td><p>Natural logarithm of 10 (approximately 2.303).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.log10e_constant.html#warp.log10e" title="warp.log10e"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log10e</span></code></a></p></td>
+<td><p>Base-10 logarithm of e (approximately 0.434).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.log2e_constant.html#warp.log2e" title="warp.log2e"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log2e</span></code></a></p></td>
+<td><p>Base-2 logarithm of e (approximately 1.443).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.nan_constant.html#warp.nan" title="warp.nan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nan</span></code></a></p></td>
+<td><p>Not a Number (NaN).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.phi_constant.html#warp.phi" title="warp.phi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phi</span></code></a></p></td>
+<td><p>Golden ratio (approximately 1.618).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.pi_constant.html#warp.pi" title="warp.pi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pi</span></code></a></p></td>
+<td><p>Pi (approximately 3.14159).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tau_constant.html#warp.tau" title="warp.tau"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tau</span></code></a></p></td>
+<td><p>Tau, the circle constant equal to 2*pi (approximately 6.283).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="misc">
+<h2>Misc<a class="headerlink" href="#misc" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.MarchingCubes.html#warp.MarchingCubes" title="warp.MarchingCubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MarchingCubes</span></code></a></p></td>
+<td><p>A reusable context for marching cubes surface extraction.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer" title="warp.RegisteredGLBuffer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RegisteredGLBuffer</span></code></a></p></td>
+<td><p>Helper class to register a GL buffer with CUDA so that it can be mapped to a Warp array.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../domain_modules/render.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Rendering</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="_generated/warp.DeviceLike.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">warp.DeviceLike</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#additional-submodules">Additional Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#type-annotations">Type Annotations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#data-types">Data Types</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#scalars">Scalars</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#vectors">Vectors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrices">Matrices</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#quaternions">Quaternions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#transformations">Transformations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-vectors-and-matrices">Spatial Vectors and Matrices</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#indexed-arrays">Indexed Arrays</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-acceleration">Spatial Acceleration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#runtime">Runtime</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-programming">Kernel Programming</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-execution">Kernel Execution</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#automatic-differentiation">Automatic Differentiation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#device-management">Device Management</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-management">Module Management</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-stream-management">CUDA Stream Management</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-event-management">CUDA Event Management</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-memory-management">CUDA Memory Management</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-graph-management">CUDA Graph Management</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-interprocess-communication">CUDA Interprocess Communication</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#profiling">Profiling</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#timing-flags">Timing Flags</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numpy-interop">NumPy Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dlpack-interop">DLPack Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-interop">JAX Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch-interop">PyTorch Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#omniverse-runtime-fabric-interop">Omniverse Runtime Fabric Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#paddle-interop">Paddle Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#constants">Constants</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#misc">Misc</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/api_reference/warp.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

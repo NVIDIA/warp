@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_cross
+==============================
+
+.. function:: warp._src.lang.spatial_cross(a: Vector[Literal[6],Float], b: Vector[Literal[6],Float]) -> Vector[Literal[6],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the cross product of two 6D screw vectors.

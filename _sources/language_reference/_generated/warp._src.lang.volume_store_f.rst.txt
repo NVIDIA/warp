@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.volume\_store\_f
+================================
+
+.. function:: warp._src.lang.volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.

@@ -1,0 +1,6 @@
+﻿warp.config.verbose
+===================
+
+.. currentmodule:: warp.config
+
+.. autodata:: verbose

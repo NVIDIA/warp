@@ -1,0 +1,84 @@
+﻿warp.render.OpenGLRenderer
+==========================
+
+.. currentmodule:: warp.render
+
+.. autoclass:: OpenGLRenderer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~OpenGLRenderer.__init__
+      ~OpenGLRenderer.add_shape_instance
+      ~OpenGLRenderer.allocate_shape_instances
+      ~OpenGLRenderer.begin_frame
+      ~OpenGLRenderer.clear
+      ~OpenGLRenderer.close
+      ~OpenGLRenderer.compute_model_matrix
+      ~OpenGLRenderer.compute_projection_matrix
+      ~OpenGLRenderer.compute_view_matrix
+      ~OpenGLRenderer.deregister_shape
+      ~OpenGLRenderer.end_frame
+      ~OpenGLRenderer.get_pixels
+      ~OpenGLRenderer.initialize_gl
+      ~OpenGLRenderer.is_running
+      ~OpenGLRenderer.register_body
+      ~OpenGLRenderer.register_input_processor
+      ~OpenGLRenderer.register_key_press_callback
+      ~OpenGLRenderer.register_shape
+      ~OpenGLRenderer.remove_shape_instance
+      ~OpenGLRenderer.render_arrow
+      ~OpenGLRenderer.render_box
+      ~OpenGLRenderer.render_capsule
+      ~OpenGLRenderer.render_cone
+      ~OpenGLRenderer.render_cylinder
+      ~OpenGLRenderer.render_ground
+      ~OpenGLRenderer.render_line_list
+      ~OpenGLRenderer.render_line_strip
+      ~OpenGLRenderer.render_mesh
+      ~OpenGLRenderer.render_plane
+      ~OpenGLRenderer.render_points
+      ~OpenGLRenderer.render_ref
+      ~OpenGLRenderer.render_sphere
+      ~OpenGLRenderer.save
+      ~OpenGLRenderer.setup_tiled_rendering
+      ~OpenGLRenderer.update
+      ~OpenGLRenderer.update_body_transforms
+      ~OpenGLRenderer.update_instance_colors
+      ~OpenGLRenderer.update_model_matrix
+      ~OpenGLRenderer.update_projection_matrix
+      ~OpenGLRenderer.update_shape_instance
+      ~OpenGLRenderer.update_shape_instances
+      ~OpenGLRenderer.update_shape_vertices
+      ~OpenGLRenderer.update_tile
+      ~OpenGLRenderer.update_view_matrix
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OpenGLRenderer.camera_front
+      ~OpenGLRenderer.camera_pos
+      ~OpenGLRenderer.camera_up
+      ~OpenGLRenderer.default_num_segments
+      ~OpenGLRenderer.gl
+      ~OpenGLRenderer.has_exit
+      ~OpenGLRenderer.num_instances
+      ~OpenGLRenderer.num_shapes
+      ~OpenGLRenderer.num_tiles
+      ~OpenGLRenderer.paused
+      ~OpenGLRenderer.scaling
+      ~OpenGLRenderer.tile_height
+      ~OpenGLRenderer.tile_width
+      ~OpenGLRenderer.tiled_rendering
+   
+   

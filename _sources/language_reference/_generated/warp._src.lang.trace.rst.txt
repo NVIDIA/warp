@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.trace
+=====================
+
+.. function:: warp._src.lang.trace(a: Matrix[Any,Any,Scalar]) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the trace of matrix ``a``.

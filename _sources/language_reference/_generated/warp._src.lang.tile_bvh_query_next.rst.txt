@@ -1,0 +1,26 @@
+﻿warp.\_src.lang.tile\_bvh\_query\_next
+======================================
+
+.. function:: warp._src.lang.tile_bvh_query_next(query: BvhQueryTiled) -> Tile[int32,tuple[int]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next bound in a thread-block parallel BVH query and return results as a tile.
+   
+   Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
+   The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+   
+   To check if any results were found, check if any element in the tile is >= 0.
+   
+   .. note:: This is an alias for :func:`bvh_query_next_tiled`.
+   
+   :param query: The thread-block BVH query object
+   
+   :returns:
+   
+             A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
+                 the result index for that thread (-1 if no result)
+   

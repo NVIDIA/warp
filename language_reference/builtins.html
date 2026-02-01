@@ -1,0 +1,1476 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Built-Ins &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/builtins';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="warp._src.lang.abs" href="_generated/warp._src.lang.abs.html" />
+    <link rel="prev" title="warp.utils.segmented_sort_pairs" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Built-Ins</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-warp._src.lang">
+<span id="built-ins"></span><h1>Built-Ins<a class="headerlink" href="#module-warp._src.lang" title="Link to this heading">#</a></h1>
+<p>Warp built-in types and functions.</p>
+<p>Built-in types and functions are available within Warp kernels and optionally also
+from the Warp Python runtime API.</p>
+<p>Each built-in function is tagged to indicate where it can be used:</p>
+<ul class="simple">
+<li><p><strong>Kernel</strong> - Can be called from inside a Warp kernel</p></li>
+<li><p><strong>Python</strong> - Can be called at the Python scope</p></li>
+<li><p><strong>Differentiable</strong> - Propagates gradients when used in reverse mode automatic differentiation</p></li>
+</ul>
+<p>For a listing of the API that is exclusively intended to be used at the Python scope
+and run inside the CPython interpreter, see <a class="reference internal" href="../api_reference/warp.html"><span class="doc">warp</span></a>.</p>
+<section id="scalar-math">
+<h2>Scalar Math<a class="headerlink" href="#scalar-math" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.abs.html#warp._src.lang.abs" title="warp._src.lang.abs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abs</span></code></a></p></td>
+<td><p>Compute the absolute value of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.acos.html#warp._src.lang.acos" title="warp._src.lang.acos"><code class="xref py py-obj docutils literal notranslate"><span class="pre">acos</span></code></a></p></td>
+<td><p>Compute arccos of <code class="docutils literal notranslate"><span class="pre">x</span></code> in radians.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.asin.html#warp._src.lang.asin" title="warp._src.lang.asin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">asin</span></code></a></p></td>
+<td><p>Compute arcsin of <code class="docutils literal notranslate"><span class="pre">x</span></code> in radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.atan.html#warp._src.lang.atan" title="warp._src.lang.atan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atan</span></code></a></p></td>
+<td><p>Compute the arctangent of <code class="docutils literal notranslate"><span class="pre">x</span></code> in radians.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.atan2.html#warp._src.lang.atan2" title="warp._src.lang.atan2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atan2</span></code></a></p></td>
+<td><p>Compute the 2-argument arctangent, atan2, of the point <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y)</span></code> in radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.cbrt.html#warp._src.lang.cbrt" title="warp._src.lang.cbrt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cbrt</span></code></a></p></td>
+<td><p>Compute the cube root of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.ceil.html#warp._src.lang.ceil" title="warp._src.lang.ceil"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ceil</span></code></a></p></td>
+<td><p>Compute the smallest integer that is greater than or equal to <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.clamp.html#warp._src.lang.clamp" title="warp._src.lang.clamp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clamp</span></code></a></p></td>
+<td><p>Clamp the value of <code class="docutils literal notranslate"><span class="pre">x</span></code> to the range [low, high].</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.cos.html#warp._src.lang.cos" title="warp._src.lang.cos"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cos</span></code></a></p></td>
+<td><p>Compute the cosine of <code class="docutils literal notranslate"><span class="pre">x</span></code> in radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.cosh.html#warp._src.lang.cosh" title="warp._src.lang.cosh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cosh</span></code></a></p></td>
+<td><p>Compute the cosh of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.degrees.html#warp._src.lang.degrees" title="warp._src.lang.degrees"><code class="xref py py-obj docutils literal notranslate"><span class="pre">degrees</span></code></a></p></td>
+<td><p>Convert <code class="docutils literal notranslate"><span class="pre">x</span></code> from radians into degrees.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.erf.html#warp._src.lang.erf" title="warp._src.lang.erf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">erf</span></code></a></p></td>
+<td><p>Compute the error function of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.erfc.html#warp._src.lang.erfc" title="warp._src.lang.erfc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">erfc</span></code></a></p></td>
+<td><p>Compute the complementary error function of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.erfcinv.html#warp._src.lang.erfcinv" title="warp._src.lang.erfcinv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">erfcinv</span></code></a></p></td>
+<td><p>Compute the inverse complementary error function of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.erfinv.html#warp._src.lang.erfinv" title="warp._src.lang.erfinv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">erfinv</span></code></a></p></td>
+<td><p>Compute the inverse error function of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.exp.html#warp._src.lang.exp" title="warp._src.lang.exp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exp</span></code></a></p></td>
+<td><p>Compute the value of the exponential function <span class="math notranslate nohighlight">\(e^x\)</span>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.floor.html#warp._src.lang.floor" title="warp._src.lang.floor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">floor</span></code></a></p></td>
+<td><p>Compute the largest integer that is less than or equal to <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.frac.html#warp._src.lang.frac" title="warp._src.lang.frac"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frac</span></code></a></p></td>
+<td><p>Retrieve the fractional part of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.isfinite.html#warp._src.lang.isfinite" title="warp._src.lang.isfinite"><code class="xref py py-obj docutils literal notranslate"><span class="pre">isfinite</span></code></a></p></td>
+<td><p>Check if all elements of <code class="docutils literal notranslate"><span class="pre">a</span></code> are finite.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.isinf.html#warp._src.lang.isinf" title="warp._src.lang.isinf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">isinf</span></code></a></p></td>
+<td><p>Check if any element of <code class="docutils literal notranslate"><span class="pre">a</span></code> is positive or negative infinity.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.isnan.html#warp._src.lang.isnan" title="warp._src.lang.isnan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">isnan</span></code></a></p></td>
+<td><p>Check if any element of <code class="docutils literal notranslate"><span class="pre">a</span></code> is NaN.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.log.html#warp._src.lang.log" title="warp._src.lang.log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log</span></code></a></p></td>
+<td><p>Compute the natural logarithm (base-e) of <code class="docutils literal notranslate"><span class="pre">x</span></code>, where <code class="docutils literal notranslate"><span class="pre">x</span></code> is positive.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.log2.html#warp._src.lang.log2" title="warp._src.lang.log2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log2</span></code></a></p></td>
+<td><p>Compute the binary logarithm (base-2) of <code class="docutils literal notranslate"><span class="pre">x</span></code>, where <code class="docutils literal notranslate"><span class="pre">x</span></code> is positive.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.log10.html#warp._src.lang.log10" title="warp._src.lang.log10"><code class="xref py py-obj docutils literal notranslate"><span class="pre">log10</span></code></a></p></td>
+<td><p>Compute the common logarithm (base-10) of <code class="docutils literal notranslate"><span class="pre">x</span></code>, where <code class="docutils literal notranslate"><span class="pre">x</span></code> is positive.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.max.html#warp._src.lang.max" title="warp._src.lang.max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max</span></code></a></p></td>
+<td><p>Compute the maximum value.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.min.html#warp._src.lang.min" title="warp._src.lang.min"><code class="xref py py-obj docutils literal notranslate"><span class="pre">min</span></code></a></p></td>
+<td><p>Compute the minimum value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.nonzero.html#warp._src.lang.nonzero" title="warp._src.lang.nonzero"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nonzero</span></code></a></p></td>
+<td><p>Compute 1.0 if <code class="docutils literal notranslate"><span class="pre">x</span></code> is not equal to zero, otherwise 0.0.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.pow.html#warp._src.lang.pow" title="warp._src.lang.pow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pow</span></code></a></p></td>
+<td><p>Compute <code class="docutils literal notranslate"><span class="pre">x</span></code> raised to the power of <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.radians.html#warp._src.lang.radians" title="warp._src.lang.radians"><code class="xref py py-obj docutils literal notranslate"><span class="pre">radians</span></code></a></p></td>
+<td><p>Convert <code class="docutils literal notranslate"><span class="pre">x</span></code> from degrees into radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.rint.html#warp._src.lang.rint" title="warp._src.lang.rint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rint</span></code></a></p></td>
+<td><p>Compute the nearest integer value to <code class="docutils literal notranslate"><span class="pre">x</span></code>, rounding halfway cases to nearest even integer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.round.html#warp._src.lang.round" title="warp._src.lang.round"><code class="xref py py-obj docutils literal notranslate"><span class="pre">round</span></code></a></p></td>
+<td><p>Compute the nearest integer value to <code class="docutils literal notranslate"><span class="pre">x</span></code>, rounding halfway cases away from zero.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sign.html#warp._src.lang.sign" title="warp._src.lang.sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sign</span></code></a></p></td>
+<td><p>Compute the sign of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sin.html#warp._src.lang.sin" title="warp._src.lang.sin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sin</span></code></a></p></td>
+<td><p>Compute the sine of <code class="docutils literal notranslate"><span class="pre">x</span></code> in radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sinh.html#warp._src.lang.sinh" title="warp._src.lang.sinh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sinh</span></code></a></p></td>
+<td><p>Compute the sinh of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sqrt.html#warp._src.lang.sqrt" title="warp._src.lang.sqrt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sqrt</span></code></a></p></td>
+<td><p>Compute the square root of <code class="docutils literal notranslate"><span class="pre">x</span></code>, where <code class="docutils literal notranslate"><span class="pre">x</span></code> is positive.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.step.html#warp._src.lang.step" title="warp._src.lang.step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">step</span></code></a></p></td>
+<td><p>Compute 1.0 if <code class="docutils literal notranslate"><span class="pre">x</span></code> &lt; 0.0, otherwise 0.0.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tan.html#warp._src.lang.tan" title="warp._src.lang.tan"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tan</span></code></a></p></td>
+<td><p>Compute the tangent of <code class="docutils literal notranslate"><span class="pre">x</span></code> in radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tanh.html#warp._src.lang.tanh" title="warp._src.lang.tanh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tanh</span></code></a></p></td>
+<td><p>Compute the tanh of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.trunc.html#warp._src.lang.trunc" title="warp._src.lang.trunc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trunc</span></code></a></p></td>
+<td><p>Compute the nearest integer that is closer to zero than <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="vector-math">
+<h2>Vector Math<a class="headerlink" href="#vector-math" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.argmax.html#warp._src.lang.argmax" title="warp._src.lang.argmax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">argmax</span></code></a></p></td>
+<td><p>Compute the index of the maximum element of vector <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.argmin.html#warp._src.lang.argmin" title="warp._src.lang.argmin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">argmin</span></code></a></p></td>
+<td><p>Compute the index of the minimum element of vector <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.cross.html#warp._src.lang.cross" title="warp._src.lang.cross"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cross</span></code></a></p></td>
+<td><p>Compute the cross product of two 3D vectors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.cw_div.html#warp._src.lang.cw_div" title="warp._src.lang.cw_div"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cw_div</span></code></a></p></td>
+<td><p>Compute the component-wise division of <code class="docutils literal notranslate"><span class="pre">a</span></code> by <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.cw_mul.html#warp._src.lang.cw_mul" title="warp._src.lang.cw_mul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cw_mul</span></code></a></p></td>
+<td><p>Compute the component-wise product of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.ddot.html#warp._src.lang.ddot" title="warp._src.lang.ddot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ddot</span></code></a></p></td>
+<td><p>Compute the double dot product between two matrices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.determinant.html#warp._src.lang.determinant" title="warp._src.lang.determinant"><code class="xref py py-obj docutils literal notranslate"><span class="pre">determinant</span></code></a></p></td>
+<td><p>Compute the determinant of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.diag.html#warp._src.lang.diag" title="warp._src.lang.diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">diag</span></code></a></p></td>
+<td><p>Construct a matrix with the components of vector <code class="docutils literal notranslate"><span class="pre">vec</span></code> on the diagonal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.dot.html#warp._src.lang.dot" title="warp._src.lang.dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dot</span></code></a></p></td>
+<td><p>Compute the dot product.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.eig3.html#warp._src.lang.eig3" title="warp._src.lang.eig3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">eig3</span></code></a></p></td>
+<td><p>Compute the eigendecomposition of a 3x3 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.get_diag.html#warp._src.lang.get_diag" title="warp._src.lang.get_diag"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_diag</span></code></a></p></td>
+<td><p>Extract a vector containing the diagonal elements of square matrix <code class="docutils literal notranslate"><span class="pre">mat</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.identity.html#warp._src.lang.identity" title="warp._src.lang.identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">identity</span></code></a></p></td>
+<td><p>Create an identity matrix with shape=(n,n) with the type given by <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.inverse.html#warp._src.lang.inverse" title="warp._src.lang.inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inverse</span></code></a></p></td>
+<td><p>Compute the inverse of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.length.html#warp._src.lang.length" title="warp._src.lang.length"><code class="xref py py-obj docutils literal notranslate"><span class="pre">length</span></code></a></p></td>
+<td><p>Compute the length of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.length_sq.html#warp._src.lang.length_sq" title="warp._src.lang.length_sq"><code class="xref py py-obj docutils literal notranslate"><span class="pre">length_sq</span></code></a></p></td>
+<td><p>Compute the squared length of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.matrix.html#warp._src.lang.matrix" title="warp._src.lang.matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix</span></code></a></p></td>
+<td><p>Construct a matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.matrix_from_cols.html#warp._src.lang.matrix_from_cols" title="warp._src.lang.matrix_from_cols"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix_from_cols</span></code></a></p></td>
+<td><p>Construct a matrix with each vector argument as a column.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.matrix_from_rows.html#warp._src.lang.matrix_from_rows" title="warp._src.lang.matrix_from_rows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matrix_from_rows</span></code></a></p></td>
+<td><p>Construct a matrix with each vector argument as a row.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.norm_huber.html#warp._src.lang.norm_huber" title="warp._src.lang.norm_huber"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm_huber</span></code></a></p></td>
+<td><p>Compute the Huber norm of a vector v with a given delta.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.norm_l1.html#warp._src.lang.norm_l1" title="warp._src.lang.norm_l1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm_l1</span></code></a></p></td>
+<td><p>Compute the L1 norm of a vector v.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.norm_l2.html#warp._src.lang.norm_l2" title="warp._src.lang.norm_l2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm_l2</span></code></a></p></td>
+<td><p>Compute the L2 norm of a vector v.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.norm_pseudo_huber.html#warp._src.lang.norm_pseudo_huber" title="warp._src.lang.norm_pseudo_huber"><code class="xref py py-obj docutils literal notranslate"><span class="pre">norm_pseudo_huber</span></code></a></p></td>
+<td><p>Compute the &quot;pseudo&quot; Huber norm of a vector v with a given delta.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.normalize.html#warp._src.lang.normalize" title="warp._src.lang.normalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize</span></code></a></p></td>
+<td><p>Compute the normalized value of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.outer.html#warp._src.lang.outer" title="warp._src.lang.outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">outer</span></code></a></p></td>
+<td><p>Compute the outer product <code class="docutils literal notranslate"><span class="pre">a*b^T</span></code> for two vectors.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.qr3.html#warp._src.lang.qr3" title="warp._src.lang.qr3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qr3</span></code></a></p></td>
+<td><p>Compute the QR decomposition of a 3x3 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.skew.html#warp._src.lang.skew" title="warp._src.lang.skew"><code class="xref py py-obj docutils literal notranslate"><span class="pre">skew</span></code></a></p></td>
+<td><p>Compute the skew-symmetric 3x3 matrix for a 3D vector <code class="docutils literal notranslate"><span class="pre">vec</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.smooth_normalize.html#warp._src.lang.smooth_normalize" title="warp._src.lang.smooth_normalize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">smooth_normalize</span></code></a></p></td>
+<td><p>Normalize a vector using the pseudo-Huber norm.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.svd2.html#warp._src.lang.svd2" title="warp._src.lang.svd2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">svd2</span></code></a></p></td>
+<td><p>Compute the SVD of a 2x2 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.svd3.html#warp._src.lang.svd3" title="warp._src.lang.svd3"><code class="xref py py-obj docutils literal notranslate"><span class="pre">svd3</span></code></a></p></td>
+<td><p>Compute the SVD of a 3x3 matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.trace.html#warp._src.lang.trace" title="warp._src.lang.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code></a></p></td>
+<td><p>Compute the trace of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transpose.html#warp._src.lang.transpose" title="warp._src.lang.transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transpose</span></code></a></p></td>
+<td><p>Compute the transpose of matrix <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.vector.html#warp._src.lang.vector" title="warp._src.lang.vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vector</span></code></a></p></td>
+<td><p>Construct a vector of given length and dtype.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="quaternion-math">
+<h2>Quaternion Math<a class="headerlink" href="#quaternion-math" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_from_axis_angle.html#warp._src.lang.quat_from_axis_angle" title="warp._src.lang.quat_from_axis_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_axis_angle</span></code></a></p></td>
+<td><p>Construct a quaternion representing a rotation of angle radians around the given axis.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_from_matrix.html#warp._src.lang.quat_from_matrix" title="warp._src.lang.quat_from_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_matrix</span></code></a></p></td>
+<td><p>Construct a quaternion from a matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_identity.html#warp._src.lang.quat_identity" title="warp._src.lang.quat_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_identity</span></code></a></p></td>
+<td><p>Construct an identity quaternion with zero imaginary part and real part of 1.0.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_inverse.html#warp._src.lang.quat_inverse" title="warp._src.lang.quat_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_inverse</span></code></a></p></td>
+<td><p>Compute quaternion conjugate.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_rotate.html#warp._src.lang.quat_rotate" title="warp._src.lang.quat_rotate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rotate</span></code></a></p></td>
+<td><p>Rotate a vector by a quaternion.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_rotate_inv.html#warp._src.lang.quat_rotate_inv" title="warp._src.lang.quat_rotate_inv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rotate_inv</span></code></a></p></td>
+<td><p>Rotate a vector by the inverse of a quaternion.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_rpy.html#warp._src.lang.quat_rpy" title="warp._src.lang.quat_rpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rpy</span></code></a></p></td>
+<td><p>Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_slerp.html#warp._src.lang.quat_slerp" title="warp._src.lang.quat_slerp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_slerp</span></code></a></p></td>
+<td><p>Linearly interpolate between two quaternions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_to_axis_angle.html#warp._src.lang.quat_to_axis_angle" title="warp._src.lang.quat_to_axis_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_axis_angle</span></code></a></p></td>
+<td><p>Extract the rotation axis and angle radians a quaternion represents.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.quat_to_matrix.html#warp._src.lang.quat_to_matrix" title="warp._src.lang.quat_to_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_matrix</span></code></a></p></td>
+<td><p>Convert a quaternion to a 3x3 rotation matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.quaternion.html#warp._src.lang.quaternion" title="warp._src.lang.quaternion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quaternion</span></code></a></p></td>
+<td><p>Construct a quaternion.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="transformations">
+<h2>Transformations<a class="headerlink" href="#transformations" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_compose.html#warp._src.lang.transform_compose" title="warp._src.lang.transform_compose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_compose</span></code></a></p></td>
+<td><p>Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_decompose.html#warp._src.lang.transform_decompose" title="warp._src.lang.transform_decompose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_decompose</span></code></a></p></td>
+<td><p>Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_from_matrix.html#warp._src.lang.transform_from_matrix" title="warp._src.lang.transform_from_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_from_matrix</span></code></a></p></td>
+<td><p>Construct a transformation from a 4x4 matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_get_rotation.html#warp._src.lang.transform_get_rotation" title="warp._src.lang.transform_get_rotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_get_rotation</span></code></a></p></td>
+<td><p>Extract the rotational part of transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_get_translation.html#warp._src.lang.transform_get_translation" title="warp._src.lang.transform_get_translation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_get_translation</span></code></a></p></td>
+<td><p>Extract the translational part of transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_identity.html#warp._src.lang.transform_identity" title="warp._src.lang.transform_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_identity</span></code></a></p></td>
+<td><p>Construct an identity transform with zero translation and identity rotation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_inverse.html#warp._src.lang.transform_inverse" title="warp._src.lang.transform_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_inverse</span></code></a></p></td>
+<td><p>Compute the inverse of the transformation <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_multiply.html#warp._src.lang.transform_multiply" title="warp._src.lang.transform_multiply"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_multiply</span></code></a></p></td>
+<td><p>Multiply two rigid body transformations together.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_point.html#warp._src.lang.transform_point" title="warp._src.lang.transform_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_point</span></code></a></p></td>
+<td><p>Apply a transform to a point.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_set_rotation.html#warp._src.lang.transform_set_rotation" title="warp._src.lang.transform_set_rotation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_set_rotation</span></code></a></p></td>
+<td><p>Set the rotational part of a transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_set_translation.html#warp._src.lang.transform_set_translation" title="warp._src.lang.transform_set_translation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_set_translation</span></code></a></p></td>
+<td><p>Set the translational part of a transform <code class="docutils literal notranslate"><span class="pre">xform</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_to_matrix.html#warp._src.lang.transform_to_matrix" title="warp._src.lang.transform_to_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_to_matrix</span></code></a></p></td>
+<td><p>Convert a transformation to a 4x4 matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.transform_vector.html#warp._src.lang.transform_vector" title="warp._src.lang.transform_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transform_vector</span></code></a></p></td>
+<td><p>Apply a transform to a vector.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.transformation.html#warp._src.lang.transformation" title="warp._src.lang.transformation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transformation</span></code></a></p></td>
+<td><p>Construct a transformation.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="spatial-math">
+<h2>Spatial Math<a class="headerlink" href="#spatial-math" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_adjoint.html#warp._src.lang.spatial_adjoint" title="warp._src.lang.spatial_adjoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_adjoint</span></code></a></p></td>
+<td><p>Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_bottom.html#warp._src.lang.spatial_bottom" title="warp._src.lang.spatial_bottom"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_bottom</span></code></a></p></td>
+<td><p>Extract the bottom (second) part of a 6D screw vector.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_cross.html#warp._src.lang.spatial_cross" title="warp._src.lang.spatial_cross"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_cross</span></code></a></p></td>
+<td><p>Compute the cross product of two 6D screw vectors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_cross_dual.html#warp._src.lang.spatial_cross_dual" title="warp._src.lang.spatial_cross_dual"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_cross_dual</span></code></a></p></td>
+<td><p>Compute the dual cross product of two 6D screw vectors.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_dot.html#warp._src.lang.spatial_dot" title="warp._src.lang.spatial_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_dot</span></code></a></p></td>
+<td><p>Compute the dot product of two 6D screw vectors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_jacobian.html#warp._src.lang.spatial_jacobian" title="warp._src.lang.spatial_jacobian"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_jacobian</span></code></a></p></td>
+<td><p>Compute the spatial Jacobian matrix for a kinematic chain.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_mass.html#warp._src.lang.spatial_mass" title="warp._src.lang.spatial_mass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_mass</span></code></a></p></td>
+<td><p>Compute the composite rigid-body mass matrix for a kinematic chain.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_top.html#warp._src.lang.spatial_top" title="warp._src.lang.spatial_top"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_top</span></code></a></p></td>
+<td><p>Extract the top (first) part of a 6D screw vector.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.spatial_vector.html#warp._src.lang.spatial_vector" title="warp._src.lang.spatial_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spatial_vector</span></code></a></p></td>
+<td><p>Construct a 6D screw vector.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="tile-primitives">
+<h2>Tile Primitives<a class="headerlink" href="#tile-primitives" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile</span></code></a></p></td>
+<td><p>Construct a new tile from per-thread kernel values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_arange.html#warp._src.lang.tile_arange" title="warp._src.lang.tile_arange"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_arange</span></code></a></p></td>
+<td><p>Generate a tile of linearly spaced elements.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_argmax.html#warp._src.lang.tile_argmax" title="warp._src.lang.tile_argmax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_argmax</span></code></a></p></td>
+<td><p>Cooperatively compute the index of the maximum element in the tile using all threads in the block.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_argmin.html#warp._src.lang.tile_argmin" title="warp._src.lang.tile_argmin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_argmin</span></code></a></p></td>
+<td><p>Cooperatively compute the index of the minimum element in the tile using all threads in the block.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_assign.html#warp._src.lang.tile_assign" title="warp._src.lang.tile_assign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_assign</span></code></a></p></td>
+<td><p>Assign a tile to a subrange of a destination tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_astype.html#warp._src.lang.tile_astype" title="warp._src.lang.tile_astype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_astype</span></code></a></p></td>
+<td><p>Create a new tile with the same data as the input tile, but with a different data type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_atomic_add</span></code></a></p></td>
+<td><p>Atomically add a tile onto the array <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_atomic_add_indexed.html#warp._src.lang.tile_atomic_add_indexed" title="warp._src.lang.tile_atomic_add_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_atomic_add_indexed</span></code></a></p></td>
+<td><p>Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_broadcast.html#warp._src.lang.tile_broadcast" title="warp._src.lang.tile_broadcast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_broadcast</span></code></a></p></td>
+<td><p>Broadcast a tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_bvh_query_aabb.html#warp._src.lang.tile_bvh_query_aabb" title="warp._src.lang.tile_bvh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_aabb</span></code></a></p></td>
+<td><p>Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_bvh_query_next.html#warp._src.lang.tile_bvh_query_next" title="warp._src.lang.tile_bvh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_next</span></code></a></p></td>
+<td><p>Move to the next bound in a thread-block parallel BVH query and return results as a tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_bvh_query_ray.html#warp._src.lang.tile_bvh_query_ray" title="warp._src.lang.tile_bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_bvh_query_ray</span></code></a></p></td>
+<td><p>Construct a ray query against a BVH object for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a></p></td>
+<td><p>Compute the Cholesky factorization <code class="docutils literal notranslate"><span class="pre">L</span></code> of a matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_cholesky_inplace.html#warp._src.lang.tile_cholesky_inplace" title="warp._src.lang.tile_cholesky_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_inplace</span></code></a></p></td>
+<td><p>Compute the Cholesky factorization <code class="docutils literal notranslate"><span class="pre">L</span></code> of a matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_cholesky_solve.html#warp._src.lang.tile_cholesky_solve" title="warp._src.lang.tile_cholesky_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code></a></p></td>
+<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ax</span> <span class="pre">=</span> <span class="pre">y</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_cholesky_solve_inplace.html#warp._src.lang.tile_cholesky_solve_inplace" title="warp._src.lang.tile_cholesky_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_solve_inplace</span></code></a></p></td>
+<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ax</span> <span class="pre">=</span> <span class="pre">y</span></code> by overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_diag_add.html#warp._src.lang.tile_diag_add" title="warp._src.lang.tile_diag_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_diag_add</span></code></a></p></td>
+<td><p>Add a square matrix and a diagonal matrix <code class="docutils literal notranslate"><span class="pre">d</span></code> represented as a 1D tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_extract.html#warp._src.lang.tile_extract" title="warp._src.lang.tile_extract"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_extract</span></code></a></p></td>
+<td><p>Extract a single element from the tile.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_fft</span></code></a></p></td>
+<td><p>Compute the forward FFT along the second dimension of a 2D tile of data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_full.html#warp._src.lang.tile_full" title="warp._src.lang.tile_full"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_full</span></code></a></p></td>
+<td><p>Allocate a tile filled with the specified value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_ifft</span></code></a></p></td>
+<td><p>Compute the inverse FFT along the second dimension of a 2D tile of data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_load</span></code></a></p></td>
+<td><p>Load a tile from a global memory array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_load_indexed.html#warp._src.lang.tile_load_indexed" title="warp._src.lang.tile_load_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_load_indexed</span></code></a></p></td>
+<td><p>Load a tile from a global memory array, with loads along a specified axis mapped according to a 1D tile of indices.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_lower_solve.html#warp._src.lang.tile_lower_solve" title="warp._src.lang.tile_lower_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve</span></code></a></p></td>
+<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_lower_solve_inplace.html#warp._src.lang.tile_lower_solve_inplace" title="warp._src.lang.tile_lower_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve_inplace</span></code></a></p></td>
+<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_map.html#warp._src.lang.tile_map" title="warp._src.lang.tile_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_map</span></code></a></p></td>
+<td><p>Apply a function to tile elements.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_matmul</span></code></a></p></td>
+<td><p>Compute the matrix product <code class="docutils literal notranslate"><span class="pre">a*b</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_max.html#warp._src.lang.tile_max" title="warp._src.lang.tile_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_max</span></code></a></p></td>
+<td><p>Cooperatively compute the maximum of the tile elements using all threads in the block.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_mesh_query_aabb.html#warp._src.lang.tile_mesh_query_aabb" title="warp._src.lang.tile_mesh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_mesh_query_aabb</span></code></a></p></td>
+<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_mesh_query_aabb_next.html#warp._src.lang.tile_mesh_query_aabb_next" title="warp._src.lang.tile_mesh_query_aabb_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_mesh_query_aabb_next</span></code></a></p></td>
+<td><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_min.html#warp._src.lang.tile_min" title="warp._src.lang.tile_min"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_min</span></code></a></p></td>
+<td><p>Cooperatively compute the minimum of the tile elements using all threads in the block.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_ones.html#warp._src.lang.tile_ones" title="warp._src.lang.tile_ones"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_ones</span></code></a></p></td>
+<td><p>Allocate a tile of one-initialized items.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_randf.html#warp._src.lang.tile_randf" title="warp._src.lang.tile_randf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_randf</span></code></a></p></td>
+<td><p>Generate a tile of random floats.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_randi.html#warp._src.lang.tile_randi" title="warp._src.lang.tile_randi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_randi</span></code></a></p></td>
+<td><p>Generate a tile of random integers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_reduce.html#warp._src.lang.tile_reduce" title="warp._src.lang.tile_reduce"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_reduce</span></code></a></p></td>
+<td><p>Apply a custom reduction operator across a tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_reshape.html#warp._src.lang.tile_reshape" title="warp._src.lang.tile_reshape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_reshape</span></code></a></p></td>
+<td><p>Create a reshaped view of a tile with the same data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_scan_exclusive.html#warp._src.lang.tile_scan_exclusive" title="warp._src.lang.tile_scan_exclusive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scan_exclusive</span></code></a></p></td>
+<td><p>Exclusive scan (prefix sum) across the tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_scan_inclusive.html#warp._src.lang.tile_scan_inclusive" title="warp._src.lang.tile_scan_inclusive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scan_inclusive</span></code></a></p></td>
+<td><p>Inclusive scan (prefix sum) across the tile.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_scan_max_inclusive.html#warp._src.lang.tile_scan_max_inclusive" title="warp._src.lang.tile_scan_max_inclusive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scan_max_inclusive</span></code></a></p></td>
+<td><p>Inclusive max scan across the tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_scan_min_inclusive.html#warp._src.lang.tile_scan_min_inclusive" title="warp._src.lang.tile_scan_min_inclusive"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scan_min_inclusive</span></code></a></p></td>
+<td><p>Inclusive min scan across the tile.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_sort.html#warp._src.lang.tile_sort" title="warp._src.lang.tile_sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sort</span></code></a></p></td>
+<td><p>Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_squeeze.html#warp._src.lang.tile_squeeze" title="warp._src.lang.tile_squeeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_squeeze</span></code></a></p></td>
+<td><p>Create a squeezed view of a tile with the same data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store</span></code></a></p></td>
+<td><p>Store a tile to a global memory array.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_store_indexed.html#warp._src.lang.tile_store_indexed" title="warp._src.lang.tile_store_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store_indexed</span></code></a></p></td>
+<td><p>Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sum</span></code></a></p></td>
+<td><p>Cooperatively compute the sum of the tile elements.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_transpose.html#warp._src.lang.tile_transpose" title="warp._src.lang.tile_transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_transpose</span></code></a></p></td>
+<td><p>Transpose a tile.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a></p></td>
+<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_upper_solve_inplace.html#warp._src.lang.tile_upper_solve_inplace" title="warp._src.lang.tile_upper_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve_inplace</span></code></a></p></td>
+<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></td>
+<td><p>Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_zeros</span></code></a></p></td>
+<td><p>Allocate a tile of zero-initialized items.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">untile</span></code></a></p></td>
+<td><p>Convert a tile back to per-thread values.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="geometry">
+<h2>Geometry<a class="headerlink" href="#geometry" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_get_group_root.html#warp._src.lang.bvh_get_group_root" title="warp._src.lang.bvh_get_group_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_get_group_root</span></code></a></p></td>
+<td><p>Get the root of a group in a BVH.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_aabb</span></code></a></p></td>
+<td><p>Construct an axis-aligned bounding box query against a BVH object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_query_aabb_tiled.html#warp._src.lang.bvh_query_aabb_tiled" title="warp._src.lang.bvh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_aabb_tiled</span></code></a></p></td>
+<td><p>Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_query_next.html#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next</span></code></a></p></td>
+<td><p>Move to the next bound returned by the query.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_query_next_tiled.html#warp._src.lang.bvh_query_next_tiled" title="warp._src.lang.bvh_query_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next_tiled</span></code></a></p></td>
+<td><p>Move to the next bound in a thread-block parallel BVH query and return results as a tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray</span></code></a></p></td>
+<td><p>Construct a ray query against a BVH object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled" title="warp._src.lang.bvh_query_ray_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray_tiled</span></code></a></p></td>
+<td><p>Construct a ray query against a BVH object for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.closest_point_edge_edge.html#warp._src.lang.closest_point_edge_edge" title="warp._src.lang.closest_point_edge_edge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">closest_point_edge_edge</span></code></a></p></td>
+<td><p>Find the closest points between two edges.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.hash_grid_point_id.html#warp._src.lang.hash_grid_point_id" title="warp._src.lang.hash_grid_point_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hash_grid_point_id</span></code></a></p></td>
+<td><p>Query the index of a point in the <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hash_grid_query</span></code></a></p></td>
+<td><p>Construct a point query against a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hash_grid_query_next</span></code></a></p></td>
+<td><p>Move to the next point in the hash grid query.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.intersect_tri_tri.html#warp._src.lang.intersect_tri_tri" title="warp._src.lang.intersect_tri_tri"><code class="xref py py-obj docutils literal notranslate"><span class="pre">intersect_tri_tri</span></code></a></p></td>
+<td><p>Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_eval_face_normal.html#warp._src.lang.mesh_eval_face_normal" title="warp._src.lang.mesh_eval_face_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_eval_face_normal</span></code></a></p></td>
+<td><p>Evaluate the face normal the mesh given a face index.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_eval_position.html#warp._src.lang.mesh_eval_position" title="warp._src.lang.mesh_eval_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_eval_position</span></code></a></p></td>
+<td><p>Evaluate the position on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> given a face index and barycentric coordinates.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_eval_velocity.html#warp._src.lang.mesh_eval_velocity" title="warp._src.lang.mesh_eval_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_eval_velocity</span></code></a></p></td>
+<td><p>Evaluate the velocity on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> given a face index and barycentric coordinates.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_get.html#warp._src.lang.mesh_get" title="warp._src.lang.mesh_get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get</span></code></a></p></td>
+<td><p>Retrieve the mesh given its index.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_get_group_root.html#warp._src.lang.mesh_get_group_root" title="warp._src.lang.mesh_get_group_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_group_root</span></code></a></p></td>
+<td><p>Get the root of a group in a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_get_index.html#warp._src.lang.mesh_get_index" title="warp._src.lang.mesh_get_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_index</span></code></a></p></td>
+<td><p>Query the point-index of the mesh given a face-vertex index.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_get_point.html#warp._src.lang.mesh_get_point" title="warp._src.lang.mesh_get_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_point</span></code></a></p></td>
+<td><p>Query the point of the mesh given an index.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_get_velocity.html#warp._src.lang.mesh_get_velocity" title="warp._src.lang.mesh_get_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_velocity</span></code></a></p></td>
+<td><p>Query the velocity of the mesh given an index.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_aabb.html#warp._src.lang.mesh_query_aabb" title="warp._src.lang.mesh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb</span></code></a></p></td>
+<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_aabb_next.html#warp._src.lang.mesh_query_aabb_next" title="warp._src.lang.mesh_query_aabb_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next</span></code></a></p></td>
+<td><p>Move to the next triangle whose bounding box overlaps the query bounding box.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_aabb_next_tiled.html#warp._src.lang.mesh_query_aabb_next_tiled" title="warp._src.lang.mesh_query_aabb_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next_tiled</span></code></a></p></td>
+<td><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_aabb_tiled.html#warp._src.lang.mesh_query_aabb_tiled" title="warp._src.lang.mesh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_tiled</span></code></a></p></td>
+<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_furthest_point_no_sign.html#warp._src.lang.mesh_query_furthest_point_no_sign" title="warp._src.lang.mesh_query_furthest_point_no_sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_furthest_point_no_sign</span></code></a></p></td>
+<td><p>Compute the furthest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given point in space.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_point.html#warp._src.lang.mesh_query_point" title="warp._src.lang.mesh_query_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_point</span></code></a></p></td>
+<td><p>Compute the closest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given <code class="docutils literal notranslate"><span class="pre">point</span></code> in space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_point_no_sign.html#warp._src.lang.mesh_query_point_no_sign" title="warp._src.lang.mesh_query_point_no_sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_point_no_sign</span></code></a></p></td>
+<td><p>Compute the closest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given <code class="docutils literal notranslate"><span class="pre">point</span></code> in space.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_point_sign_normal.html#warp._src.lang.mesh_query_point_sign_normal" title="warp._src.lang.mesh_query_point_sign_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_point_sign_normal</span></code></a></p></td>
+<td><p>Compute the closest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given <code class="docutils literal notranslate"><span class="pre">point</span></code> in space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_point_sign_parity.html#warp._src.lang.mesh_query_point_sign_parity" title="warp._src.lang.mesh_query_point_sign_parity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_point_sign_parity</span></code></a></p></td>
+<td><p>Compute the closest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given <code class="docutils literal notranslate"><span class="pre">point</span></code> in space.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_point_sign_winding_number.html#warp._src.lang.mesh_query_point_sign_winding_number" title="warp._src.lang.mesh_query_point_sign_winding_number"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_point_sign_winding_number</span></code></a></p></td>
+<td><p>Compute the closest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given point in space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_ray.html#warp._src.lang.mesh_query_ray" title="warp._src.lang.mesh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_ray</span></code></a></p></td>
+<td><p>Compute the closest ray hit on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code>, returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if a hit &lt; <code class="docutils literal notranslate"><span class="pre">max_t</span></code> is found.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_ray_anyhit.html#warp._src.lang.mesh_query_ray_anyhit" title="warp._src.lang.mesh_query_ray_anyhit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_ray_anyhit</span></code></a></p></td>
+<td><p>Check for any ray hit on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mesh_query_ray_count_intersections.html#warp._src.lang.mesh_query_ray_count_intersections" title="warp._src.lang.mesh_query_ray_count_intersections"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_ray_count_intersections</span></code></a></p></td>
+<td><p>Count the number of intersections between a ray and a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="volumes">
+<h2>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_index_to_world.html#warp._src.lang.volume_index_to_world" title="warp._src.lang.volume_index_to_world"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_index_to_world</span></code></a></p></td>
+<td><p>Transform a point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> defined in volume index space to world space given the volume's intrinsic affine transformation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_index_to_world_dir.html#warp._src.lang.volume_index_to_world_dir" title="warp._src.lang.volume_index_to_world_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_index_to_world_dir</span></code></a></p></td>
+<td><p>Transform a direction <code class="docutils literal notranslate"><span class="pre">uvw</span></code> defined in volume index space to world space given the volume's intrinsic affine transformation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup</span></code></a></p></td>
+<td><p>Query the value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code> for a volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_lookup_f.html#warp._src.lang.volume_lookup_f" title="warp._src.lang.volume_lookup_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_f</span></code></a></p></td>
+<td><p>Query the value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_lookup_i.html#warp._src.lang.volume_lookup_i" title="warp._src.lang.volume_lookup_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_i</span></code></a></p></td>
+<td><p>Query the <code class="xref py py-class docutils literal notranslate"><span class="pre">int32</span></code> value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_lookup_index.html#warp._src.lang.volume_lookup_index" title="warp._src.lang.volume_lookup_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_index</span></code></a></p></td>
+<td><p>Query the index associated with the voxel at coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_lookup_v.html#warp._src.lang.volume_lookup_v" title="warp._src.lang.volume_lookup_v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_lookup_v</span></code></a></p></td>
+<td><p>Query the vector value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample</span></code></a></p></td>
+<td><p>Sample the volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_f.html#warp._src.lang.volume_sample_f" title="warp._src.lang.volume_sample_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_f</span></code></a></p></td>
+<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_grad.html#warp._src.lang.volume_sample_grad" title="warp._src.lang.volume_sample_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_grad</span></code></a></p></td>
+<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_grad_f.html#warp._src.lang.volume_sample_grad_f" title="warp._src.lang.volume_sample_grad_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_grad_f</span></code></a></p></td>
+<td><p>Sample the volume and its gradient given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_grad_index.html#warp._src.lang.volume_sample_grad_index" title="warp._src.lang.volume_sample_grad_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_grad_index</span></code></a></p></td>
+<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_i.html#warp._src.lang.volume_sample_i" title="warp._src.lang.volume_sample_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_i</span></code></a></p></td>
+<td><p>Sample the <code class="xref py py-class docutils literal notranslate"><span class="pre">int32</span></code> volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_index.html#warp._src.lang.volume_sample_index" title="warp._src.lang.volume_sample_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_index</span></code></a></p></td>
+<td><p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_sample_v.html#warp._src.lang.volume_sample_v" title="warp._src.lang.volume_sample_v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_sample_v</span></code></a></p></td>
+<td><p>Sample the vector volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store</span></code></a></p></td>
+<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_store_f.html#warp._src.lang.volume_store_f" title="warp._src.lang.volume_store_f"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store_f</span></code></a></p></td>
+<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_store_i.html#warp._src.lang.volume_store_i" title="warp._src.lang.volume_store_i"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store_i</span></code></a></p></td>
+<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_store_v.html#warp._src.lang.volume_store_v" title="warp._src.lang.volume_store_v"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_store_v</span></code></a></p></td>
+<td><p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_world_to_index.html#warp._src.lang.volume_world_to_index" title="warp._src.lang.volume_world_to_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_world_to_index</span></code></a></p></td>
+<td><p>Transform a point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.volume_world_to_index_dir.html#warp._src.lang.volume_world_to_index_dir" title="warp._src.lang.volume_world_to_index_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">volume_world_to_index_dir</span></code></a></p></td>
+<td><p>Transform a direction <code class="docutils literal notranslate"><span class="pre">xyz</span></code> defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="random">
+<h2>Random<a class="headerlink" href="#random" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.curlnoise.html#warp._src.lang.curlnoise" title="warp._src.lang.curlnoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">curlnoise</span></code></a></p></td>
+<td><p>Divergence-free vector field based on Perlin noise.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.noise.html#warp._src.lang.noise" title="warp._src.lang.noise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">noise</span></code></a></p></td>
+<td><p>Non-periodic Perlin-style noise.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.pnoise.html#warp._src.lang.pnoise" title="warp._src.lang.pnoise"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pnoise</span></code></a></p></td>
+<td><p>Periodic Perlin-style noise.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.poisson.html#warp._src.lang.poisson" title="warp._src.lang.poisson"><code class="xref py py-obj docutils literal notranslate"><span class="pre">poisson</span></code></a></p></td>
+<td><p>Generate a random sample from a Poisson distribution.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rand_init</span></code></a></p></td>
+<td><p>Initialize a random number generator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.randf.html#warp._src.lang.randf" title="warp._src.lang.randf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randf</span></code></a></p></td>
+<td><p>Generate a random float.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.randi.html#warp._src.lang.randi" title="warp._src.lang.randi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randi</span></code></a></p></td>
+<td><p>Generate a random integer.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.randn.html#warp._src.lang.randn" title="warp._src.lang.randn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randn</span></code></a></p></td>
+<td><p>Sample a normal (Gaussian) distribution of mean 0 and variance 1.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.randu.html#warp._src.lang.randu" title="warp._src.lang.randu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randu</span></code></a></p></td>
+<td><p>Generate a random unsigned integer.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_cdf.html#warp._src.lang.sample_cdf" title="warp._src.lang.sample_cdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_cdf</span></code></a></p></td>
+<td><p>Inverse-transform sample a cumulative distribution function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_triangle.html#warp._src.lang.sample_triangle" title="warp._src.lang.sample_triangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_triangle</span></code></a></p></td>
+<td><p>Uniformly sample a triangle.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_cube.html#warp._src.lang.sample_unit_cube" title="warp._src.lang.sample_unit_cube"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_cube</span></code></a></p></td>
+<td><p>Uniformly sample a unit cube.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_disk.html#warp._src.lang.sample_unit_disk" title="warp._src.lang.sample_unit_disk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_disk</span></code></a></p></td>
+<td><p>Uniformly sample a disk in the xy plane.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_hemisphere.html#warp._src.lang.sample_unit_hemisphere" title="warp._src.lang.sample_unit_hemisphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_hemisphere</span></code></a></p></td>
+<td><p>Uniformly sample a unit hemisphere.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_hemisphere_surface.html#warp._src.lang.sample_unit_hemisphere_surface" title="warp._src.lang.sample_unit_hemisphere_surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_hemisphere_surface</span></code></a></p></td>
+<td><p>Uniformly sample a unit hemisphere surface.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_ring.html#warp._src.lang.sample_unit_ring" title="warp._src.lang.sample_unit_ring"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_ring</span></code></a></p></td>
+<td><p>Uniformly sample a ring in the xy plane.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_sphere.html#warp._src.lang.sample_unit_sphere" title="warp._src.lang.sample_unit_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_sphere</span></code></a></p></td>
+<td><p>Uniformly sample a unit sphere.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_sphere_surface.html#warp._src.lang.sample_unit_sphere_surface" title="warp._src.lang.sample_unit_sphere_surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_sphere_surface</span></code></a></p></td>
+<td><p>Uniformly sample a unit sphere surface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.sample_unit_square.html#warp._src.lang.sample_unit_square" title="warp._src.lang.sample_unit_square"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_square</span></code></a></p></td>
+<td><p>Uniformly sample a unit square.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="utility">
+<h2>Utility<a class="headerlink" href="#utility" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.array.html#warp._src.lang.array" title="warp._src.lang.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a></p></td>
+<td><p>Construct an array from a memory pointer, shape, and data type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_add</span></code></a></p></td>
+<td><p>Atomically adds <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_and.html#warp._src.lang.atomic_and" title="warp._src.lang.atomic_and"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_and</span></code></a></p></td>
+<td><p>Atomically performs a bitwise AND between <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>, atomically update the array, and return the old value.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_cas.html#warp._src.lang.atomic_cas" title="warp._src.lang.atomic_cas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_cas</span></code></a></p></td>
+<td><p>Atomically compare and swap <code class="docutils literal notranslate"><span class="pre">value</span></code> with <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> if <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> equals <code class="docutils literal notranslate"><span class="pre">compare</span></code>, and return the old value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_exch.html#warp._src.lang.atomic_exch" title="warp._src.lang.atomic_exch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_exch</span></code></a></p></td>
+<td><p>Atomically exchange <code class="docutils literal notranslate"><span class="pre">value</span></code> with <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and return the old value.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_max.html#warp._src.lang.atomic_max" title="warp._src.lang.atomic_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_max</span></code></a></p></td>
+<td><p>Compute the maximum of <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>, atomically update the array, and return the old value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_min.html#warp._src.lang.atomic_min" title="warp._src.lang.atomic_min"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_min</span></code></a></p></td>
+<td><p>Compute the minimum of <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>, atomically update the array, and return the old value.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_or.html#warp._src.lang.atomic_or" title="warp._src.lang.atomic_or"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_or</span></code></a></p></td>
+<td><p>Atomically performs a bitwise OR between <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>, atomically update the array, and return the old value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_sub.html#warp._src.lang.atomic_sub" title="warp._src.lang.atomic_sub"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_sub</span></code></a></p></td>
+<td><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.atomic_xor.html#warp._src.lang.atomic_xor" title="warp._src.lang.atomic_xor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">atomic_xor</span></code></a></p></td>
+<td><p>Atomically performs a bitwise XOR between <code class="docutils literal notranslate"><span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>, atomically update the array, and return the old value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">block_dim</span></code></a></p></td>
+<td><p>Query the number of threads in the current block.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.breakpoint.html#warp._src.lang.breakpoint" title="warp._src.lang.breakpoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">breakpoint</span></code></a></p></td>
+<td><p>Trigger a debugger breakpoint.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.cast.html#warp._src.lang.cast" title="warp._src.lang.cast"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cast</span></code></a></p></td>
+<td><p>Reinterpret a value as a different type while preserving its bit pattern.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.expect_near.html#warp._src.lang.expect_near" title="warp._src.lang.expect_near"><code class="xref py py-obj docutils literal notranslate"><span class="pre">expect_near</span></code></a></p></td>
+<td><p>Print an error to stdout if <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> differ by more than <code class="docutils literal notranslate"><span class="pre">tolerance</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.len.html#warp._src.lang.len" title="warp._src.lang.len"><code class="xref py py-obj docutils literal notranslate"><span class="pre">len</span></code></a></p></td>
+<td><p>Query the number of elements in a vector.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.lerp.html#warp._src.lang.lerp" title="warp._src.lang.lerp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lerp</span></code></a></p></td>
+<td><p>Linearly interpolate two values <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> using factor <code class="docutils literal notranslate"><span class="pre">t</span></code>, computed as <code class="docutils literal notranslate"><span class="pre">a*(1-t)</span> <span class="pre">+</span> <span class="pre">b*t</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.print.html#warp._src.lang.print" title="warp._src.lang.print"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print</span></code></a></p></td>
+<td><p>Print a variable to stdout.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.printf.html#warp._src.lang.printf" title="warp._src.lang.printf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">printf</span></code></a></p></td>
+<td><p>Allows printing formatted strings using C-style format specifiers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.select.html#warp._src.lang.select" title="warp._src.lang.select"><code class="xref py py-obj docutils literal notranslate"><span class="pre">select</span></code></a></p></td>
+<td><p>Select between two arguments, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code> then return <code class="docutils literal notranslate"><span class="pre">value_if_false</span></code>, otherwise return <code class="docutils literal notranslate"><span class="pre">value_if_true</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.smoothstep.html#warp._src.lang.smoothstep" title="warp._src.lang.smoothstep"><code class="xref py py-obj docutils literal notranslate"><span class="pre">smoothstep</span></code></a></p></td>
+<td><p>Smoothly interpolate between two values <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> using a factor <code class="docutils literal notranslate"><span class="pre">x</span></code>, and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tid</span></code></a></p></td>
+<td><p>Query the current thread index or indices.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.where.html#warp._src.lang.where" title="warp._src.lang.where"><code class="xref py py-obj docutils literal notranslate"><span class="pre">where</span></code></a></p></td>
+<td><p>Select between two arguments, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> then return <code class="docutils literal notranslate"><span class="pre">value_if_true</span></code>, otherwise return <code class="docutils literal notranslate"><span class="pre">value_if_false</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.zeros.html#warp._src.lang.zeros" title="warp._src.lang.zeros"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zeros</span></code></a></p></td>
+<td><p>Create a zero-initialized fixed-size array of the given shape and dtype.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="other">
+<h2>Other<a class="headerlink" href="#other" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.lower_bound.html#warp._src.lang.lower_bound" title="warp._src.lang.lower_bound"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lower_bound</span></code></a></p></td>
+<td><p>Search a sorted array <code class="docutils literal notranslate"><span class="pre">arr</span></code> for the closest element greater than or equal to <code class="docutils literal notranslate"><span class="pre">value</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="operators">
+<h2>Operators<a class="headerlink" href="#operators" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.add.html#warp._src.lang.add" title="warp._src.lang.add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add</span></code></a></p></td>
+<td><p>Add <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.bit_and.html#warp._src.lang.bit_and" title="warp._src.lang.bit_and"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_and</span></code></a></p></td>
+<td><p>Compute the bitwise AND of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.bit_or.html#warp._src.lang.bit_or" title="warp._src.lang.bit_or"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_or</span></code></a></p></td>
+<td><p>Compute the bitwise OR of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.bit_xor.html#warp._src.lang.bit_xor" title="warp._src.lang.bit_xor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_xor</span></code></a></p></td>
+<td><p>Compute the bitwise XOR of <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.div.html#warp._src.lang.div" title="warp._src.lang.div"><code class="xref py py-obj docutils literal notranslate"><span class="pre">div</span></code></a></p></td>
+<td><p>Divide two values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.floordiv.html#warp._src.lang.floordiv" title="warp._src.lang.floordiv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">floordiv</span></code></a></p></td>
+<td><p>Divide two scalars using floor division.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.invert.html#warp._src.lang.invert" title="warp._src.lang.invert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">invert</span></code></a></p></td>
+<td><p>Compute the bitwise complement of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.lshift.html#warp._src.lang.lshift" title="warp._src.lang.lshift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lshift</span></code></a></p></td>
+<td><p>Compute <code class="docutils literal notranslate"><span class="pre">a</span></code> left-shifted by <code class="docutils literal notranslate"><span class="pre">b</span></code> bits.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.mod.html#warp._src.lang.mod" title="warp._src.lang.mod"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mod</span></code></a></p></td>
+<td><p>Modulo operation using truncated division.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.mul.html#warp._src.lang.mul" title="warp._src.lang.mul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mul</span></code></a></p></td>
+<td><p>Multiply two values.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.neg.html#warp._src.lang.neg" title="warp._src.lang.neg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">neg</span></code></a></p></td>
+<td><p>Negate <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.pos.html#warp._src.lang.pos" title="warp._src.lang.pos"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pos</span></code></a></p></td>
+<td><p>Pass <code class="docutils literal notranslate"><span class="pre">x</span></code> unchanged.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.rshift.html#warp._src.lang.rshift" title="warp._src.lang.rshift"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rshift</span></code></a></p></td>
+<td><p>Compute <code class="docutils literal notranslate"><span class="pre">a</span></code> right-shifted by <code class="docutils literal notranslate"><span class="pre">b</span></code> bits.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp._src.lang.sub.html#warp._src.lang.sub" title="warp._src.lang.sub"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sub</span></code></a></p></td>
+<td><p>Subtract <code class="docutils literal notranslate"><span class="pre">b</span></code> from <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.unot.html#warp._src.lang.unot" title="warp._src.lang.unot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unot</span></code></a></p></td>
+<td><p>Compute logical NOT of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="code-generation">
+<h2>Code Generation<a class="headerlink" href="#code-generation" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp._src.lang.static.html#warp._src.lang.static" title="warp._src.lang.static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">static</span></code></a></p></td>
+<td><p>Evaluate a static Python expression and replaces it with its result.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">warp.utils.segmented_sort_pairs</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="_generated/warp._src.lang.abs.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">warp._src.lang.abs</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scalar-math">Scalar Math</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vector-math">Vector Math</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quaternion-math">Quaternion Math</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#transformations">Transformations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-math">Spatial Math</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-primitives">Tile Primitives</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#geometry">Geometry</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#volumes">Volumes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#random">Random</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#utility">Utility</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#other">Other</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#operators">Operators</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-generation">Code Generation</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/language_reference/builtins.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

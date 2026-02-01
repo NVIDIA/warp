@@ -1,0 +1,21 @@
+﻿warp.\_src.lang.tile\_broadcast
+===============================
+
+.. function:: warp._src.lang.tile_broadcast(a: Tile[Any,tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Broadcast a tile.
+   
+   Broadcasts the input tile ``a`` to the destination shape.
+   Broadcasting follows NumPy broadcast rules.
+   
+   :param a: Tile to broadcast
+   :param shape: The shape to broadcast to
+   
+   :returns: Tile with broadcast shape.
+   

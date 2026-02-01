@@ -1,0 +1,45 @@
+﻿warp.\_src.lang.pos
+===================
+
+.. function:: warp._src.lang.pos(x: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Pass ``x`` unchanged.
+
+.. function:: warp._src.lang.pos(x: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Pass ``x`` unchanged.
+
+.. function:: warp._src.lang.pos(x: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Pass ``x`` unchanged.
+
+.. function:: warp._src.lang.pos(x: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Pass ``x`` unchanged.

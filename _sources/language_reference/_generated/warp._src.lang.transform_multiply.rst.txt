@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_multiply
+===================================
+
+.. function:: warp._src.lang.transform_multiply(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Multiply two rigid body transformations together.

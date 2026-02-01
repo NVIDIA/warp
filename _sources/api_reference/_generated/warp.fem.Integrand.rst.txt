@@ -1,0 +1,22 @@
+﻿warp.fem.Integrand
+==================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Integrand
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Integrand.__init__
+   
+   
+
+   
+   
+   

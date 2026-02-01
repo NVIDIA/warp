@@ -1,0 +1,45 @@
+﻿warp.fem.space.shape.SquareBipolynomialShapeFunctions
+=====================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: SquareBipolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SquareBipolynomialShapeFunctions.__init__
+      ~SquareBipolynomialShapeFunctions.element_node_triangulation
+      ~SquareBipolynomialShapeFunctions.element_vtk_cells
+      ~SquareBipolynomialShapeFunctions.make_element_inner_weight
+      ~SquareBipolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~SquareBipolynomialShapeFunctions.make_node_coords_in_element
+      ~SquareBipolynomialShapeFunctions.make_node_quadrature_weight
+      ~SquareBipolynomialShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SquareBipolynomialShapeFunctions.EDGE_X
+      ~SquareBipolynomialShapeFunctions.EDGE_Y
+      ~SquareBipolynomialShapeFunctions.INTERIOR
+      ~SquareBipolynomialShapeFunctions.VERTEX
+      ~SquareBipolynomialShapeFunctions.name
+      ~SquareBipolynomialShapeFunctions.value
+      ~SquareBipolynomialShapeFunctions.VERTEX_NODE_COUNT
+      ~SquareBipolynomialShapeFunctions.EDGE_NODE_COUNT
+      ~SquareBipolynomialShapeFunctions.INTERIOR_NODE_COUNT
+      ~SquareBipolynomialShapeFunctions.ORDER
+      ~SquareBipolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

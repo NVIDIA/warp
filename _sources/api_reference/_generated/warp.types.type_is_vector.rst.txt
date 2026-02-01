@@ -1,0 +1,6 @@
+﻿warp.types.type\_is\_vector
+===========================
+
+.. currentmodule:: warp.types
+
+.. autofunction:: type_is_vector

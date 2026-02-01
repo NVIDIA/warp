@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.tile\_upper\_solve\_inplace
+===========================================
+
+.. function:: warp._src.lang.tile_upper_solve_inplace(U: Tile[Float,tuple[int, int]], z: Tile[Float,tuple[int]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Solve for ``x`` in ``Ux = z``, where ``U`` is an upper triangular matrix by overwriting ``z`` with ``x``.
+   
+   This performs general back substitution for upper triangular systems inplace.
+   
+   Note: This inplace variant does not support automatic differentiation (adjoint computation),
+   but avoids allocating shared memory for the output ``x`` by reusing ``z``'s memory.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param U: A square, non-singular, upper triangular matrix
+   :param z: A 1D or 2D tile with compatible shape that gets overwritten by ``x`` where ``Ux = z``.
+   

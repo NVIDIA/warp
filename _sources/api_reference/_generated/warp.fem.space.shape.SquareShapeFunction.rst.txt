@@ -1,0 +1,43 @@
+﻿warp.fem.space.shape.SquareShapeFunction
+========================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: SquareShapeFunction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SquareShapeFunction.__init__
+      ~SquareShapeFunction.make_element_inner_weight
+      ~SquareShapeFunction.make_element_inner_weight_gradient
+      ~SquareShapeFunction.make_node_coords_in_element
+      ~SquareShapeFunction.make_node_quadrature_weight
+      ~SquareShapeFunction.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SquareShapeFunction.EDGE_X
+      ~SquareShapeFunction.EDGE_Y
+      ~SquareShapeFunction.INTERIOR
+      ~SquareShapeFunction.VERTEX
+      ~SquareShapeFunction.name
+      ~SquareShapeFunction.value
+      ~SquareShapeFunction.VERTEX_NODE_COUNT
+      ~SquareShapeFunction.EDGE_NODE_COUNT
+      ~SquareShapeFunction.INTERIOR_NODE_COUNT
+      ~SquareShapeFunction.ORDER
+      ~SquareShapeFunction.NODES_PER_ELEMENT
+   
+   

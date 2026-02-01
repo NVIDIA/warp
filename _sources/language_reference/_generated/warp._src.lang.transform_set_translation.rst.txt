@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_set\_translation
+===========================================
+
+.. function:: warp._src.lang.transform_set_translation(xform: Transformation[Float], p: Vector[Literal[3],Float]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Set the translational part of a transform ``xform``.

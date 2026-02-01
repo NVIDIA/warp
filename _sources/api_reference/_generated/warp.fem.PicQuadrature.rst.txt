@@ -1,0 +1,45 @@
+﻿warp.fem.PicQuadrature
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: PicQuadrature
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PicQuadrature.__init__
+      ~PicQuadrature.active_cell_count
+      ~PicQuadrature.arg_value
+      ~PicQuadrature.element_index_arg_value
+      ~PicQuadrature.evaluation_point_count
+      ~PicQuadrature.fill_arg
+      ~PicQuadrature.fill_element_mask
+      ~PicQuadrature.max_points_per_element
+      ~PicQuadrature.total_point_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PicQuadrature.Arg
+      ~PicQuadrature.ElementIndexArg
+      ~PicQuadrature.domain
+      ~PicQuadrature.evaluation_point_element_index
+      ~PicQuadrature.name
+      ~PicQuadrature.point_coords
+      ~PicQuadrature.point_count
+      ~PicQuadrature.point_evaluation_index
+      ~PicQuadrature.point_index
+      ~PicQuadrature.point_weight
+   
+   

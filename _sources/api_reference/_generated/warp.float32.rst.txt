@@ -1,0 +1,22 @@
+﻿warp.float32
+============
+
+.. currentmodule:: warp
+
+.. autoclass:: float32
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~float32.__init__
+   
+   
+
+   
+   
+   

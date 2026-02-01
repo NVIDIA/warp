@@ -1,0 +1,15 @@
+﻿warp.\_src.lang.trunc
+=====================
+
+.. function:: warp._src.lang.trunc(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the nearest integer that is closer to zero than ``x``.
+   
+   In other words, it discards the fractional part of ``x``.
+   It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
+   Equivalent to :func:`numpy.trunc` and :func:`numpy.fix`.

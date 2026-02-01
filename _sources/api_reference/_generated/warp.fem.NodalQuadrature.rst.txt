@@ -1,0 +1,43 @@
+﻿warp.fem.NodalQuadrature
+========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: NodalQuadrature
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NodalQuadrature.__init__
+      ~NodalQuadrature.arg_value
+      ~NodalQuadrature.element_index_arg_value
+      ~NodalQuadrature.evaluation_point_count
+      ~NodalQuadrature.fill_arg
+      ~NodalQuadrature.max_points_per_element
+      ~NodalQuadrature.point_coords
+      ~NodalQuadrature.point_count
+      ~NodalQuadrature.point_evaluation_index
+      ~NodalQuadrature.point_index
+      ~NodalQuadrature.point_weight
+      ~NodalQuadrature.total_point_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NodalQuadrature.Arg
+      ~NodalQuadrature.ElementIndexArg
+      ~NodalQuadrature.domain
+      ~NodalQuadrature.evaluation_point_element_index
+      ~NodalQuadrature.name
+   
+   

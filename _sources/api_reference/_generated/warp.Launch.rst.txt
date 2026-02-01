@@ -1,0 +1,40 @@
+﻿warp.Launch
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: Launch
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Launch.__init__
+      ~Launch.launch
+      ~Launch.set_dim
+      ~Launch.set_param_at_index
+      ~Launch.set_param_at_index_from_ctype
+      ~Launch.set_param_by_name
+      ~Launch.set_param_by_name_from_ctype
+      ~Launch.set_params
+      ~Launch.set_params_from_ctypes
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Launch.device
+      ~Launch.bounds
+      ~Launch.max_blocks
+      ~Launch.block_dim
+      ~Launch.adjoint
+   
+   

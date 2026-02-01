@@ -1,0 +1,41 @@
+﻿warp.render.UsdRenderer
+=======================
+
+.. currentmodule:: warp.render
+
+.. autoclass:: UsdRenderer
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~UsdRenderer.__init__
+      ~UsdRenderer.add_shape_instance
+      ~UsdRenderer.begin_frame
+      ~UsdRenderer.end_frame
+      ~UsdRenderer.register_body
+      ~UsdRenderer.render_arrow
+      ~UsdRenderer.render_box
+      ~UsdRenderer.render_capsule
+      ~UsdRenderer.render_cone
+      ~UsdRenderer.render_cylinder
+      ~UsdRenderer.render_ground
+      ~UsdRenderer.render_line_list
+      ~UsdRenderer.render_line_strip
+      ~UsdRenderer.render_mesh
+      ~UsdRenderer.render_plane
+      ~UsdRenderer.render_points
+      ~UsdRenderer.render_ref
+      ~UsdRenderer.render_sphere
+      ~UsdRenderer.save
+      ~UsdRenderer.update_body_transforms
+   
+   
+
+   
+   
+   

@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.argmax
+======================
+
+.. function:: warp._src.lang.argmax(a: Vector[Any,Scalar]) -> uint32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the index of the maximum element of vector ``a``.

@@ -1,0 +1,33 @@
+﻿warp.\_src.lang.transform\_vector
+=================================
+
+.. function:: warp._src.lang.transform_vector(xform: Transformation[Float], vec: Vector[Literal[3],Float]) -> Vector[Literal[3],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Apply a transform to a vector.
+   
+   Treat the homogeneous coordinate as w=0 (rotation only).
+
+.. function:: warp._src.lang.transform_vector(mat: Matrix[Literal[4],Literal[4],Float], vec: Vector[Literal[3],Float]) -> Vector[Literal[3],Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Apply a transform to a vector.
+   
+   Treat the homogeneous coordinate as w=0.
+   
+   The transformation is applied treating ``vec`` as a column vector, e.g.: ``y = mat*vec``.
+   
+   This is in contrast to some libraries, notably USD, which applies transforms to row vectors, ``y^T = vec^T*mat^T``.
+   If the transform is coming from a library that uses row-vectors, then users should transpose the transformation
+   matrix before calling this method.

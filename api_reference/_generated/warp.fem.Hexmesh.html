@@ -1,0 +1,1082 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>warp.fem.Hexmesh &#8212; Warp 1.11.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=2ce81c1f" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=c8897f99"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.fem.Hexmesh';</script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="warp.fem.ImplicitField" href="warp.fem.ImplicitField.html" />
+    <link rel="prev" title="warp.fem.Grid3D" href="warp.fem.Grid3D.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.11.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.11.1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.11.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.11.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
+<li class="toctree-l1 current active"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../warp_fem.html" class="nav-link">warp.fem</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.fem.Hexmesh</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="warp-fem-hexmesh">
+<h1>warp.fem.Hexmesh<a class="headerlink" href="#warp-fem-hexmesh" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Hexmesh</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">hex_vertex_indices</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">assume_parallelepiped_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L130-L977"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh" title="Link to this definition">#</a></dt>
+<dd><p>Hexahedral mesh geometry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hex_vertex_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
+<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
+<li><p><strong>build_bvh</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">hex_vertex_indices</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">assume_parallelepiped_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L135-L186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Construct a hexahedral mesh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hex_vertex_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – warp array of shape (num_hexes, 8) containing vertex indices for each hex
+following standard ordering (bottom face vertices in counter-clockwise order, then similarly for upper face)</p></li>
+<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – warp array of shape (num_vertices, 3) containing 3d position for each vertex</p></li>
+<li><p><strong>assume_parallelepiped</strong> – If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)</p></li>
+<li><p><strong>build_bvh</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to also build the hex BVH, which is necessary for the global <cite>fem.lookup</cite> operator</p></li>
+<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.__init__" title="warp.fem.Hexmesh.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(hex_vertex_indices, positions[, ...])</p></td>
+<td><p>Construct a hexahedral mesh.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.boundary_side_count" title="warp.fem.Hexmesh.boundary_side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code></a>()</p></td>
+<td><p>Number of boundary sides in the mesh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code>([device])</p></td>
+<td><p>Rebuild the geometry's Bounding Volume Hierarchy (BVH) for <code class="docutils literal notranslate"><span class="pre">device</span></code> from scratch.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code>(device)</p></td>
+<td><p>Return the BVH identifier for the given device, or <code class="docutils literal notranslate"><span class="pre">0</span></code> if unavailable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.cell_count" title="warp.fem.Hexmesh.cell_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code></a>()</p></td>
+<td><p>Number of cells in the mesh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_deformation_gradient</span></code>(args, s)</p></td>
+<td><p>Device function returning the transpose of the gradient of world position with respect to reference cell</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code>(args, s)</p></td>
+<td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure</span></code>(args, s)</p></td>
+<td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_normal</span></code>(args, s)</p></td>
+<td><p>Device function returning the element normal at a sample point.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code>(args, s)</p></td>
+<td><p>Device function returning the world position of a cell sample point</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.edge_count" title="warp.fem.Hexmesh.edge_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_count</span></code></a>()</p></td>
+<td><p>Number of edges in the mesh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.fill_cell_arg" title="warp.fem.Hexmesh.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
+<td><p>Fill the arguments to be passed to cell-related device functions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.fill_side_arg" title="warp.fem.Hexmesh.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(args, device)</p></td>
+<td><p>Fill the arguments to be passed to side-related device functions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.fill_side_index_arg" title="warp.fem.Hexmesh.fill_side_index_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code></a>(args, device)</p></td>
+<td><p>Fill the arguments to be passed to side-index device functions.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
+<td><p>Create a filtered cell lookup function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.reference_cell" title="warp.fem.Hexmesh.reference_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code></a>()</p></td>
+<td><p>Reference element for mesh cells.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.reference_side" title="warp.fem.Hexmesh.reference_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code></a>()</p></td>
+<td><p>Reference element for mesh sides.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_count" title="warp.fem.Hexmesh.side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code></a>()</p></td>
+<td><p>Number of sides in the mesh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
+<td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
+<td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
+<td><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
+<td><p>Device function returning the element normal at a sample point</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
+<td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
+<td><p>Return whether cell lookups are supported on the given device.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.vertex_count" title="warp.fem.Hexmesh.vertex_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code></a>()</p></td>
+<td><p>Number of vertices in the mesh.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.CellArg" title="warp.fem.Hexmesh.CellArg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CellArg</span></code></a></p></td>
+<td><p>Structure containing arguments to be passed to device functions evaluating cell-related quantities.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.SideArg" title="warp.fem.Hexmesh.SideArg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SideArg</span></code></a></p></td>
+<td><p>Structure containing arguments to be passed to device functions evaluating side-related quantities.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.SideIndexArg" title="warp.fem.Hexmesh.SideIndexArg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SideIndexArg</span></code></a></p></td>
+<td><p>Structure containing arguments to be passed to device functions for indexing sides.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">base</span></code></p></td>
+<td><p>Return the base geometry from which this geometry derives its topology.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.boundary_side_index" title="warp.fem.Hexmesh.boundary_side_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.cell_bounds" title="warp.fem.Hexmesh.cell_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bounds</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.cell_bvh_id" title="warp.fem.Hexmesh.cell_bvh_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_id</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_dimension</span></code></p></td>
+<td><p>Manifold dimension of the geometry cells</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_lookup</span></code></p></td>
+<td><p>Device function for looking up the closest cell to a position.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure_ratio</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.dimension" title="warp.fem.Hexmesh.dimension"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dimension</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.face_hex_indices" title="warp.fem.Hexmesh.face_hex_indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">face_hex_indices</span></code></a></p></td>
+<td><p>Hex indices for each face.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.face_to_hex_coords" title="warp.fem.Hexmesh.face_to_hex_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">face_to_hex_coords</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.face_vertex_indices" title="warp.fem.Hexmesh.face_vertex_indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">face_vertex_indices</span></code></a></p></td>
+<td><p>Vertex indices for each face.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.hex_edge_indices" title="warp.fem.Hexmesh.hex_edge_indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hex_edge_indices</span></code></a></p></td>
+<td><p>Edge indices for each hex element.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>Name of the geometry.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_deformation_gradient" title="warp.fem.Hexmesh.side_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_from_cell_coords" title="warp.fem.Hexmesh.side_from_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_inner_cell_coords" title="warp.fem.Hexmesh.side_inner_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_coords</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_inner_cell_index" title="warp.fem.Hexmesh.side_inner_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_outer_cell_coords" title="warp.fem.Hexmesh.side_outer_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_coords</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_outer_cell_index" title="warp.fem.Hexmesh.side_outer_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_position" title="warp.fem.Hexmesh.side_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_position</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Hexmesh.side_to_cell_arg" title="warp.fem.Hexmesh.side_to_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.dimension">
+<span class="sig-name descname"><span class="pre">dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#warp.fem.Hexmesh.dimension" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.cell_count">
+<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L187-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.cell_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of cells in the mesh.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.vertex_count">
+<span class="sig-name descname"><span class="pre">vertex_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L191-L194"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.vertex_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of vertices in the mesh.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_count">
+<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L195-L198"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.side_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of sides in the mesh.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.edge_count">
+<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L199-L204"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.edge_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of edges in the mesh.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.boundary_side_count">
+<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L205-L208"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.boundary_side_count" title="Link to this definition">#</a></dt>
+<dd><p>Number of boundary sides in the mesh.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.reference_cell">
+<span class="sig-name descname"><span class="pre">reference_cell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L209-L212"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.reference_cell" title="Link to this definition">#</a></dt>
+<dd><p>Reference element for mesh cells.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.fem.Element.html#warp.fem.Element" title="warp._src.fem.geometry.element.Element"><em>Element</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.reference_side">
+<span class="sig-name descname"><span class="pre">reference_side</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L213-L216"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.reference_side" title="Link to this definition">#</a></dt>
+<dd><p>Reference element for mesh sides.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.fem.Element.html#warp.fem.Element" title="warp._src.fem.geometry.element.Element"><em>Element</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.hex_edge_indices">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">hex_edge_indices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><span class="pre">array</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L217-L223"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.hex_edge_indices" title="Link to this definition">#</a></dt>
+<dd><p>Edge indices for each hex element.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.face_hex_indices">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">face_hex_indices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><span class="pre">array</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L224-L228"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.face_hex_indices" title="Link to this definition">#</a></dt>
+<dd><p>Hex indices for each face.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.face_vertex_indices">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">face_vertex_indices</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><span class="pre">array</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L229-L233"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.face_vertex_indices" title="Link to this definition">#</a></dt>
+<dd><p>Vertex indices for each face.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.CellArg">
+<span class="sig-name descname"><span class="pre">CellArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp._src.codegen.Struct</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.CellArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions evaluating cell-related quantities.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.SideArg">
+<span class="sig-name descname"><span class="pre">SideArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp._src.codegen.Struct</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.SideArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions evaluating side-related quantities.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.SideIndexArg">
+<span class="sig-name descname"><span class="pre">SideIndexArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp._src.codegen.Struct</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.SideIndexArg" title="Link to this definition">#</a></dt>
+<dd><p>Structure containing arguments to be passed to device functions for indexing sides.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.fill_cell_arg">
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L245-L250"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.fill_cell_arg" title="Link to this definition">#</a></dt>
+<dd><p>Fill the arguments to be passed to cell-related device functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>args</strong> (<em>HexmeshCellArg</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.fill_side_index_arg">
+<span class="sig-name descname"><span class="pre">fill_side_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L318-L321"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.fill_side_index_arg" title="Link to this definition">#</a></dt>
+<dd><p>Fill the arguments to be passed to side-index device functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>args</strong> (<em>SideIndexArg</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.boundary_side_index">
+<span class="sig-name descname"><span class="pre">boundary_side_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__boundary_side_index(args:</span> <span class="pre">warp._src.fem.geometry.hexmesh.Hexmesh.SideIndexArg,</span> <span class="pre">boundary_side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.boundary_side_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>SideIndexArg</em>)</p></li>
+<li><p><strong>boundary_side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.fill_side_arg">
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/v1.11.1/warp/_src/fem/geometry/hexmesh.py#L328-L334"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Hexmesh.fill_side_arg" title="Link to this definition">#</a></dt>
+<dd><p>Fill the arguments to be passed to side-related device functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>args</strong> (<em>HexmeshSideArg</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_position">
+<span class="sig-name descname"><span class="pre">side_position</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_position(args:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">s:</span> <span class="pre">warp._src.fem.types.Sample)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_position" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_deformation_gradient">
+<span class="sig-name descname"><span class="pre">side_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_deformation_gradient(args:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">s:</span> <span class="pre">warp._src.fem.types.Sample)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_deformation_gradient" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_inner_cell_index">
+<span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_inner_cell_index(arg:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_inner_cell_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_outer_cell_index">
+<span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_outer_cell_index(arg:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_outer_cell_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.face_to_hex_coords">
+<span class="sig-name descname"><span class="pre">face_to_hex_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__face_to_hex_coords(local_face_index:</span> <span class="pre">int,</span> <span class="pre">face_orientation:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">vec3f)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.face_to_hex_coords" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_face_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>face_orientation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>side_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_inner_cell_coords">
+<span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_inner_cell_coords(args:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">vec3f)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_inner_cell_coords" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>side_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_outer_cell_coords">
+<span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_outer_cell_coords(args:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">vec3f)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_outer_cell_coords" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>side_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_from_cell_coords">
+<span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_from_cell_coords(args:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">hex_index:</span> <span class="pre">int,</span> <span class="pre">hex_coords:</span> <span class="pre">vec3f)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_from_cell_coords" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<em>HexmeshSideArg</em>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>hex_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>hex_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.side_to_cell_arg">
+<span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__side_to_cell_arg(side_arg:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshSideArg)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.side_to_cell_arg" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>side_arg</strong> (<em>HexmeshSideArg</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.cell_bvh_id">
+<span class="sig-name descname"><span class="pre">cell_bvh_id</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__cell_bvh_id(cell_arg:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshCellArg)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.cell_bvh_id" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cell_arg</strong> (<em>HexmeshCellArg</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Hexmesh.cell_bounds">
+<span class="sig-name descname"><span class="pre">cell_bounds</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Hexmesh__cell_bounds(cell_arg:</span> <span class="pre">warp._src.fem.geometry.hexmesh.HexmeshCellArg,</span> <span class="pre">cell_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Hexmesh.cell_bounds" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cell_arg</strong> (<em>HexmeshCellArg</em>)</p></li>
+<li><p><strong>cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="warp.fem.Grid3D.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">warp.fem.Grid3D</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="warp.fem.ImplicitField.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">warp.fem.ImplicitField</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh"><code class="docutils literal notranslate"><span class="pre">Hexmesh</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.dimension"><code class="docutils literal notranslate"><span class="pre">dimension</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.cell_count"><code class="docutils literal notranslate"><span class="pre">cell_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.vertex_count"><code class="docutils literal notranslate"><span class="pre">vertex_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_count"><code class="docutils literal notranslate"><span class="pre">side_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.edge_count"><code class="docutils literal notranslate"><span class="pre">edge_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.boundary_side_count"><code class="docutils literal notranslate"><span class="pre">boundary_side_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.reference_cell"><code class="docutils literal notranslate"><span class="pre">reference_cell()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.reference_side"><code class="docutils literal notranslate"><span class="pre">reference_side()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.hex_edge_indices"><code class="docutils literal notranslate"><span class="pre">hex_edge_indices</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.face_hex_indices"><code class="docutils literal notranslate"><span class="pre">face_hex_indices</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.face_vertex_indices"><code class="docutils literal notranslate"><span class="pre">face_vertex_indices</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.CellArg"><code class="docutils literal notranslate"><span class="pre">CellArg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.SideArg"><code class="docutils literal notranslate"><span class="pre">SideArg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.SideIndexArg"><code class="docutils literal notranslate"><span class="pre">SideIndexArg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.fill_cell_arg"><code class="docutils literal notranslate"><span class="pre">fill_cell_arg()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.fill_side_index_arg"><code class="docutils literal notranslate"><span class="pre">fill_side_index_arg()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.boundary_side_index"><code class="docutils literal notranslate"><span class="pre">boundary_side_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.fill_side_arg"><code class="docutils literal notranslate"><span class="pre">fill_side_arg()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_position"><code class="docutils literal notranslate"><span class="pre">side_position</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_deformation_gradient"><code class="docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_inner_cell_index"><code class="docutils literal notranslate"><span class="pre">side_inner_cell_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_outer_cell_index"><code class="docutils literal notranslate"><span class="pre">side_outer_cell_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.face_to_hex_coords"><code class="docutils literal notranslate"><span class="pre">face_to_hex_coords</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_inner_cell_coords"><code class="docutils literal notranslate"><span class="pre">side_inner_cell_coords</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_outer_cell_coords"><code class="docutils literal notranslate"><span class="pre">side_outer_cell_coords</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_from_cell_coords"><code class="docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.side_to_cell_arg"><code class="docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.cell_bvh_id"><code class="docutils literal notranslate"><span class="pre">cell_bvh_id</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Hexmesh.cell_bounds"><code class="docutils literal notranslate"><span class="pre">cell_bounds</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.11.1/docs/api_reference/_generated/warp.fem.Hexmesh.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+﻿warp.fem.make\_covariant\_function\_space
+=========================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: make_covariant_function_space

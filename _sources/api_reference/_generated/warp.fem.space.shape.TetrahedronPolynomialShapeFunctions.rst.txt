@@ -1,0 +1,49 @@
+﻿warp.fem.space.shape.TetrahedronPolynomialShapeFunctions
+========================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TetrahedronPolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TetrahedronPolynomialShapeFunctions.__init__
+      ~TetrahedronPolynomialShapeFunctions.element_node_tets
+      ~TetrahedronPolynomialShapeFunctions.element_vtk_cells
+      ~TetrahedronPolynomialShapeFunctions.make_element_inner_weight
+      ~TetrahedronPolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~TetrahedronPolynomialShapeFunctions.make_node_coords_in_element
+      ~TetrahedronPolynomialShapeFunctions.make_node_quadrature_weight
+      ~TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight
+      ~TetrahedronPolynomialShapeFunctions.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TetrahedronPolynomialShapeFunctions.EDGE
+      ~TetrahedronPolynomialShapeFunctions.FACE
+      ~TetrahedronPolynomialShapeFunctions.INTERIOR
+      ~TetrahedronPolynomialShapeFunctions.VERTEX
+      ~TetrahedronPolynomialShapeFunctions.edge_vidx
+      ~TetrahedronPolynomialShapeFunctions.name
+      ~TetrahedronPolynomialShapeFunctions.opposite_edge_vidx
+      ~TetrahedronPolynomialShapeFunctions.value
+      ~TetrahedronPolynomialShapeFunctions.VERTEX_NODE_COUNT
+      ~TetrahedronPolynomialShapeFunctions.EDGE_NODE_COUNT
+      ~TetrahedronPolynomialShapeFunctions.FACE_NODE_COUNT
+      ~TetrahedronPolynomialShapeFunctions.INTERIOR_NODE_COUNT
+      ~TetrahedronPolynomialShapeFunctions.ORDER
+      ~TetrahedronPolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.bvh\_query\_aabb
+================================
+
+.. function:: warp._src.lang.bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct an axis-aligned bounding box query against a BVH object.
+   
+   This query can be used to iterate over all bounds inside a BVH.
+   To start a query from a specific node, set ``root`` to the index of the node. The root
+   can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
+   When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+   If ``root`` is -1 (default), traversal starts at the BVH's global root.
+   The query will only traverse down from that node, limiting traversal to that subtree.
+   
+   :param id: The BVH identifier
+   :param low: The lower bound of the bounding box in BVH space
+   :param high: The upper bound of the bounding box in BVH space
+   :param root: The root to begin the query from (optional, default: -1)
+   

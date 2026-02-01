@@ -1,0 +1,14 @@
+﻿warp.\_src.lang.vector
+======================
+
+.. function:: warp._src.lang.vector(*args: Scalar, length: int32, dtype: Scalar) -> Vector[Any,Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a vector of given length and dtype.
+   
+   If no arguments are given, the vector is zero-initialized.

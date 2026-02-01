@@ -1,0 +1,6 @@
+﻿warp.timing\_print
+==================
+
+.. currentmodule:: warp
+
+.. autofunction:: timing_print

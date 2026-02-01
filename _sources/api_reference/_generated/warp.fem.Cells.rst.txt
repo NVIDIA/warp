@@ -1,0 +1,57 @@
+﻿warp.fem.Cells
+==============
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Cells
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Cells.__init__
+      ~Cells.cell_domain
+      ~Cells.element_arg_value
+      ~Cells.element_count
+      ~Cells.element_index_arg_value
+      ~Cells.fill_element_arg
+      ~Cells.fill_element_index_arg
+      ~Cells.geometry_element_count
+      ~Cells.notify_operator_usage
+      ~Cells.reference_element
+      ~Cells.supports_lookup
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Cells.DomainArg
+      ~Cells.ElementArg
+      ~Cells.ElementIndexArg
+      ~Cells.dimension
+      ~Cells.domain_cell_arg
+      ~Cells.element_closest_point
+      ~Cells.element_coordinates
+      ~Cells.element_deformation_gradient
+      ~Cells.element_index
+      ~Cells.element_kind
+      ~Cells.element_lookup
+      ~Cells.element_measure
+      ~Cells.element_measure_ratio
+      ~Cells.element_normal
+      ~Cells.element_partition_index
+      ~Cells.element_partition_lookup
+      ~Cells.element_position
+      ~Cells.name
+      ~Cells.geometry_partition
+      ~Cells.geometry
+   
+   
