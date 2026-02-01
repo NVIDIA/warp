@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -721,6 +722,10 @@ def test_bsr_mm_max_new_nnz(test, device):
     bsr_set_zero(C)
     test.assertEqual(C.nnz_sync(), 0)
 
+    # We skip the rest of the test on Windows due to unreliable stdout capture
+    if sys.platform == "win32":
+        return
+
     # max_new_nnz too small, check warning
     capture = StdOutCapture()
     capture.begin()
@@ -729,9 +734,7 @@ def test_bsr_mm_max_new_nnz(test, device):
     output = capture.end()
 
     # Check that the output contains warnings about "max_new_nnz" being exceeded.
-    # Older Windows C runtimes have a bug where stdout sometimes does not get properly flushed.
-    if output != "" or sys.platform != "win32":
-        test.assertRegex(output, r"exceeded")
+    test.assertRegex(output, r"exceeded")
 
 
 def test_capturability(test, device):

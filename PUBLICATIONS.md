@@ -5,10 +5,19 @@ If your work utilizes Warp, we encourage you to share it with us. To add your pu
 pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI to
 [warp-python@nvidia.com](mailto:warp-python@nvidia.com).
 
+## 2026
+
+- **Discovering neural cohesive zone laws from displacement fields**. *G. Barkoulis Gavris, W. Sun*. April 2026. [DOI:10.1016/j.cma.2026.118733](https://doi.org/10.1016/j.cma.2026.118733)
+- **EMPM: Embodied MPM for Modeling and Simulation of Deformable Objects**. *Y. Chen, Y. Hu, L. Sun, T. Kusnur, L. Herlant, C. Jiang*. January 2026. [arXiv:2601.17251](https://arxiv.org/abs/2601.17251)
+- **FocusNav: Spatial Selective Attention with Waypoint Guidance for Humanoid Local Navigation**. *Y. Zhang, J. Ma, L. Yan, Z. Cao, Y. Zhang, H. Li, Y. Gao*. January 2026. [arXiv:2601.12790](https://arxiv.org/abs/2601.12790)
+- **Hiking in the Wild: A Scalable Perceptive Parkour Framework for Humanoids**. *S. Zhu, Z. Zhuang, M. Zhao, K. Lee, H. Zhao*. January 2026. [arXiv:2601.07718](https://arxiv.org/abs/2601.07718)
+- **GPU-Accelerated Cholesky Factorization of Block Tridiagonal Matrices**. *R. Schwan, D. Kuhn, C. N. Jones*. January 2026. [arXiv:2601.03754](https://arxiv.org/abs/2601.03754)
+
 ## 2025
 
 - **AnimaMimic: Imitating 3D Animation from Video Priors**. *T. Xie, Y. Chen, Y. Guo, Y. Yang, B. Zhou, D. Terzopoulos, Y. Jiang, C. Jiang*. December 2025. [arXiv:2512.14133](https://arxiv.org/abs/2512.14133)
 - **START: Traversing Sparse Footholds with Terrain Reconstruction**. *R. Yu, Q. Wang, H. Li, Z. Jun, Z. Wang, J. Wu, Q. Zhu*. December 2025. [arXiv:2512.13153](https://arxiv.org/abs/2512.13153)
+- **Stable autonomous visual navigation: an expert prediction approach**. *E. Wendel, J. Baillieul, J. Hollmann*. December 2025. [DOI:10.1109/cdc57313.2025.11312820](https://doi.org/10.1109/cdc57313.2025.11312820)
 - **Gallant: Voxel Grid-based Humanoid Locomotion and Local-navigation across 3D Constrained Terrains**. *Q. Ben, B. Xu, K. Li, F. Jia, W. Zhang, J. Wang, J. Wang, D. Lin, J. Pang*. November 2025. [arXiv:2511.14625](https://arxiv.org/abs/2511.14625)
 - **NeuSpring: Neural Spring Fields for Reconstruction and Simulation of Deformable Objects from Videos**. *Q. Xu, J. Liu, S. Yu, Y. Wang, Y. Zhou, J. Zhou, J. Cui, Y. Ong, H. Zhang*. November 2025. [arXiv:2511.08310](https://arxiv.org/abs/2511.08310)
 - **Improving Long-Range Interactions in Graph Neural Simulators via Hamiltonian Dynamics**. *T. Hoang, A. Trenta, A. Gravina, N. Freymuth, P. Becker, D. Bacciu, G. Neumann*. November 2025. [arXiv:2511.08185](https://arxiv.org/abs/2511.08185)

@@ -39,7 +39,7 @@ Workflow:
 This example runs from within the Warp repository.
 
 **Requirements:**
-- **Python 3.8+**
+- **Python 3.9+**
 - **CUDA Toolkit 12.8+** (includes `nvcc` compiler; 12.8+ required for `sm_120` support)
 - **NVIDIA GPU** (supports multiple architectures via multi-arch compilation)
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
