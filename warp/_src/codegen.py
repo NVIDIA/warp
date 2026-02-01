@@ -1210,10 +1210,12 @@ class Adjoint:
         adj.max_required_extra_shared_memory = 0
 
         # reset pattern detection flags for compiler bug workarounds
+        # Preserve disable_loop_unroll_workaround if set (e.g. by context.py re-build)
+        prev_disable = adj.disable_loop_unroll_workaround
         adj.has_local_matrix_vars = False
         adj.has_atomic_ops = False
         adj.has_unrollable_loops = False
-        adj.disable_loop_unroll_workaround = False
+        adj.disable_loop_unroll_workaround = prev_disable
 
         # update symbol map for each argument
         for a in adj.args:
@@ -2598,6 +2600,15 @@ class Adjoint:
                     print(
                         f"Notice: Forcing unroll of loop with {max_iters} iterations because it contains wp.static expressions."
                     )
+                
+                # Warn if we are forced to unroll despite the compiler bug workaround
+                if adj.disable_loop_unroll_workaround:
+                    if warp.config.verbose:
+                        print(
+                            "Warning: Loop contains wp.static expressions, forcing unroll. "
+                            "This overrides the compiler bug workaround (Issue #1200), so crash may still occur."
+                        )
+
                 # Track that this loop will be unrolled (Issue #1200)
                 adj.has_unrollable_loops = True
                 return range(start, end, step)
@@ -2619,8 +2630,8 @@ class Adjoint:
             if adj.disable_loop_unroll_workaround:
                 if warp.config.verbose:
                     print(
-                        f"Notice: Disabling loop unroll due to compiler bug workaround (Issue #1200). "
-                        f"Kernel combines matrices + atomics which can crash at -O3 with unrolling."
+                        "Notice: Disabling loop unroll due to compiler bug workaround (Issue #1200). "
+                        "Kernel combines matrices + atomics which can crash at -O3 with unrolling."
                     )
                 ok_to_unroll = False
 
