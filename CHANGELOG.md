@@ -1,41 +1,38 @@
 # Changelog
 
-## [Unreleased] - 2026-??
-
-### Added
-
-### Removed
-
-### Deprecated
+## [1.11.1] - 2026-02-01
 
 ### Changed
 
 - Rename all `build_lib.py` CLI flags to use kebab-case for consistency (e.g., `--cuda_path` to `--cuda-path`,
   `--llvm_source_path` to `--llvm-source-path`). Rename `--libmathdx` to `--use-libmathdx` for clarity.
-- Permit constant arguments in `wp.tile_map()` ([GH-1136](https://github.com/NVIDIA/warp/issues/1136)).
+- Permit scalar, vector, and matrix arguments in `wp.tile_map()` ([GH-1136](https://github.com/NVIDIA/warp/issues/1136)).
 
 ### Fixed
 
-- Fix `wp.tile_matmul()` reading from uninitialized output tile when using `c = wp.tile_matmul(a, b)`.
+- Fix `wp.tile_matmul()` reading from uninitialized output tile when using `c = wp.tile_matmul(a, b)`
+  ([GH-1180](https://github.com/NVIDIA/warp/issues/1180)).
+- Fix tile * constant multiplication when one operand is a vector or matrix type ([GH-1175](https://github.com/NVIDIA/warp/issues/1175)).
 - Fix CPU kernel assertions in debug mode not aborting the program.
-- Fix `@wp.func` decorated functions showing generic `_Wrapped` types in Pyright/Pylance instead of their actual
-  signatures on Python 3.10+ ([GH-1163](https://github.com/NVIDIA/warp/issues/1163)).
 - Fix `wp.static()` incorrectly capturing global Python variables instead of loop variables when used inside for-loops
   in kernels ([GH-1139](https://github.com/NVIDIA/warp/issues/1139)).
-- Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
-  downloading from packman.
 - Fix excessive memory usage in CUDA graphs with multiple allocations/deallocations
   ([GH-1157](https://github.com/NVIDIA/warp/issues/1157)).
+- Fix a segfault in conditional expressions (ternary `if`/`else`) when one branch accesses an array element
+  and the other branch is taken ([GH-1094](https://github.com/NVIDIA/warp/issues/1094)).
 - Fix `wp.autograd.gradcheck()` and `wp.autograd.gradcheck_tape()` support for kernels involving arrays with data types
   other than single-precision floats ([GH-1113](https://github.com/NVIDIA/warp/issues/1113)).
+- Raise a clear error when a kernel has a return type annotation ([GH-1109](https://github.com/NVIDIA/warp/issues/1109)).
+- Fix `@wp.func` decorated functions showing generic `_Wrapped` types in Pyright/Pylance instead of their actual
+  signatures on Python 3.10+ ([GH-1163](https://github.com/NVIDIA/warp/issues/1163)).
 - Fix IDE autocomplete stubs to show all valid signatures for functions that have both Python API
   and kernel-scope versions (e.g., `zeros()`). The stub generator now detects conflicts and
   generates merged `@overload` definitions where appropriate ([GH-1156](https://github.com/NVIDIA/warp/issues/1156)).
-- Fix a segfault in conditional expressions (ternary `if`/`else`) when one branch accesses an array element
-  and the other branch is taken ([GH-1094](https://github.com/NVIDIA/warp/issues/1094)).
-- Fix reporting of returning a value from a kernel ([GH-1109](https://github.com/NVIDIA/warp/issues/1109)).
-- Fix JAX FFI multi-gpu graph caching ([GH-1181](https://github.com/NVIDIA/warp/pull/1181)).
-- Fix tile * constant multiplication when one operand is a vector or matrix type ([GH-1175](https://github.com/NVIDIA/warp/issues/1175)).
+- Fix JAX FFI deadlock when using cached graphs across multiple GPUs
+  ([GH-1181](https://github.com/NVIDIA/warp/pull/1181)).
+- Fix inverted `verbose` flag in `wp.capture_debug_dot_print()` ([GH-1202](https://github.com/NVIDIA/warp/pull/1202)).
+- Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
+  downloading from packman.
 
 ### Documentation
 
@@ -2129,7 +2126,8 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.11.1...HEAD
+[1.11.1]: https://github.com/NVIDIA/warp/releases/tag/v1.11.1
 [1.11.0]: https://github.com/NVIDIA/warp/releases/tag/v1.11.0
 [1.10.1]: https://github.com/NVIDIA/warp/releases/tag/v1.10.1
 [1.10.0]: https://github.com/NVIDIA/warp/releases/tag/v1.10.0
