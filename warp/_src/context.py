@@ -2086,8 +2086,14 @@ class ModuleBuilder:
         kernel.adj.build(self)
 
         # Check for known compiler bugs after building (Issue #1200)
-        if warp.config.auto_detect_cuda_compiler_bugs:
-            if kernel.adj.detect_issue_1200_pattern() and self.options.get("optimization_level", 3) == 3:
+        # Only apply for CUDA builds (output_arch is set for CUDA targets)
+        if warp.config.auto_detect_cuda_compiler_bugs and self.options.get("output_arch") is not None:
+            # Compute effective optimization level
+            opt = self.options.get("optimization_level")
+            if opt is None:
+                opt = warp.config.optimization_level or 3
+            
+            if kernel.adj.detect_issue_1200_pattern() and opt == 3:
                 warnings.warn(
                     f"Kernel '{kernel.key}': Detected pattern triggering CUDA compiler bug "
                     f"(issue #1200: matrices + atomics + unrolling at -O3). "
