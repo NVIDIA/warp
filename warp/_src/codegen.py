@@ -1247,12 +1247,12 @@ class Adjoint:
 
     def detect_issue_1200_pattern(adj) -> bool:
         """Detect pattern that triggers CUDA compiler bug #1200.
-        
+
         Returns True if kernel combines:
         - Local matrix variables (mat22, mat33, mat43, mat44, etc.)
         - Atomic operations
         - Loop unrolling
-        
+
         This combination can cause "Invalid __local__ read" crashes at optimization level 3.
         """
         return (
