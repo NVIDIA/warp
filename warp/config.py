@@ -198,10 +198,10 @@ and automatically apply workarounds (e.g., reducing optimization level).
 
 Currently detects:
 
-- **Issue #1200**: Invalid local read with matrices + atomics at -O3
+- **Issue #1200**: Invalid local read with matrices + atomics at ``-O3``
 
-  Kernels combining local matrix types (mat33, mat43, etc.), atomic operations,
-  and loop unrolling may crash with "Invalid __local__ read" errors when compiled
+  Kernels combining local matrix types (``mat33``, ``mat43``, etc.), atomic operations,
+  and loop unrolling may crash with ``"Invalid __local__ read"`` errors when compiled
   at optimization level 3. Warp will automatically reduce the optimization level
   to 2 for such kernels.
 

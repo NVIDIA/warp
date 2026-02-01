@@ -34,6 +34,7 @@ from typing import Any, Callable, ClassVar, get_args, get_origin
 
 import warp.config
 from warp._src.types import *
+from warp._src.types import is_array, type_is_matrix
 
 _wp_module_name_ = "warp.codegen"
 
@@ -1364,18 +1365,8 @@ class Adjoint:
         adj.blocks[-1].vars.append(v)
 
         # Detect local matrix variables for compiler bug workaround (Issue #1200)
-        if type is not None and not is_array(type):
-            type_str = str(type)
-            # Check for matrix types: mat22, mat33, mat43, mat44, mat55, etc.
-            if type_str.startswith('mat') and len(type_str) >= 5:
-                # Ensure it's a matrix type like mat22, mat33, not just "matrix" or similar
-                try:
-                    # Extract digits from type name (e.g., "mat33" -> "33")
-                    digits = type_str[3:]
-                    if digits and digits[0].isdigit():
-                        adj.has_local_matrix_vars = True
-                except (IndexError, ValueError):
-                    pass
+        if type is not None and not is_array(type) and type_is_matrix(type):
+            adj.has_local_matrix_vars = True
 
         return v
 
@@ -1759,6 +1750,10 @@ class Adjoint:
         return output
 
     def add_builtin_call(adj, func_name, args, min_outputs=None):
+        # Detect atomic operations for compiler bug workaround (Issue #1200)
+        if func_name.startswith('atomic_'):
+            adj.has_atomic_ops = True
+
         func = warp._src.context.builtin_functions[func_name]
         return adj.add_call(func, args, {}, {}, min_outputs=min_outputs)
 

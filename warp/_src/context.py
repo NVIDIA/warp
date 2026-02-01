@@ -2083,7 +2083,9 @@ class ModuleBuilder:
         if kernel.options.get("enable_backward", True):
             kernel.adj.used_by_backward_kernel = True
 
-        # Check for known compiler bugs before building (Issue #1200)
+        kernel.adj.build(self)
+
+        # Check for known compiler bugs after building (Issue #1200)
         if warp.config.auto_detect_cuda_compiler_bugs:
             if kernel.adj.detect_issue_1200_pattern() and self.options.get("optimization_level", 3) == 3:
                 warnings.warn(
@@ -2095,8 +2097,6 @@ class ModuleBuilder:
                     stacklevel=6
                 )
                 self.options["optimization_level"] = 2
-
-        kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
@@ -2762,6 +2762,10 @@ class Module:
 
                 # write cuda sources
                 cu_source = builder.codegen("cuda")
+
+                # Update optimization level if it was modified during kernel build (e.g. compiler bug workaround)
+                if builder.options.get("optimization_level") is not None:
+                    opt = builder.options["optimization_level"]
 
                 with open(source_code_path, "w") as cu_file:
                     cu_file.write(cu_source)
