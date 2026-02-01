@@ -175,19 +175,36 @@ VALUE_TYPES = (
 def get_isolated_dir(
     module_name: str,
 ) -> tuple[str]:
-    """Import a module in a fresh Python process and return its dir()."""
+    """Import a module in a fresh Python process and return its dir().
+
+    Uses delimited output to robustly parse the JSON result regardless of
+    any other stdout content (warnings, logging, etc.).
+    """
     code = f'''
 import importlib
 import json
 import docs.generate_reference
 module = importlib.import_module("{module_name}")
+# Write to stdout with clear delimiters
+print("__SYMBOLS_START__")
 print(json.dumps(dir(module)))
+print("__SYMBOLS_END__")
 '''
     result = subprocess.run((sys.executable, "-c", code), check=False, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"Failed to import {module_name}: {result.stderr}")
+        raise RuntimeError(f"Failed to import {module_name} in subprocess:\n{result.stderr}")
 
-    return json.loads(result.stdout.split("\n")[-2])
+    # Parse between delimiters
+    stdout = result.stdout
+    start_marker = "__SYMBOLS_START__\n"
+    end_marker = "\n__SYMBOLS_END__"
+    start = stdout.find(start_marker)
+    end = stdout.find(end_marker)
+    if start < 0 or end < 0:
+        raise RuntimeError(f"Unexpected output format from subprocess (missing delimiters):\n{stdout}")
+
+    json_str = stdout[start + len(start_marker) : end]
+    return json.loads(json_str)
 
 
 def is_symbol_public(
@@ -222,7 +239,11 @@ def get_symbol_type(
     module: ModuleType,
     symbol: str,
 ) -> SymbolType:
-    """Determine the type of a symbol (module, class, function, etc.)."""
+    """Determine the type of a symbol (module, class, function, etc.).
+
+    Raises:
+        NotImplementedError: If the symbol type cannot be determined.
+    """
     attr = getattr(module, symbol)
 
     if inspect.ismodule(attr):
@@ -240,7 +261,7 @@ def get_symbol_type(
     if isinstance(attr, VALUE_TYPES):
         return SymbolType.VALUE
 
-    return NotImplementedError
+    raise NotImplementedError(f"Unknown symbol type for '{symbol}' in module '{module.__name__}': {type(attr)}")
 
 
 def split_trailing_digits(
@@ -259,23 +280,10 @@ def sort_symbols(
     symbols: Sequence[str],
 ) -> tuple[str, ...]:
     """Sort symbols based on their type and name."""
-    try:
-        return sorted(
-            symbols,
-            key=lambda symbol: (get_symbol_type(module, symbol), split_trailing_digits(symbol)),
-        )
-    except TypeError:
-        invalid_symbols = []
-        for symbol in symbols:
-            if get_symbol_type(module, symbol) is NotImplementedError:
-                invalid_symbols.append(symbol)
-
-        if invalid_symbols:
-            invalid_symbols_fmt = ", ".join(f"`{x}`" for x in invalid_symbols)
-            raise RuntimeError(
-                f"Found symbols in the module `{module.__name__}` that couldn't be associated to a type: "
-                f"{invalid_symbols_fmt}"
-            ) from None
+    return sorted(
+        symbols,
+        key=lambda symbol: (get_symbol_type(module, symbol), split_trailing_digits(symbol)),
+    )
 
 
 def get_builtin_symbols_per_category(

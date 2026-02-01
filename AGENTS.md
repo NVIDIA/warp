@@ -83,3 +83,10 @@ Use imperative mood ("Fix X", not "Fixed X"), ~50 char subject, reference issues
 ## CI/CD and GitHub
 
 Dual pipelines exist for GitLab (`.gitlab-ci.yml`) and GitHub (`.github/workflows/`)—changes may need updating in both. Follow templates in `.github/` for issues and PRs.
+
+### GitHub Actions Security
+
+- IMPORTANT: Pin actions to commit hashes, not tags or semantic versions. Tags can be moved or compromised; commit hashes are immutable.
+  - Good: `uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86`
+  - Bad: `uses: astral-sh/setup-uv@v4` or `uses: astral-sh/setup-uv@v4.0.0`
+- Let uv infer the Python version from `.python-version` instead of specifying it explicitly in workflows. Use `uv python install` without arguments.

@@ -37,8 +37,16 @@ HERE = os.path.dirname(__file__)
 WARP_PATH = os.path.realpath(os.path.join(HERE, ".."))
 
 sys.path.insert(0, WARP_PATH)
-import warp as wp  # noqa: E402
-import warp._src  # noqa: E402
+
+try:
+    import warp as wp
+    import warp._src
+except ImportError as e:
+    raise ImportError(
+        f"Could not import warp module: {e}. "
+        "Warp must be importable to build documentation. "
+        "Run build_lib.py first, then run build_docs.py with the docs extra installed."
+    ) from e
 
 # Determine the Git version/tag from CI environment variables.
 # 1. Check for GitHub Actions' variable.
@@ -316,7 +324,6 @@ def linkcode_resolve(domain, info):
         https://github.com/google/jax/blob/main/docs/conf.py
         https://www.sphinx-doc.org/en/master/usage/extensions/linkcode.html
     """
-
     if domain != "py":
         return None
     if not info["module"]:
@@ -372,7 +379,7 @@ def build_constant_docs_cache():
     """Build a cache of constant docstrings from all warp._src modules."""
     out = {}
 
-    for _, modname, _ in pkgutil.walk_packages(warp._src.__path__, prefix=wp._src.__name__ + "."):
+    for _, modname, _ in pkgutil.walk_packages(warp._src.__path__, prefix=warp._src.__name__ + "."):
         try:
             module = importlib.import_module(modname)
             source = inspect.getsource(module)
