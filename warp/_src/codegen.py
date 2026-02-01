@@ -1256,14 +1256,13 @@ class Adjoint:
         Returns True if kernel combines:
         - Local matrix variables (mat22, mat33, mat43, mat44, etc.)
         - Atomic operations
-        - Loop unrolling
 
-        This combination can cause "Invalid __local__ read" crashes at optimization level 3.
+        This combination can cause "Invalid __local__ read" crashes at optimization level 3
+        if loop unrolling is enabled.
         """
         return (
             adj.has_local_matrix_vars and
-            adj.has_atomic_ops and
-            adj.has_unrollable_loops
+            adj.has_atomic_ops
         )
 
     # code generation methods
@@ -1552,6 +1551,10 @@ class Adjoint:
         )
 
     def add_call(adj, func, args, kwargs, type_args, min_outputs=None):
+        # Detect atomic operations for compiler bug workaround (Issue #1200)
+        if hasattr(func, 'native_func') and func.native_func.startswith('atomic_'):
+            adj.has_atomic_ops = True
+
         # Extract the types and values passed as arguments to the function call.
         arg_types = tuple(get_arg_type(x) for x in args)
         kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
@@ -1620,6 +1623,11 @@ class Adjoint:
                     adj.builder.deferred_functions.append(func.custom_grad_func)
                 if func.custom_replay_func:
                     adj.builder.deferred_functions.append(func.custom_replay_func)
+
+            # Propagate Issue #1200 detection flags from callee into caller
+            if hasattr(func, "adj"):
+                adj.has_local_matrix_vars |= func.adj.has_local_matrix_vars
+                adj.has_atomic_ops |= func.adj.has_atomic_ops
 
         # Resolve the return value based on the types and values of the given arguments.
         bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
@@ -2605,8 +2613,8 @@ class Adjoint:
                 if adj.disable_loop_unroll_workaround:
                     if warp.config.verbose:
                         print(
-                            "Warning: Loop contains wp.static expressions, forcing unroll. "
-                            "This overrides the compiler bug workaround (Issue #1200), so crash may still occur."
+                            "Warning: Loop unrolling required for wp.static expressions. "
+                            "Mitigation for compiler bug #1200 (disable unrolling) cannot be applied."
                         )
 
                 # Track that this loop will be unrolled (Issue #1200)

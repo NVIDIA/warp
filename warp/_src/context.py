@@ -2089,7 +2089,7 @@ class ModuleBuilder:
         # Only apply for CUDA builds (output_arch is set for CUDA targets)
         if warp.config.auto_detect_cuda_compiler_bugs and self.options.get("output_arch") is not None:
             # Check if this kernel has the problematic pattern
-            if kernel.adj.has_local_matrix_vars and kernel.adj.has_atomic_ops:
+            if kernel.adj.detect_issue_1200_pattern():
                 # Set flag to disable loop unrolling for this kernel only
                 # This prevents the crash without affecting other kernels in the module
                 kernel.adj.disable_loop_unroll_workaround = True
