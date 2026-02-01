@@ -190,6 +190,24 @@ if each nested loop is below the ``max_unroll`` threshold.
 This setting can be overridden at the module level by setting the ``"max_unroll"`` module option.
 """
 
+auto_detect_cuda_compiler_bugs: bool = True
+"""Automatically detect and work around known CUDA compiler bugs.
+
+When enabled, Warp will detect kernel patterns that trigger known compiler bugs
+and automatically apply workarounds (e.g., reducing optimization level).
+
+Currently detects:
+
+- **Issue #1200**: Invalid local read with matrices + atomics at -O3
+  
+  Kernels combining local matrix types (mat33, mat43, etc.), atomic operations,
+  and loop unrolling may crash with "Invalid __local__ read" errors when compiled
+  at optimization level 3. Warp will automatically reduce the optimization level
+  to 2 for such kernels.
+
+Set to ``False`` to disable automatic detection and workarounds.
+"""
+
 enable_tiles_in_stack_memory: _Optional[bool] = True
 """Use stack memory instead of static memory for tile allocations on the CPU.
 

@@ -2082,6 +2082,20 @@ class ModuleBuilder:
         if kernel.options.get("enable_backward", True):
             kernel.adj.used_by_backward_kernel = True
 
+        # Check for known compiler bugs before building (Issue #1200)
+        if warp.config.auto_detect_cuda_compiler_bugs:
+            if kernel.adj.detect_issue_1200_pattern() and self.options.get("optimization_level", 3) == 3:
+                import warnings
+                warnings.warn(
+                    f"Kernel '{kernel.key}': Detected pattern triggering CUDA compiler bug "
+                    f"(issue #1200: matrices + atomics + unrolling at -O3). "
+                    f"Reducing optimization level to 2. "
+                    f"Set warp.config.auto_detect_cuda_compiler_bugs=False to disable.",
+                    RuntimeWarning,
+                    stacklevel=6
+                )
+                self.options["optimization_level"] = 2
+
         kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:

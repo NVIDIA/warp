@@ -1124,6 +1124,12 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
+        # Pattern detection for known compiler bugs (Issue #1200)
+        # These are set during build() and checked after code generation
+        adj.has_local_matrix_vars = False
+        adj.has_atomic_ops = False
+        adj.has_unrollable_loops = False
+
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
     # where each function pushes and pops space off, the extra
@@ -1201,6 +1207,11 @@ class Adjoint:
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
 
+        # reset pattern detection flags for compiler bug workarounds
+        adj.has_local_matrix_vars = False
+        adj.has_atomic_ops = False
+        adj.has_unrollable_loops = False
+
         # update symbol map for each argument
         for a in adj.args:
             adj.symbols[a.label] = a
@@ -1233,6 +1244,22 @@ class Adjoint:
 
             # release builder reference for GC
             adj.builder = None
+
+    def detect_issue_1200_pattern(adj) -> bool:
+        """Detect pattern that triggers CUDA compiler bug #1200.
+        
+        Returns True if kernel combines:
+        - Local matrix variables (mat22, mat33, mat43, mat44, etc.)
+        - Atomic operations
+        - Loop unrolling
+        
+        This combination can cause "Invalid __local__ read" crashes at optimization level 3.
+        """
+        return (
+            adj.has_local_matrix_vars and
+            adj.has_atomic_ops and
+            adj.has_unrollable_loops
+        )
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -1335,6 +1362,20 @@ class Adjoint:
         adj.variables.append(v)
 
         adj.blocks[-1].vars.append(v)
+
+        # Detect local matrix variables for compiler bug workaround (Issue #1200)
+        if type is not None and not is_array(type):
+            type_str = str(type)
+            # Check for matrix types: mat22, mat33, mat43, mat44, mat55, etc.
+            if type_str.startswith('mat') and len(type_str) >= 5:
+                # Ensure it's a matrix type like mat22, mat33, not just "matrix" or similar
+                try:
+                    # Extract digits from type name (e.g., "mat33" -> "33")
+                    digits = type_str[3:]
+                    if digits and digits[0].isdigit():
+                        adj.has_local_matrix_vars = True
+                except (IndexError, ValueError):
+                    pass
 
         return v
 
@@ -2560,6 +2601,8 @@ class Adjoint:
                     print(
                         f"Notice: Forcing unroll of loop with {max_iters} iterations because it contains wp.static expressions."
                     )
+                # Track that this loop will be unrolled (Issue #1200)
+                adj.has_unrollable_loops = True
                 return range(start, end, step)
 
             # Apply max_unroll check only for regular loops (no static expressions)
@@ -2576,6 +2619,8 @@ class Adjoint:
                 ok_to_unroll = False
 
             if ok_to_unroll:
+                # Track that this loop will be unrolled (Issue #1200)
+                adj.has_unrollable_loops = True
                 return range(start, end, step)
 
         # Unroll is not possible, range needs to be valuated dynamically
