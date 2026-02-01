@@ -22,10 +22,11 @@ Key decorators: `@wp.kernel` (parallel GPU/CPU code), `@wp.func` (reusable funct
 
 ## Python Execution
 
-- Use `uv run` for all Python execution (matches CI/CD): `uv run script.py` or `uv run -m module_name`
+- This project uses `uv` (matches CI/CD): `uv run script.py`, `uv run -m module_name`, or `uv run python -c "..."`
 - With extras: `uv run --extra dev -m warp.tests`
 - With additional packages: `uv run --with rich script.py`
-- Never run bare `python`/`python3`—always use `uv run` or activate `.venv` first.
+- Use `uv run python` (runs with project dependencies) or activate `.venv` first, not the system Python.
+- If `warp/bin/` is empty, build first with `build_lib.py` (or `--quick`, see Testing section for requirements).
 
 ## Testing
 
