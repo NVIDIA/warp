@@ -33,6 +33,8 @@
 - Fix inverted `verbose` flag in `wp.capture_debug_dot_print()` ([GH-1202](https://github.com/NVIDIA/warp/pull/1202)).
 - Fix `--llvm-path` build option to use existing LLVM installation when building `warp-clang` library instead of
   downloading from packman.
+- Fix `bsr_get_diag()` not zeroing the output buffer when provided, causing missing diagonal blocks to
+  retain stale values instead of being set to zero ([GH-1170](https://github.com/NVIDIA/warp/pull/1170)).
 
 ### Documentation
 
