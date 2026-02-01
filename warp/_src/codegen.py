@@ -34,7 +34,7 @@ from typing import Any, Callable, ClassVar, get_args, get_origin
 
 import warp.config
 from warp._src.types import *
-from warp._src.types import is_array, type_is_matrix
+from warp._src.types import *
 
 _wp_module_name_ = "warp.codegen"
 
