@@ -22,6 +22,8 @@
 - Permit constant arguments in `wp.tile_map()` ([GH-1136](https://github.com/NVIDIA/warp/issues/1136)).
 - Enable "shared" tile allocations on the stack for all CPU architectures, by defaulting
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
+- Relax the integer types expected when indexing vectors and matrices
+  ([GH-1209](https://github.com/NVIDIA/warp/issues/1209)).
 
 ### Fixed
 

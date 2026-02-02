@@ -9437,7 +9437,7 @@ def matrix_ij_dispatch_func(input_types: Mapping[str, type], return_type: Any, a
 # implements &vector[index]
 add_builtin(
     "index",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9448,7 +9448,7 @@ add_builtin(
 # implements &bool_vector[index] (bool is not part of Scalar)
 add_builtin(
     "index",
-    input_types={"a": vector(length=Any, dtype=bool), "i": int},
+    input_types={"a": vector(length=Any, dtype=bool), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9459,7 +9459,7 @@ add_builtin(
 # implements &quaternion[index]
 add_builtin(
     "index",
-    input_types={"a": quaternion(dtype=Float), "i": int},
+    input_types={"a": quaternion(dtype=Float), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9470,7 +9470,7 @@ add_builtin(
 # implements &transformation[index]
 add_builtin(
     "index",
-    input_types={"a": transformation(dtype=Float), "i": int},
+    input_types={"a": transformation(dtype=Float), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9481,7 +9481,7 @@ add_builtin(
 # implements &(*vector)[index]
 add_builtin(
     "indexref",
-    input_types={"a": vector(length=Any, dtype=Scalar), "i": int},
+    input_types={"a": vector(length=Any, dtype=Scalar), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9492,7 +9492,7 @@ add_builtin(
 # implements &(*bool_vector)[index] (bool is not part of Scalar)
 add_builtin(
     "indexref",
-    input_types={"a": vector(length=Any, dtype=bool), "i": int},
+    input_types={"a": vector(length=Any, dtype=bool), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9503,7 +9503,7 @@ add_builtin(
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": int, "j": int},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Int, "j": Int},
     value_func=matrix_ij_value_func,
     dispatch_func=matrix_ij_dispatch_func,
     hidden=True,
@@ -9514,7 +9514,7 @@ add_builtin(
 # implements &(*bool_matrix)[i, j] (bool is not part of Scalar)
 add_builtin(
     "indexref",
-    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": int, "j": int},
+    input_types={"a": matrix(shape=(Any, Any), dtype=bool), "i": Int, "j": Int},
     value_func=matrix_ij_value_func,
     dispatch_func=matrix_ij_dispatch_func,
     hidden=True,
@@ -9525,7 +9525,7 @@ add_builtin(
 # implements &(*quaternion)[index]
 add_builtin(
     "indexref",
-    input_types={"a": quaternion(dtype=Float), "i": int},
+    input_types={"a": quaternion(dtype=Float), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
@@ -9536,7 +9536,7 @@ add_builtin(
 # implements &(*transformation)[index]
 add_builtin(
     "indexref",
-    input_types={"a": transformation(dtype=Float), "i": int},
+    input_types={"a": transformation(dtype=Float), "i": Int},
     value_func=vector_index_value_func,
     dispatch_func=vector_index_dispatch_func,
     hidden=True,
