@@ -1388,6 +1388,45 @@ for dtype in np_float_types:
         TestVec, f"test_normalize_{dtype.__name__}", test_normalize, devices=devices, dtype=dtype
     )
 
+
+@wp.kernel
+def test_vector_indexing_types():
+    # Test vector indexing with various integer types
+    v2 = wp.vec2i(1, 2)
+    v3 = wp.vec3i(1, 2, 3)
+    v4 = wp.vec4i(1, 2, 3, 4)
+
+    x = v2[wp.uint8(0)]
+    y = v2[wp.int16(1)]
+
+    x = v3[wp.uint32(0)]
+    y = v3[wp.int64(1)]
+    z = v3[wp.int8(2)]
+
+    x = v4[wp.uint16(0)]
+    y = v4[wp.uint64(1)]
+    z = v4[wp.int32(2)]
+    w = v4[wp.uint8(3)]
+
+    # Test using argmin/argmax result (uint32) directly as vector index
+    i = wp.argmin(v3)
+    x = v3[i] + 1
+
+    j = wp.argmax(v4)
+    y = v4[j] + 1
+
+    # Test matrix indexing with various integer types
+    m22 = wp.mat22f(1.0, 2.0, 3.0, 4.0)
+    m33 = wp.mat33f(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
+
+    a = m22[wp.uint8(0), wp.uint8(0)]
+    b = m22[wp.int16(1), wp.int16(1)]
+
+    a = m33[wp.uint32(0), wp.int64(0)]
+    b = m33[wp.int8(1), wp.uint16(1)]
+    c = m33[wp.uint64(2), wp.int32(2)]
+
+
 add_function_test(TestVec, "test_length_mismatch", test_length_mismatch, devices=devices)
 add_function_test(TestVec, "test_vector_len", test_vector_len, devices=devices)
 add_function_test(TestVec, "test_vec_extract", test_vec_extract, devices=devices)
@@ -1403,6 +1442,7 @@ add_function_test(TestVec, "test_vec_indexing_assign", test_vec_indexing_assign,
 add_function_test(TestVec, "test_vec_slicing_assign", test_vec_slicing_assign, devices=devices)
 add_function_test(TestVec, "test_vec_assign_inplace_errors", test_vec_assign_inplace_errors, devices=devices)
 add_function_test(TestVec, "test_vec_slicing_assign_backward", test_vec_slicing_assign_backward, devices=devices)
+add_kernel_test(TestVec, test_vector_indexing_types, dim=1, devices=devices)
 
 
 if __name__ == "__main__":

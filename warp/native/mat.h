@@ -4054,7 +4054,7 @@ inline CUDA_CALLABLE void adj_extract(
     const mat_t<Rows, Cols, Type>& m,
     int row,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
+    int adj_row,
     const vec_t<Cols, Type>& adj_ret
 )
 {
@@ -4068,8 +4068,8 @@ inline void CUDA_CALLABLE adj_extract(
     int row,
     int col,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    int& adj_col,
+    int adj_row,
+    int adj_col,
     Type adj_ret
 )
 {
@@ -4137,7 +4137,7 @@ inline CUDA_CALLABLE void adj_extract(
     int col,
     mat_t<Rows, Cols, Type>& adj_m,
     slice_t& adj_row_slice,
-    int& adj_col,
+    int adj_col,
     const vec_t<RowSliceLength, Type>& adj_ret
 )
 {
@@ -4177,7 +4177,7 @@ inline CUDA_CALLABLE void adj_extract(
     int row,
     slice_t col_slice,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
+    int adj_row,
     slice_t& adj_col_slice,
     const vec_t<ColSliceLength, Type>& adj_ret
 )
