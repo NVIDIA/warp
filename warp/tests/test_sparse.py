@@ -20,6 +20,7 @@ import numpy as np
 
 import warp as wp
 from warp.sparse import (
+    BsrMatrix,
     bsr_assign,
     bsr_axpy,
     bsr_axpy_work_arrays,
@@ -776,6 +777,35 @@ def test_capturability(test, device):
     assert_array_equal(bsr_get_diag(C), wp.full(N, value=wp.mat33(9.0), dtype=wp.mat33, device=device))
 
 
+def test_bsr_alloc(test, device):
+    rows_of_blocks, cols_of_blocks = 3, 4
+
+    bsr: BsrMatrix[float] = bsr_zeros(
+        rows_of_blocks,
+        cols_of_blocks,
+        block_type=float,
+        device=device,
+    )
+
+    # Notify of new nnz upper bound. Allocs buffers, but nnz_sync still 0
+    bsr.notify_nnz_changed(10)
+    assert bsr.columns.shape[0] >= 6
+    assert bsr.values.shape[0] >= 6
+
+    assert bsr.nnz == 10
+    assert bsr.nnz_sync() == 0
+
+    # Set offsets and sync. Should update actual nnz
+    offsets = wp.array([0, 2, 3, 6], dtype=int, device=device)
+    bsr.offsets.assign(offsets)
+    bsr.notify_nnz_changed()
+
+    assert bsr.nnz == 6
+    assert bsr.nnz_sync() == 6
+    assert bsr.columns.shape[0] >= 6
+    assert bsr.values.shape[0] >= 6
+
+
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
 
@@ -847,6 +877,8 @@ add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.flo
 
 add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices)
 add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)
+
+add_function_test(TestSparse, "test_bsr_alloc", test_bsr_alloc, devices=devices)
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
