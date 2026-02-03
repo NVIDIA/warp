@@ -1926,7 +1926,72 @@ The :class:`wp.MarchingCubes <warp.MarchingCubes>` class can be used to extract 
 isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
 file using the :class:`warp.render.UsdRenderer`.
 
-See :github:`warp/examples/core/example_marching_cubes.py` for a usage example.
+.. code-block:: python
+
+    import warp as wp
+
+    # Create a 3D scalar field
+    field = wp.zeros((64, 64, 64), dtype=wp.float32, device="cuda:0")
+    # ... populate field with SDF or density values ...
+
+    # Extract isosurface
+    mc = wp.MarchingCubes(nx=64, ny=64, nz=64)
+    mc.surface(field, threshold=0.0)
+
+    # Access the resulting mesh
+    vertices = mc.verts   # wp.array of vec3f
+    indices = mc.indices  # wp.array of int32
+
+See :github:`warp/examples/core/example_marching_cubes.py` for a complete usage example.
+
+Custom Marching Cubes Implementations
+#####################################
+
+For advanced use cases requiring custom extraction logic (e.g., working with
+sparse volumes, computing additional per-triangle data), the
+:class:`warp.MarchingCubes` class exposes the fundamental lookup tables
+that define the marching cubes algorithm as class attributes:
+:attr:`~warp.MarchingCubes.CUBE_CORNER_OFFSETS`,
+:attr:`~warp.MarchingCubes.EDGE_TO_CORNERS`,
+:attr:`~warp.MarchingCubes.CASE_TO_TRI_RANGE`, and
+:attr:`~warp.MarchingCubes.TRI_LOCAL_INDICES`.
+
+The marching cubes algorithm partitions space into cubic cells and classifies
+each cell based on which of its 8 corners are inside/outside the isosurface.
+
+**Corner numbering:**
+
+.. code-block:: text
+
+         7 ────────── 6
+        /|           /|
+       / |          / |
+      4 ────────── 5  |
+      |  |         |  |
+      |  3 ────────|─ 2
+      | /          | /
+      |/           |/
+      0 ────────── 1
+
+    Corner 0: (0,0,0)    Corner 4: (0,0,1)
+    Corner 1: (1,0,0)    Corner 5: (1,0,1)
+    Corner 2: (1,1,0)    Corner 6: (1,1,1)
+    Corner 3: (0,1,0)    Corner 7: (0,1,1)
+
+**Case computation:**
+
+Each of the 256 possible configurations is encoded as an 8-bit integer where
+bit *i* is set if corner *i* is inside the surface:
+
+.. code-block:: python
+
+    case = sum(2**i for i in range(8) if corner_value[i] >= threshold)
+
+**Edge numbering:**
+
+- Edges 0-3: Bottom face (z=0), cycling 0→1→2→3→0
+- Edges 4-7: Top face (z=1), cycling 4→5→6→7→4
+- Edges 8-11: Vertical edges connecting corner *i* to corner *i+4*
 
 
 Profiling

@@ -8,6 +8,10 @@
   ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
 - Add `wp.get_cuda_toolkit_version()` and `wp.get_cuda_driver_version()` to query CUDA versions
   ([GH-1172](https://github.com/NVIDIA/warp/issues/1172)).
+- Add public API for marching cubes lookup tables as class attributes on `wp.MarchingCubes`:
+  `CUBE_CORNER_OFFSETS`, `EDGE_TO_CORNERS`, `CASE_TO_TRI_RANGE`, and `TRI_LOCAL_INDICES`. These enable
+  custom marching cubes implementations for advanced use cases like sparse volume extraction
+  ([GH-1151](https://github.com/NVIDIA/warp/issues/1151)).
 
 ### Removed
 
