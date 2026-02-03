@@ -523,7 +523,7 @@ linux-x86_64 test mujoco warp:
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
+    - pytest -n 1 --pyargs mujoco_warp --junit-xml=rspec.xml
 
 # Ensure minimum and maximum Python versions are supported
 linux-x86_64 python matrix test:
