@@ -268,6 +268,100 @@ def test_marching_cubes_differentiable(test, device):
     test.assertTrue(np.abs(grad_np - 8.0 * np.pi * radius) < 1e-2)
 
 
+def test_mc_lookup_tables_structure(test, device):
+    """Test that lookup tables have correct sizes and types."""
+    # Access via class attributes
+    CUBE_CORNER_OFFSETS = wp.MarchingCubes.CUBE_CORNER_OFFSETS
+    EDGE_TO_CORNERS = wp.MarchingCubes.EDGE_TO_CORNERS
+    CASE_TO_TRI_RANGE = wp.MarchingCubes.CASE_TO_TRI_RANGE
+    TRI_LOCAL_INDICES = wp.MarchingCubes.TRI_LOCAL_INDICES
+
+    # Verify types are tuples (immutable)
+    test.assertIsInstance(CUBE_CORNER_OFFSETS, tuple)
+    test.assertIsInstance(EDGE_TO_CORNERS, tuple)
+    test.assertIsInstance(CASE_TO_TRI_RANGE, tuple)
+    test.assertIsInstance(TRI_LOCAL_INDICES, tuple)
+
+    # Verify sizes
+    test.assertEqual(len(CUBE_CORNER_OFFSETS), 8)  # 8 corners of a cube
+    test.assertEqual(len(EDGE_TO_CORNERS), 12)  # 12 edges of a cube
+    test.assertEqual(len(CASE_TO_TRI_RANGE), 257)  # 256 cases + 1 for range end
+    test.assertEqual(len(TRI_LOCAL_INDICES), 2460)  # 820 triangles x 3 vertices each
+
+    # Verify nested structure
+    for corner in CUBE_CORNER_OFFSETS:
+        test.assertIsInstance(corner, tuple)
+        test.assertEqual(len(corner), 3)  # (x, y, z)
+
+    for edge in EDGE_TO_CORNERS:
+        test.assertIsInstance(edge, tuple)
+        test.assertEqual(len(edge), 2)  # (corner_from, corner_to)
+
+
+def test_mc_lookup_tables_values(test, device):
+    """Test that lookup table values are valid."""
+    # Access via class attributes
+    CUBE_CORNER_OFFSETS = wp.MarchingCubes.CUBE_CORNER_OFFSETS
+    EDGE_TO_CORNERS = wp.MarchingCubes.EDGE_TO_CORNERS
+    CASE_TO_TRI_RANGE = wp.MarchingCubes.CASE_TO_TRI_RANGE
+    TRI_LOCAL_INDICES = wp.MarchingCubes.TRI_LOCAL_INDICES
+
+    # Corner offsets should be 0 or 1
+    for corner in CUBE_CORNER_OFFSETS:
+        for coord in corner:
+            test.assertIn(coord, (0, 1))
+
+    # Edge corners should reference valid corner indices (0-7)
+    for edge in EDGE_TO_CORNERS:
+        for corner_idx in edge:
+            test.assertGreaterEqual(corner_idx, 0)
+            test.assertLessEqual(corner_idx, 7)
+
+    # Case to tri range should be monotonically non-decreasing
+    for i in range(len(CASE_TO_TRI_RANGE) - 1):
+        test.assertLessEqual(CASE_TO_TRI_RANGE[i], CASE_TO_TRI_RANGE[i + 1])
+
+    # First case (all corners outside) should have no triangles
+    test.assertEqual(CASE_TO_TRI_RANGE[0], CASE_TO_TRI_RANGE[1])
+
+    # Last case (all corners inside) should have no triangles
+    test.assertEqual(CASE_TO_TRI_RANGE[255], CASE_TO_TRI_RANGE[256])
+
+    # Triangle local indices should reference valid edge indices (0-11)
+    for edge_idx in TRI_LOCAL_INDICES:
+        test.assertGreaterEqual(edge_idx, 0)
+        test.assertLessEqual(edge_idx, 11)
+
+
+def test_mc_lookup_tables_to_warp_array(test, device):
+    """Test that lookup tables can be converted to warp arrays."""
+    # Access via class attributes
+    CUBE_CORNER_OFFSETS = wp.MarchingCubes.CUBE_CORNER_OFFSETS
+    EDGE_TO_CORNERS = wp.MarchingCubes.EDGE_TO_CORNERS
+    CASE_TO_TRI_RANGE = wp.MarchingCubes.CASE_TO_TRI_RANGE
+    TRI_LOCAL_INDICES = wp.MarchingCubes.TRI_LOCAL_INDICES
+
+    # Convert to warp arrays with appropriate dtypes
+    corner_offsets = wp.array(CUBE_CORNER_OFFSETS, dtype=wp.vec3ub, device=device)
+    edge_to_corners = wp.array(EDGE_TO_CORNERS, dtype=wp.vec2ub, device=device)
+    case_to_tri_range = wp.array(CASE_TO_TRI_RANGE, dtype=wp.int32, device=device)
+    tri_local_indices = wp.array(TRI_LOCAL_INDICES, dtype=wp.int32, device=device)
+
+    # Verify shapes
+    test.assertEqual(corner_offsets.shape, (8,))
+    test.assertEqual(edge_to_corners.shape, (12,))
+    test.assertEqual(case_to_tri_range.shape, (257,))
+    test.assertEqual(tri_local_indices.shape, (2460,))
+
+    # Verify we can read values back
+    corner_offsets_np = corner_offsets.numpy()
+    test.assertEqual(tuple(corner_offsets_np[0]), (0, 0, 0))
+    test.assertEqual(tuple(corner_offsets_np[1]), (1, 0, 0))
+
+    edge_to_corners_np = edge_to_corners.numpy()
+    test.assertEqual(tuple(edge_to_corners_np[0]), (0, 1))  # edge 0 connects corners 0 and 1
+
+
 devices = get_test_devices()
 
 
@@ -286,6 +380,13 @@ add_function_test(
 )
 add_function_test(
     TestMarchingCubes, "test_marching_cubes_differentiable", test_marching_cubes_differentiable, devices=devices
+)
+add_function_test(
+    TestMarchingCubes, "test_mc_lookup_tables_structure", test_mc_lookup_tables_structure, devices=devices
+)
+add_function_test(TestMarchingCubes, "test_mc_lookup_tables_values", test_mc_lookup_tables_values, devices=devices)
+add_function_test(
+    TestMarchingCubes, "test_mc_lookup_tables_to_warp_array", test_mc_lookup_tables_to_warp_array, devices=devices
 )
 
 

@@ -15,11 +15,36 @@
 
 from __future__ import annotations
 
-import numpy as np
+from typing import Final
 
 import warp as wp
 
 _wp_module_name_ = "warp.marching_cubes"
+
+
+# =============================================================================
+# Marching Cubes Lookup Tables (module-level for kernel access via wp.static())
+# =============================================================================
+
+# fmt: off
+
+# The (x, y, z) offset from the cell origin for each of the 8 cube corners.
+# Corner i corresponds to bit i in the case code computation.
+MC_CUBE_CORNER_OFFSETS: Final[tuple[tuple[int, int, int], ...]] = (
+    (0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0),  # z=0 face (corners 0-3)
+    (0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1),  # z=1 face (corners 4-7)
+)
+
+# For each of the 12 edges, the pair of corner indices it connects.
+# Edges 0-3: Bottom face (z=0), edges 4-7: Top face (z=1),
+# edges 8-11: Vertical edges connecting corner i to corner i+4.
+MC_EDGE_TO_CORNERS: Final[tuple[tuple[int, int], ...]] = (
+    (0, 1), (1, 2), (3, 2), (0, 3),  # bottom face edges (0-3)
+    (4, 5), (5, 6), (7, 6), (4, 7),  # top face edges (4-7)
+    (0, 4), (1, 5), (2, 6), (3, 7),  # vertical edges (8-11)
+)
+
+# fmt: on
 
 
 def marching_cubes_extract_vertices(
@@ -272,9 +297,9 @@ def extract_faces_kernel(
     # NOTE: this loop should get unrolled (confirmed it does in Warp 1.4.1)
     case_code = 0
     for i_c in range(8):
-        indX = ti + wp.static(mc_cube_corner_offsets[i_c][0])
-        indY = tj + wp.static(mc_cube_corner_offsets[i_c][1])
-        indZ = tk + wp.static(mc_cube_corner_offsets[i_c][2])
+        indX = ti + wp.static(MC_CUBE_CORNER_OFFSETS[i_c][0])
+        indY = tj + wp.static(MC_CUBE_CORNER_OFFSETS[i_c][1])
+        indZ = tk + wp.static(MC_CUBE_CORNER_OFFSETS[i_c][2])
         val = values[indX, indY, indZ]
         if val >= threshold:
             case_code += wp.static(2**i_c)
@@ -320,64 +345,36 @@ def extract_faces_kernel(
     return
 
 
-### Marching Cubes tables
-
-# cached warp device arrays for the tables below
-mc_case_to_tri_range_wpcache = {}
-mc_tri_local_inds_wpcache = {}
-mc_edge_offset_wpcache = {}
-
-
-def _get_mc_case_to_tri_range_table(device) -> wp.array:
-    """Lazily loads and caches the MC tri range table on the target device."""
-    device = str(device)
-    if device not in mc_case_to_tri_range_wpcache:
-        mc_case_to_tri_range_wpcache[device] = wp.from_numpy(mc_case_to_tri_range_np, dtype=wp.int32, device=device)
-
-    return mc_case_to_tri_range_wpcache[device]
-
-
-def _get_mc_tri_local_inds_table(device) -> wp.array:
-    """Lazily loads and caches the MC tri local inds table on the target device."""
-    device = str(device)
-    if device not in mc_tri_local_inds_wpcache:
-        mc_tri_local_inds_wpcache[device] = wp.from_numpy(mc_tri_local_inds, dtype=wp.int32, device=device)
-
-    return mc_tri_local_inds_wpcache[device]
-
-
-def _get_mc_edge_offset_table(device) -> wp.array:
-    """Lazily loads and caches the MC edge offset table on the target device."""
-    device = str(device)
-    if device not in mc_edge_offset_wpcache:
-        mc_edge_offset_wpcache[device] = wp.from_numpy(mc_edge_offset_np, dtype=wp.int32, device=device)
-
-    return mc_edge_offset_wpcache[device]
-
-
 # fmt: off
-mc_case_to_tri_range_np = np.array( [
-      0, 0, 3, 6, 12, 15, 21, 27, 36, 39, 45, 51, 60, 66, 75, 84, 90, 93, 99, 105, 114,
-      120, 129, 138, 150, 156, 165, 174, 186, 195, 207, 219, 228, 231, 237, 243, 252,
-      258, 267, 276, 288, 294, 303, 312, 324, 333, 345, 357, 366, 372, 381, 390, 396,
-      405, 417, 429, 438, 447, 459, 471, 480, 492, 507, 522, 528, 531, 537, 543, 552,
-      558, 567, 576, 588, 594, 603, 612, 624, 633, 645, 657, 666, 672, 681, 690, 702,
-      711, 723, 735, 750, 759, 771, 783, 798, 810, 825, 840, 852, 858, 867, 876, 888,
-      897, 909, 915, 924, 933, 945, 957, 972, 984, 999, 1008, 1014, 1023, 1035, 1047,
-      1056, 1068, 1083, 1092, 1098, 1110, 1125, 1140, 1152, 1167, 1173, 1185, 1188, 1191,
-      1197, 1203, 1212, 1218, 1227, 1236, 1248, 1254, 1263, 1272, 1284, 1293, 1305, 1317,
-      1326, 1332, 1341, 1350, 1362, 1371, 1383, 1395, 1410, 1419, 1425, 1437, 1446, 1458,
-      1467, 1482, 1488, 1494, 1503, 1512, 1524, 1533, 1545, 1557, 1572, 1581, 1593, 1605,
-      1620, 1632, 1647, 1662, 1674, 1683, 1695, 1707, 1716, 1728, 1743, 1758, 1770, 1782,
-      1791, 1806, 1812, 1827, 1839, 1845, 1848, 1854, 1863, 1872, 1884, 1893, 1905, 1917,
-      1932, 1941, 1953, 1965, 1980, 1986, 1995, 2004, 2010, 2019, 2031, 2043, 2058, 2070,
-      2085, 2100, 2106, 2118, 2127, 2142, 2154, 2163, 2169, 2181, 2184, 2193, 2205, 2217,
-      2232, 2244, 2259, 2268, 2280, 2292, 2307, 2322, 2328, 2337, 2349, 2355, 2358, 2364,
-      2373, 2382, 2388, 2397, 2409, 2415, 2418, 2427, 2433, 2445, 2448, 2454, 2457, 2460,
-      2460
-    ])
+# Large lookup tables (case-to-tri-range and tri-local-indices)
 
-mc_tri_local_inds = np.array([
+# 257 values: MC_CASE_TO_TRI_RANGE[case:case+1] gives the slice of
+# MC_TRI_LOCAL_INDICES containing triangle data for that case.
+# For case c, triangles are at MC_TRI_LOCAL_INDICES[MC_CASE_TO_TRI_RANGE[c]:MC_CASE_TO_TRI_RANGE[c+1]]
+MC_CASE_TO_TRI_RANGE: Final[tuple[int, ...]] = (
+    0, 0, 3, 6, 12, 15, 21, 27, 36, 39, 45, 51, 60, 66, 75, 84, 90, 93, 99, 105, 114,
+    120, 129, 138, 150, 156, 165, 174, 186, 195, 207, 219, 228, 231, 237, 243, 252,
+    258, 267, 276, 288, 294, 303, 312, 324, 333, 345, 357, 366, 372, 381, 390, 396,
+    405, 417, 429, 438, 447, 459, 471, 480, 492, 507, 522, 528, 531, 537, 543, 552,
+    558, 567, 576, 588, 594, 603, 612, 624, 633, 645, 657, 666, 672, 681, 690, 702,
+    711, 723, 735, 750, 759, 771, 783, 798, 810, 825, 840, 852, 858, 867, 876, 888,
+    897, 909, 915, 924, 933, 945, 957, 972, 984, 999, 1008, 1014, 1023, 1035, 1047,
+    1056, 1068, 1083, 1092, 1098, 1110, 1125, 1140, 1152, 1167, 1173, 1185, 1188, 1191,
+    1197, 1203, 1212, 1218, 1227, 1236, 1248, 1254, 1263, 1272, 1284, 1293, 1305, 1317,
+    1326, 1332, 1341, 1350, 1362, 1371, 1383, 1395, 1410, 1419, 1425, 1437, 1446, 1458,
+    1467, 1482, 1488, 1494, 1503, 1512, 1524, 1533, 1545, 1557, 1572, 1581, 1593, 1605,
+    1620, 1632, 1647, 1662, 1674, 1683, 1695, 1707, 1716, 1728, 1743, 1758, 1770, 1782,
+    1791, 1806, 1812, 1827, 1839, 1845, 1848, 1854, 1863, 1872, 1884, 1893, 1905, 1917,
+    1932, 1941, 1953, 1965, 1980, 1986, 1995, 2004, 2010, 2019, 2031, 2043, 2058, 2070,
+    2085, 2100, 2106, 2118, 2127, 2142, 2154, 2163, 2169, 2181, 2184, 2193, 2205, 2217,
+    2232, 2244, 2259, 2268, 2280, 2292, 2307, 2322, 2328, 2337, 2349, 2355, 2358, 2364,
+    2373, 2382, 2388, 2397, 2409, 2415, 2418, 2427, 2433, 2445, 2448, 2454, 2457, 2460,
+    2460,
+)
+
+# 2460 values (820 triangles x 3 vertices): groups of 3 consecutive values define a triangle.
+# Each value is an edge index (0-11) where the interpolated vertex lies.
+MC_TRI_LOCAL_INDICES: Final[tuple[int, ...]] = (
     0, 8, 3, 0, 1, 9, 1, 8, 3, 9, 8, 1, 1, 2, 10, 0, 8, 3, 1, 2, 10, 9, 2, 10, 0, 2, 9, 2, 8, 3, 2,
     10, 8, 10, 9, 8, 3, 11, 2, 0, 11, 2, 8, 11, 0, 1, 9, 0, 2, 3, 11, 1, 11, 2, 1, 9, 11, 9, 8, 11, 3,
     10, 1, 11, 10, 3, 0, 10, 1, 0, 8, 10, 8, 11, 10, 3, 9, 0, 3, 11, 9, 11, 10, 9, 9, 8, 10, 10, 8, 11, 4,
@@ -459,28 +456,50 @@ mc_tri_local_inds = np.array([
     1, 7, 0, 8, 1, 8, 7, 1, 4, 0, 3, 7, 4, 3, 4, 8, 7, 9, 10, 8, 10, 11, 8, 3, 0, 9, 3, 9, 11, 11,
     9, 10, 0, 1, 10, 0, 10, 8, 8, 10, 11, 3, 1, 10, 11, 3, 10, 1, 2, 11, 1, 11, 9, 9, 11, 8, 3, 0, 9, 3,
     9, 11, 1, 2, 9, 2, 11, 9, 0, 2, 11, 8, 0, 11, 3, 2, 11, 2, 3, 8, 2, 8, 10, 10, 8, 9, 9, 10, 2, 0,
-    9, 2, 2, 3, 8, 2, 8, 10, 0, 1, 8, 1, 10, 8, 1, 10, 2, 1, 3, 8, 9, 1, 8, 0, 9, 1, 0, 3, 8
-    ])
+    9, 2, 2, 3, 8, 2, 8, 10, 0, 1, 8, 1, 10, 8, 1, 10, 2, 1, 3, 8, 9, 1, 8, 0, 9, 1, 0, 3, 8,
+)
 
-mc_edge_offset_np = np.array([
-        [0, 0, 0,  0],
-        [1, 0, 0,  1],
-        [0, 1, 0,  0],
-        [0, 0, 0,  1],
-
-        [0, 0, 1,  0],
-        [1, 0, 1,  1],
-        [0, 1, 1,  0],
-        [0, 0, 1,  1],
-
-        [0, 0, 0,  2],
-        [1, 0, 0,  2],
-        [1, 1, 0,  2],
-        [0, 1, 0,  2]
-])
-
-mc_cube_corner_offsets = [[0,0,0], [1,0,0], [1,1,0], [0,1,0], [0,0,1], [1,0,1], [1,1,1], [0,1,1]]
+# Internal edge offset table for Warp's extraction algorithm.
+# Format: (cell_offset_x, cell_offset_y, cell_offset_z, axis) for each of the 12 edges.
+# This is different from MC_EDGE_TO_CORNERS which stores corner pairs.
+_MC_EDGE_OFFSETS = (
+    (0, 0, 0, 0), (1, 0, 0, 1), (0, 1, 0, 0), (0, 0, 0, 1),
+    (0, 0, 1, 0), (1, 0, 1, 1), (0, 1, 1, 0), (0, 0, 1, 1),
+    (0, 0, 0, 2), (1, 0, 0, 2), (1, 1, 0, 2), (0, 1, 0, 2),
+)
 # fmt: on
+
+# =============================================================================
+# Internal: Caching for Warp's extraction algorithm
+# =============================================================================
+
+_mc_case_to_tri_range_cache: dict[str, wp.array] = {}
+_mc_tri_local_inds_cache: dict[str, wp.array] = {}
+_mc_edge_offset_cache: dict[str, wp.array] = {}
+
+
+def _get_mc_case_to_tri_range_table(device) -> wp.array:
+    """Lazily creates and caches the case-to-tri-range table on the target device."""
+    device = str(device)
+    if device not in _mc_case_to_tri_range_cache:
+        _mc_case_to_tri_range_cache[device] = wp.array(MC_CASE_TO_TRI_RANGE, dtype=wp.int32, device=device)
+    return _mc_case_to_tri_range_cache[device]
+
+
+def _get_mc_tri_local_inds_table(device) -> wp.array:
+    """Lazily creates and caches the tri-local-indices table on the target device."""
+    device = str(device)
+    if device not in _mc_tri_local_inds_cache:
+        _mc_tri_local_inds_cache[device] = wp.array(MC_TRI_LOCAL_INDICES, dtype=wp.int32, device=device)
+    return _mc_tri_local_inds_cache[device]
+
+
+def _get_mc_edge_offset_table(device) -> wp.array:
+    """Lazily creates and caches the edge offset table on the target device."""
+    device = str(device)
+    if device not in _mc_edge_offset_cache:
+        _mc_edge_offset_cache[device] = wp.array(_MC_EDGE_OFFSETS, dtype=wp.int32, device=device)
+    return _mc_edge_offset_cache[device]
 
 
 class MarchingCubes:
@@ -513,6 +532,36 @@ class MarchingCubes:
         device (warp.Device): The device on which the context was created. This
           attribute is for backward compatibility and is not used by the
           class's methods.
+    """
+
+    # =========================================================================
+    # Lookup tables for custom marching cubes implementations
+    # (Reference the module-level constants)
+    # =========================================================================
+    CUBE_CORNER_OFFSETS: Final[tuple[tuple[int, int, int], ...]] = MC_CUBE_CORNER_OFFSETS
+    """The (x, y, z) offset from the cell origin for each of the 8 cube corners.
+
+    Corner ``i`` corresponds to bit ``i`` in the case code computation.
+    """
+
+    EDGE_TO_CORNERS: Final[tuple[tuple[int, int], ...]] = MC_EDGE_TO_CORNERS
+    """For each of the 12 edges, the pair of corner indices (see :attr:`CUBE_CORNER_OFFSETS`) it connects.
+
+    Useful for interpolating vertex positions along edges that cross the isosurface.
+    """
+
+    CASE_TO_TRI_RANGE: Final[tuple[int, ...]] = MC_CASE_TO_TRI_RANGE
+    """Index ranges into :attr:`TRI_LOCAL_INDICES` for each marching cubes case.
+
+    Contains 257 integers. For case ``c``, the triangles are defined by
+    ``TRI_LOCAL_INDICES[CASE_TO_TRI_RANGE[c]:CASE_TO_TRI_RANGE[c+1]]``.
+    """
+
+    TRI_LOCAL_INDICES: Final[tuple[int, ...]] = MC_TRI_LOCAL_INDICES
+    """Edge indices (see :attr:`EDGE_TO_CORNERS`) defining triangle vertices for all marching cubes cases.
+
+    Contains 2460 integers (820 triangles x 3 vertices). Each group of 3 consecutive
+    values defines a triangle by specifying edge indices (0-11) where the vertices lie.
     """
 
     def __new__(cls, *args, **kwargs):
@@ -708,3 +757,18 @@ class MarchingCubes:
 
     def __del__(self):
         return
+
+
+# =============================================================================
+# Deprecated aliases (remove in Warp 1.13)
+# =============================================================================
+# These were previously used internally and may have been accessed by external code.
+# They are preserved for backward compatibility with the deprecated warp.marching_cubes
+# namespace. Once that namespace is removed, these can be deleted.
+
+import numpy as np  # noqa: E402
+
+mc_cube_corner_offsets = MC_CUBE_CORNER_OFFSETS
+mc_case_to_tri_range_np = np.array(MC_CASE_TO_TRI_RANGE, dtype=np.int32)
+mc_tri_local_inds = np.array(MC_TRI_LOCAL_INDICES, dtype=np.int32)
+mc_edge_offset_np = np.array(_MC_EDGE_OFFSETS, dtype=np.int32)
