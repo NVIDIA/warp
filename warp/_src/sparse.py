@@ -193,10 +193,9 @@ class BsrMatrix(Generic[_BlockType]):
             nnz: The new upper-bound for the number of non-zeros. If not provided, it will be read from the device offsets array (requires a synchronization).
         """
 
+        self._copy_nnz_async()
         if nnz is None:
             self.nnz_sync()
-        else:
-            self._copy_nnz_async()
 
         _bsr_ensure_fits(self, nnz=nnz)
 
