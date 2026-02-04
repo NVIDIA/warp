@@ -14,12 +14,14 @@ API
    :toctree: _generated
 
    ConstantShapeFunction
+   CubeBSplineShapeFunctions
    CubeNedelecFirstKindShapeFunctions
    CubeNonConformingPolynomialShapeFunctions
    CubeRaviartThomasShapeFunctions
    CubeSerendipityShapeFunctions
    CubeShapeFunction
    CubeTripolynomialShapeFunctions
+   SquareBSplineShapeFunctions
    SquareBipolynomialShapeFunctions
    SquareNedelecFirstKindShapeFunctions
    SquareNonConformingPolynomialShapeFunctions

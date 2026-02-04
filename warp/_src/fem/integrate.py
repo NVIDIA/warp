@@ -859,14 +859,13 @@ def get_integrate_bilinear_kernel(
     output_dtype,
     accumulate_dtype,
 ):
-    MAX_NODES_PER_ELEMENT = trial.space.topology.MAX_NODES_PER_ELEMENT
-
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         test_arg: test.space_restriction.NodeArg,
         trial_partition_arg: trial.space_partition.PartitionArg,
+        max_nodes_per_element: int,
         fields: FieldStruct,
         values: ValueStruct,
         triplet_rows: wp.array(dtype=int),
@@ -928,7 +927,7 @@ def get_integrate_bilinear_kernel(
                 val = integrand_func(sample, fields, values)
                 val_sum += accumulate_dtype(qp_weight * vol * val)
 
-            block_offset = element * MAX_NODES_PER_ELEMENT + trial_node
+            block_offset = element * max_nodes_per_element + trial_node
             triplet_values[block_offset, test_dof, trial_dof] = output_dtype(val_sum)
 
             # Set row and column indices
@@ -1585,6 +1584,7 @@ def _launch_integrate_kernel(
                     trial_partition_arg,
                     trial.space.basis.basis_arg_value(device),
                     trial.space.topology.topo_arg_value(device),
+                    trial.space.topology.MAX_NODES_PER_ELEMENT,
                     local_result,
                     triplet_rows,
                     triplet_cols,
@@ -1611,6 +1611,7 @@ def _launch_integrate_kernel(
                 domain_elt_index_arg,
                 test_arg,
                 trial_partition_arg,
+                trial.space.topology.MAX_NODES_PER_ELEMENT,
                 field_arg_values,
                 value_struct_values,
                 triplet_rows,
@@ -2092,8 +2093,6 @@ def get_interpolate_jacobian_at_nodes_kernel(
     trial: TrialField,
     reduction: str,
 ):
-    MAX_NODES_PER_ELEMENT = trial.space.topology.MAX_NODES_PER_ELEMENT
-
     VALUE_SIZE = type_length(dest_space.dof_dtype)
     value_type = type_scalar_type(dest_space.dof_dtype)
 
@@ -2136,6 +2135,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
         trial_partition_arg: trial.space_partition.PartitionArg,
+        max_nodes_per_element: int,
         dest_node_arg: space_restriction.NodeArg,
         dest_basis_arg: dest_space.basis.BasisArg,
         dest_topo_arg: dest_space.topology.TopologyArg,
@@ -2219,7 +2219,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
             )
 
             if wp.static(reduction == "first"):
-                block_offset = local_node_index * MAX_NODES_PER_ELEMENT + trial_node
+                block_offset = local_node_index * max_nodes_per_element + trial_node
             else:
                 if wp.static(reduction == "weighted_average"):
                     vol = domain.element_measure(domain_arg, sample)
@@ -2227,7 +2227,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
                 elif wp.static(reduction == "mean"):
                     dof_value /= weight_sum
 
-                block_offset = n * MAX_NODES_PER_ELEMENT + trial_node
+                block_offset = n * max_nodes_per_element + trial_node
 
             for k in range(VALUE_SIZE):
                 triplet_values[block_offset, k, trial_dof] = basis_coefficient(dof_value, k)
@@ -2299,7 +2299,6 @@ def get_interpolate_jacobian_at_quadrature_kernel(
     value_size: int,
     value_type: type,
 ):
-    MAX_NODES_PER_ELEMENT = trial.space.topology.MAX_NODES_PER_ELEMENT
     VALUE_SIZE = wp.constant(value_size)
 
     def interpolate_jacobian_kernel_fn(
@@ -2309,6 +2308,7 @@ def get_interpolate_jacobian_at_quadrature_kernel(
         domain_index_arg: domain.ElementIndexArg,
         trial_partition_arg: trial.space_partition.PartitionArg,
         trial_topology_arg: trial.space_partition.space_topology.TopologyArg,
+        max_nodes_per_element: int,
         fields: FieldStruct,
         values: ValueStruct,
         triplet_rows: wp.array(dtype=int),
@@ -2332,7 +2332,7 @@ def get_interpolate_jacobian_at_quadrature_kernel(
         qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
         qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
 
-        block_offset = qp_index * MAX_NODES_PER_ELEMENT + trial_node
+        block_offset = qp_index * max_nodes_per_element + trial_node
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = DofIndex(trial_node, trial_dof)
@@ -2668,6 +2668,7 @@ def _launch_interpolate_kernel(
                     elt_arg,
                     elt_index_arg,
                     trial_partition_arg,
+                    trial.space.topology.MAX_NODES_PER_ELEMENT,
                     dest_space_restriction_arg,
                     dest_basis_arg,
                     dest_topo_arg,
@@ -2700,7 +2701,7 @@ def _launch_interpolate_kernel(
     qp_eval_count = quadrature.evaluation_point_count()
     qp_index_count = quadrature.total_point_count()
 
-    if qp_eval_count != qp_index_count:
+    if qp_eval_count != qp_index_count and dest is not None:
         warn(
             f"Quadrature used for interpolation of {integrand.name} has different number of evaluation and indexed points, this may lead to incorrect results",
             category=UserWarning,
@@ -2741,6 +2742,7 @@ def _launch_interpolate_kernel(
             elt_index_arg,
             trial_partition_arg,
             trial_topology_arg,
+            trial.space.topology.MAX_NODES_PER_ELEMENT,
             field_arg_values,
             value_struct_values,
             triplet_rows,

@@ -21,6 +21,7 @@ from warp._src.fem.geometry import Element
 from warp._src.fem.polynomial import Polynomial
 
 from .cube_shape_function import (
+    CubeBSplineShapeFunctions,
     CubeNedelecFirstKindShapeFunctions,
     CubeNonConformingPolynomialShapeFunctions,
     CubeRaviartThomasShapeFunctions,
@@ -31,6 +32,7 @@ from .cube_shape_function import (
 from .shape_function import ConstantShapeFunction, ShapeFunction
 from .square_shape_function import (
     SquareBipolynomialShapeFunctions,
+    SquareBSplineShapeFunctions,
     SquareNedelecFirstKindShapeFunctions,
     SquareNonConformingPolynomialShapeFunctions,
     SquareRaviartThomasShapeFunctions,
@@ -66,6 +68,8 @@ class ElementBasis(Enum):
     """Nédélec (first kind) H(curl) shape functions. Should be used with covariant function space."""
     RAVIART_THOMAS = "RT"
     """Raviart-Thomas H(div) shape functions. Should be used with contravariant function space."""
+    BSPLINE = "B"
+    """B-spline basis functions. Should be used with grid-based geometries only."""
 
 
 @functools.cache
@@ -111,6 +115,8 @@ def make_element_shape_function(
             return SquareNonConformingPolynomialShapeFunctions(degree=degree)
         if element_basis == ElementBasis.SERENDIPITY and degree > 1:
             return SquareSerendipityShapeFunctions(degree=degree, family=family)
+        if element_basis == ElementBasis.BSPLINE:
+            return SquareBSplineShapeFunctions(degree=degree)
 
         return SquareBipolynomialShapeFunctions(degree=degree, family=family)
     if element == Element.TRIANGLE:
@@ -134,6 +140,8 @@ def make_element_shape_function(
             return CubeNonConformingPolynomialShapeFunctions(degree=degree)
         if element_basis == ElementBasis.SERENDIPITY and degree > 1:
             return CubeSerendipityShapeFunctions(degree=degree, family=family)
+        if element_basis == ElementBasis.BSPLINE:
+            return CubeBSplineShapeFunctions(degree=degree)
 
         return CubeTripolynomialShapeFunctions(degree=degree, family=family)
     if element == Element.TETRAHEDRON:

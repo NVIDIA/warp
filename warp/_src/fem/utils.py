@@ -87,7 +87,9 @@ def compress_node_indices(
     unique_node_count: wp.array(dtype=int) = None,
     unique_node_indices: wp.array(dtype=int) = None,
     temporary_store: cache.TemporaryStore = None,
-) -> Union[tuple[cache.Temporary, cache.Temporary], tuple[cache.Temporary, cache.Temporary, int, cache.Temporary]]:
+) -> Union[
+    tuple[cache.Temporary, cache.Temporary], tuple[cache.Temporary, cache.Temporary, cache.Temporary, cache.Temporary]
+]:
     """Compress an unsorted list of node indices into:
      - the ``node_offsets`` array, giving for each node the start offset of corresponding indices in ``sorted_array_indices``
      - the ``sorted_array_indices`` array, listing the indices in the input array corresponding to each node

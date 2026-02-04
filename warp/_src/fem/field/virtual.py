@@ -934,8 +934,6 @@ def make_bilinear_dispatch_kernel(
     TEST_TAYLOR_DOF_COUNT = test.TAYLOR_DOF_COUNT
     TRIAL_TAYLOR_DOF_COUNT = trial.TAYLOR_DOF_COUNT
 
-    MAX_NODES_PER_ELEMENT = trial.space.topology.MAX_NODES_PER_ELEMENT
-
     trial_dof_vec = cache.cached_vec_type(length=trial.TAYLOR_DOF_COUNT, dtype=float)
     test_dof_vec = cache.cached_vec_type(length=test.TAYLOR_DOF_COUNT, dtype=float)
 
@@ -955,6 +953,7 @@ def make_bilinear_dispatch_kernel(
         trial_partition_arg: trial.space_partition.PartitionArg,
         trial_basis_arg: trial.space.basis.BasisArg,
         trial_topo_arg: trial.space.topology.TopologyArg,
+        max_nodes_per_element: int,
         local_result: wp.array4d(dtype=float),
         triplet_rows: wp.array(dtype=int),
         triplet_cols: wp.array(dtype=int),
@@ -976,7 +975,7 @@ def make_bilinear_dispatch_kernel(
             )
 
         if trial_node >= element_trial_node_count:
-            block_offset = test_node_offset * MAX_NODES_PER_ELEMENT + trial_node
+            block_offset = test_node_offset * max_nodes_per_element + trial_node
             triplet_rows[block_offset] = NULL_NODE_INDEX
             triplet_cols[block_offset] = NULL_NODE_INDEX
             return
@@ -1089,7 +1088,7 @@ def make_bilinear_dispatch_kernel(
                     val_sum[test_node_dof, trial_node_dof] += accumulate_dtype(dof_res)
 
         # write block value
-        block_offset = test_node_offset * MAX_NODES_PER_ELEMENT + trial_node
+        block_offset = test_node_offset * max_nodes_per_element + trial_node
         if wp.static(tile_size) > 1:
             val_sum = wp.tile_sum(wp.tile(val_sum, preserve_type=True))[0]
 

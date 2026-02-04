@@ -45,7 +45,12 @@ class UnstructuredPointTopology(SpaceTopology):
         "side_neighbor_node_counts": lambda obj: obj.make_generic_side_neighbor_node_counts(),
     }
 
-    def __init__(self, quadrature: Quadrature, max_nodes_per_element: int = -1):
+    def __init__(
+        self,
+        quadrature: Quadrature,
+        max_nodes_per_element: int = -1,
+        use_evaluation_point_index: bool = False,
+    ):
         if max_nodes_per_element < 0:
             max_nodes_per_element = quadrature.max_points_per_element()
             if max_nodes_per_element is None:
@@ -62,13 +67,17 @@ class UnstructuredPointTopology(SpaceTopology):
 
         self._quadrature = quadrature
         self._geo_partition = geo_partition
+        self._use_evaluation_point_index = use_evaluation_point_index
 
         super().__init__(quadrature.domain.geometry, max_nodes_per_element=max_nodes_per_element)
 
         cache.setup_dynamic_attributes(self, cls=__class__)
 
     def node_count(self):
-        return self._quadrature.total_point_count()
+        if self._use_evaluation_point_index:
+            return self._quadrature.evaluation_point_count()
+        else:
+            return self._quadrature.total_point_count()
 
     def _make_topology_arg(self):
         @cache.dynamic_struct(suffix=self.name)
@@ -84,7 +93,7 @@ class UnstructuredPointTopology(SpaceTopology):
 
     @property
     def name(self):
-        return f"PointTopology_{self._quadrature.name}"
+        return f"PointTopology_{self._quadrature.name}{self._use_evaluation_point_index}"
 
     def _make_domain_element_index(self):
         @cache.dynamic_func(suffix=self.name)
@@ -102,9 +111,14 @@ class UnstructuredPointTopology(SpaceTopology):
             node_index_in_elt: int,
         ):
             domain_element_index = self.domain_element_index(topo_arg.element_index_arg, element_index)
-            return self._quadrature.point_index(
-                elt_arg, topo_arg.quadrature_arg, domain_element_index, element_index, node_index_in_elt
-            )
+            if wp.static(self._use_evaluation_point_index):
+                return self._quadrature.point_evaluation_index(
+                    elt_arg, topo_arg.quadrature_arg, domain_element_index, element_index, node_index_in_elt
+                )
+            else:
+                return self._quadrature.point_index(
+                    elt_arg, topo_arg.quadrature_arg, domain_element_index, element_index, node_index_in_elt
+                )
 
         return element_node_index
 
@@ -152,6 +166,7 @@ class PointBasisSpace(BasisSpace):
         kernel_values: Optional[dict[str, Any]] = None,
         distance_space: str = "reference",
         max_nodes_per_element: int = -1,
+        use_evaluation_point_index: bool = False,
     ):
         """Create a point basis space with radial basis kernels.
 
@@ -165,6 +180,9 @@ class PointBasisSpace(BasisSpace):
             kernel_values: Dictionary of additional values to be passed to the kernel function
             distance_space: Space in which to compute the distance between the sample and the kernel center point. Can be "reference" or "world". Defaults to "reference".
             max_nodes_per_element: Maximum number of point nodes per element to consider. If not provided, get from the quadrature.
+            use_evaluation_point_index: Whether to build the node topology from the quadrature evaluation points rather than unique points.
+              Evaluation points are unique to each element, while quadrature points can be shared among elements. As such, using evaluation points
+              will always lead to a discontinuous basis space. Moreover, for PicQuadrature, evaluation points are sorted according to element indices.
         """
 
         self._quadrature = quadrature
@@ -181,7 +199,11 @@ class PointBasisSpace(BasisSpace):
             self.kernel_func = kernel_func
             self.kernel_grad_func = kernel_grad_func
 
-        self._topology = UnstructuredPointTopology(quadrature, max_nodes_per_element=max_nodes_per_element)
+        self._topology = UnstructuredPointTopology(
+            quadrature,
+            max_nodes_per_element=max_nodes_per_element,
+            use_evaluation_point_index=use_evaluation_point_index,
+        )
 
         cache.setup_dynamic_attributes(self)
         self._kernel_arg = self.ValueStruct()

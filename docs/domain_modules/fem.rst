@@ -68,7 +68,7 @@ Basic Workflow
 The typical steps for solving a linearized PDE with :mod:`warp.fem` are as follow:
 
  - Define a :class:`.Geometry` (grid, mesh, etc). At the moment, 2D and 3D regular grids, NanoVDB volumes, and triangle, quadrilateral, tetrahedron and hexahedron unstructured meshes are supported.
- - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported, as well as linear Nédélec (first kind) and Raviart-Thomas vector-valued shape functions.
+ - Define one or more :class:`.FunctionSpace`, by equipping the geometry elements with shape functions. See :func:`.make_polynomial_space`. At the moment, continuous/discontinuous Lagrange (:math:`P_{k[d]}, Q_{k[d]}`) and Serendipity (:math:`S_k`) shape functions of order :math:`k \leq 3` are supported, as well as linear Nédélec (first kind) and Raviart-Thomas vector-valued shape functions. B-spline shape functions (:math:`B_k`, :math:`k \leq 3`) are also available for grid-based geometries.
  - Define an integration domain, for instance the geometry's cells (:class:`.Cells`) or boundary sides (:class:`.BoundarySides`).
  - Integrate linear forms to build the system's right-hand-side. Define a test function over the function space using :func:`.make_test`,
    a :class:`.Quadrature` formula (or let the module choose one based on the function space degree), and call :func:`.integrate` with the linear form integrand.
@@ -180,6 +180,8 @@ the ``example_streamlines.py`` example for generating 3D streamlines by tracing 
 This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set of arbitrary particles,
 making it possible to implement MPM-type methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
+For GIMP (Generalized Interpolation Material Point) methods where particles can span multiple cells, 
+:class:`.PicQuadrature` also accepts pre-computed cell indices, coordinates, and particle fractions as a tuple of 2D arrays.
 This is illustrated by the ``example_stokes_transfer.py`` and ``example_apic_fluid.py`` examples.
 
 Nonconforming fields

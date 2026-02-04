@@ -12,6 +12,9 @@
   `CUBE_CORNER_OFFSETS`, `EDGE_TO_CORNERS`, `CASE_TO_TRI_RANGE`, and `TRI_LOCAL_INDICES`. These enable
   custom marching cubes implementations for advanced use cases like sparse volume extraction
   ([GH-1151](https://github.com/NVIDIA/warp/issues/1151)).
+- Add B-spline shape functions for `warp.fem` with `SquareBSplineShapeFunctions` (2D) and
+  `CubeBSplineShapeFunctions` (3D), supporting degrees 1-3. Use via `ElementBasis.BSPLINE`.
+  Supported on `Grid2D`, `Grid3D`, and `Nanogrid` geometries ([GH-1208](https://github.com/NVIDIA/warp/issues/1208)).
 
 ### Removed
 
@@ -28,6 +31,7 @@
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
 - Relax the integer types expected when indexing vectors and matrices
   ([GH-1209](https://github.com/NVIDIA/warp/issues/1209)).
+- `fem.PicQuadrature` now supports particles spanning multiple cells. Pass a tuple of 2D arrays `(cell_indices, coords, particle_fraction)` to specify per-particle cell contributions.
 
 ### Fixed
 
@@ -53,6 +57,10 @@
 - Fix tile * constant multiplication when one operand is a vector or matrix type ([GH-1175](https://github.com/NVIDIA/warp/issues/1175)).
 - Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
 - Fix `BsrMatrix.notify_nnz_changed` sometimes failing to read the latest non-zero count from the `offsets` array.
+- Fix spurious `warp.fem` interpolation warning when quadrature evaluation and index point counts differ but
+  no output array is provided.
+- Avoid specializing `warp.fem` integration kernels on `MAX_NODES_PER_ELEMENT`, reducing kernel recompilation
+  when using different function spaces.
 
 ### Documentation
 
