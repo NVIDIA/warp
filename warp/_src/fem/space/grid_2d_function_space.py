@@ -21,7 +21,7 @@ from warp._src.fem.geometry import Grid2D
 from warp._src.fem.polynomial import is_closed
 from warp._src.fem.types import NULL_NODE_INDEX, ElementIndex
 
-from .shape import SquareBipolynomialShapeFunctions, SquareShapeFunction
+from .shape import SquareBipolynomialShapeFunctions, SquareBSplineShapeFunctions, SquareShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
 _wp_module_name_ = "warp.fem.space.grid_2d_function_space"
@@ -169,9 +169,61 @@ class GridBipolynomialSpaceTopology(SpaceTopology):
         return np.meshgrid(X, Y, indexing="ij")
 
 
+class GridBSplineSpaceTopology(SpaceTopology):
+    def __init__(self, grid: Grid2D, shape: SquareBSplineShapeFunctions):
+        super().__init__(grid, shape.NODES_PER_ELEMENT)
+        self._shape = shape
+
+        self._padding = self._shape.PADDING
+
+        self.element_node_index = self._make_element_node_index()
+
+    def node_count(self) -> int:
+        return (self.geometry.res[0] + 2 * self._padding + 1) * (self.geometry.res[1] + 2 * self._padding + 1)
+
+    def _make_element_node_index(self):
+        PADDING = self._padding
+
+        @cache.dynamic_func(suffix=self.name)
+        def element_node_index(
+            cell_arg: Grid2D.CellArg,
+            topo_arg: self.TopologyArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            res = cell_arg.res
+            cell = Grid2D.get_cell(res, element_index)
+
+            node_i, node_j = self._shape._node_ij(node_index_in_elt)
+
+            node_x = cell[0] + node_i + PADDING
+            node_y = cell[1] + node_j + PADDING
+
+            node_pitch_y = res[1] + 2 * PADDING + 1
+            node_index = node_pitch_y * node_x + node_y
+
+            return node_index
+
+        return element_node_index
+
+    def node_grid(self):
+        res = self.geometry.res + 2 * self._padding + 1
+
+        grid_coords_x = np.arange(0, res[0], dtype=float) - self._padding
+        X = grid_coords_x * self.geometry.cell_size[0] + self.geometry.origin[0]
+
+        grid_coords_y = np.arange(0, res[1], dtype=float) - self._padding
+        Y = grid_coords_y * self.geometry.cell_size[1] + self.geometry.origin[1]
+
+        return np.meshgrid(X, Y, indexing="ij")
+
+
 def make_grid_2d_space_topology(grid: Grid2D, shape: SquareShapeFunction):
     if isinstance(shape, SquareBipolynomialShapeFunctions) and is_closed(shape.family):
         return forward_base_topology(GridBipolynomialSpaceTopology, grid, shape)
+
+    if isinstance(shape, SquareBSplineShapeFunctions):
+        return forward_base_topology(GridBSplineSpaceTopology, grid, shape)
 
     if isinstance(shape, SquareShapeFunction):
         return forward_base_topology(Grid2DSpaceTopology, grid, shape)

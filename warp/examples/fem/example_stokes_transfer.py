@@ -137,7 +137,7 @@ class Example:
 
         # Particle-based quadrature rule over active cells
         domain = fem.Cells(geometry=self._active_partition)
-        self._pic_quadrature = fem.PicQuadrature(domain, particles, particle_areas)
+        self._pic_quadrature = fem.PicQuadrature(domain, particles, particle_areas, use_domain_element_indices=True)
         self._particle_velocities = particle_velocities
 
         self.renderer = fem_example_utils.Plot()

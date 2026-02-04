@@ -8,6 +8,9 @@
   ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
 - Add `wp.get_cuda_toolkit_version()` and `wp.get_cuda_driver_version()` to query CUDA versions
   ([GH-1172](https://github.com/NVIDIA/warp/issues/1172)).
+- Add B-spline shape functions for `warp.fem` with `SquareBSplineShapeFunctions` (2D) and
+  `CubeBSplineShapeFunctions` (3D), supporting degrees 1-3. Use via `ElementBasis.BSPLINE`.
+  Supported on `Grid2D`, `Grid3D`, and `Nanogrid` geometries ([GH-1208](https://github.com/NVIDIA/warp/issues/1208)).
 
 ### Removed
 
@@ -22,6 +25,7 @@
 - Permit constant arguments in `wp.tile_map()` ([GH-1136](https://github.com/NVIDIA/warp/issues/1136)).
 - Enable "shared" tile allocations on the stack for all CPU architectures, by defaulting
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
+- `fem.PicQuadrature` now supports particles spanning multiple cells. Pass a tuple of 2D arrays `(cell_indices, coords, particle_fraction)` to specify per-particle cell contributions.
 
 ### Fixed
 
@@ -46,6 +50,10 @@
 - Fix JAX FFI multi-gpu graph caching ([GH-1181](https://github.com/NVIDIA/warp/pull/1181)).
 - Fix tile * constant multiplication when one operand is a vector or matrix type ([GH-1175](https://github.com/NVIDIA/warp/issues/1175)).
 - Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
+- Fix spurious `warp.fem` interpolation warning when quadrature evaluation and index point counts differ but
+  no output array is provided.
+- Avoid specializing `warp.fem` integration kernels on `MAX_NODES_PER_ELEMENT`, reducing kernel recompilation
+  when using different function spaces.
 
 ### Documentation
 

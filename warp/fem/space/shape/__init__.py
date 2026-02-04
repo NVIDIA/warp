@@ -33,6 +33,9 @@ from warp._src.fem.space.shape.cube_shape_function import CubeShapeFunction as C
 from warp._src.fem.space.shape.cube_shape_function import (
     CubeTripolynomialShapeFunctions as CubeTripolynomialShapeFunctions,
 )
+from warp._src.fem.space.shape.cube_shape_function import (
+    CubeBSplineShapeFunctions as CubeBSplineShapeFunctions,
+)
 from warp._src.fem.space.shape.square_shape_function import (
     SquareBipolynomialShapeFunctions as SquareBipolynomialShapeFunctions,
 )
@@ -44,6 +47,9 @@ from warp._src.fem.space.shape.square_shape_function import (
 )
 from warp._src.fem.space.shape.square_shape_function import (
     SquareRaviartThomasShapeFunctions as SquareRaviartThomasShapeFunctions,
+)
+from warp._src.fem.space.shape.square_shape_function import (
+    SquareBSplineShapeFunctions as SquareBSplineShapeFunctions,
 )
 from warp._src.fem.space.shape.square_shape_function import (
     SquareSerendipityShapeFunctions as SquareSerendipityShapeFunctions,

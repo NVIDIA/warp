@@ -42,12 +42,14 @@ from warp.fem import (
 from warp.fem.cache import dynamic_kernel
 from warp.fem.linalg import inverse_qr, spherical_part, symmetric_eigenvalues_qr, symmetric_part
 from warp.fem.space.shape import (
+    CubeBSplineShapeFunctions,
     CubeNedelecFirstKindShapeFunctions,
     CubeNonConformingPolynomialShapeFunctions,
     CubeRaviartThomasShapeFunctions,
     CubeSerendipityShapeFunctions,
     CubeTripolynomialShapeFunctions,
     SquareBipolynomialShapeFunctions,
+    SquareBSplineShapeFunctions,
     SquareNedelecFirstKindShapeFunctions,
     SquareNonConformingPolynomialShapeFunctions,
     SquareRaviartThomasShapeFunctions,
@@ -1194,7 +1196,15 @@ def _expect_near(a: wp.vec2, b: wp.vec2, tol: float):
         wp.expect_near(a[k], b[k], tol)
 
 
-def test_shape_function_weight(test, shape: ShapeFunction, coord_sampler, CENTER_COORDS):
+def test_shape_function_weight(
+    test,
+    shape: ShapeFunction,
+    coord_sampler,
+    center_coords,
+    node_unity: bool = True,
+    node_quadrature_unity: bool = True,
+    partition_of_unity: bool = True,
+):
     NODE_COUNT = shape.NODES_PER_ELEMENT
     weight_fn = shape.make_element_inner_weight()
     node_coords_fn = shape.make_node_coords_in_element()
@@ -1206,7 +1216,8 @@ def test_shape_function_weight(test, shape: ShapeFunction, coord_sampler, CENTER
         node_w = weight_fn(node_coords_fn(n), n)
         wp.expect_near(node_w, 1.0, 1e-5)
 
-    wp.launch(node_unity_test, dim=NODE_COUNT, inputs=[])
+    if node_unity:
+        wp.launch(node_unity_test, dim=NODE_COUNT, inputs=[])
 
     # Sum of node quadrature weights should be one (order 0)
     # Sum of weighted quadrature coords should be element center (order 1)
@@ -1223,9 +1234,10 @@ def test_shape_function_weight(test, shape: ShapeFunction, coord_sampler, CENTER
             sum_node_qp_coords += w * node_coords_fn(n)
 
         wp.expect_near(sum_node_qp, 1.0, 0.0001)
-        wp.expect_near(sum_node_qp_coords, CENTER_COORDS, 0.0001)
+        wp.expect_near(sum_node_qp_coords, center_coords, 0.0001)
 
-    wp.launch(node_quadrature_unity_test, dim=1, inputs=[])
+    if node_quadrature_unity:
+        wp.launch(node_quadrature_unity_test, dim=1, inputs=[])
 
     @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
     def partition_of_unity_test():
@@ -1240,7 +1252,8 @@ def test_shape_function_weight(test, shape: ShapeFunction, coord_sampler, CENTER
         _expect_near(wp.abs(w_sum), type(w_sum)(1.0), 0.0001)
 
     n_samples = 100
-    wp.launch(partition_of_unity_test, dim=n_samples, inputs=[])
+    if partition_of_unity:
+        wp.launch(partition_of_unity_test, dim=n_samples, inputs=[])
 
 
 def test_shape_function_trace(test, shape: ShapeFunction, CENTER_COORDS):
@@ -1388,6 +1401,17 @@ def test_square_shape_functions(test, device):
     RT_1 = SquareRaviartThomasShapeFunctions(degree=1)
     test_shape_function_gradient(test, RT_1, square_coord_sampler, square_coord_delta_sampler)
 
+    B_1 = SquareBSplineShapeFunctions(degree=1)
+    B_2 = SquareBSplineShapeFunctions(degree=2)
+    B_3 = SquareBSplineShapeFunctions(degree=3)
+
+    test_shape_function_weight(test, B_1, square_coord_sampler, SQUARE_CENTER_COORDS)
+    test_shape_function_weight(test, B_2, square_coord_sampler, SQUARE_CENTER_COORDS, node_unity=False)
+    test_shape_function_weight(test, B_3, square_coord_sampler, SQUARE_CENTER_COORDS, node_unity=False)
+    test_shape_function_gradient(test, B_1, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, B_2, square_coord_sampler, square_coord_delta_sampler)
+    test_shape_function_gradient(test, B_3, square_coord_sampler, square_coord_delta_sampler)
+
     wp.synchronize()
 
 
@@ -1454,6 +1478,17 @@ def test_cube_shape_functions(test, device):
     test_shape_function_gradient(test, N1_1, cube_coord_sampler, cube_coord_delta_sampler)
     RT_1 = CubeRaviartThomasShapeFunctions(degree=1)
     test_shape_function_gradient(test, RT_1, cube_coord_sampler, cube_coord_delta_sampler)
+
+    B_1 = CubeBSplineShapeFunctions(degree=1)
+    B_2 = CubeBSplineShapeFunctions(degree=2)
+    B_3 = CubeBSplineShapeFunctions(degree=3)
+
+    test_shape_function_weight(test, B_1, cube_coord_sampler, CUBE_CENTER_COORDS)
+    test_shape_function_weight(test, B_2, cube_coord_sampler, CUBE_CENTER_COORDS, node_unity=False)
+    test_shape_function_weight(test, B_3, cube_coord_sampler, CUBE_CENTER_COORDS, node_unity=False)
+    test_shape_function_gradient(test, B_1, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, B_2, cube_coord_sampler, cube_coord_delta_sampler)
+    test_shape_function_gradient(test, B_3, cube_coord_sampler, cube_coord_delta_sampler)
 
     wp.synchronize()
 
@@ -1735,12 +1770,88 @@ def test_particle_quadratures(test, device):
     with tape:
         pic = fem.PicQuadrature(domain, positions=points, measures=measures, requires_grad=True)
 
-    pic.arg_value(device).particle_coords.grad.fill_(1.0)
-    pic.arg_value(device).particle_fraction.grad.fill_(1.0)
+    pic.arg_value(device).cell_particle_coords.grad.fill_(1.0)
+    pic.arg_value(device).cell_particle_fraction.grad.fill_(1.0)
     tape.backward()
 
     assert_np_equal(points.grad.numpy(), np.full((3, 2), 2.0))  # == 1.0 / cell_size
     assert_np_equal(measures.grad.numpy(), np.full(3, 4.0))  # == 1.0 / cell_area
+
+
+def test_gimp_quadrature(test, device):
+    # Test GIMP mode for PicQuadrature: particles spanning multiple cells
+
+    geo = fem.Grid2D(res=wp.vec2i(2))
+    domain = fem.Cells(geo)
+
+    # Let's define 2 particles, each contributing to multiple cells (4 total evaluations)
+    # Particle 0 overlaps cells 0, 1; Particle 1 overlaps cells 2, 3
+    cell_indices = wp.array(
+        [[0, 1], [2, 3]],  # shape=(2,2)
+        dtype=int,
+        device=device,
+    )
+    coords = wp.array(
+        [
+            [[0.25, 0.25, 0.0], [0.75, 0.25, 0.0]],  # Particle 0 in cell 0 and 1
+            [[0.25, 0.75, 0.0], [0.75, 0.75, 0.0]],  # Particle 1 in cell 2 and 3
+        ],
+        dtype=Coords,
+        device=device,
+    )
+    # Each "particle fraction" gives what fraction of the measure is in each cell overlap
+    # For simplicity, split evenly: each overlapping cell gets 50% of the particle measure
+    particle_fraction = wp.array(
+        [[0.5, 0.5], [0.5, 0.5]],  # shape=(2,2)
+        dtype=float,
+        device=device,
+    )
+
+    # Shape: (num_particles, elements_per_particle)
+    gimp_quadrature = fem.PicQuadrature(
+        domain,
+        (cell_indices, coords, particle_fraction),
+    )
+
+    # There are 2 unique particles, 4 total evaluation points (2*2 overlaps).
+    test.assertEqual(gimp_quadrature.total_point_count(), 2)
+    test.assertEqual(gimp_quadrature.evaluation_point_count(), 4)
+    test.assertEqual(gimp_quadrature.max_points_per_element(), 1)  # each (2x2) cell gets at most 1
+
+    # Now let's check the mapping: for each evaluation we should get the right cell, coords, and weight
+    # The cells each have 1 GIMP "particle overlap"
+    offsets = gimp_quadrature.cell_particle_offsets.numpy()
+    indices = gimp_quadrature.cell_particle_indices.numpy()
+    fractions = gimp_quadrature._cell_particle_fraction.numpy()
+    coords_flat = gimp_quadrature._cell_particle_coords.numpy()
+    # Build map: For cell in range(geo.cell_count()), collect indices into evaluation points
+    found = {}
+    for cell in range(geo.cell_count()):
+        lo = offsets[cell]
+        hi = offsets[cell + 1]
+        found[cell] = []
+        for eval_idx in range(lo, hi):
+            pi = indices[eval_idx]  # particle index (row in our 2x2 arrays)
+            # Find the per-particle entry this cell matched for
+            for j in range(cell_indices.shape[1]):
+                if cell_indices.numpy()[pi, j] == cell:
+                    found[cell].append(
+                        {"particle": pi, "coords": coords.numpy()[pi, j], "fraction": particle_fraction.numpy()[pi, j]}
+                    )
+    # Cells 0,1,2,3 each should get one particle overlap
+    assert all(len(v) == 1 for v in found.values())
+    test.assertTrue(np.allclose(found[0][0]["coords"], [0.25, 0.25, 0.0]))
+    test.assertTrue(np.allclose(found[1][0]["coords"], [0.75, 0.25, 0.0]))
+    test.assertTrue(np.allclose(found[2][0]["coords"], [0.25, 0.75, 0.0]))
+    test.assertTrue(np.allclose(found[3][0]["coords"], [0.75, 0.75, 0.0]))
+    test.assertAlmostEqual(found[0][0]["fraction"], 0.5)
+    test.assertAlmostEqual(found[1][0]["fraction"], 0.5)
+    test.assertAlmostEqual(found[2][0]["fraction"], 0.5)
+    test.assertAlmostEqual(found[3][0]["fraction"], 0.5)
+
+    # Check that integration with GIMP quadrature works and returns correct result with constant function
+    total_volume = fem.integrate(_piecewise_constant, quadrature=gimp_quadrature)
+    test.assertAlmostEqual(total_volume, 0.5 * (0 + 1 + 2 + 3) / 4.0, places=5)
 
 
 def test_interpolate_reduction(test, device):
@@ -2332,6 +2443,7 @@ add_function_test(TestFem, "test_vector_spaces", test_vector_spaces, devices=dev
 add_function_test(TestFem, "test_dof_mapper", test_dof_mapper)
 add_function_test(TestFem, "test_point_basis", test_point_basis)
 add_function_test(TestFem, "test_particle_quadratures", test_particle_quadratures)
+add_function_test(TestFem, "test_gimp_quadrature", test_gimp_quadrature)
 add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
 add_function_test(TestFem, "test_integrate_high_order", test_integrate_high_order, devices=cuda_devices)

@@ -22,7 +22,6 @@ from warp._src.fem import cache
 from warp._src.fem.geometry import Grid3D
 from warp._src.fem.polynomial import Polynomial, is_closed, lagrange_scales, quadrature_1d
 from warp._src.fem.types import Coords
-from warp._src.fem.utils import grid_to_hexes, grid_to_tets
 
 from .shape_function import ShapeFunction
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
@@ -402,9 +401,13 @@ class CubeTripolynomialShapeFunctions(CubeShapeFunction):
         return cache.get_func(element_inner_weight_gradient, self.name)
 
     def element_node_hexes(self):
+        from warp._src.fem.utils import grid_to_hexes  # noqa: PLC0415
+
         return grid_to_hexes(self.ORDER, self.ORDER, self.ORDER)
 
     def element_node_tets(self):
+        from warp._src.fem.utils import grid_to_tets  # noqa: PLC0415
+
         return grid_to_tets(self.ORDER, self.ORDER, self.ORDER)
 
     def element_vtk_cells(self):
@@ -754,6 +757,8 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
         return element_inner_weight_gradient
 
     def element_node_tets(self):
+        from warp._src.fem.utils import grid_to_tets  # noqa: PLC0415
+
         if self.ORDER == 2:
             element_tets = np.array(
                 [
@@ -1110,3 +1115,166 @@ class CubeRaviartThomasShapeFunctions(CubeShapeFunction):
             return grad
 
         return element_inner_weight_gradient
+
+
+class CubeBSplineShapeFunctions(CubeShapeFunction):
+    def __init__(self, degree: int):
+        if degree < 1 or degree > 3:
+            raise ValueError("Only degrees 1, 2, and 3 are supported")
+
+        self.ORDER = wp.constant(degree)
+
+        self.PADDING = wp.constant(degree // 2)
+        self.NODES_PER_DIM = wp.constant(2 * self.PADDING + 2)
+
+        self.NODES_PER_ELEMENT = wp.constant(self.NODES_PER_DIM**3)
+        self.NODES_PER_SIDE = wp.constant(4)
+
+        self._node_ijk = self._make_node_ijk()
+
+    @property
+    def name(self) -> str:
+        return f"CubeBSpline{self.ORDER}"
+
+    def _make_node_ijk(self):
+        NODES_PER_DIM = self.NODES_PER_DIM
+        PADDING = self.PADDING
+
+        def node_ijk(
+            node_index_in_elt: int,
+        ):
+            node_i = node_index_in_elt // (NODES_PER_DIM * NODES_PER_DIM)
+            node_jk = node_index_in_elt - NODES_PER_DIM * NODES_PER_DIM * node_i
+            node_j = node_jk // NODES_PER_DIM
+            node_k = node_jk - NODES_PER_DIM * node_j
+            return node_i - PADDING, node_j - PADDING, node_k - PADDING
+
+        return cache.get_func(node_ijk, self.name)
+
+    def make_node_coords_in_element(self):
+        @cache.dynamic_func(suffix=self.name)
+        def node_coords_in_element(
+            node_index_in_elt: int,
+        ):
+            node_i, node_j, node_k = self._node_ijk(node_index_in_elt)
+            return wp.vec3(float(node_i), float(node_j), float(node_k))
+
+        return node_coords_in_element
+
+    def make_node_quadrature_weight(self):
+        def node_quadrature_weight(
+            node_index_in_elt: int,
+        ):
+            return wp.static(1.0 / float(self.NODES_PER_DIM**3))
+
+        return cache.get_func(node_quadrature_weight, self.name)
+
+    def make_trace_node_quadrature_weight(self):
+        def node_quadrature_weight(
+            node_index_in_elt: int,
+        ):
+            return wp.static(1.0 / float(self.NODES_PER_DIM**2))
+
+        return cache.get_func(node_quadrature_weight, self.name)
+
+    @wp.func
+    def _linear_bspline_weight(x: float):
+        a = wp.abs(x)
+        return 1.0 - a
+
+    @wp.func
+    def _quadratic_bspline_weight(x: float):
+        a = wp.abs(x)
+        return wp.where(a < 0.5, 0.75 - a * a, wp.where(a < 1.5, 0.5 * (1.5 - a) * (1.5 - a), 0.0))
+
+    @wp.func
+    def _cubic_bspline_weight(x: float):
+        a = wp.abs(x)
+        return wp.where(
+            a < 1.0,
+            (0.5 * a - 1.0) * a * a + wp.static(2.0 / 3.0),
+            wp.where(a < 2.0, (2.0 - a) * (2.0 - a) * (2.0 - a) / 6.0, 0.0),
+        )
+
+    @wp.func
+    def _linear_bspline_weight_gradient(x: float):
+        return -wp.sign(x)
+
+    @wp.func
+    def _quadratic_bspline_weight_gradient(x: float):
+        a = wp.abs(x)
+        return -wp.sign(x) * wp.where(a < 0.5, 2.0 * a, wp.where(a < 1.5, 1.5 - a, 0.0))
+
+    @wp.func
+    def _cubic_bspline_weight_gradient(x: float):
+        a = wp.abs(x)
+        return -wp.sign(x) * wp.where(a < 1.0, (2.0 - 1.5 * a) * a, wp.where(a < 2.0, 0.5 * (2.0 - a) * (2.0 - a), 0.0))
+
+    def make_element_inner_weight(self):
+        if self.ORDER == 1:
+            weight_fn = CubeBSplineShapeFunctions._linear_bspline_weight
+        elif self.ORDER == 2:
+            weight_fn = CubeBSplineShapeFunctions._quadratic_bspline_weight
+        elif self.ORDER == 3:
+            weight_fn = CubeBSplineShapeFunctions._cubic_bspline_weight
+
+        node_coords_in_element = self.make_node_coords_in_element()
+
+        def element_inner_weight(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_coords = node_coords_in_element(node_index_in_elt)
+            node_delta = coords - node_coords
+
+            wx = weight_fn(node_delta[0])
+            wy = weight_fn(node_delta[1])
+            wz = weight_fn(node_delta[2])
+            return wx * wy * wz
+
+        return cache.get_func(element_inner_weight, self.name)
+
+    def make_element_inner_weight_gradient(self):
+        if self.ORDER == 1:
+            weight_fn = CubeBSplineShapeFunctions._linear_bspline_weight
+            weight_gradient_fn = CubeBSplineShapeFunctions._linear_bspline_weight_gradient
+        elif self.ORDER == 2:
+            weight_fn = CubeBSplineShapeFunctions._quadratic_bspline_weight
+            weight_gradient_fn = CubeBSplineShapeFunctions._quadratic_bspline_weight_gradient
+        elif self.ORDER == 3:
+            weight_fn = CubeBSplineShapeFunctions._cubic_bspline_weight
+            weight_gradient_fn = CubeBSplineShapeFunctions._cubic_bspline_weight_gradient
+
+        node_coords_in_element = self.make_node_coords_in_element()
+
+        def element_inner_weight_gradient(
+            coords: Coords,
+            node_index_in_elt: int,
+        ):
+            node_coords = node_coords_in_element(node_index_in_elt)
+            node_delta = coords - node_coords
+
+            wx = weight_fn(node_delta[0])
+            wy = weight_fn(node_delta[1])
+            wz = weight_fn(node_delta[2])
+
+            dx = weight_gradient_fn(node_delta[0])
+            dy = weight_gradient_fn(node_delta[1])
+            dz = weight_gradient_fn(node_delta[2])
+
+            return wp.vec3(dx * wy * wz, dy * wz * wx, dz * wx * wy)
+
+        return cache.get_func(element_inner_weight_gradient, self.name)
+
+    def element_node_hexes(self):
+        from warp._src.fem.utils import grid_to_hexes  # noqa: PLC0415
+
+        whole_elt_hexes = grid_to_hexes(self.NODES_PER_DIM - 1, self.NODES_PER_DIM - 1, self.NODES_PER_DIM - 1)
+        center_hex = whole_elt_hexes[whole_elt_hexes.shape[0] // 2]
+        return center_hex[np.newaxis, :]
+
+    def element_vtk_cells(self):
+        hexes = np.array(self.element_node_hexes())
+        cell_type = 12  # VTK_HEXAHEDRON
+
+        return hexes, np.full(hexes.shape[0], cell_type, dtype=np.int8)
