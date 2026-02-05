@@ -47,9 +47,9 @@ variables:
   UV_PYTHON_PREFERENCE: only-managed
   
   # Standard container images (pinned with SHA256 for supply chain security)
-  UV_BOOKWORM_IMAGE: "ghcr.io/astral-sh/uv:0.9.18-bookworm@sha256:ea5944ae9fcbeb2b4e84c8d44613d63839a9d198c60611ffe8c61e62003894cf"
-  UV_BOOKWORM_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.9.18-bookworm-slim@sha256:31c863502897b16f2019c9754e56983444c36f53016a46cee6a136f5c6def206"
-  UV_BOOKWORM_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.9.18-bookworm-slim@sha256:ed8b4a2b0f4a2bf3cbd26a62bf98486c75605c9f129fdfd8f5c9380b5e2b4976"
+  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.10.0-trixie@sha256:b6fa78dd57c8a1a6c5da74a36a13e309f67f0e925bc89bbd16d6f0628475e052"
+  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.10.0-trixie-slim@sha256:ea4142f234c115bda9927e49c63efc8a5a7c1db35b2355dc8bc45080fa299bf5"
+  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.10.0-trixie-slim@sha256:12c27f31bbaec60e4e98900bcad6bc775a3dc182ef1a79bc1a3ed6248d3f2fb5"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   WARP_BUILDER_IMAGE_CU12: "${CI_REGISTRY_IMAGE}/warp-builder:cuda12.9.1-llvm21-latest"
   WARP_BUILDER_IMAGE_CU13: "${CI_REGISTRY_IMAGE}/warp-builder:cuda13.0.2-llvm21-latest"
@@ -159,7 +159,7 @@ linux-x86_64 cuda 13 build:
 
 pre-commit checks:
   stage: quality
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: []
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -168,7 +168,7 @@ pre-commit checks:
 
 pyright stubs:
   stage: quality
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: []
   timeout: 5m
   variables:
@@ -182,7 +182,7 @@ pyright stubs:
 # This job tests code snippets in the documentation
 doctest:
   stage: quality
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -329,7 +329,7 @@ cppcheck:
         path: coverage.xml
 
 linux-aarch64 test:
-  image: $UV_BOOKWORM_SLIM_ARM_IMAGE
+  image: $UV_TRIXIE_SLIM_ARM_IMAGE
   needs: [linux-aarch64 build]
   extends:
     - .test_common_with_coverage
@@ -345,7 +345,7 @@ linux-aarch64 test:
 
 linux-aarch64 test orin:
   needs: [linux-aarch64 build]
-  image: $UV_BOOKWORM_SLIM_ARM_IMAGE
+  image: $UV_TRIXIE_SLIM_ARM_IMAGE
   extends:
     - .save_test_report_artifact
   rules:
@@ -369,7 +369,7 @@ linux-aarch64 test orin:
 
 linux-aarch64 test thor:
   needs: [linux-aarch64 build]
-  image: $UV_BOOKWORM_SLIM_ARM_IMAGE
+  image: $UV_TRIXIE_SLIM_ARM_IMAGE
   extends:
     - .save_test_report_artifact
     - .basic_test_changes_rules
@@ -386,7 +386,7 @@ linux-aarch64 test thor:
 
 linux-x86_64 test:
   needs: [linux-x86_64 build]
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   extends:
     - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
@@ -405,7 +405,7 @@ linux-x86_64 test:
 # A temporary job for testing on Blackwell until more runners are available
 linux-x86_64-blackwell test:
   needs: [linux-x86_64 build]
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   extends:
     - .test_common_with_coverage
   before_script:
@@ -471,7 +471,7 @@ windows-x86_64 test mgpu:
 # Note: This will no longer be needed once Warp auto-initializes upon import
 linux-x86_64 test warp-init:
   stage: test
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -488,7 +488,7 @@ linux-x86_64 test warp-init:
 linux-x86_64 test mujoco warp:
   stage: test
   needs: [linux-x86_64 build]
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
@@ -528,7 +528,7 @@ linux-x86_64 test mujoco warp:
 # Ensure minimum and maximum Python versions are supported
 linux-x86_64 python matrix test:
   stage: test
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -725,7 +725,7 @@ clang compilation:
 # Creates wheel files for PyPI
 create pypi wheels:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - linux-aarch64 build
     - linux-x86_64 build
@@ -773,7 +773,7 @@ create pypi wheels:
 
 create dev wheels:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - linux-aarch64 build
     - linux-x86_64 build
@@ -811,7 +811,7 @@ create dev wheels:
 
 publish wheels to testpypi registry:
   stage: deploy
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -827,7 +827,7 @@ publish wheels to testpypi registry:
 
 publish wheels to pypi registry:
   stage: deploy
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -843,7 +843,7 @@ publish wheels to pypi registry:
 
 publish wheels to gitlab pypi registry:
   stage: deploy
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -859,7 +859,7 @@ publish wheels to gitlab pypi registry:
 publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels"]
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
@@ -895,7 +895,7 @@ publish wheels to github release:
 
 .build-docs-common:
   stage: deploy
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_cpu_medium
@@ -935,7 +935,7 @@ merge request docs:
 # manually added to the MR if they are changed
 check generated files:
   stage: deploy
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs:
     - job: linux-x86_64 build
     - job: merge request docs

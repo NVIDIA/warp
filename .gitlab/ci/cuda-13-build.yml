@@ -128,7 +128,7 @@ check un-namespaced symbols linux-x86_64:
 # Creates wheel files for PyPI
 create pypi wheels:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - linux-aarch64 build
     - windows-x86_64 build
@@ -164,7 +164,7 @@ create pypi wheels:
 
 publish wheels to gitlab pypi registry:
   stage: deploy
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro
@@ -179,7 +179,7 @@ publish wheels to gitlab pypi registry:
 # Generated files will be in a branch/tag-specific folder
 publish wheels to gitlab package registry:
   stage: deploy
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs: ["create pypi wheels"]
   extends:
     - .ipp_lnx_x86_64_cpu_micro

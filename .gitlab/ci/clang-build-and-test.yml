@@ -98,7 +98,7 @@ linux-x86_64 build cuda 13:
 
 linux-x86_64 test:
   stage: test
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu

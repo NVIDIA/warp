@@ -94,7 +94,7 @@ windows-x86_64 build:
 # Hide this job for now until debug aarch64 builds work
 .linux-aarch64 test:
   stage: test
-  image: $UV_BOOKWORM_SLIM_ARM_IMAGE
+  image: $UV_TRIXIE_SLIM_ARM_IMAGE
   needs: [linux-aarch64 build]
   extends:
     - .runner-test-linux-aarch64 # TODO: Change to .omni_devplat_arm_docker_gpu
@@ -109,7 +109,7 @@ linux-x86_64 test:
   stage: test
   # Note: Using slim image is intentional - manylinux-built wheels are glibc-portable
   # and GPU runtime libs are provided by the runner environment
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -149,7 +149,7 @@ windows-x86_64 test:
 # due to problems building a debug binary
 create pypi wheels:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - linux-x86_64 build
     - windows-x86_64 build
