@@ -61,6 +61,7 @@
   no output array is provided.
 - Avoid specializing `warp.fem` integration kernels on `MAX_NODES_PER_ELEMENT`, reducing kernel recompilation
   when using different function spaces.
+- Fix `wp.tile_fft()` and `wp.tile_ifft()` LTO compilation error when elements-per-thread is 1 ([GH-1212](https://github.com/NVIDIA/warp/issues/1212))
 
 ### Documentation
 
