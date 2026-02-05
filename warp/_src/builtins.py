@@ -11671,6 +11671,15 @@ def tile_fft_generic_lto_dispatch_func(
         # CPU/no-MathDx dispatch
         return ([], [], [], 0)
     else:
+        # Validate elements per thread (ept) - cuFFTDx requires ept >= 2
+        if ept < 2:
+            func_name = "tile_fft" if direction == "forward" else "tile_ifft"
+            raise ValueError(
+                f"{func_name}() requires at least 2 elements per thread, but got ept={ept} "
+                f"(fft_size={size}, block_dim={num_threads}). "
+                f"Reduce block_dim to at most {size // 2} for this FFT size."
+            )
+
         # generate the forward LTO
         lto_symbol_fwd, lto_code_data_fwd, shared_memory_bytes = warp._src.build.build_lto_fft(
             arch, size, ept, direction, fwd_dir, precision, builder
