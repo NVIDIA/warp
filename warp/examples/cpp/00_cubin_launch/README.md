@@ -38,7 +38,7 @@ This approach allows you to:
 This example runs from within the Warp repository.
 
 **Requirements:**
-- **Python 3.8+**
+- **Python 3.9+**
 - **CUDA Toolkit 12.0+** (includes `nvcc` compiler)
 - **NVIDIA GPU** (Warp automatically compiles for your GPU architecture)
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
