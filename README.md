@@ -25,7 +25,7 @@ Please refer to the project [Documentation](https://nvidia.github.io/warp/) for 
 
 ## Installing
 
-Python version 3.9 or newer is recommended. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS.
+Python version 3.9 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows, Linux, and macOS.
 GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
@@ -43,9 +43,9 @@ the `pip install` command, e.g.
 
 | Platform        | Install Command                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-manylinux_2_34_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-manylinux_2_28_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-win_amd64.whl`             |
+| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_34_aarch64.whl` |
+| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_28_x86_64.whl`  |
+| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-win_amd64.whl`             |
 
 The `--force-reinstall` option may need to be used to overwrite a previous installation.
 
@@ -301,7 +301,7 @@ Upon success, the script will output platform-specific binary files in `warp/bin
 The build script will look for the CUDA Toolkit in its default installation path.
 This path can be overridden by setting the `CUDA_PATH` environment variable. Alternatively,
 the path to the CUDA Toolkit can be passed to the build command as
-`--cuda_path="..."`. After building, the Warp package should be installed using:
+`--cuda-path="..."`. After building, the Warp package should be installed using:
 
 ```text
 pip install -e .
@@ -334,7 +334,7 @@ See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
 
 Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-For inquiries not suited for GitHub Issues, please email warp-python@nvidia.com.
+For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com>.
 
 ## Versioning
 

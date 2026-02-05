@@ -8,6 +8,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 ## 2026
 
 - **Discovering neural cohesive zone laws from displacement fields**. *G. Barkoulis Gavris, W. Sun*. April 2026. [DOI:10.1016/j.cma.2026.118733](https://doi.org/10.1016/j.cma.2026.118733)
+- **mjlab: A Lightweight Framework for GPU-Accelerated Robot Learning**. *K. Zakka, Q. Liao, B. Yi, L. L. Lay, K. Sreenath, P. Abbeel*. January 2026. [arXiv:2601.22074](https://arxiv.org/abs/2601.22074)
 - **EMPM: Embodied MPM for Modeling and Simulation of Deformable Objects**. *Y. Chen, Y. Hu, L. Sun, T. Kusnur, L. Herlant, C. Jiang*. January 2026. [arXiv:2601.17251](https://arxiv.org/abs/2601.17251)
 - **FocusNav: Spatial Selective Attention with Waypoint Guidance for Humanoid Local Navigation**. *Y. Zhang, J. Ma, L. Yan, Z. Cao, Y. Zhang, H. Li, Y. Gao*. January 2026. [arXiv:2601.12790](https://arxiv.org/abs/2601.12790)
 - **Hiking in the Wild: A Scalable Perceptive Parkour Framework for Humanoids**. *S. Zhu, Z. Zhuang, M. Zhao, K. Lee, H. Zhao*. January 2026. [arXiv:2601.07718](https://arxiv.org/abs/2601.07718)

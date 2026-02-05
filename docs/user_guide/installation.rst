@@ -1,7 +1,7 @@
 Installation
 ============
 
-Python version 3.9 or newer is *recommended*. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+Python version 3.9 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 .. note::
    Intel-based macOS (x86_64) is no longer supported. Users with Intel Macs should use Warp version 1.9.x or earlier.
@@ -63,11 +63,11 @@ the ``pip install`` command, e.g.
    * - Platform
      - Install Command
    * - Linux aarch64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-manylinux_2_34_aarch64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_34_aarch64.whl``
    * - Linux x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-manylinux_2_28_x86_64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_28_x86_64.whl``
    * - Windows x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.11.0/warp_lang-1.11.0+cu13-py3-none-win_amd64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-win_amd64.whl``
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 
@@ -152,7 +152,7 @@ Upon success, the script will output platform-specific binary files in ``warp/bi
 The build script will look for the CUDA Toolkit in its default installation path.
 This path can be overridden by setting the ``CUDA_PATH`` environment variable. Alternatively,
 the path to the CUDA Toolkit can be passed to the build command as
-``--cuda_path="..."``. After building, the Warp package should be installed using:
+``--cuda-path="..."``. After building, the Warp package should be installed using:
 
 .. code-block:: console
 

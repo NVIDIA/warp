@@ -217,7 +217,7 @@ def find_nvcc_executable(cuda_home) -> str:
 
     Args:
         cuda_home: Path to CUDA installation (may be None). Can come from
-            CUDA_HOME env var, --cuda_path argument, or auto-detection.
+            CUDA_HOME env var, --cuda-path argument, or auto-detection.
 
     Returns:
         String command to invoke nvcc (either "nvcc" or quoted full path)
@@ -226,7 +226,7 @@ def find_nvcc_executable(cuda_home) -> str:
     nvcc_name = "nvcc.exe" if os.name == "nt" else "nvcc"
 
     # First priority: If cuda_home is provided, use its nvcc
-    # This handles CUDA_HOME env var, --cuda_path arg, and ensures consistency
+    # This handles CUDA_HOME env var, --cuda-path arg, and ensures consistency
     if cuda_home:
         nvcc_path = os.path.join(cuda_home, "bin", nvcc_name)
         if os.path.exists(nvcc_path):
