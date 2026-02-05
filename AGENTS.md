@@ -43,6 +43,16 @@ IMPORTANT: Warp uses `unittest`, not pytest.
 - Run all tests in a specific file (preferred for targeted fixes): `uv run warp/tests/test_modules_lite.py`
 - New test modules should be added to `default_suite` in `warp/tests/unittest_suites.py`.
 - NEVER call `wp.clear_kernel_cache()` outside `if __name__ == "__main__":` blocks—parallel test runners will conflict.
+- Use `np.testing.assert_allclose()` instead of `np.allclose()` for array comparisons—it provides detailed error messages on failure.
+
+### Synchronization Patterns
+
+- Use `wp.synchronize_device()` inside `wp.ScopedDevice()` contexts, not `wp.synchronize()`. The latter synchronizes *all* devices, which is rarely what you want.
+- Don't call `wp.synchronize()` or `wp.synchronize_device()` before `.numpy()`—`.numpy()` implicitly synchronizes.
+
+### Kernel Definition
+
+- NEVER define `@wp.kernel` functions in code passed to `python -c "..."`. Warp's codegen uses `inspect.getsourcelines()` to read kernel source, which fails for code not in a file. Write kernels to proper `.py` files instead.
 
 ## Code Style
 
@@ -68,7 +78,8 @@ Follow Google-style docstrings with these Warp-specific guidelines:
 
 ## Commit Messages
 
-Use imperative mood ("Fix X", not "Fixed X"), ~50 char subject, reference issues as `(GH-XXX)`. Body explains *why*, not what.
+- IMPORTANT: Create a feature branch before committing—never commit directly to `main`. Use a descriptive branch name like `username/short-description`.
+- Use imperative mood ("Fix X", not "Fixed X"), ~50 char subject, reference issues as `(GH-XXX)`. Body explains *why*, not what.
 
 ## Documentation
 
