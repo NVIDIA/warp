@@ -55,8 +55,8 @@
 # Standard container image references are defined as variables in the main
 # .gitlab-ci.yml file and can be used throughout all child pipelines:
 #
-#   - $UV_BOOKWORM_IMAGE: Full uv image with git, make, and build tools
-#   - $UV_BOOKWORM_SLIM_IMAGE: Lightweight uv image for testing
+#   - $UV_TRIXIE_IMAGE: Full uv image with git, make, and build tools
+#   - $UV_TRIXIE_SLIM_IMAGE: Lightweight uv image for testing
 #   - $MINIFORGE_IMAGE: Conda/Mamba environment for Python packaging
 #
 # All external images are pinned with SHA256 digests for supply chain security.

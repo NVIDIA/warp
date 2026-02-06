@@ -207,7 +207,7 @@ windows-x86_64 extension omni.warp test:
 # Creates an artifact suitable for publishing the Kit extensions
 create linux-aarch64 kit artifacts:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-aarch64 build
@@ -226,7 +226,7 @@ create linux-aarch64 kit artifacts:
 
 create linux-x86_64 kit artifacts:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 build
@@ -245,7 +245,7 @@ create linux-x86_64 kit artifacts:
 
 create windows-x86_64 kit artifacts:
   stage: package
-  image: $UV_BOOKWORM_SLIM_IMAGE
+  image: $UV_TRIXIE_SLIM_IMAGE
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: windows-x86_64 build
@@ -267,7 +267,7 @@ create windows-x86_64 kit artifacts:
 # Uploads the extension artifacts to the internal GitLab package registry
 publish to gitlab package registry:
   stage: deploy
-  image: $UV_BOOKWORM_IMAGE
+  image: $UV_TRIXIE_IMAGE
   needs:
     - create linux-aarch64 kit artifacts
     - create linux-x86_64 kit artifacts
