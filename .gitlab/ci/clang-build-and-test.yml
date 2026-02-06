@@ -22,7 +22,7 @@
 # behavior.
 #
 # Key features:
-# - Tests against LLVM 22 toolchain
+# - Tests against the latest LLVM development toolchain
 # - Tests CUDA 12.8.1 and 13.0.1 compatibility
 # - Validates build system portability
 #
@@ -50,16 +50,17 @@ stages:
   stage: build
   before_script:
     - !reference [.snippets, section-start-install-deps]
-    - apt update && apt install curl --no-install-recommends -y wget build-essential ca-certificates
-    - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/llvm.gpg
+    - apt-get update && apt-get install --no-install-recommends -y ca-certificates curl build-essential
+    - curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/llvm.gpg
     - echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main" > /etc/apt/sources.list.d/llvm.list
-    - echo "deb-src http://apt.llvm.org/noble/ llvm-toolchain-noble main" >> /etc/apt/sources.list.d/llvm.list
-    - apt-get update && apt-get install --no-install-recommends -y clang-22
-    - update-alternatives --install /usr/bin/clang clang /usr/bin/clang-22 100
-    - update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-22 100
+    - apt-get update
+    - CLANG_VERSION=$(apt-cache search '^clang-[0-9]+$' | grep -oP '^clang-\K[0-9]+' | sort -n | tail -1)
+    - apt-get install --no-install-recommends -y clang-$CLANG_VERSION
+    - update-alternatives --install /usr/bin/clang clang /usr/bin/clang-$CLANG_VERSION 100
+    - update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-$CLANG_VERSION 100
     - !reference [.snippets, section-end-install-deps]
     - clang --version
-    - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=$CI_PROJECT_DIR/uv sh
+    - curl -fsSL https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=$CI_PROJECT_DIR/uv sh
     - source $CI_PROJECT_DIR/uv/env
     - unset CUDA_HOME
     - !reference [.snippets, setup-packman-config]
