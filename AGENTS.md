@@ -83,6 +83,7 @@ Follow Google-style docstrings with these Warp-specific guidelines:
 
 - IMPORTANT: Create a feature branch before committing—never commit directly to `main`. Use a descriptive branch name like `username/short-description`.
 - Use imperative mood ("Fix X", not "Fixed X"), ~50 char subject, reference issues as `(GH-XXX)`. Body explains *why*, not what.
+- ALWAYS use `git commit --signoff` (or `-s`) to add a `Signed-off-by` line (DCO).
 
 ## Documentation
 
