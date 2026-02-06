@@ -1214,6 +1214,105 @@ and it can also be passed to each call:
         d = jax_callback(c, vmap_method="expand_dims")  # uses "expand_dims"
         ...
 
+Basic VMAP Example
+..................
+
+.. code-block:: python
+
+    import warp as wp
+    from warp.jax_experimental import jax_kernel
+
+    import jax
+    import jax.numpy as jp
+
+    @wp.kernel
+    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
+        tid = wp.tid()
+        output[tid] = a[tid] + b[tid]
+
+    jax_add = jax_kernel(add_kernel)
+
+    # batched inputs
+    a = jp.arange(3 * 4, dtype=jp.float32).reshape((3, 4))
+    b = jp.ones(3 * 4, dtype=jp.float32).reshape((3, 4))
+
+    (output,) = jax.jit(jax.vmap(jax_add))(a, b)
+    print(output)
+
+
+VMAP Example with In-Out Arguments
+..................................
+
+Consider the following Warp kernel that sums the rows of a matrix:
+
+.. code-block:: python
+
+    @wp.kernel
+    def rowsum_kernel(matrix: wp.array2d(dtype=float), sums: wp.array1d(dtype=float)):
+        i, j = wp.tid()
+        wp.atomic_add(sums, i, matrix[i, j])
+
+Note that ``sums`` is an in-out argument that should be initialized to zero prior to launch:
+
+.. code-block:: python
+
+    jax_rowsum = jax_kernel(rowsum_kernel, in_out_argnames=["sums"])
+
+    # batched input with shape (2, 3, 4)
+    matrices = jp.arange(2 * 3 * 4, dtype=jp.float32).reshape((2, 3, 4))
+
+    # vmap with batch dim 0: input 2 matrices with shape (3, 4), output shape (2, 3)
+    sums = jp.zeros((2, 3), dtype=jp.float32)
+    (output,) = jax.jit(jax.vmap(jax_rowsum, in_axes=(0, 0)))(matrices, sums)
+
+    # vmap with batch dim 1: input 3 matrices with shape (2, 4), output shape (3, 2)
+    sums = jp.zeros((3, 2), dtype=jp.float32)
+    (output,) = jax.jit(jax.vmap(jax_rowsum, in_axes=(1, 0)))(matrices, sums)
+
+    # vmap with batch dim 2: input 4 matrices with shape (2, 3), output shape (4, 2)
+    sums = jp.zeros((4, 2), dtype=jp.float32)
+    (output,) = jax.jit(jax.vmap(jax_rowsum, in_axes=(2, 0)))(matrices, sums)
+
+VMAP Example with Custom Launch and Output Dimensions
+.....................................................
+
+Here is a kernel that looks up values in a table given the indices:
+
+.. code-block:: python
+
+    @wp.kernel
+    def lookup_kernel(table: wp.array(dtype=float), indices: wp.array(dtype=int), output: wp.array(dtype=float)):
+        i = wp.tid()
+        output[i] = table[indices[i]]
+
+The table itself is not batched, but we will provide batches of indices. By default, ``jax_kernel()`` infers the launch dimensions and output shape from the shape of the first array argument, but in this case the kernel launch dimensions should correspond to the shape of the ``indices`` array. We will need to pass custom ``launch_dims`` when calling the kernel. In order to pass this keyword argument through vmap, we will use ``functools.partial()``.
+
+.. code-block:: python
+
+    from functools import partial
+
+    jax_lookup = jax_kernel(lookup_kernel)
+
+    # lookup table (not batched)
+    N = 100
+    table = jp.arange(N, dtype=jp.float32)
+
+    # batched indices to look up
+    key = jax.random.key(42)
+    indices = jax.random.randint(key, (20, 50), 0, N, dtype=jp.int32)
+
+    # vmap with batch dim 0: input 20 sets of 50 indices each, output shape (20, 50)
+    (output,) = jax.jit(jax.vmap(partial(jax_lookup, launch_dims=50), in_axes=(None, 0)))(
+        table, indices
+    )
+
+    # vmap with batch dim 1: input 50 sets of 20 indices each, output shape (50, 20)
+    (output,) = jax.jit(jax.vmap(partial(jax_lookup, launch_dims=20), in_axes=(None, 1)))(
+        table, indices
+    )
+
+Note that ``launch_dims`` should NOT include the batch dimension - batching will be handled automatically. The same is true when passing ``output_dims`` to ``jax_kernel()`` and ``jax_callable()``.
+
 
 JAX Automatic Differentiation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

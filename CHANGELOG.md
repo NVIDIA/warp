@@ -15,6 +15,8 @@
 - Add B-spline shape functions for `warp.fem` with `SquareBSplineShapeFunctions` (2D) and
   `CubeBSplineShapeFunctions` (3D), supporting degrees 1-3. Use via `ElementBasis.BSPLINE`.
   Supported on `Grid2D`, `Grid3D`, and `Nanogrid` geometries ([GH-1208](https://github.com/NVIDIA/warp/issues/1208)).
+- Add support for JAX vmap with FFI `jax_kernel()` and `jax_callable()`
+  ([GH-859](https://github.com/NVIDIA/warp/issues/859)).
 
 ### Removed
 
@@ -35,6 +37,7 @@
 
 - Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
 - Fix `BsrMatrix.notify_nnz_changed` sometimes failing to read the latest non-zero count from the `offsets` array.
+- Fix hashing errors when creating `jax_kernel()` and `jax_callable()`.
 
 ### Documentation
 

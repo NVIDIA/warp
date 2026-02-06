@@ -61,6 +61,21 @@ def check_jax_version():
         raise RuntimeError(msg)
 
 
+def collapse_batch_dims(shape, desired_ndim):
+    # roll leading batch dims into one
+    while len(shape) > desired_ndim:
+        shape = (shape[0] * shape[1], *shape[2:])
+    return shape
+
+
+def compute_batch_size(shape, batch_ndim):
+    # compute product of batch dims at front
+    batch_size = 1
+    for i in range(batch_ndim):
+        batch_size *= shape[i]
+    return batch_size
+
+
 class GraphMode(IntEnum):
     """CUDA graph capture modes for :func:`warp.jax_experimental.jax_callable`.
 
@@ -250,7 +265,8 @@ class FfiKernel:
                 out_types.append(get_jax_output_type(input_arg, input_value.shape))
 
         # launch dimensions
-        if launch_dims is None:
+        infer_launch_dims = launch_dims is None
+        if infer_launch_dims:
             # use the shape of the first input array
             if self.first_array_arg is not None:
                 launch_dims = get_warp_shape(self.input_args[self.first_array_arg], args[self.first_array_arg].shape)
@@ -303,7 +319,9 @@ class FfiKernel:
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
-        self.launch_descriptors[launch_id] = FfiLaunchDesc(static_inputs, launch_dims)
+        self.launch_descriptors[launch_id] = FfiLaunchDesc(
+            static_inputs, launch_dims if not infer_launch_dims else None
+        )
         self.launch_id += 1
 
         return call(*args, launch_id=launch_id)
@@ -343,19 +361,23 @@ class FfiKernel:
                 assert num_inputs == self.num_inputs
                 assert num_outputs == self.num_outputs
 
-                launch_bounds = launch_bounds_t(launch_desc.launch_dims)
-
                 # first kernel param is the launch bounds
                 kernel_params = (ctypes.c_void_p * (1 + self.num_kernel_args))()
-                kernel_params[0] = ctypes.addressof(launch_bounds)
-
                 arg_refs = []
+                batch_size = None
 
                 # input and in-out args
                 for i, input_arg in enumerate(self.input_args):
                     if input_arg.is_array:
                         buffer = inputs[i].contents
-                        shape = buffer.dims[: input_arg.type.ndim]
+                        shape = buffer.dims[: buffer.rank - input_arg.dtype_ndim]
+                        if buffer.rank > input_arg.jax_ndim:
+                            # handle batching
+                            shape = collapse_batch_dims(shape, input_arg.type.ndim)
+                            if batch_size is None:
+                                batch_size = compute_batch_size(
+                                    buffer.dims[: buffer.rank], buffer.rank - input_arg.jax_ndim
+                                )
                         strides = strides_from_shape(shape, input_arg.type.dtype)
                         arg = array_t(buffer.data, 0, input_arg.type.ndim, shape, strides)
                         kernel_params[i + 1] = ctypes.addressof(arg)
@@ -370,11 +392,33 @@ class FfiKernel:
                 # pure output args (skip in-out FFI buffers)
                 for i, output_arg in enumerate(self.output_args):
                     buffer = outputs[i + self.num_in_out].contents
-                    shape = buffer.dims[: output_arg.type.ndim]
+                    shape = buffer.dims[: buffer.rank - output_arg.dtype_ndim]
+                    if buffer.rank > output_arg.jax_ndim:
+                        # handle batching
+                        shape = collapse_batch_dims(shape, output_arg.type.ndim)
+                        if batch_size is None:
+                            batch_size = compute_batch_size(
+                                buffer.dims[: buffer.rank], buffer.rank - output_arg.jax_ndim
+                            )
                     strides = strides_from_shape(shape, output_arg.type.dtype)
                     arg = array_t(buffer.data, 0, output_arg.type.ndim, shape, strides)
                     kernel_params[num_inputs + i + 1] = ctypes.addressof(arg)
                     arg_refs.append(arg)  # keep a reference
+
+                # determine launch bounds
+                if launch_desc.launch_dims is None:
+                    # infer launch dims from argument shape, works with vmap
+                    arr = arg_refs[self.first_array_arg]
+                    launch_dims = arr.shape[: arr.ndim]
+                else:
+                    # use specified launch dims
+                    launch_dims = launch_desc.launch_dims
+                    if batch_size is not None:
+                        # roll batch size into the first launch dimension
+                        launch_dims = (batch_size * launch_dims[0], *launch_dims[1:])
+
+                launch_bounds = launch_bounds_t(launch_dims)
+                kernel_params[0] = ctypes.addressof(launch_bounds)
 
                 # get device and stream
                 device = wp.get_cuda_device(get_device_ordinal_from_callframe(call_frame.contents))
@@ -806,7 +850,7 @@ class FfiCallable:
                 for i, arg in enumerate(self.input_args):
                     if arg.is_array:
                         buffer = inputs[i].contents
-                        shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
+                        shape = collapse_batch_dims(buffer.dims[: buffer.rank - arg.dtype_ndim], arg.type.ndim)
                         arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
                         arg_list.append(arr)
                     else:
@@ -817,7 +861,7 @@ class FfiCallable:
                 # pure output args (skip in-out FFI buffers)
                 for i, arg in enumerate(self.output_args):
                     buffer = outputs[i + self.num_in_out].contents
-                    shape = buffer.dims[: buffer.rank - arg.dtype_ndim]
+                    shape = collapse_batch_dims(buffer.dims[: buffer.rank - arg.dtype_ndim], arg.type.ndim)
                     arr = wp.array(ptr=buffer.data, dtype=arg.type.dtype, shape=shape, device=device)
                     arg_list.append(arr)
 
@@ -1127,14 +1171,26 @@ def jax_kernel(
 
     check_jax_version()
 
+    if isinstance(output_dims, dict):
+        hashable_output_dims = tuple(sorted(output_dims.items()))
+    elif hasattr(output_dims, "__len__"):
+        hashable_output_dims = tuple(output_dims)
+    else:
+        hashable_output_dims = output_dims
+
+    if hasattr(launch_dims, "__len__"):
+        hashable_launch_dims = tuple(launch_dims)
+    else:
+        hashable_launch_dims = launch_dims
+
     if not enable_backward:
         key = (
             kernel.func,
             kernel.sig,
             num_outputs,
             vmap_method,
-            tuple(launch_dims) if launch_dims else launch_dims,
-            tuple(sorted(output_dims.items())) if output_dims else output_dims,
+            hashable_launch_dims,
+            hashable_output_dims,
             module_preload_mode,
         )
 
@@ -1437,13 +1493,20 @@ def jax_callable(
     if graph_cache_max is None:
         graph_cache_max = FfiCallable.default_graph_cache_max
 
+    if isinstance(output_dims, dict):
+        hashable_output_dims = tuple(sorted(output_dims.items()))
+    elif hasattr(output_dims, "__len__"):
+        hashable_output_dims = tuple(output_dims)
+    else:
+        hashable_output_dims = output_dims
+
     # Note: we don't include graph_cache_max in the key, it is applied below.
     key = (
         func,
         num_outputs,
         graph_mode,
         vmap_method,
-        tuple(sorted(output_dims.items())) if output_dims else output_dims,
+        hashable_output_dims,
         module_preload_mode,
     )
 
