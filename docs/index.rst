@@ -95,13 +95,13 @@ The `warp/examples <https://github.com/NVIDIA/warp/tree/main/warp/examples>`_ di
 the Github repository contains a number of scripts categorized under subdirectories
 that show how to implement various simulation methods using the Warp API. Most examples
 will generate USD files containing time-sampled animations in the current working directory.
-Before running examples, users should ensure that the ``usd-core``, ``matplotlib``, and ``pyglet`` packages are installed using::
+Before running examples, install the optional example dependencies using::
 
-    pip install warp-lang[extras]
+    pip install warp-lang[examples]
 
-These dependencies can also be manually installed using::
-
-    pip install usd-core matplotlib pyglet
+On Linux aarch64 systems (e.g., NVIDIA DGX Spark), the ``[examples]`` extra automatically installs
+`usd-exchange <https://pypi.org/project/usd-exchange/>`_ instead of ``usd-core`` as a drop-in
+replacement, since ``usd-core`` wheels are not available for that platform.
 
 Examples can be run from the command-line as follows::
 

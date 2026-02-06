@@ -271,7 +271,7 @@ minor Warp releases following our standard deprecation practices.
 **Optional dependencies**
 
 Warp includes optional features and examples that depend on additional packages (e.g., ``usd-core``, 
-``matplotlib``, ``warp-lang[extras]``). For these optional dependencies:
+``matplotlib``, ``warp-lang[examples]``). For these optional dependencies:
 
 * We aim to test against recent versions in our CI/CD pipeline.
 * Version support may be adjusted if specific package versions cause CI/CD issues or compatibility 
