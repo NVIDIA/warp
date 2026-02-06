@@ -3117,7 +3117,7 @@ dependencies = [
 [package.optional-dependencies]
 benchmark = [
     { name = "usd-core", marker = "python_full_version < '3.14' and platform_machine != 'aarch64'" },
-    { name = "usd-exchange", marker = "python_full_version >= '3.10' and platform_machine == 'aarch64'" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64'" },
 ]
 dev = [
     { name = "blosc" },
@@ -3138,7 +3138,7 @@ dev = [
     { name = "pyglet" },
     { name = "sphinx-copybutton" },
     { name = "usd-core", marker = "python_full_version < '3.14' and platform_machine != 'aarch64'" },
-    { name = "usd-exchange", marker = "python_full_version >= '3.10' and platform_machine == 'aarch64'" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64'" },
 ]
 docs = [
     { name = "myst-parser", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -3158,7 +3158,7 @@ examples = [
     { name = "psutil" },
     { name = "pyglet" },
     { name = "usd-core", marker = "python_full_version < '3.14' and platform_machine != 'aarch64'" },
-    { name = "usd-exchange", marker = "python_full_version >= '3.10' and platform_machine == 'aarch64'" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64'" },
 ]
 torch-cu12 = [
     { name = "blosc" },
@@ -3171,7 +3171,7 @@ torch-cu12 = [
     { name = "torch", version = "2.8.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "python_full_version < '3.10'" },
     { name = "torch", version = "2.10.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "python_full_version >= '3.10'" },
     { name = "usd-core", marker = "python_full_version < '3.14' and platform_machine != 'aarch64'" },
-    { name = "usd-exchange", marker = "python_full_version >= '3.10' and platform_machine == 'aarch64'" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64'" },
 ]
 
 [package.metadata]
@@ -3191,8 +3191,8 @@ requires-dist = [
     { name = "torch", marker = "python_full_version >= '3.9' and extra == 'torch-cu12'", specifier = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "warp-lang", extra = "torch-cu12" } },
     { name = "usd-core", marker = "python_full_version < '3.14' and platform_machine != 'aarch64' and extra == 'benchmark'", specifier = ">=25.5" },
     { name = "usd-core", marker = "python_full_version < '3.14' and platform_machine != 'aarch64' and extra == 'examples'", specifier = ">=25.5" },
-    { name = "usd-exchange", marker = "python_full_version >= '3.10' and platform_machine == 'aarch64' and extra == 'benchmark'", specifier = ">=2.1.0a3" },
-    { name = "usd-exchange", marker = "python_full_version >= '3.10' and platform_machine == 'aarch64' and extra == 'examples'", specifier = ">=2.1.0a3" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and extra == 'benchmark'", specifier = ">=2.2" },
+    { name = "usd-exchange", marker = "python_full_version >= '3.10' and python_full_version < '3.13' and platform_machine == 'aarch64' and extra == 'examples'", specifier = ">=2.2" },
     { name = "warp-lang", extras = ["docs"], marker = "extra == 'dev'" },
     { name = "warp-lang", extras = ["examples"], marker = "extra == 'dev'" },
     { name = "warp-lang", extras = ["examples"], marker = "extra == 'torch-cu12'" },

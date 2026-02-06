@@ -59,7 +59,7 @@ docs = [
 ]
 benchmark = [
     "usd-core>=25.5 ; platform_machine != 'aarch64' and python_version < '3.14'",
-    "usd-exchange>=2.1.0a3 ; python_full_version >= '3.10' and platform_machine == 'aarch64'",
+    "usd-exchange>=2.2 ; python_version >= '3.10' and python_version < '3.13' and platform_machine == 'aarch64'",
 ]
 examples = [
     "blosc>=1.11.1",
@@ -68,7 +68,7 @@ examples = [
     "psutil>=7.1.0",
     "pyglet>=2.1.9",
     "usd-core>=25.5 ; platform_machine != 'aarch64' and python_version < '3.14'",
-    "usd-exchange>=2.1.0a3 ; python_full_version >= '3.10' and platform_machine == 'aarch64'",
+    "usd-exchange>=2.2 ; python_version >= '3.10' and python_version < '3.13' and platform_machine == 'aarch64'",
 ]
 torch-cu12 = [
     "warp-lang[examples]",
