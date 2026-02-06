@@ -125,6 +125,9 @@ Warp supports Python versions 3.9 onwards. Note that :ref:`some optional depende
 The following optional dependencies are required to support certain features:
 
 * `usd-core <https://pypi.org/project/usd-core>`_: Required for some Warp examples, tests, and the :class:`warp.render.UsdRenderer`.
+  On Linux aarch64 systems where ``usd-core`` wheels are not available,
+  `usd-exchange <https://pypi.org/project/usd-exchange>`_ can be installed as a drop-in replacement.
+  The ``[examples]`` extra handles this automatically.
 * `pyglet <https://pyglet.org/>`_: Required for some Warp examples and the :class:`warp.render.OpenGLRenderer`.
 * `JAX <https://jax.readthedocs.io/en/latest/installation.html>`_: Required for JAX interoperability (see :ref:`jax-interop`).
 * `PyTorch <https://pytorch.org/get-started/locally/>`_: Required for PyTorch interoperability (see :ref:`pytorch-interop`).

@@ -114,7 +114,10 @@ class UsdRenderer:
         try:
             from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux  # noqa: PLC0415
         except ImportError as e:
-            raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).") from e
+            raise ImportError(
+                "Failed to import pxr. Please install USD"
+                " (e.g. via `pip install usd-core`, or `pip install usd-exchange` on Linux aarch64)."
+            ) from e
 
         if isinstance(stage, str):
             self.stage = stage = Usd.Stage.CreateNew(stage)
