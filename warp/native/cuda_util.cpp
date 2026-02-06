@@ -177,7 +177,8 @@ bool init_cuda_driver()
     static HMODULE hCudaDriver = LoadLibraryA("nvcuda.dll");
     if (hCudaDriver == NULL) {
         fprintf(
-            stderr, "Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. Proceeding in CPU-only mode.\n"
+            stderr,
+            "Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be available.\n"
         );
         return false;
     }
@@ -190,7 +191,8 @@ bool init_cuda_driver()
         if (hCudaDriver == NULL) {
             fprintf(
                 stderr,
-                "Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. Proceeding in CPU-only mode.\n"
+                "Warp CUDA warning: Could not find or load the NVIDIA CUDA driver. GPU execution will not be "
+                "available.\n"
             );
             return false;
         }

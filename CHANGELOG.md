@@ -26,6 +26,9 @@
 
 ### Changed
 
+- Allow NVRTC compilation without a CUDA driver, enabling `wp.compile_aot_module()` to produce
+  PTX/CUBIN during Docker image builds where no GPU is available
+  ([GH-1085](https://github.com/NVIDIA/warp/issues/1085)).
 - Enable "shared" tile allocations on the stack for all CPU architectures, by defaulting
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
 - Relax the integer types expected when indexing vectors and matrices
@@ -43,6 +46,8 @@
   ([GH-1211](https://github.com/NVIDIA/warp/issues/1211)).
 
 ### Documentation
+
+- Document ahead-of-time CUDA compilation without a driver (Docker build workflow).
 
 ## [1.11.1] - 2026-02-01
 
