@@ -42,6 +42,9 @@ IMPORTANT: Warp uses `unittest`, not pytest.
 - Run all tests (~10-20 min): `uv run --extra dev -m warp.tests -s autodetect`
 - Run all tests in a specific file (preferred for targeted fixes): `uv run warp/tests/test_modules_lite.py`
 - New test modules should be added to `default_suite` in `warp/tests/unittest_suites.py`.
+- Use standard `unittest.TestCase` methods when tests target a fixed device (e.g., CPU-only). Use `add_function_test()` only when tests need to run across multiple devices via `get_test_devices()`.
+- Avoid timing-based assertions (e.g., asserting speedup ratios) in tests—they are flaky in parallel CI environments with variable CPU load.
+- Test file and class naming: group by feature prefix (e.g., `test_module_parallel_load.py` / `TestModuleParallelLoad` alongside `test_module_hashing.py` / `TestModuleHashing`).
 - NEVER call `wp.clear_kernel_cache()` outside `if __name__ == "__main__":` blocks—parallel test runners will conflict.
 - Use `np.testing.assert_allclose()` instead of `np.allclose()` for array comparisons—it provides detailed error messages on failure.
 
