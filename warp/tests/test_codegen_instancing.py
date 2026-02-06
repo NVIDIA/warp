@@ -1489,10 +1489,4 @@ add_function_test(TestCodeGenInstancing, func=test_garbage_collection, name="tes
 
 if __name__ == "__main__":
     wp.clear_kernel_cache()
-    import time
-
-    start_time = time.time()
-    wp.force_load(max_workers=4, device=wp.get_device())  # test parallel compiling and loading of modules (GH-1086)
-    end_time = time.time()
-    print(f"Time taken: {end_time - start_time} seconds")
-    # unittest.main(verbosity=2)
+    unittest.main(verbosity=2)
