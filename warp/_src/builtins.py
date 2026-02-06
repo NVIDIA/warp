@@ -8512,7 +8512,11 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
         assert ndim > 0
 
     dtype = arr_type.dtype
-    if isinstance(arr_type, (fabricarray, indexedfabricarray, fixedarray)):
+    if (
+        matches_array_class(arr_type, fabricarray)
+        or matches_array_class(arr_type, indexedfabricarray)
+        or isinstance(arr_type, fixedarray)
+    ):
         # fabric and fixed arrays: return array attribute as a regular array
         return array(dtype=dtype, ndim=ndim)
 

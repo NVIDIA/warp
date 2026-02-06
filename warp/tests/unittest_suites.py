@@ -191,6 +191,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_special_values import TestSpecialValues
     from warp.tests.test_static import TestStatic
     from warp.tests.test_struct import TestStruct
+    from warp.tests.test_subscript_types import TestSubscriptTypes
     from warp.tests.test_tape import TestTape
     from warp.tests.test_transient_module import TestTransientModule
     from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
@@ -305,6 +306,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStatic,
         TestStreams,
         TestStruct,
+        TestSubscriptTypes,
         TestTape,
         TestTexture,
         TestTile,

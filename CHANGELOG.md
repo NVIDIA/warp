@@ -6,6 +6,16 @@
 
 - Add differentiability support for `wp.tile_fft()` and `wp.tile_ifft()` calls recorded on the tape
   ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
+- Add subscript-style type hints for Warp types, enabling idiomatic Python annotations:
+  `wp.array[float]`, `wp.array[float, Literal[2]]`, `wp.array2d[float]`,
+  `wp.indexedarray[float]`, `wp.fabricarray[float]`, `wp.indexedfabricarray[float]`,
+  `wp.types.Vector[float, Literal[3]]`, `wp.types.Matrix[float, Literal[3], Literal[3]]`,
+  `wp.types.Quaternion[float]`, `wp.types.Transformation[float]`, `wp.tile[float]`,
+  and `wp.tile[float, Literal[8], Literal[4]]`.
+  Array subscripts return lightweight annotation objects recognized by Warp's codegen.
+  All four array variants support `typing.Any` for dtype, ndim, or both
+  (e.g., `wp.array[float, Any]` for any dimensionality).
+  ([GH-1216](https://github.com/NVIDIA/warp/issues/1216)).
 - Add `wp.get_cuda_toolkit_version()` and `wp.get_cuda_driver_version()` to query CUDA versions
   ([GH-1172](https://github.com/NVIDIA/warp/issues/1172)).
 - Add public API for marching cubes lookup tables as class attributes on `wp.MarchingCubes`:
@@ -36,6 +46,11 @@
 - Allow NVRTC compilation without a CUDA driver, enabling `wp.compile_aot_module()` to produce
   PTX/CUBIN during Docker image builds where no GPU is available
   ([GH-1085](https://github.com/NVIDIA/warp/issues/1085)).
+- Change `Vector` and `Matrix` generic type parameter order to dtype-first:
+  `Vector[Scalar, Length]` (was `Vector[Length, Scalar]`) and
+  `Matrix[Scalar, Rows, Cols]` (was `Matrix[Rows, Cols, Scalar]`).
+  This only affects type stubs (`.pyi`) and internal TypeVar annotations
+  ([GH-1216](https://github.com/NVIDIA/warp/issues/1216)).
 - Enable "shared" tile allocations on the stack for all CPU architectures, by defaulting
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
 - Relax the integer types expected when indexing vectors and matrices

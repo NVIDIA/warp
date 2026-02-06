@@ -117,7 +117,7 @@ def fabric_to_warp_dtype(type_info, attrib_name):
         return base_dtype
 
 
-class fabricarray(noncontiguous_array_base[T]):
+class fabricarray(noncontiguous_array_base):
     """Array type for accessing data stored in Omniverse Runtime Fabric.
 
     Fabric arrays provide a view into attribute data stored across multiple
@@ -138,6 +138,13 @@ class fabricarray(noncontiguous_array_base[T]):
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
+
+    @classmethod
+    def __class_getitem__(cls, params):
+        """Support ``wp.fabricarray[dtype]`` and ``wp.fabricarray[dtype, Literal[ndim]]`` syntax."""
+        from warp._src.types import _parse_array_subscript  # noqa: PLC0415
+
+        return _parse_array_subscript(cls, params)
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -321,7 +328,7 @@ def fabricarrayarray(**kwargs):
     return fabricarray(**kwargs)
 
 
-class indexedfabricarray(noncontiguous_array_base[T]):
+class indexedfabricarray(noncontiguous_array_base):
     """Indexed view into a :class:`fabricarray`.
 
     Provides access to a subset of elements from a Fabric array, selected by
@@ -342,6 +349,13 @@ class indexedfabricarray(noncontiguous_array_base[T]):
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
     # (initialized when needed)
     _vars = None
+
+    @classmethod
+    def __class_getitem__(cls, params):
+        """Support ``wp.indexedfabricarray[dtype]`` and ``wp.indexedfabricarray[dtype, Literal[ndim]]`` syntax."""
+        from warp._src.types import _parse_array_subscript  # noqa: PLC0415
+
+        return _parse_array_subscript(cls, params)
 
     def __init__(self, fa=None, indices=None, dtype=None, ndim=None):
         super().__init__(ARRAY_TYPE_FABRIC_INDEXED)

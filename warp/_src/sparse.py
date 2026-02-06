@@ -2591,14 +2591,14 @@ def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) ->
 
 def bsr_mv(
     A: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
-    x: Array[Vector[Cols, Scalar] | Scalar],
-    y: Array[Vector[Rows, Scalar] | Scalar] | None = None,
+    x: Array[Vector[Scalar, Cols] | Scalar],
+    y: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     alpha: Scalar = 1.0,
     beta: Scalar = 0.0,
     transpose: bool = False,
-    work_buffer: Array[Vector[Rows, Scalar] | Scalar] | None = None,
+    work_buffer: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     tile_size: int = 0,
-) -> Array[Vector[Rows, Scalar] | Scalar]:
+) -> Array[Vector[Scalar, Rows] | Scalar]:
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
