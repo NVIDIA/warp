@@ -4920,6 +4920,7 @@ class Runtime:
 
         self.cuda_devices = []
         self.cuda_primary_devices = []
+        self.nvrtc_supported_archs = set()
 
         cuda_device_count = 0
 
@@ -4946,17 +4947,15 @@ class Runtime:
                 # we can't rely on minor version compatibility, so the driver can't be older than the toolkit
                 self.min_driver_version = self.toolkit_version
 
-            # determine if the installed driver is sufficient
-            if self.driver_version is not None and self.driver_version >= self.min_driver_version:
-                # get all architectures supported by NVRTC
-                num_archs = self.core.wp_nvrtc_supported_arch_count()
-                if num_archs > 0:
-                    archs = (ctypes.c_int * num_archs)()
-                    self.core.wp_nvrtc_supported_archs(archs)
-                    self.nvrtc_supported_archs = set(archs)
-                else:
-                    self.nvrtc_supported_archs = set()
+            # NVRTC is statically linked — arch query works without a driver
+            num_archs = self.core.wp_nvrtc_supported_arch_count()
+            if num_archs > 0:
+                archs = (ctypes.c_int * num_archs)()
+                self.core.wp_nvrtc_supported_archs(archs)
+                self.nvrtc_supported_archs = set(archs)
 
+            # device enumeration requires the CUDA driver
+            if self.driver_version is not None and self.driver_version >= self.min_driver_version:
                 # get CUDA device count
                 cuda_device_count = self.core.wp_cuda_device_get_count()
 
@@ -4971,9 +4970,6 @@ class Runtime:
                 # count known non-primary contexts on each physical device so we can
                 # give them reasonable aliases (e.g., "cuda:0.0", "cuda:0.1")
                 self.cuda_custom_context_count = [0] * cuda_device_count
-            else:
-                # driver is insufficient, no NVRTC architectures supported
-                self.nvrtc_supported_archs = set()
 
         # set default device
         if cuda_device_count > 0:
@@ -5001,9 +4997,12 @@ class Runtime:
             except ValueError:
                 pass  # no eligible NVRTC-supported arch ≥ default, retain existing
         else:
-            # CUDA not available
             self.set_default_device("cpu")
-            self.default_ptx_arch = None
+            if self.nvrtc_supported_archs:
+                # NVRTC available but no devices/driver — enable offline compilation
+                self.default_ptx_arch = warp.config.ptx_target_arch if warp.config.ptx_target_arch is not None else 75
+            else:
+                self.default_ptx_arch = None
 
         # initialize kernel cache
         warp._src.build.init_kernel_cache(warp.config.kernel_cache_dir)
@@ -5032,7 +5031,13 @@ class Runtime:
                     # Warp was compiled without CUDA support
                     greeting.append("   CUDA not enabled in this build")
                 elif self.driver_version is None:
-                    greeting.append("   CUDA driver not found or failed to initialize")
+                    if self.nvrtc_supported_archs:
+                        greeting.append(
+                            f"   CUDA Toolkit {self.toolkit_version[0]}.{self.toolkit_version[1]}"
+                            ", CUDA driver not available (NVRTC compilation available)"
+                        )
+                    else:
+                        greeting.append("   CUDA driver not found or failed to initialize")
                 elif self.driver_version < self.min_driver_version:
                     # insufficient CUDA driver version
                     greeting.append(

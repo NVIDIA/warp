@@ -86,26 +86,23 @@ class TestDevices(unittest.TestCase):
             wp.unmap_cuda_device("imaginary_device:0")
 
     def test_devices_get_cuda_supported_archs(self):
-        if not wp.is_cuda_available():
-            self.assertEqual(wp.get_cuda_supported_archs(), [], "Should return empty list when CUDA is not available")
-        else:
-            archs = wp.get_cuda_supported_archs()
+        archs = wp.get_cuda_supported_archs()
+        self.assertIsInstance(archs, list)
+
+        if wp.is_cuda_available():
+            # With CUDA devices present, NVRTC must report architectures
             self.assertTrue(len(archs) > 0, "No CUDA supported architectures found")
 
-            # Check all elements are integers
-            for arch in archs:
-                self.assertIsInstance(arch, int, f"Architecture value {arch} should be an integer")
+        # Validate the list contents (may be non-empty even without
+        # CUDA devices when NVRTC is available without a driver)
+        for arch in archs:
+            self.assertIsInstance(arch, int, f"Architecture value {arch} should be an integer")
+            self.assertGreaterEqual(arch, 50, f"Architecture {arch} should be >= 50 (e.g., sm_50)")
+            self.assertLessEqual(arch, 150, f"Architecture {arch} seems unreasonably high")
 
-            # Check the list is sorted
-            self.assertEqual(archs, sorted(archs), "Architecture list should be sorted")
-
-            # Check for no duplicates
-            self.assertEqual(len(archs), len(set(archs)), "Architecture list should not contain duplicates")
-
-            # Check values are reasonable (modern CUDA architectures are >= 50)
-            for arch in archs:
-                self.assertGreaterEqual(arch, 50, f"Architecture {arch} should be >= 50 (e.g., sm_50)")
-                self.assertLessEqual(arch, 150, f"Architecture {arch} seems unreasonably high")
+        # Check the list is sorted with no duplicates
+        self.assertEqual(archs, sorted(archs), "Architecture list should be sorted")
+        self.assertEqual(len(archs), len(set(archs)), "Architecture list should not contain duplicates")
 
 
 add_function_test(
