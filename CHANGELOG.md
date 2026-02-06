@@ -38,6 +38,9 @@
 - Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
 - Fix `BsrMatrix.notify_nnz_changed` sometimes failing to read the latest non-zero count from the `offsets` array.
 - Fix hashing errors when creating `jax_kernel()` and `jax_callable()`.
+- Fix `module="unique"` kernels incorrectly reusing cached kernels when `wp.static()` expressions
+  are deferred (e.g., referencing loop variables), causing wrong kernel execution
+  ([GH-1211](https://github.com/NVIDIA/warp/issues/1211)).
 
 ### Documentation
 

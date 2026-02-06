@@ -25,6 +25,8 @@ same unique kernel is defined multiple times.
 import unittest
 from typing import Any
 
+import numpy as np
+
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -184,10 +186,65 @@ class TestUniqueModule(unittest.TestCase):
             assert_np_equal(y_i32_2.numpy(), [10, 12, 14])
 
 
+def test_unique_module_deferred_static_expressions(test, device):
+    """Test that unique modules correctly hash deferred wp.static() expressions.
+
+    Some wp.static() expressions cannot be evaluated at kernel declaration time
+    and must be deferred until codegen (e.g., when they reference a loop variable).
+    This test verifies that unique modules properly resolve and include these
+    deferred expressions in the hash, ensuring kernels with different static
+    values get different hashes.
+    """
+
+    def make_kernel(values):
+        @wp.kernel(module="unique", enable_backward=False)
+        def kernel_with_deferred_static(result: wp.array(dtype=int)):
+            tid = wp.tid()
+            if tid == 0:
+                for i in range(wp.static(len(values))):
+                    # wp.static(values[i]) references loop var 'i', so it's deferred
+                    result[i] = wp.static(values[i])
+
+        return kernel_with_deferred_static
+
+    # Create two kernels with different values but same length
+    kernel1 = make_kernel([100, 200])
+    kernel2 = make_kernel([999, 888])
+
+    # They should be different kernel objects (different hashes)
+    test.assertIsNot(kernel1, kernel2, "Kernels with different static values should be different objects")
+    test.assertNotEqual(
+        kernel1.module.name,
+        kernel2.module.name,
+        "Kernels with different static values should have different module names",
+    )
+
+    # Verify they produce correct results
+    result1 = wp.zeros(2, dtype=int, device=device)
+    wp.launch(kernel1, dim=1, inputs=[], outputs=[result1], device=device)
+    assert_np_equal(result1.numpy(), np.array([100, 200]))
+
+    result2 = wp.zeros(2, dtype=int, device=device)
+    wp.launch(kernel2, dim=1, inputs=[], outputs=[result2], device=device)
+    assert_np_equal(result2.numpy(), np.array([999, 888]))
+
+    # Also test with different lengths to ensure that still works
+    kernel3 = make_kernel([1, 2, 3])
+    result3 = wp.zeros(3, dtype=int, device=device)
+    wp.launch(kernel3, dim=1, inputs=[], outputs=[result3], device=device)
+    assert_np_equal(result3.numpy(), np.array([1, 2, 3]))
+
+
 devices = get_test_devices()
 
 add_function_test(
     TestUniqueModule, "test_unique_module_kernel_object_reuse", test_unique_module_kernel_object_reuse, devices=devices
+)
+add_function_test(
+    TestUniqueModule,
+    "test_unique_module_deferred_static_expressions",
+    test_unique_module_deferred_static_expressions,
+    devices=devices,
 )
 
 

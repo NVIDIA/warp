@@ -1315,8 +1315,9 @@ def kernel(
 
             # Compute the module hash and create a unique name
             # The hash includes the kernel and all its dependencies (functions, structs, constants)
-            hasher = warp._src.context.ModuleHasher(m)
-            k.module.name = f"{k.key}_{hasher.module_hash.hex()[:8]}"
+            # Use get_module_hash() to ensure deferred static expressions are resolved before hashing
+            module_hash = m.get_module_hash()
+            k.module.name = f"{k.key}_{module_hash.hex()[:8]}"
 
             # Check if we've already created a module with this name
             # This can happen when the same kernel is compiled for multiple devices
