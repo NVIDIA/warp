@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("--serendipity", action="store_true", default=False, help="Use Serendipity basis functions.")
     parser.add_argument("--viscosity", type=float, default=2.0, help="Fluid viscosity parameter.")
     parser.add_argument(
-        "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
+        "--boundary-compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
     )
     parser.add_argument(
         "--mesh", choices=("grid", "tet", "hex", "nano", "anano", "tri", "quad"), default="grid", help="Mesh type."

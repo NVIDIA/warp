@@ -30,6 +30,8 @@
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
 - Relax the integer types expected when indexing vectors and matrices
   ([GH-1209](https://github.com/NVIDIA/warp/issues/1209)).
+- Migrate example CLI arguments from snake_case to kebab-case (e.g. `--num_frames` becomes `--num-frames`)
+  ([GH-1213](https://github.com/NVIDIA/warp/issues/1213)).
 - `warp.fem.PicQuadrature` now supports particles spanning multiple cells.
   Pass a tuple of 2D arrays `(cell_indices, coords, particle_fraction)` to specify per-particle cell contributions.
 

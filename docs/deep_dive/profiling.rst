@@ -400,7 +400,7 @@ also skip writing particle positions to a USD file so that we can focus on the G
 
 .. code-block:: bash
 
-    nsys profile --stats=true python example_sph.py --stage_path None --num_frames 10
+    nsys profile --stats=true python example_sph.py --stage-path None --num-frames 10
 
 The output tells us that the ``get_acceleration`` and the ``compute_density`` kernels take up the majority of the
 time on the GPU. We also see from the output that their full names become
@@ -412,7 +412,7 @@ A basic command to use the command-line profiler to save the report to ``example
 
 .. code-block:: bash
 
-    ncu -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full python example_sph.py --stage_path None --num_frames 10
+    ncu -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full python example_sph.py --stage-path None --num-frames 10
 
 This command takes a much longer time to execute than the Nsight Systems command since Nsight Compute performs
 multiple passes of each kernel launch to collect different metrics.
@@ -421,14 +421,14 @@ results:
 
 .. code-block:: bash
 
-    ncu -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+    ncu -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage-path None --num-frames 10
 
 Additionally, we can add the ``-f`` option to overwrite the output file and ``--open-in-ui`` to automatically open the
 report in the UI:
 
 .. code-block:: bash
 
-    ncu --open-in-ui -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+    ncu --open-in-ui -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage-path None --num-frames 10
 
 The following screenshot shows the Python/SASS correlation view from the Nsight Compute report (click to enlarge):
 
@@ -453,7 +453,7 @@ we can drop the ``-k`` option and increase the value of the ``-c`` option to 20:
 
 .. code-block:: bash
 
-    ncu --open-in-ui -f -o example_sph --set full -c 20 python example_sph.py --stage_path None --num_frames 10
+    ncu --open-in-ui -f -o example_sph --set full -c 20 python example_sph.py --stage-path None --num-frames 10
 
 Preserving source code context in Nsight Compute reports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -463,7 +463,7 @@ It is convenient to permanently import the Python or CUDA-C source files into th
 
 .. code-block:: bash
 
-    ncu --open-in-ui --import-source 1 -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+    ncu --open-in-ui --import-source 1 -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage-path None --num-frames 10
 
 This ensures that a snapshot of the source files is taken at the time the profiling report was created,
 which prevents subsequent source-code modifications from affecting the SASS/source correlation information.
@@ -479,7 +479,7 @@ profiling command that directs Nsight Compute to search for the source files in 
 
 .. code-block:: bash
 
-    ncu --open-in-ui --import-source 1 --source-folders ~/.cache/warp/ -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage_path None --num_frames 10
+    ncu --open-in-ui --import-source 1 --source-folders ~/.cache/warp/ -f -o example_sph -k get_acceleration_a9fb4286_cuda_kernel_forward --set full -c 5 python example_sph.py --stage-path None --num-frames 10
 
 For similar reasons, it may sometimes be necessary to clear the kernel cache using :func:`warp.clear_kernel_cache`
 to force an update of the ``#line`` directives added into the CUDA-C code. This is because there can be changes to

@@ -173,16 +173,16 @@ if __name__ == "__main__":
     parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
     parser.add_argument(
-        "--top_velocity",
+        "--top-velocity",
         type=float,
         default=1.0,
         help="Horizontal velocity initial condition at the top of the domain.",
     )
     parser.add_argument("--viscosity", type=float, default=1.0, help="Fluid viscosity parameter.")
-    parser.add_argument("--boundary_strength", type=float, default=100.0, help="Soft boundary condition strength.")
+    parser.add_argument("--boundary-strength", type=float, default=100.0, help="Soft boundary condition strength.")
     parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
     parser.add_argument(
-        "--nonconforming_pressures", action="store_true", help="For grid, use non-conforming pressure (Q_d/P_{d-1})."
+        "--nonconforming-pressures", action="store_true", help="For grid, use non-conforming pressure (Q_d/P_{d-1})."
     )
     parser.add_argument(
         "--headless",

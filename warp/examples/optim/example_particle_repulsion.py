@@ -266,7 +266,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
-    parser.add_argument("--num_frames", type=int, default=4000, help="Number of frames to simulate.")
+    parser.add_argument("--num-frames", type=int, default=4000, help="Number of frames to simulate.")
     parser.add_argument(
         "--headless",
         action="store_true",

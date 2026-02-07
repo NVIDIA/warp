@@ -262,10 +262,10 @@ if __name__ == "__main__":
     parser.add_argument("--resolution", type=int, default=25, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
     parser.add_argument("--displacement", type=float, default=-0.5)
-    parser.add_argument("--poisson_ratio", type=float, default=0.99)
+    parser.add_argument("--poisson-ratio", type=float, default=0.99)
     parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type")
     parser.add_argument(
-        "--nonconforming_stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
+        "--nonconforming-stresses", action="store_true", help="For grid, use non-conforming stresses (Q_d/P_d)"
     )
     parser.add_argument(
         "--headless",

@@ -219,9 +219,9 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--resolution", type=int, default=25, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
-    parser.add_argument("--num_frames", type=int, default=1000, help="Total number of frames.")
+    parser.add_argument("--num-frames", type=int, default=1000, help="Total number of frames.")
     parser.add_argument(
-        "--top_velocity",
+        "--top-velocity",
         type=float,
         default=1.0,
         help="Horizontal velocity boundary condition at the top of the domain.",

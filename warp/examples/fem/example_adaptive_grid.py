@@ -236,9 +236,9 @@ if __name__ == "__main__":
     parser.add_argument("--resolution", type=int, default=8, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=1, help="Polynomial degree of shape functions.")
     parser.add_argument(
-        "--div_conforming", action="store_true", default=False, help="Use H(div)-conforming function space"
+        "--div-conforming", action="store_true", default=False, help="Use H(div)-conforming function space"
     )
-    parser.add_argument("--level_count", type=int, default=4, help="Number of refinement levels.")
+    parser.add_argument("--level-count", type=int, default=4, help="Number of refinement levels.")
     parser.add_argument(
         "--headless",
         action="store_true",

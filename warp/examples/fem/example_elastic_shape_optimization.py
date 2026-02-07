@@ -364,7 +364,7 @@ if __name__ == "__main__":
         help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
     parser.add_argument("--lr", type=float, default=1.0e-3, help="Learning rate.")
-    parser.add_argument("--num_iters", type=int, default=250, help="Number of iterations.")
+    parser.add_argument("--num-iters", type=int, default=250, help="Number of iterations.")
 
     args = parser.parse_known_args()[0]
 

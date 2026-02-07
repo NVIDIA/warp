@@ -377,7 +377,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--train_iters", type=int, default=20000, help="Total number of training iterations.")
+    parser.add_argument("--train-iters", type=int, default=20000, help="Total number of training iterations.")
     parser.add_argument(
         "--headless",
         action="store_true",

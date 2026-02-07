@@ -193,9 +193,9 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
-    parser.add_argument("--num_frames", type=int, default=100, help="Total number of frames.")
+    parser.add_argument("--num-frames", type=int, default=100, help="Total number of frames.")
     parser.add_argument("--viscosity", type=float, default=0.001, help="Fluid viscosity parameter.")
-    parser.add_argument("--ang_vel", type=float, default=1.0, help="Angular velocity.")
+    parser.add_argument("--ang-vel", type=float, default=1.0, help="Angular velocity.")
     parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
     parser.add_argument(
         "--headless",
