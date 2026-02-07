@@ -71,8 +71,12 @@ Follow Google-style docstrings with these Warp-specific guidelines:
 - Document `__init__` parameters in the class docstring, not the `__init__` method
 - Don't repeat default values from signatures—Sphinx autodoc shows them automatically
 - Use double backticks for code elements (RST syntax): ``` ``.nvdb`` ```, ``` ``"none"`` ```
+- Use double backticks for parameter cross-references in docstrings: ``` ``data`` ```, ``` ``device`` ```—not italics (`*data*`)
+- Use attribute docstrings (`"""..."""` after members) for enum/class constant docs, not `#:` comments—Sphinx supports both but only attribute docstrings work in VSCode/Pylance
 - Use Sphinx roles for cross-references: `:class:`warp.array``, `:func:`warp.launch``, `:mod:`warp.render``
+- Use `:attr:` to cross-reference class constants: `:attr:`FILTER_LINEAR``
 - In `builtins.py`, use `Args:` and `Returns:` (Google style), not `:param:` and `:returns:` (RST style)
+- Capitalize product names in docstrings and error messages: "NumPy" not "numpy", "Warp" not "warp"
 
 ## CHANGELOG.md
 
@@ -94,6 +98,9 @@ Follow Google-style docstrings with these Warp-specific guidelines:
 ## Codebase Internals
 
 - `warp/_src/` contains internal implementation, re-exported through `warp/__init__.py`. Public-facing code should import from `warp`, not `warp._src`. Internal code should import directly from `warp/_src/` modules.
+- `warp._src.utils` imports `warp._src.context` at module level—importing from `utils` in early-loaded modules (e.g., `texture.py`) causes circular imports. Use lazy imports (`from warp._src.utils import ... # noqa: PLC0415` inside functions) when needed.
+- Use `warp._src.utils.warn()` instead of `warnings.warn()`—it routes warnings to stdout (some applications don't want Warp writing to stderr).
+- Use `DeviceLike` type annotation (from `warp._src.context`) for `device` parameters. Import under `TYPE_CHECKING` to avoid circular imports.
 - Native bindings use ctypes; function signatures are registered in `Runtime.__init__` in `warp/_src/context.py`.
 - `warp/_src/builtins.py` defines kernel-callable functions. After modifying, run `build_docs.py` to regenerate `warp/__init__.pyi`.
 
