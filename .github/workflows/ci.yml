@@ -27,6 +27,9 @@ on:
   schedule: # Schedule workflow only runs on the default branch
     - cron: "45 9 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   build-warp:
     runs-on: ${{ matrix.os }}
