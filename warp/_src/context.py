@@ -39,6 +39,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy as shallowcopy
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Literal,
@@ -52,12 +53,15 @@ from typing import (
     overload as typing_overload,
 )
 
-try:
+if TYPE_CHECKING:
     from typing import ParamSpec
-except ImportError:
-    # Python 3.9 - ParamSpec not available, use TypeVar as fallback
-    def ParamSpec(name):
-        return TypeVar(name)
+else:
+    try:
+        from typing import ParamSpec
+    except ImportError:
+
+        def ParamSpec(name):
+            return TypeVar(name)
 
 
 import numpy as np
@@ -884,9 +888,8 @@ class Kernel:
 # ----------------------
 
 # Type variables for the @func decorator overloads below.
-# Using ParamSpec preserves the decorated function's signature for static type checkers,
+# ParamSpec preserves the decorated function's signature for static type checkers,
 # so IDEs show the original parameters instead of generic (*args, **kwargs).
-# Note: ParamSpec requires Python 3.10+; on 3.9 this falls back to TypeVar.
 _FuncParams = ParamSpec("_FuncParams")
 _FuncReturn = TypeVar("_FuncReturn")
 
