@@ -44,6 +44,9 @@
 - Add CUDA texture interop APIs for 2D/3D textures, including array copy helpers and
   surface handle access for external integration workflows
   ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
+- Add `wp.config.cuda_arch_suffix` setting to append architecture-specific (`"a"`) or
+  family-specific (`"f"`) suffixes to the `--gpu-architecture` flag passed to NVRTC
+  ([GH-1065](https://github.com/NVIDIA/warp/issues/1065)).
 
 ### Removed
 

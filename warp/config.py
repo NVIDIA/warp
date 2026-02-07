@@ -133,6 +133,19 @@ ptx_target_arch: _Optional[int] = None
 If ``None``, the architecture is determined by devices present in the system.
 """
 
+cuda_arch_suffix: _Optional[str] = None
+"""CUDA architecture suffix for kernel compilation.
+
+Controls whether architecture-specific or family-specific suffixes are
+appended to the ``--gpu-architecture`` flag passed to NVRTC.
+
+Args:
+    cuda_arch_suffix: One of {``None``, ``"a"``, ``"f"``}.
+        ``None`` disables suffixes (default, current behavior).
+        ``"a"`` enables architecture-specific features (requires sm_90+).
+        ``"f"`` enables family-specific features (requires sm_100+ and CUDA 12.9+).
+"""
+
 lineinfo: bool = False
 """Enable the compilation of modules with line information.
 

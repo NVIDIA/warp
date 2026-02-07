@@ -15,6 +15,7 @@ API
 
    cache_kernels
    compile_time_trace
+   cuda_arch_suffix
    cuda_output
    enable_backward
    enable_graph_capture_module_load_by_default
