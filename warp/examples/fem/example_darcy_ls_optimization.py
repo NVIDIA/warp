@@ -456,7 +456,7 @@ if __name__ == "__main__":
     parser.add_argument("--degree", type=int, default=1, help="Polynomial degree of shape functions.")
     parser.add_argument("--discontinuous", action="store_true", help="Use discontinuous level set advection.")
     parser.add_argument("--mesh", type=str, default="grid", help="Mesh type.")
-    parser.add_argument("--num_iters", type=int, default=100, help="Number of iterations.")
+    parser.add_argument("--num-iters", type=int, default=100, help="Number of iterations.")
     parser.add_argument("--dt", type=float, default=0.05, help="Level set update time step.")
     parser.add_argument(
         "--headless",

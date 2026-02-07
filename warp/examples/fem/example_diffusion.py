@@ -163,10 +163,10 @@ if __name__ == "__main__":
     parser.add_argument("--serendipity", action="store_true", default=False, help="Use Serendipity basis functions.")
     parser.add_argument("--viscosity", type=float, default=2.0, help="Fluid viscosity parameter.")
     parser.add_argument(
-        "--boundary_value", type=float, default=5.0, help="Value of Dirichlet boundary condition on vertical edges."
+        "--boundary-value", type=float, default=5.0, help="Value of Dirichlet boundary condition on vertical edges."
     )
     parser.add_argument(
-        "--boundary_compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
+        "--boundary-compliance", type=float, default=0.0, help="Dirichlet boundary condition compliance."
     )
     parser.add_argument("--mesh", choices=("grid", "tri", "quad"), default="grid", help="Mesh type.")
     parser.add_argument(

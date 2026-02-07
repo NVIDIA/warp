@@ -234,7 +234,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--resolution", type=int, default=50, help="Grid resolution.")
-    parser.add_argument("--num_frames", type=int, default=250, help="Total number of frames.")
+    parser.add_argument("--num-frames", type=int, default=250, help="Total number of frames.")
     parser.add_argument("--degree", choices=(0, 1), type=int, default=1, help="Discretization order.")
     parser.add_argument(
         "--headless",

@@ -431,9 +431,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument(
-        "--num_frames", type=int, default=1000, help="Number of frames to simulate before computing loss."
+        "--num-frames", type=int, default=1000, help="Number of frames to simulate before computing loss."
     )
-    parser.add_argument("--train_iters", type=int, default=50, help="Total number of training iterations.")
+    parser.add_argument("--train-iters", type=int, default=50, help="Total number of training iterations.")
     parser.add_argument(
         "--headless",
         action="store_true",

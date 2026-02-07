@@ -178,10 +178,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
-    parser.add_argument("--num_frames", type=int, default=10000, help="Total number of frames.")
-    parser.add_argument("--train_iters", type=int, default=10, help="Total number of training iterations per frame.")
+    parser.add_argument("--num-frames", type=int, default=10000, help="Total number of frames.")
+    parser.add_argument("--train-iters", type=int, default=10, help="Total number of training iterations per frame.")
     parser.add_argument(
-        "--num_particles", type=int, default=1500, help="Total number of particles to use in optimization."
+        "--num-particles", type=int, default=1500, help="Total number of particles to use in optimization."
     )
     parser.add_argument(
         "--headless",

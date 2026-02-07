@@ -470,7 +470,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
-    parser.add_argument("--graph_capture", action="store_true", help="Test graph capture.")
+    parser.add_argument("--graph-capture", action="store_true", help="Test graph capture.")
     parser.add_argument("-N", type=int, default=8, help="Number of matrices to test.")
     parser.add_argument(
         "--headless",

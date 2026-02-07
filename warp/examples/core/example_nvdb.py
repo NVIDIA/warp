@@ -162,12 +162,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument(
-        "--stage_path",
+        "--stage-path",
         type=lambda x: None if x == "None" else str(x),
         default="example_nvdb.usd",
         help="Path to the output USD file.",
     )
-    parser.add_argument("--num_frames", type=int, default=1000, help="Total number of frames.")
+    parser.add_argument("--num-frames", type=int, default=1000, help="Total number of frames.")
 
     args = parser.parse_known_args()[0]
 

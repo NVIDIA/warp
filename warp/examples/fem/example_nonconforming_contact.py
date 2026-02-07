@@ -266,9 +266,9 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     parser.add_argument("--resolution", type=int, default=32, help="Grid resolution.")
     parser.add_argument("--degree", type=int, default=2, help="Polynomial degree of shape functions.")
-    parser.add_argument("--young_modulus", type=float, default=10.0)
-    parser.add_argument("--poisson_ratio", type=float, default=0.9)
-    parser.add_argument("--num_steps", type=int, default=50)
+    parser.add_argument("--young-modulus", type=float, default=10.0)
+    parser.add_argument("--poisson-ratio", type=float, default=0.9)
+    parser.add_argument("--num-steps", type=int, default=50)
     parser.add_argument(
         "--headless",
         action="store_true",

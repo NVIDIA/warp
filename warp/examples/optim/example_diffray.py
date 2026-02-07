@@ -503,7 +503,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
-    parser.add_argument("--train_iters", type=int, default=150, help="Total number of training iterations.")
+    parser.add_argument("--train-iters", type=int, default=150, help="Total number of training iterations.")
     parser.add_argument("--height", type=int, default=1024, help="Height of rendered image in pixels.")
     parser.add_argument(
         "--headless",

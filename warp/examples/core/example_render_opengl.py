@@ -444,23 +444,23 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
-    parser.add_argument("--num_tiles", type=int, default=4, help="Number of viewports to render in a single frame.")
+    parser.add_argument("--num-tiles", type=int, default=4, help="Number of viewports to render in a single frame.")
     parser.add_argument(
-        "--show_plot",
+        "--show-plot",
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Display the pixels in an additional matplotlib figure.",
     )
-    parser.add_argument("--render_mode", type=str, choices=("depth", "rgb"), default="depth", help="")
+    parser.add_argument("--render-mode", type=str, choices=("depth", "rgb"), default="depth", help="")
     parser.add_argument(
-        "--split_up_tiles",
+        "--split-up-tiles",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Whether to split tiles into subplots when --show_plot is True.",
+        help="Whether to split tiles into subplots when --show-plot is True.",
     )
-    parser.add_argument("--custom_tile_arrangement", action="store_true", help="Apply custom tile arrangement.")
+    parser.add_argument("--custom-tile-arrangement", action="store_true", help="Apply custom tile arrangement.")
     parser.add_argument(
-        "--use_imgui",
+        "--use-imgui",
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Enable or disable the ImGui window.",
