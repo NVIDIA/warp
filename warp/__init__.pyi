@@ -4672,7 +4672,7 @@ def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     ...
 
 @over
-def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any) -> Any:
+def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any:
     """Sample the 2D texture at the given UV coordinates.
 
     Args:
@@ -4680,6 +4680,7 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any) -> Any:
         uv: UV coordinates as a :class:`warp.vec2f`. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, width] x [0, height] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Level of detail for mipmapped textures. Default is 0.0 (no mipmaps).
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -4689,7 +4690,7 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any) -> Any:
     ...
 
 @over
-def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any) -> Any:
+def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32) -> Any:
     """Sample the 2D texture at the given UV coordinates.
 
     Args:
@@ -4699,6 +4700,7 @@ def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any) -> Any:
         v: V coordinate. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Level of detail for mipmapped textures. Default is 0.0 (no mipmaps).
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -4708,7 +4710,7 @@ def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any) -> Any:
     ...
 
 @over
-def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any) -> Any:
+def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any:
     """Sample the 3D texture at the given UVW coordinates.
 
     Args:
@@ -4716,6 +4718,7 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any) -> Any:
         uvw: UVW coordinates as a :class:`warp.vec3f`. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, width] x [0, height] x [0, depth] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Level of detail for mipmapped textures. Default is 0.0 (no mipmaps).
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -4725,7 +4728,7 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any) -> Any:
     ...
 
 @over
-def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any) -> Any:
+def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32) -> Any:
     """Sample the 3D texture at the given UVW coordinates.
 
     Args:
@@ -4737,6 +4740,7 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
         w: W coordinate. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, depth] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Level of detail for mipmapped textures. Default is 0.0 (no mipmaps).
 
     Returns:
         The sampled value of the specified ``dtype``.
