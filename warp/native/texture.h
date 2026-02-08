@@ -422,24 +422,24 @@ cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float v, float w, 
 }
 
 
-// LOAD-based sampling with interpolation between mip levels (2D)
-inline float cpu_sample_2d_channel_mip(const cpu_texture2d_data* tex, float u, float v, int channel, float load)
+// LOD-based sampling with interpolation between mip levels (2D)
+inline float cpu_sample_2d_channel_mip(const cpu_texture2d_data* tex, float u, float v, int channel, float lod)
 {
     float max_level = (float)(tex->num_mip_levels - 1);
-    if (load > max_level)
-        load = max_level;
+    if (lod > max_level)
+        lod = max_level;
 
     if (tex->mip_filter_mode == WP_TEXTURE_MIP_FILTER_CLOSEST) {
-        int level = (int)(load + 0.5f);
+        int level = (int)(lod + 0.5f);
         if (level > (int)max_level)
             level = (int)max_level;
         return cpu_sample_2d_channel(tex, u, v, channel, level);
     } else {
-        int level0 = (int)load;
+        int level0 = (int)lod;
         int level1 = level0 + 1;
         if (level1 > (int)max_level)
             level1 = (int)max_level;
-        float frac = load - (float)level0;
+        float frac = lod - (float)level0;
 
         float s0 = cpu_sample_2d_channel(tex, u, v, channel, level0);
         float s1 = cpu_sample_2d_channel(tex, u, v, channel, level1);
@@ -447,25 +447,24 @@ inline float cpu_sample_2d_channel_mip(const cpu_texture2d_data* tex, float u, f
     }
 }
 
-// LOAD-based sampling with interpolation between mip levels (3D)
-inline float
-cpu_sample_3d_channel_mip(const cpu_texture3d_data* tex, float u, float v, float w, int channel, float load)
+// LOD-based sampling with interpolation between mip levels (3D)
+inline float cpu_sample_3d_channel_mip(const cpu_texture3d_data* tex, float u, float v, float w, int channel, float lod)
 {
     float max_level = (float)(tex->num_mip_levels - 1);
-    if (load > max_level)
-        load = max_level;
+    if (lod > max_level)
+        lod = max_level;
 
     if (tex->mip_filter_mode == WP_TEXTURE_MIP_FILTER_CLOSEST) {
-        int level = (int)(load + 0.5f);
+        int level = (int)(lod + 0.5f);
         if (level > (int)max_level)
             level = (int)max_level;
         return cpu_sample_3d_channel(tex, u, v, w, channel, level);
     } else {
-        int level0 = (int)load;
+        int level0 = (int)lod;
         int level1 = level0 + 1;
         if (level1 > (int)max_level)
             level1 = (int)max_level;
-        float frac = load - (float)level0;
+        float frac = lod - (float)level0;
 
         float s0 = cpu_sample_3d_channel(tex, u, v, w, channel, level0);
         float s1 = cpu_sample_3d_channel(tex, u, v, w, channel, level1);
@@ -481,43 +480,43 @@ cpu_sample_3d_channel_mip(const cpu_texture3d_data* tex, float u, float v, float
 template <typename T> struct texture_sample_helper;
 
 template <> struct texture_sample_helper<float> {
-    static CUDA_CALLABLE float sample_2d(const texture2d_t& tex, float u, float v, float load)
+    static CUDA_CALLABLE float sample_2d(const texture2d_t& tex, float u, float v, float lod)
     {
 #if defined(__CUDA_ARCH__)
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return tex2D<float>(tex.tex, u, v);
         } else {
-            return tex2DLoad<float>(tex.tex, u, v, load);
+            return tex2DLod<float>(tex.tex, u, v, lod);
         }
 #else
         if (tex.tex == 0)
             return 0.0f;
         const cpu_texture2d_data* cpu_tex = (const cpu_texture2d_data*)tex.tex;
 
-        if (load <= 0.0) {
+        if (lod <= 0.0) {
             return cpu_sample_2d_channel(cpu_tex, u, v, 0, 0);
         } else {
-            return cpu_sample_2d_channel_mip(cpu_tex, u, v, 0, load);
+            return cpu_sample_2d_channel_mip(cpu_tex, u, v, 0, lod);
         }
 #endif
     }
 
-    static CUDA_CALLABLE float sample_3d(const texture3d_t& tex, float u, float v, float w, float load)
+    static CUDA_CALLABLE float sample_3d(const texture3d_t& tex, float u, float v, float w, float lod)
     {
 #if defined(__CUDA_ARCH__)
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return tex3D<float>(tex.tex, u, v, w);
         } else {
-            return tex3DLoad<float>(tex.tex, u, v, w, load);
+            return tex3DLod<float>(tex.tex, u, v, w, lod);
         }
 #else
         if (tex.tex == 0)
             return 0.0f;
         const cpu_texture3d_data* cpu_tex = (const cpu_texture3d_data*)tex.tex;
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return cpu_sample_3d_channel(cpu_tex, u, v, w, 0, 0);
         } else {
-            return cpu_sample_3d_channel_mip(cpu_tex, u, v, w, 0, load);
+            return cpu_sample_3d_channel_mip(cpu_tex, u, v, w, 0, lod);
         }
 #endif
     }
@@ -526,47 +525,47 @@ template <> struct texture_sample_helper<float> {
 };
 
 template <> struct texture_sample_helper<vec2f> {
-    static CUDA_CALLABLE vec2f sample_2d(const texture2d_t& tex, float u, float v, float load)
+    static CUDA_CALLABLE vec2f sample_2d(const texture2d_t& tex, float u, float v, float lod)
     {
 #if defined(__CUDA_ARCH__)
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             float2 val = tex2D<float2>(tex.tex, u, v);
             return vec2f(val.x, val.y);
         } else {
-            float2 val = tex2DLoad<float2>(tex.tex, u, v, load);
+            float2 val = tex2DLod<float2>(tex.tex, u, v, lod);
             return vec2f(val.x, val.y);
         }
 #else
         if (tex.tex == 0)
             return vec2f(0.0f, 0.0f);
         const cpu_texture2d_data* cpu_tex = (const cpu_texture2d_data*)tex.tex;
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return vec2f(cpu_sample_2d_channel(cpu_tex, u, v, 0, 0), cpu_sample_2d_channel(cpu_tex, u, v, 1, 0));
         } else {
-            return vec2f(cpu_sample_2d_channel(cpu_tex, u, v, 0, load), cpu_sample_2d_channel(cpu_tex, u, v, 1, load));
+            return vec2f(cpu_sample_2d_channel(cpu_tex, u, v, 0, lod), cpu_sample_2d_channel(cpu_tex, u, v, 1, lod));
         }
 #endif
     }
 
-    static CUDA_CALLABLE vec2f sample_3d(const texture3d_t& tex, float u, float v, float w, float load)
+    static CUDA_CALLABLE vec2f sample_3d(const texture3d_t& tex, float u, float v, float w, float lod)
     {
 #if defined(__CUDA_ARCH__)
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             float2 val = tex3D<float2>(tex.tex, u, v, w);
             return vec2f(val.x, val.y);
         } else {
-            float2 val = tex3DLoad<float2>(tex.tex, u, v, w, load);
+            float2 val = tex3DLod<float2>(tex.tex, u, v, w, lod);
             return vec2f(val.x, val.y);
         }
 #else
         if (tex.tex == 0)
             return vec2f(0.0f, 0.0f);
         const cpu_texture3d_data* cpu_tex = (const cpu_texture3d_data*)tex.tex;
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return vec2f(cpu_sample_3d_channel(cpu_tex, u, v, w, 0, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, 0));
         } else {
             return vec2f(
-                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, load), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, load)
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, lod), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, lod)
             );
         }
 #endif
@@ -576,57 +575,57 @@ template <> struct texture_sample_helper<vec2f> {
 };
 
 template <> struct texture_sample_helper<vec4f> {
-    static CUDA_CALLABLE vec4f sample_2d(const texture2d_t& tex, float u, float v, float load)
+    static CUDA_CALLABLE vec4f sample_2d(const texture2d_t& tex, float u, float v, float lod)
     {
 #if defined(__CUDA_ARCH__)
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             float4 val = tex2D<float4>(tex.tex, u, v);
             return vec4f(val.x, val.y, val.z, val.w);
         } else {
-            float4 val = tex2DLoad<float4>(tex.tex, u, v, load);
+            float4 val = tex2DLod<float4>(tex.tex, u, v, lod);
             return vec4f(val.x, val.y, val.z, val.w);
         }
 #else
         if (tex.tex == 0)
             return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
         const cpu_texture2d_data* cpu_tex = (const cpu_texture2d_data*)tex.tex;
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return vec4f(
                 cpu_sample_2d_channel(cpu_tex, u, v, 0, 0), cpu_sample_2d_channel(cpu_tex, u, v, 1, 0),
                 cpu_sample_2d_channel(cpu_tex, u, v, 2, 0), cpu_sample_2d_channel(cpu_tex, u, v, 3, 0)
             );
         } else {
             return vec4f(
-                cpu_sample_2d_channel(cpu_tex, u, v, 0, load), cpu_sample_2d_channel(cpu_tex, u, v, 1, load),
-                cpu_sample_2d_channel(cpu_tex, u, v, 2, load), cpu_sample_2d_channel(cpu_tex, u, v, 3, load)
+                cpu_sample_2d_channel(cpu_tex, u, v, 0, lod), cpu_sample_2d_channel(cpu_tex, u, v, 1, lod),
+                cpu_sample_2d_channel(cpu_tex, u, v, 2, lod), cpu_sample_2d_channel(cpu_tex, u, v, 3, lod)
             );
         }
 #endif
     }
 
-    static CUDA_CALLABLE vec4f sample_3d(const texture3d_t& tex, float u, float v, float w, float load)
+    static CUDA_CALLABLE vec4f sample_3d(const texture3d_t& tex, float u, float v, float w, float lod)
     {
 #if defined(__CUDA_ARCH__)
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             float4 val = tex3D<float4>(tex.tex, u, v, w);
             return vec4f(val.x, val.y, val.z, val.w);
         } else {
-            float4 val = tex3DLoad<float4>(tex.tex, u, v, w, load);
+            float4 val = tex3DLod<float4>(tex.tex, u, v, w, lod);
             return vec4f(val.x, val.y, val.z, val.w);
         }
 #else
         if (tex.tex == 0)
             return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
         const cpu_texture3d_data* cpu_tex = (const cpu_texture3d_data*)tex.tex;
-        if (load <= 0.0f) {
+        if (lod <= 0.0f) {
             return vec4f(
                 cpu_sample_3d_channel(cpu_tex, u, v, w, 0, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, 0),
                 cpu_sample_3d_channel(cpu_tex, u, v, w, 2, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 3, 0)
             );
         } else {
             return vec4f(
-                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, load), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, load),
-                cpu_sample_3d_channel(cpu_tex, u, v, w, 2, load), cpu_sample_3d_channel(cpu_tex, u, v, w, 3, load)
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, lod), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, lod),
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 2, lod), cpu_sample_3d_channel(cpu_tex, u, v, w, 3, lod)
             );
         }
 #endif
@@ -636,27 +635,27 @@ template <> struct texture_sample_helper<vec4f> {
 };
 
 // 2D texture sampling with vec2 coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv, float load)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv, float lod)
 {
-    return texture_sample_helper<T>::sample_2d(tex, uv[0], uv[1], load);
+    return texture_sample_helper<T>::sample_2d(tex, uv[0], uv[1], lod);
 }
 
 // 2D texture sampling with separate u, v coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v, float load)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v, float lod)
 {
-    return texture_sample_helper<T>::sample_2d(tex, u, v, load);
+    return texture_sample_helper<T>::sample_2d(tex, u, v, lod);
 }
 
 // 3D texture sampling with vec3 coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw, float load)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw, float lod)
 {
-    return texture_sample_helper<T>::sample_3d(tex, uvw[0], uvw[1], uvw[2], load);
+    return texture_sample_helper<T>::sample_3d(tex, uvw[0], uvw[1], uvw[2], lod);
 }
 
 // 3D texture sampling with separate u, v, w coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w, float load)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w, float lod)
 {
-    return texture_sample_helper<T>::sample_3d(tex, u, v, w, load);
+    return texture_sample_helper<T>::sample_3d(tex, u, v, w, lod);
 }
 
 // Adjoint stubs for texture sampling (non-differentiable for now)
@@ -664,10 +663,10 @@ template <typename T>
 CUDA_CALLABLE void adj_texture_sample(
     const texture2d_t& tex,
     const vec2f& uv,
-    const float load,
+    const float lod,
     texture2d_t& adj_tex,
     vec2f& adj_uv,
-    float& adj_load,
+    float& adj_lod,
     const T& adj_ret
 )
 {
@@ -679,11 +678,11 @@ CUDA_CALLABLE void adj_texture_sample(
     const texture2d_t& tex,
     float u,
     float v,
-    const float load,
+    const float lod,
     texture2d_t& adj_tex,
     float& adj_u,
     float& adj_v,
-    float& adj_load,
+    float& adj_lod,
     const T& adj_ret
 )
 {
@@ -694,10 +693,10 @@ template <typename T>
 CUDA_CALLABLE void adj_texture_sample(
     const texture3d_t& tex,
     const vec3f& uvw,
-    const float load,
+    const float lod,
     texture3d_t& adj_tex,
     vec3f& adj_uvw,
-    float& adj_load,
+    float& adj_lod,
     const T& adj_ret
 )
 {
@@ -710,12 +709,12 @@ CUDA_CALLABLE void adj_texture_sample(
     float u,
     float v,
     float w,
-    const float load,
+    const float lod,
     texture3d_t& adj_tex,
     float& adj_u,
     float& adj_v,
     float& adj_w,
-    float& adj_load,
+    float& adj_lod,
     const T& adj_ret
 )
 {

@@ -207,6 +207,7 @@ dout = "dout"
 iy = "iy"
 nd = "nd"
 transformd = "transformd"
+lod = "lod"
 
 [tool.typos.default.extend-identifiers]
 CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN = "CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN"

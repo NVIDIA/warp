@@ -2041,11 +2041,11 @@ def sample_texture2d_load_f(
     lods: wp.array(dtype=float),
     output: wp.array(dtype=float),
 ):
-    """Sample a 1-channel 2D texture at specified UV coordinates and LOAD."""
+    """Sample a 1-channel 2D texture at specified UV coordinates and LOD."""
     tid = wp.tid()
     uv = uvs[tid]
-    load = lods[tid]
-    output[tid] = wp.texture_sample(tex, uv, dtype=float, load=load)
+    lod = lods[tid]
+    output[tid] = wp.texture_sample(tex, uv, dtype=float, lod=lod)
 
 
 @wp.kernel
@@ -2055,11 +2055,11 @@ def sample_texture2d_load_v4(
     lods: wp.array(dtype=float),
     output: wp.array(dtype=wp.vec4f),
 ):
-    """Sample a 4-channel 2D texture at specified UV coordinates and LOAD."""
+    """Sample a 4-channel 2D texture at specified UV coordinates and LOD."""
     tid = wp.tid()
     uv = uvs[tid]
-    load = lods[tid]
-    output[tid] = wp.texture_sample(tex, uv, dtype=wp.vec4f, load=load)
+    lod = lods[tid]
+    output[tid] = wp.texture_sample(tex, uv, dtype=wp.vec4f, lod=lod)
 
 
 @wp.kernel
@@ -2069,11 +2069,11 @@ def sample_texture3d_load_f(
     lods: wp.array(dtype=float),
     output: wp.array(dtype=float),
 ):
-    """Sample a 1-channel 3D texture at specified UVW coordinates and LOAD."""
+    """Sample a 1-channel 3D texture at specified UVW coordinates and LOD."""
     tid = wp.tid()
     uvw = uvws[tid]
-    load = lods[tid]
-    output[tid] = wp.texture_sample(tex, uvw, dtype=float, load=load)
+    lod = lods[tid]
+    output[tid] = wp.texture_sample(tex, uvw, dtype=float, lod=lod)
 
 
 # ============================================================================
@@ -2110,7 +2110,7 @@ def test_mipmap2d_creation(test, device):
 
 
 def test_mipmap2d_load0_matches_base(test, device):
-    """Test that sampling at LOAD 0 gives the same result as texture_sample."""
+    """Test that sampling at LOD 0 gives the same result as texture_sample."""
     width, height = 16, 16
     data = generate_sin_pattern_2d(width, height, 1)
 
