@@ -18,11 +18,8 @@ import logging
 import os
 import shutil
 
-import docs.generate_reference
 import warp  # ensure all API functions are loaded  # noqa: F401
 from warp._src.context import export_stubs
-
-docs.generate_reference.install_mock_modules()
 
 parser = argparse.ArgumentParser(
     description="Warp Sphinx Documentation Builder",
@@ -133,9 +130,6 @@ with open(os.path.join(base_path, "warp", "__init__.pyi"), "w", encoding="utf-8"
 # code formatting of __init__.pyi
 logger.info("Formatting __init__.pyi (a 'Failed' message in the output below is expected)")
 format_file_with_ruff(os.path.join(base_path, "warp", "__init__.pyi"))
-
-logger.info("Generating function reference documentation")
-docs.generate_reference.run()
 
 source_dir = os.path.join(base_path, "docs")
 

@@ -48,6 +48,8 @@ except ImportError as e:
         "Run build_lib.py first, then run build_docs.py with the docs extra installed."
     ) from e
 
+import docs.generate_reference  # noqa: E402  # must come after sys.path setup (imports warp)
+
 # Determine the Git version/tag from CI environment variables.
 # 1. Check for GitHub Actions' variable.
 # 2. Check for GitLab CI's variable.
@@ -450,8 +452,16 @@ def rewrite_internal_module_paths(app, doctree, docname):
             node.parent.replace(node, docutils.nodes.Text(new_text))
 
 
+def generate_reference_docs(app):
+    """Generate API and language reference .rst files before Sphinx reads sources."""
+    docs.generate_reference.run()
+
+
 def setup(app):
     """Sphinx extension setup."""
+    # Priority must be lower than autosummary's default (500) so that the
+    # reference .rst files exist before autosummary scans for stub directives.
+    app.connect("builder-inited", generate_reference_docs, priority=400)
     app.connect("autodoc-process-docstring", filter_builtin_docstrings)
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)
     app.connect("doctree-resolved", rewrite_internal_module_paths)
