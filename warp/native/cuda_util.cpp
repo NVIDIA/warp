@@ -138,6 +138,9 @@ static PFN_cuMemcpy2D_v3020 pfn_cuMemcpy2D;
 static PFN_cuMemcpy3D_v3020 pfn_cuMemcpy3D;
 static PFN_cuTexObjectCreate_v5000 pfn_cuTexObjectCreate;
 static PFN_cuTexObjectDestroy_v5000 pfn_cuTexObjectDestroy;
+static PFN_cuMipmappedArrayCreate_v5000 pfn_cuMipmappedArrayCreate;
+static PFN_cuMipmappedArrayGetLevel_v5000 pfn_cuMipmappedArrayGetLevel;
+static PFN_cuMipmappedArrayDestroy_v5000 pfn_cuMipmappedArrayDestroy;
 
 static bool cuda_driver_initialized = false;
 
@@ -297,6 +300,9 @@ bool init_cuda_driver()
     get_driver_entry_point("cuMemcpy3D", 3020, &(void*&)pfn_cuMemcpy3D);
     get_driver_entry_point("cuTexObjectCreate", 5000, &(void*&)pfn_cuTexObjectCreate);
     get_driver_entry_point("cuTexObjectDestroy", 5000, &(void*&)pfn_cuTexObjectDestroy);
+    get_driver_entry_point("cuMipmappedArrayCreate", 5000, &(void*&)pfn_cuMipmappedArrayCreate);
+    get_driver_entry_point("cuMipmappedArrayGetLevel", 5000, &(void*&)pfn_cuMipmappedArrayGetLevel);
+    get_driver_entry_point("cuMipmappedArrayDestroy", 5000, &(void*&)pfn_cuMipmappedArrayDestroy);
 
     if (pfn_cuInit)
         cuda_driver_initialized = check_cu(pfn_cuInit(0));
@@ -794,6 +800,25 @@ CUresult cuTexObjectCreate_f(
 CUresult cuTexObjectDestroy_f(CUtexObject texObject)
 {
     return pfn_cuTexObjectDestroy ? pfn_cuTexObjectDestroy(texObject) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMipmappedArrayCreate_f(
+    CUmipmappedArray* pHandle, const CUDA_ARRAY3D_DESCRIPTOR* pMipmappedArrayDesc, unsigned int numMipmapLevels
+)
+{
+    return pfn_cuMipmappedArrayCreate ? pfn_cuMipmappedArrayCreate(pHandle, pMipmappedArrayDesc, numMipmapLevels)
+                                      : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMipmappedArrayGetLevel_f(CUarray* pLevelArray, CUmipmappedArray hMipmappedArray, unsigned int level)
+{
+    return pfn_cuMipmappedArrayGetLevel ? pfn_cuMipmappedArrayGetLevel(pLevelArray, hMipmappedArray, level)
+                                        : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMipmappedArrayDestroy_f(CUmipmappedArray hMipmappedArray)
+{
+    return pfn_cuMipmappedArrayDestroy ? pfn_cuMipmappedArrayDestroy(hMipmappedArray) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 #endif  // WP_ENABLE_CUDA

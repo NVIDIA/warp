@@ -4341,12 +4341,17 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # mip_filter_mode
                 ctypes.c_int,  # address_mode_u
                 ctypes.c_int,  # address_mode_v
                 ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_int,  # num_mip_levels
                 ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_int32),  # mip_widths
+                ctypes.POINTER(ctypes.c_int32),  # mip_heights
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
                 ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
+                ctypes.POINTER(ctypes.c_uint64),  # mipmap_handle_out
             ]
             self.core.wp_texture2d_create_device.restype = ctypes.c_bool
 
@@ -4354,6 +4359,7 @@ class Runtime:
                 ctypes.c_void_p,  # context
                 ctypes.c_uint64,  # tex_handle
                 ctypes.c_uint64,  # array_handle
+                ctypes.c_uint64,  # mipmap_handle
             ]
             self.core.wp_texture2d_destroy_device.restype = None
 
@@ -4365,13 +4371,19 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # mip_filter_mode
                 ctypes.c_int,  # address_mode_u
                 ctypes.c_int,  # address_mode_v
                 ctypes.c_int,  # address_mode_w
                 ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_int,  # num_mip_levels
                 ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_int32),  # mip_widths
+                ctypes.POINTER(ctypes.c_int32),  # mip_heights
+                ctypes.POINTER(ctypes.c_int32),  # mip_depths
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
                 ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
+                ctypes.POINTER(ctypes.c_uint64),  # mipmap_handle_out
             ]
             self.core.wp_texture3d_create_device.restype = ctypes.c_bool
 
@@ -4379,6 +4391,7 @@ class Runtime:
                 ctypes.c_void_p,  # context
                 ctypes.c_uint64,  # tex_handle
                 ctypes.c_uint64,  # array_handle
+                ctypes.c_uint64,  # mipmap_handle
             ]
             self.core.wp_texture3d_destroy_device.restype = None
 
@@ -4389,10 +4402,14 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # mip_filter_mode
                 ctypes.c_int,  # address_mode_u
                 ctypes.c_int,  # address_mode_v
                 ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_int,  # num_mip_levels
                 ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_int32),  # mip_widths
+                ctypes.POINTER(ctypes.c_int32),  # mip_heights
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]
             self.core.wp_texture2d_create_host.restype = ctypes.c_bool
@@ -4409,11 +4426,16 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
                 ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # mip_filter_mode
                 ctypes.c_int,  # address_mode_u
                 ctypes.c_int,  # address_mode_v
                 ctypes.c_int,  # address_mode_w
                 ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_int,  # num_mip_levels
                 ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_int32),  # mip_widths
+                ctypes.POINTER(ctypes.c_int32),  # mip_heights
+                ctypes.POINTER(ctypes.c_int32),  # mip_depths
                 ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]
             self.core.wp_texture3d_create_host.restype = ctypes.c_bool

@@ -2030,6 +2030,397 @@ def test_texture3d_array(test, device):
 
 
 # ============================================================================
+# Mipmap Kernels
+# ============================================================================
+
+
+@wp.kernel
+def sample_texture2d_load_f(
+    tex: wp.Texture2D,
+    uvs: wp.array(dtype=wp.vec2f),
+    lods: wp.array(dtype=float),
+    output: wp.array(dtype=float),
+):
+    """Sample a 1-channel 2D texture at specified UV coordinates and LOAD."""
+    tid = wp.tid()
+    uv = uvs[tid]
+    load = lods[tid]
+    output[tid] = wp.texture_sample(tex, uv, dtype=float, load=load)
+
+
+@wp.kernel
+def sample_texture2d_load_v4(
+    tex: wp.Texture2D,
+    uvs: wp.array(dtype=wp.vec2f),
+    lods: wp.array(dtype=float),
+    output: wp.array(dtype=wp.vec4f),
+):
+    """Sample a 4-channel 2D texture at specified UV coordinates and LOAD."""
+    tid = wp.tid()
+    uv = uvs[tid]
+    load = lods[tid]
+    output[tid] = wp.texture_sample(tex, uv, dtype=wp.vec4f, load=load)
+
+
+@wp.kernel
+def sample_texture3d_load_f(
+    tex: wp.Texture3D,
+    uvws: wp.array(dtype=wp.vec3f),
+    lods: wp.array(dtype=float),
+    output: wp.array(dtype=float),
+):
+    """Sample a 1-channel 3D texture at specified UVW coordinates and LOAD."""
+    tid = wp.tid()
+    uvw = uvws[tid]
+    load = lods[tid]
+    output[tid] = wp.texture_sample(tex, uvw, dtype=float, load=load)
+
+
+# ============================================================================
+# Mipmap Test Functions
+# ============================================================================
+
+
+def test_mipmap2d_creation(test, device):
+    """Test that mipmapped 2D textures are created with the correct number of levels."""
+    width, height = 64, 64
+    data = np.random.default_rng().random((height, width), dtype=np.float32)
+
+    # Auto-compute full mip chain: log2(64) + 1 = 7 levels
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    test.assertEqual(tex.num_mip_levels, 7)
+
+    # Explicit number of levels
+    tex2 = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=3,
+        device=device,
+    )
+
+    test.assertEqual(tex2.num_mip_levels, 3)
+
+
+def test_mipmap2d_load0_matches_base(test, device):
+    """Test that sampling at LOAD 0 gives the same result as texture_sample."""
+    width, height = 16, 16
+    data = generate_sin_pattern_2d(width, height, 1)
+
+    # Create non-mipmapped texture
+    tex_base = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create mipmapped texture
+    tex_mip = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # Sample both at texel centers
+    n = width * height
+    uvs_list = []
+    for y in range(height):
+        for x in range(width):
+            uvs_list.append([(x + 0.5) / width, (y + 0.5) / height])
+    uvs_np = np.array(uvs_list, dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+
+    # Sample base texture
+    output_base = wp.zeros(n, dtype=float, device=device)
+    wp.launch(
+        sample_texture2d_at_uv,
+        dim=n,
+        inputs=[tex_base, uvs, output_base],
+        device=device,
+    )
+
+    # Sample mipmapped texture at LOAD 0
+    lods = wp.zeros(n, dtype=float, device=device)
+    output_mip = wp.zeros(n, dtype=float, device=device)
+    wp.launch(
+        sample_texture2d_load_f,
+        dim=n,
+        inputs=[tex_mip, uvs, lods, output_mip],
+        device=device,
+    )
+
+    result_base = output_base.numpy()
+    result_mip = output_mip.numpy()
+    np.testing.assert_allclose(result_mip, result_base, rtol=1e-5, atol=1e-5)
+
+
+def test_mipmap2d_integer_load(test, device):
+    """Test sampling at integer LOAD levels.
+
+    At LOAD 1, the texture should return values from the 2x-downsampled level.
+    We use a constant-value texture so that all mip levels have the same value.
+    """
+    width, height = 8, 8
+    value = 0.75
+    data = np.full((height, width), value, dtype=np.float32)
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # Sample at center with LOAD 0, 1, 2
+    uvs_np = np.array([[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]], dtype=np.float32)
+    lods_np = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    lods = wp.array(lods_np, dtype=float, device=device)
+    output = wp.zeros(3, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_load_f,
+        dim=3,
+        inputs=[tex, uvs, lods, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    # Constant texture: all mip levels should have the same value
+    np.testing.assert_allclose(result, [value, value, value], rtol=1e-4, atol=1e-4)
+
+
+def test_mipmap2d_max_load(test, device):
+    """Test that sampling at the highest LOAD returns approximately the average of all texels."""
+    width, height = 4, 4
+    # Create a gradient pattern
+    data = np.arange(16, dtype=np.float32).reshape((4, 4))
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # The maximum LOAD for a 4x4 texture is 2 (4 -> 2 -> 1)
+    test.assertEqual(tex.num_mip_levels, 3)
+
+    # Sample at max LOAD (the 1x1 level)
+    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
+    lods_np = np.array([2.0], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    lods = wp.array(lods_np, dtype=float, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_load_f,
+        dim=1,
+        inputs=[tex, uvs, lods, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # The 1x1 mip should be approximately the average of all texels
+    expected_avg = np.mean(data)
+    np.testing.assert_allclose(result, expected_avg, rtol=0.15, atol=0.15)
+
+
+def test_mipmap2d_4channel(test, device):
+    """Test mipmapped 2D texture with 4 channels."""
+    width, height = 8, 8
+    value = np.array([0.2, 0.4, 0.6, 0.8], dtype=np.float32)
+    data = np.tile(value, (height, width, 1))
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # Sample at LOAD 0 and LOAD 1
+    uvs_np = np.array([[0.5, 0.5], [0.5, 0.5]], dtype=np.float32)
+    lods_np = np.array([0.0, 1.0], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    lods = wp.array(lods_np, dtype=float, device=device)
+    output = wp.zeros(2, dtype=wp.vec4f, device=device)
+
+    wp.launch(
+        sample_texture2d_load_v4,
+        dim=2,
+        inputs=[tex, uvs, lods, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    # Constant texture: all levels should have the same value
+    np.testing.assert_allclose(result[0], value, rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(result[1], value, rtol=1e-4, atol=1e-4)
+
+
+def test_mipmap2d_non_power_of_two(test, device):
+    """Test mipmapped 2D texture with non-power-of-two dimensions."""
+    width, height = 30, 20
+    data = np.random.default_rng().random((height, width), dtype=np.float32) * 0.5 + 0.25
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # 30 -> 15 -> 7 -> 3 -> 1 (width), 20 -> 10 -> 5 -> 2 -> 1 (height)
+    # max(30, 20) = 30, log2(30) + 1 = 5
+    test.assertEqual(tex.num_mip_levels, 5)
+
+    # Just verify sampling doesn't crash and returns reasonable values
+    uvs_np = np.array([[0.5, 0.5]], dtype=np.float32)
+    lods_np = np.array([0.0], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    lods = wp.array(lods_np, dtype=float, device=device)
+    output = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_load_f,
+        dim=1,
+        inputs=[tex, uvs, lods, output],
+        device=device,
+    )
+
+    result = output.numpy()[0]
+    # Should be a reasonable value in the range of our data
+    test.assertGreater(result, 0.0)
+    test.assertLess(result, 1.0)
+
+
+def test_mipmap2d_backward_compat(test, device):
+    """Test that num_mip_levels=1 (default) is fully backward compatible."""
+    width, height = 8, 8
+    data = generate_sin_pattern_2d(width, height, 1)
+
+    # Default: no mipmaps
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    test.assertEqual(tex.num_mip_levels, 1)
+
+    # Sampling should work normally
+    output = wp.zeros(width * height, dtype=float, device=device)
+    wp.launch(
+        sample_texture2d_f_at_centers,
+        dim=width * height,
+        inputs=[tex, output, width, height],
+        device=device,
+    )
+
+    expected = data.flatten()
+    result = output.numpy()
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_mipmap3d_creation(test, device):
+    """Test that mipmapped 3D textures are created with the correct number of levels."""
+    width, height, depth = 16, 16, 16
+    data = np.random.default_rng().random((depth, height, width), dtype=np.float32)
+
+    # Auto-compute full mip chain: log2(16) + 1 = 5 levels
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    test.assertEqual(tex.num_mip_levels, 5)
+
+
+def test_mipmap3d_constant_value(test, device):
+    """Test 3D mipmapped texture with constant data."""
+    width, height, depth = 8, 8, 8
+    value = 0.5
+    data = np.full((depth, height, width), value, dtype=np.float32)
+
+    tex = wp.Texture3D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # Sample at LOAD 0, 1, 2
+    uvws_np = np.array([[0.5, 0.5, 0.5]] * 3, dtype=np.float32)
+    lods_np = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+    uvws = wp.array(uvws_np, dtype=wp.vec3f, device=device)
+    lods = wp.array(lods_np, dtype=float, device=device)
+    output = wp.zeros(3, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture3d_load_f,
+        dim=3,
+        inputs=[tex, uvws, lods, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    np.testing.assert_allclose(result, [value, value, value], rtol=1e-4, atol=1e-4)
+
+
+def test_mipmap2d_uint8(test, device):
+    """Test mipmapped 2D texture with uint8 data."""
+    width, height = 8, 8
+    # Constant value: all mip levels should have the same normalized value
+    data = np.full((height, width), 128, dtype=np.uint8)
+
+    tex = wp.Texture2D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        num_mip_levels=0,
+        device=device,
+    )
+
+    # Sample at LOAD 0 and LOAD 1
+    uvs_np = np.array([[0.5, 0.5], [0.5, 0.5]], dtype=np.float32)
+    lods_np = np.array([0.0, 1.0], dtype=np.float32)
+    uvs = wp.array(uvs_np, dtype=wp.vec2f, device=device)
+    lods = wp.array(lods_np, dtype=float, device=device)
+    output = wp.zeros(2, dtype=float, device=device)
+
+    wp.launch(
+        sample_texture2d_load_f,
+        dim=2,
+        inputs=[tex, uvs, lods, output],
+        device=device,
+    )
+
+    result = output.numpy()
+    expected = 128.0 / 255.0
+    np.testing.assert_allclose(result, [expected, expected], rtol=0.02, atol=0.02)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -2162,7 +2553,24 @@ add_function_test(
     TestTexture, "test_texture_struct_both_members", test_texture_struct_both_members, devices=all_devices
 )
 
+add_function_test(TestTexture, "test_mipmap2d_creation", test_mipmap2d_creation, devices=all_devices)
+add_function_test(
+    TestTexture, "test_mipmap2d_load0_matches_base", test_mipmap2d_load0_matches_base, devices=all_devices
+)
+add_function_test(TestTexture, "test_mipmap2d_integer_load", test_mipmap2d_integer_load, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap2d_max_load", test_mipmap2d_max_load, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap2d_4channel", test_mipmap2d_4channel, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap2d_non_power_of_two", test_mipmap2d_non_power_of_two, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap2d_backward_compat", test_mipmap2d_backward_compat, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap3d_creation", test_mipmap3d_creation, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap3d_constant_value", test_mipmap3d_constant_value, devices=all_devices)
+add_function_test(TestTexture, "test_mipmap2d_uint8", test_mipmap2d_uint8, devices=all_devices)
+
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
+    # Avoid clearing kernel cache when running this file alone: clearing then running many
+    # CPU (LLVM) compilations can trigger "LLVM ERROR: IO failure on output stream: Bad file
+    # descriptor" and process exit, so not all tests run. Run via unittest with -s autodetect
+    # to clear cache once for the whole suite.
+    # wp.clear_kernel_cache()
     unittest.main(verbosity=2)

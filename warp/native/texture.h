@@ -36,6 +36,10 @@ namespace wp {
 #define WP_TEXTURE_ADDRESS_MIRROR 2
 #define WP_TEXTURE_ADDRESS_BORDER 3
 
+// Mipmap filter mode constants (for filtering between mip levels)
+#define WP_TEXTURE_MIP_FILTER_CLOSEST 0
+#define WP_TEXTURE_MIP_FILTER_LINEAR  1
+
 // CPU texture descriptor - mirrors the struct in texture.cpp
 // This is what the tex handle points to on CPU
 struct cpu_texture2d_data {
@@ -48,6 +52,11 @@ struct cpu_texture2d_data {
     int32 address_mode_u;  // Per-axis address mode for U
     int32 address_mode_v;  // Per-axis address mode for V
     bool use_normalized_coords;  // If true, coords in [0,1]; if false, in texel space
+    int32 num_mip_levels;  // 1 = no mipmaps
+    int32 mip_filter_mode;  // WP_TEXTURE_MIP_FILTER_*
+    void** mip_data;
+    int32* mip_widths;
+    int32* mip_heights;
 };
 
 struct cpu_texture3d_data {
@@ -62,6 +71,12 @@ struct cpu_texture3d_data {
     int32 address_mode_v;  // Per-axis address mode for V
     int32 address_mode_w;  // Per-axis address mode for W
     bool use_normalized_coords;  // If true, coords in [0,1]; if false, in texel space
+    int32 num_mip_levels;  // 1 = no mipmaps
+    int32 mip_filter_mode;  // WP_TEXTURE_MIP_FILTER_*
+    void** mip_data;
+    int32* mip_widths;
+    int32* mip_heights;
+    int32* mip_depths;
 };
 
 // Texture descriptor passed to kernels
@@ -195,56 +210,92 @@ inline bool cpu_in_bounds_3d(int x, int y, int z, int w, int h, int d)
 }
 
 // Fetch a single texel value (normalized to [0,1] for uint types, as-is for float)
-inline float cpu_fetch_texel_2d(const cpu_texture2d_data* tex, int x, int y, int channel)
+inline float cpu_fetch_texel_2d(const cpu_texture2d_data* tex, int x, int y, int channel, int level = -1)
 {
+    int width = tex->width;
+    int height = tex->height;
+    if (level >= 0) {
+        width = tex->mip_widths[level];
+        height = tex->mip_heights[level];
+    }
+
     // Border mode and invalid channels return 0
-    if (!cpu_in_bounds_2d(x, y, tex->width, tex->height) || channel < 0 || channel >= tex->num_channels) {
+    if (!cpu_in_bounds_2d(x, y, width, height) || channel < 0 || channel >= tex->num_channels) {
         return 0.0f;
     }
 
-    int idx = (y * tex->width + x) * tex->num_channels + channel;
+    int idx = (y * width + x) * tex->num_channels + channel;
+
+    void* data;
+    if (level >= 0) {
+        data = tex->mip_data[level];
+    } else {
+        data = tex->data;
+    }
 
     switch (tex->dtype) {
     case WP_TEXTURE_DTYPE_UINT8:
-        return ((const uint8_t*)tex->data)[idx] / 255.0f;
+        return ((const uint8_t*)data)[idx] / 255.0f;
     case WP_TEXTURE_DTYPE_UINT16:
-        return ((const uint16_t*)tex->data)[idx] / 65535.0f;
+        return ((const uint16_t*)data)[idx] / 65535.0f;
     case WP_TEXTURE_DTYPE_FLOAT32:
     default:
-        return ((const float*)tex->data)[idx];
+        return ((const float*)data)[idx];
     }
 }
 
-inline float cpu_fetch_texel_3d(const cpu_texture3d_data* tex, int x, int y, int z, int channel)
+inline float cpu_fetch_texel_3d(const cpu_texture3d_data* tex, int x, int y, int z, int channel, int level = -1)
 {
+    int width = tex->width;
+    int height = tex->height;
+    int depth = tex->depth;
+    if (level >= 0) {
+        width = tex->mip_widths[level];
+        height = tex->mip_heights[level];
+        depth = tex->mip_depths[level];
+    }
+
     // Border mode and invalid channels return 0
-    if (!cpu_in_bounds_3d(x, y, z, tex->width, tex->height, tex->depth) || channel < 0
-        || channel >= tex->num_channels) {
+    if (!cpu_in_bounds_3d(x, y, z, width, height, depth) || channel < 0 || channel >= tex->num_channels) {
         return 0.0f;
     }
 
-    int idx = ((z * tex->height + y) * tex->width + x) * tex->num_channels + channel;
+    int idx = ((z * height + y) * width + x) * tex->num_channels + channel;
+
+    void* data;
+    if (level >= 0) {
+        data = tex->mip_data[level];
+    } else {
+        data = tex->data;
+    }
 
     switch (tex->dtype) {
     case WP_TEXTURE_DTYPE_UINT8:
-        return ((const uint8_t*)tex->data)[idx] / 255.0f;
+        return ((const uint8_t*)data)[idx] / 255.0f;
     case WP_TEXTURE_DTYPE_UINT16:
-        return ((const uint16_t*)tex->data)[idx] / 65535.0f;
+        return ((const uint16_t*)data)[idx] / 65535.0f;
     case WP_TEXTURE_DTYPE_FLOAT32:
     default:
-        return ((const float*)tex->data)[idx];
+        return ((const float*)data)[idx];
     }
 }
 
 // Sample a single channel with bilinear interpolation (2D)
-inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float v, int channel)
+inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float v, int channel, int level = -1)
 {
+    int width = tex->width;
+    int height = tex->height;
+    if (level >= 0) {
+        width = tex->mip_widths[level];
+        height = tex->mip_heights[level];
+    }
+
     // Convert to texel space if using normalized coordinates
     float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
     float coord_v = tex->use_normalized_coords ? v : (v / (float)tex->height);
 
-    float tx = cpu_apply_address_mode_1d(coord_u, tex->width, tex->address_mode_u);
-    float ty = cpu_apply_address_mode_1d(coord_v, tex->height, tex->address_mode_v);
+    float tx = cpu_apply_address_mode_1d(coord_u, width, tex->address_mode_u);
+    float ty = cpu_apply_address_mode_1d(coord_v, height, tex->address_mode_v);
 
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
         // Nearest neighbor
@@ -258,7 +309,7 @@ inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float
             y = cpu_clamp_index(y, tex->height);
         }
 
-        return cpu_fetch_texel_2d(tex, x, y, channel);
+        return cpu_fetch_texel_2d(tex, x, y, channel, level);
     } else {
         // Bilinear interpolation
         int x0 = (int)floor(tx);
@@ -270,15 +321,15 @@ inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float
         float fy = ty - y0;
 
         // Apply address mode to neighbor indices (properly handles wrap/mirror at edges)
-        x0 = cpu_apply_address_mode_index(x0, tex->width, tex->address_mode_u);
-        x1 = cpu_apply_address_mode_index(x1, tex->width, tex->address_mode_u);
-        y0 = cpu_apply_address_mode_index(y0, tex->height, tex->address_mode_v);
-        y1 = cpu_apply_address_mode_index(y1, tex->height, tex->address_mode_v);
+        x0 = cpu_apply_address_mode_index(x0, width, tex->address_mode_u);
+        x1 = cpu_apply_address_mode_index(x1, width, tex->address_mode_u);
+        y0 = cpu_apply_address_mode_index(y0, height, tex->address_mode_v);
+        y1 = cpu_apply_address_mode_index(y1, height, tex->address_mode_v);
 
-        float v00 = cpu_fetch_texel_2d(tex, x0, y0, channel);
-        float v10 = cpu_fetch_texel_2d(tex, x1, y0, channel);
-        float v01 = cpu_fetch_texel_2d(tex, x0, y1, channel);
-        float v11 = cpu_fetch_texel_2d(tex, x1, y1, channel);
+        float v00 = cpu_fetch_texel_2d(tex, x0, y0, channel, level);
+        float v10 = cpu_fetch_texel_2d(tex, x1, y0, channel, level);
+        float v01 = cpu_fetch_texel_2d(tex, x0, y1, channel, level);
+        float v11 = cpu_fetch_texel_2d(tex, x1, y1, channel, level);
 
         // Bilinear interpolation
         float v0 = v00 * (1.0f - fx) + v10 * fx;
@@ -288,16 +339,26 @@ inline float cpu_sample_2d_channel(const cpu_texture2d_data* tex, float u, float
 }
 
 // Sample a single channel with trilinear interpolation (3D)
-inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float v, float w, int channel)
+inline float
+cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float v, float w, int channel, int level = -1)
 {
+    int width = tex->width;
+    int height = tex->height;
+    int depth = tex->depth;
+    if (level >= 0) {
+        width = tex->mip_widths[level];
+        height = tex->mip_heights[level];
+        depth = tex->mip_depths[level];
+    }
+
     // Convert to texel space if using normalized coordinates
     float coord_u = tex->use_normalized_coords ? u : (u / (float)tex->width);
     float coord_v = tex->use_normalized_coords ? v : (v / (float)tex->height);
     float coord_w = tex->use_normalized_coords ? w : (w / (float)tex->depth);
 
-    float tx = cpu_apply_address_mode_1d(coord_u, tex->width, tex->address_mode_u);
-    float ty = cpu_apply_address_mode_1d(coord_v, tex->height, tex->address_mode_v);
-    float tz = cpu_apply_address_mode_1d(coord_w, tex->depth, tex->address_mode_w);
+    float tx = cpu_apply_address_mode_1d(coord_u, width, tex->address_mode_u);
+    float ty = cpu_apply_address_mode_1d(coord_v, height, tex->address_mode_v);
+    float tz = cpu_apply_address_mode_1d(coord_w, depth, tex->address_mode_w);
 
     if (tex->filter_mode == WP_TEXTURE_FILTER_CLOSEST) {
         // Nearest neighbor
@@ -306,16 +367,16 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
         int z = (int)floor(tz + 0.5f);
 
         if (tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            x = cpu_clamp_index(x, tex->width);
+            x = cpu_clamp_index(x, width);
         }
         if (tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
-            y = cpu_clamp_index(y, tex->height);
+            y = cpu_clamp_index(y, height);
         }
         if (tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
-            z = cpu_clamp_index(z, tex->depth);
+            z = cpu_clamp_index(z, depth);
         }
 
-        return cpu_fetch_texel_3d(tex, x, y, z, channel);
+        return cpu_fetch_texel_3d(tex, x, y, z, channel, level);
     } else {
         // Trilinear interpolation
         int x0 = (int)floor(tx);
@@ -330,22 +391,22 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
         float fz = tz - z0;
 
         // Apply address mode to neighbor indices (properly handles wrap/mirror at edges)
-        x0 = cpu_apply_address_mode_index(x0, tex->width, tex->address_mode_u);
-        x1 = cpu_apply_address_mode_index(x1, tex->width, tex->address_mode_u);
-        y0 = cpu_apply_address_mode_index(y0, tex->height, tex->address_mode_v);
-        y1 = cpu_apply_address_mode_index(y1, tex->height, tex->address_mode_v);
-        z0 = cpu_apply_address_mode_index(z0, tex->depth, tex->address_mode_w);
-        z1 = cpu_apply_address_mode_index(z1, tex->depth, tex->address_mode_w);
+        x0 = cpu_apply_address_mode_index(x0, width, tex->address_mode_u);
+        x1 = cpu_apply_address_mode_index(x1, width, tex->address_mode_u);
+        y0 = cpu_apply_address_mode_index(y0, height, tex->address_mode_v);
+        y1 = cpu_apply_address_mode_index(y1, height, tex->address_mode_v);
+        z0 = cpu_apply_address_mode_index(z0, depth, tex->address_mode_w);
+        z1 = cpu_apply_address_mode_index(z1, depth, tex->address_mode_w);
 
         // Fetch 8 corner values
-        float v000 = cpu_fetch_texel_3d(tex, x0, y0, z0, channel);
-        float v100 = cpu_fetch_texel_3d(tex, x1, y0, z0, channel);
-        float v010 = cpu_fetch_texel_3d(tex, x0, y1, z0, channel);
-        float v110 = cpu_fetch_texel_3d(tex, x1, y1, z0, channel);
-        float v001 = cpu_fetch_texel_3d(tex, x0, y0, z1, channel);
-        float v101 = cpu_fetch_texel_3d(tex, x1, y0, z1, channel);
-        float v011 = cpu_fetch_texel_3d(tex, x0, y1, z1, channel);
-        float v111 = cpu_fetch_texel_3d(tex, x1, y1, z1, channel);
+        float v000 = cpu_fetch_texel_3d(tex, x0, y0, z0, channel, level);
+        float v100 = cpu_fetch_texel_3d(tex, x1, y0, z0, channel, level);
+        float v010 = cpu_fetch_texel_3d(tex, x0, y1, z0, channel, level);
+        float v110 = cpu_fetch_texel_3d(tex, x1, y1, z0, channel, level);
+        float v001 = cpu_fetch_texel_3d(tex, x0, y0, z1, channel, level);
+        float v101 = cpu_fetch_texel_3d(tex, x1, y0, z1, channel, level);
+        float v011 = cpu_fetch_texel_3d(tex, x0, y1, z1, channel, level);
+        float v111 = cpu_fetch_texel_3d(tex, x1, y1, z1, channel, level);
 
         // Trilinear interpolation
         float v00 = v000 * (1.0f - fx) + v100 * fx;
@@ -360,6 +421,58 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
     }
 }
 
+
+// LOAD-based sampling with interpolation between mip levels (2D)
+inline float cpu_sample_2d_channel_mip(const cpu_texture2d_data* tex, float u, float v, int channel, float load)
+{
+    float max_level = (float)(tex->num_mip_levels - 1);
+    if (load > max_level)
+        load = max_level;
+
+    if (tex->mip_filter_mode == WP_TEXTURE_MIP_FILTER_CLOSEST) {
+        int level = (int)(load + 0.5f);
+        if (level > (int)max_level)
+            level = (int)max_level;
+        return cpu_sample_2d_channel(tex, u, v, channel, level);
+    } else {
+        int level0 = (int)load;
+        int level1 = level0 + 1;
+        if (level1 > (int)max_level)
+            level1 = (int)max_level;
+        float frac = load - (float)level0;
+
+        float s0 = cpu_sample_2d_channel(tex, u, v, channel, level0);
+        float s1 = cpu_sample_2d_channel(tex, u, v, channel, level1);
+        return s0 * (1.0f - frac) + s1 * frac;
+    }
+}
+
+// LOAD-based sampling with interpolation between mip levels (3D)
+inline float
+cpu_sample_3d_channel_mip(const cpu_texture3d_data* tex, float u, float v, float w, int channel, float load)
+{
+    float max_level = (float)(tex->num_mip_levels - 1);
+    if (load > max_level)
+        load = max_level;
+
+    if (tex->mip_filter_mode == WP_TEXTURE_MIP_FILTER_CLOSEST) {
+        int level = (int)(load + 0.5f);
+        if (level > (int)max_level)
+            level = (int)max_level;
+        return cpu_sample_3d_channel(tex, u, v, w, channel, level);
+    } else {
+        int level0 = (int)load;
+        int level1 = level0 + 1;
+        if (level1 > (int)max_level)
+            level1 = (int)max_level;
+        float frac = load - (float)level0;
+
+        float s0 = cpu_sample_3d_channel(tex, u, v, w, channel, level0);
+        float s1 = cpu_sample_3d_channel(tex, u, v, w, channel, level1);
+        return s0 * (1.0f - frac) + s1 * frac;
+    }
+}
+
 // ============================================================================
 // Texture Sampling Functions
 // ============================================================================
@@ -368,27 +481,44 @@ inline float cpu_sample_3d_channel(const cpu_texture3d_data* tex, float u, float
 template <typename T> struct texture_sample_helper;
 
 template <> struct texture_sample_helper<float> {
-    static CUDA_CALLABLE float sample_2d(const texture2d_t& tex, float u, float v)
+    static CUDA_CALLABLE float sample_2d(const texture2d_t& tex, float u, float v, float load)
     {
 #if defined(__CUDA_ARCH__)
-        return tex2D<float>(tex.tex, u, v);
+        if (load <= 0.0f) {
+            return tex2D<float>(tex.tex, u, v);
+        } else {
+            return tex2DLoad<float>(tex.tex, u, v, load);
+        }
 #else
         if (tex.tex == 0)
             return 0.0f;
         const cpu_texture2d_data* cpu_tex = (const cpu_texture2d_data*)tex.tex;
-        return cpu_sample_2d_channel(cpu_tex, u, v, 0);
+
+        if (load <= 0.0) {
+            return cpu_sample_2d_channel(cpu_tex, u, v, 0, 0);
+        } else {
+            return cpu_sample_2d_channel_mip(cpu_tex, u, v, 0, load);
+        }
 #endif
     }
 
-    static CUDA_CALLABLE float sample_3d(const texture3d_t& tex, float u, float v, float w)
+    static CUDA_CALLABLE float sample_3d(const texture3d_t& tex, float u, float v, float w, float load)
     {
 #if defined(__CUDA_ARCH__)
-        return tex3D<float>(tex.tex, u, v, w);
+        if (load <= 0.0f) {
+            return tex3D<float>(tex.tex, u, v, w);
+        } else {
+            return tex3DLoad<float>(tex.tex, u, v, w, load);
+        }
 #else
         if (tex.tex == 0)
             return 0.0f;
         const cpu_texture3d_data* cpu_tex = (const cpu_texture3d_data*)tex.tex;
-        return cpu_sample_3d_channel(cpu_tex, u, v, w, 0);
+        if (load <= 0.0f) {
+            return cpu_sample_3d_channel(cpu_tex, u, v, w, 0, 0);
+        } else {
+            return cpu_sample_3d_channel_mip(cpu_tex, u, v, w, 0, load);
+        }
 #endif
     }
 
@@ -396,29 +526,49 @@ template <> struct texture_sample_helper<float> {
 };
 
 template <> struct texture_sample_helper<vec2f> {
-    static CUDA_CALLABLE vec2f sample_2d(const texture2d_t& tex, float u, float v)
+    static CUDA_CALLABLE vec2f sample_2d(const texture2d_t& tex, float u, float v, float load)
     {
 #if defined(__CUDA_ARCH__)
-        float2 val = tex2D<float2>(tex.tex, u, v);
-        return vec2f(val.x, val.y);
+        if (load <= 0.0f) {
+            float2 val = tex2D<float2>(tex.tex, u, v);
+            return vec2f(val.x, val.y);
+        } else {
+            float2 val = tex2DLoad<float2>(tex.tex, u, v, load);
+            return vec2f(val.x, val.y);
+        }
 #else
         if (tex.tex == 0)
             return vec2f(0.0f, 0.0f);
         const cpu_texture2d_data* cpu_tex = (const cpu_texture2d_data*)tex.tex;
-        return vec2f(cpu_sample_2d_channel(cpu_tex, u, v, 0), cpu_sample_2d_channel(cpu_tex, u, v, 1));
+        if (load <= 0.0f) {
+            return vec2f(cpu_sample_2d_channel(cpu_tex, u, v, 0, 0), cpu_sample_2d_channel(cpu_tex, u, v, 1, 0));
+        } else {
+            return vec2f(cpu_sample_2d_channel(cpu_tex, u, v, 0, load), cpu_sample_2d_channel(cpu_tex, u, v, 1, load));
+        }
 #endif
     }
 
-    static CUDA_CALLABLE vec2f sample_3d(const texture3d_t& tex, float u, float v, float w)
+    static CUDA_CALLABLE vec2f sample_3d(const texture3d_t& tex, float u, float v, float w, float load)
     {
 #if defined(__CUDA_ARCH__)
-        float2 val = tex3D<float2>(tex.tex, u, v, w);
-        return vec2f(val.x, val.y);
+        if (load <= 0.0f) {
+            float2 val = tex3D<float2>(tex.tex, u, v, w);
+            return vec2f(val.x, val.y);
+        } else {
+            float2 val = tex3DLoad<float2>(tex.tex, u, v, w, load);
+            return vec2f(val.x, val.y);
+        }
 #else
         if (tex.tex == 0)
             return vec2f(0.0f, 0.0f);
         const cpu_texture3d_data* cpu_tex = (const cpu_texture3d_data*)tex.tex;
-        return vec2f(cpu_sample_3d_channel(cpu_tex, u, v, w, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 1));
+        if (load <= 0.0f) {
+            return vec2f(cpu_sample_3d_channel(cpu_tex, u, v, w, 0, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, 0));
+        } else {
+            return vec2f(
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, load), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, load)
+            );
+        }
 #endif
     }
 
@@ -426,35 +576,59 @@ template <> struct texture_sample_helper<vec2f> {
 };
 
 template <> struct texture_sample_helper<vec4f> {
-    static CUDA_CALLABLE vec4f sample_2d(const texture2d_t& tex, float u, float v)
+    static CUDA_CALLABLE vec4f sample_2d(const texture2d_t& tex, float u, float v, float load)
     {
 #if defined(__CUDA_ARCH__)
-        float4 val = tex2D<float4>(tex.tex, u, v);
-        return vec4f(val.x, val.y, val.z, val.w);
+        if (load <= 0.0f) {
+            float4 val = tex2D<float4>(tex.tex, u, v);
+            return vec4f(val.x, val.y, val.z, val.w);
+        } else {
+            float4 val = tex2DLoad<float4>(tex.tex, u, v, load);
+            return vec4f(val.x, val.y, val.z, val.w);
+        }
 #else
         if (tex.tex == 0)
             return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
         const cpu_texture2d_data* cpu_tex = (const cpu_texture2d_data*)tex.tex;
-        return vec4f(
-            cpu_sample_2d_channel(cpu_tex, u, v, 0), cpu_sample_2d_channel(cpu_tex, u, v, 1),
-            cpu_sample_2d_channel(cpu_tex, u, v, 2), cpu_sample_2d_channel(cpu_tex, u, v, 3)
-        );
+        if (load <= 0.0f) {
+            return vec4f(
+                cpu_sample_2d_channel(cpu_tex, u, v, 0, 0), cpu_sample_2d_channel(cpu_tex, u, v, 1, 0),
+                cpu_sample_2d_channel(cpu_tex, u, v, 2, 0), cpu_sample_2d_channel(cpu_tex, u, v, 3, 0)
+            );
+        } else {
+            return vec4f(
+                cpu_sample_2d_channel(cpu_tex, u, v, 0, load), cpu_sample_2d_channel(cpu_tex, u, v, 1, load),
+                cpu_sample_2d_channel(cpu_tex, u, v, 2, load), cpu_sample_2d_channel(cpu_tex, u, v, 3, load)
+            );
+        }
 #endif
     }
 
-    static CUDA_CALLABLE vec4f sample_3d(const texture3d_t& tex, float u, float v, float w)
+    static CUDA_CALLABLE vec4f sample_3d(const texture3d_t& tex, float u, float v, float w, float load)
     {
 #if defined(__CUDA_ARCH__)
-        float4 val = tex3D<float4>(tex.tex, u, v, w);
-        return vec4f(val.x, val.y, val.z, val.w);
+        if (load <= 0.0f) {
+            float4 val = tex3D<float4>(tex.tex, u, v, w);
+            return vec4f(val.x, val.y, val.z, val.w);
+        } else {
+            float4 val = tex3DLoad<float4>(tex.tex, u, v, w, load);
+            return vec4f(val.x, val.y, val.z, val.w);
+        }
 #else
         if (tex.tex == 0)
             return vec4f(0.0f, 0.0f, 0.0f, 0.0f);
         const cpu_texture3d_data* cpu_tex = (const cpu_texture3d_data*)tex.tex;
-        return vec4f(
-            cpu_sample_3d_channel(cpu_tex, u, v, w, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 1),
-            cpu_sample_3d_channel(cpu_tex, u, v, w, 2), cpu_sample_3d_channel(cpu_tex, u, v, w, 3)
-        );
+        if (load <= 0.0f) {
+            return vec4f(
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, 0),
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 2, 0), cpu_sample_3d_channel(cpu_tex, u, v, w, 3, 0)
+            );
+        } else {
+            return vec4f(
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 0, load), cpu_sample_3d_channel(cpu_tex, u, v, w, 1, load),
+                cpu_sample_3d_channel(cpu_tex, u, v, w, 2, load), cpu_sample_3d_channel(cpu_tex, u, v, w, 3, load)
+            );
+        }
 #endif
     }
 
@@ -462,48 +636,70 @@ template <> struct texture_sample_helper<vec4f> {
 };
 
 // 2D texture sampling with vec2 coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, const vec2f& uv, float load)
 {
-    return texture_sample_helper<T>::sample_2d(tex, uv[0], uv[1]);
+    return texture_sample_helper<T>::sample_2d(tex, uv[0], uv[1], load);
 }
 
 // 2D texture sampling with separate u, v coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture2d_t& tex, float u, float v, float load)
 {
-    return texture_sample_helper<T>::sample_2d(tex, u, v);
+    return texture_sample_helper<T>::sample_2d(tex, u, v, load);
 }
 
 // 3D texture sampling with vec3 coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, const vec3f& uvw, float load)
 {
-    return texture_sample_helper<T>::sample_3d(tex, uvw[0], uvw[1], uvw[2]);
+    return texture_sample_helper<T>::sample_3d(tex, uvw[0], uvw[1], uvw[2], load);
 }
 
 // 3D texture sampling with separate u, v, w coordinates
-template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w)
+template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, float u, float v, float w, float load)
 {
-    return texture_sample_helper<T>::sample_3d(tex, u, v, w);
+    return texture_sample_helper<T>::sample_3d(tex, u, v, w, load);
 }
 
 // Adjoint stubs for texture sampling (non-differentiable for now)
 template <typename T>
-CUDA_CALLABLE void
-adj_texture_sample(const texture2d_t& tex, const vec2f& uv, texture2d_t& adj_tex, vec2f& adj_uv, const T& adj_ret)
-{
-    // Texture sampling is not differentiable in this implementation
-}
-
-template <typename T>
 CUDA_CALLABLE void adj_texture_sample(
-    const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const T& adj_ret
+    const texture2d_t& tex,
+    const vec2f& uv,
+    const float load,
+    texture2d_t& adj_tex,
+    vec2f& adj_uv,
+    float& adj_load,
+    const T& adj_ret
 )
 {
     // Texture sampling is not differentiable in this implementation
 }
 
 template <typename T>
-CUDA_CALLABLE void
-adj_texture_sample(const texture3d_t& tex, const vec3f& uvw, texture3d_t& adj_tex, vec3f& adj_uvw, const T& adj_ret)
+CUDA_CALLABLE void adj_texture_sample(
+    const texture2d_t& tex,
+    float u,
+    float v,
+    const float load,
+    texture2d_t& adj_tex,
+    float& adj_u,
+    float& adj_v,
+    float& adj_load,
+    const T& adj_ret
+)
+{
+    // Texture sampling is not differentiable in this implementation
+}
+
+template <typename T>
+CUDA_CALLABLE void adj_texture_sample(
+    const texture3d_t& tex,
+    const vec3f& uvw,
+    const float load,
+    texture3d_t& adj_tex,
+    vec3f& adj_uvw,
+    float& adj_load,
+    const T& adj_ret
+)
 {
     // Texture sampling is not differentiable in this implementation
 }
@@ -514,10 +710,12 @@ CUDA_CALLABLE void adj_texture_sample(
     float u,
     float v,
     float w,
+    const float load,
     texture3d_t& adj_tex,
     float& adj_u,
     float& adj_v,
     float& adj_w,
+    float& adj_load,
     const T& adj_ret
 )
 {

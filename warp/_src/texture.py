@@ -145,6 +145,8 @@ class Texture:
         instance = super().__new__(cls)
         instance._tex_handle = 0
         instance._array_handle = 0
+        instance._mipmap_handle = 0
+        instance._num_mip_levels = 1
         return instance
 
     def __init__(
@@ -163,6 +165,8 @@ class Texture:
         normalized_coords: bool = True,
         device: DeviceLike = None,
         dims: int | None = None,
+        num_mip_levels: int = 1,
+        mip_filter_mode: int = 1,
     ):
         """Create a texture.
 
@@ -197,6 +201,11 @@ class Texture:
             device: Device on which to create the texture.
             dims: Explicit dimensionality (2 or 3). If ``None``,
                 auto-detected from ``data``.
+            num_mip_levels: Number of mipmap levels. 1 means no mipmaps
+                (default). 0 means auto-compute the full mip chain down
+                to 1x1.
+            mip_filter_mode: Filtering mode between mip levels —
+                :attr:`FILTER_POINT` or :attr:`FILTER_LINEAR`.
         """
         import warp._src.context  # noqa: PLC0415
 
@@ -227,6 +236,7 @@ class Texture:
             self._dtype = np.dtype(dtype)
             self._dtype_code = self._dtype_to_code(dtype)
             self._filter_mode = filter_mode
+            self._mip_filter_mode = mip_filter_mode
             self._address_mode_u = resolved_u
             self._address_mode_v = resolved_v
             self._address_mode_w = resolved_w
@@ -236,7 +246,7 @@ class Texture:
             return
 
         # Extract data and dimensions
-        data_flat, width, height, depth, num_channels, dtype, dtype_code = self._process_data(data, device)
+        np_data, data_flat, width, height, depth, num_channels, dtype, dtype_code = self._process_data(data, device)
         self.device = (
             warp._src.context.get_device(device)
             if not is_array(data)
@@ -253,13 +263,34 @@ class Texture:
         self._dtype = np.dtype(dtype)
         self._dtype_code = dtype_code
         self._filter_mode = filter_mode
+        self._mip_filter_mode = mip_filter_mode
         self._address_mode_u = resolved_u
         self._address_mode_v = resolved_v
         self._address_mode_w = resolved_w
         self._normalized_coords = normalized_coords
 
-        # Create the texture
-        self._create_texture(data_flat)
+        # Resolve mip level count
+        if num_mip_levels == 0:
+            self._num_mip_levels = self._compute_mip_count(
+                self._width, self._height, self._depth if self._dims == 3 else 1
+            )
+        else:
+            self._num_mip_levels = num_mip_levels
+
+        # Generate mip chain if needed, then create the texture
+        if self._num_mip_levels > 1:
+            if self._dims == 2:
+                mip_flat, level_widths, level_heights = self._generate_mip_chain_2d(
+                    np_data, self._num_mip_levels, num_channels
+                )
+                self._create_texture(mip_flat, level_widths, level_heights, None)
+            else:
+                mip_flat, level_widths, level_heights, level_depths = self._generate_mip_chain_3d(
+                    np_data, self._num_mip_levels, num_channels
+                )
+                self._create_texture(mip_flat, level_widths, level_heights, level_depths)
+        else:
+            self._create_texture(data_flat)
 
     def _detect_dims(self, data, depth: int) -> int:
         """Auto-detect texture dimensionality from data or depth parameter."""
@@ -330,13 +361,16 @@ class Texture:
             else:
                 raise ValueError("3D texture data must be 3D or 4D array")
 
-        return np_data.flatten(), width, height, depth, num_channels, dtype, dtype_code
+        return np_data, np_data.flatten(), width, height, depth, num_channels, dtype, dtype_code
 
-    def _create_texture(self, data_flat):
+    def _create_texture(self, data_flat, mip_widths=None, mip_heights=None, mip_depths=None):
         """Create the underlying texture resource."""
         tex_handle = ctypes.c_uint64(0)
         array_handle = ctypes.c_uint64(0)
+        mipmap_handle = ctypes.c_uint64(0)
         data_ptr = data_flat.ctypes.data_as(ctypes.c_void_p)
+        widths_ptr = mip_widths.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)) if mip_widths is not None else None
+        heights_ptr = mip_heights.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)) if mip_heights is not None else None
 
         if self._dims == 2:
             if self.device.is_cuda:
@@ -347,12 +381,17 @@ class Texture:
                     self._num_channels,
                     self._dtype_code,
                     self._filter_mode,
+                    self._mip_filter_mode,
                     self._address_mode_u,
                     self._address_mode_v,
                     self._normalized_coords,
+                    self._num_mip_levels,
                     data_ptr,
+                    widths_ptr,
+                    heights_ptr,
                     ctypes.byref(tex_handle),
                     ctypes.byref(array_handle),
+                    ctypes.byref(mipmap_handle),
                 )
             else:
                 success = self.runtime.core.wp_texture2d_create_host(
@@ -361,13 +400,18 @@ class Texture:
                     self._num_channels,
                     self._dtype_code,
                     self._filter_mode,
+                    self._mip_filter_mode,
                     self._address_mode_u,
                     self._address_mode_v,
                     self._normalized_coords,
+                    self._num_mip_levels,
                     data_ptr,
+                    widths_ptr,
+                    heights_ptr,
                     ctypes.byref(tex_handle),
                 )
         else:  # 3D
+            depths_ptr = mip_depths.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)) if mip_depths is not None else None
             if self.device.is_cuda:
                 success = self.runtime.core.wp_texture3d_create_device(
                     self.device.context,
@@ -377,13 +421,19 @@ class Texture:
                     self._num_channels,
                     self._dtype_code,
                     self._filter_mode,
+                    self._mip_filter_mode,
                     self._address_mode_u,
                     self._address_mode_v,
                     self._address_mode_w,
                     self._normalized_coords,
+                    self._num_mip_levels,
                     data_ptr,
+                    widths_ptr,
+                    heights_ptr,
+                    depths_ptr,
                     ctypes.byref(tex_handle),
                     ctypes.byref(array_handle),
+                    ctypes.byref(mipmap_handle),
                 )
             else:
                 success = self.runtime.core.wp_texture3d_create_host(
@@ -393,11 +443,16 @@ class Texture:
                     self._num_channels,
                     self._dtype_code,
                     self._filter_mode,
+                    self._mip_filter_mode,
                     self._address_mode_u,
                     self._address_mode_v,
                     self._address_mode_w,
                     self._normalized_coords,
+                    self._num_mip_levels,
                     data_ptr,
+                    widths_ptr,
+                    heights_ptr,
+                    depths_ptr,
                     ctypes.byref(tex_handle),
                 )
 
@@ -406,9 +461,10 @@ class Texture:
 
         self._tex_handle = tex_handle.value
         self._array_handle = array_handle.value
+        self._mipmap_handle = mipmap_handle.value
 
     def __del__(self):
-        if self._tex_handle == 0 and self._array_handle == 0:
+        if self._tex_handle == 0 and self._array_handle == 0 and self._mipmap_handle == 0:
             return
 
         try:
@@ -416,15 +472,15 @@ class Texture:
                 if self.device.is_cuda:
                     with self.device.context_guard:
                         self.runtime.core.wp_texture2d_destroy_device(
-                            self.device.context, self._tex_handle, self._array_handle
+                            self.device.context, self._tex_handle, self._array_handle, self._mipmap_handle
                         )
                 else:
                     self.runtime.core.wp_texture2d_destroy_host(self._tex_handle)
-            else:  # 3D
+            else:
                 if self.device.is_cuda:
                     with self.device.context_guard:
                         self.runtime.core.wp_texture3d_destroy_device(
-                            self.device.context, self._tex_handle, self._array_handle
+                            self.device.context, self._tex_handle, self._array_handle, self._mipmap_handle
                         )
                 else:
                     self.runtime.core.wp_texture3d_destroy_host(self._tex_handle)
@@ -516,9 +572,142 @@ class Texture:
         return self._normalized_coords
 
     @property
+    def num_mip_levels(self) -> int:
+        """Number of mipmap levels (1 means no mipmaps)."""
+        return self._num_mip_levels
+
+    @property
     def id(self) -> int:
         """Texture handle ID (for advanced use)."""
         return self._tex_handle
+
+    @staticmethod
+    def _compute_mip_count(width: int, height: int, depth: int = 1) -> int:
+        """Compute the maximum number of mip levels for given dimensions."""
+        max_dim = max(width, height, depth)
+        count = 1
+        while max_dim > 1:
+            max_dim = max(max_dim // 2, 1)
+            count += 1
+        return count
+
+    @staticmethod
+    def _downsample_axis(arr: np.ndarray, axis: int) -> np.ndarray:
+        """Downsample array by 2x along the given axis using a box filter."""
+        n = arr.shape[axis]
+        if n <= 1:
+            return arr.copy()
+        new_n = max(n // 2, 1)
+        slices_even = [slice(None)] * arr.ndim
+        slices_odd = [slice(None)] * arr.ndim
+        slices_even[axis] = slice(0, new_n * 2, 2)
+        slices_odd[axis] = slice(1, new_n * 2, 2)
+        return (arr[tuple(slices_even)].astype(np.float64) + arr[tuple(slices_odd)].astype(np.float64)) * 0.5
+
+    @staticmethod
+    def _generate_mip_chain_2d(
+        np_data: np.ndarray, num_levels: int, num_channels: int
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Generate a 2D mipmap chain using box filter downsampling.
+
+        Args:
+            np_data: Level 0 data, shape ``(H, W)`` or ``(H, W, C)``.
+            num_levels: Number of mip levels to generate.
+            num_channels: Number of channels.
+
+        Returns:
+            Tuple of ``(concatenated_flat, level_widths, level_heights)``.
+        """
+        original_dtype = np_data.dtype
+        if np_data.ndim == 2:
+            h, w = np_data.shape
+        else:
+            h, w, _ = np_data.shape
+
+        levels = [np_data]
+        widths = [w]
+        heights = [h]
+
+        current = np_data.astype(np.float64)
+        for _ in range(1, num_levels):
+            # Downsample height (axis 0) then width (axis 1)
+            current = Texture._downsample_axis(current, 0)
+            current = Texture._downsample_axis(current, 1)
+
+            if original_dtype == np.uint8:
+                level_data = np.clip(np.rint(current), 0, 255).astype(np.uint8)
+            elif original_dtype == np.uint16:
+                level_data = np.clip(np.rint(current), 0, 65535).astype(np.uint16)
+            else:
+                level_data = current.astype(np.float32)
+
+            levels.append(level_data)
+            if np_data.ndim == 2:
+                lh, lw = level_data.shape
+            else:
+                lh, lw, _ = level_data.shape
+            widths.append(lw)
+            heights.append(lh)
+
+        concatenated = np.concatenate([level.flatten() for level in levels])
+        return concatenated, np.array(widths, dtype=np.int32), np.array(heights, dtype=np.int32)
+
+    @staticmethod
+    def _generate_mip_chain_3d(
+        np_data: np.ndarray, num_levels: int, num_channels: int
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Generate a 3D mipmap chain using box filter downsampling.
+
+        Args:
+            np_data: Level 0 data, shape ``(D, H, W)`` or ``(D, H, W, C)``.
+            num_levels: Number of mip levels to generate.
+            num_channels: Number of channels.
+
+        Returns:
+            Tuple of ``(concatenated_flat, level_widths, level_heights,
+            level_depths)``.
+        """
+        original_dtype = np_data.dtype
+        if np_data.ndim == 3:
+            d, h, w = np_data.shape
+        else:
+            d, h, w, _ = np_data.shape
+
+        levels = [np_data]
+        widths = [w]
+        heights = [h]
+        depths = [d]
+
+        current = np_data.astype(np.float64)
+        for _ in range(1, num_levels):
+            # Downsample depth (axis 0), height (axis 1), width (axis 2)
+            current = Texture._downsample_axis(current, 0)
+            current = Texture._downsample_axis(current, 1)
+            current = Texture._downsample_axis(current, 2)
+
+            if original_dtype == np.uint8:
+                level_data = np.clip(np.rint(current), 0, 255).astype(np.uint8)
+            elif original_dtype == np.uint16:
+                level_data = np.clip(np.rint(current), 0, 65535).astype(np.uint16)
+            else:
+                level_data = current.astype(np.float32)
+
+            levels.append(level_data)
+            if np_data.ndim == 3:
+                ld, lh, lw = level_data.shape
+            else:
+                ld, lh, lw, _ = level_data.shape
+            widths.append(lw)
+            heights.append(lh)
+            depths.append(ld)
+
+        concatenated = np.concatenate([level.flatten() for level in levels])
+        return (
+            concatenated,
+            np.array(widths, dtype=np.int32),
+            np.array(heights, dtype=np.int32),
+            np.array(depths, dtype=np.int32),
+        )
 
     def __ctype__(self):
         """Return the ctypes structure for passing to kernels."""
@@ -574,6 +763,8 @@ class Texture2D(Texture):
         address_mode_u: int | None = None,
         address_mode_v: int | None = None,
         normalized_coords: bool = True,
+        num_mip_levels: int = 1,
+        mip_filter_mode: int = 1,
         device: DeviceLike = None,
     ):
         super().__init__(
@@ -588,6 +779,8 @@ class Texture2D(Texture):
             address_mode_u=address_mode_u,
             address_mode_v=address_mode_v,
             normalized_coords=normalized_coords,
+            num_mip_levels=num_mip_levels,
+            mip_filter_mode=mip_filter_mode,
             device=device,
         )
 
@@ -645,6 +838,8 @@ class Texture3D(Texture):
         address_mode_v: int | None = None,
         address_mode_w: int | None = None,
         normalized_coords: bool = True,
+        num_mip_levels: int = 1,
+        mip_filter_mode: int = 1,
         device: DeviceLike = None,
     ):
         super().__init__(
@@ -660,6 +855,8 @@ class Texture3D(Texture):
             address_mode_v=address_mode_v,
             address_mode_w=address_mode_w,
             normalized_coords=normalized_coords,
+            num_mip_levels=num_mip_levels,
+            mip_filter_mode=mip_filter_mode,
             device=device,
         )
 

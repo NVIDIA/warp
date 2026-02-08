@@ -191,8 +191,11 @@ WP_API const char* wp_volume_get_blind_data_info(
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
+// mip_filter_mode: 0=nearest, 1=linear
 // address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
 // use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
+// num_mip_levels: number of mip levels to create
+// mip_widths, mip_heights: array of mip widths and heights (must be power of two)
 WP_API bool wp_texture2d_create_device(
     void* context,
     int width,
@@ -200,14 +203,20 @@ WP_API bool wp_texture2d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
+    int mip_filter_mode,
     int address_mode_u,
     int address_mode_v,
     bool use_normalized_coords,
+    int num_mip_levels,
     const void* data,
+    const int* mip_widths,
+    const int* mip_heights,
     uint64_t* tex_handle_out,
-    uint64_t* array_handle_out
+    uint64_t* array_handle_out,
+    uint64_t* mipmap_handle_out
 );
-WP_API void wp_texture2d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
+WP_API void
+wp_texture2d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle, uint64_t mipmap_handle);
 
 // Texture2D functions (CPU host)
 // Creates a 2D texture from data on the host. Returns texture handle (pointer to internal data).
@@ -216,18 +225,25 @@ WP_API void wp_texture2d_destroy_device(void* context, uint64_t tex_handle, uint
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
+// mip_filter_mode: 0=nearest, 1=linear
 // address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
 // use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
+// num_mip_levels: number of mip levels to create
+// mip_widths, mip_heights: array of mip widths and heights (must be power of two)
 WP_API bool wp_texture2d_create_host(
     int width,
     int height,
     int num_channels,
     int dtype,
     int filter_mode,
+    int mip_filter_mode,
     int address_mode_u,
     int address_mode_v,
     bool use_normalized_coords,
+    int num_mip_levels,
     const void* data,
+    const int* mip_widths,
+    const int* mip_heights,
     uint64_t* tex_handle_out
 );
 WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
@@ -239,8 +255,11 @@ WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
+// mip_filter_mode: 0=nearest, 1=linear
 // address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
 // use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
+// num_mip_levels: number of mip levels to create
+// mip_widths, mip_heights, mip_depths: array of mip widths, heights, and depths (must be power of two)
 WP_API bool wp_texture3d_create_device(
     void* context,
     int width,
@@ -249,15 +268,22 @@ WP_API bool wp_texture3d_create_device(
     int num_channels,
     int dtype,
     int filter_mode,
+    int mip_filter_mode,
     int address_mode_u,
     int address_mode_v,
     int address_mode_w,
     bool use_normalized_coords,
+    int num_mip_levels,
     const void* data,
+    const int* mip_widths,
+    const int* mip_heights,
+    const int* mip_depths,
     uint64_t* tex_handle_out,
-    uint64_t* array_handle_out
+    uint64_t* array_handle_out,
+    uint64_t* mipmap_handle_out
 );
-WP_API void wp_texture3d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
+WP_API void
+wp_texture3d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle, uint64_t mipmap_handle);
 
 // Texture3D functions (CPU host)
 // Creates a 3D texture from data on the host. Returns texture handle (pointer to internal data).
@@ -266,8 +292,11 @@ WP_API void wp_texture3d_destroy_device(void* context, uint64_t tex_handle, uint
 // num_channels: 1, 2, or 4
 // dtype: 0=uint8, 1=uint16, 2=float32
 // filter_mode: 0=nearest, 1=linear
+// mip_filter_mode: 0=nearest, 1=linear
 // address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
 // use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
+// num_mip_levels: number of mip levels to create
+// mip_widths, mip_heights, mip_depths: array of mip widths, heights, and depths (must be power of two)
 WP_API bool wp_texture3d_create_host(
     int width,
     int height,
@@ -275,11 +304,16 @@ WP_API bool wp_texture3d_create_host(
     int num_channels,
     int dtype,
     int filter_mode,
+    int mip_filter_mode,
     int address_mode_u,
     int address_mode_v,
     int address_mode_w,
     bool use_normalized_coords,
+    int num_mip_levels,
     const void* data,
+    const int* mip_widths,
+    const int* mip_heights,
+    const int* mip_depths,
     uint64_t* tex_handle_out
 );
 WP_API void wp_texture3d_destroy_host(uint64_t tex_handle);
