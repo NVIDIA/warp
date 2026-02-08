@@ -889,5 +889,4 @@ add_function_test(TestGrad, "test_gradient_slice_3d_2d", test_gradient_slice_3d_
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=False)

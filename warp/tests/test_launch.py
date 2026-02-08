@@ -477,5 +477,4 @@ add_function_test(TestLaunch, "test_launch_bounds_single_tuple", test_launch_bou
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

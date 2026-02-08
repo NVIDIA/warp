@@ -68,5 +68,4 @@ add_function_test(TestFastMath, "test_fast_math_disabled", test_fast_math_disabl
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

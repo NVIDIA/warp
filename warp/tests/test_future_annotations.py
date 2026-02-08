@@ -96,5 +96,4 @@ add_function_test(TestFutureAnnotations, "test_future_annotations", test_future_
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

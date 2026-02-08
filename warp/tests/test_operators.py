@@ -295,5 +295,4 @@ add_kernel_test(TestOperators, test_operators_overload, dim=1, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

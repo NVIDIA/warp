@@ -310,5 +310,4 @@ for dtype in [wp.float16, wp.float32, wp.float64]:
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=False)

@@ -1004,5 +1004,4 @@ add_function_test(TestMeshQueryPoint, "test_adj_mesh_query_point", test_adj_mesh
 add_function_test(TestMeshQueryPoint, "test_set_mesh_points", test_set_mesh_points, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

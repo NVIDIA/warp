@@ -141,5 +141,4 @@ add_function_test(TestOptions, "test_options_backward_4", test_options_backward_
 add_function_test(TestOptions, "test_options_opt_level", test_options_opt_level, devices=devices, check_output=False)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

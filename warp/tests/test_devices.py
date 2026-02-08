@@ -123,5 +123,4 @@ add_function_test(TestDevices, "test_devices_sm_count", test_devices_sm_count, d
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

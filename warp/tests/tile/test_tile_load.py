@@ -741,5 +741,4 @@ add_function_test(TestTileLoad, "test_tile_load_scoped", test_tile_load_scoped, 
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

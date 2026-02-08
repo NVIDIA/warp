@@ -210,5 +210,4 @@ add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=dev
 add_function_test(TestLinearSolvers, "test_gmres", test_gmres, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

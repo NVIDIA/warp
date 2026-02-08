@@ -652,5 +652,4 @@ add_function_test(TestGenerics, "test_type_attribute_error", test_type_attribute
 add_kernel_test(TestGenerics, name="test_annotations_kernel", kernel=test_annotations_kernel, dim=1, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

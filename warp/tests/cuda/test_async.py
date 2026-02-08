@@ -670,5 +670,4 @@ for src_type, src_ctor in array_constructors.items():
 #                     value_offset=0))
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

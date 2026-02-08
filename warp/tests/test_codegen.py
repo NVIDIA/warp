@@ -1086,5 +1086,4 @@ add_function_test(TestCodeGen, "test_reference_params", test_reference_params, d
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

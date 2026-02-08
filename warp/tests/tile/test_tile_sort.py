@@ -126,5 +126,4 @@ class TestTileSort(unittest.TestCase):
 add_function_test(TestTileSort, "test_tile_sort", test_tile_sort, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

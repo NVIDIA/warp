@@ -614,5 +614,4 @@ add_function_test(TestCTypes, "test_vector_array", test_vector_array, devices=de
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

@@ -769,5 +769,4 @@ for dtype in (*wp._src.types.scalar_types, int, float):
 add_function_test(TestTypes, "test_introspection", test_introspection)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

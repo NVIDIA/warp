@@ -2472,5 +2472,4 @@ add_function_test(TestFemShapeFunctions, "test_tet_shape_functions", test_tet_sh
 add_function_test(TestFemShapeFunctions, "test_capturability", test_capturability, devices=cuda_devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

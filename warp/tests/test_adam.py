@@ -158,5 +158,4 @@ add_function_test(TestAdam, "test_adam_solve_two_inputs", test_adam_solve_two_in
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)
