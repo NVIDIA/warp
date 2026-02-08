@@ -22,6 +22,7 @@ warp_lang.egg-info
 .vscode/
 .vs/
 .history
+CLAUDE.local.md
 
 # Development and testing
 *.o
