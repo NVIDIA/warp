@@ -466,5 +466,4 @@ add_example_test(
 
 if __name__ == "__main__":
     # force rebuild of all kernels
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

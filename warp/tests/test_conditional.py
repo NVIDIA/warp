@@ -329,5 +329,4 @@ add_function_test(TestConditional, "test_ifexp_with_array_access", test_ifexp_wi
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

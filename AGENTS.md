@@ -45,9 +45,8 @@ IMPORTANT: Warp uses `unittest`, not pytest.
 - Use standard `unittest.TestCase` methods when tests target a fixed device (e.g., CPU-only). Use `add_function_test()` only when tests need to run across multiple devices via `get_test_devices()`.
 - Avoid timing-based assertions (e.g., asserting speedup ratios) in tests—they are flaky in parallel CI environments with variable CPU load.
 - Test file and class naming: group by feature prefix (e.g., `test_module_parallel_load.py` / `TestModuleParallelLoad` alongside `test_module_hashing.py` / `TestModuleHashing`).
-- NEVER call `wp.clear_kernel_cache()` outside `if __name__ == "__main__":` blocks—parallel test runners will conflict.
+- NEVER call `wp.clear_kernel_cache()` or `wp.clear_lto_cache()` in test files—not in `__main__` blocks, test methods, or module scope. Cache clearing is not multi-process-safe; concurrent clears cause LLVM crashes ("IO failure on output stream: Bad file descriptor"). The test suite runner (`unittest_parallel.py`) and `build_lib.py` already clear the cache from a single process at the right times.
 - Use `np.testing.assert_allclose()` instead of `np.allclose()` for array comparisons—it provides detailed error messages on failure.
-- When running multiple test files in parallel, ensure at most one calls `wp.clear_kernel_cache()`—multiple concurrent cache clears cause LLVM crashes ("IO failure on output stream: Bad file descriptor").
 
 ### Synchronization Patterns
 

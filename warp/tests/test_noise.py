@@ -248,5 +248,4 @@ add_function_test(TestNoise, "test_adj_noise", test_adj_noise, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

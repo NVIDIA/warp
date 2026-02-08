@@ -3497,5 +3497,4 @@ add_function_test(TestMat, "test_mat_slicing_assign_backward", test_mat_slicing_
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

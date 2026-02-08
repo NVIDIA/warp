@@ -881,5 +881,4 @@ add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz
 add_function_test(TestSparse, "test_bsr_alloc", test_bsr_alloc, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

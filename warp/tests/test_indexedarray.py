@@ -1136,5 +1136,4 @@ add_function_test(TestIndexedArray, "test_indexedarray_fill_struct", test_indexe
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

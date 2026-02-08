@@ -687,5 +687,4 @@ add_function_test(TestStreams, "test_event_external", test_event_external, devic
 add_function_test(TestStreams, "test_graph_destroy_during_capture", test_graph_destroy_during_capture, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

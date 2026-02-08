@@ -2855,5 +2855,4 @@ add_function_test(TestSpatial, "test_transform_default_q_arg", test_transform_de
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

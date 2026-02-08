@@ -132,5 +132,4 @@ add_function_test(TestEnum, "test_static_accessors", test_static_accessors, devi
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

@@ -104,5 +104,4 @@ add_function_test(TestSmoothstep, "test_smoothstep", test_smoothstep, devices=de
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

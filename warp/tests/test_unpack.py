@@ -252,5 +252,4 @@ add_function_test(TestUnpack, "test_unpack_error_negative_step", test_unpack_err
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

@@ -994,5 +994,4 @@ add_function_test(TestFabricArray, "test_fabricarrayarray", test_fabricarrayarra
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

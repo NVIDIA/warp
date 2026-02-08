@@ -1964,5 +1964,4 @@ add_function_test(TestTile, "test_tile_rand", test_tile_rand, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

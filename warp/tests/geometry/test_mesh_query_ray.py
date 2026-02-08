@@ -755,5 +755,4 @@ add_function_test(TestMeshQueryRay, "test_mesh_query_ray_and_groups", test_mesh_
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

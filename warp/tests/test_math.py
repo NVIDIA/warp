@@ -208,5 +208,4 @@ add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

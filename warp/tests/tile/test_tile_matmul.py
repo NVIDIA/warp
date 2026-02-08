@@ -235,5 +235,4 @@ add_function_test(TestTileMatmul, "test_tile_transpose_matmul", test_tile_transp
 add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matmul_return_form, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2, failfast=True)

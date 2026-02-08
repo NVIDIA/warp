@@ -72,5 +72,4 @@ class TestIter(unittest.TestCase):
 add_function_test(TestIter, "test_reversed", test_reversed, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

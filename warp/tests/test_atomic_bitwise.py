@@ -205,5 +205,4 @@ add_function_test(TestAtomicBitwise, "test_atomic_bitwise_matrix", test_atomic_b
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

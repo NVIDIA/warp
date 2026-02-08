@@ -188,5 +188,4 @@ class TestTriangleClosestPoint(unittest.TestCase):
 add_function_test(TestTriangleClosestPoint, "test_triangle_closest_point", test_triangle_closest_point, devices=devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

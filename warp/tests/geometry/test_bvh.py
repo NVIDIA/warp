@@ -712,5 +712,4 @@ add_function_test(TestBvh, "test_bvh_query_ray_tiled", test_bvh_query_ray_tiled,
 add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

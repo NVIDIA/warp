@@ -547,5 +547,4 @@ add_function_test(TestOverwrite, "test_kernel_readwrite", test_kernel_readwrite,
 add_function_test(TestOverwrite, "test_kernel_read_func_write", test_kernel_read_func_write, devices=cuda_device)
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

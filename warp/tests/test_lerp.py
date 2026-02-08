@@ -145,5 +145,4 @@ add_function_test(TestLerp, "test_lerp", test_lerp, devices=devices)
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)
