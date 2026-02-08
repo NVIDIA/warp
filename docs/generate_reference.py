@@ -56,6 +56,10 @@ import warp as wp
 
 logger = logging.getLogger(__name__)
 
+# Set to True after run() completes so that repeated calls within the same
+# process (e.g. build_docs.py running both HTML and doctest builds) are no-ops.
+_reference_generated = False
+
 # Configuration
 # -----------------------------------------------------------------------------
 
@@ -646,7 +650,19 @@ def write_module_page(
 
 
 def run():
-    """Execute the documentation generation process."""
+    """Execute the documentation generation process.
+
+    This function is idempotent within a single process — repeated calls are
+    no-ops.  This matters when ``build_docs.py`` invokes Sphinx twice (HTML +
+    doctest), since each ``build_main`` call re-executes ``conf.py`` and
+    triggers the ``builder-inited`` hook again.
+    """
+    global _reference_generated
+    if _reference_generated:
+        logger.debug("API reference stubs already generated, skipping.")
+        return
+    _reference_generated = True
+
     logger.info("Generating API reference stubs...")
 
     install_mock_modules()
@@ -680,7 +696,7 @@ def run():
             if (filtered_count := len(all_symbols) - len(symbols)) > 0:
                 logger.debug(f"Filtered {filtered_count} builtin functions from warp module (documented separately)")
         else:
-            symbols = tuple(x for x in get_public_symbols(module_name))
+            symbols = get_public_symbols(module_name)
 
         if symbols:
             symbols_per_module[module_name] = symbols
