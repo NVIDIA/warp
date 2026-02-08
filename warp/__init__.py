@@ -210,6 +210,8 @@ from warp._src.context import is_cuda_available as is_cuda_available
 from warp._src.build import clear_kernel_cache as clear_kernel_cache
 from warp._src.build import clear_lto_cache as clear_lto_cache
 
+from warp._src.context import print_diagnostics as print_diagnostics
+
 
 # category: Kernel Programming
 

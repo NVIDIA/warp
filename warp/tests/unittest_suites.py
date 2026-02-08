@@ -142,6 +142,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_dense import TestDense
     from warp.tests.test_devices import TestDevices
+    from warp.tests.test_diagnostics import TestDiagnostics
     from warp.tests.test_examples import (
         TestCoreExamples,
         TestFemDiffusionExamples,
@@ -235,6 +236,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCTypes,
         TestDense,
         TestDevices,
+        TestDiagnostics,
         TestDLPack,
         TestCoreExamples,
         TestFemDiffusionExamples,

@@ -1879,6 +1879,24 @@ int wp_cuda_driver_version()
 
 int wp_cuda_toolkit_version() { return CUDA_VERSION; }
 
+int wp_nvrtc_version()
+{
+    int major = 0, minor = 0;
+    nvrtcVersion(&major, &minor);
+    return major * 1000 + minor * 10;
+}
+
+const char* wp_libmathdx_version()
+{
+#if WP_ENABLE_MATHDX
+    static char version[64];
+    snprintf(version, sizeof(version), "%d.%d.%d", LIBMATHDX_VER_MAJOR, LIBMATHDX_VER_MINOR, LIBMATHDX_VER_PATCH);
+    return version;
+#else
+    return "";
+#endif
+}
+
 bool wp_cuda_driver_is_initialized() { return is_cuda_driver_initialized(); }
 
 int wp_nvrtc_supported_arch_count()

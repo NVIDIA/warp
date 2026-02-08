@@ -618,7 +618,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             cpp_flags += ' /D "WP_VERIFY_FP"'
 
         if args.fast_math:
-            cpp_flags += " /fp:fast"
+            cpp_flags += ' /fp:fast /D "WP_FAST_MATH"'
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
             futures, wall_clock = [], time.perf_counter_ns()
@@ -721,7 +721,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             cpp_flags += " -DWP_VERIFY_FP"
 
         if args.fast_math:
-            cpp_flags += " -ffast-math"
+            cpp_flags += " -ffast-math -DWP_FAST_MATH"
 
         ld_inputs = []
 

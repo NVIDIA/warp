@@ -17,6 +17,9 @@
   Supported on `Grid2D`, `Grid3D`, and `Nanogrid` geometries ([GH-1208](https://github.com/NVIDIA/warp/issues/1208)).
 - Add support for JAX vmap with FFI `jax_kernel()` and `jax_callable()`
   ([GH-859](https://github.com/NVIDIA/warp/issues/859)).
+- Add `wp.print_diagnostics()` to display a comprehensive snapshot of the Warp build and runtime
+  environment, including software versions, CUDA info, build flags, and devices. Returns a dictionary
+  for programmatic access ([GH-1221](https://github.com/NVIDIA/warp/issues/1221)).
 
 ### Removed
 

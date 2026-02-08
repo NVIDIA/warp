@@ -508,3 +508,13 @@ void wp_volume_get_tiles_device(uint64_t id, void* buf) { }
 void wp_volume_get_voxels_device(uint64_t id, void* buf) { }
 
 #endif
+
+const char* wp_nanovdb_version()
+{
+    static char version[64];
+    snprintf(
+        version, sizeof(version), "%d.%d.%d", PNANOVDB_MAJOR_VERSION_NUMBER, PNANOVDB_MINOR_VERSION_NUMBER,
+        PNANOVDB_PATCH_VERSION_NUMBER
+    );
+    return version;
+}

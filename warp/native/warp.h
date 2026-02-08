@@ -446,6 +446,13 @@ WP_API int wp_cuda_toolkit_version();  // CUDA Toolkit version used to build War
 WP_API const char* wp_version();  // Warp native library version string
 WP_API bool wp_cuda_driver_is_initialized();
 
+WP_API const char* wp_nanovdb_version();  // NanoVDB version string
+WP_API const char* wp_host_compiler_version();  // Host C++ compiler version
+WP_API const char* wp_libmathdx_version();  // libmathdx version (empty if not built with MathDx)
+WP_API int wp_nvrtc_version();  // NVRTC version (encoded as major*1000 + minor*10)
+WP_API int wp_is_verify_fp_enabled();  // Whether native lib was built with WP_VERIFY_FP
+WP_API int wp_is_fast_math_enabled();  // Whether native lib was built with fast math
+
 WP_API int wp_nvrtc_supported_arch_count();
 WP_API void wp_nvrtc_supported_archs(int* archs);
 

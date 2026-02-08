@@ -583,6 +583,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             # Clear kernel cache in subprocess (ensures fresh import of updated config.py)
             print("Clearing kernel cache...")
+            sys.stdout.flush()
+            sys.stderr.flush()
             result = subprocess.run(
                 [
                     sys.executable,
@@ -594,6 +596,21 @@ def main(argv: list[str] | None = None) -> int:
             )
             if result.returncode != 0:
                 print(f"Warning: Failed to clear kernel cache (exit code {result.returncode})")
+
+            # Flush build output before printing diagnostics so log ordering is correct
+            sys.stdout.flush()
+            sys.stderr.flush()
+
+            # Print build diagnostics (subprocess ensures fresh import of rebuilt libraries)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import warp; warp.print_diagnostics()",
+                ],
+                cwd=base_path,
+                check=False,
+            )
     except Exception as e:
         print(f"Unable to clear kernel cache: {e}")
 

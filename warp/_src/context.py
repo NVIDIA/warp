@@ -3850,6 +3850,10 @@ class Runtime:
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
 
+            if hasattr(self.llvm, "wp_llvm_version"):
+                self.llvm.wp_llvm_version.argtypes = []
+                self.llvm.wp_llvm_version.restype = ctypes.c_char_p
+
             # Verify warp-clang version (guard against missing symbol in older/mismatched DLL)
             if hasattr(self.llvm, "wp_warp_clang_version"):
                 self.llvm.wp_warp_clang_version.argtypes = []
@@ -4465,6 +4469,8 @@ class Runtime:
             self.core.wp_is_cuda_compatibility_enabled.restype = ctypes.c_int
             self.core.wp_is_mathdx_enabled.argtypes = None
             self.core.wp_is_mathdx_enabled.restype = ctypes.c_int
+            self.core.wp_is_debug_enabled.argtypes = None
+            self.core.wp_is_debug_enabled.restype = ctypes.c_int
 
             self.core.wp_cuda_driver_version.argtypes = None
             self.core.wp_cuda_driver_version.restype = ctypes.c_int
@@ -4894,6 +4900,19 @@ class Runtime:
         except AttributeError as e:
             raise RuntimeError(f"Setting C-types for {warp_lib} failed. It may need rebuilding.") from e
 
+        # Diagnostics query functions (optional — guard for older native libraries)
+        for name, restype in [
+            ("wp_nanovdb_version", ctypes.c_char_p),
+            ("wp_host_compiler_version", ctypes.c_char_p),
+            ("wp_libmathdx_version", ctypes.c_char_p),
+            ("wp_nvrtc_version", ctypes.c_int),
+            ("wp_is_verify_fp_enabled", ctypes.c_int),
+            ("wp_is_fast_math_enabled", ctypes.c_int),
+        ]:
+            if hasattr(self.core, name):
+                getattr(self.core, name).argtypes = []
+                getattr(self.core, name).restype = restype
+
         # Initialize with version verification
         error = self.core.wp_init(warp.config.version.encode("utf-8"))
 
@@ -5184,6 +5203,87 @@ class Runtime:
             pass
 
         return "unknown"
+
+    def get_llvm_version(self) -> str:
+        """Get the LLVM version statically linked into the warp-clang library.
+
+        Returns:
+            Version string (e.g., ``"22.0.0"``), or ``"unknown"`` if unavailable.
+        """
+        if self.llvm is None:
+            return "unknown"
+
+        if not hasattr(self.llvm, "wp_llvm_version"):
+            return "unknown"
+
+        try:
+            version_ptr = self.llvm.wp_llvm_version()
+            if version_ptr:
+                return version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
+
+    def get_nanovdb_version(self) -> str:
+        """Get the NanoVDB version bundled with Warp.
+
+        Returns:
+            Version string (e.g., ``"32.8.0"``), or ``"unknown"`` if unavailable.
+        """
+        try:
+            version_ptr = self.core.wp_nanovdb_version()
+            if version_ptr:
+                return version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
+
+    def get_host_compiler_version(self) -> str:
+        """Get the host C++ compiler version used to build Warp.
+
+        Returns:
+            Version string (e.g., ``"GCC 13.3.0"``), or ``"unknown"`` if unavailable.
+        """
+        try:
+            version_ptr = self.core.wp_host_compiler_version()
+            if version_ptr:
+                return version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
+
+    def get_libmathdx_version(self) -> str:
+        """Get the libmathdx version.
+
+        Returns:
+            Version string (e.g., ``"0.3.0"``), or empty string if MathDx is not enabled.
+        """
+        try:
+            version_ptr = self.core.wp_libmathdx_version()
+            if version_ptr:
+                return version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return ""
+
+    def get_nvrtc_version(self) -> tuple[int, int] | None:
+        """Get the NVRTC version.
+
+        Returns:
+            A tuple of ``(major, minor)`` version numbers, or ``None`` if CUDA is not available.
+        """
+        try:
+            encoded = self.core.wp_nvrtc_version()
+            if encoded > 0:
+                return (encoded // 1000, (encoded % 1000) // 10)
+        except (AttributeError, OSError):
+            pass
+
+        return None
 
     def load_dll(self, dll_path):
         try:
@@ -9352,3 +9452,203 @@ def get_cuda_driver_version() -> tuple[int, int] | None:
     if runtime is None:
         init()
     return runtime.driver_version
+
+
+def get_llvm_version() -> str:
+    """Return the LLVM version statically linked into the warp-clang library.
+
+    Returns:
+        Version string (e.g., ``"22.0.0"``), or ``"unknown"`` if unavailable.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_llvm_version()
+
+
+def get_nanovdb_version() -> str:
+    """Return the NanoVDB version bundled with Warp.
+
+    Returns:
+        Version string (e.g., ``"32.8.0"``), or ``"unknown"`` if unavailable.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_nanovdb_version()
+
+
+def get_host_compiler_version() -> str:
+    """Return the host C++ compiler version used to build the Warp native library.
+
+    Returns:
+        Version string (e.g., ``"GCC 13.3.0"``), or ``"unknown"`` if unavailable.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_host_compiler_version()
+
+
+def get_libmathdx_version() -> str:
+    """Return the libmathdx version used by Warp.
+
+    Returns:
+        Version string (e.g., ``"0.3.0"``), or empty string if MathDx is not enabled.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_libmathdx_version()
+
+
+def get_nvrtc_version() -> tuple[int, int] | None:
+    """Return the NVRTC (NVIDIA Runtime Compiler) version.
+
+    Returns:
+        A tuple of ``(major, minor)`` version numbers, or ``None`` if CUDA is not available.
+    """
+    if runtime is None:
+        init()
+    return runtime.get_nvrtc_version()
+
+
+def print_diagnostics() -> dict:
+    """Print a comprehensive snapshot of the Warp build and runtime environment.
+
+    This is useful for debugging, bug reports, and CI diagnostics.
+
+    Returns:
+        A dictionary containing all reported information for programmatic access.
+    """
+    # If runtime not yet initialized, suppress the init greeting since
+    # diagnostics output already subsumes all greeting info.
+    if runtime is None:
+        old_quiet = warp.config.quiet
+        warp.config.quiet = True
+        try:
+            init()
+        finally:
+            warp.config.quiet = old_quiet
+
+    def _version_str(ver):
+        """Format a (major, minor) version tuple as 'major.minor', or None."""
+        return f"{ver[0]}.{ver[1]}" if ver is not None else None
+
+    def _build_flag(name):
+        """Query a boolean build flag from the native library, defaulting to False."""
+        fn = f"wp_is_{name}_enabled"
+        if hasattr(runtime.core, fn):
+            return bool(getattr(runtime.core, fn)())
+        return False
+
+    info = {}
+
+    # Software versions
+    info["warp_python"] = warp.config.version
+    info["warp_native"] = runtime.get_warp_version()
+
+    llvm_ver = runtime.get_llvm_version()
+    clang_ver = runtime.get_warp_clang_version()
+    info["warp_clang"] = f"{clang_ver} (LLVM {llvm_ver})" if llvm_ver != "unknown" else clang_ver
+    info["llvm"] = llvm_ver
+
+    info["numpy"] = np.__version__
+    info["python"] = sys.version
+    info["platform"] = platform.platform()
+
+    git_commit = getattr(warp.config, "_git_commit_hash", None)
+    if git_commit is not None:
+        info["git_commit"] = git_commit
+
+    # CUDA & library info
+    info["cuda_enabled"] = runtime.is_cuda_enabled
+    info["cuda_toolkit"] = _version_str(runtime.toolkit_version)
+    info["cuda_driver"] = _version_str(runtime.driver_version)
+    info["nvrtc"] = _version_str(runtime.get_nvrtc_version())
+    info["cuda_compatibility"] = runtime.is_cuda_compatibility_enabled
+
+    info["mathdx_enabled"] = bool(runtime.core.wp_is_mathdx_enabled())
+    libmathdx_ver = runtime.get_libmathdx_version()
+    info["libmathdx"] = libmathdx_ver if libmathdx_ver else None
+
+    info["nanovdb"] = runtime.get_nanovdb_version()
+    info["host_compiler"] = runtime.get_host_compiler_version()
+
+    # Build flags
+    info["debug"] = _build_flag("debug")
+    info["verify_fp"] = _build_flag("verify_fp")
+    info["fast_math"] = _build_flag("fast_math")
+
+    # Devices
+    devices = []
+    devices.append({"alias": runtime.cpu_device.alias, "name": runtime.cpu_device.name})
+    for cuda_device in runtime.cuda_devices:
+        if not cuda_device.is_primary:
+            continue
+        devices.append(
+            {
+                "alias": cuda_device.alias,
+                "name": cuda_device.name,
+                "arch": f"sm_{cuda_device.arch}",
+                "sm_count": cuda_device.sm_count,
+                "memory_gb": round(cuda_device.total_memory / (1024**3), 1),
+                "mempool_enabled": cuda_device.is_mempool_enabled if cuda_device.is_mempool_supported else False,
+                "pci_bus_id": cuda_device.pci_bus_id,
+            }
+        )
+    info["devices"] = devices
+
+    # Format and print
+    w = 18  # label column width inside sections
+    lines = []
+
+    def _field(label, value, indent=2):
+        lines.append(f"{' ' * indent}{label:<{w}}{value}")
+
+    def _section(title):
+        if lines:
+            lines.append("")
+        lines.append(title)
+
+    _section("Software")
+    _field("Warp (package):", info["warp_python"])
+    _field("Warp (core):", info["warp_native"])
+    _field("warp-clang:", info["warp_clang"])
+    _field("NumPy:", info["numpy"])
+    _field("Python:", info["python"])
+    _field("Platform:", info["platform"])
+    if "git_commit" in info:
+        _field("Git commit:", info["git_commit"])
+
+    _section("CUDA")
+    _field("Enabled:", info["cuda_enabled"])
+    if info["cuda_toolkit"] is not None:
+        _field("Toolkit:", info["cuda_toolkit"])
+    if info["cuda_driver"] is not None:
+        _field("Driver:", info["cuda_driver"])
+    if info["nvrtc"] is not None:
+        _field("NVRTC:", info["nvrtc"])
+    _field("Forward compat:", info["cuda_compatibility"])
+
+    _section("Libraries")
+    _field("MathDx:", info["libmathdx"] if info["mathdx_enabled"] and info["libmathdx"] else "not available")
+    _field("NanoVDB:", info["nanovdb"])
+
+    _section("Build")
+    _field("Compiler:", info["host_compiler"])
+    _field("Debug:", info["debug"])
+    _field("Verify FP:", info["verify_fp"])
+    _field("Fast math:", info["fast_math"])
+
+    _section("Devices")
+    for dev in devices:
+        lines.append(f"  {dev['alias']}")
+        _field("Name:", dev["name"], indent=4)
+        if "arch" in dev:
+            _field("Memory:", f"{dev['memory_gb']} GiB", indent=4)
+            _field("Arch:", dev["arch"], indent=4)
+            _field("SMs:", dev["sm_count"], indent=4)
+            _field("PCI:", dev["pci_bus_id"], indent=4)
+            _field("Mempool:", "enabled" if dev["mempool_enabled"] else "disabled", indent=4)
+    lines.append("")
+
+    print("\n".join(lines))
+
+    return info
