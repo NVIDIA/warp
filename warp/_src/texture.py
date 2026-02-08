@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import ctypes
 import enum
-import warnings
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 
 if TYPE_CHECKING:
     from warp._src.codegen import Var
+    from warp._src.context import DeviceLike
 
 from warp._src.types import array, float32, int32, is_array, uint8, uint16
 
@@ -36,23 +36,23 @@ from warp._src.types import array, float32, int32, is_array, uint8, uint16
 class TextureFilterMode(enum.IntEnum):
     """Filter modes for texture sampling."""
 
-    #: Nearest-neighbor (point) filtering
     CLOSEST = 0
-    #: Bilinear/trilinear filtering
+    """Nearest-neighbor (point) filtering."""
     LINEAR = 1
+    """Bilinear/trilinear filtering."""
 
 
 class TextureAddressMode(enum.IntEnum):
     """Address modes for texture coordinates outside [0, 1]."""
 
-    #: Wrap coordinates (tile the texture)
     WRAP = 0
-    #: Clamp coordinates to [0, 1]
+    """Wrap coordinates (tile the texture)."""
     CLAMP = 1
-    #: Mirror coordinates at boundaries
+    """Clamp coordinates to [0, 1]."""
     MIRROR = 2
-    #: Return 0 for coordinates outside [0, 1]
+    """Mirror coordinates at boundaries."""
     BORDER = 3
+    """Return 0 for coordinates outside [0, 1]."""
 
 
 class texture2d_t(ctypes.Structure):
@@ -111,14 +111,6 @@ class Texture:
     Supports uint8, uint16, and float32 data types. Integer textures are read as normalized
     floats in the [0, 1] range.
 
-    Class Constants:
-        ADDRESS_WRAP (int): Wrap coordinates (tile the texture) = 0
-        ADDRESS_CLAMP (int): Clamp coordinates to [0, 1] = 1
-        ADDRESS_MIRROR (int): Mirror coordinates at boundaries = 2
-        ADDRESS_BORDER (int): Return 0 for coordinates outside [0, 1] = 3
-        FILTER_POINT (int): Nearest-neighbor filtering = 0
-        FILTER_LINEAR (int): Bilinear/trilinear filtering = 1
-
     Example::
 
         import warp as wp
@@ -132,15 +124,19 @@ class Texture:
         tex3d = wp.Texture(data_3d, device="cuda:0")
     """
 
-    # Class constants for address modes (matching PR #1153 API)
     ADDRESS_WRAP = 0
+    """Wrap coordinates (tile the texture)."""
     ADDRESS_CLAMP = 1
+    """Clamp coordinates to [0, 1]."""
     ADDRESS_MIRROR = 2
+    """Mirror coordinates at boundaries."""
     ADDRESS_BORDER = 3
+    """Return 0 for coordinates outside [0, 1]."""
 
-    # Class constants for filter modes
     FILTER_POINT = 0
+    """Nearest-neighbor (point) filtering."""
     FILTER_LINEAR = 1
+    """Bilinear/trilinear filtering."""
 
     # Default dimensionality (None means auto-detect; subclasses override)
     _default_dims: int | None = None
@@ -165,32 +161,42 @@ class Texture:
         address_mode_v: int | None = None,
         address_mode_w: int | None = None,
         normalized_coords: bool = True,
-        device=None,
+        device: DeviceLike = None,
         dims: int | None = None,
     ):
         """Create a texture.
 
         Args:
-            data: Initial texture data as a numpy array or warp array.
-                  For 2D: shape (height, width), (height, width, 2), or (height, width, 4).
-                  For 3D: shape (depth, height, width), (depth, height, width, 2), or (depth, height, width, 4).
-                  Supported dtypes: uint8, uint16, float32.
-            width: Texture width (required if data is None).
-            height: Texture height (required if data is None).
-            depth: Texture depth (required if data is None for 3D textures).
-            num_channels: Number of channels (1, 2, or 4). Only used if data is None. Default is 1.
-            dtype: Data type (uint8, uint16, or float32). Only used if data is None;
-                   when data is provided, dtype is inferred from the data. Default is float32.
-            filter_mode: Filtering mode - FILTER_POINT (0) or FILTER_LINEAR (1). Default is LINEAR.
-            address_mode: Address mode for all axes - ADDRESS_WRAP (0), ADDRESS_CLAMP (1),
-                          ADDRESS_MIRROR (2), or ADDRESS_BORDER (3). Can be a single int or tuple.
-            address_mode_u: Per-axis address mode for U. Overrides address_mode if specified.
-            address_mode_v: Per-axis address mode for V. Overrides address_mode if specified.
-            address_mode_w: Per-axis address mode for W (3D only). Overrides address_mode if specified.
-            normalized_coords: If True (default), coordinates are in [0, 1] range.
-                              If False, coordinates are in texel space.
-            device: Device to create the texture on (CPU or CUDA).
-            dims: Explicit dimensionality (2 or 3). If None, auto-detected from data.
+            data: Initial texture data as a NumPy array or Warp array.
+                For 2D: shape ``(height, width)``, ``(height, width, 2)``,
+                or ``(height, width, 4)``.
+                For 3D: shape ``(depth, height, width)``,
+                ``(depth, height, width, 2)``, or ``(depth, height, width, 4)``.
+                Supported dtypes: ``uint8``, ``uint16``, ``float32``.
+            width: Texture width (required if ``data`` is ``None``).
+            height: Texture height (required if ``data`` is ``None``).
+            depth: Texture depth (required if ``data`` is ``None`` for 3D textures).
+            num_channels: Number of channels (1, 2, or 4). Only used when
+                ``data`` is ``None``.
+            dtype: Data type (``uint8``, ``uint16``, or ``float32``). Only used
+                when ``data`` is ``None``; otherwise inferred from the data.
+            filter_mode: Filtering mode — :attr:`FILTER_POINT` or
+                :attr:`FILTER_LINEAR`.
+            address_mode: Address mode for all axes —
+                :attr:`ADDRESS_WRAP`, :attr:`ADDRESS_CLAMP`,
+                :attr:`ADDRESS_MIRROR`, or :attr:`ADDRESS_BORDER`.
+                Can be a single int or a tuple of per-axis values.
+            address_mode_u: Per-axis address mode for U. Overrides
+                ``address_mode`` if specified.
+            address_mode_v: Per-axis address mode for V. Overrides
+                ``address_mode`` if specified.
+            address_mode_w: Per-axis address mode for W (3D only). Overrides
+                ``address_mode`` if specified.
+            normalized_coords: If ``True``, coordinates are in ``[0, 1]``
+                range. If ``False``, coordinates are in texel space.
+            device: Device on which to create the texture.
+            dims: Explicit dimensionality (2 or 3). If ``None``,
+                auto-detected from ``data``.
         """
         import warp._src.context  # noqa: PLC0415
 
@@ -263,7 +269,7 @@ class Texture:
             elif is_array(data):
                 np_data = data.numpy()
             else:
-                raise TypeError("data must be a numpy array or warp array")
+                raise TypeError("data must be a NumPy array or Warp array")
 
             ndim = np_data.ndim
             if ndim == 4:
@@ -274,8 +280,10 @@ class Texture:
                     return 3  # Last dim is not a valid channel count, so must be 3D
                 else:
                     # Ambiguous case: last dim could be channels (for 2D) or width (for 3D)
-                    # Default to 3D since the numpy array is 3-dimensional, but warn the user
-                    warnings.warn(
+                    # Default to 3D since the NumPy array is 3-dimensional, but warn the user
+                    from warp._src.utils import warn  # noqa: PLC0415
+
+                    warn(
                         f"Ambiguous array shape {np_data.shape}: could be interpreted as 2D texture "
                         f"with shape (height={np_data.shape[0]}, width={np_data.shape[1]}, "
                         f"channels={np_data.shape[2]}) or 3D texture with shape "
@@ -296,7 +304,7 @@ class Texture:
         elif is_array(data):
             np_data = data.numpy()
         else:
-            raise TypeError("data must be a numpy array or warp array")
+            raise TypeError("data must be a NumPy array or Warp array")
 
         if not np_data.flags["C_CONTIGUOUS"]:
             np_data = np.ascontiguousarray(np_data)
@@ -566,7 +574,7 @@ class Texture2D(Texture):
         address_mode_u: int | None = None,
         address_mode_v: int | None = None,
         normalized_coords: bool = True,
-        device=None,
+        device: DeviceLike = None,
     ):
         super().__init__(
             data=data,
@@ -637,7 +645,7 @@ class Texture3D(Texture):
         address_mode_v: int | None = None,
         address_mode_w: int | None = None,
         normalized_coords: bool = True,
-        device=None,
+        device: DeviceLike = None,
     ):
         super().__init__(
             data=data,
