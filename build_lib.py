@@ -348,6 +348,12 @@ def main(argv: list[str] | None = None) -> int:
     # Build options
     group_build = parser.add_argument_group("Build Options")
     group_build.add_argument(
+        "--cuda",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Build with CUDA support (auto-detects CUDA Toolkit). Use --no-cuda for a CPU-only build",
+    )
+    group_build.add_argument(
         "--clang-build-toolchain",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -421,6 +427,15 @@ def main(argv: list[str] | None = None) -> int:
         print("  Use --build-llvm to build LLVM from source")
         return 1
 
+    # Validate --no-cuda conflicts
+    if not args.cuda:
+        if args.cuda_path:
+            print("Error: --no-cuda and --cuda-path are mutually exclusive.")
+            return 1
+        if args.clang_build_toolchain:
+            print("Error: --clang-build-toolchain requires CUDA (incompatible with --no-cuda).")
+            return 1
+
     # Warn if building on Intel Mac (cross-compiling for ARM64)
     if platform.system() == "Darwin" and platform.machine() == "x86_64":
         print("=" * 80)
@@ -453,8 +468,11 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     # setup CUDA Toolkit path
-    if platform.system() == "Darwin":
+    if platform.system() == "Darwin" or not args.cuda:
+        if not args.cuda:
+            print("CUDA support disabled (--no-cuda)")
         args.cuda_path = None
+        args.libmathdx_path = None
     else:
         if not args.cuda_path:
             args.cuda_path = find_cuda_sdk()
@@ -530,7 +548,8 @@ def main(argv: list[str] | None = None) -> int:
         warp_cpp_paths = [os.path.join(build_path, cpp) for cpp in cpp_sources]
 
         if args.cuda_path is None:
-            print("Warning: CUDA toolchain not found, building without CUDA support")
+            if args.cuda:
+                print("Warning: CUDA toolchain not found, building without CUDA support")
             warp_cu_paths = None
         else:
             cuda_sources = [

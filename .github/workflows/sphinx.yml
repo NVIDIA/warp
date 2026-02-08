@@ -40,7 +40,7 @@ jobs:
         run: uv python install
       - name: Build Warp without CUDA Support
         run: |
-          uv run build_lib.py
+          uv run build_lib.py --no-cuda
       - name: Build Sphinx documentation
         run: |
           uv run --extra docs build_docs.py
