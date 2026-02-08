@@ -17,6 +17,8 @@
   Supported on `Grid2D`, `Grid3D`, and `Nanogrid` geometries ([GH-1208](https://github.com/NVIDIA/warp/issues/1208)).
 - Add support for JAX vmap with FFI `jax_kernel()` and `jax_callable()`
   ([GH-859](https://github.com/NVIDIA/warp/issues/859)).
+- Add `--no-cuda` flag to `build_lib.py` for explicit CPU-only builds, skipping CUDA toolkit
+  detection and `.cu` compilation ([GH-1223](https://github.com/NVIDIA/warp/issues/1223)).
 
 ### Removed
 
