@@ -168,7 +168,7 @@ html_show_sphinx = False
 # -- sphinx.ext.autodoc ------------------------------------------------------
 
 autodoc_default_options = {
-    "members": True,  # Includes all public members, not just the class' doscstring.
+    "members": True,  # Includes all public members, not just the class' docstring.
     "member-order": "bysource",  # Keep members in the order they appear in the source code.
     "undoc-members": False,  # Skips documenting members without a docstring.
     "exclude-members": "__weakref__",  # Skips these names even if they have a docstring.
@@ -178,13 +178,13 @@ autodoc_default_options = {
 # Mock external dependencies that might not be installed.
 autodoc_mock_imports = ["jax", "paddle", "pxr", "torch"]
 
-# Show typehints as content of the function or method insert of in the signature.
+# Show typehints as content of the function or method instead of in the signature.
 autodoc_typehints = "description"
 
 # Show the literal expression for default arguments instead of evaluating them.
 autodoc_preserve_defaults = True
 
-# Prevent docstrings from being inehrited from parent classes or methods.
+# Prevent docstrings from being inherited from parent classes or methods.
 autodoc_inherit_docstrings = False
 
 

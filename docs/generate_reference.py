@@ -696,7 +696,7 @@ def run():
             if (filtered_count := len(all_symbols) - len(symbols)) > 0:
                 logger.debug(f"Filtered {filtered_count} builtin functions from warp module (documented separately)")
         else:
-            symbols = tuple(x for x in get_public_symbols(module_name))
+            symbols = get_public_symbols(module_name)
 
         if symbols:
             symbols_per_module[module_name] = symbols
