@@ -99,7 +99,7 @@ linux-x86_64 build:
   image: $WARP_BUILDER_IMAGE_CU12
   extends:
     - .save_warp_bin_artifact
-    - .omni_nvks_runner
+    - .ipp_lnx_x86_64_cpu_medium
   before_script:
     - gcc --version
   script:
@@ -142,7 +142,7 @@ linux-x86_64 cuda 13 build:
   image: $WARP_BUILDER_IMAGE_CU13
   extends:
     - .save_warp_bin_artifact
-    - .omni_nvks_runner
+    - .ipp_lnx_x86_64_cpu_medium
   script:
     - uv run build_lib.py --cuda-path=/usr/local/cuda
     - mkdir -p warp/bin/linux-x86_64
@@ -557,7 +557,7 @@ linux-x86_64 asv:
   needs: []
   image: $WARP_BUILDER_IMAGE_CU12
   extends:
-    - .omni_nvks_gpu_L40
+    - .ipp_lnx_x86_64_gpu
   variables:
     GIT_DEPTH: "50"
     CUDA_HOME: "/usr/local/cuda"
