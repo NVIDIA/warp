@@ -281,6 +281,7 @@ def _unwrap_literal(value):
         args = get_args(value)
         if len(args) == 1:
             return args[0]
+        raise TypeError(f"Expected a single Literal value, got Literal{list(args)}")
     return value
 
 
@@ -4625,7 +4626,7 @@ def _parse_array_subscript(cls, params):
         ndim = _unwrap_literal(ndim)
         if ndim is not Any:
             if not isinstance(ndim, int):
-                raise TypeError(f"ndim must be an integer, got {type(ndim).__name__}")
+                raise TypeError(f"ndim must be an integer, got {ndim!r}")
             if ndim < 1 or ndim > ARRAY_MAX_DIMS:
                 raise ValueError(f"ndim must be between 1 and {ARRAY_MAX_DIMS}, got {ndim}")
         return ann_cls(dtype=dtype, ndim=ndim)

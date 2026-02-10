@@ -6603,7 +6603,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
                 adj = "adjoint " if adjoint else ""
                 raise RuntimeError(
-                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(value)}."
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {warp._src.types.type_repr(arg_type)}, but passed value has type {type(value).__name__}."
                 )
 
             # check subtype

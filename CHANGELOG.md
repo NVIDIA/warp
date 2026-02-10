@@ -6,12 +6,11 @@
 
 - Add differentiability support for `wp.tile_fft()` and `wp.tile_ifft()` calls recorded on the tape
   ([GH-1138](https://github.com/NVIDIA/warp/issues/1138)).
-- Add subscript-style type hints for Warp types, enabling idiomatic Python annotations:
+- Add subscript-style type hints for array and tile types, enabling idiomatic Python annotations
+  that are recognized by static type checkers like Pyright:
   `wp.array[float]`, `wp.array[float, Literal[2]]`, `wp.array2d[float]`,
   `wp.indexedarray[float]`, `wp.fabricarray[float]`, `wp.indexedfabricarray[float]`,
-  `wp.types.Vector[float, Literal[3]]`, `wp.types.Matrix[float, Literal[3], Literal[3]]`,
-  `wp.types.Quaternion[float]`, `wp.types.Transformation[float]`, `wp.tile[float]`,
-  and `wp.tile[float, Literal[8], Literal[4]]`.
+  `wp.tile[float]`, and `wp.tile[float, Literal[8], Literal[4]]`.
   Array subscripts return lightweight annotation objects recognized by Warp's codegen.
   All four array variants support `typing.Any` for dtype, ndim, or both
   (e.g., `wp.array[float, Any]` for any dimensionality).

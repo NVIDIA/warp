@@ -41,14 +41,14 @@ from warp._src.types import (
 from warp.tests.unittest_utils import add_function_test, get_test_devices
 
 
+@wp.kernel
+def add_kernel(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
+    i = wp.tid()
+    c[i] = a[i] + b[i]
+
+
 def test_subscript_kernel_actually_runs(test, device):
     """Test that kernels with subscript annotations compile and run correctly."""
-
-    @wp.kernel
-    def add_kernel(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
-        i = wp.tid()
-        c[i] = a[i] + b[i]
-
     n = 10
     a = wp.full(n, 1.0, dtype=float, device=device)
     b = wp.full(n, 2.0, dtype=float, device=device)
@@ -58,17 +58,17 @@ def test_subscript_kernel_actually_runs(test, device):
     test.assertEqual(c.numpy()[0], 3.0)
 
 
+@wp.kernel
+def vector_kernel(
+    positions: wp.array[wp.types.Vector[wp.float32, Literal[3]]],
+    output: wp.array[float],
+):
+    i = wp.tid()
+    output[i] = wp.length(positions[i])
+
+
 def test_subscript_kernel_with_vectors(test, device):
     """Test kernels with Vector subscript annotations."""
-
-    @wp.kernel
-    def vector_kernel(
-        positions: wp.array[wp.types.Vector[wp.float32, Literal[3]]],
-        output: wp.array[float],
-    ):
-        i = wp.tid()
-        output[i] = wp.length(positions[i])
-
     n = 5
     positions = wp.zeros(n, dtype=wp.vec3f, device=device)
     output = wp.zeros(n, dtype=float, device=device)
@@ -185,14 +185,14 @@ def test_subscript_generic_kernel(test, device):
     np.testing.assert_allclose(x64.numpy(), [2.0, 4.0, 6.0, 8.0, 10.0])
 
 
+@wp.kernel
+def indexed_add(a: wp.indexedarray[float], b: wp.array[float]):
+    i = wp.tid()
+    b[i] = a[i] + 1.0
+
+
 def test_subscript_indexedarray_kernel(test, device):
     """Test that kernels with indexedarray subscript annotations compile and run correctly."""
-
-    @wp.kernel
-    def indexed_add(a: wp.indexedarray[float], b: wp.array[float]):
-        i = wp.tid()
-        b[i] = a[i] + 1.0
-
     n = 5
     values = wp.array(np.arange(10, dtype=np.float32), device=device)
     indices = wp.array([0, 2, 4, 6, 8], dtype=int, device=device)
@@ -203,32 +203,36 @@ def test_subscript_indexedarray_kernel(test, device):
     np.testing.assert_allclose(out.numpy(), [1.0, 3.0, 5.0, 7.0, 9.0])
 
 
+def test_subscript_non_array_input(test, device):
+    """Test that passing a non-array value to an array parameter produces an informative error."""
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"expects an array of type array\(ndim=1, dtype=float32\), but passed value has type list",
+    ):
+        wp.launch(add_kernel, dim=1, inputs=[[1.0], [2.0], [3.0]], device=device)
+
+
 def test_subscript_dtype_mismatch(test, device):
     """Test that launching a kernel with mismatched dtypes raises RuntimeError."""
-
-    @wp.kernel
-    def float_kernel(a: wp.array[float], b: wp.array[float]):
-        i = wp.tid()
-        b[i] = a[i]
-
     n = 4
     a_float = wp.zeros(n, dtype=float, device=device)
     b_float = wp.zeros(n, dtype=float, device=device)
+    c_float = wp.zeros(n, dtype=float, device=device)
     a_int = wp.zeros(n, dtype=int, device=device)
 
-    wp.launch(float_kernel, dim=n, inputs=[a_float, b_float], device=device)
+    wp.launch(add_kernel, dim=n, inputs=[a_float, b_float, c_float], device=device)
 
     with test.assertRaises(RuntimeError):
-        wp.launch(float_kernel, dim=n, inputs=[a_int, b_float], device=device)
+        wp.launch(add_kernel, dim=n, inputs=[a_int, b_float, c_float], device=device)
+
+
+@wp.kernel
+def kernel_2d(a: wp.array2d[float]):
+    pass
 
 
 def test_subscript_ndim_mismatch(test, device):
     """Test that launching a kernel with mismatched ndim raises RuntimeError."""
-
-    @wp.kernel
-    def kernel_2d(a: wp.array2d[float]):
-        pass
-
     a_1d = wp.zeros(4, dtype=float, device=device)
     a_2d = wp.zeros((2, 2), dtype=float, device=device)
 
@@ -388,6 +392,9 @@ class TestSubscriptTypes(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, r"positive integer"):
             wp.types.Vector[float, 0]
 
+        with self.assertRaisesRegex(TypeError, r"Expected a single Literal value"):
+            wp.types.Vector[float, Literal[2, 3]]
+
         # Matrix errors
         with self.assertRaisesRegex(TypeError, r"requires 3 parameters"):
             wp.types.Matrix[float, 3]
@@ -396,6 +403,9 @@ class TestSubscriptTypes(unittest.TestCase):
             wp.types.Matrix[float, -1, 3]
 
         # Array errors
+        with self.assertRaisesRegex(TypeError, r"Expected a single Literal value"):
+            wp.array[float, Literal[1, 2]]
+
         with self.assertRaisesRegex(ValueError, r"ndim must be between"):
             wp.array[float, 5]  # ARRAY_MAX_DIMS is 4
 
@@ -622,6 +632,7 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestSubscriptTypes, "test_subscript_generic_kernel", test_subscript_generic_kernel, devices=devices)
+add_function_test(TestSubscriptTypes, "test_subscript_non_array_input", test_subscript_non_array_input, devices=devices)
 add_function_test(TestSubscriptTypes, "test_subscript_dtype_mismatch", test_subscript_dtype_mismatch, devices=devices)
 add_function_test(TestSubscriptTypes, "test_subscript_ndim_mismatch", test_subscript_ndim_mismatch, devices=devices)
 add_function_test(
