@@ -76,18 +76,22 @@ def update_git_hash_in_config(config_file_path: str, git_hash: str, dry_run: boo
             content = file.read()
 
         # Define the regex to match the _git_commit_hash assignment
-        pattern = r'^(_git_commit_hash\s*:\s*Optional\[str\]\s*=\s*)(None|"[^"]*")(.*)$'
+        pattern = r'^(_git_commit_hash\s*:\s*_Optional\[str\]\s*=\s*)(None|"[^"]*")(.*)$'
         
         # Replace existing value with the git hash
         updated_content = re.sub(pattern, rf'\g<1>"{git_hash}"\g<3>', content, flags=re.MULTILINE)
-        
+
+        if updated_content == content:
+            print(f"Error: _git_commit_hash pattern not found in {config_file_path}")
+            return False
+
         if dry_run:
             print(f"Dry run: Would update _git_commit_hash in {config_file_path} to {git_hash}")
             return True
-        
+
         with open(config_file_path, 'w') as file:
             file.write(updated_content)
-            
+
         print(f"Successfully updated _git_commit_hash in {config_file_path} to {git_hash}")
         return True
     except Exception as e:
