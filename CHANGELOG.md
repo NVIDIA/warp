@@ -19,6 +19,8 @@
   ([GH-859](https://github.com/NVIDIA/warp/issues/859)).
 - Add `--no-cuda` flag to `build_lib.py` for explicit CPU-only builds, skipping CUDA toolkit
   detection and `.cu` compilation ([GH-1223](https://github.com/NVIDIA/warp/issues/1223)).
+- Add `wp.utils.graph_coloring_assign()`, `wp.utils.graph_coloring_balance()`, and `wp.graph_coloring_get_groups()`
+  to the public API for graph coloring ([GH-1145](https://github.com/NVIDIA/warp/issues/1145)).
 
 ### Removed
 

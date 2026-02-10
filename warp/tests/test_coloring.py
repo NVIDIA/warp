@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import enum
 import itertools
 
 import numpy as np
@@ -21,21 +20,6 @@ import numpy as np
 import warp as wp
 import warp.examples
 from warp.tests.unittest_utils import *
-
-# ============================================================================
-# Graph Coloring Algorithm Selection
-# ============================================================================
-
-
-class ColoringAlgorithm(enum.IntEnum):
-    """Graph coloring algorithm selection."""
-
-    MCS = 0
-    """Maximum Cardinality Search based coloring algorithm"""
-
-    GREEDY = 1
-    """Degree-ordered greedy coloring algorithm"""
-
 
 # ============================================================================
 # Graph Coloring Utilities
@@ -56,80 +40,6 @@ def validate_graph_coloring(edge_indices_np, colors_np):
     v2 = edge_indices_np[:, 1]
     invalid_edges = np.sum(colors_np[v1] == colors_np[v2])
     return invalid_edges
-
-
-@wp.kernel
-def count_color_group_size(
-    colors: wp.array(dtype=int),
-    group_sizes: wp.array(dtype=int),
-):
-    """Count the size of each color group.
-
-    Note: This kernel is NOT parallel-safe due to race conditions on group_sizes.
-    Must be launched with dim=(1,) to run single-threaded.
-    """
-    for particle_idx in range(colors.shape[0]):
-        particle_color = colors[particle_idx]
-        group_sizes[particle_color] = group_sizes[particle_color] + 1
-
-
-@wp.kernel
-def fill_color_groups(
-    colors: wp.array(dtype=int),
-    group_fill_count: wp.array(dtype=int),
-    group_offsets: wp.array(dtype=int),
-    # flattened color groups
-    color_groups_flatten: wp.array(dtype=int),
-):
-    """Fill the flattened color groups array with particle indices.
-
-    Note: This kernel is NOT parallel-safe due to race conditions on group_fill_count
-    and color_groups_flatten. Must be launched with dim=(1,) to run single-threaded.
-    """
-    for particle_idx in range(colors.shape[0]):
-        particle_color = colors[particle_idx]
-        group_offset = group_offsets[particle_color]
-        group_idx = group_fill_count[particle_color]
-        color_groups_flatten[group_idx + group_offset] = wp.int32(particle_idx)
-
-        group_fill_count[particle_color] = group_idx + 1
-
-
-def convert_to_color_groups(num_colors, particle_colors, return_wp_array=False, device="cpu"):
-    """Convert a color array to a list of color groups."""
-    group_sizes = wp.zeros((num_colors,), dtype=int, device="cpu")
-    wp.launch(count_color_group_size, dim=(1,), inputs=[particle_colors, group_sizes], device="cpu")
-
-    group_sizes_np = group_sizes.numpy()
-    group_offsets_np = np.concatenate([np.array([0]), np.cumsum(group_sizes_np)])
-    group_offsets = wp.array(group_offsets_np, dtype=int, device="cpu")
-
-    group_fill_count = wp.zeros((num_colors,), dtype=int, device="cpu")
-    color_groups_flatten = wp.empty((group_sizes_np.sum(),), dtype=int, device="cpu")
-    wp.launch(
-        fill_color_groups,
-        dim=(1,),
-        inputs=[particle_colors, group_fill_count, group_offsets, color_groups_flatten],
-        device="cpu",
-    )
-
-    color_groups_flatten_np = color_groups_flatten.numpy()
-
-    color_groups = []
-    if return_wp_array:
-        for color_idx in range(num_colors):
-            color_groups.append(
-                wp.array(
-                    color_groups_flatten_np[group_offsets_np[color_idx] : group_offsets_np[color_idx + 1]],
-                    dtype=int,
-                    device=device,
-                )
-            )
-    else:
-        for color_idx in range(num_colors):
-            color_groups.append(color_groups_flatten_np[group_offsets_np[color_idx] : group_offsets_np[color_idx + 1]])
-
-    return color_groups
 
 
 @wp.kernel
@@ -282,15 +192,11 @@ class TestColoring(unittest.TestCase):
         num_nodes = 2
 
         # Single edge connecting nodes 0 and 1
-        edge_indices = wp.array([[0, 1]], dtype=int, device="cpu")
+        edge_indices = wp.array([[0, 1]], dtype=wp.int32, device="cpu")
         particle_colors = wp.empty((num_nodes,), dtype=wp.int32, device="cpu")
 
-        # Call C++ function
-        num_colors = wp._src.context.runtime.core.wp_graph_coloring(
-            num_nodes,
-            edge_indices.__ctype__(),
-            ColoringAlgorithm.GREEDY,
-            particle_colors.__ctype__(),
+        num_colors = wp.utils.graph_coloring_assign(
+            edge_indices, particle_colors, algorithm=wp.utils.GraphColoringAlgorithm.GREEDY
         )
 
         # Two connected nodes should have different colors
@@ -338,15 +244,12 @@ class TestColoring(unittest.TestCase):
         self.assertEqual(trimesh_edge_indices.shape[1], 4, "Edge list should have 4 columns [o1, o2, v1, v2]")
 
         # Test 1: Coloring without bending - use simple edge list (v1, v2 pairs)
-        edge_indices_cpu = wp.array(trimesh_edge_indices[:, 2:], dtype=int, device="cpu")
-        particle_colors = wp.empty(shape=(num_vertices), dtype=int, device="cpu")
+        edge_indices_cpu = wp.array(trimesh_edge_indices[:, 2:], dtype=wp.int32, device="cpu")
+        particle_colors = wp.empty(shape=(num_vertices,), dtype=wp.int32, device="cpu")
 
         # Test GREEDY algorithm
-        num_colors_greedy = wp._src.context.runtime.core.wp_graph_coloring(
-            num_vertices,
-            edge_indices_cpu.__ctype__(),
-            ColoringAlgorithm.GREEDY,
-            particle_colors.__ctype__(),
+        num_colors_greedy = wp.utils.graph_coloring_assign(
+            edge_indices_cpu, particle_colors, wp.utils.GraphColoringAlgorithm.GREEDY
         )
 
         # SANITY CHECK: Number of colors should be reasonable
@@ -361,11 +264,8 @@ class TestColoring(unittest.TestCase):
         self.assertEqual(invalid_edges, 0, f"GREEDY coloring has {invalid_edges} invalid edges")
 
         # Test MCS algorithm
-        num_colors_mcs = wp._src.context.runtime.core.wp_graph_coloring(
-            num_vertices,
-            edge_indices_cpu.__ctype__(),
-            ColoringAlgorithm.MCS,
-            particle_colors.__ctype__(),
+        num_colors_mcs = wp.utils.graph_coloring_assign(
+            edge_indices_cpu, particle_colors, wp.utils.GraphColoringAlgorithm.MCS
         )
 
         # SANITY CHECK: MCS should produce fewer or equal colors than GREEDY
@@ -388,45 +288,27 @@ class TestColoring(unittest.TestCase):
             "Graph with bending should have more edges than without",
         )
 
-        # Call C++ function
-        num_colors_greedy_bending = wp._src.context.runtime.core.wp_graph_coloring(
-            num_vertices,
-            edge_indices_cpu_with_bending.__ctype__(),
-            ColoringAlgorithm.GREEDY,
-            particle_colors.__ctype__(),
+        num_colors_greedy_bending = wp.utils.graph_coloring_assign(
+            edge_indices_cpu_with_bending, particle_colors, wp.utils.GraphColoringAlgorithm.GREEDY
         )
-        wp._src.context.runtime.core.wp_balance_coloring(
-            num_vertices,
-            edge_indices_cpu_with_bending.__ctype__(),
-            num_colors_greedy_bending,
-            1.1,
-            particle_colors.__ctype__(),
-        )
+        wp.utils.graph_coloring_balance(edge_indices_cpu_with_bending, particle_colors, num_colors_greedy_bending, 1.1)
         # Validate coloring with bending
         edge_indices_bending_np = edge_indices_cpu_with_bending.numpy()
         colors_np = particle_colors.numpy()
         invalid_edges = validate_graph_coloring(edge_indices_bending_np, colors_np)
         self.assertEqual(invalid_edges, 0, f"GREEDY+bending coloring has {invalid_edges} invalid edges")
 
-        # Call C++ function
-        num_colors_mcs_bending = wp._src.context.runtime.core.wp_graph_coloring(
-            num_vertices,
-            edge_indices_cpu_with_bending.__ctype__(),
-            ColoringAlgorithm.MCS,
-            particle_colors.__ctype__(),
+        num_colors_mcs_bending = wp.utils.graph_coloring_assign(
+            edge_indices_cpu_with_bending, particle_colors, wp.utils.GraphColoringAlgorithm.MCS
         )
 
         # Get color distribution before balancing
-        color_groups_before = convert_to_color_groups(num_colors_mcs_bending, particle_colors)
+        color_groups_before = wp.utils.graph_coloring_get_groups(particle_colors, num_colors_mcs_bending)
         sizes_before = np.array([len(g) for g in color_groups_before], dtype=np.float32)
         ratio_before = np.max(sizes_before) / np.min(sizes_before) if len(sizes_before) > 0 else 1.0
 
-        max_min_ratio = wp._src.context.runtime.core.wp_balance_coloring(
-            num_vertices,
-            edge_indices_cpu_with_bending.__ctype__(),
-            num_colors_mcs_bending,
-            1.1,
-            particle_colors.__ctype__(),
+        max_min_ratio = wp.utils.graph_coloring_balance(
+            edge_indices_cpu_with_bending, particle_colors, num_colors_mcs_bending, 1.1
         )
         # Validate coloring with bending and balancing
         colors_np = particle_colors.numpy()
@@ -434,7 +316,7 @@ class TestColoring(unittest.TestCase):
         self.assertEqual(invalid_edges, 0, f"MCS+bending+balancing coloring has {invalid_edges} invalid edges")
 
         # Verify color balance
-        color_categories_balanced = convert_to_color_groups(num_colors_mcs_bending, particle_colors)
+        color_categories_balanced = wp.utils.graph_coloring_get_groups(particle_colors, num_colors_mcs_bending)
 
         color_sizes = np.array([c.shape[0] for c in color_categories_balanced], dtype=np.float32)
         ratio_after = np.max(color_sizes) / np.min(color_sizes)
@@ -453,14 +335,10 @@ class TestColoring(unittest.TestCase):
         edge_indices_grid_with_bending = construct_trimesh_graph_edges(trimesh_edge_indices_grid, return_wp_array=True)
 
         num_grid_vertices = len(vs)
-        particle_colors_grid = wp.empty(shape=(num_grid_vertices), dtype=int, device="cpu")
+        particle_colors_grid = wp.empty(shape=(num_grid_vertices,), dtype=wp.int32, device="cpu")
 
-        # Call C++ function
-        num_colors_grid = wp._src.context.runtime.core.wp_graph_coloring(
-            num_grid_vertices,
-            edge_indices_grid_with_bending.__ctype__(),
-            ColoringAlgorithm.MCS,
-            particle_colors_grid.__ctype__(),
+        num_colors_grid = wp.utils.graph_coloring_assign(
+            edge_indices_grid_with_bending, particle_colors_grid, wp.utils.GraphColoringAlgorithm.MCS
         )
 
         # Validate the coloring
@@ -475,33 +353,25 @@ class TestColoring(unittest.TestCase):
 
         # Graph 1: A triangle (3 nodes, 3 edges)
         num_nodes_1 = 3
-        edge_indices_1 = wp.array([[0, 1], [1, 2], [2, 0]], dtype=int, device="cpu")
-        particle_colors_1 = wp.empty(shape=(num_nodes_1), dtype=wp.int32, device="cpu")
+        edge_indices_1 = wp.array([[0, 1], [1, 2], [2, 0]], dtype=wp.int32, device="cpu")
+        particle_colors_1 = wp.empty(shape=(num_nodes_1,), dtype=wp.int32, device="cpu")
 
-        # Call C++ function
-        num_colors_1 = wp._src.context.runtime.core.wp_graph_coloring(
-            num_nodes_1,
-            edge_indices_1.__ctype__(),
-            ColoringAlgorithm.MCS,
-            particle_colors_1.__ctype__(),
+        num_colors_1 = wp.utils.graph_coloring_assign(
+            edge_indices_1, particle_colors_1, wp.utils.GraphColoringAlgorithm.MCS
         )
 
-        color_groups_1 = convert_to_color_groups(num_colors_1, particle_colors_1)
+        color_groups_1 = wp.utils.graph_coloring_get_groups(particle_colors_1, num_colors_1)
 
         # Graph 2: A square (4 nodes, 4 edges)
         num_nodes_2 = 4
-        edge_indices_2 = wp.array([[0, 1], [1, 2], [2, 3], [3, 0]], dtype=int, device="cpu")
-        particle_colors_2 = wp.empty(shape=(num_nodes_2), dtype=wp.int32, device="cpu")
+        edge_indices_2 = wp.array([[0, 1], [1, 2], [2, 3], [3, 0]], dtype=wp.int32, device="cpu")
+        particle_colors_2 = wp.empty(shape=(num_nodes_2,), dtype=wp.int32, device="cpu")
 
-        # Call C++ function
-        num_colors_2 = wp._src.context.runtime.core.wp_graph_coloring(
-            num_nodes_2,
-            edge_indices_2.__ctype__(),
-            ColoringAlgorithm.MCS,
-            particle_colors_2.__ctype__(),
+        num_colors_2 = wp.utils.graph_coloring_assign(
+            edge_indices_2, particle_colors_2, wp.utils.GraphColoringAlgorithm.MCS
         )
 
-        color_groups_2 = convert_to_color_groups(num_colors_2, particle_colors_2)
+        color_groups_2 = wp.utils.graph_coloring_get_groups(particle_colors_2, num_colors_2)
 
         # Verify each graph is colored correctly
         edge_indices_1_np = edge_indices_1.numpy()
