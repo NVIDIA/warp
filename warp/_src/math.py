@@ -43,7 +43,7 @@ def norm_l1(v: Any):
     .. math:: \\|v\\|_1 = \\sum_i |v_i|
 
     Args:
-        v (Vector[Any,Float]): The vector to compute the L1 norm of.
+        v (Vector[Float, Any]): The vector to compute the L1 norm of.
 
     Returns:
         float: The L1 norm of the vector.
@@ -61,7 +61,7 @@ def norm_l2(v: Any):
     .. math:: \\|v\\|_2 = \\sqrt{\\sum_i v_i^2}
 
     Args:
-        v (Vector[Any,Float]): The vector to compute the L2 norm of.
+        v (Vector[Float, Any]): The vector to compute the L2 norm of.
 
     Returns:
         float: The L2 norm of the vector.
@@ -80,7 +80,7 @@ def norm_huber(v: Any, delta: float = 1.0):
         :align: center
 
     Args:
-        v (Vector[Any,Float]): The vector to compute the Huber norm of.
+        v (Vector[Float, Any]): The vector to compute the Huber norm of.
         delta (float): The threshold value, defaults to 1.0.
 
     Returns:
@@ -103,7 +103,7 @@ def norm_pseudo_huber(v: Any, delta: float = 1.0):
         :align: center
 
     Args:
-        v (Vector[Any,Float]): The vector to compute the Huber norm of.
+        v (Vector[Float, Any]): The vector to compute the Huber norm of.
         delta (float): The threshold value, defaults to 1.0.
 
     Returns:
@@ -123,11 +123,11 @@ def smooth_normalize(v: Any, delta: float = 1.0):
         \\frac{v}{H^\\prime(v)}
 
     Args:
-        v (Vector[Any,Float]): The vector to normalize.
+        v (Vector[Float, Any]): The vector to normalize.
         delta (float): The threshold value, defaults to 1.0.
 
     Returns:
-        Vector[Any,Float]: The normalized vector.
+        Vector[Float, Any]: The normalized vector.
     """
     return v / norm_pseudo_huber(v, delta)
 
@@ -154,7 +154,7 @@ def create_transform_from_matrix_func(dtype):
         * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
 
         Args:
-            mat (Matrix[4, 4, Float]): Matrix to convert.
+            mat (Matrix[Float, 4, 4]): Matrix to convert.
 
         Returns:
             Transformation[Float]: The transformation.
@@ -204,7 +204,7 @@ def create_transform_to_matrix_func(dtype):
             xform (Transformation[Float]): Transformation to convert.
 
         Returns:
-            Matrix[4, 4, Float]: The matrix.
+            Matrix[Float, 4, 4]: The matrix.
         """
         p = wp.transform_get_translation(xform)
         q = wp.transform_get_rotation(xform)
@@ -258,12 +258,12 @@ def create_transform_compose_func(dtype):
         * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
 
         Args:
-            position (Vector[3, Float]): The 3D position vector.
+            position (Vector[Float, 3]): The 3D position vector.
             rotation (Quaternion[Float]): The quaternion orientation.
-            scale (Vector[3, Float]): The 3D scale vector.
+            scale (Vector[Float, 3]): The 3D scale vector.
 
         Returns:
-            Matrix[4, 4, Float]: The transformation matrix.
+            Matrix[Float, 4, 4]: The transformation matrix.
         """
         R = wp.quat_to_matrix(rotation)
         # fmt: off
@@ -316,10 +316,10 @@ def create_transform_decompose_func(dtype):
         * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
 
         Args:
-            m (Matrix[4, 4, Float]): The matrix to decompose.
+            m (Matrix[Float, 4, 4]): The matrix to decompose.
 
         Returns:
-            Tuple[Vector[3, Float], Quaternion[Float], Vector[3, Float]]: A tuple containing the position vector, quaternion orientation, and scale vector.
+            Tuple[Vector[Float, 3], Quaternion[Float], Vector[Float, 3]]: A tuple containing the position vector, quaternion orientation, and scale vector.
         """
         # extract position
         position = vec3(m[0, 3], m[1, 3], m[2, 3])
