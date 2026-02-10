@@ -472,6 +472,25 @@ def scale_sum_square_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), 
     c[tid] = (a[tid] * s + b[tid]) ** 2.0
 
 
+# Kernels using subscript-style type hints (wp.array[dtype] syntax)
+@wp.kernel
+def add_kernel_subscript(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
+    tid = wp.tid()
+    output[tid] = a[tid] + b[tid]
+
+
+@wp.kernel
+def scale_vec_kernel_subscript(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
+    tid = wp.tid()
+    output[tid] = a[tid] * s
+
+
+@wp.kernel
+def scale_sum_square_kernel_subscript(a: wp.array[float], b: wp.array[float], s: float, c: wp.array[float]):
+    tid = wp.tid()
+    c[tid] = (a[tid] * s + b[tid]) ** 2.0
+
+
 # The Python function to call.
 # Note the argument annotations, just like Warp kernels.
 def scale_func(
@@ -1679,6 +1698,101 @@ def test_ffi_vmap_lookup(test, device, vmap_method):
         assert_np_equal(np.asarray(output), np.asarray(expected))
 
 
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_subscript_scalar(test, device):
+    """Test jax_kernel with wp.array[float] subscript syntax for scalar dtypes."""
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    jax_add = jax_kernel(add_kernel_subscript)
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.arange(n, dtype=jp.float32)
+        b = jp.ones(n, dtype=jp.float32)
+        return jax_add(a, b)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        (y,) = f()
+
+    jax.block_until_ready(y)
+
+    result = np.asarray(y)
+    expected = np.arange(1, ARRAY_SIZE + 1, dtype=np.float32)
+
+    assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_subscript_vec(test, device):
+    """Test jax_kernel with wp.array[wp.vec2] subscript syntax for vector dtypes."""
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    jax_scale_vec = jax_kernel(scale_vec_kernel_subscript)
+
+    @jax.jit
+    def f():
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))
+        s = 2.0
+        return jax_scale_vec(a, s)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        (b,) = f()
+
+    jax.block_until_ready(b)
+
+    expected = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
+
+    assert_np_equal(b, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_subscript_autodiff(test, device):
+    """Test jax_kernel with subscript syntax and enable_backward=True."""
+    if device.ordinal > 0:
+        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
+
+    import jax
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    jax_func = jax_kernel(
+        scale_sum_square_kernel_subscript,
+        num_outputs=1,
+        enable_backward=True,
+    )
+
+    from functools import partial
+
+    @partial(jax.jit, static_argnames=["s"])
+    def loss(a, b, s):
+        out = jax_func(a, b, s)[0]
+        return jp.sum(out)
+
+    n = ARRAY_SIZE
+    a = jp.arange(n, dtype=jp.float32)
+    b = jp.ones(n, dtype=jp.float32)
+    s = 2.0
+
+    with jax.default_device(wp.device_to_jax(device)):
+        da, db = jax.grad(loss, argnums=(0, 1))(a, b, s)
+
+    jax.block_until_ready([da, db])
+
+    a_np = np.arange(n, dtype=np.float32)
+    b_np = np.ones(n, dtype=np.float32)
+    ref_da = 2.0 * (a_np * s + b_np) * s
+    ref_db = 2.0 * (a_np * s + b_np)
+
+    assert_np_equal(np.asarray(da), ref_da)
+    assert_np_equal(np.asarray(db), ref_db)
+
+
 class TestJax(unittest.TestCase):
     pass
 
@@ -1804,6 +1918,26 @@ try:
             TestJax,
             "test_ffi_jax_kernel_launch_dims_custom",
             test_ffi_jax_kernel_launch_dims_custom,
+            devices=jax_compatible_cuda_devices,
+        )
+
+        # subscript-style type hint tests (wp.array[dtype] syntax)
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_subscript_scalar",
+            test_ffi_jax_kernel_subscript_scalar,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_subscript_vec",
+            test_ffi_jax_kernel_subscript_vec,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_subscript_autodiff",
+            test_ffi_jax_kernel_subscript_autodiff,
             devices=jax_compatible_cuda_devices,
         )
 

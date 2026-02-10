@@ -29,7 +29,14 @@ import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
 from warp._src.context import CudaMemcpyKind
 from warp._src.jax import get_jax_device
-from warp._src.types import array_t, launch_bounds_t, strides_from_shape, type_size_in_bytes, type_to_warp
+from warp._src.types import (
+    array_t,
+    launch_bounds_t,
+    matches_array_class,
+    strides_from_shape,
+    type_size_in_bytes,
+    type_to_warp,
+)
 
 from .xla_ffi import *
 
@@ -106,7 +113,7 @@ class FfiArg:
         self.name = name
         self.type = type
         self.in_out = in_out
-        self.is_array = isinstance(type, wp.array)
+        self.is_array = matches_array_class(type, wp.array)
 
         if self.is_array:
             if hasattr(type.dtype, "_wp_scalar_type_"):
@@ -1227,7 +1234,7 @@ def jax_kernel(
     static_args = []
     for i, p in enumerate(parameters[:num_inputs]):
         param_type = p.annotation
-        if not isinstance(param_type, wp.array):
+        if not matches_array_class(param_type, wp.array):
             if param_type in wp._src.types.value_types:
                 static_args.append(i)
             else:
@@ -1237,7 +1244,7 @@ def jax_kernel(
         # determine launch dimensions from the shape of the first input array
         for i, p in enumerate(parameters[:num_inputs]):
             param_type = p.annotation
-            if isinstance(param_type, wp.array):
+            if matches_array_class(param_type, wp.array):
                 arg = call_args[i]
                 arg_shape = tuple(arg.shape)
                 if hasattr(param_type.dtype, "_wp_scalar_type_"):
@@ -1385,7 +1392,7 @@ def jax_kernel(
             if ann is None:
                 continue
             # Check if annotation is a warp array type (annotation is an instance of wp.array)
-            is_array_ann = isinstance(ann, wp.array)
+            is_array_ann = matches_array_class(ann, wp.array)
             if not is_array_ann:
                 continue
             dtype_ndim = 0
