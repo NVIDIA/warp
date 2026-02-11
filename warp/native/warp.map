@@ -1,0 +1,8 @@
+{
+  global:
+    # Symbols to be exported
+    wp_*;
+  local:
+    # Hide all other symbols by default
+    *;
+};
