@@ -7276,9 +7276,13 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     if isinstance(stream_or_device, Stream):
         stream = stream_or_device
     else:
-        stream = runtime.get_device(stream_or_device).stream
+        device = runtime.get_device(stream_or_device)
+        stream = device.stream if device.is_cuda else None
 
-    runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+    if stream is not None:
+        if stream.device.is_capturing:
+            raise RuntimeError("Cannot synchronize stream while graph capture is active")
+        runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
 
 
 def synchronize_event(event: Event):
@@ -7289,6 +7293,9 @@ def synchronize_event(event: Event):
     Args:
         event: Event to wait for.
     """
+
+    if event.device.is_capturing:
+        raise RuntimeError("Cannot synchronize event while graph capture is active")
 
     runtime.core.wp_cuda_event_synchronize(event.cuda_event)
 

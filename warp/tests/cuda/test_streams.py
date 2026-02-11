@@ -524,6 +524,32 @@ def test_graph_destroy_during_capture(test, device):
         assert_np_equal(a.numpy(), np.full(n, 2, dtype=np.float32))
 
 
+def test_stream_synchronize_cpu(test, _):
+    with wp.ScopedDevice("cpu"):
+        # this should not raise an exception (like wp.synchronize_device())
+        wp.synchronize_stream()
+
+
+def test_synchronize_during_capture(test, device):
+    with wp.ScopedDevice(device):
+        with test.assertRaisesRegex(RuntimeError, "Cannot synchronize device"):
+            with wp.ScopedCapture():
+                wp.synchronize()
+
+        with test.assertRaisesRegex(RuntimeError, "Cannot synchronize device"):
+            with wp.ScopedCapture():
+                wp.synchronize_device()
+
+        with test.assertRaisesRegex(RuntimeError, "Cannot synchronize stream"):
+            with wp.ScopedCapture():
+                wp.synchronize_stream()
+
+        with test.assertRaisesRegex(RuntimeError, "Cannot synchronize event"):
+            e = wp.Event(device)
+            with wp.ScopedCapture():
+                wp.synchronize_event(e)
+
+
 devices = get_selected_cuda_test_devices()
 
 
@@ -685,6 +711,9 @@ add_function_test(TestStreams, "test_event_elapsed_time_graph", test_event_elaps
 add_function_test(TestStreams, "test_event_external", test_event_external, devices=devices)
 
 add_function_test(TestStreams, "test_graph_destroy_during_capture", test_graph_destroy_during_capture, devices=devices)
+
+add_function_test(TestStreams, "test_stream_synchronize_cpu", test_stream_synchronize_cpu, devices=None)
+add_function_test(TestStreams, "test_synchronize_during_capture", test_synchronize_during_capture, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
