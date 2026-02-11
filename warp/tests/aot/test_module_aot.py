@@ -229,6 +229,33 @@ def test_module_load_resolution(test, device):
 
 
 class TestModuleAOT(unittest.TestCase):
+    def test_module_compile_deviceless_ptx(self):
+        """Test that a module can be compiled to PTX with an explicit arch and no device.
+
+        This exercises the code path used for ahead-of-time compilation
+        without a CUDA device, e.g. inside a Docker build step.
+        """
+
+        supported_archs = wp.get_cuda_supported_archs()
+        if not supported_archs:
+            self.skipTest("NVRTC not available")
+
+        arch = supported_archs[0]
+
+        try:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+            TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+            wp.compile_aot_module(
+                warp.tests.aot.aux_test_hash_reload, arch=arch, module_dir=TEST_CACHE_DIR, use_ptx=True
+            )
+
+            module_identifier = wp.get_module("warp.tests.aot.aux_test_hash_reload").get_module_identifier()
+            expected_path = TEST_CACHE_DIR / f"{module_identifier}.sm{arch}.ptx"
+            self.assertTrue(expected_path.exists(), f"Expected compiled PTX file not found: {expected_path}")
+        finally:
+            shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+
     def test_module_compile_specified_arch_ptx(self):
         """Test that a module can be compiled for a specific architecture or architectures (PTX)."""
 

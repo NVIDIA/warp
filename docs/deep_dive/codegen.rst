@@ -1393,3 +1393,59 @@ On a CUDA 13.0 build of Warp, this results in the following files:
    ├── wp___main__.sm88.cubin
    ├── wp___main__.sm89.cubin
    └── wp___main__.sm90.cubin
+
+Example: Compiling without a CUDA driver (Docker build steps)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Warp statically links NVRTC (the NVIDIA Runtime Compiler), which means CUDA kernel compilation
+does not require a CUDA driver or GPU to be present. This is useful for ahead-of-time compilation
+during Docker image builds, where GPUs are typically unavailable.
+
+When Warp is initialized without a CUDA driver, it detects that NVRTC is still available and
+prints a message like:
+
+.. code:: text
+
+   Warp 1.12.0 initialized:
+      CUDA Toolkit 13.1, CUDA driver not available (NVRTC compilation available)
+      Devices:
+        "cpu"      : "CPU"
+
+In this mode, :func:`wp.get_cuda_supported_archs() <warp.get_cuda_supported_archs>` returns the
+full list of architectures supported by NVRTC, and
+:func:`wp.compile_aot_module() <warp.compile_aot_module>` can compile CUDA kernels as long as the
+``arch`` parameter is specified.
+
+The following self-contained ``Dockerfile`` demonstrates compiling Warp kernels during
+``docker build`` (without ``--gpus``). Save it and run ``docker build -t warp-aot-example .``
+to try it:
+
+.. code:: dockerfile
+
+   FROM python:3.12-slim
+   RUN pip install warp-lang
+
+   RUN cat <<'EOF' > compile.py
+   import os
+   import warp as wp
+
+   @wp.kernel
+   def my_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+       i = wp.tid()
+       b[i] = a[i] * 2.0
+
+   os.makedirs("/app/warp_cache", exist_ok=True)
+   wp.compile_aot_module(__name__, arch=[75, 80, 86, 90], module_dir="/app/warp_cache")
+
+   files = [f for f in os.listdir("/app/warp_cache") if f.endswith((".ptx", ".cubin"))]
+   print(f"Compiled {len(files)} CUDA files: {sorted(files)}")
+   EOF
+   RUN python compile.py
+
+At runtime, launch the container with ``--gpus`` and the pre-compiled PTX/CUBIN will be loaded
+from cache, avoiding JIT compilation delays.
+
+**The** ``arch`` **parameter is required when compiling without a GPU**, since Warp cannot infer
+the target architecture from a device. Use
+:func:`wp.get_cuda_supported_archs() <warp.get_cuda_supported_archs>` to query which architectures
+are available for compilation.
