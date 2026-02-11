@@ -49,6 +49,7 @@
   ([GH-1211](https://github.com/NVIDIA/warp/issues/1211)).
 - Fix `@wp.func` losing parameter type information in Pyright/Pylance
   ([GH-1219](https://github.com/NVIDIA/warp/issues/1219)).
+- Fix crashes caused by C++ standard library mismatch on Linux.
 
 ### Documentation
 
