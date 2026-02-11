@@ -38,6 +38,8 @@
   ([GH-1213](https://github.com/NVIDIA/warp/issues/1213)).
 - `warp.fem.PicQuadrature` now supports particles spanning multiple cells.
   Pass a tuple of 2D arrays `(cell_indices, coords, particle_fraction)` to specify per-particle cell contributions.
+- `wp.synchronize_stream()` no longer raises an exception when device is CPU.
+  ([GH-1225](https://github.com/NVIDIA/warp/issues/1225)).
 
 ### Fixed
 
