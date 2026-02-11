@@ -1994,8 +1994,8 @@ class ModuleHasher:
             ch.update(bytes(name, "utf-8"))
             ch.update(self.get_constant_bytes(value))
 
-        # hash wp.static() expressions
-        for k, v in adj.static_expressions.items():
+        # hash wp.static() expressions (declaration-time + deferred codegen-time)
+        for k, v in itertools.chain(adj.resolved_static_expressions.items(), adj.deferred_static_expressions):
             ch.update(bytes(k, "utf-8"))
             if isinstance(v, Function):
                 if v not in self.functions_in_progress:

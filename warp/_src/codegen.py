@@ -1110,11 +1110,18 @@ class Adjoint:
         # This will signal to the module builder that this module needs to be rebuilt even if the module hash is unchanged.
         adj.has_unresolved_static_expressions = False
 
-        # try to replace static expressions by their constant result if the
-        # expression can be evaluated at declaration time
-        adj.static_expressions: dict[str, Any] = {}
+        # wp.static() expressions resolved at declaration time (replace_static_expressions),
+        # keyed by source code string. Used for hashing. Immutable after __init__.
+        adj.resolved_static_expressions: dict[str, Any] = {}
         if "static" in adj.source:
             adj.replace_static_expressions()
+
+        # wp.static() expressions resolved during codegen (emit_Call) for expressions that
+        # depend on loop variables; reset at the start of each build(). Used for hashing.
+        # This is a list (not a dict) because the same source expression can evaluate to
+        # different values across loop iterations — e.g. wp.static(values[i]) always has
+        # key "values[i]" but a different value per iteration.
+        adj.deferred_static_expressions: list[tuple[str, Any]] = []
 
         # There are cases where a same module might be rebuilt multiple times,
         # for example when kernels are nested inside of functions, or when
@@ -1181,6 +1188,7 @@ class Adjoint:
 
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
+        adj.deferred_static_expressions = []
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
@@ -2807,7 +2815,7 @@ class Adjoint:
             # try to evaluate wp.static() expressions
             obj, code = adj.evaluate_static_expression(node)
             if obj is not None:
-                adj.static_expressions[code] = obj
+                adj.deferred_static_expressions.append((code, obj))
                 if isinstance(obj, warp._src.context.Function):
                     # special handling for wp.static() evaluating to a function
                     return obj
@@ -3839,7 +3847,7 @@ class Adjoint:
                         # only depends on global or captured variables
                         obj, code = adj.evaluate_static_expression(node)
                         if code is not None:
-                            adj.static_expressions[code] = obj
+                            adj.resolved_static_expressions[code] = obj
                             if isinstance(obj, warp._src.context.Function):
                                 name_node = ast.Name("__warp_func__")
                                 # we add a pointer to the Warp function here so that we can refer to it later at

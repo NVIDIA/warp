@@ -228,11 +228,33 @@ def test_unique_module_deferred_static_expressions(test, device):
     wp.launch(kernel2, dim=1, inputs=[], outputs=[result2], device=device)
     assert_np_equal(result2.numpy(), np.array([999, 888]))
 
-    # Also test with different lengths to ensure that still works
-    kernel3 = make_kernel([1, 2, 3])
-    result3 = wp.zeros(3, dtype=int, device=device)
+    # Test with same last element but different first element — the hash must
+    # capture ALL loop iterations, not just the last one (GH-1211)
+    kernel3 = make_kernel([100, 999])
+    kernel4 = make_kernel([200, 999])
+    test.assertIsNot(kernel3, kernel4, "Kernels differing only in non-last elements should be different")
+    test.assertNotEqual(kernel3.module.name, kernel4.module.name)
+
+    result3 = wp.zeros(2, dtype=int, device=device)
     wp.launch(kernel3, dim=1, inputs=[], outputs=[result3], device=device)
-    assert_np_equal(result3.numpy(), np.array([1, 2, 3]))
+    assert_np_equal(result3.numpy(), np.array([100, 999]))
+
+    result4 = wp.zeros(2, dtype=int, device=device)
+    wp.launch(kernel4, dim=1, inputs=[], outputs=[result4], device=device)
+    assert_np_equal(result4.numpy(), np.array([200, 999]))
+
+    # Test with different length to ensure distinct hash from 2-element kernels
+    kernel5 = make_kernel([1, 2, 3])
+    test.assertIsNot(kernel5, kernel1, "Kernels with different lengths should be different objects")
+    test.assertNotEqual(kernel5.module.name, kernel1.module.name)
+
+    result5 = wp.zeros(3, dtype=int, device=device)
+    wp.launch(kernel5, dim=1, inputs=[], outputs=[result5], device=device)
+    assert_np_equal(result5.numpy(), np.array([1, 2, 3]))
+
+    # Test that identical values reuse the same kernel (hash stability)
+    kernel1_dup = make_kernel([100, 200])
+    test.assertIs(kernel1_dup, kernel1, "Identical values should reuse the same kernel object")
 
 
 devices = get_test_devices()
