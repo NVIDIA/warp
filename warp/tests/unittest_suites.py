@@ -158,6 +158,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_grad import TestGrad
     from warp.tests.test_grad_customs import TestGradCustoms
     from warp.tests.test_grad_debug import TestGradDebug
+    from warp.tests.test_grad_struct_array import TestGradStructArray
     from warp.tests.test_import import TestImport
     from warp.tests.test_indexedarray import TestIndexedArray
     from warp.tests.test_intersect import TestIntersect
@@ -252,6 +253,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestGrad,
         TestGradCustoms,
         TestGradDebug,
+        TestGradStructArray,
         TestHashGrid,
         TestImport,
         TestIndexedArray,
