@@ -21,6 +21,9 @@
   detection and `.cu` compilation ([GH-1223](https://github.com/NVIDIA/warp/issues/1223)).
 - Add `wp.utils.graph_coloring_assign()`, `wp.utils.graph_coloring_balance()`, and `wp.graph_coloring_get_groups()`
   to the public API for graph coloring ([GH-1145](https://github.com/NVIDIA/warp/issues/1145)).
+- Add `wp.print_diagnostics()` to display a comprehensive snapshot of the Warp build and runtime
+  environment, including software versions, CUDA info, build flags, and devices. Returns a dictionary
+  for programmatic access ([GH-1221](https://github.com/NVIDIA/warp/issues/1221)).
 
 ### Removed
 

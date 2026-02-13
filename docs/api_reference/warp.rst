@@ -245,6 +245,7 @@ Runtime
    init
    is_cpu_available
    is_cuda_available
+   print_diagnostics
 
 Kernel Programming
 ------------------
