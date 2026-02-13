@@ -122,6 +122,18 @@ class TestBuiltinsResolution(unittest.TestCase):
 
         self.assertEqual(wp.sin(value), wp.sin(wp.float32(value)))
 
+    def test_legacy_scalar_return_types(self):
+        old_setting = wp.config.legacy_scalar_return_types
+
+        try:
+            wp.config.legacy_scalar_return_types = True
+
+            self.assertIsInstance(wp.sin(wp.float16(1.23)), float)
+            self.assertIsInstance(wp.sin(wp.float64(1.23)), float)
+            self.assertIsInstance(wp.invert(wp.int16(-123)), int)
+        finally:
+            wp.config.legacy_scalar_return_types = old_setting
+
     def test_int_int_args_overflow(self):
         value = -1234567890
 

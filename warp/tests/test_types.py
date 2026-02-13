@@ -376,6 +376,28 @@ class TestTypes(unittest.TestCase):
         v[2] = np.float16(3.0)
         self.assertEqual(v, (1.0, 2.0, 3.0))
 
+    def test_legacy_scalar_return_types(self):
+        old_setting = wp.config.legacy_scalar_return_types
+
+        try:
+            wp.config.legacy_scalar_return_types = True
+
+            vec3h = wp.types.vector(3, wp.float16)
+            vec3d = wp.types.vector(3, wp.float64)
+            vec3s = wp.types.vector(3, wp.int16)
+            self.assertIsInstance(vec3h(1.0, 2.0, 3.0)[0], float)
+            self.assertIsInstance(vec3d(1.0, 2.0, 3.0)[0], float)
+            self.assertIsInstance(vec3s(1, 2, 3)[0], int)
+
+            mat22h = wp.types.matrix((2, 2), wp.float16)
+            mat22d = wp.types.matrix((2, 2), wp.float64)
+            mat22s = wp.types.matrix((2, 2), wp.int16)
+            self.assertIsInstance(mat22h(1, 2, 3, 4)[0, 0], float)
+            self.assertIsInstance(mat22d(1, 2, 3, 4)[0, 0], float)
+            self.assertIsInstance(mat22s(1, 2, 3, 4)[0, 0], int)
+        finally:
+            wp.config.legacy_scalar_return_types = old_setting
+
     def test_vector_error_invalid_arg_count(self):
         with self.assertRaisesRegex(
             ValueError, r"Invalid number of arguments in vector constructor, expected 3 elements, got 2$"

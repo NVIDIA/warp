@@ -43,6 +43,7 @@ import numpy as np
 import numpy.typing as npt
 
 import warp
+import warp.config
 
 _wp_module_name_ = "warp.types"
 
@@ -799,6 +800,10 @@ def vector(length, dtype):
 
         def __getitem__(self, key):
             if isinstance(key, int):
+                if warp.config.legacy_scalar_return_types:
+                    # Legacy path before addressing GH-905.
+                    return vec_t.scalar_export(super().__getitem__(key))
+
                 value = vec_t.scalar_export(super().__getitem__(key))
                 if dtype in native_scalar_types:
                     return value
@@ -1212,6 +1217,11 @@ def matrix(shape, dtype):
                 if ndim == 0:
                     row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
                     col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
+
+                    if warp.config.legacy_scalar_return_types:
+                        # Legacy path before addressing GH-905.
+                        return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+
                     value = mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
                     if dtype in native_scalar_types:
                         return value

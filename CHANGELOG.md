@@ -44,6 +44,8 @@
 - Add CUDA texture interop APIs for 2D/3D textures, including array copy helpers and
   surface handle access for external integration workflows
   ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
+- Add `wp.config.legacy_scalar_return_types` to restore legacy behavior where built-in function calls
+  and vector/matrix indexing return Python native scalar types instead of Warp scalar instances.
 
 ### Removed
 

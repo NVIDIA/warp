@@ -106,6 +106,19 @@ enable_vector_component_overwrites: bool = False
 Note: Enabling this may significantly increase kernel compilation time.
 """
 
+legacy_scalar_return_types: bool = False
+"""Use legacy scalar return types from built-in functions and indexing.
+
+When ``False`` (the default), built-in function calls and vector/matrix
+indexing return Warp scalar instances (e.g. ``wp.float64``, ``wp.int16``)
+that match the input types. The types ``wp.int32``, ``wp.float32``, and
+``wp.bool`` are aliases for Python's ``int``, ``float``, and ``bool``, so
+those continue to return Python built-in values.
+
+Set to ``True`` to restore the pre-1.12 behavior where all scalar
+operations return Python built-in types (``int``, ``float``, ``bool``).
+"""
+
 cache_kernels: bool = True
 """Enable kernel caching between application launches."""
 
