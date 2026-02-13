@@ -526,6 +526,13 @@ WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
 
 WP_API const char* wp_warp_clang_version() { return WP_VERSION_STRING; }
 
+WP_API const char* wp_llvm_version()
+{
+    static char version[64];
+    snprintf(version, sizeof(version), "%d.%d.%d", LLVM_VERSION_MAJOR, LLVM_VERSION_MINOR, LLVM_VERSION_PATCH);
+    return version;
+}
+
 }  // extern "C"
 
 }  // namespace wp

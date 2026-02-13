@@ -3,6 +3,17 @@ Debugging
 
 .. currentmodule:: warp
 
+Environment Diagnostics
+-----------------------
+
+:func:`wp.print_diagnostics() <warp.print_diagnostics>` prints a snapshot of the Warp build
+and runtime environment (e.g., software versions, CUDA info, build flags, and device details)::
+
+    python -c "import warp; warp.print_diagnostics()"
+
+When `filing a bug report <https://github.com/NVIDIA/warp/issues>`_, please include this output
+to help us reproduce your issue.
+
 Printing Values
 ---------------
 

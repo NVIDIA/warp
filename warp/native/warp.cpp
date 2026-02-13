@@ -163,6 +163,39 @@ int wp_is_mathdx_enabled() { return int(WP_ENABLE_MATHDX); }
 
 int wp_is_debug_enabled() { return int(WP_ENABLE_DEBUG); }
 
+const char* wp_host_compiler_version()
+{
+    static char version[128];
+#if defined(_MSC_VER)
+    snprintf(version, sizeof(version), "MSVC %d.%d", _MSC_VER / 100, _MSC_VER % 100);
+#elif defined(__GNUC__) && !defined(__clang__)
+    snprintf(version, sizeof(version), "GCC %d.%d.%d", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#elif defined(__clang__)
+    snprintf(version, sizeof(version), "Clang %d.%d.%d", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#else
+    snprintf(version, sizeof(version), "unknown");
+#endif
+    return version;
+}
+
+int wp_is_verify_fp_enabled()
+{
+#ifdef WP_VERIFY_FP
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+int wp_is_fast_math_enabled()
+{
+#ifdef WP_FAST_MATH
+    return 1;
+#else
+    return 0;
+#endif
+}
+
 void* wp_alloc_host(size_t s)
 {
     // increase CPU array alignment for compatibility with other libs, e.g., JAX, XLA, Eigen.
@@ -1068,5 +1101,8 @@ WP_API void wp_cuda_graphics_unregister_resource(void* context, void* resource) 
 WP_API void wp_cuda_timing_begin(int flags) { }
 WP_API int wp_cuda_timing_get_result_count() { return 0; }
 WP_API void wp_cuda_timing_end(timing_result_t* results, int size) { }
+
+WP_API const char* wp_libmathdx_version() { return ""; }
+WP_API int wp_nvrtc_version() { return 0; }
 
 #endif  // !WP_ENABLE_CUDA
