@@ -56,6 +56,10 @@ The location of the kernel cache is printed when Warp is initialized.
 :func:`wp.clear_kernel_cache() <warp.clear_kernel_cache>` can be used to clear the kernel cache of previously
 generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.
 
+Note that these functions only clear Warp's own cache. The NVIDIA CUDA driver
+maintains a separate compute cache that is not affected by Warp's cache-clearing
+functions (see :ref:`benchmarking-cold-start-compilation`).
+
 
 .. _Runtime Kernel Creation:
 

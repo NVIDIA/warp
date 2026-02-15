@@ -97,6 +97,12 @@ Warp generates C++/CUDA source code for CPU/GPU and stores the .cpp/.cu source f
 The kernel cache folder path is printed during the :ref:`Warp initialization <warp-initialization>` and
 can be retrieved after Warp has been initialized from the ``warp.config.kernel_cache_dir`` :ref:`configuration setting <global-settings>`.
 
+In addition to Warp's kernel cache, the NVIDIA CUDA driver maintains a separate
+compute cache that stores JIT-compiled GPU binaries (e.g., native code produced
+from PTX). This driver-level cache is not managed by Warp and is not affected by
+:func:`warp.clear_kernel_cache`. See :ref:`benchmarking-cold-start-compilation`
+for details on how to account for it when measuring compilation times.
+
 Consider the following example:
 
 .. code:: python
