@@ -525,6 +525,33 @@ linux-x86_64 test mujoco warp:
   script:
     - pytest -n 4 --pyargs mujoco_warp --junit-xml=rspec.xml
 
+# Serial counterpart to help diagnose multi-process failures
+linux-x86_64 test mujoco warp serial:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: $UV_TRIXIE_IMAGE
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+  variables:
+    UV_PYTHON: "3.12"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: manual
+      allow_failure: true
+  before_script:
+    - !reference [.snippets, move-linux-x86_64-binaries]
+    # Python environment
+    - uv venv
+    - uv pip install -e .
+    - uv pip install --pre mujoco -f https://py.mujoco.org/
+    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    - uv pip install pytest
+    - source .venv/bin/activate
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - pytest --pyargs mujoco_warp --junit-xml=rspec.xml
+
 # Ensure minimum and maximum Python versions are supported
 linux-x86_64 python matrix test:
   stage: test
