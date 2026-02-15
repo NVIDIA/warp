@@ -218,6 +218,106 @@ def test_tape_visualize(test, device):
     assert dot_code.count("dot_product") == 1
 
 
+@wp.kernel
+def dot_product_subscript(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
+    tid = wp.tid()
+    wp.atomic_add(z, 0, x[tid] * y[tid])
+
+
+# Subscript-style type hint variants (wp.array[dtype] syntax)
+@wp.struct
+class MultiplicandsSubscript:
+    x: wp.array[float]
+    y: wp.array[float]
+
+
+@wp.kernel
+def mul_variable_subscript(multiplicands: MultiplicandsSubscript, z: wp.array[float]):
+    tid = wp.tid()
+    z[tid] = multiplicands.x[tid] * multiplicands.y[tid]
+
+
+@wp.struct
+class NestedStructSubscript:
+    arr: wp.array[float]
+
+
+@wp.struct
+class WrapperStructSubscript:
+    nested: NestedStructSubscript
+
+
+@wp.kernel
+def nested_loss_kernel_subscript(wrapper: WrapperStructSubscript, loss: wp.array[float]):
+    i = wp.tid()
+    wp.atomic_add(loss, 0, wrapper.nested.arr[i])
+
+
+def test_tape_struct_subscript(test, device):
+    """Test that struct fields using wp.array[float] subscript syntax work with Tape.backward() and Tape.zero()."""
+    dim = 8
+    tape = wp.Tape()
+
+    with tape:
+        multiplicands = MultiplicandsSubscript()
+        multiplicands.x = wp.array(np.ones(dim) * 16.0, dtype=wp.float32, device=device, requires_grad=True)
+        multiplicands.y = wp.array(np.ones(dim) * 32.0, dtype=wp.float32, device=device, requires_grad=True)
+        z = wp.zeros_like(multiplicands.x)
+
+        wp.launch(kernel=mul_variable_subscript, dim=dim, inputs=[multiplicands], outputs=[z], device=device)
+
+    z.grad = wp.array(np.ones(dim), device=device, dtype=wp.float32)
+    tape.backward()
+
+    # grad_x=y, grad_y=x
+    assert_np_equal(tape.gradients[multiplicands].x.numpy(), multiplicands.y.numpy())
+    assert_np_equal(tape.gradients[multiplicands].y.numpy(), multiplicands.x.numpy())
+
+    # zero should reset struct field gradients
+    tape.zero()
+    assert_np_equal(tape.gradients[multiplicands].x.numpy(), np.zeros(dim))
+    assert_np_equal(tape.gradients[multiplicands].y.numpy(), np.zeros(dim))
+
+
+def test_tape_nested_struct_subscript(test, device):
+    """Test that nested struct fields using wp.array[float] subscript syntax work with Tape."""
+    wrapper = WrapperStructSubscript()
+    wrapper.nested = NestedStructSubscript()
+    wrapper.nested.arr = wp.ones(shape=(1,), dtype=float, requires_grad=True, device=device)
+
+    loss = wp.zeros(shape=(1,), dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(nested_loss_kernel_subscript, dim=1, inputs=(wrapper, loss), device=device)
+
+    assert_np_equal(loss.numpy(), np.ones(1))
+
+    tape.backward(loss)
+    assert_np_equal(wrapper.nested.arr.grad.numpy(), np.ones(1))
+
+    tape.zero()
+    assert_np_equal(wrapper.nested.arr.grad.numpy(), np.zeros(1))
+
+
+def test_tape_visualize_subscript(test, device):
+    """Test that tape visualization works with kernels using wp.array[float] subscript syntax."""
+    dim = 8
+    tape = wp.Tape()
+
+    with tape:
+        x = wp.array(np.ones(dim) * 16.0, dtype=wp.float32, device=device, requires_grad=True)
+        y = wp.array(np.ones(dim) * 32.0, dtype=wp.float32, device=device, requires_grad=True)
+        z = wp.zeros(n=1, dtype=wp.float32, device=device, requires_grad=True)
+
+        wp.launch(kernel=dot_product_subscript, dim=dim, inputs=[x, y], outputs=[z], device=device)
+
+    dot_code = tape.visualize()
+
+    # Array args should get "array: dtype=..." tooltip, not fall through to the scalar branch
+    test.assertIn("array: dtype=", dot_code)
+
+
 devices = get_test_devices()
 
 
@@ -235,6 +335,9 @@ add_function_test(TestTape, "test_tape_dot_product", test_tape_dot_product, devi
 add_function_test(TestTape, "test_tape_zero_multiple_outputs", test_tape_zero_multiple_outputs, devices=devices)
 add_function_test(TestTape, "test_tape_nested_struct", test_tape_nested_struct, devices=devices)
 add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=devices)
+add_function_test(TestTape, "test_tape_struct_subscript", test_tape_struct_subscript, devices=devices)
+add_function_test(TestTape, "test_tape_nested_struct_subscript", test_tape_nested_struct_subscript, devices=devices)
+add_function_test(TestTape, "test_tape_visualize_subscript", test_tape_visualize_subscript, devices=devices)
 
 
 if __name__ == "__main__":

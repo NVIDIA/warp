@@ -261,7 +261,7 @@ class Tape:
             for name, _ in a._cls.ctype._fields_:
                 if name.startswith("_"):
                     continue
-                if isinstance(a._cls.vars[name].type, wp.array):
+                if wp._src.types.matches_array_class(a._cls.vars[name].type, wp.array):
                     arr = getattr(a, name)
                     if arr.grad:
                         grad = self.gradients[arr] = arr.grad
@@ -295,7 +295,10 @@ class Tape:
         for a, g in self.gradients.items():
             if wp._src.types.is_struct(a):
                 for name in g._cls.vars:
-                    if isinstance(g._cls.vars[name].type, wp.array) and g._cls.vars[name].requires_grad:
+                    if (
+                        wp._src.types.matches_array_class(g._cls.vars[name].type, wp.array)
+                        and g._cls.vars[name].requires_grad
+                    ):
                         getattr(g, name).zero_()
             else:
                 g.zero_()
@@ -509,7 +512,7 @@ class GraphvizTapeVisitor(TapeVisitor):
             if i < num_inputs:
                 arg = kernel.adj.args[i]
                 port_id = f"in_{i}"
-                if isinstance(arg.type, wp.array):
+                if wp._src.types.matches_array_class(arg.type, wp.array):
                     tooltip = f"array: dtype={self.dtype2str(arg.type.dtype)}"
                 else:
                     tooltip = f"dtype={self.sanitize(self.dtype2str(arg.type))}"

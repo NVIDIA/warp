@@ -338,7 +338,7 @@ class StructInstance:
         while stack:
             src, dst, name, var = stack.pop()
             value = getattr(src, name)
-            if isinstance(var.type, array):
+            if matches_array_class(var.type, array):
                 # array_t
                 setattr(dst, name, value.to(device))
             elif isinstance(var.type, Struct):
@@ -365,7 +365,7 @@ class StructInstance:
             # get the attribute value
             value = getattr(self._ctype, name)
 
-            if isinstance(var.type, array):
+            if matches_array_class(var.type, array):
                 # array_t
                 npvalue.append(value.numpy_value())
             elif isinstance(var.type, Struct):
@@ -401,7 +401,7 @@ def _is_texture_type(var_type: type) -> bool:
 def _make_struct_field_constructor(field: str, var_type: type):
     if isinstance(var_type, Struct):
         return lambda ctype: var_type.instance_type(ctype=getattr(ctype, field))
-    elif isinstance(var_type, warp._src.types.array):
+    elif matches_array_class(var_type, warp._src.types.array):
         return lambda ctype: None
     elif _is_texture_type(var_type):
         return lambda ctype: None
@@ -477,7 +477,7 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
 
         cls.__setattr__(inst, field, value)
 
-    if isinstance(var_type, array):
+    if matches_array_class(var_type, array):
         return set_array_value
     elif isinstance(var_type, Struct):
         return set_struct_value
@@ -507,7 +507,7 @@ class Struct:
 
         fields = []
         for label, var in self.vars.items():
-            if isinstance(var.type, array):
+            if matches_array_class(var.type, array):
                 fields.append((label, array_t))
             elif isinstance(var.type, Struct):
                 fields.append((label, var.type.ctype))
@@ -621,7 +621,7 @@ class Struct:
         for name, var in self.vars.items():
             names.append(name)
             offsets.append(getattr(self.ctype, name).offset)
-            if isinstance(var.type, array):
+            if matches_array_class(var.type, array):
                 # array_t
                 formats.append(array_t.numpy_dtype())
             elif isinstance(var.type, Struct):
@@ -651,7 +651,7 @@ class Struct:
 
         for name, var in self.vars.items():
             offset = getattr(self.ctype, name).offset
-            if isinstance(var.type, array):
+            if matches_array_class(var.type, array):
                 # We could reconstruct wp.array from array_t, but it's problematic.
                 # There's no guarantee that the original wp.array is still allocated and
                 # no easy way to make a backref.
@@ -784,7 +784,7 @@ class Var:
             return f"{classstr}_t<{dtypestr}>"
         elif is_array(t):
             dtypestr = Var.dtype_to_ctype(t.dtype)
-            classstr = f"wp::{type(t).__name__}"
+            classstr = f"wp::{concrete_array_type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif get_origin(t) is tuple:
             dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in get_args(t))
@@ -923,12 +923,11 @@ def func_match_args(func, arg_types, kwarg_types):
         bound_arg_type_stripped = strip_reference(bound_arg_type)
 
         # Handle array polymorphism (e.g., passing a fixed array to a function taking an array).
+        func_concrete = concrete_array_type(func_arg_type)
+        bound_concrete = concrete_array_type(bound_arg_type_stripped)
         if (
             is_array(func_arg_type)
-            and (
-                issubclass(type(func_arg_type), type(bound_arg_type_stripped))
-                or issubclass(type(bound_arg_type_stripped), type(func_arg_type))
-            )
+            and (issubclass(func_concrete, bound_concrete) or issubclass(bound_concrete, func_concrete))
             and types_equal_generic(func_arg_type.dtype, bound_arg_type_stripped.dtype, match_generic=True)
         ):
             continue
@@ -950,7 +949,17 @@ def get_arg_type(arg: Var | Any) -> type:
         return arg._cls
 
     if isinstance(
-        arg, (type, *array_types, warp._src.codegen.Struct, warp._src.context.Function, tuple_t, slice_t, tile)
+        arg,
+        (
+            type,
+            *array_types,
+            warp._src.types._ArrayAnnotationBase,
+            warp._src.codegen.Struct,
+            warp._src.context.Function,
+            tuple_t,
+            slice_t,
+            tile,
+        ),
     ):
         return arg
 
@@ -1236,7 +1245,9 @@ class Adjoint:
             for a in adj.args:
                 if isinstance(a.type, Struct):
                     builder.build_struct_recursive(a.type)
-                elif isinstance(a.type, warp._src.types.array) and isinstance(a.type.dtype, Struct):
+                elif warp._src.types.matches_array_class(a.type, warp._src.types.array) and isinstance(
+                    a.type.dtype, Struct
+                ):
                     builder.build_struct_recursive(a.type.dtype)
 
             # release builder reference for GC
@@ -2978,7 +2989,7 @@ class Adjoint:
                     target.mark_read()
 
             else:
-                if isinstance(target_type, warp._src.types.array):
+                if warp._src.types.matches_array_class(target_type, warp._src.types.array):
                     # In order to reduce the number of overloads needed in the C
                     # implementation to support combinations of int/slice indices,
                     # we convert all integer indices into slices, and set their
@@ -4585,7 +4596,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         if adj.custom_reverse_mode and i >= adj.custom_reverse_num_input_args:
             break
         # indexed array gradients are regular arrays
-        if isinstance(arg.type, indexedarray):
+        if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
         else:
@@ -4672,7 +4683,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
 
     # reverse args
     for _i, arg in enumerate(adj.args):
-        if isinstance(arg.type, indexedarray):
+        if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
         else:
@@ -4809,7 +4820,7 @@ def codegen_kernel(kernel, device, options):
                 reverse_args.append(arg.ctype() + " var_" + arg.label)
             for arg in adj.args:
                 # indexed array gradients are regular arrays
-                if isinstance(arg.type, indexedarray):
+                if matches_array_class(arg.type, indexedarray):
                     _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
                     reverse_args.append(_arg.ctype() + " adj_" + arg.label)
                 else:

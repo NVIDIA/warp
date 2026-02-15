@@ -6566,11 +6566,11 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             if adjoint:
                 array_matches = isinstance(value, warp.array)
             else:
-                array_matches = type(value) is type(arg_type)
+                array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
 
             if not array_matches:
                 # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
-                if isinstance(arg_type, warp.array):
+                if warp._src.types.matches_array_class(arg_type, warp.array):
                     if device.is_cuda:
                         # check for __cuda_array_interface__
                         try:
@@ -6603,7 +6603,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
                 adj = "adjoint " if adjoint else ""
                 raise RuntimeError(
-                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {type(arg_type)}, but passed value has type {type(value)}."
+                    f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array of type {warp._src.types.type_repr(arg_type)}, but passed value has type {type(value).__name__}."
                 )
 
             # check subtype
@@ -6833,7 +6833,7 @@ class Launch:
 
             # Pack forward parameters
             for a in kernel.adj.args:
-                if isinstance(a.type, warp._src.types.array):
+                if warp._src.types.is_array(a.type):
                     params.append(a.type.__ctype__())
                 elif isinstance(a.type, warp._src.codegen.Struct):
                     params.append(a.type().__ctype__())
@@ -6843,7 +6843,7 @@ class Launch:
             # Pack adjoint parameters if adjoint=True
             if adjoint:
                 for a in kernel.adj.args:
-                    if isinstance(a.type, warp._src.types.array):
+                    if warp._src.types.is_array(a.type):
                         params.append(a.type.__ctype__())
                     elif isinstance(a.type, warp._src.codegen.Struct):
                         params.append(a.type().__ctype__())
@@ -8581,13 +8581,13 @@ def type_str(t):
         return f"Literal[{t}]"
     elif isinstance(t, (list, tuple)):
         return "tuple[" + ", ".join(map(type_str, t)) + "]"
-    elif isinstance(t, warp.array):
+    elif warp._src.types.matches_array_class(t, warp.array):
         return f"Array[{type_str(t.dtype)}]"
-    elif isinstance(t, warp.indexedarray):
+    elif warp._src.types.matches_array_class(t, warp.indexedarray):
         return f"IndexedArray[{type_str(t.dtype)}]"
-    elif isinstance(t, warp.fabricarray):
+    elif warp._src.types.matches_array_class(t, warp.fabricarray):
         return f"FabricArray[{type_str(t.dtype)}]"
-    elif isinstance(t, warp.indexedfabricarray):
+    elif warp._src.types.matches_array_class(t, warp.indexedfabricarray):
         return f"IndexedFabricArray[{type_str(t.dtype)}]"
     elif hasattr(t, "_wp_generic_type_hint_"):
         generic_type = t._wp_generic_type_hint_
@@ -8596,18 +8596,14 @@ def type_str(t):
         if t in warp._src.types.vector_types:
             return t.__name__
 
-        # for generic vector / matrix type use a Generic type hint
+        # for generic vector / matrix type use a Generic type hint (dtype-first order)
         if generic_type == warp._src.types.Vector:
-            # return f"Vector"
-            return f"Vector[{type_str(t._wp_type_params_[0])},{type_str(t._wp_scalar_type_)}]"
+            return f"Vector[{type_str(t._wp_scalar_type_)},{type_str(t._wp_type_params_[0])}]"
         elif generic_type == warp._src.types.Quaternion:
-            # return f"Quaternion"
             return f"Quaternion[{type_str(t._wp_scalar_type_)}]"
         elif generic_type == warp._src.types.Matrix:
-            # return f"Matrix"
-            return f"Matrix[{type_str(t._wp_type_params_[0])},{type_str(t._wp_type_params_[1])},{type_str(t._wp_scalar_type_)}]"
+            return f"Matrix[{type_str(t._wp_scalar_type_)},{type_str(t._wp_type_params_[0])},{type_str(t._wp_type_params_[1])}]"
         elif generic_type == warp._src.types.Transformation:
-            # return f"Transformation"
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
 
         raise TypeError("Invalid vector or matrix dimensions")
@@ -9003,8 +8999,8 @@ def export_stubs(file):  # pragma: no cover
 
     # Generic type stubs - must be proper class definitions, not type alias assignments.
     # Using "class Foo(Generic[...]): ..." syntax makes these valid types for Mypy.
-    print("class Vector(Generic[Length, Scalar]): ...", file=file)
-    print("class Matrix(Generic[Rows, Cols, Scalar]): ...", file=file)
+    print("class Vector(Generic[Scalar, Length]): ...", file=file)
+    print("class Matrix(Generic[Scalar, Rows, Cols]): ...", file=file)
     print("class Quaternion(Generic[Float]): ...", file=file)
     print("class Transformation(Generic[Float]): ...", file=file)
     print("class Array(Generic[DType]): ...", file=file)
