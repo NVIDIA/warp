@@ -11451,8 +11451,16 @@ def tile_matmul_lto_dispatch_func(
     num_threads = options["block_dim"]
     arch = options["output_arch"]
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not (
+            options.get("enable_mathdx_gemm")
+            if options.get("enable_mathdx_gemm") is not None
+            else warp.config.enable_mathdx_gemm
+        )
+    ):
+        # CPU/no-MathDx dispatch (or mathdx GEMM disabled via module option)
         return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
     else:
 

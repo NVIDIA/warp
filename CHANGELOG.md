@@ -33,6 +33,10 @@
 - Add `wp.print_diagnostics()` to display a comprehensive snapshot of the Warp build and runtime
   environment, including software versions, CUDA info, build flags, and devices. Returns a dictionary
   for programmatic access ([GH-1221](https://github.com/NVIDIA/warp/issues/1221)).
+- Add `wp.config.enable_mathdx_gemm` and `"enable_mathdx_gemm"` module option to disable libmathdx
+  (cuBLASDx) for `wp.tile_matmul()`, falling back to an optimized scalar GEMM. Avoids slow LTO
+  compilation during development while keeping libmathdx available for Cholesky/FFT
+  ([GH-1228](https://github.com/NVIDIA/warp/issues/1228)).
 
 ### Removed
 

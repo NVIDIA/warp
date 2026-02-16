@@ -18,6 +18,7 @@ API
    cuda_output
    enable_backward
    enable_graph_capture_module_load_by_default
+   enable_mathdx_gemm
    enable_mempools_at_init
    enable_tiles_in_stack_memory
    enable_vector_component_overwrites
