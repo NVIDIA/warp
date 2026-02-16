@@ -2841,17 +2841,16 @@ def interpolate(
         raise ValueError("integrand must be tagged with @integrand decorator")
 
     # deprecation warnings
-    # TODO to be enabled in 1.11
-    # if quadrature is not None:
-    #     warn(
-    #         "The `quadrature` argument of `fem.interpolate` is deprecated and will be removed in 1.13. Please use `at` instead.",
-    #         DeprecationWarning,
-    #     )
-    # if domain is not None:
-    #     warn(
-    #         "The `domain` argument of `fem.interpolate` is deprecated and will be removed in 1.13. Please use `at` instead.",
-    #         DeprecationWarning,
-    #     )
+    if quadrature is not None:
+        warn(
+            "The `quadrature` argument of `fem.interpolate` is deprecated and will be removed in 1.14. Please use `at` instead.",
+            DeprecationWarning,
+        )
+    if domain is not None:
+        warn(
+            "The `domain` argument of `fem.interpolate` is deprecated and will be removed in 1.14. Please use `at` instead.",
+            DeprecationWarning,
+        )
 
     arguments = _parse_integrand_arguments(integrand, fields)
     if arguments.test_name:
@@ -2910,7 +2909,7 @@ def interpolate(
             dim = None
         elif dest_space is not None:
             # interpolate at dest_space nodes on domain (or full geo if domain is None)
-            space_restriction = make_space_restriction(space=dest_space, domain=domain)
+            space_restriction = make_space_restriction(space_topology=dest_space.topology, domain=domain)
             domain = space_restriction.domain
             dim = None
         elif domain is None:

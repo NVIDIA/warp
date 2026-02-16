@@ -1941,7 +1941,9 @@ def test_nodal_quadrature(test, device):
     geo_partition = fem.LinearGeometryPartition(geo, 2, 4)
     assert geo_partition.cell_count() == 1
 
-    space_partition = fem.make_space_partition(piecewise_constant_space, geo_partition, with_halo=False)
+    space_partition = fem.make_space_partition(
+        space_topology=piecewise_constant_space.topology, geometry_partition=geo_partition, with_halo=False
+    )
 
     field = fem.make_discrete_field(piecewise_constant_space, space_partition=space_partition)
 
@@ -2379,7 +2381,9 @@ def test_capturability(test, device):
         cell_mask[16:32].fill_(1)
 
         geo_partition = fem.ExplicitGeometryPartition(geo, cell_mask, max_cell_count=32, max_side_count=0)
-        space_partition = fem.make_space_partition(space, geo_partition, with_halo=False, max_node_count=64)
+        space_partition = fem.make_space_partition(
+            space_topology=space.topology, geometry_partition=geo_partition, with_halo=False, max_node_count=64
+        )
 
         test_field = fem.make_test(space, space_partition=space_partition)
         trial_field = fem.make_trial(space, space_partition=space_partition)

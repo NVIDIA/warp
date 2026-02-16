@@ -41,8 +41,10 @@
 ### Removed
 
 - Remove deprecated support for constructing matrices from vectors via `wp.matrix()` at the Python and kernel scopes.
+- `warp.fem`: The `Temporary.array` attribute, deprecated since 1.10, has been removed. 
 
 ### Deprecated
+- `warp.fem`: deprecated `quadrature` and `domain` arguments of `interpolate()`, and `space` argument of `make_space_restriction` and `make_space_partition` now trigger warnings before scheduled removal in 1.14.
 
 ### Changed
 
