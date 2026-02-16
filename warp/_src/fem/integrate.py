@@ -1335,13 +1335,16 @@ def _launch_integrate_kernel(
         if output == accumulate_array:
             return output
         if output is None:
-            return accumulate_array.numpy()[0]
+            result = accumulate_array.numpy()[0]
+            accumulate_array.release()
+            return result
 
         if add_to_output:
             # accumulate dtype is distinct from output dtype
             array_axpy(x=accumulate_array, y=output)
         else:
             array_cast(in_array=accumulate_array, out_array=output)
+        accumulate_array.release()
         return output
 
     test_arg = test.space_restriction.node_arg_value(device=device)

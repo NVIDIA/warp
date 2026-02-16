@@ -160,6 +160,7 @@ class SpaceRestriction:
         )
 
         node_array_indices.release()
+        element_node_indices.release()
 
         # Upper bound on node count, use `node_count_sync` to get the actual value
         self._node_count = min(self.space_partition.node_count(), self._dof_partition_indices.shape[0])

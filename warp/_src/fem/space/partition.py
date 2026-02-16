@@ -364,6 +364,8 @@ class NodePartition(SpacePartition):
 
         # Compute global to local indices
         if self._space_to_partition is None or self._space_to_partition.shape != node_indices.shape:
+            if self._space_to_partition is not None:
+                self._space_to_partition.release()
             self._space_to_partition = cache.borrow_temporary_like(node_indices, temporary_store)
 
         wp.launch(
@@ -378,6 +380,8 @@ class NodePartition(SpacePartition):
 
         # Copy to shrunk-to-fit array
         if self._node_indices is None or self._node_indices.shape[0] != self.node_count():
+            if self._node_indices is not None:
+                self._node_indices.release()
             self._node_indices = cache.borrow_temporary(
                 temporary_store, shape=(self.node_count(),), dtype=int, device=device
             )
