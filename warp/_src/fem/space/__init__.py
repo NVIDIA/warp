@@ -18,6 +18,7 @@
 from enum import Enum
 from typing import Optional
 
+from warp._src.utils import warn
 import warp._src.fem.domain as _domain
 import warp._src.fem.geometry as _geometry
 import warp._src.fem.polynomial as _polynomial
@@ -72,6 +73,13 @@ def make_space_restriction(
         device: device on which to perform and store computations
         temporary_store: shared pool from which to allocate temporary arrays
     """
+
+    if space is not None:
+        warn(
+            "The `space` argument of `make_space_restriction` is deprecated and will be removed in 1.14. "
+            "Please use `space_partition` or `space_topology` instead.",
+            DeprecationWarning,
+        )
 
     if space_partition is None:
         if space_topology is None:

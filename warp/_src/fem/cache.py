@@ -438,8 +438,7 @@ the temporary is explicitly detached from the pool using :meth:`detach`.
 The temporary may also be explicitly returned to the pool before destruction using :meth:`release`.
 
 Note: `Temporary` is now a direct alias for `wp.array` with a custom deleter. Convenience `detach` and `release`
-are added at borrow time. A self-pointing `array` attribute is also added for backward compatibility, but is
-deprecated and will be removed in Warp 1.12.
+are added at borrow time.
 """
 
 
@@ -595,19 +594,6 @@ class TemporaryStore:
         ref = weakref.ref(temporary)
         temporary.release = TemporaryStore._release_temporary.__get__(ref)
         temporary.detach = TemporaryStore._detach_temporary.__get__(ref)
-
-        # Deprecated -- to be removed in 1.12
-        temporary.array = wp.array(
-            ptr=temporary.ptr,
-            capacity=temporary.capacity,
-            shape=temporary.shape,
-            dtype=temporary.dtype,
-            grad=temporary.grad,
-            device=temporary.device,
-            pinned=temporary.pinned,
-            deleter=None,
-        )
-
         return temporary
 
     @staticmethod

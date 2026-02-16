@@ -126,10 +126,10 @@ class Example:
         p_space = fem.make_polynomial_space(geo, degree=0)
 
         self._active_space_partition = fem.make_space_partition(
-            space=u_space, geometry_partition=self._active_partition
+            space_topology=u_space.topology, geometry_partition=self._active_partition
         )
         self._active_p_space_partition = fem.make_space_partition(
-            space=p_space, geometry_partition=self._active_partition
+            space_topology=p_space.topology, geometry_partition=self._active_partition
         )
 
         self._u_field = u_space.make_field()

@@ -139,7 +139,7 @@ def adaptive_nanogrid_from_field(
         with wp.ScopedDevice(device):
             interpolate(
                 _count_refined_voxels,
-                domain=domain,
+                at=domain,
                 dim=cell_count,
                 fields={"field": refinement_field},
                 values={
