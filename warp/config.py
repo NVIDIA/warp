@@ -168,6 +168,16 @@ enable_backward: bool = True
 This setting can be overridden at the module level by setting the ``"enable_backward"`` module option.
 """
 
+enable_mathdx_gemm: bool = True
+"""Use libmathdx (cuBLASDx) for tile_matmul on GPU when available.
+
+When False, tile_matmul falls back to a scalar GEMM implementation, which avoids
+the slow libmathdx LTO compilation at the cost of runtime performance.
+
+This setting can be overridden at the module level by setting the
+``"enable_mathdx_gemm"`` module option.
+"""
+
 llvm_cuda: bool = False
 """Use Clang/LLVM compiler instead of NVRTC for CUDA compilation."""
 

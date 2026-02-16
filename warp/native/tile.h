@@ -70,6 +70,15 @@ struct alignas(16) float4 {
 #define WP_USE_ASYNC_PIPELINE 0
 #define WP_USE_REGISTER_GEMM 0
 
+// Type trait to detect null function placeholder (int literal 0).
+// Used to switch between scalar and LTO code paths at template instantiation time.
+template <typename T> struct wp_is_null_func {
+    static constexpr bool value = false;
+};
+template <> struct wp_is_null_func<int> {
+    static constexpr bool value = true;
+};
+
 #if defined(__CUDACC_RTC__)
 #define WP_TILE_THREAD_IDX threadIdx.x
 #else
@@ -4451,6 +4460,19 @@ inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
     }
 }
 
+// Register-blocked scalar GEMM with direct pointer arithmetic.
+//
+// Each thread computes a BM x BN sub-tile of C by iterating over K,
+// loading BM values from A and BN values from B per step, and
+// accumulating via an outer product into BM*BN registers.
+//
+// Optimizations:
+//   - Direct pointer access with __restrict__ and compile-time strides
+//     (bypasses tile_coord / index_from_coord abstraction in the hot loop)
+//   - Precomputed row/column offsets outside the K loop
+//   - Compile-time boundary elimination when M%BM==0 and N%BN==0
+//   - K loop not force-unrolled (avoids I-cache pressure for large K)
+//   - Adaptive sub-tile size: 8x4, 4x4, 2x2, or 1x1 based on parallelism
 template <
     bool Accumulate,
     typename LayoutA,
@@ -4462,28 +4484,135 @@ template <
     typename T>
 inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, StorageC& C, T& alpha, T& beta)
 {
-    for (int t = WP_TILE_THREAD_IDX; t < LayoutC::Size; t += WP_TILE_BLOCK_DIM) {
-        auto coord = LayoutC::coord_from_linear(t);
+    constexpr int M = LayoutC::Shape::dim(0);
+    constexpr int N = LayoutC::Shape::dim(1);
+    constexpr int K = LayoutA::Shape::dim(1);
 
-        int i = coord[0];
-        int j = coord[1];
+    // Compile-time strides for direct pointer arithmetic
+    constexpr int sa0 = LayoutA::Stride::dim(0);
+    constexpr int sa1 = LayoutA::Stride::dim(1);
+    constexpr int sb0 = LayoutB::Stride::dim(0);
+    constexpr int sb1 = LayoutB::Stride::dim(1);
+    constexpr int sc0 = LayoutC::Stride::dim(0);
+    constexpr int sc1 = LayoutC::Stride::dim(1);
 
-        // accumulator
-        using TypeC = typename remove_reference<decltype(C(coord))>::type;
-        TypeC sum = TypeC(0);
+    // Use actual storage element types for pointer declarations.
+    // A, B, C may have different element types in the backward pass
+    // (e.g. adj_C is T_C*, B is T_B*). T is used only for the accumulator.
+    using ElemA = typename remove_reference<decltype(A.ptr[0])>::type;
+    using ElemB = typename remove_reference<decltype(B.ptr[0])>::type;
+    using ElemC = typename remove_reference<decltype(C.ptr[0])>::type;
 
+    // Direct pointer access with __restrict__ to enable compiler optimizations
+    const ElemA* __restrict__ a_ptr = A.ptr;
+    const ElemB* __restrict__ b_ptr = B.ptr;
+    ElemC* __restrict__ c_ptr = C.ptr;
+
+    // Choose register sub-tile size adaptively. We prefer larger blocks for
+    // better data reuse (each A value reused BN times, each B value BM times),
+    // but need enough blocks to keep a reasonable fraction of threads busy.
+    // The threshold is WP_TILE_BLOCK_DIM/4 to allow larger blocks even when
+    // some threads are idle -- the reduced memory traffic outweighs the cost
+    // of idle threads, especially for large K.
+    constexpr int min_blocks = (WP_TILE_BLOCK_DIM + 3) / 4;
+    constexpr int blocks_8x4 = ((M + 7) / 8) * ((N + 3) / 4);
+    constexpr int blocks_4x4 = ((M + 3) / 4) * ((N + 3) / 4);
+    constexpr int blocks_2x2 = ((M + 1) / 2) * ((N + 1) / 2);
+    constexpr int BM = (blocks_8x4 >= min_blocks) ? 8
+        : (blocks_4x4 >= min_blocks)              ? 4
+        : (blocks_2x2 >= min_blocks)              ? 2
+                                                  : 1;
+    constexpr int BN = (BM == 8) ? 4 : BM;
+
+    // Number of sub-tile blocks covering the output (ceiling division)
+    constexpr int blocks_m = (M + BM - 1) / BM;
+    constexpr int blocks_n = (N + BN - 1) / BN;
+    constexpr int num_blocks = blocks_m * blocks_n;
+
+    // Whether boundary checks can be eliminated at compile time
+    constexpr bool aligned_m = (M % BM == 0);
+    constexpr bool aligned_n = (N % BN == 0);
+
+    for (int t = WP_TILE_THREAD_IDX; t < num_blocks; t += WP_TILE_BLOCK_DIM) {
+        const int block_i = t / blocks_n;
+        const int block_j = t % blocks_n;
+
+        const int base_i = block_i * BM;
+        const int base_j = block_j * BN;
+
+        // Precompute base offsets for A rows and B columns (constant across K)
+        int a_offsets[BM];
         WP_PRAGMA_UNROLL
-        for (int k = 0; k < LayoutA::Shape::dim(1); k++) {
-            const auto a = A(tile_coord(i, k));
-            const auto b = B(tile_coord(k, j));
+        for (int si = 0; si < BM; si++)
+            a_offsets[si] = (base_i + si) * sa0;
 
-            sum = muladd<decltype(sum)>(a, b, sum);
+        int b_offsets[BN];
+        WP_PRAGMA_UNROLL
+        for (int sj = 0; sj < BN; sj++)
+            b_offsets[sj] = (base_j + sj) * sb1;
+
+        // Accumulator in registers
+        T sum[BM][BN];
+        WP_PRAGMA_UNROLL
+        for (int si = 0; si < BM; si++)
+            WP_PRAGMA_UNROLL
+        for (int sj = 0; sj < BN; sj++)
+            sum[si][sj] = T(0);
+
+        // Reduction along K with register-blocked outer product.
+        // K loop is NOT force-unrolled to avoid I-cache pressure for large K;
+        // the inner BM x BN loops are unrolled for the outer-product throughput.
+        for (int k = 0; k < K; k++) {
+            const int ka = k * sa1;
+            const int kb = k * sb0;
+
+            T a_reg[BM];
+            WP_PRAGMA_UNROLL
+            for (int si = 0; si < BM; si++) {
+                if constexpr (aligned_m)
+                    a_reg[si] = T(a_ptr[a_offsets[si] + ka]);
+                else
+                    a_reg[si] = (base_i + si < M) ? T(a_ptr[a_offsets[si] + ka]) : T(0);
+            }
+
+            T b_reg[BN];
+            WP_PRAGMA_UNROLL
+            for (int sj = 0; sj < BN; sj++) {
+                if constexpr (aligned_n)
+                    b_reg[sj] = T(b_ptr[kb + b_offsets[sj]]);
+                else
+                    b_reg[sj] = (base_j + sj < N) ? T(b_ptr[kb + b_offsets[sj]]) : T(0);
+            }
+
+            WP_PRAGMA_UNROLL
+            for (int si = 0; si < BM; si++)
+                WP_PRAGMA_UNROLL
+            for (int sj = 0; sj < BN; sj++)
+                sum[si][sj] = muladd<T>(a_reg[si], b_reg[sj], sum[si][sj]);
         }
 
-        if constexpr (Accumulate)
-            C(coord) = alpha * sum + beta * C(coord);
-        else
-            C(coord) = alpha * sum;
+        // Store results with direct pointer arithmetic
+        WP_PRAGMA_UNROLL
+        for (int si = 0; si < BM; si++) {
+            WP_PRAGMA_UNROLL
+            for (int sj = 0; sj < BN; sj++) {
+                if constexpr (aligned_m && aligned_n) {
+                    const int idx = (base_i + si) * sc0 + (base_j + sj) * sc1;
+                    if constexpr (Accumulate)
+                        c_ptr[idx] = ElemC(alpha * sum[si][sj] + beta * T(c_ptr[idx]));
+                    else
+                        c_ptr[idx] = ElemC(alpha * sum[si][sj]);
+                } else {
+                    if (base_i + si < M && base_j + sj < N) {
+                        const int idx = (base_i + si) * sc0 + (base_j + sj) * sc1;
+                        if constexpr (Accumulate)
+                            c_ptr[idx] = ElemC(alpha * sum[si][sj] + beta * T(c_ptr[idx]));
+                        else
+                            c_ptr[idx] = ElemC(alpha * sum[si][sj]);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -4641,7 +4770,13 @@ TileC& tile_matmul(
         A.data, B.data, C.data, alphaT, betaT
     );
 #else
-    fun_forward(&alphaT, A.data.ptr, B.data.ptr, &betaT, C.data.ptr);
+    if constexpr (wp_is_null_func<Fwd>::value) {
+        partitioned_gemm::scalar_matmul<false, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
+            A.data, B.data, C.data, alphaT, betaT
+        );
+    } else {
+        fun_forward(&alphaT, A.data.ptr, B.data.ptr, &betaT, C.data.ptr);
+    }
 #endif
 
     WP_TILE_SYNC();
@@ -4685,7 +4820,13 @@ TileC& tile_matmul_acc(
         A.data, B.data, C.data, alphaT, betaT
     );
 #else
-    fun_forward(&alphaT, A.data.ptr, B.data.ptr, &betaT, C.data.ptr);
+    if constexpr (wp_is_null_func<Fwd>::value) {
+        partitioned_gemm::scalar_matmul<true, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
+            A.data, B.data, C.data, alphaT, betaT
+        );
+    } else {
+        fun_forward(&alphaT, A.data.ptr, B.data.ptr, &betaT, C.data.ptr);
+    }
 #endif
 
     WP_TILE_SYNC();
@@ -4748,8 +4889,22 @@ void adj_tile_matmul_acc(
         At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
     );
 #else
-    fun_backward_A(&alpha_A, adj_C.grad.ptr, B.data.ptr, &beta_A, adj_A.grad.ptr);
-    fun_backward_B(&alpha_B, A.data.ptr, adj_C.grad.ptr, &beta_B, adj_B.grad.ptr);
+    if constexpr (wp_is_null_func<Fwd>::value) {
+        auto At = tile_transpose(A);
+        auto Bt = tile_transpose(B);
+
+        partitioned_gemm::scalar_matmul<
+            true, typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
+            adj_C.grad, Bt.data, adj_A.grad, alpha_A, beta_A
+        );
+        partitioned_gemm::scalar_matmul<
+            true, typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
+            At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
+        );
+    } else {
+        fun_backward_A(&alpha_A, adj_C.grad.ptr, B.data.ptr, &beta_A, adj_A.grad.ptr);
+        fun_backward_B(&alpha_B, A.data.ptr, adj_C.grad.ptr, &beta_B, adj_B.grad.ptr);
+    }
 #endif
 
     if (T_C(beta) != T_C(1.0)) {
@@ -4815,8 +4970,22 @@ void adj_tile_matmul(
         At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
     );
 #else
-    fun_backward_A(&alpha_A, adj_C.grad.ptr, B.data.ptr, &beta_A, adj_A.grad.ptr);
-    fun_backward_B(&alpha_B, A.data.ptr, adj_C.grad.ptr, &beta_B, adj_B.grad.ptr);
+    if constexpr (wp_is_null_func<Fwd>::value) {
+        auto At = tile_transpose(A);
+        auto Bt = tile_transpose(B);
+
+        partitioned_gemm::scalar_matmul<
+            true, typename TileC::Layout, typename decltype(Bt)::Layout, typename TileA::Layout>(
+            adj_C.grad, Bt.data, adj_A.grad, alpha_A, beta_A
+        );
+        partitioned_gemm::scalar_matmul<
+            true, typename decltype(At)::Layout, typename TileC::Layout, typename TileB::Layout>(
+            At.data, adj_C.grad, adj_B.grad, alpha_B, beta_B
+        );
+    } else {
+        fun_backward_A(&alpha_A, adj_C.grad.ptr, B.data.ptr, &beta_A, adj_A.grad.ptr);
+        fun_backward_B(&alpha_B, A.data.ptr, adj_C.grad.ptr, &beta_B, adj_B.grad.ptr);
+    }
 #endif
 
     WP_TILE_SYNC();

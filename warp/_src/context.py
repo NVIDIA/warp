@@ -2385,6 +2385,7 @@ class Module:
         self.options = {
             "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
+            "enable_mathdx_gemm": None,
             "fast_math": False,
             "fuse_fp": True,
             "lineinfo": warp.config.lineinfo,
@@ -7804,6 +7805,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
     * **mode**: The compilation mode to use, can be "debug", or "release", defaults to the value of ``warp.config.mode``.
     * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
+    * **enable_mathdx_gemm**: Use libmathdx (cuBLASDx) for ``tile_matmul`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_gemm`` at compile time.
     * **block_dim**: The default number of threads to assign to each block
 
     Args:
