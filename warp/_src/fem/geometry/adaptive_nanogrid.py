@@ -448,6 +448,7 @@ class AdaptiveNanogrid(NanogridBase):
             ],
         )
         boundary_face_indices, _ = utils.masked_indices(boundary_face_mask)
+        boundary_face_mask.release()
         self._boundary_face_indices = boundary_face_indices.detach()
 
     def _ensure_stacked_edge_grid(self):
@@ -595,7 +596,7 @@ def _build_node_grid(cell_ijk, cell_level, cell_grid: wp.Volume, temporary_store
     node_grid = wp.Volume.allocate_by_voxels(
         cell_nodes.flatten(), voxel_size=cell_grid.get_voxel_size()[0], device=cell_ijk.device
     )
-
+    cell_nodes.release()
     return node_grid
 
 
@@ -607,7 +608,7 @@ def _build_cell_face_grid(cell_ijk, cell_level, grid: wp.Volume, temporary_store
     face_grid = wp.Volume.allocate_by_voxels(
         cell_faces.flatten(), voxel_size=grid.get_voxel_size()[0], device=cell_ijk.device
     )
-
+    cell_faces.release()
     return face_grid
 
 
@@ -659,12 +660,14 @@ def _build_completed_face_grid(
             cat_face_ijk,
         ],
     )
+    cell_face_ijk.release()
+    additional_face_count.release()
 
     # Now recreate a new grid with all those faces
     face_grid = wp.Volume.allocate_by_voxels(
         cat_face_ijk.flatten(), voxel_size=cell_face_grid.get_voxel_size(), device=device
     )
-
+    cat_face_ijk.release()
     return face_grid
 
 
@@ -681,7 +684,7 @@ def _build_stacked_face_grid(cell_ijk, cell_level, grid: wp.Volume, temporary_st
     face_grid = wp.Volume.allocate_by_voxels(
         cell_faces.flatten(), voxel_size=grid.get_voxel_size()[0], device=cell_ijk.device
     )
-
+    cell_faces.release()
     return face_grid
 
 
@@ -698,7 +701,7 @@ def _build_stacked_edge_grid(cell_ijk, cell_level, grid: wp.Volume, temporary_st
     edge_grid = wp.Volume.allocate_by_voxels(
         cell_edges.flatten(), voxel_size=grid.get_voxel_size()[0], device=cell_ijk.device
     )
-
+    cell_edges.release()
     return edge_grid
 
 

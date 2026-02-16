@@ -78,6 +78,7 @@
 - Fix `@wp.func` losing parameter type information in Pyright/Pylance
   ([GH-1219](https://github.com/NVIDIA/warp/issues/1219)).
 - Fix crashes caused by C++ standard library mismatch on Linux.
+- Explicit release of some `warp.fem` temporaries ([GH-1075](https://github.com/NVIDIA/warp/pull/1075)).
 
 ### Documentation
 

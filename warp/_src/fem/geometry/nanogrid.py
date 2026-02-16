@@ -587,6 +587,7 @@ class Nanogrid(NanogridBase):
             inputs=[self._cell_grid.id, self._face_ijk, self._face_flags, boundary_face_mask],
         )
         boundary_face_indices, _ = utils.masked_indices(boundary_face_mask)
+        boundary_face_mask.release()
         self._boundary_face_indices = boundary_face_indices.detach()
 
     def _build_edge_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
@@ -655,7 +656,7 @@ def _build_node_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     node_grid = wp.Volume.allocate_by_voxels(
         cell_nodes.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
-
+    cell_nodes.release()
     return node_grid
 
 
@@ -667,7 +668,7 @@ def _build_face_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     face_grid = wp.Volume.allocate_by_voxels(
         cell_faces.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
-
+    cell_faces.release()
     return face_grid
 
 
@@ -679,7 +680,7 @@ def _build_edge_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     edge_grid = wp.Volume.allocate_by_voxels(
         cell_edges.flatten(), voxel_size=grid.get_voxel_size(), device=cell_ijk.device
     )
-
+    cell_edges.release()
     return edge_grid
 
 
