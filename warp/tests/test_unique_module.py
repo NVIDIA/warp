@@ -102,8 +102,8 @@ class TestUniqueModule(unittest.TestCase):
         """Test that generic unique kernels reuse the same kernel object across redefinitions.
 
         When a generic kernel with module="unique" is defined multiple times in a loop,
-        each redefinition should return the same kernel object (the registry containing
-        all overloads), ensuring consistent behavior.
+        each redefinition should return the same Kernel object (which holds all
+        type-specialized overloads), ensuring consistent behavior.
         """
         kernel_objects = []
         module_objects = []
