@@ -1317,10 +1317,35 @@ def kernel(
             # Mark this kernel as belonging to a unique module
             k.is_unique_module = True
 
-            # Compute the module hash and create a unique name
-            # The hash includes the kernel and all its dependencies (functions, structs, constants)
-            # Use get_module_hash() to ensure deferred static expressions are resolved before hashing
+            # Compute the module hash and create a unique name.
+            # Use get_module_hash() to ensure deferred static expressions are
+            # resolved before hashing.
+            #
+            # For non-generic kernels (and generic kernels with instantiated
+            # overloads), module_hash already includes deep kernel content via
+            # ModuleHasher (adjoint + referenced functions/types/constants).
             module_hash = m.get_module_hash()
+
+            # Generic kernels may not have any overloads at declaration time.
+            # In that case, ModuleHasher has no overload hash to include, so
+            # different closure-captured function bindings (e.g. different
+            # writer_func values) can collide to the same unique module name.
+            #
+            # Add a template-level hash salt from the generic kernel adjoint to
+            # disambiguate those cases. If the same closure/function binding is
+            # reused, this salt is stable and cache/module reuse still works.
+            if k.is_generic and len(k.overloads) == 0:
+                block_dim = m.options["block_dim"]
+                hasher = m.hashers.get(block_dim)
+                if hasher is None:
+                    hasher = ModuleHasher(m)
+
+                ch = hashlib.sha256()
+                ch.update(module_hash)
+                ch.update(bytes(k.key, "utf-8"))
+                ch.update(hasher.hash_adjoint(k.adj))
+                module_hash = ch.digest()
+
             k.module.name = f"{k.key}_{module_hash.hex()[:8]}"
 
             # Check if we've already created a module with this name
