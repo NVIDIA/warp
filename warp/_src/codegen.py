@@ -3359,6 +3359,55 @@ class Adjoint:
     def emit_AugAssign(adj, node):
         lhs = node.target
 
+        # For simple name targets (x += expr), evaluate the RHS once and
+        # apply the operation directly to avoid double-evaluation.
+        if isinstance(lhs, ast.Name):
+            rhs = adj.eval(node.value)
+            target = adj.eval(lhs)
+
+            # In-place tile ops mutate target directly; no symbol table update needed.
+            if is_tile(target.type) and is_tile(rhs.type):
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("add_inplace", [target, rhs])
+                    return
+                if isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("sub_inplace", [target, rhs])
+                    return
+                if isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("bit_and_inplace", [target, rhs])
+                    return
+                if isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("bit_or_inplace", [target, rhs])
+                    return
+                if isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("bit_xor_inplace", [target, rhs])
+                    return
+
+            # Non-inplace: produces a new value, rebind the symbol.
+            # Check for user-defined operator overloads first (same as emit_BinOp).
+            op_name = builtin_operators[type(node.op)]
+            try:
+                user_func = adj.resolve_external_reference(op_name)
+                if isinstance(user_func, warp._src.context.Function):
+                    result = adj.add_call(user_func, (target, rhs), {}, {})
+                    adj.symbols[lhs.id] = result
+                    return
+            except WarpCodegenError:
+                pass
+
+            result = adj.add_builtin_call(op_name, [target, rhs])
+
+            # Validate type consistency (same as emit_Assign for Name targets).
+            if lhs.id in adj.symbols:
+                if not types_equal(strip_reference(result.type), adj.symbols[lhs.id].type):
+                    raise WarpCodegenTypeError(
+                        f"Error, augmented assignment to `{lhs.id}` ({adj.symbols[lhs.id].type}) "
+                        f"produces different type ({result.type})"
+                    )
+
+            adj.symbols[lhs.id] = result
+            return
+
         # replace augmented assignment with assignment statement + binary op (default behaviour)
         def make_new_assign_statement():
             new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
@@ -3476,27 +3525,6 @@ class Adjoint:
 
             else:
                 raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")
-
-        elif isinstance(lhs, ast.Name):
-            target = adj.eval(node.target)
-
-            if is_tile(target.type) and is_tile(rhs.type):
-                if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("add_inplace", [target, rhs])
-                elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("sub_inplace", [target, rhs])
-                elif isinstance(node.op, ast.BitAnd):
-                    adj.add_builtin_call("bit_and_inplace", [target, rhs])
-                elif isinstance(node.op, ast.BitOr):
-                    adj.add_builtin_call("bit_or_inplace", [target, rhs])
-                elif isinstance(node.op, ast.BitXor):
-                    adj.add_builtin_call("bit_xor_inplace", [target, rhs])
-                else:
-                    make_new_assign_statement()
-                    return
-            else:
-                make_new_assign_statement()
-                return
 
         # TODO
         elif isinstance(lhs, ast.Attribute):
