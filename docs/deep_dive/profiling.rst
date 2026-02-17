@@ -501,3 +501,80 @@ profiler (e.g. ``chrome://tracing/`` or ``edge://tracing/``) or the `Perfetto UI
 
 For more information about profiling the compilation process, see the NVIDIA Developer blog post
 `Optimizing Compile Times for CUDA C++ <https://developer.nvidia.com/blog/optimizing-compile-times-for-cuda-c/>`__.
+
+.. _benchmarking-cold-start-compilation:
+
+Benchmarking Cold-Start Compilation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When benchmarking module compilation times, clearing Warp's kernel cache alone
+is not sufficient to reach a true "cold" cache state. The NVIDIA CUDA driver
+maintains a separate cache layer that must also be accounted for.
+
+Two-Layer Cache System
+^^^^^^^^^^^^^^^^^^^^^^
+
+Warp maintains its own **kernel cache** (see :attr:`warp.config.kernel_cache_dir`)
+that stores generated C++/CUDA source files and compiled binaries. This cache is
+cleared with :func:`warp.clear_kernel_cache`. Separately, when kernels use tile-based
+linear algebra operations backed by NVIDIA's MathDx libraries (cuBLASDx/cuFFTDx),
+Warp compiles LTO (link-time optimization) objects that are stored in a dedicated
+**LTO cache**. This cache is cleared with :func:`warp.clear_lto_cache`. Both
+functions should be called to fully clear Warp's compilation artifacts.
+
+In addition, the NVIDIA CUDA driver maintains a **compute cache** that stores
+JIT-compiled GPU binaries produced from PTX or other intermediate representations.
+This driver-level cache is completely independent of Warp and is not affected by
+Warp's cache-clearing functions. Its default location is:
+
+- **Linux**: ``~/.nv/ComputeCache``
+- **Windows**: ``%APPDATA%\NVIDIA\ComputeCache``
+
+Both cache layers must be addressed to achieve a true cold-start compilation
+benchmark.
+
+Steps for Accurate Cold-Start Benchmarking
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To measure true cold-start compilation time:
+
+1. Clear Warp's caches in Python:
+
+   .. code-block:: python
+
+       wp.clear_kernel_cache()
+       wp.clear_lto_cache()
+
+2. Address the CUDA compute cache using **one** of the following approaches:
+
+   **Option A**: Delete the compute cache contents before running:
+
+   .. code-block:: bash
+
+       # Linux
+       rm -rf ~/.nv/ComputeCache/*
+
+       # Windows (PowerShell)
+       Remove-Item -Recurse -Force "$env:APPDATA\NVIDIA\ComputeCache\*"
+
+   **Option B**: Disable the compute cache via an environment variable:
+
+   .. code-block:: bash
+
+       CUDA_CACHE_DISABLE=1 python my_benchmark.py
+
+These two approaches can produce different timings. Disabling the cache with
+``CUDA_CACHE_DISABLE=1`` can be *faster* than deleting cache contents because
+it avoids disk I/O overhead from cache lookup and write operations. When the
+cache is enabled but empty, the driver still performs file-system operations to
+search for and write cache entries. Choose the approach that best matches your
+benchmarking scenario: Option A reflects normal operation with an empty cache,
+while Option B eliminates all cache-related overhead.
+
+Additional References
+^^^^^^^^^^^^^^^^^^^^^
+
+- `CUDA Programming Guide: CUDA Environment Variables <https://docs.nvidia.com/cuda/cuda-c-programming-guide/#cuda-environment-variables>`__
+  - Authoritative reference for ``CUDA_CACHE_DISABLE``, ``CUDA_CACHE_PATH``, and other cache-related environment variables.
+- `CUDA Pro Tip: Understand Fat Binaries and JIT Caching <https://developer.nvidia.com/blog/cuda-pro-tip-understand-fat-binaries-jit-caching/>`__
+  - Background on how the CUDA compute cache works.

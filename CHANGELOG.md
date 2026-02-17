@@ -82,6 +82,8 @@
 
 ### Documentation
 
+- Document the CUDA compute cache and its impact on benchmarking cold-start compilation times
+  ([GH-1191](https://github.com/NVIDIA/warp/issues/1191)).
 - Document ahead-of-time CUDA compilation without a driver (Docker build workflow).
 
 ## [1.11.1] - 2026-02-01
