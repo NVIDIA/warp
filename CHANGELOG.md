@@ -75,6 +75,9 @@
 - Fix `module="unique"` kernels incorrectly reusing cached kernels when `wp.static()` expressions
   are deferred (e.g., referencing loop variables), causing wrong kernel execution
   ([GH-1211](https://github.com/NVIDIA/warp/issues/1211)).
+- Fix `module="unique"` generic kernels with closure-captured function bindings colliding
+  to the same unique module name before overload instantiation, which could cause
+  incorrect module reuse and function overload resolution errors.
 - Fix `@wp.func` losing parameter type information in Pyright/Pylance
   ([GH-1219](https://github.com/NVIDIA/warp/issues/1219)).
 - Fix crashes caused by C++ standard library mismatch on Linux.
