@@ -79,6 +79,9 @@
   ([GH-1219](https://github.com/NVIDIA/warp/issues/1219)).
 - Fix crashes caused by C++ standard library mismatch on Linux.
 - Explicit release of some `warp.fem` temporaries ([GH-1075](https://github.com/NVIDIA/warp/pull/1075)).
+- Fix augmented assignments (`x += expr`, `x *= expr`, etc.) on scalar variables evaluating
+  the RHS expression twice, generating redundant loads and arithmetic in compiled kernels
+  ([GH-1230](https://github.com/NVIDIA/warp/issues/1230)).
 
 ### Documentation
 
