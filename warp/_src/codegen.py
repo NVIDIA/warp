@@ -443,6 +443,14 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         elif type(value) is var_type:
             setattr(inst._ctype, field, value)
         else:
+            if is_scalar(value):
+                warp._src.utils.warn(
+                    f"Implicit conversion from a scalar type to the composite type "
+                    f"`{type_repr(var_type)}` for struct field '{field}' is deprecated. "
+                    f"Use an explicit conversion, e.g.: `{type_repr(var_type)}(...)`.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
             # conversion from list/tuple, ndarray, etc.
             setattr(inst._ctype, field, var_type(value))
 

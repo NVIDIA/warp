@@ -6692,6 +6692,14 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             return value
         else:
             # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
+            if warp._src.types.is_scalar(value):
+                warp._src.utils.warn(
+                    f"Implicit conversion from a scalar type to the composite type "
+                    f"`{type_str(arg_type)}` for kernel parameter '{arg_name}' is deprecated. "
+                    f"Use an explicit conversion, e.g.: `{type_str(arg_type)}(...)`.",
+                    DeprecationWarning,
+                    stacklevel=4,
+                )
             try:
                 return arg_type(value)
             except Exception as e:

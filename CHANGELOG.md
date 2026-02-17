@@ -44,6 +44,9 @@
 - `warp.fem`: The `Temporary.array` attribute, deprecated since 1.10, has been removed. 
 
 ### Deprecated
+- Deprecate the implicit conversion of scalar values to composite types (vectors, matrices, etc.)
+  when launching kernels or assigning to struct fields. Use an explicit constructor instead,
+  e.g.: `wp.vec3(...)` or `wp.mat22(...)` ([GH-1022](https://github.com/NVIDIA/warp/issues/1022)).
 - `warp.fem`: deprecated `quadrature` and `domain` arguments of `interpolate()`, and `space` argument of `make_space_restriction` and `make_space_partition` now trigger warnings before scheduled removal in 1.14.
 
 ### Changed
