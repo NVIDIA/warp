@@ -817,6 +817,14 @@ class TestTypes(unittest.TestCase):
                 self.assertNotEqual(one, float("inf"))
                 self.assertLess(one, float("inf"))
 
+    def test_float_overflow_comparison(self):
+        huge = 2**1024
+        for float_type in wp._src.types.float_types:
+            for op in ("__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"):
+                with self.subTest(float_type=float_type, op=op):
+                    with self.assertRaises(OverflowError):
+                        getattr(float_type(1.0), op)(huge)
+
 
 for dtype in wp._src.types.int_types:
     add_function_test(TestTypes, f"test_integers_{dtype.__name__}", test_integers, devices=devices, dtype=dtype)
