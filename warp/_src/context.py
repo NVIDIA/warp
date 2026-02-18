@@ -1312,14 +1312,18 @@ def kernel(
             options=options,
         )
 
-        # Handle unique module case: one module per kernel with hash-based naming
+        # Handle unique module case: one module per kernel with hash-based naming.
+        # NOTE: We create a temporary Module, Kernel, and ModuleHasher to compute
+        # the hash, then check if a matching module already exists. If reuse occurs,
+        # the temporary objects are discarded and the existing kernel is returned.
         if module == "unique":
             # Mark this kernel as belonging to a unique module
             k.is_unique_module = True
 
             # Compute the module hash and create a unique name.
             # Use get_module_hash() to ensure deferred static expressions are
-            # resolved before hashing.
+            # resolved before hashing, and to cache the hasher (reused below
+            # for generic kernel disambiguation).
             #
             # For non-generic kernels (and generic kernels with instantiated
             # overloads), module_hash already includes deep kernel content via
@@ -1336,9 +1340,8 @@ def kernel(
             # reused, this salt is stable and cache/module reuse still works.
             if k.is_generic and len(k.overloads) == 0:
                 block_dim = m.options["block_dim"]
-                hasher = m.hashers.get(block_dim)
-                if hasher is None:
-                    hasher = ModuleHasher(m)
+                # The hasher was already cached by get_module_hash() above.
+                hasher = m.hashers[block_dim]
 
                 ch = hashlib.sha256()
                 ch.update(module_hash)
@@ -1346,6 +1349,8 @@ def kernel(
                 ch.update(hasher.hash_adjoint(k.adj))
                 module_hash = ch.digest()
 
+            # module_hash may have been salted above for generic kernels with
+            # closure-captured functions; use the final value for naming.
             k.module.name = f"{k.key}_{module_hash.hex()[:8]}"
 
             # Check if we've already created a module with this name
@@ -1365,9 +1370,10 @@ def kernel(
                     )
 
                 # CRITICAL: Return the existing kernel object, not the new one we just created.
-                # This ensures that when ModuleHasher updates the kernel hash during compilation
-                # (e.g., resolving static expressions), the same object is used for launching.
-                # If we returned the new kernel object, it would have a stale hash.
+                # The new kernel's module is a temporary object that was never registered in
+                # user_modules and will not be compiled. Returning the existing kernel ensures
+                # its .module points to the registered, compiled module, and its .hash stays
+                # in sync with ModuleHasher updates (e.g., resolving static expressions).
                 if warp.config.verbose:
                     # Show number of overloads if this is a generic kernel
                     overload_info = ""
@@ -1379,9 +1385,9 @@ def kernel(
                     print(f"[wp.kernel]   Reusing existing kernel object for {k.key}{overload_info}")
                 k = existing_kernel_same_key
 
-                # Reset skip_build flag for all kernels when reusing a module
-                # Previous compilations may have set skip_build=True, which would
-                # prevent building for the new device
+                # Reset skip_build flag for all kernels when reusing a module.
+                # A previous failed compilation may have set skip_build=True, which
+                # would prevent building for a different device.
                 for existing_kernel in existing_module._get_live_kernels():
                     existing_kernel.adj.skip_build = False
             else:
@@ -1883,7 +1889,8 @@ class ModuleHasher:
         # start hashing the module
         ch = hashlib.sha256()
 
-        # hash all non-generic kernels
+        # hash all kernels: non-generic kernels are hashed directly,
+        # generic kernels are hashed via their instantiated overloads
         for kernel in module._get_live_kernels():
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
@@ -2012,6 +2019,10 @@ class ModuleHasher:
             elif warp._src.types.is_array(arg_type) and isinstance(arg_type.dtype, warp._src.codegen.Struct):
                 ch.update(arg_type.dtype.hash)
 
+        # NOTE: get_references() only captures closure variables that resolve to Warp
+        # Function, Struct, or value types (scalars, vectors, matrices, etc.). Non-Warp Python objects (lists,
+        # dicts, custom classes) captured by closures are not included in the hash.
+        # Users should wrap such values with wp.static() to make them visible.
         # find referenced constants, types, and functions
         constants, types, functions = adj.get_references()
 

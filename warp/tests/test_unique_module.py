@@ -102,8 +102,8 @@ class TestUniqueModule(unittest.TestCase):
         """Test that generic unique kernels reuse the same kernel object across redefinitions.
 
         When a generic kernel with module="unique" is defined multiple times in a loop,
-        each redefinition should return the same kernel object (the registry containing
-        all overloads), ensuring consistent behavior.
+        each redefinition should return the same Kernel object (which holds all
+        type-specialized overloads), ensuring consistent behavior.
         """
         kernel_objects = []
         module_objects = []
@@ -332,6 +332,54 @@ def test_unique_module_generic_closure_reuse(test, device):
         assert_np_equal(writer_data.out.numpy(), np.array([5, 6, 7]))
 
 
+def test_unique_module_nongeneric_closure_disambiguation(test, device):
+    """Non-generic closure kernels with different captured functions must get different modules.
+
+    This tests the ModuleHasher path for closure disambiguation independently
+    of the generic-kernel salt path (which only applies to generic kernels that
+    have no instantiated overloads at declaration time).
+    """
+
+    @wp.func
+    def _add_ten(x: int) -> int:
+        return x + 10
+
+    @wp.func
+    def _add_twenty(x: int) -> int:
+        return x + 20
+
+    def _make_nongeneric_closure_kernel(helper_func):
+        @wp.kernel(module="unique")
+        def _nongeneric_closure_kernel(inp: wp.array(dtype=int), out: wp.array(dtype=int)):
+            tid = wp.tid()
+            out[tid] = helper_func(inp[tid])
+
+        return _nongeneric_closure_kernel
+
+    kernel_ten = _make_nongeneric_closure_kernel(_add_ten)
+    kernel_twenty = _make_nongeneric_closure_kernel(_add_twenty)
+
+    # Different closure bindings must produce different modules
+    test.assertIsNot(kernel_ten, kernel_twenty, "Different closure funcs must create different kernels")
+    test.assertNotEqual(
+        kernel_ten.module.name,
+        kernel_twenty.module.name,
+        "Different closure funcs must create different module names",
+    )
+
+    # Verify correct results
+    with wp.ScopedDevice(device):
+        inp = wp.array([1, 2, 3], dtype=int)
+
+        out_ten = wp.zeros(3, dtype=int)
+        wp.launch(kernel_ten, dim=3, inputs=[inp, out_ten])
+        assert_np_equal(out_ten.numpy(), np.array([11, 12, 13]))
+
+        out_twenty = wp.zeros(3, dtype=int)
+        wp.launch(kernel_twenty, dim=3, inputs=[inp, out_twenty])
+        assert_np_equal(out_twenty.numpy(), np.array([21, 22, 23]))
+
+
 devices = get_test_devices()
 
 add_function_test(
@@ -353,6 +401,12 @@ add_function_test(
     TestUniqueModule,
     "test_unique_module_generic_closure_reuse",
     test_unique_module_generic_closure_reuse,
+    devices=devices,
+)
+add_function_test(
+    TestUniqueModule,
+    "test_unique_module_nongeneric_closure_disambiguation",
+    test_unique_module_nongeneric_closure_disambiguation,
     devices=devices,
 )
 
