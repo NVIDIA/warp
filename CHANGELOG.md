@@ -38,6 +38,7 @@
 - Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()` ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
 - Fix `BsrMatrix.notify_nnz_changed` sometimes failing to read the latest non-zero count from the `offsets` array.
 - Fix hashing errors when creating `jax_kernel()` and `jax_callable()`.
+- `warp.fem`: Fix invalid memory accesses with irregular point-based function spaces.
 
 ### Documentation
 

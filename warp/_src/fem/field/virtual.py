@@ -964,8 +964,10 @@ def make_bilinear_dispatch_kernel(
         test_node_index = space_restriction.node_partition_index_from_element_offset(test_arg, test_node_offset)
 
         test_element_index = space_restriction.node_element_index(test_arg, test_node_offset)
-        element_index = domain.element_index(domain_index_arg, test_element_index.domain_element_index)
-        test_node = test_element_index.node_index_in_element
+        if test_element_index.domain_element_index == NULL_ELEMENT_INDEX:
+            element_index = NULL_ELEMENT_INDEX
+        else:
+            element_index = domain.element_index(domain_index_arg, test_element_index.domain_element_index)
 
         if element_index == NULL_ELEMENT_INDEX:
             element_trial_node_count = 0
@@ -984,6 +986,8 @@ def make_bilinear_dispatch_kernel(
             domain_arg, qp_arg, test_element_index.domain_element_index, element_index
         )
         qp_dof_count = qp_point_count * TEST_TRIAL_NODE_DOF_DIM
+
+        test_node = test_element_index.node_index_in_element
 
         val_sum = val_t()
 
