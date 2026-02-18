@@ -82,12 +82,14 @@ class UnstructuredPointTopology(SpaceTopology):
     def _make_topology_arg(self):
         @cache.dynamic_struct(suffix=self.name)
         class TopologyArg:
+            max_nodes_per_element: int
             quadrature_arg: self._quadrature.Arg
             element_index_arg: self._geo_partition.CellArg
 
         return TopologyArg
 
     def fill_topo_arg(self, arg: "UnstructuredPointTopology.TopologyArg", device):
+        arg.max_nodes_per_element = self.MAX_NODES_PER_ELEMENT
         self._quadrature.fill_arg(arg.quadrature_arg, device)
         self._quadrature.domain.fill_element_index_arg(arg.element_index_arg, device)
 
@@ -132,7 +134,10 @@ class UnstructuredPointTopology(SpaceTopology):
             domain_element_index = self.domain_element_index(topo_arg.element_index_arg, element_index)
             if domain_element_index == NULL_ELEMENT_INDEX:
                 return 0
-            return self._quadrature.point_count(elt_arg, topo_arg.quadrature_arg, domain_element_index, element_index)
+            return wp.min(
+                topo_arg.max_nodes_per_element,
+                self._quadrature.point_count(elt_arg, topo_arg.quadrature_arg, domain_element_index, element_index),
+            )
 
         return element_node_count
 

@@ -85,6 +85,7 @@
 - Fix augmented assignments (`x += expr`, `x *= expr`, etc.) on scalar variables evaluating
   the RHS expression twice, generating redundant loads and arithmetic in compiled kernels
   ([GH-1230](https://github.com/NVIDIA/warp/issues/1230)).
+- `warp.fem`: Fix invalid memory accesses with irregular point-based function spaces.
 
 ### Documentation
 
