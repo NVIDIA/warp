@@ -188,6 +188,9 @@ class float_base(scalar_base):
         return hash(float(self))
 
 
+float_cmp_types = (float, float_base)
+
+
 class int_base(scalar_base):
     def __index__(self) -> int:
         return int(self._type_(self.value).value)
@@ -200,36 +203,48 @@ class int_base(scalar_base):
 
     def __eq__(self, x):
         try:
+            if isinstance(x, float_cmp_types):
+                return float(self) == float(x)
             return int(self) == int(x)
         except (TypeError, ValueError):
             return NotImplemented
 
     def __ne__(self, x):
         try:
+            if isinstance(x, float_cmp_types):
+                return float(self) != float(x)
             return int(self) != int(x)
         except (TypeError, ValueError):
             return NotImplemented
 
     def __ge__(self, x):
         try:
+            if isinstance(x, float_cmp_types):
+                return float(self) >= float(x)
             return int(self) >= int(x)
         except (TypeError, ValueError):
             return NotImplemented
 
     def __gt__(self, x):
         try:
+            if isinstance(x, float_cmp_types):
+                return float(self) > float(x)
             return int(self) > int(x)
         except (TypeError, ValueError):
             return NotImplemented
 
     def __le__(self, x):
         try:
+            if isinstance(x, float_cmp_types):
+                return float(self) <= float(x)
             return int(self) <= int(x)
         except (TypeError, ValueError):
             return NotImplemented
 
     def __lt__(self, x):
         try:
+            if isinstance(x, float_cmp_types):
+                return float(self) < float(x)
             return int(self) < int(x)
         except (TypeError, ValueError):
             return NotImplemented

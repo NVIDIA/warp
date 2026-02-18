@@ -778,6 +778,45 @@ class TestTypes(unittest.TestCase):
         self.assertIn("vec2i", result)
         self.assertGreater(len(result), 0)
 
+    def test_int_float_comparison(self):
+        for int_type in wp._src.types.int_types:
+            with self.subTest(int_type=int_type):
+                one = int_type(1)
+                two = int_type(2)
+
+                # Equality must not truncate floats.
+                self.assertNotEqual(one, 1.5)
+                self.assertEqual(one, 1.0)
+
+                # Ordering operators.
+                self.assertLess(one, 1.5)
+                self.assertLessEqual(one, 1.5)
+                self.assertLessEqual(one, 1.0)
+                self.assertGreater(two, 1.5)
+                self.assertGreaterEqual(two, 1.5)
+                self.assertGreaterEqual(two, 2.0)
+
+                # Comparisons with Warp float scalars.
+                self.assertNotEqual(one, wp.float32(1.5))
+                self.assertEqual(one, wp.float32(1.0))
+
+                # Int-to-int comparison still works.
+                self.assertEqual(one, 1)
+                self.assertNotEqual(one, 2)
+
+                # Hash/eq contract: equal values must have equal hashes.
+                self.assertEqual(hash(one), hash(1.0))
+                self.assertNotEqual(hash(one), hash(1.5))
+
+                # Sets must treat int8(1) and 1.5 as distinct.
+                self.assertEqual(len({one, 1.5}), 2)
+                # Sets must treat int8(1) and 1.0 as equal.
+                self.assertEqual(len({one, 1.0}), 1)
+
+                # Infinity must not crash.
+                self.assertNotEqual(one, float("inf"))
+                self.assertLess(one, float("inf"))
+
 
 for dtype in wp._src.types.int_types:
     add_function_test(TestTypes, f"test_integers_{dtype.__name__}", test_integers, devices=devices, dtype=dtype)
