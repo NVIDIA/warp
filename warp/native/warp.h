@@ -194,6 +194,7 @@ WP_API const char* wp_volume_get_blind_data_info(
 // filter_mode: 0=nearest, 1=linear
 // address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
 // use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
+// surface_access: if true, allocate CUDA array with surface load/store support
 WP_API bool wp_texture2d_create_device(
     void* context,
     int width,
@@ -204,6 +205,7 @@ WP_API bool wp_texture2d_create_device(
     int address_mode_u,
     int address_mode_v,
     bool use_normalized_coords,
+    bool surface_access,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -242,6 +244,7 @@ WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
 // filter_mode: 0=nearest, 1=linear
 // address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
 // use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
+// surface_access: if true, allocate CUDA array with surface load/store support
 WP_API bool wp_texture3d_create_device(
     void* context,
     int width,
@@ -254,6 +257,7 @@ WP_API bool wp_texture3d_create_device(
     int address_mode_v,
     int address_mode_w,
     bool use_normalized_coords,
+    bool surface_access,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -284,6 +288,52 @@ WP_API bool wp_texture3d_create_host(
     uint64_t* tex_handle_out
 );
 WP_API void wp_texture3d_destroy_host(uint64_t tex_handle);
+
+// CUDA texture-array interop helpers (device).
+// These use CUDA device-to-device copies and are useful for interop pipelines
+// that consume CUDA arrays/texture/surface objects (e.g., denoisers/upscalers).
+WP_API bool wp_texture2d_copy_from_array_device(
+    void* context,
+    void* stream,
+    uint64_t dst_array_handle,
+    uint64_t src_ptr,
+    size_t src_pitch,
+    size_t width_bytes,
+    size_t height
+);
+WP_API bool wp_texture2d_copy_to_array_device(
+    void* context,
+    void* stream,
+    uint64_t dst_ptr,
+    size_t dst_pitch,
+    uint64_t src_array_handle,
+    size_t width_bytes,
+    size_t height
+);
+WP_API bool wp_texture3d_copy_from_array_device(
+    void* context,
+    void* stream,
+    uint64_t dst_array_handle,
+    uint64_t src_ptr,
+    size_t src_pitch,
+    size_t src_height,
+    size_t width_bytes,
+    size_t height,
+    size_t depth
+);
+WP_API bool wp_texture3d_copy_to_array_device(
+    void* context,
+    void* stream,
+    uint64_t dst_ptr,
+    size_t dst_pitch,
+    size_t dst_height,
+    uint64_t src_array_handle,
+    size_t width_bytes,
+    size_t height,
+    size_t depth
+);
+WP_API bool wp_texture_array_create_surface_device(void* context, uint64_t array_handle, uint64_t* surface_handle_out);
+WP_API void wp_texture_array_destroy_surface_device(void* context, uint64_t surface_handle);
 
 WP_API uint64_t wp_marching_cubes_create_device(void* context);
 WP_API void wp_marching_cubes_destroy_device(uint64_t id);

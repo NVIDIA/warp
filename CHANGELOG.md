@@ -41,6 +41,9 @@
   ([GH-1178](https://github.com/NVIDIA/warp/issues/1178)).
 - Add `wp.float16` and `wp.float64` support for `wp.HashGrid` ([GH-1007](https://github.com/NVIDIA/warp/issues/1007),
   [GH-1168](https://github.com/NVIDIA/warp/issues/1168)).
+- Add CUDA texture interop APIs for 2D/3D textures, including array copy helpers and
+  surface handle access for external integration workflows
+  ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
 
 ### Removed
 
@@ -73,6 +76,9 @@
   Pass a tuple of 2D arrays `(cell_indices, coords, particle_fraction)` to specify per-particle cell contributions.
 - `wp.synchronize_stream()` no longer raises an exception when device is CPU.
   ([GH-1225](https://github.com/NVIDIA/warp/issues/1225)).
+- Keep `Texture.id` as a device-independent texture handle, and make `Texture.cuda_texture`
+  CUDA-only with a clear error on host textures to avoid ambiguity
+  ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
 
 ### Fixed
 
@@ -93,6 +99,8 @@
   the RHS expression twice, generating redundant loads and arithmetic in compiled kernels
   ([GH-1230](https://github.com/NVIDIA/warp/issues/1230)).
 - `warp.fem`: Fix invalid memory accesses with irregular point-based function spaces.
+- Fix CUDA texture-array copy helpers to enqueue async copies on the active stream so they are
+  compatible with CUDA graph capture workflows ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
 
 ### Documentation
 
