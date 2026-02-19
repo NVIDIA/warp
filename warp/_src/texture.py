@@ -264,19 +264,17 @@ class Texture:
     def _detect_dims(self, data, depth: int) -> int:
         """Auto-detect texture dimensionality from data or depth parameter."""
         if data is not None:
-            if isinstance(data, np.ndarray):
-                np_data = data
-            elif is_array(data):
-                np_data = data.numpy()
+            if isinstance(data, np.ndarray) or is_array(data):
+                ndim = data.ndim
+                shape = data.shape
             else:
                 raise TypeError("data must be a NumPy array or Warp array")
 
-            ndim = np_data.ndim
             if ndim == 4:
                 return 3  # (depth, height, width, channels)
             elif ndim == 3:
                 # Could be (height, width, channels) for 2D or (depth, height, width) for 3D
-                if np_data.shape[-1] not in (1, 2, 4):
+                if shape[-1] not in (1, 2, 4):
                     return 3  # Last dim is not a valid channel count, so must be 3D
                 else:
                     # Ambiguous case: last dim could be channels (for 2D) or width (for 3D)
@@ -284,10 +282,10 @@ class Texture:
                     from warp._src.utils import warn  # noqa: PLC0415
 
                     warn(
-                        f"Ambiguous array shape {np_data.shape}: could be interpreted as 2D texture "
-                        f"with shape (height={np_data.shape[0]}, width={np_data.shape[1]}, "
-                        f"channels={np_data.shape[2]}) or 3D texture with shape "
-                        f"(depth={np_data.shape[0]}, height={np_data.shape[1]}, width={np_data.shape[2]}). "
+                        f"Ambiguous array shape {shape}: could be interpreted as 2D texture "
+                        f"with shape (height={shape[0]}, width={shape[1]}, "
+                        f"channels={shape[2]}) or 3D texture with shape "
+                        f"(depth={shape[0]}, height={shape[1]}, width={shape[2]}). "
                         f"Defaulting to 3D. Use dims=2 parameter or Texture2D class for 2D textures.",
                         stacklevel=3,
                     )
