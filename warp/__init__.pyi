@@ -143,6 +143,8 @@ from warp._src.texture import TextureAddressMode as TextureAddressMode
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
+from warp._src.types import HashGridQueryD as HashGridQueryD
+from warp._src.types import HashGridQueryH as HashGridQueryH
 from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
@@ -4524,15 +4526,49 @@ def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32
     """Evaluate the velocity on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
     ...
 
+@over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`.
 
-    This query can be used to iterate over all neighboring point within a fixed radius from the query point.
+    This query can be used to iterate over all neighboring points within a fixed radius from the query point.
     """
     ...
 
+@over
+def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQueryH:
+    """Construct a point query against a :class:`warp.HashGrid` (float16 precision).
+
+    This query can be used to iterate over all neighboring points within a fixed radius from the query point.
+    """
+    ...
+
+@over
+def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQueryD:
+    """Construct a point query against a :class:`warp.HashGrid` (float64 precision).
+
+    This query can be used to iterate over all neighboring points within a fixed radius from the query point.
+    """
+    ...
+
+@over
 def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     """Move to the next point in the hash grid query.
+
+    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+    """
+    ...
+
+@over
+def hash_grid_query_next(query: HashGridQueryH, index: int32) -> bool:
+    """Move to the next point in the hash grid query (float16 precision).
+
+    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+    """
+    ...
+
+@over
+def hash_grid_query_next(query: HashGridQueryD, index: int32) -> bool:
+    """Move to the next point in the hash grid query (float64 precision).
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
     """

@@ -39,6 +39,8 @@
   ([GH-1228](https://github.com/NVIDIA/warp/issues/1228)).
 - Add `wp.tile_from_thread()`, which broadcasts a value from a particular thread to all threads in the block.
   ([GH-1178](https://github.com/NVIDIA/warp/issues/1178)).
+- Add `wp.float16` and `wp.float64` support for `wp.HashGrid` ([GH-1007](https://github.com/NVIDIA/warp/issues/1007),
+  [GH-1168](https://github.com/NVIDIA/warp/issues/1168)).
 
 ### Removed
 

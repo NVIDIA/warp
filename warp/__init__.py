@@ -194,6 +194,8 @@ from warp._src.texture import TextureAddressMode as TextureAddressMode
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
+from warp._src.types import HashGridQueryD as HashGridQueryD
+from warp._src.types import HashGridQueryH as HashGridQueryH
 from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint

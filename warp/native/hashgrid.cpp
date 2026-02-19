@@ -22,44 +22,90 @@
 #include "sort.h"
 #include "string.h"
 
+#include <cstddef>
+
 using namespace wp;
+
+// Verify that type-independent fields are at the same offset in all HashGrid_t instantiations.
+// This is required for hash_grid_point_id() to work without knowing the grid's scalar type.
+static_assert(
+    offsetof(HashGrid, point_cells) == offsetof(HashGridH, point_cells),
+    "HashGrid point_cells offset mismatch between float and half"
+);
+static_assert(
+    offsetof(HashGrid, point_cells) == offsetof(HashGridD, point_cells),
+    "HashGrid point_cells offset mismatch between float and double"
+);
+static_assert(
+    offsetof(HashGrid, point_ids) == offsetof(HashGridH, point_ids),
+    "HashGrid point_ids offset mismatch between float and half"
+);
+static_assert(
+    offsetof(HashGrid, point_ids) == offsetof(HashGridD, point_ids),
+    "HashGrid point_ids offset mismatch between float and double"
+);
 
 #include <map>
 
 namespace {
-// host-side copy of mesh descriptors, maps GPU mesh address (id) to a CPU desc
-std::map<uint64_t, HashGrid> g_hash_grid_descriptors;
+// host-side copy of hash grid descriptors, maps GPU hash grid address (id) to a CPU desc
+// separate maps for each precision type
+std::map<uint64_t, HashGrid> g_hash_grid_descriptors_f;
+std::map<uint64_t, HashGridH> g_hash_grid_descriptors_h;
+std::map<uint64_t, HashGridD> g_hash_grid_descriptors_d;
 
 }  // anonymous namespace
 
 
 namespace wp {
 
-bool hash_grid_get_descriptor(uint64_t id, HashGrid& grid)
+// Templated descriptor access functions
+template <typename Type> std::map<uint64_t, HashGrid_t<Type>>& get_descriptor_map();
+
+template <> std::map<uint64_t, HashGrid>& get_descriptor_map<float>() { return g_hash_grid_descriptors_f; }
+
+template <> std::map<uint64_t, HashGridH>& get_descriptor_map<half>() { return g_hash_grid_descriptors_h; }
+
+template <> std::map<uint64_t, HashGridD>& get_descriptor_map<double>() { return g_hash_grid_descriptors_d; }
+
+template <typename Type> bool hash_grid_get_descriptor(uint64_t id, HashGrid_t<Type>& grid)
 {
-    const auto& iter = g_hash_grid_descriptors.find(id);
-    if (iter == g_hash_grid_descriptors.end())
+    auto& descriptors = get_descriptor_map<Type>();
+    const auto& iter = descriptors.find(id);
+    if (iter == descriptors.end())
         return false;
     else
         grid = iter->second;
     return true;
 }
 
-void hash_grid_add_descriptor(uint64_t id, const HashGrid& grid) { g_hash_grid_descriptors[id] = grid; }
+template <typename Type> void hash_grid_add_descriptor(uint64_t id, const HashGrid_t<Type>& grid)
+{
+    auto& descriptors = get_descriptor_map<Type>();
+    descriptors[id] = grid;
+}
 
-void hash_grid_rem_descriptor(uint64_t id) { g_hash_grid_descriptors.erase(id); }
+template <typename Type> void hash_grid_rem_descriptor(uint64_t id)
+{
+    auto& descriptors = get_descriptor_map<Type>();
+    descriptors.erase(id);
+}
 
 // implemented in hashgrid.cu
-void hash_grid_rebuild_device(const HashGrid& grid, const wp::array_t<wp::vec3>& points);
+template <typename Type>
+void hash_grid_rebuild_device(const HashGrid_t<Type>& grid, const wp::array_t<vec_t<3, Type>>& points);
 
 }  // namespace wp
 
 
-// host methods
-uint64_t wp_hash_grid_create_host(int dim_x, int dim_y, int dim_z)
+// =============================================================================
+// Host methods - templated implementation
+// =============================================================================
+
+template <typename Type> uint64_t hash_grid_create_host_impl(int dim_x, int dim_y, int dim_z)
 {
-    HashGrid* grid = new HashGrid();
-    memset(grid, 0, sizeof(HashGrid));
+    HashGrid_t<Type>* grid = new HashGrid_t<Type>();
+    memset(grid, 0, sizeof(HashGrid_t<Type>));
 
     grid->dim_x = dim_x;
     grid->dim_y = dim_y;
@@ -72,9 +118,9 @@ uint64_t wp_hash_grid_create_host(int dim_x, int dim_y, int dim_z)
     return (uint64_t)(grid);
 }
 
-void wp_hash_grid_destroy_host(uint64_t id)
+template <typename Type> void hash_grid_destroy_host_impl(uint64_t id)
 {
-    HashGrid* grid = (HashGrid*)(id);
+    HashGrid_t<Type>* grid = (HashGrid_t<Type>*)(id);
 
     wp_free_host(grid->point_ids);
     wp_free_host(grid->point_cells);
@@ -84,9 +130,9 @@ void wp_hash_grid_destroy_host(uint64_t id)
     delete grid;
 }
 
-void wp_hash_grid_reserve_host(uint64_t id, int num_points)
+template <typename Type> void hash_grid_reserve_host_impl(uint64_t id, int num_points)
 {
-    HashGrid* grid = (HashGrid*)(id);
+    HashGrid_t<Type>* grid = (HashGrid_t<Type>*)(id);
 
     if (num_points > grid->max_points) {
         wp_free_host(grid->point_cells);
@@ -102,7 +148,8 @@ void wp_hash_grid_reserve_host(uint64_t id, int num_points)
     grid->num_points = num_points;
 }
 
-void wp_hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
+template <typename Type>
+void hash_grid_update_host_impl(uint64_t id, Type cell_width, const wp::array_t<vec_t<3, Type>>* points)
 {
     // Python enforces this, but let's be defensive anyways
     if (!points || points->ndim != 1) {
@@ -115,17 +162,17 @@ void wp_hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<w
         return;
     }
 
-    HashGrid* grid = (HashGrid*)(id);
+    HashGrid_t<Type>* grid = (HashGrid_t<Type>*)(id);
     int num_points = points->shape[0];
 
-    wp_hash_grid_reserve_host(id, num_points);
+    hash_grid_reserve_host_impl<Type>(id, num_points);
 
     grid->cell_width = cell_width;
-    grid->cell_width_inv = 1.0f / cell_width;
+    grid->cell_width_inv = Type(1) / cell_width;
 
     // calculate cell for each position
     for (int i = 0; i < num_points; ++i) {
-        const vec3& point = wp::index(*points, i);
+        const vec_t<3, Type>& point = wp::index(*points, i);
         grid->point_cells[i] = hash_grid_index(*grid, point);
         grid->point_ids[i] = i;
     }
@@ -159,13 +206,16 @@ void wp_hash_grid_update_host(uint64_t id, float cell_width, const wp::array_t<w
     }
 }
 
-// device methods
-uint64_t wp_hash_grid_create_device(void* context, int dim_x, int dim_y, int dim_z)
+// =============================================================================
+// Device methods - templated implementation
+// =============================================================================
+
+template <typename Type> uint64_t hash_grid_create_device_impl(void* context, int dim_x, int dim_y, int dim_z)
 {
     ContextGuard guard(context);
 
-    HashGrid grid;
-    memset(&grid, 0, sizeof(HashGrid));
+    HashGrid_t<Type> grid;
+    memset(&grid, 0, sizeof(HashGrid_t<Type>));
 
     grid.context = context ? context : wp_cuda_context_get_current();
 
@@ -178,8 +228,8 @@ uint64_t wp_hash_grid_create_device(void* context, int dim_x, int dim_y, int dim
     grid.cell_ends = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells * sizeof(int));
 
     // upload to device
-    HashGrid* grid_device = (HashGrid*)(wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid)));
-    wp_memcpy_h2d(WP_CURRENT_CONTEXT, grid_device, &grid, sizeof(HashGrid));
+    HashGrid_t<Type>* grid_device = (HashGrid_t<Type>*)(wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid_t<Type>)));
+    wp_memcpy_h2d(WP_CURRENT_CONTEXT, grid_device, &grid, sizeof(HashGrid_t<Type>));
 
     uint64_t grid_id = (uint64_t)(grid_device);
     hash_grid_add_descriptor(grid_id, grid);
@@ -187,9 +237,9 @@ uint64_t wp_hash_grid_create_device(void* context, int dim_x, int dim_y, int dim
     return grid_id;
 }
 
-void wp_hash_grid_destroy_device(uint64_t id)
+template <typename Type> void hash_grid_destroy_device_impl(uint64_t id)
 {
-    HashGrid grid;
+    HashGrid_t<Type> grid;
     if (hash_grid_get_descriptor(id, grid)) {
         ContextGuard guard(grid.context);
 
@@ -198,16 +248,16 @@ void wp_hash_grid_destroy_device(uint64_t id)
         wp_free_device(WP_CURRENT_CONTEXT, grid.cell_starts);
         wp_free_device(WP_CURRENT_CONTEXT, grid.cell_ends);
 
-        wp_free_device(WP_CURRENT_CONTEXT, (HashGrid*)id);
+        wp_free_device(WP_CURRENT_CONTEXT, (HashGrid_t<Type>*)id);
 
-        hash_grid_rem_descriptor(id);
+        hash_grid_rem_descriptor<Type>(id);
     }
 }
 
 
-void wp_hash_grid_reserve_device(uint64_t id, int num_points)
+template <typename Type> void hash_grid_reserve_device_impl(uint64_t id, int num_points)
 {
-    HashGrid grid;
+    HashGrid_t<Type> grid;
 
     if (hash_grid_get_descriptor(id, grid)) {
         if (num_points > grid.max_points) {
@@ -231,10 +281,10 @@ void wp_hash_grid_reserve_device(uint64_t id, int num_points)
 
             // update device side grid descriptor, todo: this is
             // slightly redundant since it is performed again
-            // inside wp_hash_grid_update_device(), but since
+            // inside hash_grid_update_device_impl(), but since
             // reserve can be called from Python we need to make
             // sure it is consistent
-            wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
+            wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid_t<Type>*)id, &grid, sizeof(HashGrid_t<Type>));
 
             // update host side grid descriptor
             hash_grid_add_descriptor(id, grid);
@@ -242,7 +292,10 @@ void wp_hash_grid_reserve_device(uint64_t id, int num_points)
     }
 }
 
-void wp_hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t<wp::vec3>* points)
+// Note: For device update, we use a static local variable for CUDA graph compatibility.
+// We need separate static variables for each type to avoid aliasing issues.
+template <typename Type>
+void hash_grid_update_device_impl(uint64_t id, Type cell_width, const wp::array_t<vec_t<3, Type>>* points)
 {
     // Python enforces this, but let's be defensive anyways
     if (!points || points->ndim != 1) {
@@ -255,35 +308,189 @@ void wp_hash_grid_update_device(uint64_t id, float cell_width, const wp::array_t
     // ensure we have enough memory reserved for update
     // this must be done before retrieving the descriptor
     // below since it may update it
-    wp_hash_grid_reserve_device(id, num_points);
+    hash_grid_reserve_device_impl<Type>(id, num_points);
 
     // host grid must be static so that we can
     // perform host->device memcpy from this variable
     // and have it safely recorded inside CUDA graphs
-    static HashGrid grid;
+    static HashGrid_t<Type> grid;
 
     if (hash_grid_get_descriptor(id, grid)) {
         ContextGuard guard(grid.context);
 
         grid.num_points = num_points;
         grid.cell_width = cell_width;
-        grid.cell_width_inv = 1.0f / cell_width;
+        grid.cell_width_inv = Type(1) / cell_width;
 
         hash_grid_rebuild_device(grid, *points);
 
         // update device side grid descriptor
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid*)id, &grid, sizeof(HashGrid));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid_t<Type>*)id, &grid, sizeof(HashGrid_t<Type>));
 
         // update host side grid descriptor
         hash_grid_add_descriptor(id, grid);
     }
 }
 
+// =============================================================================
+// Exported API
+// =============================================================================
+
+enum HashGridTypeId {
+    HASH_GRID_TYPE_FLOAT16 = 0,
+    HASH_GRID_TYPE_FLOAT32 = 1,
+    HASH_GRID_TYPE_FLOAT64 = 2,
+};
+
+uint64_t wp_hash_grid_create_host(int type, int dim_x, int dim_y, int dim_z)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        return hash_grid_create_host_impl<half>(dim_x, dim_y, dim_z);
+    case HASH_GRID_TYPE_FLOAT32:
+        return hash_grid_create_host_impl<float>(dim_x, dim_y, dim_z);
+    case HASH_GRID_TYPE_FLOAT64:
+        return hash_grid_create_host_impl<double>(dim_x, dim_y, dim_z);
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+        return 0;
+    }
+}
+
+void wp_hash_grid_destroy_host(uint64_t id, int type)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        hash_grid_destroy_host_impl<half>(id);
+        break;
+    case HASH_GRID_TYPE_FLOAT32:
+        hash_grid_destroy_host_impl<float>(id);
+        break;
+    case HASH_GRID_TYPE_FLOAT64:
+        hash_grid_destroy_host_impl<double>(id);
+        break;
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+    }
+}
+
+void wp_hash_grid_update_host(uint64_t id, int type, double cell_width, const void* points)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        hash_grid_update_host_impl<half>(id, half(cell_width), (const wp::array_t<wp::vec3h>*)points);
+        break;
+    case HASH_GRID_TYPE_FLOAT32:
+        hash_grid_update_host_impl<float>(id, float(cell_width), (const wp::array_t<wp::vec3f>*)points);
+        break;
+    case HASH_GRID_TYPE_FLOAT64:
+        hash_grid_update_host_impl<double>(id, cell_width, (const wp::array_t<wp::vec3d>*)points);
+        break;
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+    }
+}
+
+void wp_hash_grid_reserve_host(uint64_t id, int type, int num_points)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        hash_grid_reserve_host_impl<half>(id, num_points);
+        break;
+    case HASH_GRID_TYPE_FLOAT32:
+        hash_grid_reserve_host_impl<float>(id, num_points);
+        break;
+    case HASH_GRID_TYPE_FLOAT64:
+        hash_grid_reserve_host_impl<double>(id, num_points);
+        break;
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+    }
+}
+
+uint64_t wp_hash_grid_create_device(void* context, int type, int dim_x, int dim_y, int dim_z)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        return hash_grid_create_device_impl<half>(context, dim_x, dim_y, dim_z);
+    case HASH_GRID_TYPE_FLOAT32:
+        return hash_grid_create_device_impl<float>(context, dim_x, dim_y, dim_z);
+    case HASH_GRID_TYPE_FLOAT64:
+        return hash_grid_create_device_impl<double>(context, dim_x, dim_y, dim_z);
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+        return 0;
+    }
+}
+
+void wp_hash_grid_destroy_device(uint64_t id, int type)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        hash_grid_destroy_device_impl<half>(id);
+        break;
+    case HASH_GRID_TYPE_FLOAT32:
+        hash_grid_destroy_device_impl<float>(id);
+        break;
+    case HASH_GRID_TYPE_FLOAT64:
+        hash_grid_destroy_device_impl<double>(id);
+        break;
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+    }
+}
+
+void wp_hash_grid_update_device(uint64_t id, int type, double cell_width, const void* points)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        hash_grid_update_device_impl<half>(id, half(cell_width), (const wp::array_t<wp::vec3h>*)points);
+        break;
+    case HASH_GRID_TYPE_FLOAT32:
+        hash_grid_update_device_impl<float>(id, float(cell_width), (const wp::array_t<wp::vec3f>*)points);
+        break;
+    case HASH_GRID_TYPE_FLOAT64:
+        hash_grid_update_device_impl<double>(id, cell_width, (const wp::array_t<wp::vec3d>*)points);
+        break;
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+    }
+}
+
+void wp_hash_grid_reserve_device(uint64_t id, int type, int num_points)
+{
+    switch (type) {
+    case HASH_GRID_TYPE_FLOAT16:
+        hash_grid_reserve_device_impl<half>(id, num_points);
+        break;
+    case HASH_GRID_TYPE_FLOAT32:
+        hash_grid_reserve_device_impl<float>(id, num_points);
+        break;
+    case HASH_GRID_TYPE_FLOAT64:
+        hash_grid_reserve_device_impl<double>(id, num_points);
+        break;
+    default:
+        fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
+    }
+}
+
+// =============================================================================
+// Stub implementations when CUDA is disabled
+// =============================================================================
+
 #if !WP_ENABLE_CUDA
 
 namespace wp {
 
-void hash_grid_rebuild_device(const HashGrid& grid, const wp::array_t<wp::vec3>& points) { }
+template <typename Type>
+void hash_grid_rebuild_device(const HashGrid_t<Type>& grid, const wp::array_t<vec_t<3, Type>>& points)
+{
+}
+
+// Explicit instantiations
+template void hash_grid_rebuild_device<half>(const HashGrid_t<half>&, const wp::array_t<vec_t<3, half>>&);
+template void hash_grid_rebuild_device<float>(const HashGrid_t<float>&, const wp::array_t<vec_t<3, float>>&);
+template void hash_grid_rebuild_device<double>(const HashGrid_t<double>&, const wp::array_t<vec_t<3, double>>&);
 
 }  // namespace wp
 
