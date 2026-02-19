@@ -4262,17 +4262,34 @@ class Runtime:
             self.core.wp_mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
             self.core.wp_mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
 
-            self.core.wp_hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            # Hash grid (type arg matches HashGridTypeId enum in hashgrid.cpp)
+            self.core.wp_hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.wp_hash_grid_create_host.restype = ctypes.c_uint64
-            self.core.wp_hash_grid_destroy_host.argtypes = [ctypes.c_uint64]
-            self.core.wp_hash_grid_update_host.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
-            self.core.wp_hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_hash_grid_destroy_host.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_hash_grid_update_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_double,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_int]
 
-            self.core.wp_hash_grid_create_device.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.core.wp_hash_grid_create_device.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
             self.core.wp_hash_grid_create_device.restype = ctypes.c_uint64
-            self.core.wp_hash_grid_destroy_device.argtypes = [ctypes.c_uint64]
-            self.core.wp_hash_grid_update_device.argtypes = [ctypes.c_uint64, ctypes.c_float, ctypes.c_void_p]
-            self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_hash_grid_destroy_device.argtypes = [ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_hash_grid_update_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_double,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_int]
 
             self.core.wp_volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.wp_volume_create_host.restype = ctypes.c_uint64
@@ -8831,6 +8848,8 @@ def export_functions_rst(file):  # pragma: no cover
         ("mesh_query_point", "MeshQueryPoint"),
         ("mesh_query_ray", "MeshQueryRay"),
         ("hash_grid_query", "HashGridQuery"),
+        ("hash_grid_query", "HashGridQueryH"),
+        ("hash_grid_query", "HashGridQueryD"),
     )
 
     for k, g in groups.items():

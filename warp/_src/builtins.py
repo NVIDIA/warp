@@ -7110,29 +7110,40 @@ add_builtin(
     export=False,
 )
 
-add_builtin(
-    "hash_grid_query",
-    input_types={"id": uint64, "point": vec3, "max_dist": float},
-    value_type=HashGridQuery,
-    group="Geometry",
-    doc="""Construct a point query against a :class:`warp.HashGrid`.
 
-    This query can be used to iterate over all neighboring point within a fixed radius from the query point.""",
-    export=False,
-    is_differentiable=False,
-)
+# Hash grid query builtins for all precisions (float16, float32, float64)
+def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_doc=""):
+    """Register hash_grid_query and hash_grid_query_next builtins for a given precision."""
+    doc_suffix = f" ({precision_doc} precision)" if precision_doc else ""
 
-add_builtin(
-    "hash_grid_query_next",
-    input_types={"query": HashGridQuery, "index": int},
-    value_type=builtins.bool,
-    group="Geometry",
-    doc="""Move to the next point in the hash grid query.
+    add_builtin(
+        "hash_grid_query",
+        input_types={"id": uint64, "point": vec_type, "max_dist": scalar_type},
+        value_type=query_type,
+        group="Geometry",
+        doc=f"""Construct a point query against a :class:`warp.HashGrid`{doc_suffix}.
+
+    This query can be used to iterate over all neighboring points within a fixed radius from the query point.""",
+        export=False,
+        is_differentiable=False,
+    )
+
+    add_builtin(
+        "hash_grid_query_next",
+        input_types={"query": query_type, "index": int},
+        value_type=builtins.bool,
+        group="Geometry",
+        doc=f"""Move to the next point in the hash grid query{doc_suffix}.
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
-    export=False,
-    is_differentiable=False,
-)
+        export=False,
+        is_differentiable=False,
+    )
+
+
+_add_hash_grid_query_builtins(vec3, float, HashGridQuery)
+_add_hash_grid_query_builtins(vec3h, float16, HashGridQueryH, "float16")
+_add_hash_grid_query_builtins(vec3d, float64, HashGridQueryD, "float64")
 
 add_builtin(
     "hash_grid_point_id",
@@ -7280,15 +7291,16 @@ add_builtin(
     hidden=True,
     is_differentiable=False,
 )
-add_builtin(
-    "iter_next",
-    input_types={"query": HashGridQuery},
-    value_type=int,
-    group="Utility",
-    export=False,
-    hidden=True,
-    is_differentiable=False,
-)
+for query_type in (HashGridQuery, HashGridQueryH, HashGridQueryD):
+    add_builtin(
+        "iter_next",
+        input_types={"query": query_type},
+        value_type=int,
+        group="Utility",
+        export=False,
+        hidden=True,
+        is_differentiable=False,
+    )
 add_builtin(
     "iter_next",
     input_types={"query": MeshQueryAABB},

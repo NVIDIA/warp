@@ -25,12 +25,12 @@ extern CUcontext get_current_context();
 
 namespace wp {
 
-__global__ void compute_cell_indices(HashGrid grid, wp::array_t<wp::vec3> points)
+template <typename Type> __global__ void compute_cell_indices(HashGrid_t<Type> grid, wp::array_t<vec_t<3, Type>> points)
 {
     const int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (tid < points.shape[0]) {
-        const vec3& point = wp::index(points, tid);
+        const vec_t<3, Type>& point = wp::index(points, tid);
         grid.point_cells[tid] = hash_grid_index(grid, point);
         grid.point_ids[tid] = tid;
     }
@@ -62,13 +62,14 @@ __global__ void compute_cell_offsets(int* cell_starts, int* cell_ends, const int
     }
 }
 
-void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::array_t<wp::vec3>& points)
+template <typename Type>
+void hash_grid_rebuild_device(const wp::HashGrid_t<Type>& grid, const wp::array_t<vec_t<3, Type>>& points)
 {
     ContextGuard guard(grid.context);
 
     int num_points = points.shape[0];
 
-    wp_launch_device(WP_CURRENT_CONTEXT, wp::compute_cell_indices, num_points, (grid, points));
+    wp_launch_device(WP_CURRENT_CONTEXT, (wp::compute_cell_indices<Type>), num_points, (grid, points));
 
     radix_sort_pairs_device(WP_CURRENT_CONTEXT, grid.point_cells, grid.point_ids, num_points);
 
@@ -82,6 +83,11 @@ void hash_grid_rebuild_device(const wp::HashGrid& grid, const wp::array_t<wp::ve
         (grid.cell_starts, grid.cell_ends, grid.point_cells, num_points)
     );
 }
+
+// Explicit template instantiations
+template void hash_grid_rebuild_device<half>(const HashGrid_t<half>&, const array_t<vec_t<3, half>>&);
+template void hash_grid_rebuild_device<float>(const HashGrid_t<float>&, const array_t<vec_t<3, float>>&);
+template void hash_grid_rebuild_device<double>(const HashGrid_t<double>&, const array_t<vec_t<3, double>>&);
 
 
 }  // namespace wp

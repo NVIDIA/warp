@@ -19,10 +19,10 @@
 
 namespace wp {
 
-struct HashGrid {
-    float cell_width;
-    float cell_width_inv;
-
+// Note: Field order is important! Type-independent fields come first so that
+// point_ids is at a consistent offset regardless of Type. This allows
+// hash_grid_point_id to work without knowing the grid's scalar type.
+template <typename Type> struct HashGrid_t {
     int* point_cells { nullptr };  // cell id of a point
     int* point_ids { nullptr };  // index to original point
 
@@ -37,10 +37,19 @@ struct HashGrid {
     int max_points;
 
     void* context { nullptr };
+
+    // Type-dependent fields at end (different sizes for half/float/double)
+    Type cell_width;
+    Type cell_width_inv;
 };
 
+// Type aliases for backward compatibility and convenience
+using HashGrid = HashGrid_t<float>;
+using HashGridH = HashGrid_t<half>;
+using HashGridD = HashGrid_t<double>;
+
 // convert a virtual (world) cell coordinate to a physical one
-CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int z)
+template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid_t<Type>& grid, int x, int y, int z)
 {
     // offset to ensure positive coordinates (means grid dim should be less than 4096^3)
     const int origin = 1 << 20;
@@ -71,7 +80,7 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, int x, int y, int
     return cz * (grid.dim_x * grid.dim_y) + cy * grid.dim_x + cx;
 }
 
-CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, const vec3& p)
+template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid_t<Type>& grid, const vec_t<3, Type>& p)
 {
     return hash_grid_index(
         grid, int(p[0] * grid.cell_width_inv), int(p[1] * grid.cell_width_inv), int(p[2] * grid.cell_width_inv)
@@ -79,7 +88,7 @@ CUDA_CALLABLE inline int hash_grid_index(const HashGrid& grid, const vec3& p)
 }
 
 // stores state required to traverse neighboring cells of a point
-struct hash_grid_query_t {
+template <typename Type> struct hash_grid_query_t {
     CUDA_CALLABLE hash_grid_query_t()
         : x_start(0)
         , y_start(0)
@@ -119,25 +128,33 @@ struct hash_grid_query_t {
 
     int current;  // index of the current iterator value
 
-    HashGrid grid;
+    HashGrid_t<Type> grid;
 };
 
+// Type aliases for query structs
+using hash_grid_query_f = hash_grid_query_t<float>;
+using hash_grid_query_h = hash_grid_query_t<half>;
+using hash_grid_query_d = hash_grid_query_t<double>;
 
-CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos, float radius)
+
+template <typename Type>
+CUDA_CALLABLE inline hash_grid_query_t<Type> hash_grid_query(uint64_t id, vec_t<3, Type> pos, Type radius)
 {
-    hash_grid_query_t query;
+    hash_grid_query_t<Type> query;
 
-    query.grid = *(const HashGrid*)(id);
+    query.grid = *(const HashGrid_t<Type>*)(id);
 
-    // convert coordinate to grid
-    query.x_start = int((pos[0] - radius) * query.grid.cell_width_inv);
-    query.y_start = int((pos[1] - radius) * query.grid.cell_width_inv);
-    query.z_start = int((pos[2] - radius) * query.grid.cell_width_inv);
+    // convert coordinate to grid cell indices
+    Type cell_width_inv = query.grid.cell_width_inv;
+
+    query.x_start = int((pos[0] - radius) * cell_width_inv);
+    query.y_start = int((pos[1] - radius) * cell_width_inv);
+    query.z_start = int((pos[2] - radius) * cell_width_inv);
 
     // do not want to visit any cells more than once, so limit large radius offset to one pass over each dimension
-    query.x_end = min(int((pos[0] + radius) * query.grid.cell_width_inv), query.x_start + query.grid.dim_x - 1);
-    query.y_end = min(int((pos[1] + radius) * query.grid.cell_width_inv), query.y_start + query.grid.dim_y - 1);
-    query.z_end = min(int((pos[2] + radius) * query.grid.cell_width_inv), query.z_start + query.grid.dim_z - 1);
+    query.x_end = min(int((pos[0] + radius) * cell_width_inv), query.x_start + query.grid.dim_x - 1);
+    query.y_end = min(int((pos[1] + radius) * cell_width_inv), query.y_start + query.grid.dim_y - 1);
+    query.z_end = min(int((pos[2] + radius) * cell_width_inv), query.z_start + query.grid.dim_z - 1);
 
     query.x = query.x_start;
     query.y = query.y_start;
@@ -151,9 +168,9 @@ CUDA_CALLABLE inline hash_grid_query_t hash_grid_query(uint64_t id, wp::vec3 pos
 }
 
 
-CUDA_CALLABLE inline bool hash_grid_query_next(hash_grid_query_t& query, int& index)
+template <typename Type> CUDA_CALLABLE inline bool hash_grid_query_next(hash_grid_query_t<Type>& query, int& index)
 {
-    const HashGrid& grid = query.grid;
+    const HashGrid_t<Type>& grid = query.grid;
     if (!grid.point_cells)
         return false;
 
@@ -188,26 +205,30 @@ CUDA_CALLABLE inline bool hash_grid_query_next(hash_grid_query_t& query, int& in
     }
 }
 
-CUDA_CALLABLE inline int iter_next(hash_grid_query_t& query) { return query.current; }
+template <typename Type> CUDA_CALLABLE inline int iter_next(hash_grid_query_t<Type>& query) { return query.current; }
 
-CUDA_CALLABLE inline bool iter_cmp(hash_grid_query_t& query)
+template <typename Type> CUDA_CALLABLE inline bool iter_cmp(hash_grid_query_t<Type>& query)
 {
     bool finished = hash_grid_query_next(query, query.current);
     return finished;
 }
 
-CUDA_CALLABLE inline hash_grid_query_t iter_reverse(const hash_grid_query_t& query)
+template <typename Type> CUDA_CALLABLE inline hash_grid_query_t<Type> iter_reverse(const hash_grid_query_t<Type>& query)
 {
     // can't reverse grid queries, users should not rely on neighbor ordering
     return query;
 }
 
-CUDA_CALLABLE inline void
-adj_iter_reverse(const hash_grid_query_t& query, hash_grid_query_t& adj_query, hash_grid_query_t& adj_ret)
+template <typename Type>
+CUDA_CALLABLE inline void adj_iter_reverse(
+    const hash_grid_query_t<Type>& query, hash_grid_query_t<Type>& adj_query, hash_grid_query_t<Type>& adj_ret
+)
 {
 }
 
 
+// hash_grid_point_id is not templated because it only accesses point_ids (int*)
+// which is at the same offset in all HashGrid_t<Type> instantiations
 CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
 {
     const HashGrid* grid = (const HashGrid*)(id);
@@ -216,22 +237,26 @@ CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
     return grid->point_ids[index];
 }
 
+template <typename Type>
 CUDA_CALLABLE inline void adj_hash_grid_query(
     uint64_t id,
-    wp::vec3 pos,
-    float radius,
+    vec_t<3, Type> pos,
+    Type radius,
     uint64_t& adj_id,
-    wp::vec3& adj_pos,
-    float& adj_radius,
-    hash_grid_query_t& adj_res
+    vec_t<3, Type>& adj_pos,
+    Type& adj_radius,
+    hash_grid_query_t<Type>& adj_res
 )
 {
 }
+
+template <typename Type>
 CUDA_CALLABLE inline void adj_hash_grid_query_next(
-    hash_grid_query_t& query, int& index, hash_grid_query_t& adj_query, int& adj_index, bool& adj_res
+    hash_grid_query_t<Type>& query, int& index, hash_grid_query_t<Type>& adj_query, int& adj_index, bool& adj_res
 )
 {
 }
+
 CUDA_CALLABLE inline void
 adj_hash_grid_point_id(uint64_t id, int& index, uint64_t& adj_id, int& adj_index, int& adj_res)
 {

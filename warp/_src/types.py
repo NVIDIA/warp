@@ -1898,11 +1898,23 @@ class MeshQueryAABBTiled:
     _wp_native_name_ = "mesh_query_aabb_thread_block_t"
 
 
-# definition just for kernel type (cannot be a parameter), see hash_grid.h
+# definition just for kernel type (cannot be a parameter), see hashgrid.h
 class HashGridQuery:
-    """Object used to track state during neighbor traversal."""
+    """Object used to track state during neighbor traversal (float32)."""
 
-    _wp_native_name_ = "hash_grid_query_t"
+    _wp_native_name_ = "hash_grid_query_f"
+
+
+class HashGridQueryH:
+    """Object used to track state during neighbor traversal (float16)."""
+
+    _wp_native_name_ = "hash_grid_query_h"
+
+
+class HashGridQueryD:
+    """Object used to track state during neighbor traversal (float64)."""
+
+    _wp_native_name_ = "hash_grid_query_d"
 
 
 # maximum number of dimensions, must match array.h
@@ -6250,34 +6262,69 @@ class MeshQueryRay:
 
 
 class HashGrid:
-    """Hash-based spatial grid for accelerated neighbor queries on point data."""
+    """Hash-based spatial grid for accelerated neighbor queries on point data.
+
+    Supports float16, float32, and float64 precision via the ``dtype`` parameter.
+    """
+
+    # Native type IDs (must match HashGridTypeId enum in hashgrid.cpp)
+    _TYPE_FLOAT16 = 0
+    _TYPE_FLOAT32 = 1
+    _TYPE_FLOAT64 = 2
+
+    _dtype_map: ClassVar = {
+        float16: (vec3h, _TYPE_FLOAT16),
+        float32: (vec3f, _TYPE_FLOAT32),
+        float64: (vec3d, _TYPE_FLOAT64),
+    }
+
+    def _native_func(self, action):
+        """Get the appropriate native function for the given action."""
+        location = "host" if self.device.is_cpu else "device"
+        return getattr(self.runtime.core, f"wp_hash_grid_{action}_{location}")
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.id = None
         return instance
 
-    def __init__(self, dim_x, dim_y, dim_z, device=None):
+    def __init__(self, dim_x, dim_y, dim_z, device=None, dtype=None):
         """Class representing a hash grid object for accelerated point queries.
 
         Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
+            id: Unique identifier for this hash grid object, can be passed to kernels.
             device: Device this object lives on, all buffers must live on the same device.
+            dtype: Scalar data type (float16, float32, or float64).
+
+        Note:
+            ``float16`` grids have limited precision (~3.3 decimal digits, max ~65504).
+            Large coordinates or small cell widths may cause incorrect cell assignments.
 
         Args:
             dim_x (int): Number of cells in x-axis
             dim_y (int): Number of cells in y-axis
             dim_z (int): Number of cells in z-axis
+            device: Device to create the hash grid on
+            dtype: Scalar data type for point coordinates (default: float32)
         """
+        # Default to float32 for backward compatibility
+        if dtype is None:
+            dtype = float32
+
+        dtype_map = self._dtype_map
+        if dtype not in dtype_map:
+            raise TypeError(f"Unsupported dtype {dtype} for HashGrid. Supported types: float16, float32, float64")
+
+        self.dtype = dtype
+        self._vec_type, self._type_id = dtype_map[dtype]
 
         self.runtime = warp._src.context.runtime
-
         self.device = self.runtime.get_device(device)
 
         if self.device.is_cpu:
-            self.id = self.runtime.core.wp_hash_grid_create_host(dim_x, dim_y, dim_z)
+            self.id = self._native_func("create")(self._type_id, dim_x, dim_y, dim_z)
         else:
-            self.id = self.runtime.core.wp_hash_grid_create_device(self.device.context, dim_x, dim_y, dim_z)
+            self.id = self._native_func("create")(self.device.context, self._type_id, dim_x, dim_y, dim_z)
 
         # indicates whether the grid data has been reserved for use by a kernel
         self.reserved = False
@@ -6289,29 +6336,26 @@ class HashGrid:
         of points changes.
 
         Args:
-            points (:class:`warp.array`): Array of points of type :class:`warp.vec3`
+            points (:class:`warp.array`): Array of points matching the grid's dtype
+                (vec3h for float16, vec3/vec3f for float32, vec3d for float64)
             radius (float): The cell size to use for bucketing points, cells are cubes with edges of this width.
                             For best performance the radius used to construct the grid should match closely to
                             the radius used when performing queries.
         """
+        if not types_equal(points.dtype, self._vec_type):
+            raise TypeError(f"Hash grid points should have type {self._vec_type.__name__}, got {points.dtype}")
 
-        if not types_equal(points.dtype, warp.vec3):
-            raise TypeError("Hash grid points should have type warp.vec3")
+        if radius <= 0.0:
+            raise ValueError(f"Hash grid cell width must be positive, got {radius}")
 
         if points.ndim > 1:
             points = points.contiguous().flatten()
 
-        if self.device.is_cpu:
-            self.runtime.core.wp_hash_grid_update_host(self.id, radius, ctypes.byref(points.__ctype__()))
-        else:
-            self.runtime.core.wp_hash_grid_update_device(self.id, radius, ctypes.byref(points.__ctype__()))
+        self._native_func("update")(self.id, self._type_id, radius, ctypes.byref(points.__ctype__()))
         self.reserved = True
 
     def reserve(self, num_points):
-        if self.device.is_cpu:
-            self.runtime.core.wp_hash_grid_reserve_host(self.id, num_points)
-        else:
-            self.runtime.core.wp_hash_grid_reserve_device(self.id, num_points)
+        self._native_func("reserve")(self.id, self._type_id, num_points)
         self.reserved = True
 
     def __del__(self):
@@ -6320,11 +6364,11 @@ class HashGrid:
 
         try:
             if self.device.is_cpu:
-                self.runtime.core.wp_hash_grid_destroy_host(self.id)
+                self._native_func("destroy")(self.id, self._type_id)
             else:
                 # use CUDA context guard to avoid side effects during garbage collection
                 with self.device.context_guard:
-                    self.runtime.core.wp_hash_grid_destroy_device(self.id)
+                    self._native_func("destroy")(self.id, self._type_id)
         except (TypeError, AttributeError):
             # Suppress TypeError and AttributeError when callables become None during shutdown
             pass
@@ -6508,6 +6552,8 @@ simple_type_codes = {
     range_t: "rg",
     launch_bounds_t: "lb",
     HashGridQuery: "hgq",
+    HashGridQueryH: "hgqh",
+    HashGridQueryD: "hgqd",
     MeshQueryAABB: "mqa",
     MeshQueryPoint: "mqp",
     MeshQueryRay: "mqr",
