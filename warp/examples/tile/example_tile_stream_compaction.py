@@ -28,8 +28,6 @@
 #
 ###########################################################################
 
-import argparse
-
 import numpy as np
 
 import warp as wp
@@ -77,7 +75,6 @@ def stream_compaction_kernel(
         offset = wp.atomic_add(num_output, 0, block_count)
 
     # Broadcast the offset to all threads using tile_from_thread
-    # This uses only 1 element of shared memory for the broadcast
     offset_tile = wp.tile_from_thread(
         shape=TILE_SIZE,
         value=offset,
@@ -93,6 +90,8 @@ def stream_compaction_kernel(
 
 
 if __name__ == "__main__":
+    import argparse
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--device", type=str, default=None, help="Override the default Warp device.")
     args = parser.parse_known_args()[0]
