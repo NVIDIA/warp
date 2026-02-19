@@ -800,6 +800,15 @@ class TestTypes(unittest.TestCase):
                 self.assertNotEqual(one, wp.float32(1.5))
                 self.assertEqual(one, wp.float32(1.0))
 
+                # Comparisons with NumPy float scalars (including types
+                # that are not subclasses of Python float).
+                for np_float in (np.float16, np.float32, np.float64):
+                    with self.subTest(np_float=np_float):
+                        self.assertNotEqual(one, np_float(1.5))
+                        self.assertEqual(one, np_float(1.0))
+                        self.assertLess(one, np_float(1.5))
+                        self.assertGreater(two, np_float(1.5))
+
                 # Int-to-int comparison still works.
                 self.assertEqual(one, 1)
                 self.assertNotEqual(one, 2)

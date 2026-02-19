@@ -188,7 +188,7 @@ class float_base(scalar_base):
         return hash(float(self))
 
 
-float_cmp_types = (float, float_base)
+float_cmp_types = (float, float_base, np.floating)
 
 
 class int_base(scalar_base):
