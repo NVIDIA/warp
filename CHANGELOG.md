@@ -37,6 +37,8 @@
   (cuBLASDx) for `wp.tile_matmul()`, falling back to an optimized scalar GEMM. Avoids slow LTO
   compilation during development while keeping libmathdx available for Cholesky/FFT
   ([GH-1228](https://github.com/NVIDIA/warp/issues/1228)).
+- Add `wp.tile_from_thread()`, which broadcasts a value from a particular thread to all threads in the block.
+  ([GH-1178](https://github.com/NVIDIA/warp/issues/1178)).
 
 ### Removed
 

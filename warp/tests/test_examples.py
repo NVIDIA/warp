@@ -462,6 +462,11 @@ add_example_test(
     devices=test_devices,
     test_options={"headless": True, "num_frames": 10, "N": 128},
 )
+add_example_test(
+    TestTileExamples,
+    name="tile.example_tile_stream_compaction",
+    devices=cuda_test_devices,
+)
 
 
 if __name__ == "__main__":

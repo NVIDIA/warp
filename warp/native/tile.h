@@ -2038,6 +2038,37 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_full(T x
     return x;
 }
 
+// tile initialized from a specific thread's value (broadcasts value from thread_idx to all threads)
+template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_from_thread(T value, int thread_idx)
+{
+#if defined(__CUDA_ARCH__)
+    assert(thread_idx >= 0 && thread_idx < blockDim.x);
+
+    // Use a single shared memory element for the broadcast
+    __shared__ T scratch;
+
+    // Sync before writing to scratch (in case it was used by a previous operation)
+    WP_TILE_SYNC();
+
+    // The designated thread writes its value to shared memory
+    if (WP_TILE_THREAD_IDX == thread_idx) {
+        scratch = value;
+    }
+
+    // Sync to ensure the write is visible to all threads
+    WP_TILE_SYNC();
+
+    // All threads read the broadcast value
+    // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
+    return scratch;
+#else
+    // On CPU there's only one "thread" per kernel invocation,
+    // so just return the value directly
+    (void)thread_idx;  // unused on CPU
+    return value;
+#endif
+}
+
 // tile initialized with random integers
 template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng)
 {
