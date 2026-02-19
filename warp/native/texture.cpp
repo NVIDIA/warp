@@ -290,6 +290,7 @@ bool wp_texture2d_create_device(
     int address_mode_u,
     int address_mode_v,
     bool use_normalized_coords,
+    bool surface_access,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -315,16 +316,18 @@ bool wp_texture2d_create_device(
     CUarray_format format = get_cuda_format(dtype);
     int bytes_per_channel = get_bytes_per_channel(dtype);
 
-    // Create CUDA array descriptor
-    CUDA_ARRAY_DESCRIPTOR arr_desc = {};
+    // Use cuArray3DCreate() for 2D arrays so optional surface flags are supported.
+    CUDA_ARRAY3D_DESCRIPTOR arr_desc = {};
     arr_desc.Width = width;
     arr_desc.Height = height;
+    arr_desc.Depth = 0;
     arr_desc.Format = format;
     arr_desc.NumChannels = num_channels;
+    arr_desc.Flags = surface_access ? CUDA_ARRAY3D_SURFACE_LDST : 0;
 
-    // Create the array
+    // Create the 2D array
     CUarray cuda_array;
-    CUresult result = cuArrayCreate_f(&cuda_array, &arr_desc);
+    CUresult result = cuArray3DCreate_f(&cuda_array, &arr_desc);
     if (result != CUDA_SUCCESS) {
         return false;
     }
@@ -422,6 +425,7 @@ bool wp_texture3d_create_device(
     int address_mode_v,
     int address_mode_w,
     bool use_normalized_coords,
+    bool surface_access,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -454,7 +458,7 @@ bool wp_texture3d_create_device(
     arr_desc.Depth = depth;
     arr_desc.Format = format;
     arr_desc.NumChannels = num_channels;
-    arr_desc.Flags = 0;
+    arr_desc.Flags = surface_access ? CUDA_ARRAY3D_SURFACE_LDST : 0;
 
     // Create the 3D array
     CUarray cuda_array;
@@ -561,6 +565,7 @@ bool wp_texture2d_create_device(
     int address_mode_u,
     int address_mode_v,
     bool use_normalized_coords,
+    bool surface_access,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out
@@ -583,6 +588,7 @@ bool wp_texture3d_create_device(
     int address_mode_v,
     int address_mode_w,
     bool use_normalized_coords,
+    bool surface_access,
     const void* data,
     uint64_t* tex_handle_out,
     uint64_t* array_handle_out

@@ -588,6 +588,281 @@ def test_texture3d_resolution_query(test, device):
     )
 
 
+def test_texture2d_cuda_interop_handles(test, device):
+    """Test CUDA interop handles for 2D textures."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture2D(data, device=device)
+
+    test.assertGreater(tex.cuda_texture, 0)
+    test.assertGreater(tex.cuda_array, 0)
+
+
+def test_texture3d_cuda_interop_handles(test, device):
+    """Test CUDA interop handles for 3D textures."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture3D(data, device=device)
+
+    test.assertGreater(tex.cuda_texture, 0)
+    test.assertGreater(tex.cuda_array, 0)
+
+
+def test_texture_id_device_independent(test, device):
+    """Texture.id should be valid on both CPU and CUDA."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture2D(data, device=device)
+
+    test.assertGreater(tex.id, 0)
+    if device.is_cuda:
+        test.assertEqual(tex.id, tex.cuda_texture)
+    else:
+        with test.assertRaisesRegex(RuntimeError, "only supported for CUDA textures"):
+            _ = tex.cuda_texture
+
+
+def test_texture_handle_properties_host_vs_cuda(test, device):
+    """Validate texture handle properties for host and CUDA textures."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture3D(data, device=device)
+
+    test.assertGreater(tex.id, 0)
+    if device.is_cuda:
+        test.assertGreater(tex.cuda_texture, 0)
+        test.assertGreater(tex.cuda_array, 0)
+        with test.assertRaisesRegex(RuntimeError, "surface_access=True"):
+            _ = tex.cuda_surface
+    else:
+        with test.assertRaisesRegex(RuntimeError, "only supported for CUDA textures"):
+            _ = tex.cuda_array
+        with test.assertRaisesRegex(RuntimeError, "only supported for CUDA textures"):
+            _ = tex.cuda_surface
+        with test.assertRaisesRegex(RuntimeError, "only supported for CUDA textures"):
+            _ = tex.cuda_texture
+
+
+def test_texture2d_cuda_array_copy_api(test, device):
+    """Test Warp-native CUDA array copy helpers on Texture2D."""
+    h, w = 8, 16
+    data = np.random.default_rng(1234).random((h, w, 4), dtype=np.float32)
+    src = wp.array(data, dtype=wp.vec4, device=device)
+    dst = wp.zeros((h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture2D(np.zeros_like(data), device=device)
+
+    tex.copy_from_array(src)
+    tex.copy_to_array(dst)
+
+    np.testing.assert_allclose(dst.numpy(), data, rtol=1e-6, atol=1e-6)
+
+
+def test_texture3d_cuda_array_copy_api(test, device):
+    """Test Warp-native CUDA array copy helpers on Texture3D."""
+    d, h, w = 6, 8, 16
+    data = np.random.default_rng(1234).random((d, h, w, 4), dtype=np.float32)
+    src = wp.array(data, dtype=wp.vec4, device=device)
+    dst = wp.zeros((d, h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture3D(np.zeros_like(data), device=device)
+
+    tex.copy_from_array(src)
+    tex.copy_to_array(dst)
+
+    np.testing.assert_allclose(dst.numpy(), data, rtol=1e-6, atol=1e-6)
+
+
+def test_texture2d_cuda_array_copy_api_rejects_indexedarray(test, device):
+    """Texture2D CUDA copy helpers should reject non-``wp.array`` inputs."""
+    h, w = 8, 16
+    data = np.random.default_rng(1234).random((h, w, 4), dtype=np.float32)
+    src = wp.array(data, dtype=wp.vec4, device=device)
+    indices = wp.array(np.arange(h, dtype=np.int32), dtype=int, device=device)
+    indexed_src = wp.indexedarray(src, [indices, None])
+    tex = wp.Texture2D(np.zeros_like(data), device=device)
+
+    with test.assertRaisesRegex(TypeError, "wp.array"):
+        tex.copy_from_array(indexed_src)
+
+
+def test_texture3d_cuda_array_copy_api_rejects_indexedarray(test, device):
+    """Texture3D CUDA copy helpers should reject non-``wp.array`` inputs."""
+    d, h, w = 6, 8, 16
+    data = np.random.default_rng(1234).random((d, h, w, 4), dtype=np.float32)
+    dst = wp.zeros((d, h, w), dtype=wp.vec4, device=device)
+    indices = wp.array(np.arange(d, dtype=np.int32), dtype=int, device=device)
+    indexed_dst = wp.indexedarray(dst, [indices, None, None])
+    tex = wp.Texture3D(np.zeros_like(data), device=device)
+
+    with test.assertRaisesRegex(TypeError, "wp.array"):
+        tex.copy_to_array(indexed_dst)
+
+
+def test_texture2d_cuda_array_copy_api_graph_capture(test, device):
+    """Validate Texture2D CUDA array copy helpers under CUDA graph capture."""
+    h, w = 32, 64
+    rng = np.random.default_rng(1234)
+    data0 = rng.random((h, w, 4), dtype=np.float32)
+    data1 = rng.random((h, w, 4), dtype=np.float32)
+
+    src = wp.array(data0, dtype=wp.vec4, device=device)
+    dst = wp.zeros((h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture2D(np.zeros_like(data0), device=device)
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        tex.copy_from_array(src)
+        tex.copy_to_array(dst)
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
+
+    src.assign(data1)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(dst.numpy(), data1, rtol=1e-6, atol=1e-6)
+
+
+def test_texture3d_cuda_array_copy_api_graph_capture(test, device):
+    """Validate Texture3D CUDA array copy helpers under CUDA graph capture."""
+    d, h, w = 8, 16, 32
+    rng = np.random.default_rng(1234)
+    data0 = rng.random((d, h, w, 4), dtype=np.float32)
+    data1 = rng.random((d, h, w, 4), dtype=np.float32)
+
+    src = wp.array(data0, dtype=wp.vec4, device=device)
+    dst = wp.zeros((d, h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture3D(np.zeros_like(data0), device=device)
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        tex.copy_from_array(src)
+        tex.copy_to_array(dst)
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
+
+    src.assign(data1)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(dst.numpy(), data1, rtol=1e-6, atol=1e-6)
+
+
+def test_texture2d_cuda_array_copy_api_graph_capture_explicit_stream(test, device):
+    """Validate 2D copy helpers in graph capture on an explicit stream."""
+    h, w = 24, 48
+    rng = np.random.default_rng(1234)
+    data0 = rng.random((h, w, 4), dtype=np.float32)
+    data1 = rng.random((h, w, 4), dtype=np.float32)
+
+    src = wp.array(data0, dtype=wp.vec4, device=device)
+    dst = wp.zeros((h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture2D(np.zeros_like(data0), device=device)
+    stream = wp.Stream(device)
+
+    with wp.ScopedStream(stream):
+        wp.capture_begin(stream=stream, force_module_load=False)
+        tex.copy_from_array(src)
+        tex.copy_to_array(dst)
+        graph = wp.capture_end(stream=stream)
+
+        wp.capture_launch(graph, stream=stream)
+        wp.synchronize_stream(stream)
+        np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
+
+        src.assign(data1)
+        wp.capture_launch(graph, stream=stream)
+        wp.synchronize_stream(stream)
+        np.testing.assert_allclose(dst.numpy(), data1, rtol=1e-6, atol=1e-6)
+
+
+def test_texture3d_cuda_array_copy_api_graph_capture_explicit_stream(test, device):
+    """Validate 3D copy helpers in graph capture on an explicit stream."""
+    d, h, w = 6, 8, 16
+    rng = np.random.default_rng(1234)
+    data0 = rng.random((d, h, w, 4), dtype=np.float32)
+    data1 = rng.random((d, h, w, 4), dtype=np.float32)
+
+    src = wp.array(data0, dtype=wp.vec4, device=device)
+    dst = wp.zeros((d, h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture3D(np.zeros_like(data0), device=device)
+    stream = wp.Stream(device)
+
+    with wp.ScopedStream(stream):
+        wp.capture_begin(stream=stream, force_module_load=False)
+        tex.copy_from_array(src)
+        tex.copy_to_array(dst)
+        graph = wp.capture_end(stream=stream)
+
+        wp.capture_launch(graph, stream=stream)
+        wp.synchronize_stream(stream)
+        np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
+
+        src.assign(data1)
+        wp.capture_launch(graph, stream=stream)
+        wp.synchronize_stream(stream)
+        np.testing.assert_allclose(dst.numpy(), data1, rtol=1e-6, atol=1e-6)
+
+
+def test_texture2d_cuda_surface_property_graph_capture_stability(test, device):
+    """Ensure lazy surface handle stays stable across graph-captured copy launches."""
+    h, w = 16, 32
+    rng = np.random.default_rng(1234)
+    data0 = rng.random((h, w, 4), dtype=np.float32)
+    data1 = rng.random((h, w, 4), dtype=np.float32)
+
+    src = wp.array(data0, dtype=wp.vec4, device=device)
+    dst = wp.zeros((h, w), dtype=wp.vec4, device=device)
+    tex = wp.Texture2D(np.zeros_like(data0), device=device, surface_access=True)
+    surface_before = tex.cuda_surface
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        tex.copy_from_array(src)
+        tex.copy_to_array(dst)
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
+    test.assertEqual(tex.cuda_surface, surface_before)
+
+    src.assign(data1)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(dst.numpy(), data1, rtol=1e-6, atol=1e-6)
+    test.assertEqual(tex.cuda_surface, surface_before)
+
+
+def test_texture2d_cuda_surface_property_api(test, device):
+    """Test lazy CUDA surface object creation via Texture2D.cuda_surface."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture2D(data, device=device, surface_access=True)
+
+    surface0 = tex.cuda_surface
+    surface1 = tex.cuda_surface
+    test.assertGreater(surface0, 0)
+    test.assertEqual(surface0, surface1)
+    test.assertEqual(surface0, tex.cuda_surface)
+
+
+def test_texture3d_cuda_surface_property_api(test, device):
+    """Test lazy CUDA surface object creation via Texture3D.cuda_surface."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture3D(data, device=device, surface_access=True)
+
+    surface0 = tex.cuda_surface
+    surface1 = tex.cuda_surface
+    test.assertGreater(surface0, 0)
+    test.assertEqual(surface0, surface1)
+    test.assertEqual(surface0, tex.cuda_surface)
+
+
+def test_texture2d_cuda_surface_property_requires_surface_access(test, device):
+    """cuda_surface should fail unless surface access was enabled at texture creation."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture2D(data, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "surface_access=True"):
+        _ = tex.cuda_surface
+
+
+def test_texture3d_cuda_surface_property_requires_surface_access(test, device):
+    """cuda_surface should fail unless surface access was enabled at texture creation."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture3D(data, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "surface_access=True"):
+        _ = tex.cuda_surface
+
+
 def test_texture2d_new_del(test, device):
     """Test proper handling of uninitialized texture (created with __new__ but not __init__)."""
     instance = wp.Texture2D.__new__(wp.Texture2D)
@@ -2053,6 +2328,93 @@ add_function_test(TestTexture, "test_texture3d_2channel", test_texture3d_2channe
 add_function_test(TestTexture, "test_texture3d_4channel", test_texture3d_4channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_linear_filter", test_texture3d_linear_filter, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_resolution_query", test_texture3d_resolution_query, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture2d_cuda_interop_handles", test_texture2d_cuda_interop_handles, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_cuda_interop_handles", test_texture3d_cuda_interop_handles, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture_id_device_independent", test_texture_id_device_independent, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture_handle_properties_host_vs_cuda",
+    test_texture_handle_properties_host_vs_cuda,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture2d_cuda_array_copy_api", test_texture2d_cuda_array_copy_api, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_cuda_array_copy_api", test_texture3d_cuda_array_copy_api, devices=cuda_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_array_copy_api_rejects_indexedarray",
+    test_texture2d_cuda_array_copy_api_rejects_indexedarray,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_cuda_array_copy_api_rejects_indexedarray",
+    test_texture3d_cuda_array_copy_api_rejects_indexedarray,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_array_copy_api_graph_capture",
+    test_texture2d_cuda_array_copy_api_graph_capture,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_cuda_array_copy_api_graph_capture",
+    test_texture3d_cuda_array_copy_api_graph_capture,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_array_copy_api_graph_capture_explicit_stream",
+    test_texture2d_cuda_array_copy_api_graph_capture_explicit_stream,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_cuda_array_copy_api_graph_capture_explicit_stream",
+    test_texture3d_cuda_array_copy_api_graph_capture_explicit_stream,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_surface_property_graph_capture_stability",
+    test_texture2d_cuda_surface_property_graph_capture_stability,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_surface_property_api",
+    test_texture2d_cuda_surface_property_api,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_cuda_surface_property_api",
+    test_texture3d_cuda_surface_property_api,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_surface_property_requires_surface_access",
+    test_texture2d_cuda_surface_property_requires_surface_access,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_cuda_surface_property_requires_surface_access",
+    test_texture3d_cuda_surface_property_requires_surface_access,
+    devices=cuda_devices,
+)
 
 # Interpolation tests - run on all devices
 add_function_test(

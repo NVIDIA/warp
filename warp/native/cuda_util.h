@@ -174,7 +174,9 @@ CUresult cuArrayCreate_f(CUarray* pHandle, const CUDA_ARRAY_DESCRIPTOR* pAllocat
 CUresult cuArrayDestroy_f(CUarray hArray);
 CUresult cuArray3DCreate_f(CUarray* pHandle, const CUDA_ARRAY3D_DESCRIPTOR* pAllocateArray);
 CUresult cuMemcpy2D_f(const CUDA_MEMCPY2D* pCopy);
+CUresult cuMemcpy2DAsync_f(const CUDA_MEMCPY2D* pCopy, CUstream hStream);
 CUresult cuMemcpy3D_f(const CUDA_MEMCPY3D* pCopy);
+CUresult cuMemcpy3DAsync_f(const CUDA_MEMCPY3D* pCopy, CUstream hStream);
 CUresult cuTexObjectCreate_f(
     CUtexObject* pTexObject,
     const CUDA_RESOURCE_DESC* pResDesc,

@@ -135,7 +135,9 @@ static PFN_cuArrayCreate_v3020 pfn_cuArrayCreate;
 static PFN_cuArrayDestroy_v2000 pfn_cuArrayDestroy;
 static PFN_cuArray3DCreate_v3020 pfn_cuArray3DCreate;
 static PFN_cuMemcpy2D_v3020 pfn_cuMemcpy2D;
+static PFN_cuMemcpy2DAsync_v3020 pfn_cuMemcpy2DAsync;
 static PFN_cuMemcpy3D_v3020 pfn_cuMemcpy3D;
+static PFN_cuMemcpy3DAsync_v3020 pfn_cuMemcpy3DAsync;
 static PFN_cuTexObjectCreate_v5000 pfn_cuTexObjectCreate;
 static PFN_cuTexObjectDestroy_v5000 pfn_cuTexObjectDestroy;
 
@@ -296,7 +298,9 @@ bool init_cuda_driver()
     get_driver_entry_point("cuArrayDestroy", 2000, &(void*&)pfn_cuArrayDestroy);
     get_driver_entry_point("cuArray3DCreate", 3020, &(void*&)pfn_cuArray3DCreate);
     get_driver_entry_point("cuMemcpy2D", 3020, &(void*&)pfn_cuMemcpy2D);
+    get_driver_entry_point("cuMemcpy2DAsync", 3020, &(void*&)pfn_cuMemcpy2DAsync);
     get_driver_entry_point("cuMemcpy3D", 3020, &(void*&)pfn_cuMemcpy3D);
+    get_driver_entry_point("cuMemcpy3DAsync", 3020, &(void*&)pfn_cuMemcpy3DAsync);
     get_driver_entry_point("cuTexObjectCreate", 5000, &(void*&)pfn_cuTexObjectCreate);
     get_driver_entry_point("cuTexObjectDestroy", 5000, &(void*&)pfn_cuTexObjectDestroy);
 
@@ -777,9 +781,19 @@ CUresult cuMemcpy2D_f(const CUDA_MEMCPY2D* pCopy)
     return pfn_cuMemcpy2D ? pfn_cuMemcpy2D(pCopy) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuMemcpy2DAsync_f(const CUDA_MEMCPY2D* pCopy, CUstream hStream)
+{
+    return pfn_cuMemcpy2DAsync ? pfn_cuMemcpy2DAsync(pCopy, hStream) : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuMemcpy3D_f(const CUDA_MEMCPY3D* pCopy)
 {
     return pfn_cuMemcpy3D ? pfn_cuMemcpy3D(pCopy) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuMemcpy3DAsync_f(const CUDA_MEMCPY3D* pCopy, CUstream hStream)
+{
+    return pfn_cuMemcpy3DAsync ? pfn_cuMemcpy3DAsync(pCopy, hStream) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuTexObjectCreate_f(
