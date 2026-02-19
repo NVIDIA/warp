@@ -385,6 +385,25 @@ linux-aarch64 test thor:
   tags:
     - gpu/thor
 
+linux-aarch64 test dgx spark:
+  needs: [linux-aarch64 build]
+  image: $UV_TRIXIE_SLIM_ARM_IMAGE
+  extends:
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - !reference [.snippets, section-start-install-deps]
+    - df -h
+    - !reference [.snippets, move-linux-aarch64-binaries]
+    - uv sync --extra dev
+    - !reference [.snippets, section-end-install-deps]
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - os/linux
+    - arch/arm
+    - gpu/GB10
+
 linux-x86_64 test:
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_IMAGE
