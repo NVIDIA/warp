@@ -5753,9 +5753,27 @@ inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const Coord& offs
 {
     using Layout = typename TileB::Layout;
 
+    WP_PRAGMA_UNROLL
     for (int t = WP_TILE_THREAD_IDX; t < Layout::Size; t += WP_TILE_BLOCK_DIM) {
         auto c = Layout::coord_from_linear(t);
         dest.data(c + offset) = src.data(c);
+    }
+
+    WP_TILE_SYNC();
+}
+
+template <typename TileA, typename T, typename Layout, typename Coord>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, tile_register_t<T, Layout>& src, const Coord& offset)
+{
+    WP_PRAGMA_UNROLL
+    for (int reg = 0; reg < Layout::NumRegs; ++reg) {
+        int linear = Layout::linear_from_register(reg);
+        if (!Layout::valid(linear)) {
+            break;
+        }
+
+        auto c = Layout::coord_from_linear(linear);
+        dest.data(c + offset) = src.data[reg];
     }
 
     WP_TILE_SYNC();
@@ -5767,9 +5785,69 @@ adj_tile_assign(TileA& dest, TileB& src, Coord offset, AdjTileA& adj_dest, AdjTi
 {
     using Layout = typename TileB::Layout;
 
+    (void)adj_dest;
+    (void)adj_src;
+    (void)adj_offset;
+
+    if (dest.grad.ptr == nullptr) {
+        return;
+    }
+
+    WP_PRAGMA_UNROLL
     for (int t = WP_TILE_THREAD_IDX; t < Layout::Size; t += WP_TILE_BLOCK_DIM) {
         auto c = Layout::coord_from_linear(t);
-        src.grad(c) += dest.grad(c + offset);
+        auto dst_c = c + offset;
+        src.grad(c) += dest.grad(dst_c);
+        // Overwritten destinations do not contribute to the pre-assignment dest value.
+        dest.grad(dst_c) = typename TileA::Type {};
+    }
+
+    WP_TILE_SYNC();
+}
+
+template <
+    typename TileA,
+    typename T,
+    typename Layout,
+    typename AdjTileA,
+    typename AdjT,
+    typename AdjLayout,
+    typename Coord,
+    typename AdjCoord>
+inline CUDA_CALLABLE void adj_tile_assign(
+    TileA& dest,
+    tile_register_t<T, Layout>& src,
+    Coord offset,
+    AdjTileA& adj_dest,
+    tile_register_t<AdjT, AdjLayout>& adj_src,
+    AdjCoord adj_offset
+)
+{
+    static_assert(
+        Layout::Size == AdjLayout::Size,
+        "adj_tile_assign: src and adj_src register tiles must have the same number of elements"
+    );
+
+    (void)src;
+    (void)adj_dest;
+    (void)adj_offset;
+
+    if (dest.grad.ptr == nullptr) {
+        return;
+    }
+
+    WP_PRAGMA_UNROLL
+    for (int reg = 0; reg < Layout::NumRegs; ++reg) {
+        int linear = Layout::linear_from_register(reg);
+        if (!Layout::valid(linear)) {
+            break;
+        }
+
+        auto c = Layout::coord_from_linear(linear);
+        auto dst_c = c + offset;
+        adj_src.data[reg] += dest.grad(dst_c);
+        // Overwritten destinations do not contribute to the pre-assignment dest value.
+        dest.grad(dst_c) = typename TileA::Type {};
     }
 
     WP_TILE_SYNC();

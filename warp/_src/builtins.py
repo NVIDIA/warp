@@ -4051,8 +4051,21 @@ def tile_assign_value_func(arg_types, arg_values):
     if arg_types is None:
         return None
 
+    dst_type = arg_types["dst"]
+    src_type = arg_types.get("src")
+
+    # When both operands are tiles (tile_assign), enforce rank compatibility.
+    # For scalar/element-wise assign overloads where src is non-tile, skip this
+    # check and just force dst to shared as before.
+    if src_type is not None and is_tile(src_type):
+        if len(dst_type.shape) != len(src_type.shape):
+            raise ValueError(
+                f"tile_assign() destination and source tiles must have the same rank, "
+                f"got {len(dst_type.shape)} and {len(src_type.shape)}"
+            )
+
     # force the destination tile to shared memory
-    arg_types["dst"].storage = "shared"
+    dst_type.storage = "shared"
     return None
 
 
