@@ -2473,6 +2473,116 @@ add_builtin(
 )
 
 
+def tile_from_thread_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "value" not in arg_values:
+        raise TypeError("tile_from_thread() missing required keyword argument 'value'")
+
+    if "thread_idx" not in arg_values:
+        raise TypeError("tile_from_thread() missing required keyword argument 'thread_idx'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    return tile(dtype=arg_types["value"], shape=shape, storage=arg_values["storage"])
+
+
+def tile_from_thread_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    func_args = [arg_values["value"], arg_values["thread_idx"]]
+    template_args = [return_type.dtype, *shape]
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_from_thread",
+    input_types={"shape": tuple[int, ...], "value": Any, "thread_idx": int, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_from_thread_value_func,
+    dispatch_func=tile_from_thread_dispatch_func,
+    is_differentiable=False,
+    doc="""Allocate a tile filled with a value from a specific thread.
+
+    This function broadcasts a value from one thread to all threads in the block,
+    then creates a tile filled with that broadcast value. This is useful for
+    efficiently sharing a computed result (e.g., from an atomic operation) with
+    all threads in a block using minimal shared memory (only 1 element).
+
+    Args:
+        shape: Shape of the output tile
+        value: Per-thread value (only the value from ``thread_idx`` is used)
+        thread_idx: Index of the thread whose value should fill the tile
+        storage: The storage location for the tile: ``"register"`` for registers
+            (default) or ``"shared"`` for shared memory.
+
+    Returns:
+        A tile filled with the value from the specified thread.
+
+    Example:
+
+        .. code-block:: python
+
+            import warp as wp
+
+            TILE_SIZE = 8
+
+            @wp.kernel
+            def compute(output: wp.array(dtype=int)):
+                i, j = wp.tid()
+
+                # Compute offset on the last thread
+                offset = 0
+                if j == wp.block_dim() - 1:
+                    offset = i * wp.block_dim()
+
+                # Broadcast the last thread's offset to all threads (uses only 1 element of shared memory)
+                offset_tile = wp.tile_from_thread(shape=TILE_SIZE, value=offset, thread_idx=wp.block_dim() - 1)
+
+                # Combine with other tiles using tile operations
+                indices = wp.tile_arange(0, TILE_SIZE, dtype=int)
+                result = offset_tile + indices
+
+                wp.tile_store(output, result, offset=(i * TILE_SIZE,))
+
+            output = wp.zeros(16, dtype=int)
+            wp.launch_tiled(compute, dim=[2], inputs=[output], block_dim=TILE_SIZE)
+
+            print(output.numpy())
+
+        .. code-block:: text
+
+            [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15]
+
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+# overload for scalar shape
+add_builtin(
+    "tile_from_thread",
+    input_types={"shape": int, "value": Any, "thread_idx": int, "storage": str},
+    defaults={"storage": "register"},
+    value_func=tile_from_thread_value_func,
+    dispatch_func=tile_from_thread_dispatch_func,
+    is_differentiable=False,
+    doc="""Allocate a tile filled with a value from a specific thread.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_randi_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:

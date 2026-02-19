@@ -1919,6 +1919,99 @@ def test_tile_inplace(test, device):
     assert_np_equal(b.grad.numpy(), -4.0 * np.ones((M, N)))
 
 
+@wp.kernel
+def tile_from_thread_shared_last_kernel(output: wp.array(dtype=int)):
+    idx = wp.tid()
+
+    # Each thread has a different value
+    value = idx * 10
+
+    # Broadcast from the last thread (block_dim - 1)
+    broadcast_tile = wp.tile_from_thread(shape=(1,), value=value, thread_idx=wp.block_dim() - 1, storage="shared")
+
+    # Extract the broadcast value (should be the same for all threads)
+    broadcast_value = wp.tile_extract(broadcast_tile, 0)
+
+    # Each thread writes the broadcast value plus its own index
+    output[idx] = broadcast_value + idx
+
+
+@wp.kernel
+def tile_from_thread_register_middle_kernel(output: wp.array(dtype=float)):
+    idx = wp.tid()
+
+    # Each thread computes a value (offset by 1.0 so thread 0 is non-zero)
+    value = float(idx) * 2.5 + 1.0
+
+    # Broadcast from a middle thread with register storage
+    broadcast_tile = wp.tile_from_thread(shape=(1,), value=value, thread_idx=3, storage="register")
+
+    # Extract and store
+    broadcast_value = wp.tile_extract(broadcast_tile, 0)
+    output[idx] = broadcast_value
+
+
+TILE_FROM_THREAD_SIZE = wp.constant(8)
+
+
+@wp.kernel
+def tile_from_thread_shared_scalar_shape_kernel(output: wp.array(dtype=float)):
+    i, j = wp.tid()
+
+    # Each thread computes a value
+    value = float(j) * 3.0 + 7.0
+
+    # Broadcast from a middle thread using scalar shape overload
+    broadcast_tile = wp.tile_from_thread(shape=TILE_FROM_THREAD_SIZE, value=value, thread_idx=5, storage="shared")
+
+    # Store the full tile
+    wp.tile_store(output, broadcast_tile, offset=i * TILE_FROM_THREAD_SIZE)
+
+
+def test_tile_from_thread(test, device):
+    # tile_from_thread is CUDA-only (broadcasts value from one thread to all threads in block)
+    block_dim = 16
+
+    # Test 1: Broadcast from last thread (int dtype, shared storage, tuple shape)
+    output = wp.zeros(block_dim, dtype=int, device=device)
+    wp.launch(tile_from_thread_shared_last_kernel, dim=[block_dim], inputs=[output], block_dim=block_dim, device=device)
+
+    # The last thread has value (block_dim - 1) * 10, broadcast to all
+    # So each thread should have (block_dim - 1) * 10 + idx
+    expected = np.array([(block_dim - 1) * 10 + i for i in range(block_dim)], dtype=np.int32)
+    assert_np_equal(output.numpy(), expected)
+
+    # Test 2: Broadcast from middle thread (float dtype, register storage, tuple shape)
+    output_float = wp.zeros(block_dim, dtype=float, device=device)
+    wp.launch(
+        tile_from_thread_register_middle_kernel,
+        dim=[block_dim],
+        inputs=[output_float],
+        block_dim=block_dim,
+        device=device,
+    )
+
+    # Thread 3 has value 3 * 2.5 + 1.0 = 8.5, broadcast to all
+    expected_float = np.full(block_dim, 8.5, dtype=np.float32)
+    assert_np_equal(output_float.numpy(), expected_float)
+
+    # Test 3: Broadcast from middle thread (float dtype, shared storage, scalar shape)
+    tile_size = 8
+    num_blocks = 2
+    output_scalar = wp.zeros(num_blocks * tile_size, dtype=float, device=device)
+    wp.launch_tiled(
+        tile_from_thread_shared_scalar_shape_kernel,
+        dim=[num_blocks],
+        inputs=[output_scalar],
+        block_dim=tile_size,
+        device=device,
+    )
+
+    # Thread 5 has value 5 * 3.0 + 7.0 = 22.0, broadcast to all threads in each block
+    expected_scalar = np.full(num_blocks * tile_size, 22.0, dtype=np.float32)
+    assert_np_equal(output_scalar.numpy(), expected_scalar)
+
+
 devices = get_test_devices()
 
 
@@ -1957,6 +2050,7 @@ add_function_test(TestTile, "test_tile_reshape", test_tile_reshape, devices=devi
 add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_construction", test_tile_construction, devices=devices)
 add_function_test(TestTile, "test_tile_rand", test_tile_rand, devices=devices)
+add_function_test(TestTile, "test_tile_from_thread", test_tile_from_thread, devices=get_cuda_test_devices())
 # add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 # add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)
 # add_function_test(TestTile, "test_tile_astype", test_tile_astype, devices=devices)

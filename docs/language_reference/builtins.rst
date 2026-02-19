@@ -183,6 +183,7 @@ Tile Primitives
    tile_diag_add
    tile_extract
    tile_fft
+   tile_from_thread
    tile_full
    tile_ifft
    tile_load
