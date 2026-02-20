@@ -1508,6 +1508,23 @@ inline CUDA_CALLABLE void adj_cw_div(
     adj_b -= cw_mul(adj_ret, cw_div(ret, b));
 }
 
+// 5-arg overloads for tile operations (vec/scalar mixed types).
+// These forward to the existing 5-arg adj_div for vec/scalar which doesn't need ret.
+// The 6-arg adj_cw_div above is for vec/vec which needs ret for the gradient computation.
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE void
+adj_cw_div(vec_t<Length, Type> a, Type b, vec_t<Length, Type>& adj_a, Type& adj_b, const vec_t<Length, Type>& adj_ret)
+{
+    adj_div(a, b, adj_a, adj_b, adj_ret);
+}
+
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE void
+adj_cw_div(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_b, const vec_t<Length, Type>& adj_ret)
+{
+    adj_div(a, b, adj_a, adj_b, adj_ret);
+}
+
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_add(
     vec_t<Length, Type> a,

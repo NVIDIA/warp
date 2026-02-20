@@ -2012,6 +2012,981 @@ def test_tile_from_thread(test, device):
     assert_np_equal(output_scalar.numpy(), expected_scalar)
 
 
+# ============================================================================
+# tile * tile element-wise multiplication
+# ============================================================================
+
+
+@wp.kernel
+def tile_mul_elementwise_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    tb = wp.tile_load(b, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    wp.tile_store(out, ta * tb, offset=(i * TILE_M, j * TILE_N))
+
+
+def test_tile_mul_elementwise(test, device):
+    """Test tile * tile element-wise multiplication."""
+    M = TILE_M * 2
+    N = TILE_N * 2
+
+    rng = np.random.default_rng(42)
+    a_np = rng.random((M, N), dtype=np.float32) + 0.5
+    b_np = rng.random((M, N), dtype=np.float32) + 0.5
+
+    a_wp = wp.array(a_np, requires_grad=True, device=device)
+    b_wp = wp.array(b_np, requires_grad=True, device=device)
+    out_wp = wp.zeros((M, N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_mul_elementwise_kernel,
+            dim=[int(M / TILE_M), int(N / TILE_N)],
+            inputs=[a_wp, b_wp, out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: a * b
+    expected = a_np * b_np
+    assert_np_equal(out_wp.numpy(), expected, tol=1e-6)
+
+    # Backward: d(a*b)/da = b, d(a*b)/db = a
+    out_wp.grad = wp.ones_like(out_wp, device=device)
+    tape.backward()
+
+    assert_np_equal(a_wp.grad.numpy(), b_np, tol=1e-6)
+    assert_np_equal(b_wp.grad.numpy(), a_np, tol=1e-6)
+
+
+# ============================================================================
+# tile<mat> * scalar multiplication
+# ============================================================================
+
+
+@wp.kernel
+def tile_mat_mul_scalar_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    wp.tile_store(out, ta * 2.0)
+
+
+def test_tile_mat_mul_scalar(test, device):
+    """Test tile<mat22> * scalar multiplication."""
+    mat_input = np.ones((TILE_M, 2, 2), dtype=np.float32) * 3.0
+    input_wp = wp.array(mat_input, dtype=wp.mat22, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_mat_mul_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: mat22(3) * 2.0 = mat22(6)
+    expected = mat_input * 2.0
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d(a*2)/da = 2.0
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full_like(mat_input, 2.0))
+
+
+# ============================================================================
+# tile<scalar> * mat (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def tile_scalar_mul_mat_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # tile<float> * mat22 -> tile<mat22>
+    wp.tile_store(out, ta * wp.mat22(1.0, 2.0, 4.0, 8.0))
+
+
+def test_tile_scalar_mul_mat(test, device):
+    """Test tile<float> * mat22 (broadcast) multiplication."""
+    float_input = np.full(TILE_M, 3.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_scalar_mul_mat_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 3.0 * mat22(1,2,4,8) = mat22(3,6,12,24)
+    expected = np.array([[[3.0, 6.0], [12.0, 24.0]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d/d(input) of (input * mat22(1,2,4,8)) with output_grad=ones
+    # = 1 + 2 + 4 + 8 = 15
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 15.0, dtype=np.float32))
+
+
+# ============================================================================
+# mat * tile<scalar> (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def mat_mul_tile_scalar_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # mat22 * tile<float> -> tile<mat22>
+    wp.tile_store(out, wp.mat22(1.0, 2.0, 4.0, 8.0) * ta)
+
+
+def test_mat_mul_tile_scalar(test, device):
+    """Test mat22 * tile<float> (broadcast) multiplication."""
+    float_input = np.full(TILE_M, 3.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            mat_mul_tile_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: mat22(1,2,4,8) * 3.0 = mat22(3,6,12,24)
+    expected = np.array([[[3.0, 6.0], [12.0, 24.0]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d/d(x) of (mat22(1,2,4,8) * x) with output_grad=ones
+    # = 1 + 2 + 4 + 8 = 15
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 15.0, dtype=np.float32))
+
+
+# ============================================================================
+# scalar * tile<mat> (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def scalar_mul_tile_mat_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # scalar * tile<mat22> -> tile<mat22>
+    wp.tile_store(out, 2.0 * ta)
+
+
+def test_scalar_mul_tile_mat(test, device):
+    """Test scalar * tile<mat22> multiplication."""
+    mat_input = np.array([[[1.0, 2.0], [4.0, 8.0]]] * TILE_M, dtype=np.float32)
+    input_wp = wp.array(mat_input, dtype=wp.mat22, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            scalar_mul_tile_mat_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 2.0 * mat22(1,2,4,8) = mat22(2,4,8,16)
+    expected = np.array([[[2.0, 4.0], [8.0, 16.0]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d(2*a)/da = 2
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full_like(mat_input, 2.0))
+
+
+# ============================================================================
+# tile / scalar division
+# ============================================================================
+
+
+@wp.kernel
+def tile_div_scalar_kernel(a: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    wp.tile_store(out, ta / 2.0, offset=(i * TILE_M, j * TILE_N))
+
+
+def test_tile_div_scalar(test, device):
+    """Test tile / scalar division."""
+    M = TILE_M * 2
+    N = TILE_N * 2
+
+    rng = np.random.default_rng(42)
+    a_np = rng.random((M, N), dtype=np.float32) + 1.0
+
+    a_wp = wp.array(a_np, requires_grad=True, device=device)
+    out_wp = wp.zeros((M, N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_div_scalar_kernel,
+            dim=[int(M / TILE_M), int(N / TILE_N)],
+            inputs=[a_wp, out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: a / 2.0
+    expected = a_np / 2.0
+    assert_np_equal(out_wp.numpy(), expected)
+
+    # Backward: d(a/2)/da = 0.5
+    out_wp.grad = wp.ones_like(out_wp, device=device)
+    tape.backward()
+
+    assert_np_equal(a_wp.grad.numpy(), np.full((M, N), 0.5, dtype=np.float32))
+
+
+# ============================================================================
+# scalar / tile division
+# ============================================================================
+
+
+@wp.kernel
+def scalar_div_tile_kernel(a: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    wp.tile_store(out, 1.0 / ta, offset=(i * TILE_M, j * TILE_N))
+
+
+def test_scalar_div_tile(test, device):
+    """Test scalar / tile division."""
+    M = TILE_M * 2
+    N = TILE_N * 2
+
+    rng = np.random.default_rng(42)
+    a_np = rng.random((M, N), dtype=np.float32) + 1.0  # Avoid division by small numbers
+
+    a_wp = wp.array(a_np, requires_grad=True, device=device)
+    out_wp = wp.zeros((M, N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            scalar_div_tile_kernel,
+            dim=[int(M / TILE_M), int(N / TILE_N)],
+            inputs=[a_wp, out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 1.0 / a
+    expected = 1.0 / a_np
+    assert_np_equal(out_wp.numpy(), expected, tol=1e-6)
+
+    # Backward: d(1/x)/dx = -1/x^2
+    out_wp.grad = wp.ones_like(out_wp, device=device)
+    tape.backward()
+
+    expected_grad = -1.0 / (a_np * a_np)
+    assert_np_equal(a_wp.grad.numpy(), expected_grad, tol=1e-6)
+
+
+# ============================================================================
+# tile / tile element-wise division
+# ============================================================================
+
+
+@wp.kernel
+def tile_div_elementwise_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    tb = wp.tile_load(b, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+    wp.tile_store(out, ta / tb, offset=(i * TILE_M, j * TILE_N))
+
+
+def test_tile_div_elementwise(test, device):
+    """Test tile / tile element-wise division."""
+    M = TILE_M * 2
+    N = TILE_N * 2
+
+    rng = np.random.default_rng(42)
+    a_np = rng.random((M, N), dtype=np.float32) + 1.0
+    b_np = rng.random((M, N), dtype=np.float32) + 1.0  # Avoid division by small numbers
+
+    a_wp = wp.array(a_np, requires_grad=True, device=device)
+    b_wp = wp.array(b_np, requires_grad=True, device=device)
+    out_wp = wp.zeros((M, N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_div_elementwise_kernel,
+            dim=[int(M / TILE_M), int(N / TILE_N)],
+            inputs=[a_wp, b_wp, out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: a / b
+    expected = a_np / b_np
+    assert_np_equal(out_wp.numpy(), expected, tol=1e-6)
+
+    # Backward: d(a/b)/da = 1/b, d(a/b)/db = -a/b^2
+    out_wp.grad = wp.ones_like(out_wp, device=device)
+    tape.backward()
+
+    assert_np_equal(a_wp.grad.numpy(), 1.0 / b_np, tol=1e-6)
+    assert_np_equal(b_wp.grad.numpy(), -a_np / (b_np * b_np), tol=1e-6)
+
+
+# ============================================================================
+# tile<vec> / scalar division
+# ============================================================================
+
+
+@wp.kernel
+def tile_vec_div_scalar_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    wp.tile_store(out, ta / 2.0)
+
+
+def test_tile_vec_div_scalar(test, device):
+    """Test tile<vec3> / scalar division."""
+    vec_input = np.ones((TILE_M, 3), dtype=np.float32) * 4.0
+    input_wp = wp.array(vec_input, dtype=wp.vec3, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_vec_div_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: vec3(4,4,4) / 2.0 = vec3(2,2,2)
+    expected = vec_input / 2.0
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d(a/2)/da = 0.5
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full_like(vec_input, 0.5))
+
+
+# ============================================================================
+# tile<scalar> / vec (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def tile_scalar_div_vec_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # tile<float> / vec3 -> tile<vec3>
+    wp.tile_store(out, ta / wp.vec3(1.0, 2.0, 4.0))
+
+
+def test_tile_scalar_div_vec(test, device):
+    """Test tile<float> / vec3 (broadcast) division."""
+    float_input = np.full(TILE_M, 8.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_scalar_div_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 8.0 / vec3(1,2,4) = vec3(8,4,2)
+    expected = np.array([[8.0, 4.0, 2.0]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d/d(input) of (input / vec3(1,2,4)) with output_grad=ones
+    # = 1/1 + 1/2 + 1/4 = 1.75
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 1.75, dtype=np.float32))
+
+
+# ============================================================================
+# vec / tile<scalar> (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def vec_div_tile_scalar_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # vec3 / tile<float> -> tile<vec3>
+    wp.tile_store(out, wp.vec3(8.0, 16.0, 32.0) / ta)
+
+
+def test_vec_div_tile_scalar(test, device):
+    """Test vec3 / tile<float> (broadcast) division."""
+    float_input = np.full(TILE_M, 4.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            vec_div_tile_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: vec3(8,16,32) / 4.0 = vec3(2,4,8)
+    expected = np.array([[2.0, 4.0, 8.0]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d/d(x) of (vec3(8,16,32) / x) with output_grad=ones
+    # = -8/x^2 + -16/x^2 + -32/x^2 = -(8+16+32)/16 = -56/16 = -3.5
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, -3.5, dtype=np.float32))
+
+
+# ============================================================================
+# scalar / tile<vec> (element-wise)
+# ============================================================================
+
+
+@wp.kernel
+def scalar_div_tile_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # scalar / tile<vec3> -> tile<vec3>
+    wp.tile_store(out, 1.0 / ta)
+
+
+def test_scalar_div_tile_vec(test, device):
+    """Test scalar / tile<vec3> division."""
+    vec_input = np.array([[1.0, 2.0, 4.0]] * TILE_M, dtype=np.float32)
+    input_wp = wp.array(vec_input, dtype=wp.vec3, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            scalar_div_tile_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 1.0 / vec3(1,2,4) = vec3(1, 0.5, 0.25)
+    expected = np.array([[1.0, 0.5, 0.25]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d(1/x)/dx = -1/x^2
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    # For vec3(1,2,4): -1/1, -1/4, -1/16 = -1, -0.25, -0.0625
+    expected_grad = np.array([[-1.0, -0.25, -0.0625]] * TILE_M, dtype=np.float32)
+    assert_np_equal(input_wp.grad.numpy(), expected_grad)
+
+
+# ============================================================================
+# tile<mat> / scalar division
+# ============================================================================
+
+
+@wp.kernel
+def tile_mat_div_scalar_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    wp.tile_store(out, ta / 2.0)
+
+
+def test_tile_mat_div_scalar(test, device):
+    """Test tile<mat22> / scalar division."""
+    mat_input = np.ones((TILE_M, 2, 2), dtype=np.float32) * 4.0
+    input_wp = wp.array(mat_input, dtype=wp.mat22, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_mat_div_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: mat22(4) / 2.0 = mat22(2)
+    expected = mat_input / 2.0
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d(a/2)/da = 0.5
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full_like(mat_input, 0.5))
+
+
+# ============================================================================
+# tile<scalar> / mat (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def tile_scalar_div_mat_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # tile<float> / mat22 -> tile<mat22>
+    wp.tile_store(out, ta / wp.mat22(1.0, 2.0, 4.0, 8.0))
+
+
+def test_tile_scalar_div_mat(test, device):
+    """Test tile<float> / mat22 (broadcast) division."""
+    float_input = np.full(TILE_M, 8.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_scalar_div_mat_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 8.0 / mat22(1,2,4,8) = mat22(8,4,2,1)
+    expected = np.array([[[8.0, 4.0], [2.0, 1.0]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d/d(input) of (input / mat22(1,2,4,8)) with output_grad=ones
+    # = 1/1 + 1/2 + 1/4 + 1/8 = 1.875
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, 1.875, dtype=np.float32))
+
+
+# ============================================================================
+# mat / tile<scalar> (broadcast)
+# ============================================================================
+
+
+@wp.kernel
+def mat_div_tile_scalar_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # mat22 / tile<float> -> tile<mat22>
+    wp.tile_store(out, wp.mat22(8.0, 16.0, 32.0, 64.0) / ta)
+
+
+def test_mat_div_tile_scalar(test, device):
+    """Test mat22 / tile<float> (broadcast) division."""
+    float_input = np.full(TILE_M, 4.0, dtype=np.float32)
+    input_wp = wp.array(float_input, dtype=float, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            mat_div_tile_scalar_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: mat22(8,16,32,64) / 4.0 = mat22(2,4,8,16)
+    expected = np.array([[[2.0, 4.0], [8.0, 16.0]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d/d(x) of (mat22(8,16,32,64) / x) with output_grad=ones
+    # = -8/x^2 + -16/x^2 + -32/x^2 + -64/x^2 = -(8+16+32+64)/16 = -120/16 = -7.5
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    assert_np_equal(input_wp.grad.numpy(), np.full(TILE_M, -7.5, dtype=np.float32))
+
+
+# ============================================================================
+# scalar / tile<mat> (element-wise)
+# ============================================================================
+
+
+@wp.kernel
+def scalar_div_tile_mat_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+    ta = wp.tile_load(a, shape=TILE_M)
+    # scalar / tile<mat22> -> tile<mat22>
+    wp.tile_store(out, 1.0 / ta)
+
+
+def test_scalar_div_tile_mat(test, device):
+    """Test scalar / tile<mat22> division."""
+    mat_input = np.array([[[1.0, 2.0], [4.0, 8.0]]] * TILE_M, dtype=np.float32)
+    input_wp = wp.array(mat_input, dtype=wp.mat22, requires_grad=True, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.mat22, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            scalar_div_tile_mat_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: 1.0 / mat22(1,2,4,8) = mat22(1, 0.5, 0.25, 0.125)
+    expected = np.array([[[1.0, 0.5], [0.25, 0.125]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(output_wp.numpy(), expected)
+
+    # Backward: d(1/x)/dx = -1/x^2
+    output_wp.grad = wp.ones(TILE_M, dtype=wp.mat22, device=device)
+    tape.backward()
+    # For mat22(1,2,4,8): -1/1, -1/4, -1/16, -1/64
+    expected_grad = np.array([[[-1.0, -0.25], [-0.0625, -0.015625]]] * TILE_M, dtype=np.float32)
+    assert_np_equal(input_wp.grad.numpy(), expected_grad)
+
+
+# ============================================================================
+# Error case: tile<vec> / vec (both operands are non-scalar)
+# ============================================================================
+
+
+def test_tile_div_tile_vec_by_vec_error(test, device):
+    """Test that dividing tile<vec3> by vec3 raises TypeError (both operands non-scalar)."""
+
+    @wp.kernel
+    def invalid_tile_vec_div_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+        ta = wp.tile_load(a, shape=TILE_M)
+        # tile<vec3> / vec3 is invalid - can't divide vec by vec
+        wp.tile_store(out, ta / wp.vec3(1.0, 2.0, 3.0))
+
+    input_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"Cannot divide tile<.*> by .*: at least one operand must be a scalar type"):
+        wp.launch_tiled(
+            invalid_tile_vec_div_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+
+def test_tile_div_vec_by_tile_vec_error(test, device):
+    """Test that dividing vec3 by tile<vec3> raises TypeError (both operands non-scalar)."""
+
+    @wp.kernel
+    def invalid_vec_div_tile_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+        ta = wp.tile_load(a, shape=TILE_M)
+        # vec3 / tile<vec3> is invalid - can't divide vec by vec
+        wp.tile_store(out, wp.vec3(1.0, 2.0, 3.0) / ta)
+
+    input_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"Cannot divide .* by tile<.*>: at least one operand must be a scalar type"):
+        wp.launch_tiled(
+            invalid_vec_div_tile_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+
+# ============================================================================
+# Error case: tile<vec> * vec (both operands are non-scalar)
+# ============================================================================
+
+
+def test_tile_mul_tile_vec_by_vec_error(test, device):
+    """Test that multiplying tile<vec3> by vec3 raises TypeError (both operands non-scalar)."""
+
+    @wp.kernel
+    def invalid_tile_vec_mul_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+        ta = wp.tile_load(a, shape=TILE_M)
+        # tile<vec3> * vec3 is invalid - can't multiply vec by vec
+        wp.tile_store(out, ta * wp.vec3(1.0, 2.0, 3.0))
+
+    input_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(
+        TypeError, r"Cannot multiply tile<.*> by .*: at least one operand must be a scalar type"
+    ):
+        wp.launch_tiled(
+            invalid_tile_vec_mul_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+
+def test_tile_mul_vec_by_tile_vec_error(test, device):
+    """Test that multiplying vec3 by tile<vec3> raises TypeError (both operands non-scalar)."""
+
+    @wp.kernel
+    def invalid_vec_mul_tile_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+        ta = wp.tile_load(a, shape=TILE_M)
+        # vec3 * tile<vec3> is invalid - can't multiply vec by vec
+        wp.tile_store(out, wp.vec3(1.0, 2.0, 3.0) * ta)
+
+    input_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(
+        TypeError, r"Cannot multiply .* by tile<.*>: at least one operand must be a scalar type"
+    ):
+        wp.launch_tiled(
+            invalid_vec_mul_tile_vec_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+
+# ============================================================================
+# Error cases: tile*tile / tile/tile with non-scalar, shape/dtype mismatches
+# ============================================================================
+
+
+def test_tile_mul_tile_vec_by_tile_vec_error(test, device):
+    """Test that tile<vec3> * tile<vec3> raises TypeError (non-scalar element types)."""
+
+    @wp.kernel
+    def invalid_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+        ta = wp.tile_load(a, shape=TILE_M)
+        wp.tile_store(out, ta * ta)
+
+    input_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"element type must be scalar"):
+        wp.launch_tiled(
+            invalid_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+
+def test_tile_div_tile_vec_by_tile_vec_error(test, device):
+    """Test that tile<vec3> / tile<vec3> raises TypeError (non-scalar element types)."""
+
+    @wp.kernel
+    def invalid_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+        ta = wp.tile_load(a, shape=TILE_M)
+        wp.tile_store(out, ta / ta)
+
+    input_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(TypeError, r"element type must be scalar"):
+        wp.launch_tiled(
+            invalid_kernel,
+            dim=1,
+            inputs=[input_wp],
+            outputs=[output_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+
+# ============================================================================
+# tile<scalar> * tile<vec> mixed element-wise multiplication
+# ============================================================================
+
+
+@wp.kernel
+def tile_scalar_mul_tile_vec_kernel(
+    scalars: wp.array(dtype=float), vecs: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)
+):
+    ts = wp.tile_load(scalars, shape=TILE_M)
+    tv = wp.tile_load(vecs, shape=TILE_M)
+    wp.tile_store(out, ts * tv)
+
+
+def test_tile_scalar_mul_tile_vec(test, device):
+    """Test tile<float> * tile<vec3> element-wise multiplication with gradients."""
+    rng = np.random.default_rng(42)
+    scalars_np = rng.random(TILE_M, dtype=np.float32) + 0.5
+    vecs_np = rng.random((TILE_M, 3), dtype=np.float32) + 0.1
+
+    scalars_wp = wp.array(scalars_np, requires_grad=True, device=device)
+    vecs_wp = wp.array(vecs_np, dtype=wp.vec3, requires_grad=True, device=device)
+    out_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_scalar_mul_tile_vec_kernel,
+            dim=1,
+            inputs=[scalars_wp, vecs_wp],
+            outputs=[out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: s * v
+    expected = scalars_np[:, np.newaxis] * vecs_np
+    np.testing.assert_allclose(out_wp.numpy(), expected, rtol=1e-5)
+
+    # Backward: d(s*v)/ds = sum(v_i), d(s*v)/dv = (s, s, s)
+    out_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    np.testing.assert_allclose(scalars_wp.grad.numpy(), vecs_np.sum(axis=1), rtol=1e-5)
+    expected_vec_grad = np.broadcast_to(scalars_np[:, np.newaxis], (TILE_M, 3)).copy()
+    np.testing.assert_allclose(vecs_wp.grad.numpy(), expected_vec_grad, rtol=1e-5)
+
+
+@wp.kernel
+def tile_vec_mul_tile_scalar_kernel(
+    vecs: wp.array(dtype=wp.vec3), scalars: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)
+):
+    tv = wp.tile_load(vecs, shape=TILE_M)
+    ts = wp.tile_load(scalars, shape=TILE_M)
+    wp.tile_store(out, tv * ts)
+
+
+def test_tile_vec_mul_tile_scalar(test, device):
+    """Test tile<vec3> * tile<float> element-wise multiplication with gradients."""
+    rng = np.random.default_rng(42)
+    vecs_np = rng.random((TILE_M, 3), dtype=np.float32) + 0.1
+    scalars_np = rng.random(TILE_M, dtype=np.float32) + 0.5
+
+    vecs_wp = wp.array(vecs_np, dtype=wp.vec3, requires_grad=True, device=device)
+    scalars_wp = wp.array(scalars_np, requires_grad=True, device=device)
+    out_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_vec_mul_tile_scalar_kernel,
+            dim=1,
+            inputs=[vecs_wp, scalars_wp],
+            outputs=[out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: v * s
+    expected = vecs_np * scalars_np[:, np.newaxis]
+    np.testing.assert_allclose(out_wp.numpy(), expected, rtol=1e-5)
+
+    # Backward: d(v*s)/dv = (s, s, s), d(v*s)/ds = sum(v_i)
+    out_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    expected_vec_grad = np.broadcast_to(scalars_np[:, np.newaxis], (TILE_M, 3)).copy()
+    np.testing.assert_allclose(vecs_wp.grad.numpy(), expected_vec_grad, rtol=1e-5)
+    np.testing.assert_allclose(scalars_wp.grad.numpy(), vecs_np.sum(axis=1), rtol=1e-5)
+
+
+# ============================================================================
+# tile<scalar> / tile<vec> and tile<vec> / tile<scalar> mixed element-wise division
+# ============================================================================
+
+
+@wp.kernel
+def tile_vec_div_tile_scalar_kernel(
+    vecs: wp.array(dtype=wp.vec3), scalars: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)
+):
+    tv = wp.tile_load(vecs, shape=TILE_M)
+    ts = wp.tile_load(scalars, shape=TILE_M)
+    wp.tile_store(out, tv / ts)
+
+
+def test_tile_vec_div_tile_scalar(test, device):
+    """Test tile<vec3> / tile<float> element-wise division with gradients."""
+    rng = np.random.default_rng(42)
+    vecs_np = rng.random((TILE_M, 3), dtype=np.float32) + 0.1
+    scalars_np = rng.random(TILE_M, dtype=np.float32) + 1.0
+
+    vecs_wp = wp.array(vecs_np, dtype=wp.vec3, requires_grad=True, device=device)
+    scalars_wp = wp.array(scalars_np, requires_grad=True, device=device)
+    out_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_vec_div_tile_scalar_kernel,
+            dim=1,
+            inputs=[vecs_wp, scalars_wp],
+            outputs=[out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: v / s
+    expected = vecs_np / scalars_np[:, np.newaxis]
+    np.testing.assert_allclose(out_wp.numpy(), expected, rtol=1e-5)
+
+    # Backward: d(v/s)/dv = (1/s, 1/s, 1/s), d(v/s)/ds = -sum(v_i) / s^2
+    out_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    expected_vec_grad = np.broadcast_to((1.0 / scalars_np)[:, np.newaxis], (TILE_M, 3)).copy()
+    np.testing.assert_allclose(vecs_wp.grad.numpy(), expected_vec_grad, rtol=1e-4)
+    expected_scalar_grad = -vecs_np.sum(axis=1) / (scalars_np**2)
+    np.testing.assert_allclose(scalars_wp.grad.numpy(), expected_scalar_grad, rtol=1e-4)
+
+
+@wp.kernel
+def tile_scalar_div_tile_vec_kernel(
+    scalars: wp.array(dtype=float), vecs: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)
+):
+    ts = wp.tile_load(scalars, shape=TILE_M)
+    tv = wp.tile_load(vecs, shape=TILE_M)
+    wp.tile_store(out, ts / tv)
+
+
+def test_tile_scalar_div_tile_vec(test, device):
+    """Test tile<float> / tile<vec3> element-wise division with gradients."""
+    rng = np.random.default_rng(42)
+    scalars_np = rng.random(TILE_M, dtype=np.float32) + 1.0
+    vecs_np = rng.random((TILE_M, 3), dtype=np.float32) + 1.0
+
+    scalars_wp = wp.array(scalars_np, requires_grad=True, device=device)
+    vecs_wp = wp.array(vecs_np, dtype=wp.vec3, requires_grad=True, device=device)
+    out_wp = wp.zeros(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_scalar_div_tile_vec_kernel,
+            dim=1,
+            inputs=[scalars_wp, vecs_wp],
+            outputs=[out_wp],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    # Forward: s / v
+    expected = scalars_np[:, np.newaxis] / vecs_np
+    np.testing.assert_allclose(out_wp.numpy(), expected, rtol=1e-5)
+
+    # Backward: d(s/v)/ds = sum(1/v_i), d(s/v)/dv = (-s/v_i^2)
+    out_wp.grad = wp.ones(TILE_M, dtype=wp.vec3, device=device)
+    tape.backward()
+    expected_scalar_grad = (1.0 / vecs_np).sum(axis=1)
+    np.testing.assert_allclose(scalars_wp.grad.numpy(), expected_scalar_grad, rtol=1e-4)
+    expected_vec_grad = -scalars_np[:, np.newaxis] / (vecs_np**2)
+    np.testing.assert_allclose(vecs_wp.grad.numpy(), expected_vec_grad, rtol=1e-4)
+
+
 devices = get_test_devices()
 
 
@@ -2051,6 +3026,36 @@ add_function_test(TestTile, "test_tile_len", test_tile_len, devices=devices)
 add_function_test(TestTile, "test_tile_construction", test_tile_construction, devices=devices)
 add_function_test(TestTile, "test_tile_rand", test_tile_rand, devices=devices)
 add_function_test(TestTile, "test_tile_from_thread", test_tile_from_thread, devices=get_cuda_test_devices())
+add_function_test(TestTile, "test_tile_mul_elementwise", test_tile_mul_elementwise, devices=devices)
+add_function_test(TestTile, "test_tile_mat_mul_scalar", test_tile_mat_mul_scalar, devices=devices)
+add_function_test(TestTile, "test_tile_scalar_mul_mat", test_tile_scalar_mul_mat, devices=devices)
+add_function_test(TestTile, "test_mat_mul_tile_scalar", test_mat_mul_tile_scalar, devices=devices)
+add_function_test(TestTile, "test_scalar_mul_tile_mat", test_scalar_mul_tile_mat, devices=devices)
+add_function_test(TestTile, "test_tile_div_scalar", test_tile_div_scalar, devices=devices)
+add_function_test(TestTile, "test_scalar_div_tile", test_scalar_div_tile, devices=devices)
+add_function_test(TestTile, "test_tile_div_elementwise", test_tile_div_elementwise, devices=devices)
+add_function_test(TestTile, "test_tile_vec_div_scalar", test_tile_vec_div_scalar, devices=devices)
+add_function_test(TestTile, "test_tile_scalar_div_vec", test_tile_scalar_div_vec, devices=devices)
+add_function_test(TestTile, "test_vec_div_tile_scalar", test_vec_div_tile_scalar, devices=devices)
+add_function_test(TestTile, "test_scalar_div_tile_vec", test_scalar_div_tile_vec, devices=devices)
+add_function_test(TestTile, "test_tile_mat_div_scalar", test_tile_mat_div_scalar, devices=devices)
+add_function_test(TestTile, "test_tile_scalar_div_mat", test_tile_scalar_div_mat, devices=devices)
+add_function_test(TestTile, "test_mat_div_tile_scalar", test_mat_div_tile_scalar, devices=devices)
+add_function_test(TestTile, "test_scalar_div_tile_mat", test_scalar_div_tile_mat, devices=devices)
+add_function_test(TestTile, "test_tile_div_tile_vec_by_vec_error", test_tile_div_tile_vec_by_vec_error, devices=devices)
+add_function_test(TestTile, "test_tile_div_vec_by_tile_vec_error", test_tile_div_vec_by_tile_vec_error, devices=devices)
+add_function_test(TestTile, "test_tile_mul_tile_vec_by_vec_error", test_tile_mul_tile_vec_by_vec_error, devices=devices)
+add_function_test(TestTile, "test_tile_mul_vec_by_tile_vec_error", test_tile_mul_vec_by_tile_vec_error, devices=devices)
+add_function_test(
+    TestTile, "test_tile_mul_tile_vec_by_tile_vec_error", test_tile_mul_tile_vec_by_tile_vec_error, devices=devices
+)
+add_function_test(
+    TestTile, "test_tile_div_tile_vec_by_tile_vec_error", test_tile_div_tile_vec_by_tile_vec_error, devices=devices
+)
+add_function_test(TestTile, "test_tile_scalar_mul_tile_vec", test_tile_scalar_mul_tile_vec, devices=devices)
+add_function_test(TestTile, "test_tile_vec_mul_tile_scalar", test_tile_vec_mul_tile_scalar, devices=devices)
+add_function_test(TestTile, "test_tile_vec_div_tile_scalar", test_tile_vec_div_tile_scalar, devices=devices)
+add_function_test(TestTile, "test_tile_scalar_div_tile_vec", test_tile_scalar_div_tile_vec, devices=devices)
 # add_function_test(TestTile, "test_tile_print", test_tile_print, devices=devices, check_output=False)
 # add_function_test(TestTile, "test_tile_inplace", test_tile_inplace, devices=devices)
 # add_function_test(TestTile, "test_tile_astype", test_tile_astype, devices=devices)

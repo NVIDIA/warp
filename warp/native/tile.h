@@ -3543,6 +3543,16 @@ inline CUDA_CALLABLE void adj_tile_map(
 #define tile_binary_map(op, a, b) tile_map([](auto x, auto y) { return op(x, y);}, a, b)
 #define adj_tile_binary_map(op, a, b, adj_op, adj_a, adj_b, adj_ret) adj_tile_map([](auto x, auto y) { return op(x, y);}, a, b, [](auto x, auto y, auto& adj_x, auto& adj_y, auto adj_ret) { adj_op(x, y, adj_x, adj_y, adj_ret);}, adj_a, adj_b, adj_ret)
 
+// Wrapper for scalar adj_div to match the 5-arg interface expected by adj_tile_binary_map.
+// Scalar adj_div takes 6 args (includes ret), but adj_tile_binary_map only passes 5.
+// Trade-off: we recompute ret here, which duplicates work from the forward pass, but allows
+// using the uniform 5-arg adjoint interface for tile operations.
+template <typename T> inline CUDA_CALLABLE void adj_cw_div(T a, T b, T& adj_a, T& adj_b, T adj_ret)
+{
+    T ret = div(a, b);
+    adj_div(a, b, ret, adj_a, adj_b, adj_ret);
+}
+
 // -tile (unary neg)
 template <typename Tile> inline CUDA_CALLABLE auto tile_neg(Tile& a) { return tile_unary_map(wp::neg, a); }
 
@@ -3614,6 +3624,71 @@ template <typename Tile, typename S, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_mul(Tile& a, const S& s, Tile& adj_a, S& adj_s, AdjTile& adj_c)
 {
     adj_tile_binary_map(mul, a, s, adj_mul, adj_a, adj_s, adj_c);
+}
+
+
+// tile * tile (element-wise)
+template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_mul_elementwise(TileA& a, TileB& b)
+{
+    return tile_binary_map(mul, a, b);
+}
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_mul_elementwise(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
+{
+    adj_tile_binary_map(mul, a, b, adj_mul, adj_a, adj_b, adj_c);
+}
+
+
+// tile / scalar/vec/mat
+// SFINAE: Tile must be a tile type (has Layout::Shape)
+template <typename Tile, typename S, typename = typename Tile::Layout::Shape>
+inline CUDA_CALLABLE auto tile_div(Tile& a, const S& s)
+{
+    // tile_binary_map will automatically promote scalar s to a constant tile
+    return tile_binary_map(div, a, s);
+}
+
+template <typename Tile, typename S, typename AdjTile, typename = typename Tile::Layout::Shape>
+inline CUDA_CALLABLE void adj_tile_div(Tile& a, const S& s, Tile& adj_a, S& adj_s, AdjTile& adj_c)
+{
+    adj_tile_binary_map(div, a, s, adj_cw_div, adj_a, adj_s, adj_c);
+}
+
+
+// scalar/vec/mat / tile
+// SFINAE: Tile must be a tile type (has Layout::Shape)
+template <typename S, typename Tile, typename = typename Tile::Layout::Shape>
+inline CUDA_CALLABLE auto tile_div(const S& s, Tile& a)
+{
+    using Shape = typename Tile::Layout::Shape;
+    auto s_tile = to_tile<Shape>(s);
+    return tile_binary_map(div, s_tile, a);
+}
+
+template <typename S, typename Tile, typename AdjTile, typename = typename Tile::Layout::Shape>
+inline CUDA_CALLABLE void adj_tile_div(const S& s, Tile& a, S& adj_s, Tile& adj_a, AdjTile& adj_c)
+{
+    using Shape = typename Tile::Layout::Shape;
+    auto s_tile = to_tile<Shape>(s);
+    auto adj_s_tile = tile_register_like<Shape, S>();
+
+    adj_tile_binary_map(div, s_tile, a, adj_cw_div, adj_s_tile, adj_a, adj_c);
+
+    adj_to_tile<Shape>(adj_s, adj_s_tile);
+}
+
+
+// tile / tile (element-wise)
+template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_div_elementwise(TileA& a, TileB& b)
+{
+    return tile_binary_map(div, a, b);
+}
+
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_div_elementwise(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
+{
+    adj_tile_binary_map(div, a, b, adj_cw_div, adj_a, adj_b, adj_c);
 }
 
 

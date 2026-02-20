@@ -44,6 +44,8 @@
 - Add CUDA texture interop APIs for 2D/3D textures, including array copy helpers and
   surface handle access for external integration workflows
   ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
+- Add support for `tile * tile`, `tile * constant`, and `constant * tile` syntax for element-wise and broadcast multiplication ([GH-1006](https://github.com/NVIDIA/warp/issues/1006)).
+- Add support for `tile / tile`, `tile / constant`, and `constant / tile` syntax for element-wise and broadcast division ([GH-1009](https://github.com/NVIDIA/warp/issues/1009)).
 
 ### Removed
 

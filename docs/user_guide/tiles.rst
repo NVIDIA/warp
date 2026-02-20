@@ -232,6 +232,160 @@ Maps/Reductions
 * :func:`tile_min <warp._src.lang.tile_min>`
 * :func:`tile_max <warp._src.lang.tile_max>`
 
+Arithmetic
+^^^^^^^^^^
+
+Tiles support standard Python arithmetic operators for element-wise operations.
+These operations are cooperative and execute across all threads in the block.
+
+**Addition and Subtraction**
+
+The ``+`` and ``-`` operators perform element-wise addition and subtraction between two tiles
+of the same shape and dtype:
+
+.. code:: python
+
+    @wp.kernel
+    def add_sub_example(arr_a: wp.array(dtype=float), arr_b: wp.array(dtype=float)):
+        a = wp.tile_load(arr_a, shape=TILE_SIZE)
+        b = wp.tile_load(arr_b, shape=TILE_SIZE)
+
+        c = a + b    # element-wise addition
+        d = a - b    # element-wise subtraction
+        e = -a       # element-wise negation
+
+Tiles also support the ``+=`` and ``-=`` in-place operators.
+
+**Multiplication** (``*``)
+
+The ``*`` operator supports three forms:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 30 40
+
+   * - Expression
+     - Operand Types
+     - Result
+   * - ``tile * tile``
+     - Both tiles have matching shape; at least one must have scalar dtype
+     - Element-wise multiplication
+   * - ``tile * constant``
+     - Tile and a scalar, vector, or matrix constant
+     - Multiply each tile element by the constant
+   * - ``constant * tile``
+     - A scalar, vector, or matrix constant and a tile
+     - Multiply each tile element by the constant
+
+When one operand is a tile and the other is a constant, the constant is broadcast to all elements.
+At least one of the tile's element type or the constant type must be a scalar. The underlying
+scalar types must match. For example:
+
+.. code:: python
+
+    @wp.kernel
+    def mul_example(arr: wp.array(dtype=float)):
+        a = wp.tile_load(arr, shape=TILE_SIZE)     # a tile of floats
+
+        # tile * tile (element-wise)
+        b = a * a
+
+        # tile * scalar
+        c = a * 2.0
+
+        # scalar * tile
+        d = 2.0 * a
+
+        # float tile * vec3f constant -> vec3f tile
+        e = a * wp.vec3(1.0, 2.0, 3.0)
+
+        # vec3f constant * float tile -> vec3f tile
+        f = wp.vec3(1.0, 2.0, 3.0) * a
+
+**Division** (``/``)
+
+The ``/`` operator supports three forms with the same type rules as multiplication:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 30 40
+
+   * - Expression
+     - Operand Types
+     - Result
+   * - ``tile / tile``
+     - Both tiles have matching shape; at least one must have scalar dtype
+     - Element-wise division
+   * - ``tile / constant``
+     - Tile and a scalar, vector, or matrix constant
+     - Divide each tile element by the constant
+   * - ``constant / tile``
+     - A scalar, vector, or matrix constant and a tile
+     - Divide the constant by each tile element
+
+As with multiplication, at least one of the tile's element type or the constant type must be
+a scalar, and the underlying scalar types must match. For example:
+
+.. code:: python
+
+    @wp.kernel
+    def div_example(arr: wp.array(dtype=float), vec_arr: wp.array(dtype=wp.vec3)):
+        a = wp.tile_load(arr, shape=TILE_SIZE)     # a tile of floats
+
+        # tile / tile (element-wise)
+        b = a / a
+
+        # tile / scalar
+        c = a / 2.0
+
+        # scalar / tile (divides constant by each element)
+        d = 1.0 / a
+
+        # vec3f tile / scalar
+        v = wp.tile_load(vec_arr, shape=TILE_SIZE)  # a tile of vec3f
+        e = v / 2.0
+
+        # float tile / vec3f constant -> vec3f tile
+        f = a / wp.vec3(1.0, 2.0, 4.0)
+
+        # vec3f constant / float tile -> vec3f tile
+        g = wp.vec3(1.0, 2.0, 4.0) / a
+
+**Type Promotion Rules**
+
+The following table summarizes the result type for ``*`` and ``/`` operations between
+tiles and constants:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 35 30
+
+   * - Tile Element Type
+     - Constant Type
+     - Result Type
+   * - ``float``
+     - ``float``
+     - ``float``
+   * - ``float``
+     - ``vec3f``
+     - ``vec3f``
+   * - ``float``
+     - ``mat33f``
+     - ``mat33f``
+   * - ``vec3f``
+     - ``float``
+     - ``vec3f``
+   * - ``mat33f``
+     - ``float``
+     - ``mat33f``
+
+Combinations where both the tile element type and the constant type are non-scalar
+(e.g., ``tile<vec3f> * vec3f``) are not supported. Use :func:`tile_map <warp._src.lang.tile_map>`
+with :func:`wp.cw_mul <warp._src.lang.cw_mul>` or :func:`wp.cw_div <warp._src.lang.cw_div>` for
+component-wise vector/matrix operations.
+
+All arithmetic operators support automatic differentiation.
+
 Linear Algebra
 ^^^^^^^^^^^^^^
 

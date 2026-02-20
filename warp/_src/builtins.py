@@ -11178,53 +11178,165 @@ def tile_unary_value_func(arg_types, arg_values):
 
 
 def tile_mul_value_func(arg_types, arg_values):
-    """Value function for tile * constant multiplication.
+    """Value function for tile multiplication.
 
-    Handles two cases:
-    1. tile * constant: multiply each element by a scalar, vector, or matrix
-    2. constant * tile: multiply each element by a scalar, vector, or matrix
+    Handles:
+    1. tile * tile: element-wise multiplication (shapes must match)
+    2. tile * constant: multiply each element by scalar/vec/mat
+    3. constant * tile: multiply each element by scalar/vec/mat
 
-    If the tile's element type is not scalar, the constant must be a scalar type
-    and vice versa (e.g., tile<float> * vec3f is valid, tile<vec3f> * float is
-    valid, but tile<vec3f> * vec3f is not). Underlying scalar types must match.
-    Result dtype follows standard scalar multiplication rules.
+    At least one operand must be a scalar type (can't multiply vec by vec).
+    Underlying scalar types must match.
     """
     if arg_types is None:
         return tile(dtype=Any, shape=tuple[int, ...])
 
-    x = arg_types["x"]
-    y = arg_types["y"]
+    a = arg_types["a"]
+    b = arg_types["b"]
 
-    x_is_tile = is_tile(x)
-    y_is_tile = is_tile(y)
+    a_is_tile = is_tile(a)
+    b_is_tile = is_tile(b)
 
-    # Exactly one operand must be a tile
-    if x_is_tile and y_is_tile:
-        raise TypeError("tile * tile is not supported; use tile_map(wp.mul, a, b) instead")
-
-    if not (x_is_tile or y_is_tile):
+    if not (a_is_tile or b_is_tile):
         raise TypeError("tile mul requires at least one tile operand")
 
-    tile_type = x if x_is_tile else y
-    const_type = y if x_is_tile else x
+    if a_is_tile and b_is_tile:
+        # tile * tile: validate shapes match, at least one dtype must be scalar
+        if len(a.shape) != len(b.shape):
+            raise ValueError(f"Shapes must have same dimensions: {len(a.shape)} vs {len(b.shape)}")
+        for i in range(len(a.shape)):
+            if a.shape[i] != b.shape[i]:
+                raise ValueError(f"Shape mismatch on dim {i}: {a.shape} vs {b.shape}")
+        if not type_is_scalar(a.dtype) and not type_is_scalar(b.dtype):
+            raise TypeError(
+                f"Cannot multiply tile<{type_repr(a.dtype)}> by tile<{type_repr(b.dtype)}>:"
+                " at least one element type must be scalar"
+            )
+        a_scalar = type_scalar_type(a.dtype)
+        b_scalar = type_scalar_type(b.dtype)
+        if a_scalar != b_scalar:
+            raise TypeError(f"Underlying scalar types don't match: {type_repr(a_scalar)} vs {type_repr(b_scalar)}")
+        # Result dtype: vec/mat side wins; if both scalar they're equal
+        if type_is_vector(a.dtype) or type_is_matrix(a.dtype):
+            result_dtype = a.dtype
+        elif type_is_vector(b.dtype) or type_is_matrix(b.dtype):
+            result_dtype = b.dtype
+        else:
+            result_dtype = a.dtype
+        return tile(dtype=result_dtype, shape=a.shape)
+
+    # tile * const or const * tile
+    tile_type = a if a_is_tile else b
+    const_type = b if a_is_tile else a
 
     # Constant must be scalar/vector/matrix
     if not (type_is_scalar(const_type) or type_is_vector(const_type) or type_is_matrix(const_type)):
-        raise TypeError(f"The non-tile operand must be a scalar, vector, or matrix, got {const_type}")
+        raise TypeError(f"Non-tile operand must be scalar/vec/mat, got {type_repr(const_type)}")
 
     # Underlying scalar-type compatibility
-    tile_scalar = getattr(tile_type.dtype, "_wp_scalar_type_", tile_type.dtype)
-    const_scalar = getattr(const_type, "_wp_scalar_type_", const_type)
+    tile_scalar = type_scalar_type(tile_type.dtype)
+    const_scalar = type_scalar_type(const_type)
     if tile_scalar != const_scalar:
-        raise TypeError(f"Underlying scalar types don't match: tile has {tile_scalar}, constant has {const_scalar}")
-
-    # Disallow vec/mat * vec/mat (at least one side must be scalar)
-    if not type_is_scalar(tile_type.dtype) and not type_is_scalar(const_type):
         raise TypeError(
-            f"Cannot multiply tile<{tile_type.dtype}> by {const_type}: at least one operand must be a scalar type"
+            f"Underlying scalar types don't match: tile={type_repr(tile_scalar)}, const={type_repr(const_scalar)}"
         )
 
-    # Result dtype: adopt const dtype if vector/matrix; otherwise keep the tile's dtype
+    # At least one side must be scalar (can't multiply vec by vec)
+    if not type_is_scalar(tile_type.dtype) and not type_is_scalar(const_type):
+        if a_is_tile:
+            raise TypeError(
+                f"Cannot multiply tile<{type_repr(tile_type.dtype)}> by {type_repr(const_type)}:"
+                " at least one operand must be a scalar type"
+            )
+        else:
+            raise TypeError(
+                f"Cannot multiply {type_repr(const_type)} by tile<{type_repr(tile_type.dtype)}>:"
+                " at least one operand must be a scalar type"
+            )
+
+    # Result dtype: adopt const dtype if vec/mat; otherwise keep tile's dtype
+    result_dtype = const_type if (type_is_vector(const_type) or type_is_matrix(const_type)) else tile_type.dtype
+    return tile(dtype=result_dtype, shape=tile_type.shape)
+
+
+def tile_div_value_func(arg_types, arg_values):
+    """Value function for tile division.
+
+    Handles:
+    1. tile / tile: element-wise division (shapes must match)
+    2. tile / constant: divide each element by scalar/vec/mat
+    3. constant / tile: divide scalar/vec/mat by each element
+
+    At least one operand must be a scalar type (can't divide vec by vec).
+    Underlying scalar types must match.
+    """
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    a_is_tile = is_tile(a)
+    b_is_tile = is_tile(b)
+
+    if not (a_is_tile or b_is_tile):
+        raise TypeError("tile div requires at least one tile operand")
+
+    if a_is_tile and b_is_tile:
+        # tile / tile: validate shapes match, at least one dtype must be scalar
+        if len(a.shape) != len(b.shape):
+            raise ValueError(f"Shapes must have same dimensions: {len(a.shape)} vs {len(b.shape)}")
+        for i in range(len(a.shape)):
+            if a.shape[i] != b.shape[i]:
+                raise ValueError(f"Shape mismatch on dim {i}: {a.shape} vs {b.shape}")
+        if not type_is_scalar(a.dtype) and not type_is_scalar(b.dtype):
+            raise TypeError(
+                f"Cannot divide tile<{type_repr(a.dtype)}> by tile<{type_repr(b.dtype)}>:"
+                " at least one element type must be scalar"
+            )
+        a_scalar = type_scalar_type(a.dtype)
+        b_scalar = type_scalar_type(b.dtype)
+        if a_scalar != b_scalar:
+            raise TypeError(f"Underlying scalar types don't match: {type_repr(a_scalar)} vs {type_repr(b_scalar)}")
+        # Result dtype: vec/mat side wins; if both scalar they're equal
+        if type_is_vector(a.dtype) or type_is_matrix(a.dtype):
+            result_dtype = a.dtype
+        elif type_is_vector(b.dtype) or type_is_matrix(b.dtype):
+            result_dtype = b.dtype
+        else:
+            result_dtype = a.dtype
+        return tile(dtype=result_dtype, shape=a.shape)
+
+    # tile / const or const / tile
+    tile_type = a if a_is_tile else b
+    const_type = b if a_is_tile else a
+
+    # Constant must be scalar/vector/matrix
+    if not (type_is_scalar(const_type) or type_is_vector(const_type) or type_is_matrix(const_type)):
+        raise TypeError(f"Non-tile operand must be scalar/vec/mat, got {type_repr(const_type)}")
+
+    # Underlying scalar-type compatibility
+    tile_scalar = type_scalar_type(tile_type.dtype)
+    const_scalar = type_scalar_type(const_type)
+    if tile_scalar != const_scalar:
+        raise TypeError(
+            f"Underlying scalar types don't match: tile={type_repr(tile_scalar)}, const={type_repr(const_scalar)}"
+        )
+
+    # At least one side must be scalar (can't divide vec by vec)
+    if not type_is_scalar(tile_type.dtype) and not type_is_scalar(const_type):
+        if a_is_tile:
+            raise TypeError(
+                f"Cannot divide tile<{type_repr(tile_type.dtype)}> by {type_repr(const_type)}:"
+                " at least one operand must be a scalar type"
+            )
+        else:
+            raise TypeError(
+                f"Cannot divide {type_repr(const_type)} by tile<{type_repr(tile_type.dtype)}>:"
+                " at least one operand must be a scalar type"
+            )
+
+    # Result dtype: adopt const dtype if vec/mat; otherwise keep tile's dtype
     result_dtype = const_type if (type_is_vector(const_type) or type_is_matrix(const_type)) else tile_type.dtype
     return tile(dtype=result_dtype, shape=tile_type.shape)
 
@@ -11261,6 +11373,20 @@ add_builtin(
     # variadic=True,
     native_func="tile_sub",
     doc="""Subtract ``b`` from ``a``.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+# NOTE: The tile*tile overload must be registered before the tile*Any overload below.
+# Warp's overload resolution tries earlier registrations first, so if tile*Any were
+# registered first, tile*tile would silently route to tile_mul instead of
+# tile_mul_elementwise. The same applies to the div overloads further below.
+add_builtin(
+    "mul",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
+    value_func=tile_mul_value_func,
+    native_func="tile_mul_elementwise",
+    doc="""Element-wise multiplication of tiles.""",
     group="Tile Primitives",
     export=False,
 )
@@ -11313,14 +11439,14 @@ add_builtin(
 
 add_builtin(
     "mul",
-    input_types={"x": tile(dtype=Any, shape=tuple[int, ...]), "y": Any},
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": Any},
     value_func=tile_mul_value_func,
     doc="""Multiply two values.
 
-    Scale each element of a tile by a scalar.
+    Multiply each element of a tile by a constant (scalar, vector, or matrix).
 
-    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
-    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.""",
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.""",
     export=False,
     native_func="tile_mul",
     group="Operators",
@@ -11330,22 +11456,69 @@ add_builtin(
 # Dispatch function for const*tile that reorders args so tile comes first
 def tile_mul_const_first_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # Reorder: (const, tile) -> (tile, const) for C++ tile_mul(Tile&, const S&)
-    return ((args["y"], args["x"]), ())
+    return ((args["b"], args["a"]), ())
 
 
 add_builtin(
     "mul",
-    input_types={"x": Any, "y": tile(dtype=Any, shape=tuple[int, ...])},
+    input_types={"a": Any, "b": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=tile_mul_value_func,
     dispatch_func=tile_mul_const_first_dispatch_func,
     doc="""Multiply two values.
 
-    Scale each element of a tile by a scalar.
+    Multiply each element of a tile by a constant (scalar, vector, or matrix).
 
-    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
-    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.""",
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.""",
     export=False,
     native_func="tile_mul",
+    group="Operators",
+)
+
+
+# NOTE: The tile/tile overload must be registered before the tile/Any and Any/tile overloads below.
+# See the equivalent note above tile*tile mul for details.
+add_builtin(
+    "div",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
+    value_func=tile_div_value_func,
+    native_func="tile_div_elementwise",
+    doc="""Element-wise division of tiles.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+# tile / scalar
+add_builtin(
+    "div",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": Any},
+    value_func=tile_div_value_func,
+    native_func="tile_div",
+    doc="""Divide tile elements by a constant.
+
+    Divide each element of a tile by a constant (scalar, vector, or matrix).
+
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.""",
+    export=False,
+    group="Operators",
+)
+
+
+# scalar / tile
+add_builtin(
+    "div",
+    input_types={"a": Any, "b": tile(dtype=Any, shape=tuple[int, ...])},
+    value_func=tile_div_value_func,
+    native_func="tile_div",
+    doc="""Divide a constant by tile elements.
+
+    Divide a constant (scalar, vector, or matrix) by each element of a tile.
+
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.""",
+    export=False,
     group="Operators",
 )
 
