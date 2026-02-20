@@ -87,12 +87,43 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``strip_hash``                        | Boolean | ``False``   | If ``True``, avoids using a content-based hash to identify the module    |
 |                                      |         |             | and its functions.                                                       |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
+|``enable_mathdx_gemm``                | Boolean | Global      | A module-level override of the :attr:`warp.config.enable_mathdx_gemm`    |
+|                                      |         | setting     | setting.                                                                 |
++--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings
 ---------------
 
-Backward-pass compilation can be disabled on a per-kernel basis by passing the ``enable_backward`` argument into the :func:`@wp.kernel <warp.kernel>` decorator
-as in the following example:
+Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.kernel>` decorator.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 20 10 50
+
+   * - Field
+     - Type
+     - Default Value
+     - Description
+   * - ``enable_backward``
+     - Boolean
+     - ``None``
+     - If ``False``, the backward pass will not be generated for this kernel.
+       If ``None``, inherits from the module/global setting.
+   * - ``module``
+     - Module | ``"unique"`` | str
+     - ``None``
+     - Controls which module the kernel belongs to. If ``"unique"``, the kernel
+       is assigned to a new module named after the kernel (with a hash suffix). If a
+       plain string is provided, the kernel is registered in the module with
+       that name. If ``None``, the module is inferred from the function's module.
+   * - ``launch_bounds``
+     - int | tuple
+     - ``None``
+     - CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int
+       (``maxThreadsPerBlock``) or a tuple of 1--2 ints
+       ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to
+       CUDA kernels. The ``block_dim`` parameter in :func:`warp.launch` must
+       not exceed the ``maxThreadsPerBlock`` value specified here.
 
 .. code-block:: python
 
@@ -102,3 +133,18 @@ as in the following example:
         y: wp.array(dtype=float),
     ):
         y[0] = x[0] ** 2.0
+
+
+    @wp.kernel(module="unique")
+    def isolated_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        # This kernel will be registered in a new unique module created
+        # just for this kernel and its dependent functions and structs
+        tid = wp.tid()
+        b[tid] = a[tid] + 1.0
+
+
+    @wp.kernel(launch_bounds=(256, 1))
+    def bounded_kernel(a: wp.array(dtype=float)):
+        # CUDA __launch_bounds__ will be set to (256, 1)
+        tid = wp.tid()
+        a[tid] = a[tid] * 2.0
