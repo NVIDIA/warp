@@ -75,6 +75,7 @@ Vector Math
    get_diag
    identity
    inverse
+   inverse_approx
    length
    length_sq
    matrix
@@ -390,6 +391,7 @@ Operators
    bit_or
    bit_xor
    div
+   div_approx
    floordiv
    invert
    lshift

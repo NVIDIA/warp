@@ -290,6 +290,27 @@ template <typename Type> inline CUDA_CALLABLE vec_t<2, Type> div(Type s, vec_t<2
     return vec_t<2, Type>(s / a.c[0], s / a.c[1]);
 }
 
+// approximate division
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> approx_div(vec_t<Length, Type> a, Type s)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i = 0; i < Length; ++i) {
+        ret[i] = approx_div(a[i], s);
+    }
+    return ret;
+}
+
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, Type> approx_div(Type s, vec_t<Length, Type> a)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i = 0; i < Length; ++i) {
+        ret[i] = approx_div(s, a[i]);
+    }
+    return ret;
+}
+
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, Type> operator/(vec_t<Length, Type> a, Type s)
 {
@@ -1492,6 +1513,30 @@ adj_div(Type s, vec_t<Length, Type> a, Type& adj_s, vec_t<Length, Type>& adj_a, 
         assert(0);
     }
 #endif
+}
+
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_approx_div(
+    vec_t<Length, Type> a, Type s, vec_t<Length, Type>& adj_a, Type& adj_s, const vec_t<Length, Type>& adj_ret
+)
+{
+    adj_s -= approx_div(dot(a, adj_ret), (s * s));
+
+    for (unsigned i = 0; i < Length; ++i) {
+        adj_a[i] += approx_div(adj_ret[i], s);
+    }
+}
+
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE void adj_approx_div(
+    Type s, vec_t<Length, Type> a, Type& adj_s, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret
+)
+{
+    for (unsigned i = 0; i < Length; ++i) {
+        Type inv = approx_rcp(a[i]);
+        adj_a[i] -= s * adj_ret[i] * inv * inv;
+        adj_s += adj_ret[i] * inv;
+    }
 }
 
 template <unsigned Length, typename Type>

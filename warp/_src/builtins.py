@@ -843,6 +843,45 @@ add_builtin(
     require_original_output_arg=True,
 )
 
+add_builtin(
+    "inverse_approx",
+    input_types={"a": matrix(shape=(2, 2), dtype=Float)},
+    value_func=inverse_value_func,
+    native_func="approx_inverse",
+    group="Vector Math",
+    doc="""Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+
+    Falls back to exact inverse on CPU.""",
+    require_original_output_arg=True,
+    export=False,
+)
+
+add_builtin(
+    "inverse_approx",
+    input_types={"a": matrix(shape=(3, 3), dtype=Float)},
+    value_func=inverse_value_func,
+    native_func="approx_inverse",
+    group="Vector Math",
+    doc="""Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+
+    Falls back to exact inverse on CPU.""",
+    require_original_output_arg=True,
+    export=False,
+)
+
+add_builtin(
+    "inverse_approx",
+    input_types={"a": matrix(shape=(4, 4), dtype=Float)},
+    value_func=inverse_value_func,
+    native_func="approx_inverse",
+    group="Vector Math",
+    doc="""Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+
+    Falls back to exact inverse on CPU.""",
+    require_original_output_arg=True,
+    export=False,
+)
+
 
 def determinant_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
@@ -11077,6 +11116,89 @@ add_builtin(
 
     The result is unnormalized.""",
     group="Operators",
+)
+
+add_builtin(
+    "div_approx",
+    input_types={"a": Float, "b": Float},
+    value_func=sametypes_create_value_func(Float),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Falls back to exact division on CPU.""",
+    group="Operators",
+    require_original_output_arg=True,
+    export=False,
+)
+add_builtin(
+    "div_approx",
+    input_types={"a": vector(length=Any, dtype=Float), "b": Float},
+    value_func=scalar_mul_create_value_func(vector(length=Any, dtype=Float)),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Divide a vector by a scalar. Falls back to exact division on CPU.""",
+    group="Operators",
+    export=False,
+)
+add_builtin(
+    "div_approx",
+    input_types={"a": Float, "b": vector(length=Any, dtype=Float)},
+    value_func=scalar_mul_create_value_func(vector(length=Any, dtype=Float)),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Divide a scalar by each element of a vector. Falls back to exact division on CPU.""",
+    group="Operators",
+    export=False,
+)
+add_builtin(
+    "div_approx",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Float), "b": Float},
+    value_func=scalar_mul_create_value_func(matrix(shape=(Any, Any), dtype=Float)),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Divide a matrix by a scalar. Falls back to exact division on CPU.""",
+    group="Operators",
+    export=False,
+)
+add_builtin(
+    "div_approx",
+    input_types={"a": Float, "b": matrix(shape=(Any, Any), dtype=Float)},
+    value_func=scalar_mul_create_value_func(matrix(shape=(Any, Any), dtype=Float)),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Divide a scalar by each element of a matrix. Falls back to exact division on CPU.""",
+    group="Operators",
+    export=False,
+)
+add_builtin(
+    "div_approx",
+    input_types={"a": quaternion(dtype=Float), "b": Float},
+    value_func=scalar_mul_create_value_func(quaternion(dtype=Float)),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Divide a quaternion by a scalar.
+
+    The result is unnormalized. Falls back to exact division on CPU.""",
+    group="Operators",
+    export=False,
+)
+add_builtin(
+    "div_approx",
+    input_types={"a": Float, "b": quaternion(dtype=Float)},
+    value_func=scalar_mul_create_value_func(quaternion(dtype=Float)),
+    native_func="approx_div",
+    doc="""Divide two values using approximate GPU intrinsics.
+
+    Divide a scalar by a quaternion.
+
+    The result is unnormalized. Falls back to exact division on CPU.""",
+    group="Operators",
+    export=False,
 )
 
 add_builtin(

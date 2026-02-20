@@ -182,6 +182,58 @@ static_assert(sizeof(half) == 2, "Size of half / float16 type must be 2-bytes");
 
 typedef half float16;
 
+// Approximate division/reciprocal intrinsics
+#if defined(__CUDA_ARCH__)
+
+inline __device__ float approx_rcp(float a)
+{
+    float r;
+    asm("rcp.approx.f32 %0, %1;" : "=f"(r) : "f"(a));
+    return r;
+}
+
+inline __device__ double approx_rcp(double a)
+{
+    double r;
+    asm("rcp.approx.ftz.f64 %0, %1;" : "=d"(r) : "d"(a));
+    return r;
+}
+
+inline __device__ float16 approx_rcp(float16 a)
+{
+    return float16(1.0f / float(a));  // No approx PTX for f16; falls back to exact fp32 reciprocal
+}
+
+inline __device__ float approx_div(float a, float b)
+{
+    float r;
+    asm("div.approx.f32 %0, %1, %2;" : "=f"(r) : "f"(a), "f"(b));
+    return r;
+}
+
+inline __device__ double approx_div(double a, double b)
+{
+    // No div.approx.f64 in PTX; use rcp then multiply
+    return a * approx_rcp(b);
+}
+
+inline __device__ float16 approx_div(float16 a, float16 b)
+{
+    return float16(float(a) / float(b));  // No approx PTX for f16; falls back to exact fp32 division
+}
+
+#else
+
+// CPU fallbacks: exact division
+inline CUDA_CALLABLE float approx_rcp(float a) { return 1.0f / a; }
+inline CUDA_CALLABLE double approx_rcp(double a) { return 1.0 / a; }
+inline CUDA_CALLABLE float16 approx_rcp(float16 a) { return float16(1.0f / float(a)); }
+inline CUDA_CALLABLE float approx_div(float a, float b) { return a / b; }
+inline CUDA_CALLABLE double approx_div(double a, double b) { return a / b; }
+inline CUDA_CALLABLE float16 approx_div(float16 a, float16 b) { return float16(float(a) / float(b)); }
+
+#endif
+
 #if defined(__CUDA_ARCH__)
 
 CUDA_CALLABLE inline half float_to_half(float x)
@@ -474,6 +526,20 @@ inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
 DECLARE_FLOAT_OPS(float16)
 DECLARE_FLOAT_OPS(float32)
 DECLARE_FLOAT_OPS(float64)
+
+// Adjoint for approximate scalar division
+#define DECLARE_ADJ_APPROX_DIV(T) \
+inline CUDA_CALLABLE void adj_approx_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret) \
+{ \
+    adj_a += approx_div(adj_ret, b); \
+    adj_b -= approx_div(T(adj_ret * ret), b); \
+}
+
+DECLARE_ADJ_APPROX_DIV(float16)
+DECLARE_ADJ_APPROX_DIV(float32)
+DECLARE_ADJ_APPROX_DIV(float64)
+
+#undef DECLARE_ADJ_APPROX_DIV
 
 
 // basic ops for float types

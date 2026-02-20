@@ -301,6 +301,17 @@ template <typename Type> inline CUDA_CALLABLE quat_t<Type> div(Type s, quat_t<Ty
     return quat_t<Type>(s / q.x, s / q.y, s / q.z, s / q.w);
 }
 
+// approximate division
+template <typename Type> inline CUDA_CALLABLE quat_t<Type> approx_div(quat_t<Type> q, Type s)
+{
+    return quat_t<Type>(approx_div(q.x, s), approx_div(q.y, s), approx_div(q.z, s), approx_div(q.w, s));
+}
+
+template <typename Type> inline CUDA_CALLABLE quat_t<Type> approx_div(Type s, quat_t<Type> q)
+{
+    return quat_t<Type>(approx_div(s, q.x), approx_div(s, q.y), approx_div(s, q.z), approx_div(s, q.w));
+}
+
 template <typename Type> inline CUDA_CALLABLE quat_t<Type> operator/(quat_t<Type> a, Type s) { return div(a, s); }
 
 template <typename Type> inline CUDA_CALLABLE quat_t<Type> operator/(Type s, quat_t<Type> a) { return div(s, a); }
@@ -1159,6 +1170,27 @@ inline CUDA_CALLABLE void adj_div(Type s, quat_t<Type> a, Type& adj_s, quat_t<Ty
 {
     for (unsigned i = 0; i < 4; ++i) {
         Type inv = Type(1) / a[i];
+        adj_a[i] -= s * adj_ret[i] * inv * inv;
+        adj_s += adj_ret[i] * inv;
+    }
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void
+adj_approx_div(quat_t<Type> a, Type s, quat_t<Type>& adj_a, Type& adj_s, const quat_t<Type>& adj_ret)
+{
+    adj_s -= approx_div(dot(a, adj_ret), (s * s));
+    for (unsigned i = 0; i < 4; ++i) {
+        adj_a[i] += approx_div(adj_ret[i], s);
+    }
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void
+adj_approx_div(Type s, quat_t<Type> a, Type& adj_s, quat_t<Type>& adj_a, const quat_t<Type>& adj_ret)
+{
+    for (unsigned i = 0; i < 4; ++i) {
+        Type inv = approx_rcp(a[i]);
         adj_a[i] -= s * adj_ret[i] * inv * inv;
         adj_s += adj_ret[i] * inv;
     }

@@ -2238,6 +2238,30 @@ def inverse(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]
     ...
 
 @over
+def inverse_approx(a: Matrix[Float, Literal[2], Literal[2]]) -> Matrix[Float, Any, Any]:
+    """Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+
+    Falls back to exact inverse on CPU.
+    """
+    ...
+
+@over
+def inverse_approx(a: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Any, Any]:
+    """Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+
+    Falls back to exact inverse on CPU.
+    """
+    ...
+
+@over
+def inverse_approx(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]:
+    """Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+
+    Falls back to exact inverse on CPU.
+    """
+    ...
+
+@over
 def determinant(a: Matrix[Float, Literal[2], Literal[2]]) -> Float:
     """Compute the determinant of matrix ``a``."""
     ...
@@ -6662,6 +6686,66 @@ def div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
 
     At least one of the tile's element type or the constant type must be scalar.
     Underlying scalar types must match.
+    """
+    ...
+
+@over
+def div_approx(a: Float, b: Float) -> Float:
+    """Divide two values using approximate GPU intrinsics.
+
+    Falls back to exact division on CPU.
+    """
+    ...
+
+@over
+def div_approx(a: Vector[Float, Any], b: Float) -> Vector[Float, Any]:
+    """Divide two values using approximate GPU intrinsics.
+
+    Divide a vector by a scalar. Falls back to exact division on CPU.
+    """
+    ...
+
+@over
+def div_approx(a: Float, b: Vector[Float, Any]) -> Vector[Float, Any]:
+    """Divide two values using approximate GPU intrinsics.
+
+    Divide a scalar by each element of a vector. Falls back to exact division on CPU.
+    """
+    ...
+
+@over
+def div_approx(a: Matrix[Float, Any, Any], b: Float) -> Matrix[Float, Any, Any]:
+    """Divide two values using approximate GPU intrinsics.
+
+    Divide a matrix by a scalar. Falls back to exact division on CPU.
+    """
+    ...
+
+@over
+def div_approx(a: Float, b: Matrix[Float, Any, Any]) -> Matrix[Float, Any, Any]:
+    """Divide two values using approximate GPU intrinsics.
+
+    Divide a scalar by each element of a matrix. Falls back to exact division on CPU.
+    """
+    ...
+
+@over
+def div_approx(a: Quaternion[Float], b: Float) -> Quaternion[Float]:
+    """Divide two values using approximate GPU intrinsics.
+
+    Divide a quaternion by a scalar.
+
+    The result is unnormalized. Falls back to exact division on CPU.
+    """
+    ...
+
+@over
+def div_approx(a: Float, b: Quaternion[Float]) -> Quaternion[Float]:
+    """Divide two values using approximate GPU intrinsics.
+
+    Divide a scalar by a quaternion.
+
+    The result is unnormalized. Falls back to exact division on CPU.
     """
     ...
 
