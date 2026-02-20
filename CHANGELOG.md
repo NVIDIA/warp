@@ -51,6 +51,8 @@
 - Add `wp.config.cuda_arch_suffix` setting to append architecture-specific (`"a"`) or
   family-specific (`"f"`) suffixes to the `--gpu-architecture` flag passed to NVRTC
   ([GH-1065](https://github.com/NVIDIA/warp/issues/1065)).
+- Add optional `has_side_effect` flag to `jax_kernel()` and `jax_callable()` to ensure FFI calls are always executed by JAX
+  ([GH-1240](https://github.com/NVIDIA/warp/pull/1240)).
 
 ### Removed
 
