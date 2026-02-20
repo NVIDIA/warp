@@ -28,14 +28,14 @@ from warp._src.fem.geometry import (
     WholeGeometryPartition,
 )
 from warp._src.fem.operator import Operator
-from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind
+from warp._src.fem.types import NULL_ELEMENT_INDEX, Domain, ElementKind
 
 _wp_module_name_ = "warp.fem.domain"
 
 GeometryOrPartition = Union[Geometry, GeometryPartition]
 
 
-class GeometryDomain:
+class GeometryDomain(Domain):
     """Interface class for domains, i.e. (partial) views of elements in a :class:`Geometry`."""
 
     geometry_partition: GeometryPartition

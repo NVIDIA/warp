@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
@@ -210,11 +210,18 @@ def element_coordinates(domain: Domain, element_index: ElementIndex, x: Any) -> 
 
 
 @operator(
-    resolver=lambda dmn: dmn.domain_cell_arg,
-    field_result=lambda dmn: (dmn.cell_domain(), Domain, dmn.cell_domain().DomainArg),
+    resolver=lambda x: x.domain_cell_arg if isinstance(x, Domain) else x.cell_field_eval_arg,
+    field_result=lambda x: (x.cell_domain(), Domain, x.cell_domain().DomainArg)
+    if isinstance(x, Domain)
+    else (x.cell_field, Field, x.cell_field.ElementEvalArg),
 )
-def cells(domain: Domain) -> Domain:
-    """Convert a domain defined on geometry sides to a domain defined of cells."""
+def cells(domain_or_field: Union[Domain, Field]) -> Union[Domain, Field]:
+    """Convert a side domain to a cell domain, or a traced field to its cell-level field.
+
+    When applied to a :class:`Domain` defined on sides, returns the corresponding cell domain.
+    When applied to a traced :class:`Field`, returns the underlying cell-level field
+    for correct evaluation at cell-space samples (e.g., from :func:`lookup` on a cell domain).
+    """
     pass
 
 

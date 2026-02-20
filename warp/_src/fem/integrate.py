@@ -174,7 +174,13 @@ class IntegrandVisitor(ast.NodeTransformer):
                 self._process_operator_call(call, func, func, field_info)
 
                 if func.field_result:
-                    res = func.field_result(field_info.field)
+                    try:
+                        res = func.field_result(field_info.field)
+                    except (AttributeError, NotImplementedError) as e:
+                        raise TypeError(
+                            f"Operator `{func.func.__name__}` is not defined for {field_info.abstract_type.__name__} {field_info.field.name}"
+                        ) from e
+
                     self._field_nodes[call] = IntegrandVisitor.FieldInfo(
                         field=res[0],
                         abstract_type=res[1],
@@ -286,7 +292,7 @@ class IntegrandTransformer(IntegrandVisitor):
 
         except (AttributeError, NotImplementedError) as e:
             raise TypeError(
-                f"Operator {operator.func.__name__} is not defined for {field_info.abstract_type.__name__} {field.name}"
+                f"Operator `{operator.func.__name__}` is not defined for {field_info.abstract_type.__name__} {field.name}"
             ) from e
 
         # Save the pointer as an attribute than can be accessed from the calling scope

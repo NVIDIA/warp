@@ -23,7 +23,7 @@ from warp._src.fem.domain import GeometryDomain, Sides
 from warp._src.fem.geometry import DeformedGeometry, Geometry
 from warp._src.fem.operator import Operator, integrand
 from warp._src.fem.space import FunctionSpace, SpacePartition
-from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind, Sample
+from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementKind, Field, Sample
 from warp._src.fem.utils import type_zero_element
 from warp._src.types import (
     is_value,
@@ -41,7 +41,7 @@ from warp._src.types import (
 _wp_module_name_ = "warp.fem.field.field"
 
 
-class FieldLike:
+class FieldLike(Field):
     """Base class for integrable fields."""
 
     EvalArg: Struct

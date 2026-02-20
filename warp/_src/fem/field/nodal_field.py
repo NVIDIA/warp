@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
 from typing import Any, ClassVar
 
 import warp as wp
@@ -585,6 +586,15 @@ class NodalField(NodalFieldBase):
 
         self.eval_arg_value.invalidate(self)
 
+    @property
+    def cell_field(self):
+        """Return the underlying cell-level field (i.e, itself)."""
+        return self
+
+    @wp.func
+    def cell_field_eval_arg(arg: Any):
+        return arg
+
     class Trace(NodalFieldBase):
         def __init__(self, field):
             self._field = field
@@ -595,6 +605,30 @@ class NodalField(NodalFieldBase):
             self.space.basis.fill_basis_arg(arg.basis_arg, device)
             self.space.topology.fill_topo_arg(arg.topo_arg, device)
             self.space_partition.fill_partition_arg(arg.partition_arg, device)
+
+        @property
+        def cell_field(self):
+            """Return the underlying cell-level field."""
+            return self._field
+
+        @cached_property
+        def cell_field_eval_arg(self):
+            """Device function converting traced ElementEvalArg to cell ElementEvalArg."""
+            CellElementEvalArg = self._field.ElementEvalArg
+            CellEvalArg = self._field.EvalArg
+
+            @cache.dynamic_func(suffix=self.name)
+            def cell_field_eval_arg(args: self.ElementEvalArg):
+                cell_elt_arg = self.space.geometry.side_to_cell_arg(args.elt_arg)
+                cell_eval_arg = CellEvalArg(
+                    args.eval_arg.dof_values,
+                    args.eval_arg.basis_arg,
+                    args.eval_arg.partition_arg,
+                    args.eval_arg.topo_arg,
+                )
+                return CellElementEvalArg(cell_elt_arg, cell_eval_arg)
+
+            return cell_field_eval_arg
 
     def trace(self) -> Trace:
         trace_field = NodalField.Trace(self)

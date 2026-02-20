@@ -2416,6 +2416,85 @@ def test_capturability(test, device):
         assert_np_equal(A.columns.numpy()[:nnz_ref], columns_ref)
 
 
+@fem.integrand
+def _boundary_cells_field_lookup_integral(
+    s: fem.Sample,
+    domain: fem.Domain,
+    U: fem.Field,
+    bounds_lo: wp.vec2,
+    bounds_hi: wp.vec2,
+):
+    """On left/right boundary sides, use fem.cells(U) for correct cell-space eval."""
+    pos = domain(s)
+    nor = fem.normal(domain, s)
+    on_top_bottom = pos[1] <= bounds_lo[1] or pos[1] >= bounds_hi[1]
+    on_left_right = pos[0] <= bounds_lo[0] or pos[0] >= bounds_hi[0]
+    if on_left_right and not on_top_bottom:
+        domain_width = bounds_hi[0] - bounds_lo[0]
+        on_left = pos[0] <= bounds_lo[0]
+        eps = 1.0e-6 * domain_width
+        wrapped_x = wp.where(on_left, bounds_hi[0] - eps, bounds_lo[0] + eps)
+        wrapped_pos = wp.vec2(wrapped_x, pos[1])
+        cell_domain = fem.cells(domain)
+        wrapped_s = fem.lookup(cell_domain, wrapped_pos, s)
+        U_cell = fem.cells(U)
+        U_cell_bis = fem.cells(U_cell)  # no op
+        return U_cell_bis(wrapped_s)[0] * wp.length(nor)
+    return 0.0
+
+
+@fem.integrand
+def _y_only_init(s: fem.Sample, domain: fem.Domain):
+    """rho = 1 + y, all other components zero."""
+    x = domain(s)
+    return wp.vec4(1.0 + x[1], 0.0, 0.0, 0.0)
+
+
+def test_traced_cells_field_lookup_is_correct(test, device):
+    """U(s) on boundary sides with traced field gives correct results."""
+
+    def _setup_grid(device, res=10):
+        aspect = 2.0
+        domain_size = 1.0
+        domain_width = aspect * domain_size
+        res_x = int(aspect * res)
+
+        geo = fem.Grid2D(
+            res=wp.vec2i(res_x, res),
+            bounds_lo=wp.vec2(0.0),
+            bounds_hi=wp.vec2(domain_width, domain_size),
+        )
+        sides = fem.Sides(geo)
+        basis = fem.make_polynomial_basis_space(geo, degree=1, discontinuous=True)
+        space4 = fem.make_collocated_function_space(basis, dtype=wp.vec4)
+
+        field = space4.make_field()
+        fem.interpolate(_y_only_init, dest=field)
+
+        bounds_lo = wp.vec2(0.0)
+        bounds_hi = wp.vec2(domain_width, domain_size)
+
+        return field, sides, bounds_lo, bounds_hi
+
+    with wp.ScopedDevice(device):
+        field, sides, bounds_lo, bounds_hi = _setup_grid(device)
+
+        vals = {"bounds_lo": bounds_lo, "bounds_hi": bounds_hi}
+        inner_integral = fem.integrate(
+            _boundary_cells_field_lookup_integral,
+            domain=sides,
+            fields={"U": field.trace()},
+            values=vals,
+        )
+        # 2 boundaries x int_0^1 (1+y) dy = 2 x 1.5 = 3.0
+        test.assertAlmostEqual(
+            inner_integral,
+            3.0,
+            places=4,
+            msg=f"Traced U(s) on boundary sides wrong on {device}",
+        )
+
+
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
 
@@ -2452,6 +2531,9 @@ add_function_test(TestFem, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(TestFem, "test_implicit_fields", test_implicit_fields)
 add_function_test(TestFem, "test_integrate_high_order", test_integrate_high_order, devices=cuda_devices)
 add_function_test(TestFem, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
+add_function_test(
+    TestFem, "test_traced_cells_field_lookup_is_correct", test_traced_cells_field_lookup_is_correct, devices=devices
+)
 
 
 class TestFemUtilities(unittest.TestCase):

@@ -91,6 +91,7 @@
   to return Python `int`, `float`, and `bool` ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
 - Indexing into vectors and matrices with non-native scalar types now returns Warp scalar instances
   ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
+- The `wp.fem.cells()` operator now accepts traced nodal fields. In that case, the original cell-space field is returned, allowing evaluation of arbitrary cell-space samples, for instance from `fem.lookup()`.
 
 ### Fixed
 
