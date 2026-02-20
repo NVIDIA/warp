@@ -34,6 +34,69 @@ TWO_N = wp.constant(TILE_N * 2)
 
 TILE_OFFSET = 5
 
+# Non-power-of-two tile size — forces the scalar fallback path for 2D tiles
+# (not divisible by float4, so the vectorized path is skipped);
+# 1D/3D tiles always use the scalar path regardless of tile size
+TILE_NPOT = wp.constant(17)
+TILE_NPOT_3D = wp.constant(7)
+
+
+@wp.kernel
+def tile_load_1d_sliced_scalar_kernel(
+    input: wp.array1d(dtype=float),
+    out_full: wp.array1d(dtype=float),
+    out_sliced: wp.array1d(dtype=float),
+):
+    full = wp.tile_load(input, shape=TILE_NPOT, storage="shared")
+    sliced = wp.tile_load(input[::2], shape=TILE_NPOT, storage="shared")
+
+    wp.tile_store(out_full, full)
+    wp.tile_store(out_sliced, sliced)
+
+
+@wp.kernel
+def tile_load_2d_sliced_scalar_kernel(
+    input: wp.array2d(dtype=float),
+    out_full: wp.array2d(dtype=float),
+    out_sliced: wp.array2d(dtype=float),
+):
+    full = wp.tile_load(input, shape=(TILE_NPOT, TILE_NPOT), storage="shared")
+    sliced = wp.tile_load(input[::2, ::2], shape=(TILE_NPOT, TILE_NPOT), storage="shared")
+
+    wp.tile_store(out_full, full)
+    wp.tile_store(out_sliced, sliced)
+
+
+@wp.kernel
+def tile_load_3d_sliced_scalar_kernel(
+    input: wp.array3d(dtype=float),
+    out_full: wp.array3d(dtype=float),
+    out_sliced: wp.array3d(dtype=float),
+):
+    full = wp.tile_load(input, shape=(TILE_NPOT_3D, TILE_NPOT_3D, TILE_NPOT_3D), storage="shared")
+    sliced = wp.tile_load(input[::2, ::2, ::2], shape=(TILE_NPOT_3D, TILE_NPOT_3D, TILE_NPOT_3D), storage="shared")
+
+    wp.tile_store(out_full, full)
+    wp.tile_store(out_sliced, sliced)
+
+
+@wp.kernel
+def tile_store_1d_sliced_scalar_kernel(
+    input: wp.array1d(dtype=float),
+    output: wp.array1d(dtype=float),
+):
+    t = wp.tile_load(input, shape=TILE_NPOT, storage="shared")
+    wp.tile_store(output[::2], t)
+
+
+@wp.kernel
+def tile_store_2d_sliced_scalar_kernel(
+    input: wp.array2d(dtype=float),
+    output: wp.array2d(dtype=float),
+):
+    t = wp.tile_load(input, shape=(TILE_NPOT, TILE_NPOT), storage="shared")
+    wp.tile_store(output[::2, ::2], t)
+
 
 @wp.kernel
 def tile_load_1d_kernel(
@@ -700,6 +763,70 @@ def test_tile_load_scoped(test, device):
     wp.launch_tiled(test_tile_load_scoped_kernel, dim=1, inputs=[A, B], block_dim=TILE_DIM, device=device)
 
 
+def test_tile_load_sliced_scalar(kernel, ndim, tile_size=TILE_NPOT):
+    """Test tile load from sliced (strided) arrays on the scalar path."""
+
+    def test(test, device):
+        rng = np.random.default_rng(42)
+
+        shape = [tile_size] * ndim
+
+        input = wp.array(rng.random(shape), dtype=float, device=device)
+        output_full = wp.zeros(shape, dtype=float, device=device)
+        output_sliced = wp.zeros(shape, dtype=float, device=device)
+
+        wp.launch_tiled(
+            kernel,
+            dim=[1],
+            inputs=[input, output_full, output_sliced],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+        ref_full = input.numpy()
+
+        src_slice = tuple(slice(0, dim, 2) for dim in shape)
+        dest_slice = tuple(slice(0, (dim + 1) // 2) for dim in shape)
+        ref_sliced = np.zeros_like(ref_full)
+        ref_sliced[dest_slice] = ref_full[src_slice]
+
+        assert_np_equal(output_full.numpy(), ref_full)
+        assert_np_equal(output_sliced.numpy(), ref_sliced)
+
+    return test
+
+
+def test_tile_store_sliced_scalar(kernel, ndim, tile_size=TILE_NPOT):
+    """Test tile store to sliced (strided) destination arrays on the scalar path."""
+
+    def test(test, device):
+        rng = np.random.default_rng(42)
+
+        shape = [tile_size] * ndim
+
+        input = wp.array(rng.random(shape), dtype=float, device=device)
+        # Output array is 2x the tile size per dim so output[::2] has room for the tile
+        out_shape = [tile_size * 2] * ndim
+        output = wp.zeros(out_shape, dtype=float, device=device)
+
+        wp.launch_tiled(
+            kernel,
+            dim=[1],
+            inputs=[input, output],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+        ref_input = input.numpy()
+        ref_output = np.zeros(out_shape, dtype=np.float64)
+        dest_slice = tuple(slice(0, tile_size * 2, 2) for _ in range(ndim))
+        ref_output[dest_slice] = ref_input
+
+        assert_np_equal(output.numpy(), ref_output)
+
+    return test
+
+
 devices = get_test_devices()
 
 
@@ -707,6 +834,36 @@ class TestTileLoad(unittest.TestCase):
     pass
 
 
+add_function_test(
+    TestTileLoad,
+    "test_tile_load_1d_sliced_scalar",
+    test_tile_load_sliced_scalar(tile_load_1d_sliced_scalar_kernel, 1),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_load_2d_sliced_scalar",
+    test_tile_load_sliced_scalar(tile_load_2d_sliced_scalar_kernel, 2),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_load_3d_sliced_scalar",
+    test_tile_load_sliced_scalar(tile_load_3d_sliced_scalar_kernel, 3, tile_size=TILE_NPOT_3D),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_store_1d_sliced_scalar",
+    test_tile_store_sliced_scalar(tile_store_1d_sliced_scalar_kernel, 1),
+    devices=devices,
+)
+add_function_test(
+    TestTileLoad,
+    "test_tile_store_2d_sliced_scalar",
+    test_tile_store_sliced_scalar(tile_store_2d_sliced_scalar_kernel, 2),
+    devices=devices,
+)
 add_function_test(TestTileLoad, "test_tile_load_1d", test_tile_load(tile_load_1d_kernel, 1), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_2d", test_tile_load(tile_load_2d_kernel, 2), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_3d", test_tile_load(tile_load_3d_kernel, 3), devices=devices)

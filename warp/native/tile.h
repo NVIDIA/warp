@@ -456,6 +456,55 @@ CUDA_CALLABLE constexpr auto tile_coord_insert_axis(const tile_coord_t<N>& coord
 }
 
 
+// incremental coordinate iterator for N-D (N >= 2) tile traversal in scalar paths
+// avoids per-element div/mod (as in coord_from_linear) by maintaining running
+// coordinates with carry propagation
+//
+// works in byte offsets throughout so strides need not be multiples of sizeof(T)
+// (e.g. arrays of structs where stride reflects the full struct size)
+template <typename Shape> struct tile_coord_iter_t {
+    static constexpr int N = Shape::N;
+    static constexpr int lastdim = N - 1;
+
+    tile_coord_t<N> coord;
+    int strides[N];  // byte strides from the global array
+    int byte_offset;  // running byte offset into the data buffer
+
+    // initialize from a starting coordinate and the global array byte strides/offsets
+    inline CUDA_CALLABLE void init(const tile_coord_t<N>& c, const int* byte_strides, const int* tile_offset)
+    {
+        coord = c;
+        byte_offset = 0;
+
+        WP_PRAGMA_UNROLL
+        for (int d = 0; d < N; ++d) {
+            strides[d] = byte_strides[d];
+            byte_offset += strides[d] * (tile_offset[d] + c[d]);
+        }
+    }
+
+    inline CUDA_CALLABLE void advance(int step)
+    {
+        coord[lastdim] += step;
+        byte_offset += step * strides[lastdim];
+
+        WP_PRAGMA_UNROLL
+        for (int d = lastdim; d > 0; --d) {
+            int dim_size = Shape::dim(d);
+            if (coord[d] >= dim_size) {
+                int carry = coord[d] / dim_size;
+                int new_cd = coord[d] - carry * dim_size;
+                // carry_delta = strides[d-1] - dim(d) * strides[d]
+                // this is 0 when strides[d-1] == tile_dim(d) * strides[d], i.e. the array
+                // is contiguous along dimensions d and d-1, so byte_offset needs no adjustment
+                byte_offset += carry * (strides[d - 1] - dim_size * strides[d]);
+                coord[d] = new_cd;
+                coord[d - 1] += carry;
+            }
+        }
+    }
+};
+
 // represents a tile stored in global memory with dynamic strides
 // used to represent the source and offset for tile loads to register/shared
 // BoundsCheck: when true (default), validates array access bounds; when false, skips validation for performance
@@ -463,6 +512,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_glob
     using Type = T;
     using Shape = Shape_;
     using Coord = tile_coord_t<Shape::N>;
+    static constexpr bool bounds_check = BoundsCheck;
 
     array_t<T> data;
     Coord offset;
@@ -1524,11 +1574,49 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
 #endif  // defined(__CUDA_ARCH__)
 
-        // scalar bounds checked path
-        WP_PRAGMA_UNROLL
-        for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
-            auto c = Layout::coord_from_linear(i);
-            dest.store(c, data(i));
+        // scalar path
+        {
+            using Shape = typename Layout::Shape;
+
+            if constexpr (Shape::N == 1) {
+                // 1D tiles: flat indexing with byte stride
+                const int byte_stride = dest.data.strides[0];
+                const int base_bytes = dest.offset[0] * byte_stride;
+
+                WP_PRAGMA_UNROLL
+                for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                    bool valid = true;
+                    if constexpr (Global::bounds_check) {
+                        if (dest.offset[0] + i >= dest.data.shape[0])
+                            valid = false;
+                    }
+
+                    if (valid)
+                        *reinterpret_cast<T*>(reinterpret_cast<char*>(dest.data.data) + base_bytes + i * byte_stride)
+                            = data(i);
+                }
+            } else {
+                // N-D tiles: incremental coordinate iteration
+                using Iter = tile_coord_iter_t<Shape>;
+                Iter iter;
+                iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), dest.data.strides, dest.offset.indices);
+
+                WP_PRAGMA_UNROLL
+                for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                    bool valid = true;
+                    if constexpr (Global::bounds_check) {
+                        WP_PRAGMA_UNROLL
+                        for (int d = 0; d < Shape::N; ++d) {
+                            if (dest.offset[d] + iter.coord[d] >= dest.data.shape[d])
+                                valid = false;
+                        }
+                    }
+
+                    if (valid)
+                        *reinterpret_cast<T*>(reinterpret_cast<char*>(dest.data.data) + iter.byte_offset) = data(i);
+                    iter.advance(WP_TILE_BLOCK_DIM);
+                }
+            }
         }
     }
 
@@ -1614,11 +1702,51 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
 #endif  // defined(__CUDA_ARCH__)
 
-        // scalar bounds checked path
-        WP_PRAGMA_UNROLL
-        for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
-            auto c = Layout::coord_from_linear(i);
-            data(i) = src.load(c);
+        // scalar path
+        {
+            using Shape = typename Layout::Shape;
+
+            if constexpr (Shape::N == 1) {
+                // 1D tiles: flat indexing with byte stride
+                const int byte_stride = src.data.strides[0];
+                const int base_bytes = src.offset[0] * byte_stride;
+
+                WP_PRAGMA_UNROLL
+                for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                    bool valid = true;
+                    if constexpr (Global::bounds_check) {
+                        if (src.offset[0] + i >= src.data.shape[0])
+                            valid = false;
+                    }
+
+                    data(i) = valid ? *reinterpret_cast<const T*>(
+                                          reinterpret_cast<const char*>(src.data.data) + base_bytes + i * byte_stride
+                                      )
+                                    : T {};
+                }
+            } else {
+                // N-D tiles: incremental coordinate iteration
+                using Iter = tile_coord_iter_t<Shape>;
+                Iter iter;
+                iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), src.data.strides, src.offset.indices);
+
+                WP_PRAGMA_UNROLL
+                for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                    bool valid = true;
+                    if constexpr (Global::bounds_check) {
+                        WP_PRAGMA_UNROLL
+                        for (int d = 0; d < Shape::N; ++d) {
+                            if (src.offset[d] + iter.coord[d] >= src.data.shape[d])
+                                valid = false;
+                        }
+                    }
+
+                    data(i) = valid
+                        ? *reinterpret_cast<const T*>(reinterpret_cast<const char*>(src.data.data) + iter.byte_offset)
+                        : T {};
+                    iter.advance(WP_TILE_BLOCK_DIM);
+                }
+            }
         }
 
         initialized = true;
