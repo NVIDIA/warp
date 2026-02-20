@@ -98,6 +98,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     Intended to be modified to create additional test suites
     """
     from warp.tests.cuda.test_async import TestAsync
+    from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_multigpu import TestMultiGPU
     from warp.tests.cuda.test_peer import TestPeer
@@ -235,6 +236,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestContext,
         TestCopy,
         TestCTypes,
+        TestCudaArchSuffix,
         TestDense,
         TestDevices,
         TestDiagnostics,

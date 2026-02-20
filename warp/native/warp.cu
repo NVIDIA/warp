@@ -3745,6 +3745,7 @@ size_t wp_cuda_compile_program(
     const char* cuda_src,
     const char* program_name,
     int arch,
+    const char* arch_suffix,
     const char* include_dir,
     int num_cuda_include_dirs,
     const char** cuda_include_dirs,
@@ -3798,12 +3799,15 @@ size_t wp_cuda_compile_program(
     char arch_opt[max_arch];
     char arch_opt_lto[max_arch];
 
+    // arch_suffix is "" (no suffix), "a" (arch-specific), or "f" (family-specific)
+    const char* suffix = (arch_suffix != nullptr) ? arch_suffix : "";
+
     if (use_ptx) {
-        snprintf(arch_opt, max_arch, "--gpu-architecture=compute_%d", arch);
-        snprintf(arch_opt_lto, max_arch, "-arch=compute_%d", arch);
+        snprintf(arch_opt, max_arch, "--gpu-architecture=compute_%d%s", arch, suffix);
+        snprintf(arch_opt_lto, max_arch, "-arch=compute_%d%s", arch, suffix);
     } else {
-        snprintf(arch_opt, max_arch, "--gpu-architecture=sm_%d", arch);
-        snprintf(arch_opt_lto, max_arch, "-arch=sm_%d", arch);
+        snprintf(arch_opt, max_arch, "--gpu-architecture=sm_%d%s", arch, suffix);
+        snprintf(arch_opt_lto, max_arch, "-arch=sm_%d%s", arch, suffix);
     }
 
     std::vector<const char*> opts;

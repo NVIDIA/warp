@@ -50,6 +50,7 @@ def build_cuda(
     compile_time_trace=False,
     ltoirs=None,
     fatbins=None,
+    arch_suffix="",
 ) -> None:
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
@@ -76,10 +77,12 @@ def build_cuda(
         )
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
         kernel_cache_dir_bytes = warp.config.kernel_cache_dir.encode("utf-8")
+        arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
             program_name_bytes,
             arch,
+            arch_suffix_bytes,
             inc_path,
             0,
             None,

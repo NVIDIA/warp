@@ -2657,11 +2657,12 @@ class Module:
         return device.get_cuda_compile_arch()
 
     def _get_compile_output_name(
-        self, device: Device | None, output_arch: int | None = None, use_ptx: bool | None = None
+        self, device: Device | None, output_arch: int | None = None, arch_suffix: str = "", use_ptx: bool | None = None
     ) -> str:
         """Get the filename to use for the compiled module binary.
 
-        This is only the filename, e.g. ``wp___main___0340cd1.sm86.ptx``.
+        This is only the filename, e.g. ``wp___main___0340cd1.sm86.ptx`` or
+        ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
         """
         module_name_short = self.get_module_identifier()
@@ -2688,10 +2689,17 @@ class Module:
                 init()
                 use_ptx = final_arch not in runtime.nvrtc_supported_archs
 
+        # Resolve the arch suffix if the caller passed an empty string
+        if not arch_suffix:
+            if device:
+                arch_suffix = device._get_cuda_arch_suffix(final_arch)
+            else:
+                arch_suffix = ""
+
         if use_ptx:
-            output_name = f"{module_name_short}.sm{final_arch}.ptx"
+            output_name = f"{module_name_short}.sm{final_arch}{arch_suffix}.ptx"
         else:
-            output_name = f"{module_name_short}.sm{final_arch}.cubin"
+            output_name = f"{module_name_short}.sm{final_arch}{arch_suffix}.cubin"
 
         return output_name
 
@@ -2720,12 +2728,26 @@ class Module:
             output_dir: The directory to write the compiled module to.
             output_name: The name of the compiled module binary file.
             output_arch: The architecture to compile the module for.
+            use_ptx: Whether to compile to PTX instead of CUBIN. If ``None``,
+                auto-determined from the device and architecture.
         """
         if output_arch is None:
             output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
 
+        # Resolve the arch suffix once for both the output filename and the build call
+        if output_arch:
+            init()
+            arch_suffix = _validate_cuda_arch_suffix(
+                output_arch,
+                device_arch=device.arch if device else output_arch,
+                toolkit_version=runtime.toolkit_version,
+                device_name=device.alias if device else None,
+            )
+        else:
+            arch_suffix = ""
+
         if output_name is None:
-            output_name = self._get_compile_output_name(device, output_arch, use_ptx)
+            output_name = self._get_compile_output_name(device, output_arch, arch_suffix, use_ptx)
 
         # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
         builder_options = self.options | {"output_arch": output_arch}
@@ -2813,7 +2835,7 @@ class Module:
 
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
-                    f"Compile CUDA (arch={builder_options['output_arch']}, mode={mode}, block_dim={self.options['block_dim']})",
+                    f"Compile CUDA (arch={builder_options['output_arch']}{arch_suffix}, mode={mode}, block_dim={self.options['block_dim']})",
                     active=warp.config.verbose,
                 ):
                     warp._src.build.build_cuda(
@@ -2829,6 +2851,7 @@ class Module:
                         compile_time_trace=self.options["compile_time_trace"],
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
+                        arch_suffix=arch_suffix,
                     )
 
             except Exception as e:
@@ -3833,6 +3856,77 @@ class Device:
             output_arch = self.arch
 
         return output_arch
+
+    def _get_cuda_arch_suffix(self, output_arch: int) -> str:
+        """Return the validated arch suffix for this device."""
+        return _validate_cuda_arch_suffix(
+            output_arch,
+            device_arch=self.arch,
+            toolkit_version=self.runtime.toolkit_version,
+            device_name=self.alias,
+        )
+
+
+def _validate_cuda_arch_suffix(
+    output_arch: int,
+    device_arch: int,
+    toolkit_version: tuple[int, int] | None,
+    device_name: str | None = None,
+) -> str:
+    """Validate :data:`warp.config.cuda_arch_suffix` and return the suffix string.
+
+    This is a device-independent validation function used by both the device
+    compilation path (:meth:`Device._get_cuda_arch_suffix`) and the AOT path.
+
+    Args:
+        output_arch: The architecture that will be used for compilation.
+        device_arch: The architecture of the target device (or the AOT target).
+        toolkit_version: The CUDA toolkit version as ``(major, minor)``, or ``None``.
+        device_name: Optional device name for error messages.
+
+    Returns:
+        The validated suffix string (``"a"``, ``"f"``, or ``""``).
+
+    Raises:
+        RuntimeError: If the suffix is invalid for the target architecture or toolkit.
+    """
+    suffix = warp.config.cuda_arch_suffix
+    if suffix is None:
+        return ""
+
+    if suffix not in ("a", "f"):
+        raise RuntimeError(f'Invalid cuda_arch_suffix {suffix!r}. Must be None, "a", or "f".')
+
+    arch_label = f" (device {device_name})" if device_name else ""
+
+    if suffix == "a" and device_arch < 90:
+        raise RuntimeError(
+            f'cuda_arch_suffix="a" requires sm_90 or higher, but sm_{device_arch}{arch_label} was specified.'
+        )
+
+    if suffix == "f":
+        if device_arch < 100:
+            raise RuntimeError(
+                f'cuda_arch_suffix="f" requires sm_100 or higher, but sm_{device_arch}{arch_label} was specified.'
+            )
+        if toolkit_version is not None and toolkit_version < (12, 9):
+            raise RuntimeError(
+                f'cuda_arch_suffix="f" requires CUDA toolkit 12.9 or higher, but toolkit version is {toolkit_version[0]}.{toolkit_version[1]}.'
+            )
+
+    if suffix == "a" and output_arch != device_arch:
+        raise RuntimeError(
+            f'cuda_arch_suffix="a" requires compiling for the exact device architecture (sm_{device_arch}), '
+            f"but output architecture is sm_{output_arch}."
+        )
+
+    if suffix == "f" and output_arch // 10 != device_arch // 10:
+        raise RuntimeError(
+            f'cuda_arch_suffix="f" requires the output architecture to be in the same GPU family '
+            f"as the device. sm_{device_arch} and output sm_{output_arch} belong to different families."
+        )
+
+    return suffix
 
 
 """ Meta-type for arguments that can be resolved to a concrete Device.
@@ -4875,6 +4969,7 @@ class Runtime:
                 ctypes.c_char_p,  # cuda_src
                 ctypes.c_char_p,  # program name
                 ctypes.c_int,  # arch
+                ctypes.c_char_p,  # arch_suffix
                 ctypes.c_char_p,  # include_dir
                 ctypes.c_int,  # num_cuda_include_dirs
                 ctypes.POINTER(ctypes.c_char_p),  # cuda include dirs
@@ -7910,7 +8005,7 @@ def load_aot_module(
 
         for candidate_use_ptx in candidate_flags:
             candidate_path = os.path.join(
-                module_dir, module_object._get_compile_output_name(d, output_arch, candidate_use_ptx)
+                module_dir, module_object._get_compile_output_name(d, output_arch, use_ptx=candidate_use_ptx)
             )
             tried_paths.append(candidate_path)
             if os.path.exists(candidate_path):

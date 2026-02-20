@@ -48,6 +48,9 @@
 - Add support for `tile / tile`, `tile / constant`, and `constant / tile` syntax for element-wise and broadcast division ([GH-1009](https://github.com/NVIDIA/warp/issues/1009)).
 - Add `wp.config.legacy_scalar_return_types` to restore legacy behavior where built-in function calls
   and vector/matrix indexing return Python native scalar types instead of Warp scalar instances.
+- Add `wp.config.cuda_arch_suffix` setting to append architecture-specific (`"a"`) or
+  family-specific (`"f"`) suffixes to the `--gpu-architecture` flag passed to NVRTC
+  ([GH-1065](https://github.com/NVIDIA/warp/issues/1065)).
 
 ### Removed
 
