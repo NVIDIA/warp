@@ -93,6 +93,8 @@
   to return Python `int`, `float`, and `bool` ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
 - Indexing into vectors and matrices with non-native scalar types now returns Warp scalar instances
   ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
+- Accelerate shared tile `wp.tile_load()` / `wp.tile_store()` for non-power-of-two tile sizes
+  in L2-cached workloads ([GH-1239](https://github.com/NVIDIA/warp/issues/1239)).
 
 ### Fixed
 
