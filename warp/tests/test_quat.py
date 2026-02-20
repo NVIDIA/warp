@@ -1834,8 +1834,8 @@ def test_quat_euler_conversion(test, device, dtype, register_kernels=False):
 
     rpy_arr = rng.uniform(low=-np.pi, high=np.pi, size=(N, 3))
 
-    quats_from_euler = [list(quat_from_euler(wp.vec3(*rpy), 0, 1, 2)) for rpy in rpy_arr]
-    quats_from_rpy = [list(wp.quat_rpy(rpy[0], rpy[1], rpy[2])) for rpy in rpy_arr]
+    quats_from_euler = [[float(x) for x in quat_from_euler(wp.vec3(*rpy), 0, 1, 2)] for rpy in rpy_arr]
+    quats_from_rpy = [[float(x) for x in wp.quat_rpy(rpy[0], rpy[1], rpy[2])] for rpy in rpy_arr]
 
     assert_np_equal(np.array(quats_from_euler), np.array(quats_from_rpy), tol=1e-4)
 

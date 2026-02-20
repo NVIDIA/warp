@@ -376,6 +376,28 @@ class TestTypes(unittest.TestCase):
         v[2] = np.float16(3.0)
         self.assertEqual(v, (1.0, 2.0, 3.0))
 
+    def test_legacy_scalar_return_types(self):
+        old_setting = wp.config.legacy_scalar_return_types
+
+        try:
+            wp.config.legacy_scalar_return_types = True
+
+            vec3h = wp.types.vector(3, wp.float16)
+            vec3d = wp.types.vector(3, wp.float64)
+            vec3s = wp.types.vector(3, wp.int16)
+            self.assertIsInstance(vec3h(1.0, 2.0, 3.0)[0], float)
+            self.assertIsInstance(vec3d(1.0, 2.0, 3.0)[0], float)
+            self.assertIsInstance(vec3s(1, 2, 3)[0], int)
+
+            mat22h = wp.types.matrix((2, 2), wp.float16)
+            mat22d = wp.types.matrix((2, 2), wp.float64)
+            mat22s = wp.types.matrix((2, 2), wp.int16)
+            self.assertIsInstance(mat22h(1, 2, 3, 4)[0, 0], float)
+            self.assertIsInstance(mat22d(1, 2, 3, 4)[0, 0], float)
+            self.assertIsInstance(mat22s(1, 2, 3, 4)[0, 0], int)
+        finally:
+            wp.config.legacy_scalar_return_types = old_setting
+
     def test_vector_error_invalid_arg_count(self):
         with self.assertRaisesRegex(
             ValueError, r"Invalid number of arguments in vector constructor, expected 3 elements, got 2$"
@@ -730,7 +752,7 @@ class TestTypes(unittest.TestCase):
 
         self.assertEqual(repr(v2), "vec2i([1, 2])")
         self.assertEqual(repr(v3), "vec3f([1.0, 2.0, 3.0])")
-        self.assertEqual(repr(v4), "vec4d([1.0, 2.0, 3.0, 4.0])")
+        self.assertEqual(repr(v4), "vec4d([float64(1.0), float64(2.0), float64(3.0), float64(4.0)])")
 
         # Test matrices
         m22 = wp.mat22f(1.0, 2.0, 3.0, 4.0)
@@ -755,6 +777,62 @@ class TestTypes(unittest.TestCase):
         result = repr(vec_list)
         self.assertIn("vec2i", result)
         self.assertGreater(len(result), 0)
+
+    def test_int_float_comparison(self):
+        for int_type in wp._src.types.int_types:
+            with self.subTest(int_type=int_type):
+                one = int_type(1)
+                two = int_type(2)
+
+                # Equality must not truncate floats.
+                self.assertNotEqual(one, 1.5)
+                self.assertEqual(one, 1.0)
+
+                # Ordering operators.
+                self.assertLess(one, 1.5)
+                self.assertLessEqual(one, 1.5)
+                self.assertLessEqual(one, 1.0)
+                self.assertGreater(two, 1.5)
+                self.assertGreaterEqual(two, 1.5)
+                self.assertGreaterEqual(two, 2.0)
+
+                # Comparisons with Warp float scalars.
+                self.assertNotEqual(one, wp.float32(1.5))
+                self.assertEqual(one, wp.float32(1.0))
+
+                # Comparisons with NumPy float scalars (including types
+                # that are not subclasses of Python float).
+                for np_float in (np.float16, np.float32, np.float64):
+                    with self.subTest(np_float=np_float):
+                        self.assertNotEqual(one, np_float(1.5))
+                        self.assertEqual(one, np_float(1.0))
+                        self.assertLess(one, np_float(1.5))
+                        self.assertGreater(two, np_float(1.5))
+
+                # Int-to-int comparison still works.
+                self.assertEqual(one, 1)
+                self.assertNotEqual(one, 2)
+
+                # Hash/eq contract: equal values must have equal hashes.
+                self.assertEqual(hash(one), hash(1.0))
+                self.assertNotEqual(hash(one), hash(1.5))
+
+                # Sets must treat int8(1) and 1.5 as distinct.
+                self.assertEqual(len({one, 1.5}), 2)
+                # Sets must treat int8(1) and 1.0 as equal.
+                self.assertEqual(len({one, 1.0}), 1)
+
+                # Infinity must not crash.
+                self.assertNotEqual(one, float("inf"))
+                self.assertLess(one, float("inf"))
+
+    def test_float_overflow_comparison(self):
+        huge = 2**1024
+        for float_type in wp._src.types.float_types:
+            for op in ("__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"):
+                with self.subTest(float_type=float_type, op=op):
+                    with self.assertRaises(OverflowError):
+                        getattr(float_type(1.0), op)(huge)
 
 
 for dtype in wp._src.types.int_types:

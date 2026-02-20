@@ -574,10 +574,22 @@ def extract_return_value(value_type: type, value_ctype: type, ret: Any) -> Any:
         # return vector types as ctypes
         return ret
 
-    if value_type is warp._src.types.float16:
-        return warp._src.types.half_bits_to_float(ret.value)
+    if warp.config.legacy_scalar_return_types:
+        # Legacy path before addressing GH-905.
+        if value_type is warp._src.types.float16:
+            return warp._src.types.half_bits_to_float(ret.value)
 
-    return ret.value
+        return ret.value
+
+    if value_type is warp._src.types.float16:
+        return value_type(warp._src.types.half_bits_to_float(ret.value))
+
+    if value_type in warp._src.types.native_scalar_types:
+        # Return Python native values for backward compatibility.
+        return ret.value
+
+    # Return the expected Warp scalar type for non-native types.
+    return value_type(ret.value)
 
 
 class BuiltinParamKind(enum.Enum):

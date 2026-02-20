@@ -76,9 +76,9 @@ class Grid3D(Geometry):
         """Size of a cell along each axis."""
         ex = self.extents
         return wp.vec3(
-            ex[0] / self.res[0],
-            ex[1] / self.res[1],
-            ex[2] / self.res[2],
+            ex[0] / float(self.res[0]),
+            ex[1] / float(self.res[1]),
+            ex[2] / float(self.res[2]),
         )
 
     def cell_count(self):

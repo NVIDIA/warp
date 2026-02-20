@@ -816,11 +816,11 @@ def test_multiple_return_values(test, device):
 
     axis, angle = wp.quat_to_axis_angle(q)
 
-    test.assertAlmostEqual(axis[0], expected_axis[0], places=3)
-    test.assertAlmostEqual(axis[1], expected_axis[1], places=3)
-    test.assertAlmostEqual(axis[2], expected_axis[2], places=3)
+    test.assertAlmostEqual(float(axis[0]), float(expected_axis[0]), places=3)
+    test.assertAlmostEqual(float(axis[1]), float(expected_axis[1]), places=3)
+    test.assertAlmostEqual(float(axis[2]), float(expected_axis[2]), places=3)
 
-    test.assertAlmostEqual(angle, expected_angle, places=3)
+    test.assertAlmostEqual(float(angle), expected_angle, places=3)
 
     wp.launch(
         test_multiple_return_values_quat_to_axis_angle_kernel,

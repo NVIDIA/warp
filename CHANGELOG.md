@@ -46,6 +46,8 @@
   ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
 - Add support for `tile * tile`, `tile * constant`, and `constant * tile` syntax for element-wise and broadcast multiplication ([GH-1006](https://github.com/NVIDIA/warp/issues/1006)).
 - Add support for `tile / tile`, `tile / constant`, and `constant / tile` syntax for element-wise and broadcast division ([GH-1009](https://github.com/NVIDIA/warp/issues/1009)).
+- Add `wp.config.legacy_scalar_return_types` to restore legacy behavior where built-in function calls
+  and vector/matrix indexing return Python native scalar types instead of Warp scalar instances.
 
 ### Removed
 
@@ -81,6 +83,11 @@
 - Keep `Texture.id` as a device-independent texture handle, and make `Texture.cuda_texture`
   CUDA-only with a clear error on host textures to avoid ambiguity
   ([GH-1234](https://github.com/NVIDIA/warp/issues/1234)).
+- Built-in functions now return Warp scalar types (`wp.float16`, `wp.float64`, `wp.int8`, etc.) instead
+  of Python native types for non-native scalar types. Native scalar types (`wp.int32`, `wp.float32`, `wp.bool`) continue
+  to return Python `int`, `float`, and `bool` ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
+- Indexing into vectors and matrices with non-native scalar types now returns Warp scalar instances
+  ([GH-905](https://github.com/NVIDIA/warp/issues/905)).
 
 ### Fixed
 

@@ -43,6 +43,7 @@ import numpy as np
 import numpy.typing as npt
 
 import warp
+import warp.config
 
 _wp_module_name_ = "warp.types"
 
@@ -132,6 +133,63 @@ class float_base(scalar_base):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self!s})"
 
+    def __eq__(self, x):
+        try:
+            return float(self) == float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ne__(self, x):
+        try:
+            return float(self) != float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ge__(self, x):
+        try:
+            return float(self) >= float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __gt__(self, x):
+        try:
+            return float(self) > float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __le__(self, x):
+        try:
+            return float(self) <= float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __lt__(self, x):
+        try:
+            return float(self) < float(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __pow__(self, x):
+        if is_array(x):
+            return NotImplemented
+
+        return warp.pow(self, x)
+
+    def __rpow__(self, x):
+        return warp.pow(x, self)
+
+    def __abs__(self):
+        return type(self)(abs(float(self)))
+
+    def __round__(self, ndigits=None):
+        return type(self)(round(float(self), ndigits))
+
+    def __hash__(self):
+        return hash(float(self))
+
+
+float_cmp_types = (float, float_base, np.floating)
+
 
 class int_base(scalar_base):
     def __index__(self) -> int:
@@ -142,6 +200,60 @@ class int_base(scalar_base):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self!s})"
+
+    def __eq__(self, x):
+        try:
+            if isinstance(x, float_cmp_types):
+                return float(self) == float(x)
+            return int(self) == int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ne__(self, x):
+        try:
+            if isinstance(x, float_cmp_types):
+                return float(self) != float(x)
+            return int(self) != int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __ge__(self, x):
+        try:
+            if isinstance(x, float_cmp_types):
+                return float(self) >= float(x)
+            return int(self) >= int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __gt__(self, x):
+        try:
+            if isinstance(x, float_cmp_types):
+                return float(self) > float(x)
+            return int(self) > int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __le__(self, x):
+        try:
+            if isinstance(x, float_cmp_types):
+                return float(self) <= float(x)
+            return int(self) <= int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __lt__(self, x):
+        try:
+            if isinstance(x, float_cmp_types):
+                return float(self) < float(x)
+            return int(self) < int(x)
+        except (TypeError, ValueError):
+            return NotImplemented
+
+    def __abs__(self):
+        return type(self)(abs(int(self)))
+
+    def __hash__(self):
+        return hash(int(self))
 
 
 class bool:
@@ -251,6 +363,10 @@ int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
 float_types = (float16, float32, float64)
 scalar_types = int_types + float_types
 scalar_and_bool_types = (*scalar_types, bool)
+
+# Native scalar types that map directly to Python's int/float/bool.
+# These types return Python native values for backward compatibility.
+native_scalar_types = (int32, float32, bool)
 
 # TypeVars with proper constraints now that scalar types are defined
 # Note: TypeVar constraints must be listed explicitly (Pyright doesn't support unpacking)
@@ -699,7 +815,14 @@ def vector(length, dtype):
 
         def __getitem__(self, key):
             if isinstance(key, int):
-                return vec_t.scalar_export(super().__getitem__(key))
+                if warp.config.legacy_scalar_return_types:
+                    # Legacy path before addressing GH-905.
+                    return vec_t.scalar_export(super().__getitem__(key))
+
+                value = vec_t.scalar_export(super().__getitem__(key))
+                if dtype in native_scalar_types:
+                    return value
+                return self._wp_scalar_type_(value)
             elif isinstance(key, slice):
                 if self._wp_scalar_type_ is float16:
                     values = tuple(vec_t.scalar_export(x) for x in super().__getitem__(key))
@@ -1109,7 +1232,15 @@ def matrix(shape, dtype):
                 if ndim == 0:
                     row = key[0] + self._shape_[0] if key[0] < 0 else key[0]
                     col = key[1] + self._shape_[1] if key[1] < 0 else key[1]
-                    return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+
+                    if warp.config.legacy_scalar_return_types:
+                        # Legacy path before addressing GH-905.
+                        return mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+
+                    value = mat_t.scalar_export(super().__getitem__(row * self._shape_[1] + col))
+                    if dtype in native_scalar_types:
+                        return value
+                    return self._wp_scalar_type_(value)
 
                 if ndim == 1:
                     if isinstance(key[1], slice):
