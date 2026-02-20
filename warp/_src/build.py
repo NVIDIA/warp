@@ -539,12 +539,9 @@ def build_lto_solver(
                 max_smem_is_estimate = True
                 for d in warp.get_cuda_devices():
                     if d.arch == arch:
-                        # We can directly query the max shared memory for this device
-                        queried_bytes = warp._src.context.runtime.core.wp_cuda_get_max_shared_memory(d.context)
-                        if queried_bytes > 0:
-                            max_smem_bytes = queried_bytes
-                            max_smem_is_estimate = False
-                            break
+                        max_smem_bytes = d.max_shared_memory_per_block
+                        max_smem_is_estimate = False
+                        break
                 if smem_estimate_bytes > max_smem_bytes:
                     source = "estimated limit" if max_smem_is_estimate else "device-reported limit"
                     hint = (

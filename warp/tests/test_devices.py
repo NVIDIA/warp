@@ -77,6 +77,13 @@ def test_devices_sm_count(test, device):
         test.assertEqual(device.sm_count, 0)
 
 
+def test_devices_max_shared_memory_per_block(test, device):
+    if device.is_cuda:
+        test.assertTrue(device.max_shared_memory_per_block > 0)
+    else:
+        test.assertEqual(device.max_shared_memory_per_block, 0)
+
+
 devices = get_test_devices()
 
 
@@ -117,6 +124,12 @@ add_function_test(
 add_function_test(TestDevices, "test_devices_verify_cuda_device", test_devices_verify_cuda_device, devices=devices)
 add_function_test(TestDevices, "test_devices_can_access_self", test_devices_can_access_self, devices=devices)
 add_function_test(TestDevices, "test_devices_sm_count", test_devices_sm_count, devices=devices)
+add_function_test(
+    TestDevices,
+    "test_devices_max_shared_memory_per_block",
+    test_devices_max_shared_memory_per_block,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
