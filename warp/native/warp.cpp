@@ -930,6 +930,7 @@ WP_API void* wp_cuda_device_get_primary_context(int ordinal) { return NULL; }
 WP_API const char* wp_cuda_device_get_name(int ordinal) { return NULL; }
 WP_API int wp_cuda_device_get_arch(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_sm_count(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_max_shared_memory(int ordinal) { return 0; }
 WP_API void wp_cuda_device_get_uuid(int ordinal, char uuid[16]) { }
 WP_API int wp_cuda_device_get_pci_domain_id(int ordinal) { return -1; }
 WP_API int wp_cuda_device_get_pci_bus_id(int ordinal) { return -1; }

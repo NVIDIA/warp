@@ -2329,7 +2329,7 @@ class ModuleExec:
             backward_smem_bytes = self.meta[backward_name + "_smem_bytes"] if options["enable_backward"] else 0
 
             # configure kernels maximum shared memory size
-            max_smem_bytes = runtime.core.wp_cuda_get_max_shared_memory(self.device.context)
+            max_smem_bytes = self.device.max_shared_memory_per_block
 
             if not runtime.core.wp_cuda_configure_kernel_shared_memory(forward_kernel, forward_smem_bytes):
                 print(
@@ -3460,6 +3460,8 @@ class Device:
             ``0`` for CPU devices.
         sm_count (int): The number of streaming multiprocessors on the CUDA device.
             ``0`` for CPU devices.
+        max_shared_memory_per_block (int): The maximum shared memory available per block
+            in bytes (opt-in maximum via ``cuFuncSetAttribute``). ``0`` for CPU devices.
         is_uva (bool): Indicates whether the device supports unified addressing.
             ``False`` for CPU devices.
         is_cubin_supported (bool): Indicates whether Warp's version of NVRTC can directly
@@ -3506,6 +3508,7 @@ class Device:
             self.name = platform.processor() or "CPU"
             self.arch = 0
             self.sm_count = 0
+            self.max_shared_memory_per_block = 0
             self.is_uva = False
             self.is_mempool_supported = False
             self.is_mempool_enabled = False
@@ -3526,6 +3529,7 @@ class Device:
             self.name = runtime.core.wp_cuda_device_get_name(ordinal).decode()
             self.arch = runtime.core.wp_cuda_device_get_arch(ordinal)
             self.sm_count = runtime.core.wp_cuda_device_get_sm_count(ordinal)
+            self.max_shared_memory_per_block = runtime.core.wp_cuda_device_get_max_shared_memory(ordinal)
             self.is_uva = runtime.core.wp_cuda_device_is_uva(ordinal) > 0
             self.is_mempool_supported = runtime.core.wp_cuda_device_is_mempool_supported(ordinal) > 0
             if platform.system() == "Linux":
@@ -4718,6 +4722,8 @@ class Runtime:
             self.core.wp_cuda_device_get_arch.restype = ctypes.c_int
             self.core.wp_cuda_device_get_sm_count.argtypes = [ctypes.c_int]
             self.core.wp_cuda_device_get_sm_count.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_max_shared_memory.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_max_shared_memory.restype = ctypes.c_int
             self.core.wp_cuda_device_is_uva.argtypes = [ctypes.c_int]
             self.core.wp_cuda_device_is_uva.restype = ctypes.c_int
             self.core.wp_cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]

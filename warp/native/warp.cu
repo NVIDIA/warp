@@ -1958,6 +1958,13 @@ int wp_cuda_device_get_sm_count(int ordinal)
     return 0;
 }
 
+int wp_cuda_device_get_max_shared_memory(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].max_smem_bytes;
+    return 0;
+}
+
 void wp_cuda_device_get_uuid(int ordinal, char uuid[16])
 {
     memcpy(uuid, g_devices[ordinal].uuid.bytes, sizeof(char) * 16);

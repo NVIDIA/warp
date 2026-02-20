@@ -53,6 +53,9 @@
   ([GH-1065](https://github.com/NVIDIA/warp/issues/1065)).
 - Add optional `has_side_effect` flag to `jax_kernel()` and `jax_callable()` to ensure FFI calls are always executed by JAX
   ([GH-1240](https://github.com/NVIDIA/warp/pull/1240)).
+- Add `Device.max_shared_memory_per_block` attribute exposing the opt-in maximum shared memory
+  per block in bytes for CUDA devices
+  ([GH-1243](https://github.com/NVIDIA/warp/issues/1243)).
 
 ### Removed
 
