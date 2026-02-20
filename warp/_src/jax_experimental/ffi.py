@@ -147,7 +147,15 @@ class FfiLaunchDesc:
 
 class FfiKernel:
     def __init__(
-        self, kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
+        self,
+        kernel,
+        num_outputs,
+        vmap_method,
+        launch_dims,
+        output_dims,
+        in_out_argnames,
+        module_preload_mode,
+        has_side_effect=False,
     ):
         self.kernel = kernel
         self.name = generate_unique_name(kernel.func)
@@ -156,6 +164,7 @@ class FfiKernel:
         self.launch_dims = launch_dims
         self.output_dims = output_dims
         self.module_preload_mode = module_preload_mode
+        self.has_side_effect = has_side_effect
         self.first_array_arg = None
         self.launch_id = 0
         self.launch_descriptors = {}
@@ -307,6 +316,7 @@ class FfiKernel:
             out_types,
             vmap_method=vmap_method,
             input_output_aliases=self.input_output_aliases,
+            has_side_effect=self.has_side_effect,
         )
 
         # preload on the specified devices
@@ -1146,6 +1156,7 @@ def jax_kernel(
     in_out_argnames=None,
     module_preload_mode=ModulePreloadMode.CURRENT_DEVICE,
     enable_backward: bool = False,
+    has_side_effect: bool = False,
 ):
     """Create a JAX callback from a Warp kernel.
 
@@ -1169,6 +1180,8 @@ def jax_kernel(
             Not supported when ``enable_backward=True``.
         module_preload_mode: Specify the devices where the module should be preloaded.
         enable_backward: Enable automatic differentiation for this kernel.
+        has_side_effect: Whether the custom call has side effects. When True,
+                         the FFI call will be executed even when the outputs are not used.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -1201,12 +1214,20 @@ def jax_kernel(
             hashable_launch_dims,
             hashable_output_dims,
             module_preload_mode,
+            has_side_effect,
         )
 
         with _FFI_REGISTRY_LOCK:
             if key not in _FFI_KERNEL_REGISTRY:
                 new_kernel = FfiKernel(
-                    kernel, num_outputs, vmap_method, launch_dims, output_dims, in_out_argnames, module_preload_mode
+                    kernel,
+                    num_outputs,
+                    vmap_method,
+                    launch_dims,
+                    output_dims,
+                    in_out_argnames,
+                    module_preload_mode,
+                    has_side_effect=has_side_effect,
                 )
                 _FFI_KERNEL_REGISTRY[key] = new_kernel
 
@@ -1489,6 +1510,8 @@ def jax_callable(
         graph_cache_max: Maximum number of cached graphs captured using ``GraphMode.WARP``.
             If ``None``, use ``warp.jax_experimental.get_jax_callable_default_graph_cache_max()``.
         module_preload_mode: Specify the devices where the module should be preloaded.
+        has_side_effect: Whether the custom call has side effects. When True,
+                         the FFI call will be executed even when the outputs are not used.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -1518,6 +1541,7 @@ def jax_callable(
         vmap_method,
         hashable_output_dims,
         module_preload_mode,
+        has_side_effect,
     )
 
     with _FFI_REGISTRY_LOCK:
