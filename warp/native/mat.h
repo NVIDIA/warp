@@ -4849,6 +4849,33 @@ inline CUDA_CALLABLE void adj_cw_div(
     adj_b -= cw_mul(adj_ret, cw_div(ret, b));
 }
 
+// 5-arg overloads for tile operations (mat/scalar mixed types).
+// These forward to the existing 5-arg adj_div for mat/scalar which doesn't need ret.
+// The 6-arg adj_cw_div above is for mat/mat which needs ret for the gradient computation.
+template <unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_cw_div(
+    const mat_t<Rows, Cols, Type>& a,
+    Type b,
+    mat_t<Rows, Cols, Type>& adj_a,
+    Type& adj_b,
+    const mat_t<Rows, Cols, Type>& adj_ret
+)
+{
+    adj_div(a, b, adj_a, adj_b, adj_ret);
+}
+
+template <unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_cw_div(
+    Type a,
+    const mat_t<Rows, Cols, Type>& b,
+    Type& adj_a,
+    mat_t<Rows, Cols, Type>& adj_b,
+    const mat_t<Rows, Cols, Type>& adj_ret
+)
+{
+    adj_div(a, b, adj_a, adj_b, adj_ret);
+}
+
 // adjoint for the constant constructor:
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_mat_t(Type s, Type& adj_s, const mat_t<Rows, Cols, Type>& adj_ret)

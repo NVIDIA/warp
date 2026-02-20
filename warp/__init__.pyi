@@ -6529,24 +6529,29 @@ def mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]:
     ...
 
 @over
-def mul(x: Tile[Any, tuple[int, ...]], y: Any) -> Tile[Any, tuple[int, ...]]:
+def mul(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+    """Element-wise multiplication of tiles."""
+    ...
+
+@over
+def mul(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]:
     """Multiply two values.
 
-    Scale each element of a tile by a scalar.
+    Multiply each element of a tile by a constant (scalar, vector, or matrix).
 
-    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
-    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.
     """
     ...
 
 @over
-def mul(x: Any, y: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+def mul(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
     """Multiply two values.
 
-    Scale each element of a tile by a scalar.
+    Multiply each element of a tile by a constant (scalar, vector, or matrix).
 
-    If the tile's element type is not scalar, the constant must be a scalar type and vice versa.
-    Underlying scalar types must match. Result dtype follows standard scalar multiplication rules.
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.
     """
     ...
 
@@ -6614,6 +6619,33 @@ def div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]:
     Divide a scalar by a quaternion.
 
     The result is unnormalized.
+    """
+    ...
+
+@over
+def div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+    """Element-wise division of tiles."""
+    ...
+
+@over
+def div(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]:
+    """Divide tile elements by a constant.
+
+    Divide each element of a tile by a constant (scalar, vector, or matrix).
+
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.
+    """
+    ...
+
+@over
+def div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+    """Divide a constant by tile elements.
+
+    Divide a constant (scalar, vector, or matrix) by each element of a tile.
+
+    At least one of the tile's element type or the constant type must be scalar.
+    Underlying scalar types must match.
     """
     ...
 

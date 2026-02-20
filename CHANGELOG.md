@@ -41,6 +41,8 @@
   ([GH-1178](https://github.com/NVIDIA/warp/issues/1178)).
 - Add `wp.float16` and `wp.float64` support for `wp.HashGrid` ([GH-1007](https://github.com/NVIDIA/warp/issues/1007),
   [GH-1168](https://github.com/NVIDIA/warp/issues/1168)).
+- Add support for `tile * tile`, `tile * constant`, and `constant * tile` syntax for element-wise and broadcast multiplication ([GH-1006](https://github.com/NVIDIA/warp/issues/1006)).
+- Add support for `tile / tile`, `tile / constant`, and `constant / tile` syntax for element-wise and broadcast division ([GH-1009](https://github.com/NVIDIA/warp/issues/1009)).
 
 ### Removed
 
