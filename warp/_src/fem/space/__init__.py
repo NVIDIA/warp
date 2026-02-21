@@ -232,7 +232,7 @@ def make_polynomial_space(
 ) -> CollocatedFunctionSpace:
     """
     Equips a geometry with a collocated, polynomial function space.
-    Equivalent to successive calls to :func:`make_polynomial_basis_space` then `make_collocated_function_space`, `make_covariant_function_space` or `make_contravariant_function_space`.
+    Equivalent to successive calls to :func:`make_polynomial_basis_space` then :func:`make_collocated_function_space`, :func:`make_covariant_function_space` or :func:`make_contravariant_function_space`.
 
     Args:
         geo: the Geometry on which to build the space

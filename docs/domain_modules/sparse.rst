@@ -248,7 +248,7 @@ The :mod:`warp.optim.linear` module provides several iterative linear solvers wi
     from warp.optim.linear import cg
 
     # Solve Ax = b
-    x = cg(A, b, max_iter=100, tol=1e-6)
+    x = cg(A, b, x=x, maxiter=100, tol=1e-6)
 
 While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays.
 Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
