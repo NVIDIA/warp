@@ -56,6 +56,10 @@
 - Add `Device.max_shared_memory_per_block` attribute exposing the opt-in maximum shared memory
   per block in bytes for CUDA devices
   ([GH-1243](https://github.com/NVIDIA/warp/issues/1243)).
+- Add quaternion and spatial transform helpers to the public Warp API:
+  `wp.quat_from_euler()`, `wp.quat_to_euler()`, `wp.quat_to_rpy()`,
+  `wp.quat_twist()`, `wp.quat_twist_angle()`, `wp.transform_twist()`, `wp.transform_wrench()`,
+  and `wp.velocity_at_point()` ([GH-1237](https://github.com/NVIDIA/warp/issues/1237)).
 
 ### Removed
 
