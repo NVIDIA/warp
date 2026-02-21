@@ -355,7 +355,7 @@ def _get_architectures_cu12(
             # Skip certain architectures for aarch64 with CUDA 12.9 due to CCCL bug
             print(
                 "[INFO] Skipping sm_52, sm_60, sm_61, and sm_70 targets for ARM due to a CUDA Toolkit bug. "
-                "See https://nvidia.github.io/warp/installation.html#cuda-12-9-limitation-on-linux-arm-platforms "
+                "See https://nvidia.github.io/warp/user_guide/installation.html#cuda-12-9-limitation-on-linux-arm-platforms "
                 "for details."
             )
         else:
