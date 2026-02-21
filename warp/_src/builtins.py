@@ -7760,6 +7760,10 @@ add_builtin(
     group="Textures",
     doc="""Sample the 2D texture at the given UV coordinates.
 
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change. See :class:`warp.Texture`.
+
     Args:
         tex: The 2D texture to sample.
         uv: UV coordinates as a :class:`warp.vec2f`. Range is [0, 1] if the texture was created with
@@ -7783,6 +7787,10 @@ add_builtin(
     export=False,
     group="Textures",
     doc="""Sample the 2D texture at the given UV coordinates.
+
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change. See :class:`warp.Texture`.
 
     Args:
         tex: The 2D texture to sample.
@@ -7829,6 +7837,10 @@ add_builtin(
     group="Textures",
     doc="""Sample the 3D texture at the given UVW coordinates.
 
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change. See :class:`warp.Texture`.
+
     Args:
         tex: The 3D texture to sample.
         uvw: UVW coordinates as a :class:`warp.vec3f`. Range is [0, 1] if the texture was created with
@@ -7852,6 +7864,10 @@ add_builtin(
     export=False,
     group="Textures",
     doc="""Sample the 3D texture at the given UVW coordinates.
+
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change. See :class:`warp.Texture`.
 
     Args:
         tex: The 3D texture to sample.

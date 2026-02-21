@@ -100,11 +100,16 @@ class texture3d_t(ctypes.Structure):
 class Texture:
     """Unified texture class for hardware-accelerated sampling on GPU and software sampling on CPU.
 
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change without a formal deprecation
+        cycle.
+
     This class handles both 2D and 3D textures. The dimensionality is determined automatically
     from the input data shape, or can be set explicitly via the ``dims`` parameter or by using
     the :class:`Texture2D` or :class:`Texture3D` subclasses.
 
-    Textures provide hardware-accelerated filtering and addressing for regularly-gridded data
+    Textures provide hardware-accelerated filtering and addressing for regularly gridded data
     on CUDA devices. On CPU, software-based filtering and addressing is used. Supports
     bilinear/trilinear interpolation and various addressing modes (wrap, clamp, mirror, border).
 
@@ -738,6 +743,11 @@ class Texture:
 class Texture2D(Texture):
     """2D texture class.
 
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change without a formal deprecation
+        cycle. See :class:`Texture` for details.
+
     This is a specialized version of :class:`Texture` with dimensionality fixed to 2.
     Use this for explicit 2D texture creation and as a type hint in kernel parameters.
 
@@ -815,6 +825,11 @@ class Texture2D(Texture):
 
 class Texture3D(Texture):
     """3D texture class.
+
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change without a formal deprecation
+        cycle. See :class:`Texture` for details.
 
     This is a specialized version of :class:`Texture` with dimensionality fixed to 3.
     Use this for explicit 3D texture creation and as a type hint in kernel parameters.
