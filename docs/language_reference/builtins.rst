@@ -104,6 +104,7 @@ Quaternion Math
    :template: builtins.rst
 
    quat_from_axis_angle
+   quat_from_euler
    quat_from_matrix
    quat_identity
    quat_inverse
@@ -112,7 +113,11 @@ Quaternion Math
    quat_rpy
    quat_slerp
    quat_to_axis_angle
+   quat_to_euler
    quat_to_matrix
+   quat_to_rpy
+   quat_twist
+   quat_twist_angle
    quaternion
 
 Transformations
@@ -155,6 +160,9 @@ Spatial Math
    spatial_mass
    spatial_top
    spatial_vector
+   transform_twist
+   transform_wrench
+   velocity_at_point
 
 Tile Primitives
 ---------------
