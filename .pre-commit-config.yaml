@@ -11,6 +11,22 @@ ci:
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
+  - repo: local
+    hooks:
+      - id: warp-check-generated-files
+        name: "warp: regenerate generated files"
+        entry: python tools/pre-commit-hooks/check_generated_files.py
+        language: python
+        # NOTE: ruff version must match ruff-pre-commit rev below to avoid formatting drift.
+        additional_dependencies: [numpy, ruff==0.14.10]
+        always_run: true
+        pass_filenames: false
+      - id: warp-check-version-consistency
+        name: "warp: check version consistency and regenerate version.h"
+        entry: python tools/pre-commit-hooks/check_version_consistency.py --verbose
+        language: python
+        always_run: true
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.14.10
