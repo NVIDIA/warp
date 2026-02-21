@@ -37,6 +37,10 @@
   [GH-1168](https://github.com/NVIDIA/warp/issues/1168)).
 - Add quaternion and spatial transformation helpers (`wp.quat_from_euler()`, `wp.quat_to_euler()`,
   `wp.transform_twist()`, etc.) ([GH-1237](https://github.com/NVIDIA/warp/issues/1237)).
+- Add `wp.div_approx()` and `wp.inverse_approx()` built-ins for approximate PTX intrinsics
+  (`div.approx.f32`, `rcp.approx.ftz.f64`) on GPU. Only floating-point types are supported;
+  falls back to exact arithmetic on CPU
+  ([GH-1199](https://github.com/NVIDIA/warp/issues/1199)).
 - Add public API for marching cubes lookup tables as class attributes on `wp.MarchingCubes`: `CUBE_CORNER_OFFSETS`,
   `EDGE_TO_CORNERS`, `CASE_TO_TRI_RANGE`, and `TRI_LOCAL_INDICES`. These enable custom marching cubes implementations
   for advanced use cases like sparse volume extraction ([GH-1151](https://github.com/NVIDIA/warp/issues/1151)).
