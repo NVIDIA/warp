@@ -123,7 +123,7 @@ def main():
     parser.add_argument(
         "--base-path",
         type=Path,
-        default=Path(__file__).parent.parent.parent.parent,
+        default=Path(__file__).parent.parent.parent,
         help="Base path to the Warp repository (default: script location's repo root)",
     )
     parser.add_argument(
