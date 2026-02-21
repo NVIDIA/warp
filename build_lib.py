@@ -633,6 +633,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as e:
         print(f"Unable to clear kernel cache: {e}")
 
+    print("Warp build succeeded")
     return 0
 
 
