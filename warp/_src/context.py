@@ -6522,8 +6522,8 @@ def ones_like(
 
 def full(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    value=0,
-    dtype=Any,
+    value: Any = 0,
+    dtype: type | None = None,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
@@ -6543,7 +6543,7 @@ def full(
         A warp.array object representing the allocation
     """
 
-    if dtype == Any:
+    if dtype is None:
         # determine dtype from value
         value_type = type(value)
         if value_type == int:
