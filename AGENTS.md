@@ -91,7 +91,7 @@ Follow Google-style docstrings with these Warp-specific guidelines:
 
 ## Documentation
 
-- Build docs with `uv run --extra docs build_docs.py` (not `make`/`sphinx-build`).
+- Build docs with `uv run --extra docs build_docs.py 2>&1 | tee /tmp/build_docs.log` (not `make`/`sphinx-build`). Always capture output to a log file so you can inspect warnings/errors without re-running.
 - Use doctest for code examples where practical.
 
 ## Codebase Internals
