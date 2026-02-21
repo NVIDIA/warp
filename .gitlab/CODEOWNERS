@@ -16,85 +16,113 @@
 # This CODEOWNERS file is only used on the internal GitLab
 # Ordering matters: https://docs.gitlab.com/ee/user/project/codeowners/#define-more-specific-owners-for-more-specifically-defined-files-or-directories
 
-# At present this is the only required approval. The rest are optional (^).
-[Public API] @mmacklin
+[Public API] @mmacklin @ershi
 /warp/__init__.py
 /warp/__init__.pyi
-/warp/constants.py
+/warp/config.py
 
-^[CI/CD] @ershi @ncapens
+[Key Project Files] @ershi
+/pyproject.toml
+/setup.py
+/VERSION.md
+/README.md
+/licenses/
+/SECURITY.md
+/LICENSE.md
+
+[CI/CD] @ershi
 /.github/
 /.gitlab/
-/warp/thirdparty/unittest_parallel.py
 /.gitlab-ci.yml
 /.pre-commit-config.yaml
+/docker/
+/tools/
+/uv.lock
+/warp/_src/thirdparty/unittest_parallel.py
+.clang-format
 .gitignore
 .gitattributes
+.python-version
 
 ^[Docs and Examples] @mmacklin @ershi
 /docs/
 /warp/examples/
-/licenses/
-/README.md
-/SECURITY.md
-
-^[Code Generation] @ncapens @mmacklin
-/warp/codegen.py
-
-^[Build and Deployment] @ncapens @lwawrzyniak
-/warp/build.py
-/warp/build_dll.py
+/notebooks/
+/AGENTS.md
+/CLAUDE.md
 /CONTRIBUTING.md
-/build_docs.py
-/build_lib.py
-/build_llvm.py
-/PACKAGING.md
-/pyproject.toml
+/PUBLICATIONS.md
+
+^[Benchmarks] @ershi
+/asv.conf.json
+/asv/
+
+^[Kit Extensions] @ccrouzet
+/exts/
 /repo.toml
-/setup.py
-/VERSION.md
-/tools/
 /deps/
 
-^[Simulation Module] @eheiden @mmacklin
-/warp/sim/
-/warp/examples/sim/
-/warp/optim/sgd.py
-/warp/render/render_opengl.py
-/warp/render/utils.py
+^[Code Generation] @ncapens
+/warp/_src/codegen.py
+
+^[Build] @ncapens
+/build_lib.py
+/warp/_src/build.py
+/warp/_src/build_dll.py
+
+^[Native C++/CUDA] @mmacklin @lwawrzyniak @ncapens
+/warp/native/
+
+^[Clang] @ncapens
+/build_llvm.py
+/warp/native/clang/
 
 ^[FEM Module] @gdaviet
 /warp/fem/
+/warp/_src/fem/
 /warp/examples/fem/
 /warp/tests/test_fem.py
 
 ^[Linear Algebra] @gdaviet
 /warp/optim/linear.py
+/warp/_src/optim/linear.py
 /warp/sparse.py
+/warp/_src/sparse.py
 /warp/tests/test_linear_solvers.py
 /warp/tests/test_sparse.py
 
-^[Native C++/CUDA] @mmacklin @lwawrzyniak @ncapens
-/warp/native/
+^[Tiles] @zcorse
+/warp/native/tile*
 
-^[Volumes] @gdaviet @gklar
+^[Volumes] @gdaviet
 /warp/native/nanovdb/
 /warp/native/volume*
-/warp/tests/test_volume_write.py
-/warp/tests/test_volume.py
+/warp/tests/geometry/test_volume_write.py
+/warp/tests/geometry/test_volume.py
 
-^[Kit Extensions] @ccrouzet @zcorse
-/exts/
-/warp/render/render_usd.py
+^[Coloring] @ankac
+/warp/native/coloring.*
+/warp/_src/coloring.py
 
-^[Interoperability] @lwawrzyniak @zcorse
+^[BVH and Meshes] @mmacklin @ankac
+/warp/native/bvh.*
+/warp/native/mesh.*
+/warp/native/intersect*
+
+^[Interoperability] @lwawrzyniak
 /warp/dlpack.py
-/warp/jax_experimental.py
+/warp/_src/thirdparty/dlpack.py
+/warp/examples/interop/
+/warp/jax_experimental/
+/warp/_src/jax_experimental/
 /warp/jax.py
+/warp/_src/jax.py
 /warp/fabric.py
+/warp/_src/fabric.py
 /warp/torch.py
-/warp/thirdparty/dlpack.py
-/warp/tests/test_dlpack.py
-/warp/tests/test_jax.py
-/warp/tests/test_torch.py
+/warp/_src/torch.py
+/warp/tests/interop/test_dlpack.py
+/warp/tests/interop/test_jax.py
+/warp/tests/interop/test_torch.py
 /warp/tests/test_fabricarray.py
+/warp/native/fabric.h
