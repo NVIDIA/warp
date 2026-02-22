@@ -113,6 +113,8 @@
 - Fix `BsrMatrix.notify_nnz_changed` sometimes failing to read the latest non-zero count from the `offsets` array.
 - `warp.fem`: Fix temporaries not being released promptly ([GH-1075](https://github.com/NVIDIA/warp/pull/1075)).
 - `warp.fem`: Fix uninitialized memory accesses in point-based function spaces with variable nodes per element.
+- Fix `vswhere.exe` discovery for non-default Visual Studio installations and standalone installs via
+  package managers (Chocolatey, Scoop, winget) ([GH-1235](https://github.com/NVIDIA/warp/issues/1235)).
 
 ### Documentation
 
