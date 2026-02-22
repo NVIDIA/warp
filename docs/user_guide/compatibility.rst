@@ -73,7 +73,7 @@ To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://devel
 
   * Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
   * Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
-  * PyPI wheels for Windows/Linux are currently built with CUDA 12.8.
+  * PyPI wheels for Windows/Linux are currently built with CUDA 12.9.
 
 * **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta). 
   On older GPUs, these operations return zero.

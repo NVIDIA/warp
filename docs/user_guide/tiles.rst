@@ -3,8 +3,6 @@ Tiles
 
 .. currentmodule:: warp
 
-.. warning:: Tile-based operations in Warp are under preview, APIs are subject to change.
-
 Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
 With Warp 1.5.0 [1]_, developers now have access to new tile-based programming primitives in Warp kernels.
 Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing. 
@@ -190,7 +188,7 @@ Example: General Matrix Multiply (GEMM)
                 inputs=[A_wp, B_wp, C_wp],
                 block_dim=TILE_THREADS)
 
-        assert(np.allclose(C_wp.numpy(), A@B))
+        np.testing.assert_allclose(C_wp.numpy(), A @ B, rtol=1e-3)
 
         print("Example matrix multiplication passed")
 
@@ -205,6 +203,7 @@ Construction
 * :func:`tile_zeros <warp._src.lang.tile_zeros>`
 * :func:`tile_ones <warp._src.lang.tile_ones>`
 * :func:`tile_full <warp._src.lang.tile_full>`
+* :func:`tile_from_thread <warp._src.lang.tile_from_thread>`
 * :func:`tile_randi <warp._src.lang.tile_randi>`
 * :func:`tile_randf <warp._src.lang.tile_randf>`
 * :func:`tile_arange <warp._src.lang.tile_arange>`
@@ -220,8 +219,13 @@ Load/Store
 ^^^^^^^^^^
 
 * :func:`tile_load <warp._src.lang.tile_load>`
+* :func:`tile_load_indexed <warp._src.lang.tile_load_indexed>`
 * :func:`tile_store <warp._src.lang.tile_store>`
+* :func:`tile_store_indexed <warp._src.lang.tile_store_indexed>`
 * :func:`tile_atomic_add <warp._src.lang.tile_atomic_add>`
+* :func:`tile_atomic_add_indexed <warp._src.lang.tile_atomic_add_indexed>`
+* :func:`tile_assign <warp._src.lang.tile_assign>`
+* :func:`tile_extract <warp._src.lang.tile_extract>`
 
 Maps/Reductions
 ^^^^^^^^^^^^^^^
@@ -231,6 +235,13 @@ Maps/Reductions
 * :func:`tile_sum <warp._src.lang.tile_sum>`
 * :func:`tile_min <warp._src.lang.tile_min>`
 * :func:`tile_max <warp._src.lang.tile_max>`
+* :func:`tile_argmin <warp._src.lang.tile_argmin>`
+* :func:`tile_argmax <warp._src.lang.tile_argmax>`
+* :func:`tile_sort <warp._src.lang.tile_sort>`
+* :func:`tile_scan_inclusive <warp._src.lang.tile_scan_inclusive>`
+* :func:`tile_scan_exclusive <warp._src.lang.tile_scan_exclusive>`
+* :func:`tile_scan_max_inclusive <warp._src.lang.tile_scan_max_inclusive>`
+* :func:`tile_scan_min_inclusive <warp._src.lang.tile_scan_min_inclusive>`
 
 Arithmetic
 ^^^^^^^^^^
@@ -394,8 +405,23 @@ Linear Algebra
 * :func:`tile_fft <warp._src.lang.tile_fft>`
 * :func:`tile_ifft <warp._src.lang.tile_ifft>`
 * :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+* :func:`tile_cholesky_inplace <warp._src.lang.tile_cholesky_inplace>`
 * :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`
+* :func:`tile_cholesky_solve_inplace <warp._src.lang.tile_cholesky_solve_inplace>`
+* :func:`tile_lower_solve <warp._src.lang.tile_lower_solve>`
+* :func:`tile_lower_solve_inplace <warp._src.lang.tile_lower_solve_inplace>`
+* :func:`tile_upper_solve <warp._src.lang.tile_upper_solve>`
+* :func:`tile_upper_solve_inplace <warp._src.lang.tile_upper_solve_inplace>`
 * :func:`tile_diag_add <warp._src.lang.tile_diag_add>`
+
+Spatial Queries
+^^^^^^^^^^^^^^^
+
+* :func:`tile_bvh_query_aabb <warp._src.lang.tile_bvh_query_aabb>`
+* :func:`tile_bvh_query_ray <warp._src.lang.tile_bvh_query_ray>`
+* :func:`tile_bvh_query_next <warp._src.lang.tile_bvh_query_next>`
+* :func:`tile_mesh_query_aabb <warp._src.lang.tile_mesh_query_aabb>`
+* :func:`tile_mesh_query_aabb_next <warp._src.lang.tile_mesh_query_aabb_next>`
 
 Tiles and SIMT Code
 -------------------

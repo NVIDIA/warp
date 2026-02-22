@@ -694,7 +694,7 @@ Matrices are stored in row-major format and support most standard linear algebra
 In a similar manner to vectors, it's possible to declare new matrix types with arbitrary shapes and data types using ``wp.types.matrix()``, for example: ::
 
     # declare a new 3x2 half precision float matrix type:
-    mat32h = wp.types.matrix(shape=(3,2), dtype=wp.float64)
+    mat32h = wp.types.matrix(shape=(3,2), dtype=wp.float16)
 
     # create an array of this type
     a = wp.zeros(10, dtype=mat32h)

@@ -206,12 +206,12 @@ For more control about memory allocations, you may use the underlying lower-leve
         beta=0.0,          # Scale factor for y
     )
 
-    # Matrix addition
-    # C = alpha * A + beta * B
+    # Matrix addition (in-place)
+    # y = alpha * x + beta * y
     bsr_axpy(
-        A, B, C,           # Input and output matrices
-        alpha=1.0,         # Scale factor for A
-        beta=1.0,          # Scale factor for B
+        x, y,              # Input matrix and output matrix (modified in-place)
+        alpha=1.0,         # Scale factor for x
+        beta=1.0,          # Scale factor for y
     )
 
     # Matrix scaling
@@ -252,3 +252,5 @@ The :mod:`warp.optim.linear` module provides several iterative linear solvers wi
 
 While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays.
 Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
+
+For a complete listing of all sparse matrix functions and their signatures, see the :doc:`../api_reference/warp_sparse` API reference.

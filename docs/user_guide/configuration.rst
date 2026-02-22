@@ -51,11 +51,11 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 | Field                                | Type    |Default Value| Description                                                              |
 +======================================+=========+=============+==========================================================================+
-|``mode``                              | String  | Global      | A module-level override of the :attr:`warp.config.mode` setting.         |
-|                                      |         | setting     |                                                                          |
+|``mode``                              | String  | ``None``    | A module-level override of the :attr:`warp.config.mode` setting.         |
+|                                      |         |             | ``None`` defers to the global setting at compile time.                   |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``optimization_level``                | Integer | Global      | A module-level override of the :attr:`warp.config.optimization_level`    |
-|                                      |         | setting     | setting.                                                                 |
+|``optimization_level``                | Integer | ``None``    | A module-level override of the :attr:`warp.config.optimization_level`    |
+|                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``max_unroll``                        | Integer | Global      | A module-level override of the :attr:`warp.config.max_unroll` setting.   |
 |                                      |         | setting     |                                                                          |
@@ -87,8 +87,8 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 |``strip_hash``                        | Boolean | ``False``   | If ``True``, avoids using a content-based hash to identify the module    |
 |                                      |         |             | and its functions.                                                       |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
-|``enable_mathdx_gemm``                | Boolean | Global      | A module-level override of the :attr:`warp.config.enable_mathdx_gemm`    |
-|                                      |         | setting     | setting.                                                                 |
+|``enable_mathdx_gemm``                | Boolean | ``None``    | A module-level override of the :attr:`warp.config.enable_mathdx_gemm`    |
+|                                      |         |             | setting. ``None`` defers to the global setting at compile time.          |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 
 Kernel Settings

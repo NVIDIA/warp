@@ -45,7 +45,7 @@ By default, ``ScopedTimer`` measures the elapsed time on the CPU and does not in
 
 To get the total amount of time including the device executions time, create the :class:`ScopedTimer`
 with the ``synchronize=True`` flag.
-This is equivalent to calling :func:`wp.synchronize() <synchronize>` before and after the timed section of code.
+This is equivalent to calling :func:`wp.synchronize() <warp.synchronize>` before and after the timed section of code.
 Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.
 Synchronizing at the end ensures that all timed work finishes before stopping the timer.
 With the example above, the result might look like this:
@@ -496,7 +496,7 @@ bottlenecks in the runtime compilation process.
 By setting the global configuration option :attr:`warp.config.compile_time_trace` to ``True``,
 an additional JSON file with the suffix ``_compile-time-trace.json`` will be
 generated in the corresponding kernel cache directory (see :attr:`warp.config.kernel_cache_dir`)
-when modules are compiled. This file can be opened in a viewer like a Chronium browser's built in
+when modules are compiled. This file can be opened in a viewer like a Chromium browser's built-in
 profiler (e.g. ``chrome://tracing/`` or ``edge://tracing/``) or the `Perfetto UI <https://ui.perfetto.dev/>`__.
 
 For more information about profiling the compilation process, see the NVIDIA Developer blog post

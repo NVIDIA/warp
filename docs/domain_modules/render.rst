@@ -22,5 +22,6 @@ This is useful for manipulating OpenGL array buffers without having to copy them
 
 See the `CUDA documentation on OpenGL Interoperability <https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__GL.html>`_ for more information.
 
-.. currentmodule:: warp
+The :class:`wp.RegisteredGLBuffer <warp.RegisteredGLBuffer>` class wraps an OpenGL buffer and registers it with CUDA, allowing it to be
+mapped as a Warp array for use in kernels without copying data between the CPU and GPU.
 
