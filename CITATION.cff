@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Warp: A High-performance Python Framework for GPU Simulation and Graphics"
+authors:
+  - family-names: Macklin
+    given-names: Miles
+type: software
+date-released: "2022-03-01"
+url: "https://github.com/NVIDIA/warp"
+license: Apache-2.0
+preferred-citation:
+  type: generic
+  title: "Warp: A High-performance Python Framework for GPU Simulation and Graphics"
+  authors:
+    - family-names: Macklin
+      given-names: Miles
+  year: 2022
+  month: 3
+  notes: "NVIDIA GPU Technology Conference (GTC)"
+  url: "https://github.com/NVIDIA/warp"

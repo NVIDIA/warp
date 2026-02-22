@@ -36,65 +36,8 @@ pip install warp-lang
 
 You can also use `pip install warp-lang[examples]` to install additional dependencies for running examples and USD-related features.
 
-The binaries hosted on PyPI are currently built with the CUDA 12 runtime.
-We also provide binaries built with the CUDA 13.0 runtime on the [GitHub Releases](https://github.com/NVIDIA/warp/releases) page.
-Copy the URL of the appropriate wheel file (`warp-lang-{ver}+cu13-py3-none-{platform}.whl`) and pass it to
-the `pip install` command, e.g.
-
-| Platform        | Install Command                                                                                                               |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Linux aarch64   | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_34_aarch64.whl` |
-| Linux x86-64    | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-manylinux_2_28_x86_64.whl`  |
-| Windows x86-64  | `pip install https://github.com/NVIDIA/warp/releases/download/v1.11.1/warp_lang-1.11.1+cu13-py3-none-win_amd64.whl`             |
-
-The `--force-reinstall` option may need to be used to overwrite a previous installation.
-
-### Nightly Builds
-
-Nightly builds of Warp from the `main` branch are available on the [NVIDIA Package Index](https://pypi.nvidia.com/warp-lang/).
-
-To install the latest nightly build, use the following command:
-
-```text
-pip install -U --pre warp-lang --extra-index-url=https://pypi.nvidia.com/
-```
-
-Note that the nightly builds are built with the CUDA 12 runtime and are not published for macOS.
-
-If you plan to install nightly builds regularly, you can simplify future installations by adding NVIDIA's package
-repository as an extra index via the `PIP_EXTRA_INDEX_URL` environment variable. For example:
-
-```text
-export PIP_EXTRA_INDEX_URL="https://pypi.nvidia.com"
-```
-
-This ensures the index is automatically used for `pip` commands, avoiding the need to specify it explicitly.
-
-### CUDA Requirements
-
-* Warp packages built with CUDA Toolkit 12.x require NVIDIA driver 525 or newer.
-* Warp packages built with CUDA Toolkit 13.x require NVIDIA driver 580 or newer.
-
-This applies to pre-built packages distributed on PyPI and GitHub and also when building Warp from source.
-
-Note that building Warp with the `--quick` flag changes the driver requirements.  The quick build skips CUDA backward compatibility, so the minimum required driver is determined by the CUDA Toolkit version.  Refer to the [latest CUDA Toolkit release notes](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html) to find the minimum required driver for different CUDA Toolkit versions (e.g., [this table from CUDA Toolkit 12.6](https://docs.nvidia.com/cuda/archive/12.6.0/cuda-toolkit-release-notes/index.html#id5)).
-
-Warp checks the installed driver during initialization and will report a warning if the driver is not suitable, e.g.:
-
-```text
-Warp UserWarning:
-   Insufficient CUDA driver version.
-   The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
-   Visit https://github.com/NVIDIA/warp/blob/main/README.md#installing for guidance.
-```
-
-This will make CUDA devices unavailable, but the CPU can still be used.
-
-To remedy the situation there are a few options:
-
-* Update the driver.
-* Install a compatible pre-built Warp package.
-* Build Warp from source using a CUDA Toolkit that's compatible with the installed driver.
+For nightly builds, conda, CUDA 13 builds, building from source, and CUDA driver requirements, see the
+[Installation Guide](https://nvidia.github.io/warp/user_guide/installation.html).
 
 ## Tutorial Notebooks
 
@@ -280,33 +223,6 @@ python -m warp.tests
     </tbody>
 </table>
 
-## Building
-
-For developers who want to build the library themselves, the following tools are required:
-
-* Microsoft Visual Studio 2019 upwards (Windows)
-* GCC 9.4 upwards (Linux)
-* CUDA Toolkit 12.0 or higher
-* [Git LFS](https://git-lfs.github.com/) installed
-
-After cloning the repository, users should run:
-
-```text
-python build_lib.py
-```
-
-Upon success, the script will output platform-specific binary files in `warp/bin/`.
-The build script will look for the CUDA Toolkit in its default installation path.
-This path can be overridden by setting the `CUDA_PATH` environment variable. Alternatively,
-the path to the CUDA Toolkit can be passed to the build command as
-`--cuda-path="..."`. After building, the Warp package should be installed using:
-
-```text
-pip install -e .
-```
-
-This ensures that subsequent modifications to the library will be reflected in the Python package.
-
 ## Learn More
 
 Please see the following resources for additional background on Warp:
@@ -326,26 +242,13 @@ The underlying technology in Warp has been used in a number of research projects
 
 ## Frequently Asked Questions
 
-See the [FAQ](https://nvidia.github.io/warp/faq.html) in the Warp documentation.
+See the [FAQ](https://nvidia.github.io/warp/user_guide/faq.html) in the Warp documentation.
 
 ## Support
 
 Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
 For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com>.
-
-## Versioning
-
-Versions take the format X.Y.Z, similar to [Python itself](https://devguide.python.org/developer-workflow/development-cycle/#devcycle):
-
-* Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
-* Increments in Y are for regular releases with a new set of features.
-* Increments in Z are for bug fixes. In principle, there are no new features. Can be omitted if 0 or not relevant.
-
-This is similar to [Semantic Versioning](https://semver.org/) but is less strict regarding backward compatibility.
-Like with Python, some breaking changes can be present between minor versions if well-documented and gradually introduced.
-
-Note that prior to 0.11.0, this schema was not strictly adhered to.
 
 ## License
 
@@ -371,15 +274,6 @@ We encourage you to add your own published work using Warp to this list.
 
 ### Citing Warp
 
-To cite Warp itself in your own publications, please use the following BibTeX entry:
-
-```bibtex
-@misc{warp2022,
-  title        = {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-  author       = {Miles Macklin},
-  month        = {March},
-  year         = {2022},
-  note         = {NVIDIA GPU Technology Conference (GTC)},
-  howpublished = {\url{https://github.com/nvidia/warp}}
-}
-```
+If you use Warp in your research, please use the "Cite this repository" button on the
+[GitHub repository](https://github.com/NVIDIA/warp) page or refer to the
+[CITATION.cff](https://github.com/NVIDIA/warp/blob/main/CITATION.cff) file for citation information.

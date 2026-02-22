@@ -295,19 +295,6 @@ Problems, questions, and feature requests can be opened on
 
 For inquiries not suited for GitHub Issues, please email warp-python@nvidia.com.
 
-Versioning
-----------
-
-Versions take the format X.Y.Z, similar to `Python itself <https://devguide.python.org/developer-workflow/development-cycle/#devcycle>`__:
-
-* Increments in X are reserved for major reworks of the project causing disruptive incompatibility (or reaching the 1.0 milestone).
-* Increments in Y are for regular releases with a new set of features.
-* Increments in Z are for bug fixes. In principle, there are no new features. Can be omitted if 0 or not relevant.
-
-This is similar to `Semantic Versioning <https://semver.org/>`_ minor versions if well-documented and gradually introduced.
-
-Note that prior to 0.11.0, this schema was not strictly adhered to.
-
 License
 -------
 
@@ -334,18 +321,9 @@ We encourage you to add your own published work using Warp to this list.
 Citing Warp
 ^^^^^^^^^^^
 
-If you use Warp in your research, please use the following citation:
-
-.. code:: bibtex
-
-    @misc{warp2022,
-      title        = {Warp: A High-performance Python Framework for GPU Simulation and Graphics},
-      author       = {Miles Macklin},
-      month        = {March},
-      year         = {2022},
-      note         = {NVIDIA GPU Technology Conference (GTC)},
-      howpublished = {\url{https://github.com/nvidia/warp}}
-    }
+If you use Warp in your research, please use the "Cite this repository" button on the
+`GitHub repository <https://github.com/NVIDIA/warp>`_ page or refer to the
+`CITATION.cff <https://github.com/NVIDIA/warp/blob/main/CITATION.cff>`_ file for citation information.
 
 Full Table of Contents
 ----------------------

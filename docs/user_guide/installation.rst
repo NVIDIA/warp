@@ -92,7 +92,7 @@ Warp checks the installed driver during initialization and will report a warning
     Warp UserWarning:
        Insufficient CUDA driver version.
        The minimum required CUDA driver version is 12.0, but the installed CUDA driver version is 11.8.
-       Visit https://github.com/NVIDIA/warp/blob/main/README.md#installing for guidance.
+       Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.
 
 This will make CUDA devices unavailable, but the CPU can still be used.
 
