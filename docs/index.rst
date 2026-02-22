@@ -122,6 +122,7 @@ warp/examples/core
 ^^^^^^^^^^^^^^^^^^
 
 .. list-table::
+    :widths: 25 25 25 25
     :class: gallery
 
     * - .. image:: ./img/examples/core_dem.png
@@ -165,6 +166,7 @@ warp/examples/fem
 ^^^^^^^^^^^^^^^^^
 
 .. list-table::
+    :widths: 25 25 25 25
     :class: gallery
 
     * - .. image:: ./img/examples/fem_diffusion_3d.png
@@ -208,6 +210,7 @@ warp/examples/optim
 ^^^^^^^^^^^^^^^^^^^
 
 .. list-table::
+    :widths: 25 25 25 25
     :class: gallery
 
     * - .. image:: ./img/examples/optim_diffray.png
@@ -226,6 +229,7 @@ warp/examples/tile
 ^^^^^^^^^^^^^^^^^^
 
 .. list-table::
+    :widths: 25 25 25 25
     :class: gallery
 
     * - .. image:: ./img/examples/tile_mlp.png
