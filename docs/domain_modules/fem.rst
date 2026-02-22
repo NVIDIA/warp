@@ -80,28 +80,32 @@ The typical steps for solving a linearized PDE with :mod:`warp.fem` are as follo
  - Solve the resulting linear system using the solver of your choice, for instance one of the built-in :ref:`iterative-linear-solvers`.
 
 
-The following excerpt from the introductory example ``warp/examples/fem/example_diffusion.py`` outlines this procedure: ::
+The following excerpt from the introductory example ``warp/examples/fem/example_diffusion.py`` outlines this procedure:
+
+.. code-block:: python
 
     # Grid geometry
-    geo = Grid2D(n=50, cell_size=2)
+    geo = Grid2D(res=wp.vec2i(resolution))
 
-    # Domain and function spaces
-    domain = Cells(geometry=geo)
-    scalar_space = make_polynomial_space(geo, degree=3)
+    # Scalar function space
+    scalar_space = make_polynomial_space(geo, degree=degree)
 
     # Right-hand-side (forcing term)
+    domain = Cells(geometry=geo)
     test = make_test(space=scalar_space, domain=domain)
     rhs = integrate(linear_form, fields={"v": test})
-
-    # Weakly-imposed boundary conditions on Y sides
-    boundary = BoundarySides(geo)
-    bd_test = make_test(space=scalar_space, domain=boundary)
-    bd_trial = make_trial(space=scalar_space, domain=boundary)
-    bd_matrix = integrate(y_mass_form, fields={"u": bd_trial, "v": bd_test})
 
     # Diffusion form
     trial = make_trial(space=scalar_space, domain=domain)
     matrix = integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
+
+    # Boundary conditions on Y sides
+    boundary = BoundarySides(geo)
+    bd_test = make_test(space=scalar_space, domain=boundary)
+    bd_trial = make_trial(space=scalar_space, domain=boundary)
+    bd_matrix = integrate(
+        y_boundary_projector_form, fields={"u": bd_trial, "v": bd_test}, assembly="nodal"
+    )
 
     # Assemble linear system (add diffusion and boundary condition matrices)
     matrix += bd_matrix * boundary_strength

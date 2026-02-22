@@ -599,8 +599,9 @@ The solution is to synchronize the streams, which can be done like this:
 
     wp.launch(kernel, dim=a.size, inputs=[a], stream=s)
 
-The :class:`wp.ScopedStream <warp.ScopedStream>` manager is designed to alleviate this common problem.  It synchronizes the new stream with the
-previous stream on the device.  Its behavior is equivalent to inserting the :meth:`Stream.wait_stream` call as shown above.
+The :class:`wp.ScopedStream <warp.ScopedStream>` manager is designed to alleviate this common problem.  By default, it synchronizes the new stream with the
+previous stream on the device when entering the scope.  Its behavior is equivalent to inserting the :meth:`Stream.wait_stream` call as shown above.
+This synchronization behavior can be configured via the ``sync_enter`` (default ``True``) and ``sync_exit`` (default ``False``) constructor parameters.
 With :class:`wp.ScopedStream <warp.ScopedStream>`, we don't need to explicitly sync the new stream with the previous stream:
 
 .. code:: python

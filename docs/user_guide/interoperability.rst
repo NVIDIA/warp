@@ -510,8 +510,6 @@ Here's an example that demonstrates the problem:
     device = 'cuda'
     N = 300_000_000
 
-    wp.init()
-
     @wp.kernel(enable_backward=False)
     def forward_kernel(
         a: wp.array(dtype=float),
@@ -1794,9 +1792,6 @@ using :func:`warp.from_paddle` is as follows::
     import warp as wp
     import paddle
 
-    # init warp context at beginning
-    wp.init()
-
     @wp.kernel()
     def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
         tid = wp.tid()
@@ -1838,9 +1833,6 @@ Here, we revisit the same example from above where now only a single conversion 
     import warp as wp
     import numpy as np
     import paddle
-
-    # init warp context at beginning
-    wp.init()
 
     @wp.kernel()
     def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):

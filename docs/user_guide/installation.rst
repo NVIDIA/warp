@@ -52,7 +52,7 @@ For more information, see the community-maintained feedstock for Warp
 Installing from GitHub Releases
 -------------------------------
 
-The binaries hosted on PyPI are currently built with the CUDA 12 runtime.
+The binaries hosted on PyPI are currently built with the CUDA 12.9 runtime.
 We also provide binaries built with the CUDA 13.0 runtime on the `GitHub Releases <https://github.com/NVIDIA/warp/releases>`_ page.
 Copy the URL of the appropriate wheel file (``warp-lang-{ver}+cu13-py3-none-{platform}.whl``) and pass it to
 the ``pip install`` command, e.g.

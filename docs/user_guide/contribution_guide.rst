@@ -287,7 +287,7 @@ directory. As part of the test suite, most examples in the ``warp/examples`` sub
 `test_examples.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/test_examples.py>`__.
 
 After building and installing Warp (``pip install -e .`` from the project root), run the test suite using
-``python -m warp.tests``. The tests should take 5–10 minutes to run. By default, only the test modules
+``python -m warp.tests``. The tests should take approximately 10–20 minutes to run. By default, only the test modules
 defined in ``default_suite()`` (in ``warp/tests/unittest_suites.py``) are run. To run the test suite
 using `test discovery <https://docs.python.org/3/library/unittest.html#test-discovery>`__, use
 ``python -m warp.tests -s autodetect``, which will discover tests in modules matching the path
@@ -357,7 +357,6 @@ test methods (a separate method for each device) to a test class.
 
 
     if __name__ == "__main__":
-        wp.clear_kernel_cache()
         unittest.main(verbosity=2)
 
 If we directly run this module, we get the following output:
