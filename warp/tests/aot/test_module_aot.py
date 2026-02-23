@@ -464,7 +464,54 @@ def test_mixed_generic_kernels_some_without_overloads(test, device):
     assert_np_equal(a.numpy(), np.array([2.0, 4.0, 6.0], dtype=np.float32))
 
 
+def test_aot_cache_skip(test, device):
+    """Test that compile_aot_module skips compilation when binary exists."""
+    try:
+        shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+        TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        module = warp.tests.aot.aux_test_hash_reload
+        wp.set_module_options({"block_dim": 1 if device.is_cpu else 256}, module)
+
+        # First compile — produces binaries
+        wp.compile_aot_module(module, device, module_dir=TEST_CACHE_DIR, strip_hash=True)
+        binaries = [f for f in TEST_CACHE_DIR.iterdir() if f.suffix in (".o", ".cubin", ".ptx")]
+        test.assertGreater(len(binaries), 0)
+
+        # Set mtime to a known past time
+        past_time = 1_000_000_000
+        for f in binaries:
+            os.utime(f, ns=(past_time, past_time))
+
+        # Second compile (cache_kernels=True) — should skip
+        wp.compile_aot_module(module, device, module_dir=TEST_CACHE_DIR, strip_hash=True)
+        for f in binaries:
+            test.assertEqual(
+                f.stat().st_mtime_ns,
+                past_time,
+                f"Binary {f.name} was recompiled when it should have been cached",
+            )
+
+        # Third compile (cache_kernels=False) — should recompile
+        old_val = wp.config.cache_kernels
+        try:
+            wp.config.cache_kernels = False
+            wp.compile_aot_module(module, device, module_dir=TEST_CACHE_DIR, strip_hash=True)
+        finally:
+            wp.config.cache_kernels = old_val
+
+        for f in binaries:
+            test.assertNotEqual(
+                f.stat().st_mtime_ns,
+                past_time,
+                f"Binary {f.name} was NOT recompiled when cache_kernels=False",
+            )
+    finally:
+        shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+        wp.set_module_options({"cuda_output": None, "strip_hash": False}, warp.tests.aot.aux_test_hash_reload)
+
+
 devices = get_test_devices()
+add_function_test(TestModuleAOT, "test_aot_cache_skip", test_aot_cache_skip, devices=devices)
 add_function_test(TestModuleAOT, "test_disable_hashing", test_disable_hashing, devices=devices)
 add_function_test(TestModuleAOT, "test_enable_hashing", test_enable_hashing, devices=devices)
 add_function_test(TestModuleAOT, "test_module_load_resolution", test_module_load_resolution, devices=devices)
