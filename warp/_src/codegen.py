@@ -1233,6 +1233,13 @@ class Adjoint:
         # recursively evaluate function body
         try:
             adj.eval(adj.tree.body[0])
+
+            # After evaluating the whole function we can validate the return
+            # type. This needs to happen before actually writing the generated
+            # code to the CUDA/C++ file to avoid a broken function from affecting
+            # the compilation of valid ones.
+            adj._validate_return_type()
+
         except Exception as original_exc:
             try:
                 lineno = adj.lineno + adj.fun_lineno
@@ -1260,6 +1267,53 @@ class Adjoint:
 
             # release builder reference for GC
             adj.builder = None
+
+    def _validate_return_type(adj):
+        """Validate function return type annotation against actual return values.
+
+        This validation happens during build() (before C++ code generation) to catch
+        errors early and prevent module contamination. If validation fails here,
+        the function is marked as skip_build and won't emit any C++ code.
+        """
+        if adj.return_var is not None and "return" in adj.arg_types:
+            if get_origin(adj.arg_types["return"]) is tuple:
+                if len(get_args(adj.arg_types["return"])) != len(adj.return_var):
+                    raise WarpCodegenError(
+                        f"The function `{adj.fun_name}` has its return type "
+                        f"annotated as a tuple of {len(get_args(adj.arg_types['return']))} elements "
+                        f"but the code returns {len(adj.return_var)} values."
+                    )
+                elif not types_equal_generic(adj.arg_types["return"], tuple(x.type for x in adj.return_var)):
+                    raise WarpCodegenError(
+                        f"The function `{adj.fun_name}` has its return type "
+                        f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
+                        f"but the code returns a tuple with types `({', '.join(warp._src.context.type_str(x.type) for x in adj.return_var)})`."
+                    )
+            elif len(adj.return_var) > 1 and get_origin(adj.arg_types["return"]) is not tuple:
+                raise WarpCodegenError(
+                    f"The function `{adj.fun_name}` has its return type "
+                    f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
+                    f"but the code returns {len(adj.return_var)} values."
+                )
+            elif (
+                isinstance(adj.return_var[0].type, warp._src.types.fixedarray)
+                and type(adj.arg_types["return"]) is warp._src.types.array
+            ):
+                # If the return statement yields a `fixedarray` while the function is annotated
+                # to return a standard `array`, then raise an error since the `fixedarray` storage
+                # allocated on the stack will be freed once the function exits, meaning that the
+                # resulting `array` instance will point to an invalid data.
+                raise WarpCodegenError(
+                    f"The function `{adj.fun_name}` returns a fixed-size array "
+                    f"whereas it has its return type annotated as "
+                    f"`{warp._src.context.type_str(adj.arg_types['return'])}`."
+                )
+            elif not types_equal(adj.arg_types["return"], adj.return_var[0].type):
+                raise WarpCodegenError(
+                    f"The function `{adj.fun_name}` has its return type "
+                    f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
+                    f"but the code returns a value of type `{warp._src.context.type_str(adj.return_var[0].type)}`."
+                )
 
     # code generation methods
     def format_template(adj, template, input_vars, output_var):
@@ -4557,46 +4611,6 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only=False, reverse_only=False):
     if options is None:
         options = {}
-
-    if adj.return_var is not None and "return" in adj.arg_types:
-        if get_origin(adj.arg_types["return"]) is tuple:
-            if len(get_args(adj.arg_types["return"])) != len(adj.return_var):
-                raise WarpCodegenError(
-                    f"The function `{adj.fun_name}` has its return type "
-                    f"annotated as a tuple of {len(get_args(adj.arg_types['return']))} elements "
-                    f"but the code returns {len(adj.return_var)} values."
-                )
-            elif not types_equal_generic(adj.arg_types["return"], tuple(x.type for x in adj.return_var)):
-                raise WarpCodegenError(
-                    f"The function `{adj.fun_name}` has its return type "
-                    f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
-                    f"but the code returns a tuple with types `({', '.join(warp._src.context.type_str(x.type) for x in adj.return_var)})`."
-                )
-        elif len(adj.return_var) > 1 and get_origin(adj.arg_types["return"]) is not tuple:
-            raise WarpCodegenError(
-                f"The function `{adj.fun_name}` has its return type "
-                f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
-                f"but the code returns {len(adj.return_var)} values."
-            )
-        elif (
-            isinstance(adj.return_var[0].type, warp._src.types.fixedarray)
-            and type(adj.arg_types["return"]) is warp._src.types.array
-        ):
-            # If the return statement yields a `fixedarray` while the function is annotated
-            # to return a standard `array`, then raise an error since the `fixedarray` storage
-            # allocated on the stack will be freed once the function exits, meaning that the
-            # resulting `array` instance will point to an invalid data.
-            raise WarpCodegenError(
-                f"The function `{adj.fun_name}` returns a fixed-size array "
-                f"whereas it has its return type annotated as "
-                f"`{warp._src.context.type_str(adj.arg_types['return'])}`."
-            )
-        elif not types_equal(adj.arg_types["return"], adj.return_var[0].type):
-            raise WarpCodegenError(
-                f"The function `{adj.fun_name}` has its return type "
-                f"annotated as `{warp._src.context.type_str(adj.arg_types['return'])}` "
-                f"but the code returns a value of type `{warp._src.context.type_str(adj.return_var[0].type)}`."
-            )
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
     # This is used as a catch-all C-to-Python source line mapping for any code that does not have
