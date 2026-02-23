@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-??
+## [1.12.0] - 2026-03-06
 
 ### Added
 
@@ -1327,7 +1327,7 @@
 - Fix for slicing of arrays with gradients in kernels
 - Fix for function overload caching, ensure module is rebuilt if any function overloads are modified
 - Fix for handling of `bool` types in generic kernels
-- Publish CUDA 12.5 binaries for Hopper support, see <https://github.com/nvidia/warp?tab=readme-ov-file#installing> for details
+- Publish CUDA 12.5 binaries for Hopper support, see https://github.com/nvidia/warp?tab=readme-ov-file#installing for details
 
 ## 1.1.1 - 2024-05-24
 
@@ -1560,7 +1560,7 @@
 - Fix for kernel caching when function argument types change
 - Fix code-gen ordering of dependent structs
 - Fix for `wp.Mesh` build on MGPU systems
-- Fix for name clash bug with adjoint code: <https://github.com/NVIDIA/warp/issues/154>
+- Fix for name clash bug with adjoint code: https://github.com/NVIDIA/warp/issues/154
 - Add `wp.frac()` for returning the fractional part of a floating point value
 - Add support for custom native CUDA snippets using `@wp.func_native` decorator
 - Add support for batched matmul with batch size > 2^16-1
@@ -1621,14 +1621,14 @@
 - Fix for incorrect lower-case when setting USD stage "up_axis" in examples
 - Fix for incompatible gradient types when wrapping PyTorch tensor as a vector or matrix type
 - Fix for adding open edges when building cloth constraints from meshes in `wp.sim.ModelBuilder.add_cloth_mesh()`
-- Add support for `wp.fabricarray` to directly access Fabric data from Warp kernels, see <https://docs.omniverse.nvidia.com/kit/docs/usdrt/latest/docs/usdrt_prim_selection.html> for examples
+- Add support for `wp.fabricarray` to directly access Fabric data from Warp kernels, see https://docs.omniverse.nvidia.com/kit/docs/usdrt/latest/docs/usdrt_prim_selection.html for examples
 - Add support for user defined gradient functions, see `@wp.func_replay`, and `@wp.func_grad` decorators
 - Add support for more OG attribute types in `omni.warp.from_omni_graph()`
 - Add support for creating NanoVDB `wp.Volume` objects from dense NumPy arrays
 - Add support for `wp.volume_sample_grad_f()` which returns the value + gradient efficiently from an NVDB volume
 - Add support for LLVM fp16 intrinsics for half-precision arithmetic
 - Add implementation of stochastic gradient descent, see `wp.optim.SGD`
-- Add `wp.fem` framework for solving weak-form PDE problems (see <https://nvidia.github.io/warp/domain_modules/fem.html>)
+- Add `wp.fem` framework for solving weak-form PDE problems (see https://nvidia.github.io/warp/domain_modules/fem.html)
 - Optimizations for `omni.warp` extension load time (2.2s to 625ms cold start)
 - Make all `omni.ui` dependencies optional so that Warp unit tests can run headless
 - Deprecation of `wp.tid()` outside of kernel functions, users should pass `tid()` values to `wp.func` functions explicitly
@@ -2081,7 +2081,7 @@
 
 - Add NanoVDB support, see `wp.volume_sample*()` methods
 - Add support for reading compile-time constants in kernels, see `wp.constant()`
-- Add support for **cuda_array_interface** protocol for zero-copy interop with PyTorch, see `wp.torch.to_torch()`
+- Add support for __cuda_array_interface__ protocol for zero-copy interop with PyTorch, see `wp.torch.to_torch()`
 - Add support for additional numeric types, i8, u8, i16, u16, etc
 - Add better checks for device strings during allocation / launch
 - Add support for sampling random numbers with a normal distribution, see `wp.randn()`
