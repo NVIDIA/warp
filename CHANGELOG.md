@@ -119,6 +119,8 @@
 
 ### Documentation
 
+- Add 2-D incompressible turbulence example (`example_fft_poisson_navier_stokes_2d`) demonstrating a
+  vorticity-streamfunction solver with tile-based FFT Poisson solve and SSP-RK3 timestepping.
 - Document the CUDA compute cache and its impact on benchmarking cold-start compilation times
   ([GH-1191](https://github.com/NVIDIA/warp/issues/1191)).
 - Document ahead-of-time CUDA compilation without a driver (Docker build workflow).
