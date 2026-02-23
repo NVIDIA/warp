@@ -1741,6 +1741,11 @@ NanoVDB grids may also contain embedded *blind* data arrays; those can be access
 Textures
 ########
 
+.. admonition:: Experimental
+
+    The texture API is experimental and subject to change without a formal deprecation
+    cycle. See :class:`warp.Texture` for details.
+
 Warp provides :class:`Texture2D` and :class:`Texture3D` classes for hardware-accelerated texture sampling
 on CUDA devices. Textures support bilinear/trilinear interpolation and various addressing modes
 (wrap, clamp, mirror, border), making them ideal for efficiently sampling regularly-gridded data.
