@@ -2717,7 +2717,7 @@ class Module:
         output_name: str | None = None,
         output_arch: int | None = None,
         use_ptx: bool | None = None,
-    ) -> None:
+    ) -> bool:
         """Compile this module for a specific device.
 
         Note that this function only generates and compiles code. The resulting
@@ -2730,6 +2730,10 @@ class Module:
             output_arch: The architecture to compile the module for.
             use_ptx: Whether to compile to PTX instead of CUBIN. If ``None``,
                 auto-determined from the device and architecture.
+
+        Returns:
+            ``True`` if compilation was performed, ``False`` if a cached
+            binary already exists and compilation was skipped.
         """
         if output_arch is None:
             output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
@@ -2749,6 +2753,24 @@ class Module:
         if output_name is None:
             output_name = self._get_compile_output_name(device, output_arch, arch_suffix, use_ptx)
 
+        # Resolve output directory early so we can check for cached binaries
+        module_name_short = self.get_module_identifier()
+
+        if output_dir is None:
+            output_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name_short}")
+        else:
+            output_dir = os.fspath(output_dir)
+
+        # Skip compilation if the binary and metadata are already cached
+        # (forced rebuild when verifying autograd array access)
+        if (
+            warp.config.cache_kernels
+            and not warp.config.verify_autograd_array_access
+            and os.path.exists(os.path.join(output_dir, output_name))
+            and os.path.exists(os.path.join(output_dir, self._get_meta_name()))
+        ):
+            return False
+
         # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
         builder_options = self.options | {"output_arch": output_arch}
         builder = ModuleBuilder(
@@ -2756,14 +2778,6 @@ class Module:
             builder_options,
             hasher=self.hashers.get(self.options["block_dim"], None),
         )
-
-        # create a temporary (process unique) dir for build outputs before moving to the binary dir
-        module_name_short = self.get_module_identifier()
-
-        if output_dir is None:
-            output_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name_short}")
-        else:
-            output_dir = os.fspath(output_dir)
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
 
@@ -2916,6 +2930,8 @@ class Module:
             # clean up build_dir used for this process regardless
             shutil.rmtree(build_dir, ignore_errors=True)
 
+        return True
+
     def load(
         self,
         device,
@@ -2982,31 +2998,20 @@ class Module:
                 else:
                     module_load_timer.extra_msg = " (cached)"
             else:
-                # we will build if binary doesn't exist yet
-                # we will rebuild if we are not caching kernels or if we are tracking array access
-
                 output_name = self._get_compile_output_name(device)
                 output_arch = self._get_compile_arch(device)
 
                 module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
                 meta_path = os.path.join(module_dir, self._get_meta_name())
-                # final object binary path
                 binary_path = os.path.join(module_dir, output_name)
 
-                if (
-                    not os.path.exists(binary_path)
-                    or not warp.config.cache_kernels
-                    or warp.config.verify_autograd_array_access
-                ):
-                    try:
-                        self._compile(device, module_dir, output_name, output_arch)
-                    except Exception as e:
-                        module_load_timer.extra_msg = " (error)"
-                        raise (e)
+                try:
+                    compiled = self._compile(device, module_dir, output_name, output_arch)
+                except Exception as e:
+                    module_load_timer.extra_msg = " (error)"
+                    raise e
 
-                    module_load_timer.extra_msg = " (compiled)"
-                else:
-                    module_load_timer.extra_msg = " (cached)"
+                module_load_timer.extra_msg = " (compiled)" if compiled else " (cached)"
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary

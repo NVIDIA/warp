@@ -78,6 +78,9 @@
   `wp.config.enable_tiles_in_stack_memory` to `True`. ([GH-1032](https://github.com/NVIDIA/warp/issues/1032)).
 - Allow NVRTC compilation without a CUDA driver, enabling `wp.compile_aot_module()` to produce PTX/CUBIN during
   Docker image builds where no GPU is available ([GH-1085](https://github.com/NVIDIA/warp/issues/1085)).
+- Skip recompilation in `wp.compile_aot_module()` when the output binary already exists and
+  `wp.config.cache_kernels` is enabled, matching the caching behavior of `Module.load()`
+  ([GH-1246](https://github.com/NVIDIA/warp/issues/1246)).
 - Allow any integer type (not just `wp.int32`) when indexing vectors and matrices in kernels
   ([GH-1209](https://github.com/NVIDIA/warp/issues/1209)).
 - Allow `wp.synchronize_stream()` to be called on CPU devices without raising an exception
