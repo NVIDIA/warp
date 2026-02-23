@@ -63,7 +63,7 @@ def approx_div_kernel(a: wp.array(dtype=Any), b: wp.array(dtype=Any), out: wp.ar
 
 
 # Pre-instantiate overloads to avoid module recompilation during tests
-for scalar_type in (wp.float32, wp.float64):
+for scalar_type in (wp.float16, wp.float32, wp.float64):
     wp.overload(
         approx_div_kernel, [wp.array(dtype=scalar_type), wp.array(dtype=scalar_type), wp.array(dtype=scalar_type)]
     )
@@ -136,7 +136,7 @@ def approx_div_backward_kernel(
     wp.atomic_add(loss, 0, out[i])
 
 
-for _backward_scalar_type in (wp.float32, wp.float64):
+for _backward_scalar_type in (wp.float16, wp.float32, wp.float64):
     wp.overload(approx_div_backward_kernel, [wp.array(dtype=_backward_scalar_type)] * 4)
 
 
@@ -144,7 +144,11 @@ def test_approx_div_div(test, device):
     """Test that scalar division with approx=True produces approximately correct results."""
     n = 64
     rng = np.random.default_rng(42)
-    for np_dtype, wp_dtype, rtol in [(np.float32, wp.float32, 1e-6), (np.float64, wp.float64, 1e-6)]:
+    for np_dtype, wp_dtype, rtol in [
+        (np.float16, wp.float16, 1e-3),
+        (np.float32, wp.float32, 1e-6),
+        (np.float64, wp.float64, 1e-6),
+    ]:
         a_np = rng.uniform(0.1, 100.0, n).astype(np_dtype)
         b_np = rng.uniform(0.1, 100.0, n).astype(np_dtype)
         expected = a_np / b_np
@@ -220,7 +224,11 @@ def test_approx_div_backward(test, device):
     n = 8
     rng = np.random.default_rng(42)
     # div_approx uses rcp.approx (float32 precision) even for float64, so use looser tolerance for f64
-    for np_dtype, wp_dtype, rtol in [(np.float32, wp.float32, 1e-6), (np.float64, wp.float64, 1e-5)]:
+    for np_dtype, wp_dtype, rtol in [
+        (np.float16, wp.float16, 2e-3),
+        (np.float32, wp.float32, 1e-6),
+        (np.float64, wp.float64, 1e-5),
+    ]:
         a_np = rng.uniform(1.0, 10.0, n).astype(np_dtype)
         b_np = rng.uniform(1.0, 10.0, n).astype(np_dtype)
 
@@ -291,16 +299,17 @@ class TestFastMath(unittest.TestCase):
         """Verify that on CPU, div_approx produces exact results (CPU fallback)."""
         rng = np.random.default_rng(42)
         n = 64
-        a_np = rng.uniform(0.1, 100.0, n).astype(np.float32)
-        b_np = rng.uniform(0.1, 100.0, n).astype(np.float32)
-        expected = a_np / b_np
+        for np_dtype, wp_dtype in [(np.float16, wp.float16), (np.float32, wp.float32)]:
+            a_np = rng.uniform(0.1, 100.0, n).astype(np_dtype)
+            b_np = rng.uniform(0.1, 100.0, n).astype(np_dtype)
+            expected = a_np / b_np
 
-        a_wp = wp.array(a_np, dtype=float, device="cpu")
-        b_wp = wp.array(b_np, dtype=float, device="cpu")
-        out_wp = wp.zeros(n, dtype=float, device="cpu")
+            a_wp = wp.array(a_np, dtype=wp_dtype, device="cpu")
+            b_wp = wp.array(b_np, dtype=wp_dtype, device="cpu")
+            out_wp = wp.zeros(n, dtype=wp_dtype, device="cpu")
 
-        wp.launch(approx_div_kernel, dim=n, inputs=[a_wp, b_wp, out_wp], device="cpu")
-        np.testing.assert_array_equal(out_wp.numpy(), expected)
+            wp.launch(approx_div_kernel, dim=n, inputs=[a_wp, b_wp, out_wp], device="cpu")
+            np.testing.assert_array_equal(out_wp.numpy(), expected)
 
     def test_approx_inverse_cpu_fallback(self):
         """Verify that on CPU, inverse_approx falls back to standard inverse."""

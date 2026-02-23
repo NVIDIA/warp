@@ -201,7 +201,7 @@ inline __device__ double approx_rcp(double a)
 
 inline __device__ float16 approx_rcp(float16 a)
 {
-    return float16(1.0f / float(a));  // No approx PTX for f16; falls back to exact fp32 reciprocal
+    return float16(approx_rcp(float(a)));  // No approx PTX for f16; use fp32 approx rcp
 }
 
 inline __device__ float approx_div(float a, float b)
@@ -219,7 +219,7 @@ inline __device__ double approx_div(double a, double b)
 
 inline __device__ float16 approx_div(float16 a, float16 b)
 {
-    return float16(float(a) / float(b));  // No approx PTX for f16; falls back to exact fp32 division
+    return float16(approx_div(float(a), float(b)));  // No approx PTX for f16; use fp32 approx div
 }
 
 #else
