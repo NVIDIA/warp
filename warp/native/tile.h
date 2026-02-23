@@ -4705,8 +4705,9 @@ inline CUDA_CALLABLE void matmul(TileA& A, TileB& B, TileC& out)
 //     (bypasses tile_coord / index_from_coord abstraction in the hot loop)
 //   - Precomputed row/column offsets outside the K loop
 //   - Compile-time boundary elimination when M%BM==0 and N%BN==0
-//   - K loop not force-unrolled (avoids I-cache pressure for large K)
-//   - Adaptive sub-tile size: 8x4, 4x4, 2x2, or 1x1 based on parallelism
+//   - K loop fully unrolled for small K (<=32), improving scheduling and
+//     reducing branch overhead; left to compiler for large K to limit I-cache use
+//   - Adaptive sub-tile size: 8x4, 4x4, 4x2, 2x2, or 1x1 based on parallelism
 template <
     bool Accumulate,
     typename LayoutA,
@@ -4742,21 +4743,25 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
     const ElemB* __restrict__ b_ptr = B.ptr;
     ElemC* __restrict__ c_ptr = C.ptr;
 
-    // Choose register sub-tile size adaptively. We prefer larger blocks for
-    // better data reuse (each A value reused BN times, each B value BM times),
-    // but need enough blocks to keep a reasonable fraction of threads busy.
-    // The threshold is WP_TILE_BLOCK_DIM/4 to allow larger blocks even when
-    // some threads are idle -- the reduced memory traffic outweighs the cost
-    // of idle threads, especially for large K.
-    constexpr int min_blocks = (WP_TILE_BLOCK_DIM + 3) / 4;
+    // Choose register sub-tile size to maximize effective throughput, balancing
+    // arithmetic intensity (FMAs per shared-memory load) against thread
+    // utilization.  Higher-intensity sub-tiles (>= 4x2, intensity >= 1.33) are
+    // worth a modest utilization drop because the reduced memory traffic more
+    // than compensates; we allow down to 75 % utilization for those.  For
+    // low-intensity sub-tiles (2x2 / 1x1) we require full utilization since
+    // their throughput relies on parallelism rather than reuse.
+    constexpr int min_blocks_full = WP_TILE_BLOCK_DIM;
+    constexpr int min_blocks_75 = (WP_TILE_BLOCK_DIM * 3 + 3) / 4;  // ceil(bd*3/4)
     constexpr int blocks_8x4 = ((M + 7) / 8) * ((N + 3) / 4);
     constexpr int blocks_4x4 = ((M + 3) / 4) * ((N + 3) / 4);
+    constexpr int blocks_4x2 = ((M + 3) / 4) * ((N + 1) / 2);
     constexpr int blocks_2x2 = ((M + 1) / 2) * ((N + 1) / 2);
-    constexpr int BM = (blocks_8x4 >= min_blocks) ? 8
-        : (blocks_4x4 >= min_blocks)              ? 4
-        : (blocks_2x2 >= min_blocks)              ? 2
-                                                  : 1;
-    constexpr int BN = (BM == 8) ? 4 : BM;
+    constexpr int BM = (blocks_8x4 >= min_blocks_75) ? 8
+        : (blocks_4x4 >= min_blocks_75)              ? 4
+        : (blocks_4x2 >= min_blocks_75)              ? 4
+        : (blocks_2x2 >= min_blocks_full)            ? 2
+                                                     : 1;
+    constexpr int BN = (BM == 8) ? 4 : (BM == 4 && blocks_4x4 >= min_blocks_75) ? 4 : (BM == 4) ? 2 : BM;
 
     // Number of sub-tile blocks covering the output (ceiling division)
     constexpr int blocks_m = (M + BM - 1) / BM;
@@ -4794,35 +4799,69 @@ inline CUDA_CALLABLE void scalar_matmul(const StorageA& A, const StorageB& B, St
             sum[si][sj] = T(0);
 
         // Reduction along K with register-blocked outer product.
-        // K loop is NOT force-unrolled to avoid I-cache pressure for large K;
-        // the inner BM x BN loops are unrolled for the outer-product throughput.
-        for (int k = 0; k < K; k++) {
-            const int ka = k * sa1;
-            const int kb = k * sb0;
-
-            T a_reg[BM];
+        // For small K (<= 32), fully unroll to eliminate branch overhead and
+        // enable better load/FMA scheduling.  For large K, leave unrolling to
+        // the compiler to limit I-cache pressure.
+        // The if-constexpr duplicates the body so the pragma applies correctly.
+        if constexpr (K <= 32) {
             WP_PRAGMA_UNROLL
-            for (int si = 0; si < BM; si++) {
-                if constexpr (aligned_m)
-                    a_reg[si] = T(a_ptr[a_offsets[si] + ka]);
-                else
-                    a_reg[si] = (base_i + si < M) ? T(a_ptr[a_offsets[si] + ka]) : T(0);
-            }
+            for (int k = 0; k < K; k++) {
+                const int ka = k * sa1;
+                const int kb = k * sb0;
 
-            T b_reg[BN];
-            WP_PRAGMA_UNROLL
-            for (int sj = 0; sj < BN; sj++) {
-                if constexpr (aligned_n)
-                    b_reg[sj] = T(b_ptr[kb + b_offsets[sj]]);
-                else
-                    b_reg[sj] = (base_j + sj < N) ? T(b_ptr[kb + b_offsets[sj]]) : T(0);
-            }
-
-            WP_PRAGMA_UNROLL
-            for (int si = 0; si < BM; si++)
+                T a_reg[BM];
                 WP_PRAGMA_UNROLL
-            for (int sj = 0; sj < BN; sj++)
-                sum[si][sj] = muladd<T>(a_reg[si], b_reg[sj], sum[si][sj]);
+                for (int si = 0; si < BM; si++) {
+                    if constexpr (aligned_m)
+                        a_reg[si] = T(a_ptr[a_offsets[si] + ka]);
+                    else
+                        a_reg[si] = (base_i + si < M) ? T(a_ptr[a_offsets[si] + ka]) : T(0);
+                }
+
+                T b_reg[BN];
+                WP_PRAGMA_UNROLL
+                for (int sj = 0; sj < BN; sj++) {
+                    if constexpr (aligned_n)
+                        b_reg[sj] = T(b_ptr[kb + b_offsets[sj]]);
+                    else
+                        b_reg[sj] = (base_j + sj < N) ? T(b_ptr[kb + b_offsets[sj]]) : T(0);
+                }
+
+                WP_PRAGMA_UNROLL
+                for (int si = 0; si < BM; si++)
+                    WP_PRAGMA_UNROLL
+                for (int sj = 0; sj < BN; sj++)
+                    sum[si][sj] = muladd<T>(a_reg[si], b_reg[sj], sum[si][sj]);
+            }
+        } else {
+            for (int k = 0; k < K; k++) {
+                const int ka = k * sa1;
+                const int kb = k * sb0;
+
+                T a_reg[BM];
+                WP_PRAGMA_UNROLL
+                for (int si = 0; si < BM; si++) {
+                    if constexpr (aligned_m)
+                        a_reg[si] = T(a_ptr[a_offsets[si] + ka]);
+                    else
+                        a_reg[si] = (base_i + si < M) ? T(a_ptr[a_offsets[si] + ka]) : T(0);
+                }
+
+                T b_reg[BN];
+                WP_PRAGMA_UNROLL
+                for (int sj = 0; sj < BN; sj++) {
+                    if constexpr (aligned_n)
+                        b_reg[sj] = T(b_ptr[kb + b_offsets[sj]]);
+                    else
+                        b_reg[sj] = (base_j + sj < N) ? T(b_ptr[kb + b_offsets[sj]]) : T(0);
+                }
+
+                WP_PRAGMA_UNROLL
+                for (int si = 0; si < BM; si++)
+                    WP_PRAGMA_UNROLL
+                for (int sj = 0; sj < BN; sj++)
+                    sum[si][sj] = muladd<T>(a_reg[si], b_reg[sj], sum[si][sj]);
+            }
         }
 
         // Store results with direct pointer arithmetic
