@@ -2901,8 +2901,8 @@ class Module:
                 # this is necessary in case different processes
                 # have different GPU architectures / devices
                 try:
-                    os.rename(output_path, binary_path)
-                except (OSError, FileExistsError):
+                    os.replace(output_path, binary_path)
+                except OSError:
                     # another process likely updated the module dir first
                     pass
 
@@ -2911,16 +2911,16 @@ class Module:
                 # this is necessary in case different processes
                 # have different GPU architectures / devices
                 try:
-                    os.rename(output_meta_path, meta_path)
-                except (OSError, FileExistsError):
+                    os.replace(output_meta_path, meta_path)
+                except OSError:
                     # another process likely updated the module dir first
                     pass
 
             try:
                 final_source_path = os.path.join(output_dir, os.path.basename(source_code_path))
                 if not os.path.exists(final_source_path) or self.options["strip_hash"]:
-                    os.rename(source_code_path, final_source_path)
-            except (OSError, FileExistsError):
+                    os.replace(source_code_path, final_source_path)
+            except OSError:
                 # another process likely updated the module dir first
                 pass
             except Exception as e:
