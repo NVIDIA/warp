@@ -161,6 +161,15 @@ warp/examples/core
       - sph
       - torch
       - wave
+    * - .. image:: ./img/examples/core_fft_poisson_navier_stokes_2d.png
+           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
+      -
+      -
+      -
+    * - 2-D incompressible turbulence in a periodic box
+      -
+      -
+      -
 
 warp/examples/fem
 ^^^^^^^^^^^^^^^^^

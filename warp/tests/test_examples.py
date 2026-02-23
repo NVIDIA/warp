@@ -264,6 +264,12 @@ add_example_test(
     test_options={"headless": True, "num_frames": 1000, "torch_required": True},
 )
 add_example_test(TestCoreExamples, name="core.example_wave", devices=test_devices)
+add_example_test(
+    TestCoreExamples,
+    name="core.example_fft_poisson_navier_stokes_2d",
+    devices=cuda_test_devices,
+    test_options={"headless": True, "num_steps": 100, "sim_substeps": 10},
+)
 
 
 class TestOptimExamples(unittest.TestCase):
