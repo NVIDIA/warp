@@ -13,6 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Benchmark tile load/store throughput against a device memcpy baseline.
+
+Measures the effective memory bandwidth (GiB/s) of ``wp.tile_load`` /
+``wp.tile_store`` round-trips for 1D, 2D, or 3D arrays, sweeping over a
+range of array sizes. Results are compared against ``wp.copy`` (device memcpy)
+to show how close tile operations get to peak device bandwidth.
+
+Usage::
+
+    python benchmark_tile_load_store.py
+    python benchmark_tile_load_store.py --ndim 1 --dtype float16
+    python benchmark_tile_load_store.py --storage shared --iterations 200
+"""
+
 import argparse
 
 import numpy as np
@@ -20,6 +34,7 @@ import numpy as np
 import warp as wp
 
 DTYPE_MAP = {
+    "float16": wp.float16,
     "float32": wp.float32,
     "float64": wp.float64,
     "vec3": wp.vec3,
@@ -110,7 +125,9 @@ def make_array(rng, ndim, size, wp_dtype):
     component_shape = getattr(wp_dtype, "_shape_", ())
     np_shape = spatial + component_shape
 
-    data = rng.random(np_shape, dtype=np_dtype)
+    # Generator.random() only supports float32/float64; generate float32 and cast if needed
+    gen_dtype = np_dtype if np_dtype in (np.float32, np.float64) else np.float32
+    data = rng.random(np_shape, dtype=gen_dtype).astype(np_dtype)
     return wp.array(data, dtype=wp_dtype)
 
 
@@ -123,6 +140,11 @@ def compute_launch_dim(ndim, size, tile_size):
     return tuple(tiles_per_dim for _ in range(ndim))
 
 
+def _bandwidth_gibs(capacity_bytes, timing_results_ms):
+    """Compute bidirectional bandwidth in GiB/s from capacity and timing results."""
+    return 2.0 * (capacity_bytes / (1024 * 1024 * 1024)) / (1e-3 * np.median(timing_results_ms))
+
+
 def run_benchmark(ndim, tile_size, dtype_name, block_dim, storage_modes, iterations):
     wp_dtype = DTYPE_MAP[dtype_name]
     create_kernel = KERNEL_CREATORS[ndim]
@@ -132,11 +154,8 @@ def run_benchmark(ndim, tile_size, dtype_name, block_dim, storage_modes, iterati
         print("No valid sizes for the given tile size.")
         return
 
-    columns = []
-    columns.append(("Transfer Size (Bytes)", 23))
-    for mode in storage_modes:
-        label = f"{mode.capitalize()} (GiB/s)"
-        columns.append((label, 18))
+    columns = [("N", 10), ("Transfer Size (Bytes)", 23)]
+    columns += [(f"{mode.capitalize()} (GiB/s)", 18) for mode in storage_modes]
     columns.append(("memcpy (GiB/s)", 16))
 
     header = "".join(f"{name:<{width}s}" for name, width in columns)
@@ -173,7 +192,7 @@ def run_benchmark(ndim, tile_size, dtype_name, block_dim, storage_modes, iterati
                     cmd.launch()
 
             timing_results = [result.elapsed for result in timer.timing_results]
-            avg_bw = 2.0 * (a.capacity / (1024 * 1024 * 1024)) / (1e-3 * np.mean(timing_results))
+            avg_bw = _bandwidth_gibs(a.capacity, timing_results)
             bw_results[storage_type] = avg_bw
 
         # memcpy baseline
@@ -182,9 +201,9 @@ def run_benchmark(ndim, tile_size, dtype_name, block_dim, storage_modes, iterati
                 wp.copy(b, a)
 
         timing_results = [result.elapsed for result in timer.timing_results]
-        memcpy_bw = 2.0 * (a.capacity / (1024 * 1024 * 1024)) / (1e-3 * np.mean(timing_results))
+        memcpy_bw = _bandwidth_gibs(a.capacity, timing_results)
 
-        row = f"{a.capacity:<23d}"
+        row = f"{size:<10d}{a.capacity:<23d}"
         for mode in storage_modes:
             row += f" {bw_results[mode]:<#17.4g}"
         row += f" {memcpy_bw:<#15.4g}"
@@ -202,17 +221,25 @@ if __name__ == "__main__":
     parser.add_argument(
         "--storage", choices=["shared", "register", "both"], default="both", help="Storage mode (default: both)"
     )
+    parser.add_argument(
+        "--iterations", type=int, default=100, help="Number of timed iterations per size (default: 100)"
+    )
     args = parser.parse_args()
 
     wp.config.quiet = True
     wp.init()
-    wp.clear_kernel_cache()
     wp.set_module_options({"fast_math": True, "enable_backward": False})
+
+    if not wp.is_cuda_available():
+        print("Error: This benchmark requires a CUDA device.")
+        raise SystemExit(1)
 
     storage_modes = ["shared", "register"] if args.storage == "both" else [args.storage]
 
+    print(f"Device: {wp.get_cuda_device().name}")
     print(
-        f"Config: ndim={args.ndim}, tile_size={args.tile_size}, dtype={args.dtype}, block_dim={args.block_dim}, storage={args.storage}"
+        f"Config: ndim={args.ndim}, tile_size={args.tile_size}, dtype={args.dtype}, "
+        f"block_dim={args.block_dim}, storage={args.storage}, iterations={args.iterations}"
     )
     print()
 
@@ -222,5 +249,5 @@ if __name__ == "__main__":
         dtype_name=args.dtype,
         block_dim=args.block_dim,
         storage_modes=storage_modes,
-        iterations=100,
+        iterations=args.iterations,
     )
