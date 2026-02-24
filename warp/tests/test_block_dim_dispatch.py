@@ -33,38 +33,47 @@ from warp.tests.unittest_utils import *
 
 
 def test_block_dim_cpu_then_cuda(test, device):
-    """Test that CUDA execution works correctly after CPU execution.
+    """Test that CUDA execution uses correct block_dim after CPU execution.
 
-    This test specifically checks that the kernel dispatch mechanism
-    uses the correct block_dim for each device, even when the module's
-    options["block_dim"] may have been modified by a previous launch.
+    This test verifies that the kernel dispatch mechanism loads separate
+    module executables for CPU (block_dim=1) and CUDA (block_dim=256),
+    rather than incorrectly reusing the CPU module for CUDA.
+
+    We check this by verifying that module.execs contains distinct entries
+    for the different (device.context, block_dim) pairs.
     """
 
     @wp.kernel
     def simple_conditional(x: float, result: wp.array(dtype=wp.int32)):
-        # Use a conditional expression that requires both branches to be executable
-        # This will fail if there's memory corruption from incorrect block_dim
         wp.atomic_add(result, 0, 1) if x > 0.0 else wp.atomic_add(result, 1, 1)
 
-    # First, launch on CPU (sets module.options["block_dim"] = 1)
+    module = simple_conditional.module
+    cpu_device = wp.get_device("cpu")
+
+    # First, launch on CPU (should load module with block_dim=1)
     result_cpu = wp.zeros(2, dtype=wp.int32, device="cpu")
     wp.launch(simple_conditional, dim=1, inputs=[1.0, result_cpu], device="cpu")
 
-    # Verify CPU result
-    values_cpu = result_cpu.numpy()
-    test.assertEqual(values_cpu[0], 1, "CPU: First branch should execute")
-    test.assertEqual(values_cpu[1], 0, "CPU: Second branch should not execute")
+    # Verify CPU module exec was loaded with block_dim=1
+    cpu_exec_key = (cpu_device.context, 1)
+    test.assertIn(cpu_exec_key, module.execs, "CPU module exec should be loaded with block_dim=1")
 
-    # Now launch on CUDA - this should use block_dim=256, not the stale value of 1
-    # If the bug exists, Launch.__init__ will call module.load(device) without
-    # passing block_dim, causing it to use the stale value of 1 from the CPU launch
+    # Now launch on CUDA (should load separate module with block_dim=256)
     result_cuda = wp.zeros(2, dtype=wp.int32, device=device)
     wp.launch(simple_conditional, dim=1, inputs=[1.0, result_cuda], device=device)
 
-    # Verify CUDA result - this will fail if block_dim mismatch causes memory corruption
-    values_cuda = result_cuda.numpy()
-    test.assertEqual(values_cuda[0], 1, "CUDA: First branch should execute")
-    test.assertEqual(values_cuda[1], 0, "CUDA: Second branch should not execute")
+    # Verify CUDA module exec was loaded with block_dim=256
+    cuda_exec_key = (device.context, 256)
+    test.assertIn(cuda_exec_key, module.execs, "CUDA module exec should be loaded with block_dim=256")
+
+    # Verify that the two execs are distinct (not the same object)
+    cpu_exec = module.execs[cpu_exec_key]
+    cuda_exec = module.execs[cuda_exec_key]
+    test.assertIsNot(cpu_exec, cuda_exec, "CPU and CUDA should use separate module executables")
+
+    # Verify functional correctness as a sanity check
+    test.assertEqual(result_cpu.numpy()[0], 1)
+    test.assertEqual(result_cuda.numpy()[0], 1)
 
 
 class TestBlockDimDispatch(unittest.TestCase):
