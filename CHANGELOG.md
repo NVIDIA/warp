@@ -1,5 +1,30 @@
 # Changelog
 
+## [Unreleased] - 2026-??
+
+### Added
+
+### Removed
+
+### Deprecated
+
+### Changed
+
+- Include the Warp version in kernel cache paths when `WARP_CACHE_PATH` is set or a path is passed to
+  `init_kernel_cache()`, matching the default cache-path behavior. This prevents stale artifacts from a previous Warp
+  version from interfering after an upgrade ([GH-1260](https://github.com/NVIDIA/warp/issues/1260)).
+
+### Fixed
+
+- Fix kernel dispatch using incorrect `block_dim` when the same kernel is launched on different devices, which could
+  cause out-of-bounds shared memory access and memory corruption in tile infrastructure
+  ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
+
+### Documentation
+- Add differentiable 2-D Navier-Stokes example (`warp/examples/optim/example_navier_stokes_perturbation.py`)
+  demonstrating an optimal initial perturbation problem. Differentiable counterpart to the solver
+  in `warp/examples/core/example_fft_poisson_navier_stokes_2d.py`.
+
 ## [1.12.0] - 2026-03-06
 
 ### Added
