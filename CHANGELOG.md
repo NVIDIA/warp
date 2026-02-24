@@ -21,6 +21,9 @@
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
 
 ### Documentation
+- Add differentiable 2-D Navier-Stokes example (`warp/examples/optim/example_navier_stokes_perturbation.py`)
+  demonstrating an optimal initial perturbation problem. Differentiable counterpart to the solver
+  in `warp/examples/core/example_fft_poisson_navier_stokes_2d.py`.
 
 ## [1.12.0] - 2026-03-06
 

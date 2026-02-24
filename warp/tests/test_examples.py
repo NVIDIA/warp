@@ -299,6 +299,12 @@ add_example_test(
     devices=cuda_test_devices,
     test_options={"headless": True, "num_frames": 100},
 )
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_navier_stokes_perturbation",
+    devices=cuda_test_devices,
+    test_options={"headless": True, "train_iters": 5, "lead_steps": 5, "spin_up_steps": 10},
+)
 
 
 class TestFemExamples(unittest.TestCase):
