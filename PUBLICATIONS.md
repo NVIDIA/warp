@@ -114,3 +114,9 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **NODE IK: Solving Inverse Kinematics with Neural Ordinary Differential Equations for Path Planning**. *S. Park, M. Schwartz, J. Park*. September 2022. [arXiv:2209.00498](https://arxiv.org/abs/2209.00498)
 - **Differentiable Physics Simulations with Contacts: Do They Have Correct Gradients w.r.t. Position, Velocity and Control?**. *Y. D. Zhong, J. Han, G. O. Brikis*. July 2022. [arXiv:2207.05060](https://arxiv.org/abs/2207.05060)
 - **Rethinking Optimization with Differentiable Simulation from a Global Perspective**. *R. Antonova, J. Yang, K. M. Jatavallabhula, J. Bohg*. June 2022. [arXiv:2207.00167](https://arxiv.org/abs/2207.00167)
+- **Accelerated Policy Learning with Parallel Differentiable Simulation**. *J. Xu, V. Makoviychuk, Y. Narang, F. Ramos, W. Matusik, A. Garg, M. Macklin*. April 2022. [arXiv:2204.07137](https://arxiv.org/abs/2204.07137)
+
+## 2021
+
+- **DiSECt: A Differentiable Simulation Engine for Autonomous Robotic Cutting**. *E. Heiden, M. Macklin, Y. Narang, D. Fox, A. Garg, F. Ramos*. May 2021. [arXiv:2105.12244](https://arxiv.org/abs/2105.12244)
+- **gradSim: Differentiable simulation for system identification and visuomotor control**. *K. M. Jatavallabhula, M. Macklin, F. Golemo, V. Voleti, L. Petrini, M. Weiss, B. Considine, J. Parent-Levesque, K. Xie, K. Erleben, L. Paull, F. Shkurti, D. Nowrouzezahrai, S. Fidler*. April 2021. [arXiv:2104.02646](https://arxiv.org/abs/2104.02646)
