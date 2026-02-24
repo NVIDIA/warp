@@ -7405,6 +7405,7 @@ def launch(
                     params_addr=None,
                     bounds=bounds,
                     device=device,
+                    block_dim=block_dim,
                     adjoint=adjoint,
                 )
                 return launch
