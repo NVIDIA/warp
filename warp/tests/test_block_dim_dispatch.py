@@ -71,6 +71,37 @@ class TestBlockDimDispatch(unittest.TestCase):
     pass
 
 
+def test_block_dim_record_cmd_cpu(test, device):
+    """Test that CPU command recording uses correct block_dim after CUDA launch.
+
+    This test specifically checks the CPU record_cmd path to ensure it passes
+    block_dim to Launch.__init__ correctly, even when module.options["block_dim"]
+    has been set to 256 by a previous CUDA launch.
+    """
+
+    @wp.kernel
+    def simple_conditional(x: float, result: wp.array(dtype=wp.int32)):
+        wp.atomic_add(result, 0, 1) if x > 0.0 else wp.atomic_add(result, 1, 1)
+
+    # First, launch on CUDA (sets module.options["block_dim"] = 256)
+    result_cuda = wp.zeros(2, dtype=wp.int32, device=device)
+    wp.launch(simple_conditional, dim=1, inputs=[1.0, result_cuda], device=device)
+    test.assertEqual(result_cuda.numpy()[0], 1)
+
+    # Now record a command on CPU - this should use block_dim=1, not the stale value of 256
+    # Without the fix, the record_cmd path would use block_dim=256 and fail
+    result_cpu = wp.zeros(2, dtype=wp.int32, device="cpu")
+    cmd = wp.launch(simple_conditional, dim=1, inputs=[1.0, result_cpu], device="cpu", record_cmd=True)
+
+    # Execute the recorded command
+    cmd.launch()
+
+    # Verify CPU result - this will fail if block_dim mismatch causes memory corruption
+    values_cpu = result_cpu.numpy()
+    test.assertEqual(values_cpu[0], 1, "CPU: First branch should execute")
+    test.assertEqual(values_cpu[1], 0, "CPU: Second branch should not execute")
+
+
 devices = get_test_devices()
 
 # Only test on CUDA devices (CPU would pass trivially)
@@ -80,6 +111,13 @@ add_function_test(
     TestBlockDimDispatch,
     "test_block_dim_cpu_then_cuda",
     test_block_dim_cpu_then_cuda,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_block_dim_record_cmd_cpu",
+    test_block_dim_record_cmd_cpu,
     devices=cuda_devices,
 )
 
