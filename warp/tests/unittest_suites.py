@@ -131,6 +131,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_atomic import TestAtomic
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
+    from warp.tests.test_block_dim_dispatch import TestBlockDimDispatch
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
@@ -226,6 +227,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAtomic,
         TestAtomicBitwise,
         TestAtomicCAS,
+        TestBlockDimDispatch,
         TestBool,
         TestBuiltinsResolution,
         TestBvh,

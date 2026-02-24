@@ -2636,7 +2636,7 @@ class Module:
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
 
-    def get_module_identifier(self) -> str:
+    def get_module_identifier(self, block_dim: int | None = None) -> str:
         """Get an abbreviated module name to use for directories and files in the cache.
 
         Depending on the setting of the ``"strip_hash"`` option for this module,
@@ -2645,7 +2645,7 @@ class Module:
         if self.options["strip_hash"]:
             module_name_short = f"wp_{self.name}"
         else:
-            module_hash = self.get_module_hash()
+            module_hash = self.get_module_hash(block_dim)
             module_name_short = f"wp_{self.name}_{module_hash.hex()[:7]}"
 
         return module_name_short
@@ -2967,7 +2967,7 @@ class Module:
         module_hash = self.get_module_hash(active_block_dim)
 
         # use a unique module path using the module short hash
-        module_name_short = self.get_module_identifier()
+        module_name_short = self.get_module_identifier(active_block_dim)
 
         module_load_timer_name = (
             f"Module {self.name} {module_hash.hex()[:7]} load on device '{device}'"
@@ -7057,7 +7057,7 @@ class Launch:
         adjoint: bool = False,
     ):
         # retain the module executable so it doesn't get unloaded
-        self.module_exec = kernel.module.load(device)
+        self.module_exec = kernel.module.load(device, block_dim)
         if not self.module_exec:
             raise RuntimeError(f"Failed to load module {kernel.module.name} on device {device}")
 
