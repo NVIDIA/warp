@@ -58,6 +58,14 @@ def test_function_validation_failure_contamination(test, device):
     ):
         wp.launch(bad_kernel, dim=1, device=device)
 
+    # After the codegen failure, bad_kernel.adj.skip_build=True is set, which changes the
+    # module hash (the failed kernel is excluded from the hash). Calling mark_modified()
+    # clears the cached hash so the next load recomputes it and uses a different cache path.
+    # Without this, on multi-GPU systems the second device would find the binary written
+    # by the first device's successful good_kernel compilation and skip codegen entirely,
+    # so the WarpCodegenError would never be raised for the subsequent devices.
+    bad_kernel.module.mark_modified()
+
     # The good kernel should still work despite the bad kernel failure
     # This is the key test - without the fix, this will fail with
     # "use of undeclared identifier 'bad_return_type_1'" because both
