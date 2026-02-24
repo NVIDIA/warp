@@ -109,6 +109,10 @@
 
 - Fix kernel code generation silently ignoring invalid namespace paths
   (e.g., `wp.foo.bar.tid()` resolved to `wp.tid()`) and raise an error instead
+- Fix kernel dispatch using incorrect `block_dim` when the same kernel is launched on different devices, which could
+  cause out-of-bounds shared memory access and memory corruption in tile infrastructure
+  ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
+- Fix kernel symbol resolution accepting invalid namespace paths like `wp.foo.bar.tid()`
   ([GH-1198](https://github.com/NVIDIA/warp/issues/1198)).
 - Fix `wp.tile_assign()` support for assigning register tiles (e.g., `wp.tile_map()` outputs) into shared tile views,
   and fix reverse-mode gradients for overwritten destinations ([GH-1232](https://github.com/NVIDIA/warp/issues/1232)).
