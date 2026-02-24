@@ -1836,7 +1836,12 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
         print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")
 
 
+_importing_deprecated_namespace = False
+
+
 def warn_deprecated_namespace(module_name):
+    if _importing_deprecated_namespace:
+        return
     warn(
         f"The namespace `warp.{'.'.join(module_name.split('.')[1:])}` will soon be removed from the public API. "
         f"It can still be accessed from `warp._src.{'.'.join(module_name.split('.')[1:])}` but might be changed or removed without notice.",
@@ -1869,13 +1874,26 @@ def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
     """
     import sys  # noqa: PLC0415
 
+    # Resolve the attribute first. If it doesn't exist in the underlying module,
+    # raise AttributeError immediately without warning. This prevents spurious
+    # deprecation warnings from introspection tools (pickle, hasattr, etc.) that
+    # probe for attributes that were never part of the API. For example, pickle's
+    # whichmodule() iterates sys.modules calling getattr(module, name) on each one,
+    # and its C implementation only catches AttributeError -- any other exception
+    # (e.g., from a warning handler) crashes the caller.
+    try:
+        value = getattr(module, attr_name)
+    except AttributeError:
+        module_name = module.__name__.split(".")[-1]
+        raise AttributeError(f"module '{namespace}.{module_name}' has no attribute '{attr_name}'") from None
+
     # Suppress warnings for internal Warp introspection (e.g., codegen's hasattr/getattr checks).
     # Check if caller (frame 2) is from warp/_src/ and return silently if so.
     # Only catch ValueError (frame unavailable), not AttributeError (missing attribute must propagate).
     try:
         frame = sys._getframe(2)  # Get __getattr__'s immediate caller
         if "/warp/_src/" in frame.f_code.co_filename or "\\warp\\_src\\" in frame.f_code.co_filename:
-            return getattr(module, attr_name)  # Skip warning, propagate AttributeError if attribute missing
+            return value
     except ValueError:
         pass  # Frame unavailable, proceed with normal warning
 
@@ -1905,4 +1923,4 @@ def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
                 DeprecationWarning,
             )
 
-    return getattr(module, attr_name)
+    return value
