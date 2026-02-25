@@ -185,12 +185,12 @@ make use of an environment management system such as
         OSError: <...>/libstdc++.so.6: version `GLIBCXX_3.4.30' not found (required by <...>/warp/warp/bin/warp.so)
 
     This can be solved by installing a newer C++ runtime version in the runtime
-    Conda environment using ``conda install -c conda-forge libstdcxx-ng=12.1`` or
+    conda environment using ``conda install -c conda-forge libstdcxx-ng=12.1`` or
     newer.
     
     Alternatively, the build environment's C++ toolchain can be downgraded using
     ``conda install -c conda-forge libstdcxx-ng=8.5``. Or, one can ``activate`` or
-    ``deactivate`` Conda environments as needed for building vs. running Warp.
+    ``deactivate`` conda environments as needed for building vs. running Warp.
 
 Using Warp in Docker
 --------------------
