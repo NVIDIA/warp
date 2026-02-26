@@ -1746,14 +1746,18 @@ Textures
     The texture API is experimental and subject to change without a formal deprecation
     cycle. See :class:`warp.Texture` for details.
 
-Warp provides :class:`Texture2D` and :class:`Texture3D` classes for hardware-accelerated texture sampling
-on CUDA devices. Textures support bilinear/trilinear interpolation and various addressing modes
-(wrap, clamp, mirror, border), making them ideal for efficiently sampling regularly-gridded data.
+Warp provides :class:`Texture1D`, :class:`Texture2D`, and :class:`Texture3D` classes for hardware-accelerated
+texture sampling on CUDA devices. Textures support linear/bilinear/trilinear interpolation and various
+addressing modes (wrap, clamp, mirror, border), making them ideal for efficiently sampling regularly-gridded data.
 
 Textures can be created from NumPy arrays or Warp arrays::
 
     import warp as wp
     import numpy as np
+
+    # Create a 256-element RGBA 1D texture
+    data1d = np.random.rand(256, 4).astype(np.float32)
+    tex1d = wp.Texture1D(data1d, filter_mode=wp.TextureFilterMode.LINEAR, device="cuda:0")
 
     # Create a 256x256 RGBA 2D texture
     data = np.random.rand(256, 256, 4).astype(np.float32)
@@ -1762,6 +1766,9 @@ Textures can be created from NumPy arrays or Warp arrays::
     # Create a 64x64x64 single-channel 3D texture
     data3d = np.random.rand(64, 64, 64).astype(np.float32)
     tex3d = wp.Texture3D(data3d, filter_mode=wp.TextureFilterMode.LINEAR, device="cuda:0")
+
+    # Explicitly allocate a texture using Warp dtypes
+    tex_alloc = wp.Texture2D(width=256, height=256, num_channels=4, dtype=wp.float32, device="cuda:0")
 
 Textures can be sampled inside kernels using the :func:`wp.texture_sample() <warp._src.lang.texture_sample>` function::
 
@@ -1775,8 +1782,10 @@ Textures can be sampled inside kernels using the :func:`wp.texture_sample() <war
         uv = uvs[tid]
         output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
-Supported data types include ``uint8``, ``uint16``, and ``float32``. Integer textures (uint8, uint16)
-are automatically normalized to the [0, 1] range when sampled.
+Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``,
+``wp.int32``, ``wp.float16``, and ``wp.float32``. Unsigned integer textures are automatically
+normalized to the [0, 1] range when sampled; signed integer textures are normalized to [-1, 1];
+float types are returned as-is.
 
 .. seealso:: `Reference <language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
 
