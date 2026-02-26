@@ -4,9 +4,10 @@
 
 ### Added
 
-- **Experimental**: Add `wp.Texture2D` and `wp.Texture3D` classes for hardware-accelerated texture sampling on CUDA
-  devices, with `wp.texture_sample()` for bilinear/trilinear interpolation in kernels. Includes CUDA interop APIs
-  for array↔texture copies and surface handle access ([GH-1122](https://github.com/NVIDIA/warp/issues/1122)).
+- **Experimental**: Add `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` classes for hardware-accelerated texture
+  sampling on CUDA devices, with `wp.texture_sample()` for linear/bilinear/trilinear interpolation in kernels.
+  Includes CUDA interop APIs for array↔texture copies and surface handle access
+  ([GH-1122](https://github.com/NVIDIA/warp/issues/1122)).
 - Add `wp.config.enable_mathdx_gemm` and `"enable_mathdx_gemm"` module option to disable libmathdx (cuBLASDx) for
   `wp.tile_matmul()`, falling back to an optimized scalar GEMM. Avoids slow LTO compilation during development while
   keeping libmathdx available for Cholesky/FFT ([GH-1228](https://github.com/NVIDIA/warp/issues/1228)).
