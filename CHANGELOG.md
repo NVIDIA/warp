@@ -61,6 +61,8 @@
 
 ### Deprecated
 
+- Deprecate Python 3.9 support. A `DeprecationWarning` is now emitted at runtime and build time
+  when using Python 3.9. Support will be removed in Warp 1.13.
 - Deprecate the implicit conversion of scalar values to composite types (vectors, matrices, etc.)
   when launching kernels or assigning to struct fields. Use an explicit constructor instead,
   e.g.: `wp.vec3(...)` or `wp.mat22(...)` ([GH-1022](https://github.com/NVIDIA/warp/issues/1022)).

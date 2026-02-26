@@ -3979,6 +3979,13 @@ class Runtime:
                 "or upgrade to Apple Silicon hardware (ARM64)."
             )
 
+        if sys.version_info < (3, 10):
+            warp._src.utils.warn(
+                f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
+                "will be removed in Warp 1.13. Please upgrade to Python 3.10 or newer.",
+                DeprecationWarning,
+            )
+
         bin_path = os.path.join(warp_home, "bin")
 
         if os.name == "nt":

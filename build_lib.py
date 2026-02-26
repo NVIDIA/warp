@@ -34,6 +34,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import warnings
 
 import build_llvm
 import warp._src.build_dll as build_dll
@@ -289,6 +290,14 @@ def generate_exports_header_file(base_path: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if sys.version_info < (3, 10):
+        warnings.warn(
+            f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
+            "will be removed in Warp 1.13. Please upgrade to Python 3.10 or newer.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     parser = argparse.ArgumentParser(
         description="Build Warp native libraries with optional CUDA, LLVM, and MathDx support",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
