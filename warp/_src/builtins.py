@@ -7770,6 +7770,53 @@ def _check_texture_type_is_supported(dtype):
         raise RuntimeError(f"unsupported texture type `{type_repr(dtype)}`. Supported types: float, vec2f, vec4f")
 
 
+def texture_sample_1d_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    if arg_types is None:
+        return Any
+
+    dtype = arg_values["dtype"]
+    _check_texture_type_is_supported(dtype)
+
+    return dtype
+
+
+def texture_sample_1d_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    dtype = args["dtype"]
+
+    func_args = tuple(v for k, v in args.items() if k != "dtype")
+    template_args = (dtype,)
+    return (func_args, template_args)
+
+
+# texture_sample for 1D textures with scalar coordinate
+add_builtin(
+    "texture_sample",
+    input_types={"tex": Texture1D, "u": float, "dtype": Any},
+    value_func=texture_sample_1d_value_func,
+    export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
+    dispatch_func=texture_sample_1d_dispatch_func,
+    export=False,
+    group="Textures",
+    doc="""Sample the 1D texture at the given U coordinate.
+
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change. See :class:`warp.Texture`.
+
+    Args:
+        tex: The 1D texture to sample.
+        u: U coordinate. Range is [0, 1] if the texture was created with
+            ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
+        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+
+    Returns:
+        The sampled value of the specified ``dtype``.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
+    is_differentiable=False,
+)
+
+
 def texture_sample_2d_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return Any

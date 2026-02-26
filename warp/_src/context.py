@@ -4508,6 +4508,28 @@ class Runtime:
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
             # Texture functions (device - CUDA)
+            self.core.wp_texture1d_create_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_int,  # width
+                ctypes.c_int,  # num_channels
+                ctypes.c_int,  # dtype
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # address_mode_u
+                ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_bool,  # surface_access
+                ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
+            ]
+            self.core.wp_texture1d_create_device.restype = ctypes.c_bool
+
+            self.core.wp_texture1d_destroy_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # tex_handle
+                ctypes.c_uint64,  # array_handle
+            ]
+            self.core.wp_texture1d_destroy_device.restype = None
+
             self.core.wp_texture2d_create_device.argtypes = [
                 ctypes.c_void_p,  # context
                 ctypes.c_int,  # width
@@ -4557,6 +4579,24 @@ class Runtime:
                 ctypes.c_uint64,  # array_handle
             ]
             self.core.wp_texture3d_destroy_device.restype = None
+
+            self.core.wp_texture1d_copy_from_array_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # stream
+                ctypes.c_uint64,  # dst_array_handle
+                ctypes.c_uint64,  # src_ptr
+                ctypes.c_size_t,  # width_bytes
+            ]
+            self.core.wp_texture1d_copy_from_array_device.restype = ctypes.c_bool
+
+            self.core.wp_texture1d_copy_to_array_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # stream
+                ctypes.c_uint64,  # dst_ptr
+                ctypes.c_uint64,  # src_array_handle
+                ctypes.c_size_t,  # width_bytes
+            ]
+            self.core.wp_texture1d_copy_to_array_device.restype = ctypes.c_bool
 
             self.core.wp_texture2d_copy_from_array_device.argtypes = [
                 ctypes.c_void_p,  # context
@@ -4620,6 +4660,23 @@ class Runtime:
             self.core.wp_texture_array_destroy_surface_device.restype = None
 
             # Texture functions (host - CPU)
+            self.core.wp_texture1d_create_host.argtypes = [
+                ctypes.c_int,  # width
+                ctypes.c_int,  # num_channels
+                ctypes.c_int,  # dtype
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # address_mode_u
+                ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_void_p,  # data
+                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+            ]
+            self.core.wp_texture1d_create_host.restype = ctypes.c_bool
+
+            self.core.wp_texture1d_destroy_host.argtypes = [
+                ctypes.c_uint64,  # tex_handle
+            ]
+            self.core.wp_texture1d_destroy_host.restype = None
+
             self.core.wp_texture2d_create_host.argtypes = [
                 ctypes.c_int,  # width
                 ctypes.c_int,  # height
@@ -6863,7 +6920,19 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
             return value.__ctype__()
 
-    # Handle Texture2D and Texture3D types (when used as type annotations)
+    # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
+    elif arg_type is warp._src.types.Texture1D:
+        if value is None:
+            return warp._src.types.texture1d_t()
+        if isinstance(value, warp._src.types.Texture1D):
+            return value.__ctype__()
+        if isinstance(value, warp._src.types.texture1d_t):
+            return value
+        raise RuntimeError(
+            f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture1D "
+            f"but got {type(value).__name__}"
+        )
+
     elif arg_type is warp._src.types.Texture2D:
         if value is None:
             return warp._src.types.texture2d_t()
@@ -6915,11 +6984,19 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                 raise ValueError(f"Failed to convert argument for param {arg_name} to {type_str(arg_type)}") from e
 
     elif issubclass(arg_type, ctypes.Structure):
-        # ctypes Structure types (like texture2d_t, texture3d_t)
+        # ctypes Structure types (like texture1d_t, texture2d_t, texture3d_t)
         if isinstance(value, arg_type):
             # Already the correct ctypes structure, pass directly
             return value
         # Check if value is a Texture object that needs conversion
+        if arg_type is warp._src.types.texture1d_t and isinstance(value, warp._src.types.Texture1D):
+            # check device
+            if value.device != device:
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+                    f"but input texture for argument '{arg_name}' is on device={value.device}."
+                )
+            return value.__ctype__()
         if arg_type is warp._src.types.texture2d_t and isinstance(value, warp._src.types.Texture2D):
             # check device
             if value.device != device:

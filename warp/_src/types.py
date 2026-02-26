@@ -6809,11 +6809,14 @@ def is_generic_signature(sig):
 # Import texture classes from texture module at the end to avoid circular imports
 # These are re-exported from types.py for backward compatibility
 from warp._src.texture import Texture as Texture  # noqa: E402
+from warp._src.texture import Texture1D as Texture1D  # noqa: E402
 from warp._src.texture import Texture2D as Texture2D  # noqa: E402
 from warp._src.texture import Texture3D as Texture3D  # noqa: E402
+from warp._src.texture import texture1d_t as texture1d_t  # noqa: E402
 from warp._src.texture import texture2d_t as texture2d_t  # noqa: E402
 from warp._src.texture import texture3d_t as texture3d_t  # noqa: E402
 
 # Add texture types to simple_type_codes now that they're imported
+simple_type_codes[Texture1D] = "t1"
 simple_type_codes[Texture2D] = "t2"
 simple_type_codes[Texture3D] = "t3"

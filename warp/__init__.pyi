@@ -136,6 +136,7 @@ from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
 from warp._src.types import Texture as Texture
+from warp._src.types import Texture1D as Texture1D
 from warp._src.types import Texture2D as Texture2D
 from warp._src.types import Texture3D as Texture3D
 from warp._src.texture import TextureFilterMode as TextureFilterMode
@@ -4826,6 +4827,27 @@ def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
 
 def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     """Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
+    ...
+
+@over
+def texture_sample(tex: Texture1D, u: float32, dtype: Any) -> Any:
+    """Sample the 1D texture at the given U coordinate.
+
+    .. admonition:: Experimental
+
+        The texture API is experimental and subject to change. See :class:`warp.Texture`.
+
+    Args:
+        tex: The 1D texture to sample.
+        u: U coordinate. Range is [0, 1] if the texture was created with
+            ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
+        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+
+    Returns:
+        The sampled value of the specified ``dtype``.
+
+    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
+    """
     ...
 
 @over
