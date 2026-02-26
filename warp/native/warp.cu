@@ -4627,6 +4627,58 @@ void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, uns
     return resource;
 }
 
+bool wp_texture1d_copy_from_array_device(
+    void* context, void* stream, uint64_t dst_array_handle, uint64_t src_ptr, size_t width_bytes
+)
+{
+    ContextGuard guard(context);
+    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
+
+    // Use 2D copy with height=1 for 1D arrays
+    CUDA_MEMCPY2D copy_params = {};
+    copy_params.srcXInBytes = 0;
+    copy_params.srcY = 0;
+    copy_params.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+    copy_params.srcDevice = static_cast<CUdeviceptr>(src_ptr);
+    copy_params.srcPitch = width_bytes;
+
+    copy_params.dstXInBytes = 0;
+    copy_params.dstY = 0;
+    copy_params.dstMemoryType = CU_MEMORYTYPE_ARRAY;
+    copy_params.dstArray = reinterpret_cast<CUarray>(dst_array_handle);
+
+    copy_params.WidthInBytes = width_bytes;
+    copy_params.Height = 1;
+
+    return check_cu(cuMemcpy2DAsync_f(&copy_params, copy_stream));
+}
+
+bool wp_texture1d_copy_to_array_device(
+    void* context, void* stream, uint64_t dst_ptr, uint64_t src_array_handle, size_t width_bytes
+)
+{
+    ContextGuard guard(context);
+    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
+
+    // Use 2D copy with height=1 for 1D arrays
+    CUDA_MEMCPY2D copy_params = {};
+    copy_params.srcXInBytes = 0;
+    copy_params.srcY = 0;
+    copy_params.srcMemoryType = CU_MEMORYTYPE_ARRAY;
+    copy_params.srcArray = reinterpret_cast<CUarray>(src_array_handle);
+
+    copy_params.dstXInBytes = 0;
+    copy_params.dstY = 0;
+    copy_params.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+    copy_params.dstDevice = static_cast<CUdeviceptr>(dst_ptr);
+    copy_params.dstPitch = width_bytes;
+
+    copy_params.WidthInBytes = width_bytes;
+    copy_params.Height = 1;
+
+    return check_cu(cuMemcpy2DAsync_f(&copy_params, copy_stream));
+}
+
 bool wp_texture2d_copy_from_array_device(
     void* context,
     void* stream,

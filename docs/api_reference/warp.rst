@@ -229,6 +229,7 @@ Spatial Acceleration
    MeshQueryPoint
    MeshQueryRay
    Texture
+   Texture1D
    Texture2D
    Texture3D
    TextureAddressMode

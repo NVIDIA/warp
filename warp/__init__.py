@@ -187,6 +187,7 @@ from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
 from warp._src.types import Texture as Texture
+from warp._src.types import Texture1D as Texture1D
 from warp._src.types import Texture2D as Texture2D
 from warp._src.types import Texture3D as Texture3D
 from warp._src.texture import TextureFilterMode as TextureFilterMode

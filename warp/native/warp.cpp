@@ -1099,6 +1099,18 @@ WP_API void wp_cuda_graphics_unmap(void* context, void* resource) { }
 WP_API void wp_cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size) { }
 WP_API void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags) { return NULL; }
 WP_API void wp_cuda_graphics_unregister_resource(void* context, void* resource) { }
+WP_API bool wp_texture1d_copy_from_array_device(
+    void* context, void* stream, uint64_t dst_array_handle, uint64_t src_ptr, size_t width_bytes
+)
+{
+    return false;
+}
+WP_API bool wp_texture1d_copy_to_array_device(
+    void* context, void* stream, uint64_t dst_ptr, uint64_t src_array_handle, size_t width_bytes
+)
+{
+    return false;
+}
 WP_API bool wp_texture2d_copy_from_array_device(
     void* context,
     void* stream,

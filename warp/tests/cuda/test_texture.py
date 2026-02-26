@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for 2D and 3D texture functionality on both CPU and CUDA devices."""
+"""Unit tests for 1D, 2D, and 3D texture functionality on both CPU and CUDA devices."""
 
 import unittest
 
@@ -21,6 +21,66 @@ import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_devices, get_test_devices
+
+# ============================================================================
+# 1D Texture Kernels
+# ============================================================================
+
+
+@wp.kernel
+def sample_texture1d_f_at_centers(
+    tex: wp.Texture1D,
+    output: wp.array(dtype=float),
+    width: int,
+):
+    """Sample a 1-channel 1D texture at texel centers."""
+    tid = wp.tid()
+
+    # Compute normalized coordinates at texel centers
+    # For a texture of width W, texel i has center at (i + 0.5) / W
+    u = (wp.float(tid) + 0.5) / wp.float(width)
+
+    output[tid] = wp.texture_sample(tex, u, dtype=float)
+
+
+@wp.kernel
+def sample_texture1d_v2_at_centers(
+    tex: wp.Texture1D,
+    output: wp.array(dtype=wp.vec2f),
+    width: int,
+):
+    """Sample a 2-channel 1D texture at texel centers."""
+    tid = wp.tid()
+
+    u = (wp.float(tid) + 0.5) / wp.float(width)
+
+    output[tid] = wp.texture_sample(tex, u, dtype=wp.vec2f)
+
+
+@wp.kernel
+def sample_texture1d_v4_at_centers(
+    tex: wp.Texture1D,
+    output: wp.array(dtype=wp.vec4f),
+    width: int,
+):
+    """Sample a 4-channel 1D texture at texel centers."""
+    tid = wp.tid()
+
+    u = (wp.float(tid) + 0.5) / wp.float(width)
+
+    output[tid] = wp.texture_sample(tex, u, dtype=wp.vec4f)
+
+
+@wp.kernel
+def test_texture1d_resolution(
+    tex: wp.Texture1D,
+    expected_width: int,
+):
+    """Test resolution query using texture.width."""
+    w = tex.width
+
+    wp.expect_eq(w, expected_width)
+
 
 # ============================================================================
 # 2D Texture Kernels
@@ -215,6 +275,32 @@ def sample_texture3d_array(
 # ============================================================================
 # Test Data Generation
 # ============================================================================
+
+
+def generate_sin_pattern_1d(width: int, num_channels: int) -> np.ndarray:
+    """Generate a 1D sin pattern for testing.
+
+    Creates a pattern based on: sin(2*pi*x/width)
+    Values are scaled to [0, 1] range.
+    """
+    x = np.arange(width, dtype=np.float32)
+
+    # Create base sin pattern
+    pattern = np.sin(2 * np.pi * x / width)
+    # Scale to [0, 1]
+    pattern = (pattern + 1.0) * 0.5
+
+    if num_channels == 1:
+        return pattern.astype(np.float32)
+    else:
+        # Create multi-channel pattern
+        result = np.zeros((width, num_channels), dtype=np.float32)
+        for c in range(num_channels):
+            # Each channel has a slightly different phase
+            phase = c * 0.25
+            channel_pattern = np.sin(2 * np.pi * (x / width + phase))
+            result[:, c] = (channel_pattern + 1.0) * 0.5
+        return result
 
 
 def generate_sin_pattern_2d(width: int, height: int, num_channels: int) -> np.ndarray:
@@ -586,6 +672,229 @@ def test_texture3d_resolution_query(test, device):
         inputs=[tex, width, height, depth],
         device=device,
     )
+
+
+def test_texture_dtype_prefers_warp_types(test, device):
+    """Texture dtype property should report canonical Warp scalar types."""
+    data_u8 = np.zeros((4, 4), dtype=np.uint8)
+    tex_u8 = wp.Texture2D(data_u8, device=device)
+    test.assertIs(tex_u8.dtype, wp.uint8)
+
+    data_f32 = np.zeros((2, 2, 2), dtype=np.float32)
+    tex_f32 = wp.Texture3D(data_f32, device=device)
+    test.assertIs(tex_f32.dtype, wp.float32)
+
+
+def test_texture_dtype_float_alias_maps_to_float32(test, device):
+    """Python float in constructor args should map to Warp float32."""
+    tex = wp.Texture2D(width=4, height=4, dtype=float, device=device)
+    test.assertIs(tex.dtype, wp.float32)
+
+
+def test_texture_base_requires_explicit_ndim(test, device):
+    """Base Texture construction requires explicit ndim."""
+    data = np.zeros((4, 4), dtype=np.float32)
+    with test.assertRaisesRegex(ValueError, "ndim=1/2/3"):
+        wp.Texture(data, device=device)
+
+
+# ============================================================================
+# 1D Texture Test Functions
+# ============================================================================
+
+
+def test_texture1d_1channel(test, device):
+    """Test 1D texture with 1 channel, sampling at texel centers."""
+    width = 32
+    num_channels = 1
+
+    # Generate test data
+    data = generate_sin_pattern_1d(width, num_channels)
+
+    # Create texture
+    tex = wp.Texture1D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create output array
+    output = wp.zeros(width, dtype=float, device=device)
+
+    # Sample texture at texel centers
+    wp.launch(
+        sample_texture1d_f_at_centers,
+        dim=width,
+        inputs=[tex, output, width],
+        device=device,
+    )
+
+    # Compare results
+    expected = data.flatten()
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture1d_2channel(test, device):
+    """Test 1D texture with 2 channels, sampling at texel centers."""
+    width = 32
+    num_channels = 2
+
+    # Generate test data
+    data = generate_sin_pattern_1d(width, num_channels)
+
+    tex = wp.Texture1D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create output array
+    output = wp.zeros(width, dtype=wp.vec2f, device=device)
+
+    # Sample texture at texel centers
+    wp.launch(
+        sample_texture1d_v2_at_centers,
+        dim=width,
+        inputs=[tex, output, width],
+        device=device,
+    )
+
+    # Compare results
+    expected = data.reshape(-1, 2)
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture1d_4channel(test, device):
+    """Test 1D texture with 4 channels, sampling at texel centers."""
+    width = 32
+    num_channels = 4
+
+    # Generate test data
+    data = generate_sin_pattern_1d(width, num_channels)
+
+    tex = wp.Texture1D(
+        data,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create output array
+    output = wp.zeros(width, dtype=wp.vec4f, device=device)
+
+    # Sample texture at texel centers
+    wp.launch(
+        sample_texture1d_v4_at_centers,
+        dim=width,
+        inputs=[tex, output, width],
+        device=device,
+    )
+
+    # Compare results
+    expected = data.reshape(-1, 4)
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture1d_linear_filter(test, device):
+    """Test 1D texture with linear filtering at texel centers.
+
+    At texel centers, linear filtering should give the same result as nearest.
+    """
+    width = 16
+    num_channels = 1
+
+    # Generate test data
+    data = generate_sin_pattern_1d(width, num_channels)
+
+    tex = wp.Texture1D(
+        data,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.CLAMP,
+        device=device,
+    )
+
+    # Create output array
+    output = wp.zeros(width, dtype=float, device=device)
+
+    # Sample texture at texel centers
+    wp.launch(
+        sample_texture1d_f_at_centers,
+        dim=width,
+        inputs=[tex, output, width],
+        device=device,
+    )
+
+    # At texel centers, linear filtering should give exact values
+    expected = data.flatten()
+    result = output.numpy()
+
+    np.testing.assert_allclose(result, expected, rtol=1e-4, atol=1e-4)
+
+
+def test_texture1d_resolution_query(test, device):
+    """Test resolution query functions for 1D texture."""
+    width = 64
+
+    data = np.zeros((width, 4), dtype=np.float32)
+
+    tex = wp.Texture1D(data, device=device)
+
+    # Test resolution queries in kernel
+    wp.launch(
+        test_texture1d_resolution,
+        dim=1,
+        inputs=[tex, width],
+        device=device,
+    )
+
+
+def test_texture1d_new_del(test, device):
+    """Test proper handling of uninitialized texture (created with __new__ but not __init__)."""
+    instance = wp.Texture1D.__new__(wp.Texture1D)
+    instance.__del__()
+
+
+def test_texture2d_constructor_from_same_device_array(test, device):
+    """Texture2D constructor should accept same-device wp.array input."""
+    h, w = 8, 16
+    data = np.random.default_rng(1234).random((h, w, 4), dtype=np.float32)
+    src = wp.array(data, dtype=wp.vec4, device=device)
+
+    tex = wp.Texture2D(src, filter_mode=wp.TextureFilterMode.CLOSEST, device=device)
+    output = wp.zeros(w * h, dtype=wp.vec4f, device=device)
+
+    wp.launch(
+        sample_texture2d_v4_at_centers,
+        dim=w * h,
+        inputs=[tex, output, w, h],
+        device=device,
+    )
+
+    expected = data.reshape(-1, 4)
+    np.testing.assert_allclose(output.numpy(), expected, rtol=1e-5, atol=1e-5)
+
+
+def test_texture2d_constructor_transfers_cross_device(test, device):
+    """Constructor should transparently transfer wp.array data to the target device."""
+    data = np.random.default_rng(42).random((4, 4), dtype=np.float32)
+    src = wp.array(data, dtype=float, device="cpu")
+    tex = wp.Texture2D(src, filter_mode=wp.TextureFilterMode.CLOSEST, device=device)
+    output = wp.zeros(4 * 4, dtype=float, device=device)
+    wp.launch(
+        sample_texture2d_f_at_centers,
+        dim=4 * 4,
+        inputs=[tex, output, 4, 4],
+        device=device,
+    )
+    np.testing.assert_allclose(output.numpy(), data.flatten(), rtol=1e-5, atol=1e-5)
 
 
 def test_texture2d_cuda_interop_handles(test, device):
@@ -1193,7 +1502,7 @@ def test_texture2d_uint8(test, device):
         device=device,
     )
 
-    test.assertEqual(tex.dtype, np.uint8)
+    test.assertEqual(tex.dtype, wp.uint8)
 
     # Sample at texel centers
     uvs_np = np.array(
@@ -1241,7 +1550,7 @@ def test_texture2d_uint16(test, device):
         device=device,
     )
 
-    test.assertEqual(tex.dtype, np.uint16)
+    test.assertEqual(tex.dtype, wp.uint16)
 
     # Sample at texel centers
     uvs_np = np.array(
@@ -1289,7 +1598,7 @@ def test_texture3d_uint8(test, device):
         device=device,
     )
 
-    test.assertEqual(tex.dtype, np.uint8)
+    test.assertEqual(tex.dtype, wp.uint8)
 
     # Sample at voxel centers
     uvws_np = np.array(
@@ -1373,7 +1682,7 @@ def test_texture3d_uint16(test, device):
         device=device,
     )
 
-    test.assertEqual(tex.dtype, np.uint16)
+    test.assertEqual(tex.dtype, wp.uint16)
 
     # Sample at voxel centers
     uvws_np = np.array(
@@ -2317,6 +2626,14 @@ class TestTexture(unittest.TestCase):
 cuda_devices = get_selected_cuda_test_devices()
 all_devices = get_test_devices()
 
+# 1D texture tests
+add_function_test(TestTexture, "test_texture1d_1channel", test_texture1d_1channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture1d_2channel", test_texture1d_2channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture1d_4channel", test_texture1d_4channel, devices=all_devices)
+add_function_test(TestTexture, "test_texture1d_linear_filter", test_texture1d_linear_filter, devices=all_devices)
+add_function_test(TestTexture, "test_texture1d_resolution_query", test_texture1d_resolution_query, devices=all_devices)
+add_function_test(TestTexture, "test_texture1d_new_del", test_texture1d_new_del, devices=all_devices)
+
 # Core texture tests - run on all devices (CPU + CUDA)
 add_function_test(TestTexture, "test_texture2d_1channel", test_texture2d_1channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture2d_2channel", test_texture2d_2channel, devices=all_devices)
@@ -2328,6 +2645,33 @@ add_function_test(TestTexture, "test_texture3d_2channel", test_texture3d_2channe
 add_function_test(TestTexture, "test_texture3d_4channel", test_texture3d_4channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_linear_filter", test_texture3d_linear_filter, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_resolution_query", test_texture3d_resolution_query, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture_dtype_prefers_warp_types", test_texture_dtype_prefers_warp_types, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture_dtype_float_alias_maps_to_float32",
+    test_texture_dtype_float_alias_maps_to_float32,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_base_requires_explicit_ndim",
+    test_texture_base_requires_explicit_ndim,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_constructor_from_same_device_array",
+    test_texture2d_constructor_from_same_device_array,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_constructor_transfers_cross_device",
+    test_texture2d_constructor_transfers_cross_device,
+    devices=cuda_devices,
+)
 add_function_test(
     TestTexture, "test_texture2d_cuda_interop_handles", test_texture2d_cuda_interop_handles, devices=cuda_devices
 )
