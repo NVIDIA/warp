@@ -6308,7 +6308,8 @@ def get_event_elapsed_time(start_event: Event, end_event: Event, synchronize: bo
         synchronize: Whether Warp should synchronize on the ``end_event``.
 
     Returns:
-        The elapsed time in milliseconds with a resolution about 0.5 ms.
+        The elapsed time in milliseconds. Note that the CUDA event timing resolution is about 0.5 microseconds,
+        so short operations may appear longer than actual.
     """
 
     # ensure the end_event is reached
