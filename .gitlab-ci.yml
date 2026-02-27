@@ -42,6 +42,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   WARP_CACHE_ROOT: "$CI_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   GIT_DEPTH: 1
+  PYTHONFAULTHANDLER: "1" # Dump tracebacks on fatal signals (SIGSEGV, SIGABRT, etc.)
   UV_LINK_MODE: copy
   UV_HTTP_TIMEOUT: 120
   UV_PYTHON_PREFERENCE: only-managed
