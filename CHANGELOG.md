@@ -1,12 +1,13 @@
 # Changelog
 
-## [1.12.0-rc.1] - 2026-03-06
+## [1.12.0-rc.2] - 2026-03-06
 
 ### Added
 
-- **Experimental**: Add `wp.Texture2D` and `wp.Texture3D` classes for hardware-accelerated texture sampling on CUDA
-  devices, with `wp.texture_sample()` for bilinear/trilinear interpolation in kernels. Includes CUDA interop APIs
-  for array↔texture copies and surface handle access ([GH-1122](https://github.com/NVIDIA/warp/issues/1122)).
+- **Experimental**: Add `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` classes for hardware-accelerated texture
+  sampling on CUDA devices, with `wp.texture_sample()` for linear/bilinear/trilinear interpolation in kernels.
+  Includes CUDA interop APIs for array↔texture copies and surface handle access
+  ([GH-1122](https://github.com/NVIDIA/warp/issues/1122)).
 - Add `wp.config.enable_mathdx_gemm` and `"enable_mathdx_gemm"` module option to disable libmathdx (cuBLASDx) for
   `wp.tile_matmul()`, falling back to an optimized scalar GEMM. Avoids slow LTO compilation during development while
   keeping libmathdx available for Cholesky/FFT ([GH-1228](https://github.com/NVIDIA/warp/issues/1228)).
@@ -61,6 +62,8 @@
 
 ### Deprecated
 
+- Deprecate Python 3.9 support. A `DeprecationWarning` is now emitted at runtime and build time
+  when using Python 3.9. Support will be removed in Warp 1.13.
 - Deprecate the implicit conversion of scalar values to composite types (vectors, matrices, etc.)
   when launching kernels or assigning to struct fields. Use an explicit constructor instead,
   e.g.: `wp.vec3(...)` or `wp.mat22(...)` ([GH-1022](https://github.com/NVIDIA/warp/issues/1022)).

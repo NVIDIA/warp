@@ -187,6 +187,7 @@ from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
 from warp._src.types import Texture as Texture
+from warp._src.types import Texture1D as Texture1D
 from warp._src.types import Texture2D as Texture2D
 from warp._src.types import Texture3D as Texture3D
 from warp._src.texture import TextureFilterMode as TextureFilterMode
@@ -477,6 +478,27 @@ def __getattr__(name):
     elif name == "vec":
         return get_deprecated_api(_types, "warp", "vector", old_attr_path="warp.vec")
 
+    # Lazy-import deprecated submodule namespaces (e.g., warp.torch -> warp._src.torch).
+    #
+    # A plain `return importlib.import_module(f".{name}", __package__)` isn't safe
+    # here because these deprecated wrapper modules call `warn_deprecated_namespace()`
+    # at module load time. That warning can be triggered by external introspection
+    # tools -- most notably CPython's pickle, whose `whichmodule()` iterates through
+    # every module in `sys.modules` calling `getattr(module, name)` to locate globals.
+    # When pickle probes `getattr(warp, "torch")`, this `__getattr__` fires, the
+    # submodule is imported, and its module-level deprecation warning is emitted.
+    # Depending on the warning configuration this can crash the caller (e.g.,
+    # PyTorch's inductor FX graph cache pickler, whose C implementation only catches
+    # `AttributeError` from `getattr` -- any other exception propagates and aborts
+    # compilation).
+    #
+    # To avoid this, we suppress `warn_deprecated_namespace()` when *we* are the ones
+    # triggering the import (via the `_importing_deprecated_namespace` flag). Explicit
+    # `import warp.torch` by user code bypasses `__getattr__` entirely, so the
+    # module-level warning still fires in that case. Per-symbol deprecation warnings
+    # (handled by each submodule's own `__getattr__` + `get_deprecated_api`) are
+    # unaffected.
+
     if name in (
         "build_dll",
         "build",
@@ -496,7 +518,18 @@ def __getattr__(name):
         "utils",
     ):
         import importlib  # noqa: PLC0415
+        import sys  # noqa: PLC0415
 
-        return importlib.import_module(f".{name}", __package__)
+        full_name = f"{__package__}.{name}"
+        if full_name in sys.modules:
+            return sys.modules[full_name]
+
+        from warp._src import utils as _warp_utils  # noqa: PLC0415
+
+        _warp_utils._importing_deprecated_namespace = True
+        try:
+            return importlib.import_module(f".{name}", __package__)
+        finally:
+            _warp_utils._importing_deprecated_namespace = False
 
     raise AttributeError(f"module 'warp' has no attribute '{name}'")

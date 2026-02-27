@@ -7,6 +7,8 @@
 
 # NVIDIA Warp
 
+**[Documentation](https://nvidia.github.io/warp/)** | [Changelog](https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md)
+
 Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
 regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.
 
@@ -14,9 +16,6 @@ Warp is designed for [spatial computing](https://en.wikipedia.org/wiki/Spatial_c
 and comes with a rich set of primitives that make it easy to write
 programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels
 are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.
-
-Please refer to the project [Documentation](https://nvidia.github.io/warp/) for API and language reference and
-[CHANGELOG.md](https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md) for release history.
 
 <div align="center">
     <img src="https://github.com/NVIDIA/warp/raw/main/docs/img/header.jpg">
@@ -240,21 +239,19 @@ Please see the following resources for additional background on Warp:
 * [GTC 2021 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring21-s31838)
 * [SIGGRAPH Asia 2021 Differentiable Simulation Course](https://dl.acm.org/doi/abs/10.1145/3476117.3483433)
 
-The underlying technology in Warp has been used in a number of research projects at NVIDIA including the following publications:
-
-* Accelerated Policy Learning with Parallel Differentiable Simulation - Xu, J., Makoviychuk, V., Narang, Y., Ramos, F., Matusik, W., Garg, A., & Macklin, M. [(2022)](https://short-horizon-actor-critic.github.io)
-* DiSECt: Differentiable Simulator for Robotic Cutting - Heiden, E., Macklin, M., Narang, Y., Fox, D., Garg, A., & Ramos, F [(2021)](https://github.com/NVlabs/DiSECt)
-* gradSim: Differentiable Simulation for System Identification and Visuomotor Control - Murthy, J. Krishna, Miles Macklin, Florian Golemo, Vikram Voleti, Linda Petrini, Martin Weiss, Breandan Considine et al. [(2021)](https://gradsim.github.io)
-
-## Frequently Asked Questions
-
-See the [FAQ](https://nvidia.github.io/warp/user_guide/faq.html) in the Warp documentation.
-
 ## Support
+
+See the [FAQ](https://nvidia.github.io/warp/user_guide/faq.html) for common questions.
 
 Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
 For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com>.
+
+## Contributing
+
+Contributions and pull requests from the community are welcome.
+Please see the [Contribution Guide](https://nvidia.github.io/warp/user_guide/contribution_guide.html) for more
+information on contributing to the development of Warp.
 
 ## License
 
@@ -263,12 +260,6 @@ Please see [LICENSE.md](https://github.com/NVIDIA/warp/blob/main/LICENSE.md) for
 
 This project will download and install additional third-party open source software projects.
 Review the license terms of these open source projects before use.
-
-## Contributing
-
-Contributions and pull requests from the community are welcome.
-Please see the [Contribution Guide](https://nvidia.github.io/warp/user_guide/contribution_guide.html) for more
-information on contributing to the development of Warp.
 
 ## Publications & Citation
 
