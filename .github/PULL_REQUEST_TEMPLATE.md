@@ -1,24 +1,35 @@
-<!--
-Thank you for contributing to NVIDIA Warp!
-
-See the contribution guide: https://nvidia.github.io/warp/user_guide/contribution_guide.html
-
-Please fill the relevant sections.
-
-Checkboxes can also be marked after you submit the PR.
--->
-
 ## Description
-<!--
-Please add a description of what this PR aims to accomplish. 
-Existing issues may be reference using a special keyword, e.g. Closes #10
-Include any limitations or non-handled areas in the changes.
--->
 
-## Before your PR is "Ready for review"
+<!-- What does this PR change and why? -->
+<!-- Reference any issues closed by this PR with "closes #1234". -->
 
-- [ ] All commits are [signed-off](https://git-scm.com/docs/git-commit#Documentation/git-commit.txt--s) to indicate that your contribution adheres to the [Developer Certificate of Origin](https://developercertificate.org/) requirements
-- [ ] Necessary tests have been added
-- [ ] Documentation is up-to-date
-- [ ] Auto-generated files modified by compiling Warp and building the documentation have been updated (e.g. `__init__.pyi`, `docs/api_reference/`, `docs/language_reference/`)
-- [ ] Code passes formatting and linting checks with `pre-commit run -a`
+## Checklist
+
+- [ ] I am familiar with the [Contributing Guidelines](https://nvidia.github.io/warp/user_guide/contribution_guide.html).
+- [ ] New or existing tests cover these changes.
+- [ ] The documentation is up to date with these changes.
+
+## Test plan
+
+<!-- How did you verify these changes? Example commands, test names,
+     or manual steps. -->
+
+## Bug fix
+
+<!-- If this is a bug fix, provide a minimal code example that reproduces
+     the issue WITHOUT this PR applied. Delete this section if not applicable. -->
+
+```python
+import warp as wp
+# Code that demonstrates the bug
+```
+
+## New feature / enhancement
+
+<!-- If this is a new feature or enhancement, provide a code example showing
+     what this PR enables. Delete this section if not applicable. -->
+
+```python
+import warp as wp
+# Code that demonstrates the new capability
+```
