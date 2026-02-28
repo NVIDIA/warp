@@ -1075,6 +1075,9 @@ def test_ffi_jax_callable_pmap_multi_stage(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_callback(test, device):
+    if device.ordinal > 0:
+        test.skipTest("Flaky on device ordinal > 0: JAX FFI segfaults intermittently")
+
     # in-out arguments
     import jax.numpy as jp
 
