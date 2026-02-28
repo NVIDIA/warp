@@ -36,9 +36,9 @@ WARM_UP = 5  # Number of warm-up iterations
 @wp.kernel
 def mesh_query_aabb_kernel(
     mesh_id: wp.uint64,
-    query_lowers: wp.array(dtype=wp.vec3),
-    query_uppers: wp.array(dtype=wp.vec3),
-    hit_counts: wp.array(dtype=int),
+    query_lowers: wp.array[wp.vec3],
+    query_uppers: wp.array[wp.vec3],
+    hit_counts: wp.array[int],
 ):
     i = wp.tid()
     query = wp.mesh_query_aabb(mesh_id, query_lowers[i], query_uppers[i])
@@ -55,9 +55,9 @@ def mesh_query_aabb_kernel(
 @wp.kernel
 def tile_mesh_query_aabb_kernel(
     mesh_id: wp.uint64,
-    query_lowers: wp.array(dtype=wp.vec3),
-    query_uppers: wp.array(dtype=wp.vec3),
-    hit_counts: wp.array(dtype=int),
+    query_lowers: wp.array[wp.vec3],
+    query_uppers: wp.array[wp.vec3],
+    hit_counts: wp.array[int],
 ):
     i, _j = wp.tid()
     query = wp.tile_mesh_query_aabb(mesh_id, query_lowers[i], query_uppers[i])

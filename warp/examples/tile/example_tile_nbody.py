@@ -58,9 +58,9 @@ def body_body_interaction(p0: wp.vec3, pi: wp.vec3):
 
 @wp.kernel
 def integrate_bodies_tiled(
-    old_position: wp.array(dtype=wp.vec3),
-    velocity: wp.array(dtype=wp.vec3),
-    new_position: wp.array(dtype=wp.vec3),
+    old_position: wp.array[wp.vec3],
+    velocity: wp.array[wp.vec3],
+    new_position: wp.array[wp.vec3],
     num_bodies: int,
 ):
     i = wp.tid()

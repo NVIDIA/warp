@@ -276,9 +276,9 @@ def bsr_cg(
 
             @fem.cache.dynamic_kernel(suffix=f"{check_every}{func.__name__}")
             def device_cg_callback(
-                cur_iter: wp.array(dtype=int),
-                err_sq: wp.array(dtype=Any),
-                atol_sq: wp.array(dtype=Any),
+                cur_iter: wp.array[int],
+                err_sq: wp.array[Any],
+                atol_sq: wp.array[Any],
             ):
                 if cur_iter[0] % check_every == 0:
                     print_method_name()
@@ -503,11 +503,11 @@ def bsr_solve_saddle(
 
 @wp.kernel(enable_backward=False)
 def _compute_schur_inverse_diagonal(
-    B_offsets: wp.array(dtype=int),
-    B_indices: wp.array(dtype=int),
-    B_values: wp.array(dtype=Any),
-    A_diag: wp.array(dtype=Any),
-    P_diag: wp.array(dtype=Any),
+    B_offsets: wp.array[int],
+    B_indices: wp.array[int],
+    B_values: wp.array[Any],
+    A_diag: wp.array[Any],
+    P_diag: wp.array[Any],
 ):
     row = wp.tid()
 
@@ -544,7 +544,7 @@ def invert_diagonal_bsr_matrix(A: BsrMatrix):
 
 
 @wp.kernel(enable_backward=False)
-def _block_diagonal_invert(values: wp.array(dtype=Any)):
+def _block_diagonal_invert(values: wp.array[Any]):
     i = wp.tid()
     values[i] = fem.linalg.inverse_qr(values[i])
 

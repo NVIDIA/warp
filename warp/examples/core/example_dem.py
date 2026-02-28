@@ -54,9 +54,9 @@ def contact_force(n: wp.vec3, v: wp.vec3, c: float, k_n: float, k_d: float, k_f:
 @wp.kernel
 def apply_forces(
     grid: wp.uint64,
-    particle_x: wp.array(dtype=wp.vec3),
-    particle_v: wp.array(dtype=wp.vec3),
-    particle_f: wp.array(dtype=wp.vec3),
+    particle_x: wp.array[wp.vec3],
+    particle_v: wp.array[wp.vec3],
+    particle_f: wp.array[wp.vec3],
     radius: float,
     k_contact: float,
     k_damp: float,
@@ -104,9 +104,9 @@ def apply_forces(
 
 @wp.kernel
 def integrate(
-    x: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
-    f: wp.array(dtype=wp.vec3),
+    x: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
+    f: wp.array[wp.vec3],
     gravity: wp.vec3,
     dt: float,
     inv_mass: float,

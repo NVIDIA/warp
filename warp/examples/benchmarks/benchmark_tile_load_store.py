@@ -56,7 +56,7 @@ def create_kernel_1d(tile_size, dtype, storage_type):
     TILE = tile_size
 
     @wp.kernel
-    def load_store_1d(a: wp.array(dtype=dtype), b: wp.array(dtype=dtype)):
+    def load_store_1d(a: wp.array[dtype], b: wp.array[dtype]):
         i = wp.tid()
         if wp.static(storage_type == "shared"):
             t = wp.tile_load(a, shape=TILE, offset=i * TILE, storage="shared")
@@ -71,7 +71,7 @@ def create_kernel_2d(tile_size, dtype, storage_type):
     TILE = tile_size
 
     @wp.kernel
-    def load_store_2d(a: wp.array2d(dtype=dtype), b: wp.array2d(dtype=dtype)):
+    def load_store_2d(a: wp.array2d[dtype], b: wp.array2d[dtype]):
         i, j = wp.tid()
         if wp.static(storage_type == "shared"):
             t = wp.tile_load(a, shape=(TILE, TILE), offset=(i * TILE, j * TILE), storage="shared")
@@ -86,7 +86,7 @@ def create_kernel_3d(tile_size, dtype, storage_type):
     TILE = tile_size
 
     @wp.kernel
-    def load_store_3d(a: wp.array3d(dtype=dtype), b: wp.array3d(dtype=dtype)):
+    def load_store_3d(a: wp.array3d[dtype], b: wp.array3d[dtype]):
         i, j, k = wp.tid()
         if wp.static(storage_type == "shared"):
             t = wp.tile_load(a, shape=(TILE, TILE, TILE), offset=(i * TILE, j * TILE, k * TILE), storage="shared")

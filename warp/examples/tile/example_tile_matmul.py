@@ -34,7 +34,7 @@ TILE_THREADS = 64
 
 
 @wp.kernel
-def tile_gemm(A: wp.array2d(dtype=wp.float32), B: wp.array2d(dtype=wp.float16), C: wp.array2d(dtype=wp.float64)):
+def tile_gemm(A: wp.array2d[float], B: wp.array2d[wp.float16], C: wp.array2d[wp.float64]):
     # output tile index
     i, j = wp.tid()
 

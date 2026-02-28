@@ -113,9 +113,9 @@ def compute_potential(d: wp.vec3):
 @wp.kernel(enable_backward=False)
 def compute_forces(
     grid: wp.uint64,
-    x: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
-    f: wp.array(dtype=wp.vec3),
+    x: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
+    f: wp.array[wp.vec3],
 ):
     """Compute the forces between particles in the hash grid.
 
@@ -160,9 +160,9 @@ def compute_forces(
 
 @wp.kernel(enable_backward=False)
 def integrate(
-    x: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
-    f: wp.array(dtype=wp.vec3),
+    x: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
+    f: wp.array[wp.vec3],
     dt: float,
 ):
     """Integrate the positions and velocities of the particles.

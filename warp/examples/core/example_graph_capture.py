@@ -30,9 +30,9 @@ def fbm(
     kernel_seed: int,
     frequency: float,
     amplitude: float,
-    x: wp.array(dtype=float),
-    y: wp.array(dtype=float),
-    z: wp.array2d(dtype=float),
+    x: wp.array[float],
+    y: wp.array[float],
+    z: wp.array2d[float],
 ):
     i, j = wp.tid()
     state = wp.rand_init(kernel_seed)
@@ -44,7 +44,7 @@ def fbm(
 
 
 @wp.kernel
-def slide(x: wp.array(dtype=float), shift: float):
+def slide(x: wp.array[float], shift: float):
     tid = wp.tid()
     x[tid] += shift
 
