@@ -34,6 +34,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 
 import build_llvm
 import warp._src.build_dll as build_dll
@@ -207,33 +208,45 @@ def find_libmathdx(cuda_toolkit_major_version: int, base_path: str) -> str | Non
     else:
         raise RuntimeError(f"Unsupported platform for libmathdx: {platform.system()}")
 
-    try:
-        output = subprocess.check_output(
-            [
-                packman,
-                "pull",
-                "--verbose",
-                "--platform",
-                f"{platform.system()}-{build_dll.machine_architecture()}".lower(),
-                "--include-tag",
-                f"cu{cuda_toolkit_major_version}",
-                os.path.join(base_path, "deps", "libmathdx-deps.packman.xml"),
-            ],
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        # Only print on verbose; caller controls this flag via build_dll.verbose_cmd
-        if build_dll.verbose_cmd:
-            print(output, end="")
-    except subprocess.CalledProcessError as e:
-        print(e.output)
+    packman_cmd = [
+        packman,
+        "pull",
+        "--verbose",
+        "--platform",
+        f"{platform.system()}-{build_dll.machine_architecture()}".lower(),
+        "--include-tag",
+        f"cu{cuda_toolkit_major_version}",
+        os.path.join(base_path, "deps", "libmathdx-deps.packman.xml"),
+    ]
 
-        # Check if the libmathdx target directory exists and is not a symbolic link
-        libmathdx_target_dir = os.path.join(base_path, "_build", "target-deps", "libmathdx")
-        if os.path.exists(libmathdx_target_dir) and not os.path.islink(libmathdx_target_dir):
-            print(f"\nError: {libmathdx_target_dir} exists and is not a symbolic link.")
-            print("Please try deleting this folder and running the script again.")
-        raise
+    retry_delays = [10, 30, 60]
+    max_attempts = 1 + len(retry_delays)
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            output = subprocess.check_output(
+                packman_cmd,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            # Only print on verbose; caller controls this flag via build_dll.verbose_cmd
+            if build_dll.verbose_cmd:
+                print(output, end="")
+            break
+        except subprocess.CalledProcessError as e:
+            if attempt < max_attempts:
+                delay = retry_delays[attempt - 1]
+                print(f"Failed to fetch libmathdx (attempt {attempt}/{max_attempts}). Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                print(e.output)
+
+                # Check if the libmathdx target directory exists and is not a symbolic link
+                libmathdx_target_dir = os.path.join(base_path, "_build", "target-deps", "libmathdx")
+                if os.path.exists(libmathdx_target_dir) and not os.path.islink(libmathdx_target_dir):
+                    print(f"\nError: {libmathdx_target_dir} exists and is not a symbolic link.")
+                    print("Please try deleting this folder and running the script again.")
+                raise
 
     # Success
     return os.path.join(base_path, "_build", "target-deps", "libmathdx")
