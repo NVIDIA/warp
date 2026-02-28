@@ -505,6 +505,7 @@ class Struct:
         self.cls = cls
         self.module = module
         self.vars: dict[str, Var] = {}
+        self.properties: dict[str, warp._src.context.Function] = {}
 
         if isinstance(self.cls, Sequence):
             raise RuntimeError("Warp structs must be defined as base classes")
@@ -529,6 +530,14 @@ class Struct:
                     warp.init()
                 fields.append((label, var.type._type_))
 
+        # Collect properties, but postpone Function creation until after native_name is set
+        property_members = []
+        for name, item in inspect.getmembers(self.cls):
+            if isinstance(item, property):
+                if name in self.vars:
+                    raise TypeError(f"Property '{name}' conflicts with field name in struct '{self.key}'")
+                property_members.append((name, item))
+
         class StructType(ctypes.Structure):
             # if struct is empty, add a dummy field to avoid launch errors on CPU device ("ffi_prep_cif failed")
             _fields_ = fields or [("_dummy_", ctypes.c_byte)]
@@ -549,11 +558,52 @@ class Struct:
             if isinstance(type_hint, Struct):
                 ch.update(type_hint.hash)
 
-        self.hash = ch.digest()
+        # Hash property names (to ensure layout/identity stability if names change)
+        for name, _ in property_members:
+            ch.update(bytes(name, "utf-8"))
 
+        self.hash = ch.digest()
         # generate unique identifier for structs in native code
         hash_suffix = f"{self.hash.hex()[:8]}"
         self.native_name = f"{self.key}_{hash_suffix}"
+
+        # Extract properties and create Functions
+        # self.native_name is now defined, so Function() can resolve 'self' type code.
+        for name, item in property_members:
+            # We currently support only getters
+            if item.fset is not None:
+                raise TypeError("Struct properties with setters are not supported")
+            if item.fdel is not None:
+                raise TypeError("Struct properties with deleters are not supported")
+            getter = item.fget
+            # We need to add 'self' as the first argument, with the type of the struct itself.
+            # This allows overload resolution to match the struct instance to the 'self' argument.
+            if not hasattr(getter, "__annotations__"):
+                getter.__annotations__ = {}
+
+            # Find the name of the first argument (conventionally 'self')
+            argspec = get_full_arg_spec(getter)
+
+            if len(argspec.args) == 0:
+                raise TypeError(f"Struct property '{name}' must have at least one argument (self)")
+            self_arg = argspec.args[0]
+            getter.__annotations__[self_arg] = self
+
+            # Create the Warp Function.
+            # We pass 'func=getter' so that input_types and return_types are inferred.
+            # We set 'namespace=""' and a unique 'native_func' to generate a free function
+            # in C++ that takes the struct as the first argument (e.g., StructName_propName(struct_inst)).
+            p_func = warp._src.context.Function(
+                func=getter,
+                key=f"{self.key}.{name}",
+                namespace="",
+                module=module,
+            )
+
+            # Ensure the C++ function name is unique and predictable
+            p_func.native_func = f"{self.native_name}_{name}"
+
+            self.properties[name] = p_func
 
         # create default constructor (zero-initialize)
         self.default_constructor = warp._src.context.Function(
@@ -2381,6 +2431,11 @@ class Adjoint:
                     return adj.add_builtin_call("transform_get_translation", [aggregate])
                 else:
                     return adj.add_builtin_call("transform_get_rotation", [aggregate])
+
+            elif isinstance(aggregate_type, Struct) and node.attr in aggregate_type.properties:
+                # property access
+                prop = aggregate_type.properties[node.attr]
+                return adj.add_call(prop, (aggregate,), {}, {})
 
             else:
                 attr_var = aggregate_type.vars[node.attr]
