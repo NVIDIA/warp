@@ -118,12 +118,16 @@ def add_example_test(
             except ImportError:
                 test.skipTest("Requires pillow")
 
-        # Find the current Warp cache
-        warp_cache_path = wp.config.kernel_cache_dir
-
         env_vars = os.environ.copy()
-        if warp_cache_path is not None:
-            env_vars["WARP_CACHE_PATH"] = warp_cache_path
+
+        # Propagate the kernel cache location to the subprocess.  We pass the
+        # original WARP_CACHE_PATH (if set) rather than the resolved
+        # kernel_cache_dir, because init_kernel_cache() appends a version
+        # subdirectory and we don't want the subprocess to double-append it.
+        # When WARP_CACHE_PATH is not set the subprocess will compute the same
+        # default cache path on its own.
+        if "WARP_CACHE_PATH" in os.environ:
+            env_vars["WARP_CACHE_PATH"] = os.environ["WARP_CACHE_PATH"]
 
         if warp.tests.unittest_utils.coverage_enabled:
             # Generate a random coverage data file name - file is deleted along with containing directory

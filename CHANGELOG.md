@@ -94,6 +94,9 @@
 - Change `Vector` and `Matrix` generic type parameter order to dtype-first: `Vector[Scalar, Length]`
   (was `Vector[Length, Scalar]`) and `Matrix[Scalar, Rows, Cols]` (was `Matrix[Rows, Cols, Scalar]`). This only affects
   type stubs (`.pyi`) and internal TypeVar annotations ([GH-1216](https://github.com/NVIDIA/warp/issues/1216)).
+- Include the Warp version in kernel cache paths when `WARP_CACHE_PATH` is set or a path is passed to
+  `init_kernel_cache()`, matching the default cache-path behavior. This prevents stale artifacts from a previous Warp
+  version from interfering after an upgrade ([GH-1260](https://github.com/NVIDIA/warp/issues/1260)).
 
 ### Fixed
 
