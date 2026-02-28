@@ -36,9 +36,9 @@ WARM_UP = 5  # Number of warm-up iterations
 @wp.kernel
 def bvh_query_aabb_kernel(
     bvh_id: wp.uint64,
-    query_lowers: wp.array(dtype=wp.vec3),
-    query_uppers: wp.array(dtype=wp.vec3),
-    hit_counts: wp.array(dtype=int),
+    query_lowers: wp.array[wp.vec3],
+    query_uppers: wp.array[wp.vec3],
+    hit_counts: wp.array[int],
 ):
     i = wp.tid()
     query = wp.bvh_query_aabb(bvh_id, query_lowers[i], query_uppers[i])
@@ -55,9 +55,9 @@ def bvh_query_aabb_kernel(
 @wp.kernel
 def bvh_query_ray_kernel(
     bvh_id: wp.uint64,
-    query_starts: wp.array(dtype=wp.vec3),
-    query_dirs: wp.array(dtype=wp.vec3),
-    hit_counts: wp.array(dtype=int),
+    query_starts: wp.array[wp.vec3],
+    query_dirs: wp.array[wp.vec3],
+    hit_counts: wp.array[int],
 ):
     i = wp.tid()
     query = wp.bvh_query_ray(bvh_id, query_starts[i], query_dirs[i])
@@ -74,9 +74,9 @@ def bvh_query_ray_kernel(
 @wp.kernel
 def tile_bvh_query_aabb_kernel(
     bvh_id: wp.uint64,
-    query_lowers: wp.array(dtype=wp.vec3),
-    query_uppers: wp.array(dtype=wp.vec3),
-    hit_counts: wp.array(dtype=int),
+    query_lowers: wp.array[wp.vec3],
+    query_uppers: wp.array[wp.vec3],
+    hit_counts: wp.array[int],
 ):
     i, _j = wp.tid()
     query = wp.tile_bvh_query_aabb(bvh_id, query_lowers[i], query_uppers[i])
@@ -100,9 +100,9 @@ def tile_bvh_query_aabb_kernel(
 @wp.kernel
 def tile_bvh_query_ray_kernel(
     bvh_id: wp.uint64,
-    query_starts: wp.array(dtype=wp.vec3),
-    query_dirs: wp.array(dtype=wp.vec3),
-    hit_counts: wp.array(dtype=int),
+    query_starts: wp.array[wp.vec3],
+    query_dirs: wp.array[wp.vec3],
+    hit_counts: wp.array[int],
 ):
     i, _j = wp.tid()
     query = wp.tile_bvh_query_ray(bvh_id, query_starts[i], query_dirs[i])

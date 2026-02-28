@@ -30,20 +30,20 @@ from warp.jax_experimental import jax_kernel
 
 
 @wp.kernel
-def add_kernel(a: wp.array(dtype=int), b: wp.array(dtype=int), output: wp.array(dtype=int)):
+def add_kernel(a: wp.array[int], b: wp.array[int], output: wp.array[int]):
     tid = wp.tid()
     output[tid] = a[tid] + b[tid]
 
 
 @wp.kernel
-def sincos_kernel(angle: wp.array(dtype=float), sin_out: wp.array(dtype=float), cos_out: wp.array(dtype=float)):
+def sincos_kernel(angle: wp.array[float], sin_out: wp.array[float], cos_out: wp.array[float]):
     tid = wp.tid()
     sin_out[tid] = wp.sin(angle[tid])
     cos_out[tid] = wp.cos(angle[tid])
 
 
 @wp.kernel
-def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
+def diagonal_kernel(output: wp.array[wp.mat33]):
     tid = wp.tid()
     d = float(tid + 1)
     output[tid] = wp.mat33(d, 0.0, 0.0, 0.0, d * 2.0, 0.0, 0.0, 0.0, d * 3.0)
@@ -51,9 +51,9 @@ def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
 
 @wp.kernel
 def matmul_kernel(
-    a: wp.array2d(dtype=float),  # NxK
-    b: wp.array2d(dtype=float),  # KxM
-    c: wp.array2d(dtype=float),  # NxM
+    a: wp.array2d[float],  # NxK
+    b: wp.array2d[float],  # KxM
+    c: wp.array2d[float],  # NxM
 ):
     # launch dims should be (N, M)
     i, j = wp.tid()
@@ -61,23 +61,23 @@ def matmul_kernel(
     K = a.shape[1]
     M = b.shape[1]
     if i < N and j < M:
-        s = wp.float32(0)
+        s = float(0)
         for k in range(K):
             s += a[i, k] * b[k, j]
         c[i, j] = s
 
 
 @wp.kernel
-def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 
 
 @wp.kernel
 def in_out_kernel(
-    a: wp.array(dtype=float),  # input only
-    b: wp.array(dtype=float),  # input and output
-    c: wp.array(dtype=float),  # output only
+    a: wp.array[float],  # input only
+    b: wp.array[float],  # input and output
+    c: wp.array[float],  # output only
 ):
     tid = wp.tid()
     b[tid] += a[tid]

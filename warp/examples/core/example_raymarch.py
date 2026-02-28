@@ -105,7 +105,7 @@ def shadow(ro: wp.vec3, rd: wp.vec3):
 
 
 @wp.kernel
-def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp.array(dtype=wp.vec3)):
+def draw(cam_pos: wp.vec3, cam_rot: wp.quat, width: int, height: int, pixels: wp.array[wp.vec3]):
     tid = wp.tid()
 
     x = tid % width

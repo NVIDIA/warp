@@ -27,7 +27,7 @@ import warp as wp
 
 
 @wp.kernel
-def saxpy(x: wp.array(dtype=float), y: wp.array(dtype=float), a: float):
+def saxpy(x: wp.array[float], y: wp.array[float], a: float):
     i = wp.tid()
     y[i] = a * x[i] + y[i]
 

@@ -25,29 +25,27 @@ from warp.tests.unittest_utils import *
 
 
 @wp.func
-def spinlock_acquire(lock: wp.array(dtype=wp.int32)):
+def spinlock_acquire(lock: wp.array[int]):
     # Try to acquire the lock by setting it to 1 if it's 0
     while wp.atomic_cas(lock, 0, 0, 1) == 1:
         pass
 
 
 @wp.func
-def spinlock_release(lock: wp.array(dtype=wp.int32)):
+def spinlock_release(lock: wp.array[int]):
     # Release the lock by setting it back to 0
     wp.atomic_exch(lock, 0, 0)
 
 
 @wp.func
-def volatile_read(ptr: wp.array(dtype=wp.int32), index: int):
+def volatile_read(ptr: wp.array[int], index: int):
     value = wp.atomic_exch(ptr, index, 0)
     wp.atomic_exch(ptr, index, value)
     return value
 
 
 @wp.kernel
-def test_spinlock_counter(
-    counter: wp.array(dtype=wp.int32), atomic_counter: wp.array(dtype=wp.int32), lock: wp.array(dtype=wp.int32)
-):
+def test_spinlock_counter(counter: wp.array[int], atomic_counter: wp.array[int], lock: wp.array[int]):
     # Try to acquire the lock
     spinlock_acquire(lock)
 
@@ -67,11 +65,11 @@ def test_spinlock_counter(
 
 def test_spinlock(device):
     # Create a lock array initialized to 0 (unlocked)
-    lock = wp.array([0], dtype=wp.int32, device=device)
+    lock = wp.array([0], dtype=int, device=device)
 
     # Create counter arrays initialized to 0
-    counter = wp.array([0], dtype=wp.int32, device=device)
-    atomic_counter = wp.array([0], dtype=wp.int32, device=device)
+    counter = wp.array([0], dtype=int, device=device)
+    atomic_counter = wp.array([0], dtype=int, device=device)
 
     # Number of threads to test with
     n = 1024

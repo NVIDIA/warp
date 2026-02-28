@@ -34,7 +34,7 @@ import warp.render
 
 
 @wp.kernel
-def deform(positions: wp.array(dtype=wp.vec3), t: float):
+def deform(positions: wp.array[wp.vec3], t: float):
     tid = wp.tid()
 
     x = positions[tid]
@@ -49,8 +49,8 @@ def deform(positions: wp.array(dtype=wp.vec3), t: float):
 
 @wp.kernel
 def simulate(
-    positions: wp.array(dtype=wp.vec3),
-    velocities: wp.array(dtype=wp.vec3),
+    positions: wp.array[wp.vec3],
+    velocities: wp.array[wp.vec3],
     mesh: wp.uint64,
     margin: float,
     dt: float,

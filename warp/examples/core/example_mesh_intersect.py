@@ -45,8 +45,8 @@ def intersect(
     mesh_0: wp.uint64,
     mesh_1: wp.uint64,
     num_faces: int,
-    xforms: wp.array(dtype=wp.transform),
-    result: wp.array(dtype=int),
+    xforms: wp.array[wp.transform],
+    result: wp.array[int],
 ):
     tid = wp.tid()
 

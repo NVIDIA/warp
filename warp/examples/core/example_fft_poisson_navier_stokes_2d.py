@@ -51,16 +51,16 @@ wp.config.enable_backward = False
 
 
 @wp.func
-def factorial(n: wp.int32) -> wp.int32:
+def factorial(n: int) -> int:
     """Compute factorial of ``n``."""
-    result = wp.int32(1)
+    result = int(1)
     for i in range(2, n + 1):
         result *= i
     return result
 
 
 @wp.func
-def energy_spectrum(k: wp.float32, s: wp.int32, k_peak: wp.float32) -> wp.float32:
+def energy_spectrum(k: float, s: int, k_peak: float) -> float:
     """Compute energy at wavenumber magnitude k.
 
     Follows San and Staples 2012 Computers and Fluids (page 49).
@@ -74,8 +74,8 @@ def energy_spectrum(k: wp.float32, s: wp.int32, k_peak: wp.float32) -> wp.float3
     Returns:
         Energy contained at wavenumber magnitude k.
     """
-    s_factorial = wp.float32(factorial(s))
-    s_float32 = wp.float32(s)
+    s_factorial = float(factorial(s))
+    s_float32 = float(s)
     a_s = (2.0 * s_float32 + 1.0) ** (s_float32 + 1.0) / (2.0**s_float32 * s_factorial)
     energy_k = (
         a_s
@@ -87,9 +87,7 @@ def energy_spectrum(k: wp.float32, s: wp.int32, k_peak: wp.float32) -> wp.float3
 
 
 @wp.func
-def phase_randomizer(
-    zeta: wp.array2d(dtype=wp.float32), eta: wp.array2d(dtype=wp.float32), i: int, j: int
-) -> wp.float32:
+def phase_randomizer(zeta: wp.array2d[float], eta: wp.array2d[float], i: int, j: int) -> float:
     """Calculate value of the random phase at index (i, j).
 
     Follows San and Staples 2012 to return phase value in any quadrant based on
@@ -120,7 +118,7 @@ def phase_randomizer(
 
 
 @wp.func
-def cyclic_index(idx: wp.int32, n: wp.int32) -> wp.int32:
+def cyclic_index(idx: int, n: int) -> int:
     """Map any index to [0, n-1] for periodic boundary conditions."""
     ret_idx = idx % n
     if ret_idx < 0:
@@ -130,12 +128,12 @@ def cyclic_index(idx: wp.int32, n: wp.int32) -> wp.int32:
 
 @wp.kernel
 def decaying_turbulence_initializer(
-    k_peak: wp.float32,
-    s: wp.int32,
-    k_mag: wp.array2d(dtype=wp.float32),
-    zeta: wp.array2d(dtype=wp.float32),
-    eta: wp.array2d(dtype=wp.float32),
-    omega_hat_init: wp.array2d(dtype=wp.vec2f),
+    k_peak: float,
+    s: int,
+    k_mag: wp.array2d[float],
+    zeta: wp.array2d[float],
+    eta: wp.array2d[float],
+    omega_hat_init: wp.array2d[wp.vec2f],
 ):
     """Initialize the vorticity field in Fourier space for decaying turbulence.
 
@@ -159,10 +157,10 @@ def rk3_update(
     coeff0: float,
     coeff1: float,
     coeff2: float,
-    omega_start: wp.array2d(dtype=float),
-    omega_curr: wp.array2d(dtype=float),
-    psi: wp.array2d(dtype=float),
-    omega_next: wp.array2d(dtype=float),
+    omega_start: wp.array2d[float],
+    omega_curr: wp.array2d[float],
+    psi: wp.array2d[float],
+    omega_next: wp.array2d[float],
 ):
     """Perform a single substep of SSP-RK3.
 
@@ -200,14 +198,14 @@ def rk3_update(
 
 
 @wp.kernel
-def copy_float_to_vec2(omega: wp.array2d(dtype=wp.float32), omega_complex: wp.array2d(dtype=wp.vec2f)):
+def copy_float_to_vec2(omega: wp.array2d[float], omega_complex: wp.array2d[wp.vec2f]):
     """Pack a real array into a complex array with zero imaginary part."""
     i, j = wp.tid()
     omega_complex[i, j] = wp.vec2f(omega[i, j], 0.0)
 
 
 @wp.kernel
-def fft_tiled(x: wp.array2d(dtype=wp.vec2f), y: wp.array2d(dtype=wp.vec2f)):
+def fft_tiled(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     """Perform 1-D FFT on each row using ``wp.tile_fft``."""
     i, _, _ = wp.tid()
     row_tile = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i * TILE_M, 0))
@@ -216,7 +214,7 @@ def fft_tiled(x: wp.array2d(dtype=wp.vec2f), y: wp.array2d(dtype=wp.vec2f)):
 
 
 @wp.kernel
-def ifft_tiled(x: wp.array2d(dtype=wp.vec2f), y: wp.array2d(dtype=wp.vec2f)):
+def ifft_tiled(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     """Perform 1-D inverse FFT on each row using ``wp.tile_ifft``."""
     i, _, _ = wp.tid()
     row_tile = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i * TILE_M, 0))
@@ -225,7 +223,7 @@ def ifft_tiled(x: wp.array2d(dtype=wp.vec2f), y: wp.array2d(dtype=wp.vec2f)):
 
 
 @wp.kernel
-def tiled_transpose(x: wp.array2d(dtype=wp.vec2f), y: wp.array2d(dtype=wp.vec2f)):
+def tiled_transpose(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     """Transpose a 2-D complex array using tiled shared-memory loads."""
     i, j = wp.tid()
     input_tile = wp.tile_load(
@@ -239,9 +237,7 @@ def tiled_transpose(x: wp.array2d(dtype=wp.vec2f), y: wp.array2d(dtype=wp.vec2f)
 
 
 @wp.kernel
-def multiply_k2_inverse(
-    inv_k_sq: wp.array2d(dtype=wp.float32), omega_hat: wp.array2d(dtype=wp.vec2f), psi_hat: wp.array2d(dtype=wp.vec2f)
-):
+def multiply_k2_inverse(inv_k_sq: wp.array2d[float], omega_hat: wp.array2d[wp.vec2f], psi_hat: wp.array2d[wp.vec2f]):
     """Solve Poisson equation in Fourier space.
 
     Args:
@@ -255,9 +251,9 @@ def multiply_k2_inverse(
 
 @wp.kernel
 def extract_real_and_normalize(
-    divisor: wp.float32,
-    complex_array: wp.array2d(dtype=wp.vec2f),
-    real_array: wp.array2d(dtype=wp.float32),
+    divisor: float,
+    complex_array: wp.array2d[wp.vec2f],
+    real_array: wp.array2d[float],
 ):
     """Extract and normalize the real part of a complex array."""
     i, j = wp.tid()
@@ -291,10 +287,10 @@ class Example:
     def _init_fields(self) -> None:
         """Initialize all the required variables for the simulation."""
         # allocate warp arrays for vorticity and stream-function
-        self.omega_start = wp.zeros((N_GRID, N_GRID), dtype=wp.float32)
-        self.omega_curr = wp.zeros((N_GRID, N_GRID), dtype=wp.float32)
-        self.omega_next = wp.zeros((N_GRID, N_GRID), dtype=wp.float32)
-        self.psi = wp.zeros((N_GRID, N_GRID), dtype=wp.float32)
+        self.omega_start = wp.zeros((N_GRID, N_GRID), dtype=float)
+        self.omega_curr = wp.zeros((N_GRID, N_GRID), dtype=float)
+        self.omega_next = wp.zeros((N_GRID, N_GRID), dtype=float)
+        self.psi = wp.zeros((N_GRID, N_GRID), dtype=float)
 
         # precompute 1/k^2 for spectral Poisson solver (avoid division by zero at k=0)
         k = np.fft.fftfreq(N_GRID, d=1.0 / N_GRID)
@@ -303,7 +299,7 @@ class Example:
         inv_k_sq = np.zeros_like(k2)
         nonzero = k2 != 0
         inv_k_sq[nonzero] = 1.0 / k2[nonzero]
-        self.inv_k_sq = wp.array2d(inv_k_sq.astype(np.float32), dtype=wp.float32)
+        self.inv_k_sq = wp.array2d(inv_k_sq.astype(np.float32), dtype=float)
 
         # allocate temporary warp arrays for spectral Poisson solver
         self.omega_complex = wp.zeros((N_GRID, N_GRID), dtype=wp.vec2f)
@@ -312,13 +308,13 @@ class Example:
 
         # compute initial vorticity distribution for decaying turbulence
         k_mag_np = np.sqrt(k**2 + k[:, np.newaxis] ** 2)
-        k_mag = wp.array2d(k_mag_np, dtype=wp.float32)
+        k_mag = wp.array2d(k_mag_np, dtype=float)
 
         rng = np.random.default_rng(42)
         zeta_np = 2 * np.pi * rng.random((N_GRID // 2 + 1, N_GRID // 2 + 1))
         eta_np = 2 * np.pi * rng.random((N_GRID // 2 + 1, N_GRID // 2 + 1))
-        zeta = wp.array2d(zeta_np, dtype=wp.float32)
-        eta = wp.array2d(eta_np, dtype=wp.float32)
+        zeta = wp.array2d(zeta_np, dtype=float)
+        eta = wp.array2d(eta_np, dtype=float)
 
         # set parameters for energy spectrum
         k_peak = 12.0

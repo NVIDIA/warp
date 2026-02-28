@@ -34,7 +34,7 @@ from warp.utils import array_cast
 
 
 @fem.integrand
-def vel_from_particles_form(s: fem.Sample, particle_vel: wp.array(dtype=wp.vec2), v: fem.Field):
+def vel_from_particles_form(s: fem.Sample, particle_vel: wp.array[wp.vec2], v: fem.Field):
     vel = particle_vel[s.qp_index]
     return wp.dot(vel, v(s))
 
@@ -82,7 +82,7 @@ def cell_activity(s: fem.Sample, domain: fem.Domain, c1: wp.vec2, c2: wp.vec2, r
 
 
 @wp.kernel
-def inverse_array_kernel(m: wp.array(dtype=wp.float64)):
+def inverse_array_kernel(m: wp.array[wp.float64]):
     m[wp.tid()] = wp.float64(1.0) / m[wp.tid()]
 
 

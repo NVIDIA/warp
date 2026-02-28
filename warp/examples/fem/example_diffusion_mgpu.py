@@ -38,12 +38,12 @@ def mass_form(
 
 
 @wp.kernel
-def scal_kernel(a: wp.array(dtype=wp.float64), res: wp.array(dtype=wp.float64), alpha: wp.float64):
+def scal_kernel(a: wp.array[wp.float64], res: wp.array[wp.float64], alpha: wp.float64):
     res[wp.tid()] = a[wp.tid()] * alpha
 
 
 @wp.kernel
-def sum_kernel(a: wp.indexedarray(dtype=wp.float64), b: wp.array(dtype=wp.float64)):
+def sum_kernel(a: wp.indexedarray[wp.float64], b: wp.array[wp.float64]):
     a[wp.tid()] = a[wp.tid()] + b[wp.tid()]
 
 

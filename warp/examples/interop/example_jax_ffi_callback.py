@@ -30,13 +30,13 @@ from warp.jax_experimental import register_ffi_callback
 
 
 @wp.kernel
-def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 
 
 @wp.kernel
-def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 

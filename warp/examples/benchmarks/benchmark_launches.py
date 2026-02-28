@@ -48,16 +48,16 @@ class Sm:
 
 @wp.struct
 class Sa:
-    a: wp.array(dtype=float)
-    b: wp.array(dtype=float)
-    c: wp.array(dtype=float)
+    a: wp.array[float]
+    b: wp.array[float]
+    c: wp.array[float]
 
 
 @wp.struct
 class Sz:
-    a: wp.array(dtype=float)
-    b: wp.array(dtype=float)
-    c: wp.array(dtype=float)
+    a: wp.array[float]
+    b: wp.array[float]
+    c: wp.array[float]
     x: float
     y: float
     z: float
@@ -87,15 +87,15 @@ def km(M: wp.mat33, N: wp.mat33, O: wp.mat33):
 
 
 @wp.kernel
-def ka(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
+def ka(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
     tid = wp.tid()  # noqa: F841
 
 
 @wp.kernel
 def kz(
-    a: wp.array(dtype=float),
-    b: wp.array(dtype=float),
-    c: wp.array(dtype=float),
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
     x: float,
     y: float,
     z: float,

@@ -39,7 +39,7 @@ def rosenbrock(x: float, y: float):
 
 
 @wp.kernel
-def eval_rosenbrock(xs: wp.array(dtype=wp.vec2), z: wp.array(dtype=float)):
+def eval_rosenbrock(xs: wp.array[wp.vec2], z: wp.array[float]):
     i = wp.tid()
     x = xs[i]
     z[i] = rosenbrock(x[0], x[1])
@@ -116,7 +116,7 @@ class Example:
         N = len(xy)
 
         xy = wp.array(xy, dtype=wp.vec2)
-        Z = wp.empty(N, dtype=wp.float32)
+        Z = wp.empty(N, dtype=float)
 
         wp.launch(eval_rosenbrock, dim=N, inputs=[xy], outputs=[Z])
         Z = Z.numpy().reshape(X.shape)
