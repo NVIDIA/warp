@@ -63,8 +63,8 @@ def boundary_projector_form(
 def classify_boundary_sides(
     s: fem.Sample,
     domain: fem.Domain,
-    left: wp.array(dtype=int),
-    right: wp.array(dtype=int),
+    left: wp.array[int],
+    right: wp.array[int],
 ):
     nor = fem.normal(domain, s)
 
@@ -120,9 +120,7 @@ def volume_form():
 
 
 @wp.kernel
-def add_volume_loss(
-    loss: wp.array(dtype=wp.float32), vol: wp.array(dtype=wp.float32), target_vol: wp.float32, weight: wp.float32
-):
+def add_volume_loss(loss: wp.array[float], vol: wp.array[float], target_vol: float, weight: float):
     loss[0] += weight * (vol[0] - target_vol) * (vol[0] - target_vol)
 
 
@@ -245,8 +243,8 @@ class Example:
 
         # Initialize Adam optimizer
         # Current implementation assumes scalar arrays, so cast our vec2 arrays to scalars
-        self._vertex_positions_scalar = wp.array(self._vertex_positions, dtype=wp.float32).flatten()
-        self._vertex_positions_scalar.grad = wp.array(self._vertex_positions.grad, dtype=wp.float32).flatten()
+        self._vertex_positions_scalar = wp.array(self._vertex_positions, dtype=float).flatten()
+        self._vertex_positions_scalar.grad = wp.array(self._vertex_positions.grad, dtype=float).flatten()
         self.optimizer = Adam([self._vertex_positions_scalar], lr=lr)
 
     def step(self):
@@ -298,8 +296,8 @@ class Example:
 
         # Evaluate residual
         # Integral of squared difference between simulated position and target positions
-        loss = wp.empty(shape=1, dtype=wp.float32, requires_grad=True)
-        vol = wp.empty(shape=1, dtype=wp.float32, requires_grad=True)
+        loss = wp.empty(shape=1, dtype=float, requires_grad=True)
+        vol = wp.empty(shape=1, dtype=float, requires_grad=True)
 
         with tape:
             fem.integrate(

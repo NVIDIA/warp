@@ -53,8 +53,8 @@ def volume_grad(volume: wp.uint64, p: wp.vec3):
 
 @wp.kernel
 def simulate(
-    positions: wp.array(dtype=wp.vec3),
-    velocities: wp.array(dtype=wp.vec3),
+    positions: wp.array[wp.vec3],
+    velocities: wp.array[wp.vec3],
     volume: wp.uint64,
     margin: float,
     dt: float,

@@ -31,10 +31,10 @@ import warp as wp
 
 @wp.kernel
 def compute_loss(
-    params: wp.array(dtype=wp.float32),  # Model parameters [a, b]
-    x: wp.array(dtype=wp.float32),  # Input data
-    y_true: wp.array(dtype=wp.float32),  # Ground truth
-    loss: wp.array(dtype=wp.float32),  # Output: scalar loss
+    params: wp.array[float],  # Model parameters [a, b]
+    x: wp.array[float],  # Input data
+    y_true: wp.array[float],  # Ground truth
+    loss: wp.array[float],  # Output: scalar loss
 ):
     """Compute MSE loss for linear model: y = a*x + b
 
@@ -64,7 +64,7 @@ def compute_loss(
 
 
 @wp.kernel
-def update_params(learning_rate: wp.float32, grads: wp.array(dtype=wp.float32), params: wp.array(dtype=wp.float32)):
+def update_params(learning_rate: float, grads: wp.array[float], params: wp.array[float]):
     """Update parameters using gradient descent: params -= learning_rate * grads
 
     This kernel updates parameters in-place on the GPU, avoiding CPU round-trips.
