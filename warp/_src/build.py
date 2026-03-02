@@ -151,10 +151,13 @@ def init_kernel_cache(path=None):
     """
 
     if path is not None:
-        cache_root_dir = os.path.realpath(path)
+        base_dir = os.path.realpath(path)
+        cache_root_dir = os.path.join(base_dir, warp.config.version)
     elif "WARP_CACHE_PATH" in os.environ:
-        cache_root_dir = os.path.realpath(os.environ.get("WARP_CACHE_PATH"))
+        base_dir = os.path.realpath(os.environ.get("WARP_CACHE_PATH"))
+        cache_root_dir = os.path.join(base_dir, warp.config.version)
     else:
+        base_dir = None
         cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
 
         if os.name == "nt" and os.path.isabs(cache_root_dir) and not cache_root_dir.startswith("\\\\?\\"):
@@ -169,6 +172,23 @@ def init_kernel_cache(path=None):
     warp.config.kernel_cache_dir = cache_root_dir
 
     os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
+
+    # Warn about stale kernel artifacts in the unversioned base directory.
+    # Prior to Warp 1.13, custom cache paths were used without a version
+    # subdirectory, so old artifacts may linger in the parent directory.
+    if base_dir is not None and os.path.isdir(base_dir):
+        try:
+            with os.scandir(base_dir) as entries:
+                has_stale = any(entry.is_dir() and entry.name.startswith("wp_") for entry in entries)
+        except OSError:
+            has_stale = False
+        if has_stale:
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                f"Kernel cache artifacts from a previous Warp version were found in '{base_dir}'. "
+                f"These will be ignored. You can safely delete them.",
+            )
 
 
 def clear_kernel_cache() -> None:

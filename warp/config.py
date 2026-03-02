@@ -130,6 +130,9 @@ If ``None``, the path is determined in the following order:
 1. ``WARP_CACHE_PATH`` environment variable.
 2. System's user cache directory (via ``appdirs.user_cache_directory``).
 
+A version-specific subdirectory is automatically appended to the resolved
+base path to prevent cache collisions between different Warp versions.
+
 Note: Subdirectories prefixed with ``wp_`` will be created in this location.
 """
 

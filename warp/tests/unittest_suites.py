@@ -165,6 +165,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_indexedarray import TestIndexedArray
     from warp.tests.test_intersect import TestIntersect
     from warp.tests.test_iter import TestIter
+    from warp.tests.test_kernel_cache import TestKernelCache
     from warp.tests.test_large import TestLarge
     from warp.tests.test_launch import TestLaunch
     from warp.tests.test_lerp import TestLerp
@@ -267,6 +268,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestIntersect,
         TestIter,
         TestJax,
+        TestKernelCache,
         TestLarge,
         TestLaunch,
         TestLerp,
