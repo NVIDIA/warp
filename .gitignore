@@ -22,7 +22,11 @@ warp_lang.egg-info
 .vscode/
 .vs/
 .history
+
+# Claude Code
 CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
 
 # Development and testing
 *.o
