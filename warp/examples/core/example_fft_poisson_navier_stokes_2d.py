@@ -204,7 +204,9 @@ def copy_float_to_vec2(omega: wp.array2d[float], omega_complex: wp.array2d[wp.ve
     omega_complex[i, j] = wp.vec2f(omega[i, j], 0.0)
 
 
-@wp.kernel
+# Tiled kernels live in their own modules so they are compiled with the
+# correct block_dim supplied by wp.launch_tiled().
+@wp.kernel(module="dft_kernels")
 def fft_tiled(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     """Perform 1-D FFT on each row using ``wp.tile_fft``."""
     i, _, _ = wp.tid()
@@ -213,7 +215,7 @@ def fft_tiled(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     wp.tile_store(y, row_tile, offset=(i * TILE_M, 0))
 
 
-@wp.kernel
+@wp.kernel(module="dft_kernels")
 def ifft_tiled(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     """Perform 1-D inverse FFT on each row using ``wp.tile_ifft``."""
     i, _, _ = wp.tid()
@@ -222,7 +224,8 @@ def ifft_tiled(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     wp.tile_store(y, row_tile, offset=(i * TILE_M, 0))
 
 
-@wp.kernel
+# Separate module from dft_kernels because tiled_transpose uses a different block_dim.
+@wp.kernel(module="unique")
 def tiled_transpose(x: wp.array2d[wp.vec2f], y: wp.array2d[wp.vec2f]):
     """Transpose a 2-D complex array using tiled shared-memory loads."""
     i, j = wp.tid()
