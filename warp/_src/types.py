@@ -5980,7 +5980,7 @@ class Volume:
         min_world=(0.0, 0.0, 0.0),
         voxel_size: float | list[float] | tuple[float, float, float] = 1.0,
         bg_value=0.0,
-        device=None,
+        device: warp.DeviceLike = None,
     ) -> Volume:
         """Create a :class:`Volume` object from a dense 3D NumPy array.
 
@@ -6104,8 +6104,11 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
-        if not isinstance(voxel_size, (int, float, np.floating, np.integer)):
-            voxel_size = tuple(voxel_size)
+        if isinstance(voxel_size, (int, float, np.floating, np.integer)):
+            s = float(voxel_size)
+            voxel_size = (s, s, s)
+        else:
+            voxel_size = tuple(float(v) for v in voxel_size)
             if len(voxel_size) != 3:
                 raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
 

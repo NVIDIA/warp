@@ -70,7 +70,7 @@
 ### Changed
 
 - Allow `wp.Volume.load_from_numpy()` and `wp.Volume.allocate()` to accept a 3-element sequence for
-  ``voxel_size``, enabling volumes with anisotropic voxel spacing
+  `voxel_size`, enabling volumes with anisotropic voxel spacing
   ([GH-1193](https://github.com/NVIDIA/warp/issues/1193)).
 - **Breaking**: Return Warp scalar types (`wp.float16`, `wp.float64`, `wp.int8`, etc.) from built-in
   functions and vector/matrix indexing instead of Python native types for non-native scalar types.

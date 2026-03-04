@@ -951,13 +951,14 @@ def test_volume_from_numpy_3d_anisotropic(test, device):
     info = volume.get_grid_info()
     transform = np.array(info.transform_matrix).reshape(3, 3)
     np.testing.assert_allclose(np.diag(transform), list(voxel_size), atol=1e-6)
+    np.testing.assert_allclose(np.array(info.translation), mins, atol=1e-6)
 
 
 def test_volume_from_numpy_bad_voxel_size(test, device):
     # Verify ValueError for voxel_size with wrong number of elements
     data = np.zeros((8, 8, 8), dtype=np.float32)
     with test.assertRaises(ValueError):
-        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, 0.2), device=device)
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, 0.2), bg_value=0.0, device=device)
 
 
 def test_volume_from_numpy_numpy_scalar(test, device):
@@ -1000,6 +1001,14 @@ def test_volume_allocate_anisotropic(test, device):
     info = volume.get_grid_info()
     transform = np.array(info.transform_matrix).reshape(3, 3)
     np.testing.assert_allclose(np.diag(transform), [0.2, 0.3, 0.4], atol=1e-6)
+
+    # Verify per-axis world-to-index conversion produced the expected tiles
+    # 2.0/0.2=10, 3.0/0.3=10, 4.0/0.4=10 voxels per axis → 2 tiles per axis
+    tiles = volume.get_tiles().numpy()
+    test.assertEqual(tiles.shape[0], 8)
+    np.testing.assert_array_equal(np.unique(tiles[:, 0]), [0, 8])
+    np.testing.assert_array_equal(np.unique(tiles[:, 1]), [0, 8])
+    np.testing.assert_array_equal(np.unique(tiles[:, 2]), [0, 8])
 
 
 def test_volume_aniso_transform(test, device):
@@ -1115,7 +1124,7 @@ add_function_test(
     TestVolume,
     "test_volume_from_numpy_bad_voxel_size",
     test_volume_from_numpy_bad_voxel_size,
-    devices=get_selected_cuda_test_devices(),
+    devices=devices,
 )
 add_function_test(
     TestVolume,
@@ -1127,7 +1136,7 @@ add_function_test(
     TestVolume,
     "test_volume_allocate_bad_voxel_size",
     test_volume_allocate_bad_voxel_size,
-    devices=get_selected_cuda_test_devices(),
+    devices=devices,
 )
 add_function_test(
     TestVolume,
