@@ -972,6 +972,19 @@ def test_volume_from_numpy_numpy_scalar(test, device):
     test.assertNotEqual(volume.id, 0)
 
 
+def test_volume_bad_voxel_size_values(test, device):
+    # Verify ValueError for zero, negative, and non-finite voxel sizes
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=0.0, bg_value=0.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=-0.1, bg_value=0.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, -0.2, 0.3), bg_value=0.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=float("inf"), bg_value=0.0, device=device)
+
+
 def test_volume_allocate_bad_voxel_size(test, device):
     # Verify ValueError for wrong-length voxel_size in allocate
     with test.assertRaises(ValueError):
@@ -1131,6 +1144,12 @@ add_function_test(
     "test_volume_from_numpy_numpy_scalar",
     test_volume_from_numpy_numpy_scalar,
     devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestVolume,
+    "test_volume_bad_voxel_size_values",
+    test_volume_bad_voxel_size_values,
+    devices=devices,
 )
 add_function_test(
     TestVolume,
