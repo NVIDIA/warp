@@ -985,6 +985,15 @@ def test_volume_bad_voxel_size_values(test, device):
         wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=float("inf"), bg_value=0.0, device=device)
 
 
+def test_volume_bad_voxel_size_type(test, device):
+    # Verify TypeError for non-numeric, non-sequence voxel_size
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    with test.assertRaises(TypeError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=None, bg_value=0.0, device=device)
+    with test.assertRaises(TypeError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size="0.5", bg_value=0.0, device=device)
+
+
 def test_volume_allocate_bad_voxel_size(test, device):
     # Verify ValueError for wrong-length voxel_size in allocate
     with test.assertRaises(ValueError):
@@ -1149,6 +1158,12 @@ add_function_test(
     TestVolume,
     "test_volume_bad_voxel_size_values",
     test_volume_bad_voxel_size_values,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_bad_voxel_size_type",
+    test_volume_bad_voxel_size_type,
     devices=devices,
 )
 add_function_test(

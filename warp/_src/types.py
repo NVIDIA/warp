@@ -5978,7 +5978,7 @@ class Volume:
         cls,
         ndarray: np.ndarray,
         min_world=(0.0, 0.0, 0.0),
-        voxel_size: float | list[float] | tuple[float, float, float] = 1.0,
+        voxel_size: int | float | list[float] | tuple[float, float, float] = 1.0,
         bg_value=0.0,
         device: warp.DeviceLike = None,
     ) -> Volume:
@@ -6072,7 +6072,7 @@ class Volume:
         cls,
         min: list[int],
         max: list[int],
-        voxel_size: float | list[float] | tuple[float, float, float],
+        voxel_size: int | float | list[float] | tuple[float, float, float],
         bg_value=0.0,
         translation=(0.0, 0.0, 0.0),
         points_in_world_space=False,
@@ -6083,8 +6083,8 @@ class Volume:
         This function is only supported for CUDA devices.
 
         Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
-        If points_in_world_space is true, then min and max are first converted to index space with the given voxel size and
-        translation, and the volume is allocated with those.
+        If points_in_world_space is true, then min and max are first converted to index space using the given voxel size
+        (per-axis for anisotropic volumes) and translation, and the volume is allocated with those.
 
         The smallest unit of allocation is a dense tile of 8x8x8 voxels, the requested bounding box is rounded up to tiles, and
         the resulting tiles will be available in the new volume.
@@ -6123,7 +6123,7 @@ class Volume:
 
     @staticmethod
     def _normalize_voxel_size(
-        voxel_size: float | list[float] | tuple[float, float, float],
+        voxel_size: int | float | np.floating | np.integer | list[float] | tuple[float, float, float] | np.ndarray,
     ) -> tuple[float, float, float]:
         """Return *voxel_size* as a validated 3-tuple of positive, finite floats.
 
@@ -6131,16 +6131,21 @@ class Volume:
         sequence and always returns a ``(float, float, float)`` tuple.
 
         Raises:
+            TypeError: If *voxel_size* is not a numeric scalar or sequence.
             ValueError: If the sequence length is not 3, or any component
                 is zero, negative, or non-finite.
         """
         if isinstance(voxel_size, (int, float, np.floating, np.integer)):
             s = float(voxel_size)
             voxel_size = (s, s, s)
-        else:
+        elif isinstance(voxel_size, (list, tuple, np.ndarray)):
             voxel_size = tuple(float(v) for v in voxel_size)
             if len(voxel_size) != 3:
                 raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+        else:
+            raise TypeError(
+                f"voxel_size must be a numeric scalar or a sequence of 3 floats, got {type(voxel_size).__name__}"
+            )
         if not all(math.isfinite(v) and v > 0.0 for v in voxel_size):
             raise ValueError(f"All voxel_size components must be finite and positive, got {voxel_size}")
         return voxel_size
@@ -6176,7 +6181,7 @@ class Volume:
     def allocate_by_tiles(
         cls,
         tile_points: array,
-        voxel_size: float | list[float] | None = None,
+        voxel_size: int | float | list[float] | tuple[float, float, float] | None = None,
         bg_value=0.0,
         translation=(0.0, 0.0, 0.0),
         device: warp.DeviceLike = None,
@@ -6287,7 +6292,7 @@ class Volume:
     def allocate_by_voxels(
         cls,
         voxel_points: array,
-        voxel_size: float | list[float] | None = None,
+        voxel_size: int | float | list[float] | tuple[float, float, float] | None = None,
         translation=(0.0, 0.0, 0.0),
         device: warp.DeviceLike = None,
         transform=None,
