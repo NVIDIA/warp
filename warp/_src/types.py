@@ -6155,8 +6155,7 @@ class Volume:
             if voxel_size is None:
                 raise ValueError("Either 'voxel_size' or 'transform' must be provided")
 
-            if isinstance(voxel_size, float):
-                voxel_size = (voxel_size, voxel_size, voxel_size)
+            voxel_size = Volume._normalize_voxel_size(voxel_size)
             transform = mat33f(voxel_size[0], 0.0, 0.0, 0.0, voxel_size[1], 0.0, 0.0, 0.0, voxel_size[2])
         else:
             if voxel_size is not None:
