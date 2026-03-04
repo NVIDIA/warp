@@ -59,7 +59,7 @@ class KitmakerClient:
         adapter = HTTPAdapter(max_retries=retry)
         self.session.mount("https://", adapter)
 
-    def create_release(self, project_id, project_name, pic_email, wheels, upload=True):
+    def create_release(self, project_id, project_name, pic_email, wheels, upload=True, devzone_subdir=None):
         """Create a release and return the release UUID."""
         url = f"{self.base_url}/projects/{project_id}/releases"
         payload = {
@@ -68,12 +68,11 @@ class KitmakerClient:
                 {
                     "pic": pic_email,
                     "job_type": "wheel-release-job",
-                    "publish_to": "both_devzone_pypi",
                     "url": wheel_url,
-                    "size": size,
                     "upload": upload,
+                    **({"devzone_subdir": devzone_subdir} if devzone_subdir else {}),
                 }
-                for wheel_url, size in wheels
+                for wheel_url in wheels
             ],
         }
 
@@ -121,11 +120,19 @@ class KitmakerClient:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 print(f"[{timestamp}] Release status: {status}")
 
+                # Log per-wheel job details if present
+                jobs = status_data.get("jobs") or status_data.get("release_jobs")
+                if jobs:
+                    for job in jobs:
+                        job_status = job.get("status", "unknown")
+                        job_url = job.get("url", job.get("wheel_url", ""))
+                        print(f"  {job_status}: {job_url}")
+
                 if status == "completed":
                     print("Release completed successfully!")
                     return True
                 elif status == "failed":
-                    print(f"Release failed! Response: {status_data}")
+                    print(f"Release failed! Response: {json.dumps(status_data, indent=2)}")
                     return False
 
             except (requests.RequestException, ValueError) as e:
@@ -133,14 +140,6 @@ class KitmakerClient:
                 print(f"Retrying in {poll_interval} seconds...")
 
             time.sleep(poll_interval)
-
-
-def infer_wheel_size(wheel_url):
-    """Return ``"small"`` for macOS wheels, ``"medium"`` otherwise."""
-    url_lower = wheel_url.lower()
-    if "macosx" in url_lower:
-        return "small"
-    return "medium"
 
 
 def main(argv=None):
@@ -165,8 +164,8 @@ Environment Variables:
 
     parser.add_argument("wheel_urls", nargs="+", metavar="WHEEL_URL",
                         help="HTTPS URL(s) to .whl file(s) (1-4 URLs)")
-    parser.add_argument("--size", choices=["small", "medium", "large"],
-                        help="Job size override for all wheels (default: auto-detect)")
+    parser.add_argument("--devzone-subdir", default=None,
+                        help="Optional Devzone subdirectory prefix for uploads")
     parser.add_argument("--poll-interval", type=int, default=30,
                         help="Seconds between status checks (default: 30)")
     parser.add_argument("--timeout", type=int, default=3600,
@@ -215,15 +214,17 @@ Environment Variables:
             if not wheel_url.startswith("https://") or not wheel_url.lower().endswith(".whl"):
                 print(f"Error: Invalid wheel URL (must be https:// and end with .whl): {wheel_url}")
                 return 1
-            wheels.append((wheel_url, args.size or infer_wheel_size(wheel_url)))
+            wheels.append(wheel_url)
 
         # Configuration summary
         print(f"\nProject: {config['project_name']} (ID: {config['project_id']})")
         print(f"PIC: {config['pic_email']}")
         print(f"Upload: {'No (dry-run)' if args.dry_run else 'Yes'}")
+        if args.devzone_subdir:
+            print(f"Devzone subdir: {args.devzone_subdir}")
         print(f"Timeout: {args.timeout}s | Poll interval: {args.poll_interval}s")
-        for url, size in wheels:
-            print(f"  {url} ({size})")
+        for url in wheels:
+            print(f"  {url}")
 
         release_uuid = client.create_release(
             project_id=config["project_id"],
@@ -231,6 +232,7 @@ Environment Variables:
             pic_email=config["pic_email"],
             wheels=wheels,
             upload=not args.dry_run,
+            devzone_subdir=args.devzone_subdir,
         )
 
         success = client.monitor_release(
