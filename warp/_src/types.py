@@ -5998,12 +5998,7 @@ class Volume:
 
             A ``warp.Volume`` object.
         """
-        if isinstance(voxel_size, (int, float, np.floating, np.integer)):
-            voxel_size = (float(voxel_size), float(voxel_size), float(voxel_size))
-        else:
-            voxel_size = tuple(float(v) for v in voxel_size)
-            if len(voxel_size) != 3:
-                raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+        voxel_size = cls._normalize_voxel_size(voxel_size)
 
         target_shape = (
             math.ceil(ndarray.shape[0] / 8) * 8,
@@ -6104,13 +6099,7 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
-        if isinstance(voxel_size, (int, float, np.floating, np.integer)):
-            s = float(voxel_size)
-            voxel_size = (s, s, s)
-        else:
-            voxel_size = tuple(float(v) for v in voxel_size)
-            if len(voxel_size) != 3:
-                raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+        voxel_size = cls._normalize_voxel_size(voxel_size)
 
         if points_in_world_space:
             vs = np.asarray(voxel_size, dtype=np.float32)
@@ -6131,6 +6120,23 @@ class Volume:
         tile_points = array(tiles * 8, device=device)
 
         return cls.allocate_by_tiles(tile_points, voxel_size, bg_value, translation, device)
+
+    @staticmethod
+    def _normalize_voxel_size(
+        voxel_size: float | list[float] | tuple[float, float, float],
+    ) -> tuple[float, float, float]:
+        """Return *voxel_size* as a validated 3-tuple of floats.
+
+        Accepts a scalar (Python numeric or NumPy scalar) or a 3-element
+        sequence and always returns a ``(float, float, float)`` tuple.
+        """
+        if isinstance(voxel_size, (int, float, np.floating, np.integer)):
+            s = float(voxel_size)
+            return (s, s, s)
+        voxel_size = tuple(float(v) for v in voxel_size)
+        if len(voxel_size) != 3:
+            raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+        return voxel_size
 
     @staticmethod
     def _fill_transform_buffers(
