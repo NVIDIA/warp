@@ -960,6 +960,30 @@ def test_volume_from_numpy_bad_voxel_size(test, device):
         wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, 0.2), device=device)
 
 
+def test_volume_from_numpy_numpy_scalar(test, device):
+    # Verify NumPy scalar types (e.g. np.float32) work as voxel_size
+    mins = np.array([-2.0, -2.0, -2.0])
+    voxel_size = np.float32(0.5)
+    shape = (16, 16, 16)
+    data = np.zeros(shape, dtype=np.float32)
+
+    volume = wp.Volume.load_from_numpy(data, mins, voxel_size, bg_value=0.0, device=device)
+    test.assertNotEqual(volume.id, 0)
+
+
+def test_volume_allocate_bad_voxel_size(test, device):
+    # Verify ValueError for wrong-length voxel_size in allocate
+    with test.assertRaises(ValueError):
+        wp.Volume.allocate(
+            min=[0, 0, 0],
+            max=[2.0, 3.0, 4.0],
+            voxel_size=(0.2, 0.3),
+            bg_value=0.0,
+            points_in_world_space=True,
+            device=device,
+        )
+
+
 def test_volume_allocate_anisotropic(test, device):
     # Verify Volume.allocate works with anisotropic voxel_size
     volume = wp.Volume.allocate(
@@ -1091,6 +1115,18 @@ add_function_test(
     TestVolume,
     "test_volume_from_numpy_bad_voxel_size",
     test_volume_from_numpy_bad_voxel_size,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestVolume,
+    "test_volume_from_numpy_numpy_scalar",
+    test_volume_from_numpy_numpy_scalar,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestVolume,
+    "test_volume_allocate_bad_voxel_size",
+    test_volume_allocate_bad_voxel_size,
     devices=get_selected_cuda_test_devices(),
 )
 add_function_test(

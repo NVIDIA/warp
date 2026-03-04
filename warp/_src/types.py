@@ -5998,7 +5998,7 @@ class Volume:
 
             A ``warp.Volume`` object.
         """
-        if isinstance(voxel_size, (int, float)):
+        if isinstance(voxel_size, (int, float, np.floating, np.integer)):
             voxel_size = (float(voxel_size), float(voxel_size), float(voxel_size))
         else:
             voxel_size = tuple(float(v) for v in voxel_size)
@@ -6104,6 +6104,11 @@ class Volume:
             translation (array-like): Translation between the index and world spaces.
             device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
+        if not isinstance(voxel_size, (int, float, np.floating, np.integer)):
+            voxel_size = tuple(voxel_size)
+            if len(voxel_size) != 3:
+                raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+
         if points_in_world_space:
             vs = np.asarray(voxel_size, dtype=np.float32)
             min = np.around((np.array(min, dtype=np.float32) - translation) / vs)
