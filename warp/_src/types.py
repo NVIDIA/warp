@@ -6125,17 +6125,24 @@ class Volume:
     def _normalize_voxel_size(
         voxel_size: float | list[float] | tuple[float, float, float],
     ) -> tuple[float, float, float]:
-        """Return *voxel_size* as a validated 3-tuple of floats.
+        """Return *voxel_size* as a validated 3-tuple of positive, finite floats.
 
         Accepts a scalar (Python numeric or NumPy scalar) or a 3-element
         sequence and always returns a ``(float, float, float)`` tuple.
+
+        Raises:
+            ValueError: If the sequence length is not 3, or any component
+                is zero, negative, or non-finite.
         """
         if isinstance(voxel_size, (int, float, np.floating, np.integer)):
             s = float(voxel_size)
-            return (s, s, s)
-        voxel_size = tuple(float(v) for v in voxel_size)
-        if len(voxel_size) != 3:
-            raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+            voxel_size = (s, s, s)
+        else:
+            voxel_size = tuple(float(v) for v in voxel_size)
+            if len(voxel_size) != 3:
+                raise ValueError(f"voxel_size must be a scalar or a 3-element sequence, got length {len(voxel_size)}")
+        if not all(math.isfinite(v) and v > 0.0 for v in voxel_size):
+            raise ValueError(f"All voxel_size components must be finite and positive, got {voxel_size}")
         return voxel_size
 
     @staticmethod
