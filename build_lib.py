@@ -515,7 +515,12 @@ def main(argv: list[str] | None = None) -> int:
             # attempt to find MSVC in environment (will set vcvars)
             args.host_compiler = build_dll.find_host_compiler()
             if not args.host_compiler:
-                print("Warp build error: Could not find MSVC compiler")
+                print(
+                    "Warp build error: Could not find MSVC compiler.\n"
+                    "  Ensure Visual Studio 2019+ is installed with the 'Desktop development with C++' workload,\n"
+                    "  or use --msvc-path and --sdk-path to specify custom toolchain locations.\n"
+                    "  If Visual Studio is installed in a non-default location, adding vswhere.exe to PATH may help."
+                )
                 return 1
     else:
         args.host_compiler = build_dll.find_host_compiler()

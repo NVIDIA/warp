@@ -56,7 +56,7 @@ def run_cmd(cmd):
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         # Print output even on success to show warnings
         if output:
-            decoded_output = output.decode()
+            decoded_output = output.decode("utf-8", errors="replace")
             if decoded_output.strip():  # Only print if not just whitespace
                 # In parallel builds, associate output with its command for clarity
                 # Use single print to avoid interleaving with other processes
@@ -64,7 +64,9 @@ def run_cmd(cmd):
         return output
     except subprocess.CalledProcessError as e:
         # Single print to avoid interleaving in parallel builds
-        print(f"Command failed with exit code {e.returncode}: {cmd}\nCommand output was:\n{e.output.decode()}")
+        print(
+            f"Command failed with exit code {e.returncode}: {cmd}\nCommand output was:\n{e.output.decode('utf-8', errors='replace')}"
+        )
         raise e
 
 
@@ -96,6 +98,38 @@ def set_msvc_env(msvc_path, sdk_path):
     return os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
 
 
+def _find_vswhere() -> str:
+    """Locate vswhere.exe using multiple discovery strategies.
+
+    Search order:
+    1. ``PATH`` (covers Chocolatey, Scoop, winget, or manual installs)
+    2. Default VS Installer location under ``%ProgramFiles(x86)%``
+    3. Fallback under ``%ProgramFiles%`` (32-bit Windows or older setups)
+
+    Returns:
+        Absolute path to vswhere.exe, or empty string if not found.
+    """
+    path_result = shutil.which("vswhere.exe")
+    if path_result:
+        if verbose_cmd:
+            print(f"Found vswhere.exe in PATH: {path_result}")
+        return path_result
+
+    candidates = [
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"),
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            if verbose_cmd:
+                print(f"Found vswhere.exe at: {candidate}")
+            return candidate
+
+    if verbose_cmd:
+        print("Warning: Could not locate vswhere.exe")
+    return ""
+
+
 def find_host_compiler() -> str:
     """Find the host C++ compiler.
 
@@ -124,18 +158,31 @@ def find_host_compiler() -> str:
                 if verbose_cmd:
                     print("Warning: VS environment variables set but cl.exe not found, attempting auto-configuration")
 
-        vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
-        vswhere_path = os.path.expandvars(vswhere_path)
-        if not os.path.exists(vswhere_path):
-            return ""  # Signal to caller that VS not found
+        vswhere_path = _find_vswhere()
+        if not vswhere_path:
+            return ""  # Signal to caller that vswhere.exe not found
 
-        vs_path = run_cmd(f'"{vswhere_path}" -latest -property installationPath').decode().rstrip()
+        try:
+            vs_path = (
+                run_cmd(f'"{vswhere_path}" -latest -property installationPath')
+                .decode("utf-8", errors="replace")
+                .rstrip()
+            )
+        except subprocess.CalledProcessError:
+            return ""  # Signal to caller that vswhere command failed
+        if not vs_path:
+            if verbose_cmd:
+                print("Warning: vswhere.exe found no Visual Studio installation")
+            return ""
         vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
 
         if not os.path.exists(vsvars_path):
             return ""  # Signal to caller that VS environment script not found
 
-        output = run_cmd(f'"{vsvars_path}" && set').decode()
+        try:
+            output = run_cmd(f'"{vsvars_path}" && set').decode("utf-8", errors="replace")
+        except subprocess.CalledProcessError:
+            return ""  # Signal to caller that VS environment script failed
 
         for line in output.splitlines():
             pair = line.split("=", 1)
@@ -143,7 +190,20 @@ def find_host_compiler() -> str:
                 os.environ[pair[0]] = pair[1]
 
         cl_path = shutil.which("cl.exe")
-        cl_version = os.environ["VCToolsVersion"].split(".")
+        if not cl_path:
+            if verbose_cmd:
+                print("Warning: cl.exe not found in PATH after running vcvars64.bat")
+            return ""
+        vc_tools_version = os.environ.get("VCToolsVersion", "")
+        if not vc_tools_version:
+            if verbose_cmd:
+                print("Warning: VCToolsVersion not set after running vcvars64.bat")
+            return ""
+        cl_version = vc_tools_version.split(".")
+        if len(cl_version) < 2:
+            if verbose_cmd:
+                print(f"Warning: Invalid VCToolsVersion format: {vc_tools_version}")
+            return ""
 
         # ensure at least VS2019 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
         cl_required_major = 14
