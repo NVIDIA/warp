@@ -3223,7 +3223,7 @@ class Adjoint:
         # more generally in `adj.eval()`.
         if isinstance(node.value, ast.List):
             raise WarpCodegenError(
-                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small fixed-size collections, or `wp.zeros(shape=N, dtype=...)` for stack-allocated arrays."
             )
 
         lhs = node.targets[0]
