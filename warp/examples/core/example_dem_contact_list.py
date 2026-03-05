@@ -316,7 +316,12 @@ def apply_bond_forces(
     """Compute forces from bonded contacts and ground contact.
 
     Bonds that exceed ``break_strain`` are permanently marked as broken
-    in the per-contact data and no longer exert forces.
+    in the per-contact data and no longer exert forces.  Broken entries
+    remain in the contact slots until the particles separate beyond the
+    update kernel's ``radius + margin`` threshold and are evicted.
+
+    Requires ``data_width >= 2`` with the following per-contact layout:
+        field 0 -- rest length,  field 1 -- broken flag (0.0/1.0).
     """
     i = wp.tid()
     x = particle_x[i]
