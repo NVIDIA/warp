@@ -912,6 +912,127 @@ def test_volume_from_numpy_3d(test, device):
     test.assertIsNone(sphere_vdb_array.deleter)
 
 
+def test_volume_from_numpy_anisotropic(test, device):
+    # Verify load_from_numpy works with per-axis voxel sizes
+    mins = np.array([-2.0, -2.0, -2.0])
+    voxel_size = (0.2, 0.3, 0.4)
+    maxs = np.array([2.0, 2.0, 2.0])
+    nums = np.ceil((maxs - mins) / np.array(voxel_size)).astype(dtype=int)
+    center = np.array([0.0, 0.0, 0.0])
+    rad = 1.5
+    sphere_sdf_np = np.zeros(tuple(nums), dtype=np.float32)
+    for x in range(nums[0]):
+        for y in range(nums[1]):
+            for z in range(nums[2]):
+                pos = mins + np.array(voxel_size) * np.array([x, y, z])
+                dis = np.linalg.norm(pos - center)
+                sphere_sdf_np[x, y, z] = dis - rad
+
+    sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, bg_value=0.0, device=device)
+    test.assertNotEqual(sphere_vdb.id, 0)
+
+    # Verify the grid transform has the expected diagonal voxel sizes
+    info = sphere_vdb.get_grid_info()
+    transform = np.array(info.transform_matrix).reshape(3, 3)
+    np.testing.assert_allclose(np.diag(transform), list(voxel_size), atol=1e-6)
+
+
+def test_volume_from_numpy_3d_anisotropic(test, device):
+    # Verify load_from_numpy with vec3 bg_value and anisotropic voxel_size
+    mins = np.array([-1.0, -1.0, -1.0])
+    voxel_size = (0.1, 0.2, 0.3)
+    maxs = np.array([1.0, 1.0, 1.0])
+    nums = np.ceil((maxs - mins) / np.array(voxel_size)).astype(dtype=int)
+    data = np.zeros((*tuple(nums), 3), dtype=np.float32)
+
+    volume = wp.Volume.load_from_numpy(data, mins, voxel_size, bg_value=(0.0, 0.0, 0.0), device=device)
+    test.assertNotEqual(volume.id, 0)
+
+    info = volume.get_grid_info()
+    transform = np.array(info.transform_matrix).reshape(3, 3)
+    np.testing.assert_allclose(np.diag(transform), list(voxel_size), atol=1e-6)
+    np.testing.assert_allclose(np.array(info.translation), mins, atol=1e-6)
+
+
+def test_volume_from_numpy_bad_voxel_size(test, device):
+    # Verify ValueError for voxel_size with wrong number of elements
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, 0.2), bg_value=0.0, device=device)
+
+
+def test_volume_from_numpy_numpy_scalar(test, device):
+    # Verify NumPy scalar types (e.g. np.float32) work as voxel_size
+    mins = np.array([-2.0, -2.0, -2.0])
+    voxel_size = np.float32(0.5)
+    shape = (16, 16, 16)
+    data = np.zeros(shape, dtype=np.float32)
+
+    volume = wp.Volume.load_from_numpy(data, mins, voxel_size, bg_value=0.0, device=device)
+    test.assertNotEqual(volume.id, 0)
+
+
+def test_volume_bad_voxel_size_values(test, device):
+    # Verify ValueError for zero, negative, and non-finite voxel sizes
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=0.0, bg_value=0.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=-0.1, bg_value=0.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=(0.1, -0.2, 0.3), bg_value=0.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=float("inf"), bg_value=0.0, device=device)
+
+
+def test_volume_bad_voxel_size_type(test, device):
+    # Verify TypeError for non-numeric, non-sequence voxel_size
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    with test.assertRaises(TypeError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size=None, bg_value=0.0, device=device)
+    with test.assertRaises(TypeError):
+        wp.Volume.load_from_numpy(data, (0, 0, 0), voxel_size="0.5", bg_value=0.0, device=device)
+
+
+def test_volume_allocate_bad_voxel_size(test, device):
+    # Verify ValueError for wrong-length voxel_size in allocate
+    with test.assertRaises(ValueError):
+        wp.Volume.allocate(
+            min=[0, 0, 0],
+            max=[2.0, 3.0, 4.0],
+            voxel_size=(0.2, 0.3),
+            bg_value=0.0,
+            points_in_world_space=True,
+            device=device,
+        )
+
+
+def test_volume_allocate_anisotropic(test, device):
+    # Verify Volume.allocate works with anisotropic voxel_size
+    volume = wp.Volume.allocate(
+        min=[0, 0, 0],
+        max=[2.0, 3.0, 4.0],
+        voxel_size=(0.2, 0.3, 0.4),
+        bg_value=0.0,
+        translation=(0.0, 0.0, 0.0),
+        points_in_world_space=True,
+        device=device,
+    )
+    test.assertNotEqual(volume.id, 0)
+
+    info = volume.get_grid_info()
+    transform = np.array(info.transform_matrix).reshape(3, 3)
+    np.testing.assert_allclose(np.diag(transform), [0.2, 0.3, 0.4], atol=1e-6)
+
+    # Verify per-axis world-to-index conversion produced the expected tiles
+    # 2.0/0.2=10, 3.0/0.3=10, 4.0/0.4=10 voxels per axis → 2 tiles per axis
+    tiles = volume.get_tiles().numpy()
+    test.assertEqual(tiles.shape[0], 8)
+    np.testing.assert_array_equal(np.unique(tiles[:, 0]), [0, 8])
+    np.testing.assert_array_equal(np.unique(tiles[:, 1]), [0, 8])
+    np.testing.assert_array_equal(np.unique(tiles[:, 2]), [0, 8])
+
+
 def test_volume_aniso_transform(test, device):
     # XY-rotation + z scale
     transform = [
@@ -1008,6 +1129,54 @@ add_function_test(
 )
 add_function_test(
     TestVolume, "test_volume_from_numpy_3d", test_volume_from_numpy_3d, devices=get_selected_cuda_test_devices()
+)
+add_function_test(
+    TestVolume,
+    "test_volume_from_numpy_anisotropic",
+    test_volume_from_numpy_anisotropic,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestVolume,
+    "test_volume_from_numpy_3d_anisotropic",
+    test_volume_from_numpy_3d_anisotropic,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestVolume,
+    "test_volume_from_numpy_bad_voxel_size",
+    test_volume_from_numpy_bad_voxel_size,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_from_numpy_numpy_scalar",
+    test_volume_from_numpy_numpy_scalar,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestVolume,
+    "test_volume_bad_voxel_size_values",
+    test_volume_bad_voxel_size_values,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_bad_voxel_size_type",
+    test_volume_bad_voxel_size_type,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_allocate_bad_voxel_size",
+    test_volume_allocate_bad_voxel_size,
+    devices=devices,
+)
+add_function_test(
+    TestVolume,
+    "test_volume_allocate_anisotropic",
+    test_volume_allocate_anisotropic,
+    devices=get_selected_cuda_test_devices(),
 )
 add_function_test(
     TestVolume, "test_volume_aniso_transform", test_volume_aniso_transform, devices=get_selected_cuda_test_devices()
