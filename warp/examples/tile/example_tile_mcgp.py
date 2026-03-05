@@ -93,8 +93,8 @@ def sphere_walk(
     mesh_id: wp.uint64,
     seed: int,
     delta_z: float,
-    samples: wp.array2d(dtype=wp.vec3),
-    solutions: wp.array2d(dtype=float),
+    samples: wp.array2d[wp.vec3],
+    solutions: wp.array2d[float],
 ):
     i, j = wp.tid()
 
@@ -109,7 +109,7 @@ def sphere_walk(
 
     # solution is an average of all walks originating from this position
     walk_sum = wp.tile_sum(walk_results)
-    result = walk_sum * (1.0 / wp.float32(TILE_SIZE))
+    result = walk_sum * (1.0 / float(TILE_SIZE))
 
     wp.tile_store(solutions[i], result, offset=(j,))
 

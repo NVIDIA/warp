@@ -25,17 +25,17 @@ from warp.tests.unittest_utils import *
 
 
 @wp.func
-def volatile_read(ptr: wp.array(dtype=wp.int32), index: int):
+def volatile_read(ptr: wp.array[int], index: int):
     value = wp.atomic_add(ptr, index, 0)
     return value
 
 
 @wp.struct
 class WorkQueue:
-    buffer: wp.array(dtype=wp.int32)
+    buffer: wp.array[int]
     capacity: int
-    head: wp.array(dtype=wp.int32)
-    tail: wp.array(dtype=wp.int32)
+    head: wp.array[int]
+    tail: wp.array[int]
 
 
 @wp.func
@@ -97,9 +97,9 @@ def process_queue(queue: WorkQueue):
 def test_work_queue(device):
     # Create a work queue with capacity 1024
     capacity = 8192
-    head = wp.array([0], dtype=wp.int32, device=device)
-    tail = wp.array([4096], dtype=wp.int32, device=device)
-    buffer = wp.array(np.arange(4096, dtype=np.int32), dtype=wp.int32, device=device)
+    head = wp.array([0], dtype=int, device=device)
+    tail = wp.array([4096], dtype=int, device=device)
+    buffer = wp.array(np.arange(4096, dtype=np.int32), dtype=int, device=device)
 
     queue = WorkQueue()
     queue.capacity = capacity

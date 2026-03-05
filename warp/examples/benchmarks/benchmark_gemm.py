@@ -35,7 +35,7 @@ def create_gemm_kernel(m, n, k):
     TILE_K = k
 
     @wp.kernel
-    def gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+    def gemm(A: wp.array2d[float], B: wp.array2d[float], output: wp.array2d[float]):
         i, j = wp.tid()
         sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
 

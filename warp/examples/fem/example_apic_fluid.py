@@ -51,8 +51,8 @@ def integrate_velocity(
     s: Sample,
     domain: Domain,
     u: Field,
-    velocities: wp.array(dtype=wp.vec3),
-    velocity_gradients: wp.array(dtype=wp.mat33),
+    velocities: wp.array[wp.vec3],
+    velocity_gradients: wp.array[wp.mat33],
     dt: float,
     gravity: wp.vec3,
 ):
@@ -77,10 +77,10 @@ def update_particles(
     domain: Domain,
     grid_vel: Field,
     dt: float,
-    pos: wp.array(dtype=wp.vec3),
-    pos_prev: wp.array(dtype=wp.vec3),
-    vel: wp.array(dtype=wp.vec3),
-    vel_grad: wp.array(dtype=wp.mat33),
+    pos: wp.array[wp.vec3],
+    pos_prev: wp.array[wp.vec3],
+    vel: wp.array[wp.vec3],
+    vel_grad: wp.array[wp.mat33],
 ):
     """Read particle velocity from grid and advect positions"""
     p_vel = grid_vel(s)
@@ -114,7 +114,7 @@ def divergence_form(s: Sample, domain: Domain, u: Field, psi: Field):
 
 
 @wp.kernel
-def invert_volume_kernel(values: wp.array(dtype=float)):
+def invert_volume_kernel(values: wp.array[float]):
     i = wp.tid()
     m = values[i]
     values[i] = wp.where(m == 0.0, 0.0, 1.0 / m)
@@ -122,9 +122,9 @@ def invert_volume_kernel(values: wp.array(dtype=float)):
 
 @wp.kernel
 def scalar_vector_multiply(
-    alpha: wp.array(dtype=float),
-    x: wp.array(dtype=wp.vec3),
-    y: wp.array(dtype=wp.vec3),
+    alpha: wp.array[float],
+    x: wp.array[wp.vec3],
+    y: wp.array[wp.vec3],
 ):
     i = wp.tid()
     y[i] = alpha[i] * x[i]
@@ -132,9 +132,9 @@ def scalar_vector_multiply(
 
 @wp.kernel
 def scale_transposed_divergence_mat(
-    tr_divergence_mat_offsets: wp.array(dtype=int),
-    tr_divergence_mat_values: wp.array(dtype=Any),
-    inv_fraction_int: wp.array(dtype=float),
+    tr_divergence_mat_offsets: wp.array[int],
+    tr_divergence_mat_values: wp.array[Any],
+    inv_fraction_int: wp.array[float],
 ):
     # In-place scaling of gradient operator rows with inverse mass
 
@@ -188,9 +188,9 @@ def solve_incompressibility(
 class Example:
     @dataclass
     class State:
-        particle_q: wp.array(dtype=wp.vec3)
-        particle_qd: wp.array(dtype=wp.vec3)
-        particle_qd_grad: wp.array(dtype=wp.mat33)
+        particle_q: wp.array[wp.vec3]
+        particle_qd: wp.array[wp.vec3]
+        particle_qd_grad: wp.array[wp.mat33]
 
     def __init__(self, quiet=False, stage_path="example_apic_fluid.usd", voxel_size=1.0, opengl=False):
         self.gravity = wp.vec3(0.0, -10.0, 0.0)

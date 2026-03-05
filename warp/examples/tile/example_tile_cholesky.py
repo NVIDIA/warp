@@ -38,10 +38,10 @@ np_type, wp_type = np.float64, wp.float64
 
 @wp.kernel
 def cholesky(
-    A: wp.array2d(dtype=wp_type),
-    L: wp.array2d(dtype=wp_type),
-    X: wp.array1d(dtype=wp_type),
-    Y: wp.array1d(dtype=wp_type),
+    A: wp.array2d[wp_type],
+    L: wp.array2d[wp_type],
+    X: wp.array1d[wp_type],
+    Y: wp.array1d[wp_type],
 ):
     a = wp.tile_load(A, shape=(TILE, TILE))
     l = wp.tile_cholesky(a)

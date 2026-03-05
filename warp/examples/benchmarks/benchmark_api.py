@@ -35,7 +35,7 @@ trim_runs = 2500
 
 
 @wp.kernel
-def inc_kernel(a: wp.array(dtype=float)):
+def inc_kernel(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 

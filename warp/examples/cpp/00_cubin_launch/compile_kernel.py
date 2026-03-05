@@ -32,7 +32,7 @@ import warp as wp
 
 
 @wp.kernel
-def saxpy(alpha: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32)):
+def saxpy(alpha: float, x: wp.array[float], y: wp.array[float]):
     """SAXPY: Single-Precision A·X Plus Y
 
     Computes: ``y = alpha * x + y``.

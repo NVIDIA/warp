@@ -483,7 +483,7 @@ if __name__ == "__main__":
             if args.split_up_tiles:
                 pixels = wp.zeros(
                     (args.num_tiles, example.renderer.tile_height, example.renderer.tile_width, channels),
-                    dtype=wp.float32,
+                    dtype=float,
                 )
                 ncols = int(np.ceil(np.sqrt(args.num_tiles)))
                 nrows = int(np.ceil(args.num_tiles / float(ncols)))
@@ -520,7 +520,7 @@ if __name__ == "__main__":
             else:
                 fig = plt.figure(1)
                 pixels = wp.zeros(
-                    (example.renderer.screen_height, example.renderer.screen_width, channels), dtype=wp.float32
+                    (example.renderer.screen_height, example.renderer.screen_width, channels), dtype=float
                 )
                 if args.render_mode == "depth":
                     img_plot = plt.imshow(
@@ -543,7 +543,7 @@ if __name__ == "__main__":
 
                 if pixel_shape != pixels.shape:
                     # make sure we resize the pixels array to the right dimensions if the user resizes the window
-                    pixels = wp.zeros(pixel_shape, dtype=wp.float32)
+                    pixels = wp.zeros(pixel_shape, dtype=float)
 
                 example.renderer.get_pixels(pixels, split_up_tiles=args.split_up_tiles, mode=args.render_mode)
 

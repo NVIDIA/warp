@@ -28,7 +28,7 @@ import warp.render
 
 
 @wp.func
-def sample(f: wp.array(dtype=float), x: int, y: int, width: int, height: int):
+def sample(f: wp.array[float], x: int, y: int, width: int, height: int):
     # clamp texture coords
     x = wp.clamp(x, 0, width - 1)
     y = wp.clamp(y, 0, height - 1)
@@ -38,7 +38,7 @@ def sample(f: wp.array(dtype=float), x: int, y: int, width: int, height: int):
 
 
 @wp.func
-def laplacian(f: wp.array(dtype=float), x: int, y: int, width: int, height: int):
+def laplacian(f: wp.array[float], x: int, y: int, width: int, height: int):
     ddx = sample(f, x + 1, y, width, height) - 2.0 * sample(f, x, y, width, height) + sample(f, x - 1, y, width, height)
     ddy = sample(f, x, y + 1, width, height) - 2.0 * sample(f, x, y, width, height) + sample(f, x, y - 1, width, height)
 
@@ -47,8 +47,8 @@ def laplacian(f: wp.array(dtype=float), x: int, y: int, width: int, height: int)
 
 @wp.kernel
 def wave_displace(
-    hcurrent: wp.array(dtype=float),
-    hprevious: wp.array(dtype=float),
+    hcurrent: wp.array[float],
+    hprevious: wp.array[float],
     width: int,
     height: int,
     center_x: float,
@@ -76,8 +76,8 @@ def wave_displace(
 
 @wp.kernel
 def wave_solve(
-    hprevious: wp.array(dtype=float),
-    hcurrent: wp.array(dtype=float),
+    hprevious: wp.array[float],
+    hcurrent: wp.array[float],
     width: int,
     height: int,
     inv_cell: float,
@@ -104,7 +104,7 @@ def wave_solve(
 
 # simple kernel to apply height deltas to a vertex array
 @wp.kernel
-def grid_update(heights: wp.array(dtype=float), vertices: wp.array(dtype=wp.vec3)):
+def grid_update(heights: wp.array[float], vertices: wp.array[wp.vec3]):
     tid = wp.tid()
 
     h = heights[tid]

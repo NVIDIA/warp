@@ -61,8 +61,8 @@ import warp.fem as fem
 def classify_boundary_sides(
     s: fem.Sample,
     domain: fem.Domain,
-    dirichlet: wp.array(dtype=int),
-    inflow: wp.array(dtype=int),
+    dirichlet: wp.array[int],
+    inflow: wp.array[int],
 ):
     """Assign boundary sides to inflow or Dirichlet subdomains based on normal direction"""
     nor = fem.normal(domain, s)
@@ -135,10 +135,10 @@ def volume_form(s: fem.Sample, level_set: fem.Field, smoothing: float):
 
 @wp.kernel
 def combine_losses(
-    loss: wp.array(dtype=wp.float32),
-    vol: wp.array(dtype=wp.float32),
-    target_vol: wp.float32,
-    vol_weight: wp.float32,
+    loss: wp.array[float],
+    vol: wp.array[float],
+    target_vol: float,
+    vol_weight: float,
 ):
     loss[0] += vol_weight * (vol[0] - target_vol) * (vol[0] - target_vol)
 
@@ -171,7 +171,7 @@ def level_set_transport_form_upwind(
 
 @fem.integrand
 def advected_level_set_upwind(
-    s: fem.Sample, domain: fem.Domain, level_set: fem.Field, transport_integrals: wp.array(dtype=float)
+    s: fem.Sample, domain: fem.Domain, level_set: fem.Field, transport_integrals: wp.array[float]
 ):
     return level_set(s) - transport_integrals[s.qp_index] / (fem.measure(domain, s) * s.qp_weight)
 
@@ -284,7 +284,7 @@ class Example:
         advected_level_set_restriction = fem.make_restriction(advected_level_set, domain=self._p_test.domain)
 
         # Forward step, record adjoint tape for forces
-        p_rhs = wp.empty(self._p_space.node_count(), dtype=wp.float32, requires_grad=True)
+        p_rhs = wp.empty(self._p_space.node_count(), dtype=float, requires_grad=True)
 
         tape = wp.Tape()
         with tape:
@@ -335,8 +335,8 @@ class Example:
         tape.record_func(solve_linear_system, arrays=(p_rhs, p))
 
         # Evaluate losses
-        loss = wp.empty(shape=1, dtype=wp.float32, requires_grad=True)
-        vol = wp.empty(shape=1, dtype=wp.float32, requires_grad=True)
+        loss = wp.empty(shape=1, dtype=float, requires_grad=True)
+        vol = wp.empty(shape=1, dtype=float, requires_grad=True)
 
         with tape:
             # Main objective: inflow flux

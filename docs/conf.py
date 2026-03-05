@@ -137,11 +137,11 @@ templates_path = ["_templates"]
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
     "secondary_sidebar_items": ["page-toc", "edit-this-page"],
+    "article_header_end": ["view-page-source.html"],
     "use_edit_page_button": True,
     "copyright_override": {"start": 2022},
     "pygments_light_style": "tango",
     "pygments_dark_style": "monokai",
-    "footer_links": {},
     "github_url": "https://github.com/NVIDIA/warp",
     "icon_links": [
         {

@@ -81,7 +81,7 @@ def make_field(
     smooth_min_radius: float,
     dim: int,
     time: float,
-    out_data: wp.array3d(dtype=float),
+    out_data: wp.array3d[float],
 ):
     """Kernel to generate a SDF volume based on primitives."""
     i, j, k = wp.tid()

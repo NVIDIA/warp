@@ -1,0 +1,8 @@
+{# Displays a link to view or download the raw source of the current page. #}
+{% if sourcename is defined %}
+<div class="d-flex justify-content-end w-100">
+  <a href="{{ pathto('_sources/' + sourcename, true) }}">
+    <i class="fa-solid fa-file-code"></i> View page source
+  </a>
+</div>
+{% endif %}

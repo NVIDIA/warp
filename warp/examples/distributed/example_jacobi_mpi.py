@@ -106,13 +106,13 @@ def calc_decomp_1d(total_points: int, rank: int, total_ranks: int) -> tuple[int,
 
 @wp.kernel
 def jacobi_update(
-    a: wp.array2d(dtype=wptype),
+    a: wp.array2d[wptype],
     iy_start: int,
     iy_end: int,
     nx: int,
     calculate_norm: bool,
-    a_new: wp.array2d(dtype=wptype),
-    l2_norm: wp.array(dtype=wptype),
+    a_new: wp.array2d[wptype],
+    l2_norm: wp.array[wptype],
 ):
     i, j = wp.tid()
 
@@ -142,8 +142,8 @@ def initialize_boundaries(
     nx: int,
     ny: int,
     offset: int,
-    a: wp.array2d(dtype=wptype),
-    a_new: wp.array2d(dtype=wptype),
+    a: wp.array2d[wptype],
+    a_new: wp.array2d[wptype],
 ):
     i = wp.tid()
 

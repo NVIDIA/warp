@@ -163,9 +163,10 @@ bool wp_texture1d_create_host(
     tex_data->address_mode_u = address_mode_u;
     tex_data->use_normalized_coords = use_normalized_coords;
 
-    // Return the pointer as uint64_t handle
+    // Return the pointer as uint64_t handle (ownership transferred to caller)
     *tex_handle_out = (uint64_t)tex_data;
 
+    // cppcheck-suppress memleak
     return true;
 }
 
@@ -237,9 +238,10 @@ bool wp_texture2d_create_host(
     tex_data->address_mode_v = address_mode_v;
     tex_data->use_normalized_coords = use_normalized_coords;
 
-    // Return the pointer as uint64_t handle
+    // Return the pointer as uint64_t handle (ownership transferred to caller)
     *tex_handle_out = (uint64_t)tex_data;
 
+    // cppcheck-suppress memleak
     return true;
 }
 
@@ -315,9 +317,10 @@ bool wp_texture3d_create_host(
     tex_data->address_mode_w = address_mode_w;
     tex_data->use_normalized_coords = use_normalized_coords;
 
-    // Return the pointer as uint64_t handle
+    // Return the pointer as uint64_t handle (ownership transferred to caller)
     *tex_handle_out = (uint64_t)tex_data;
 
+    // cppcheck-suppress memleak
     return true;
 }
 

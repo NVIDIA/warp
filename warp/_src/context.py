@@ -8130,10 +8130,18 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     Options can be used to control runtime compilation and code-generation
     for the current module individually. Available options are listed below.
 
-    * **mode**: The compilation mode to use, can be "debug", or "release", defaults to the value of ``warp.config.mode``.
     * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
+    * **enable_backward**: Whether to generate the backward pass for kernels, defaults to the value of ``warp.config.enable_backward``.
     * **enable_mathdx_gemm**: Use libmathdx (cuBLASDx) for ``tile_matmul`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_gemm`` at compile time.
-    * **block_dim**: The default number of threads to assign to each block
+    * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``.
+    * **fuse_fp**: Enable floating-point contraction (FMA fusion) during compilation, defaults to ``True``.
+    * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
+    * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
+    * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
+    * **optimization_level**: Compiler optimization level, defaults to the value of ``warp.config.optimization_level`` when ``None``.
+    * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
+    * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
+    * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
 
     Args:
 

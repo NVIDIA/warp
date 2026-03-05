@@ -28,25 +28,25 @@ from warp.jax_experimental import jax_callable, GraphMode
 
 
 @wp.kernel
-def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 
 
 @wp.kernel
-def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 
 
 @wp.kernel
-def scale_inplace_kernel(a: wp.array(dtype=float), s: float):
+def scale_inplace_kernel(a: wp.array[float], s: float):
     tid = wp.tid()
     a[tid] *= s
 
 
 @wp.kernel
-def scale_inplace_vec_kernel(a: wp.array(dtype=wp.vec2), s: float):
+def scale_inplace_vec_kernel(a: wp.array[wp.vec2], s: float):
     tid = wp.tid()
     a[tid] *= s
 
@@ -54,15 +54,15 @@ def scale_inplace_vec_kernel(a: wp.array(dtype=wp.vec2), s: float):
 # The Python function to call.
 def scale_func(
     # inputs
-    a: wp.array(dtype=float),
-    b: wp.array(dtype=wp.vec2),
+    a: wp.array[float],
+    b: wp.array[wp.vec2],
     # in-out args
-    c: wp.array(dtype=float),
-    d: wp.array(dtype=wp.vec2),
+    c: wp.array[float],
+    d: wp.array[wp.vec2],
     s: float,
     # outputs
-    e: wp.array(dtype=float),
-    f: wp.array(dtype=wp.vec2),
+    e: wp.array[float],
+    f: wp.array[wp.vec2],
 ):
     wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[e])
     wp.launch(scale_vec_kernel, dim=b.shape, inputs=[b, s], outputs=[f])

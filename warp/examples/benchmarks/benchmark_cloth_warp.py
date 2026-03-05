@@ -20,13 +20,13 @@ wp.clear_kernel_cache()
 
 @wp.kernel
 def eval_springs(
-    x: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
-    spring_indices: wp.array(dtype=int),
-    spring_rest_lengths: wp.array(dtype=float),
-    spring_stiffness: wp.array(dtype=float),
-    spring_damping: wp.array(dtype=float),
-    f: wp.array(dtype=wp.vec3),
+    x: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
+    spring_indices: wp.array[int],
+    spring_rest_lengths: wp.array[float],
+    spring_stiffness: wp.array[float],
+    spring_damping: wp.array[float],
+    f: wp.array[wp.vec3],
 ):
     tid = wp.tid()
 
@@ -64,10 +64,10 @@ def eval_springs(
 
 @wp.kernel
 def integrate_particles(
-    x: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
-    f: wp.array(dtype=wp.vec3),
-    w: wp.array(dtype=float),
+    x: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
+    f: wp.array[wp.vec3],
+    w: wp.array[float],
     dt: float,
 ):
     tid = wp.tid()

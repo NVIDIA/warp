@@ -11,6 +11,32 @@ Some ways to contribute to the development of Warp include:
 * Contributing bug fixes or new features.
 * Adding your work to the :doc:`publications list </user_guide/publications>`.
 
+.. _before-you-start:
+
+Before You Start
+----------------
+
+For small fixes such as typos, broken links, or minor documentation improvements,
+feel free to open a pull request directly.
+
+For bug fixes, feature contributions, or any non-trivial change:
+
+* **Check existing issues first.** Search `GitHub Issues <https://github.com/NVIDIA/warp/issues>`__
+  to see if someone is already working on it. If an issue is already assigned to
+  someone else, coordinate in the issue thread before starting your own implementation.
+* **Propose new features before implementing them.** Open a
+  `GitHub Issue <https://github.com/NVIDIA/warp/issues/new>`__ or
+  `Discussion <https://github.com/NVIDIA/warp/discussions>`__ to describe what you
+  want to build and get feedback. Not all features are a good fit for Warp, and
+  early discussion avoids wasted effort.
+* **Gauge the complexity of what you're picking up.** Some areas of the codebase
+  (e.g. JAX/PyTorch interop, code generation, CUDA runtime internals) involve subtle
+  interactions that may not be apparent from a GitHub issue description alone. If you
+  are not already familiar with the subsystem, comment on the issue to ask for context
+  before investing time in a pull request.
+
+.. _code-contributions:
+
 Code Contributions
 ------------------
 
@@ -61,20 +87,12 @@ The full text of the DCO is as follows:
         maintained indefinitely and may be redistributed consistent with
         this project or the open source license(s) involved.
 
-Contributors are encouraged to first open an issue on GitHub to discuss proposed
-feature contributions and gauge potential interest.
-
 Overview
 ^^^^^^^^
 
 #. Create a fork of the Warp GitHub repository by visiting https://github.com/NVIDIA/warp/fork
 #. Clone your fork on your local machine, e.g. ``git clone git@github.com:username/warp.git``.
-#. Create a branch to develop your contribution on, e.g. ``git checkout -b mmacklin/cuda-bvh-optimizations``.
-
-   Use the following naming conventions for the branch name:
-
-   * New features: ``username/feature-name``
-   * Bug fixes: ``bugfix/feature-name``
+#. Create a ``username/short-description`` branch for your contribution.
 
 #. Make your desired changes.
 
@@ -85,9 +103,61 @@ Overview
    * Add an entry to the unreleased section at the top of the
      `CHANGELOG.md <https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md>`__ describing the changes.
 
+#. Prepare your commits.
+
+   * Use imperative mood in commit messages (e.g. "Fix array bounds check", not "Fixed array bounds check").
+   * Keep the subject line under ~50 characters. Use the body to explain *why* the change
+     was made, not *what* changed (the diff shows that).
+   * Reference related GitHub issues in the commit message, e.g. ``(GH-1234)``.
+   * Sign off every commit with ``git commit --signoff`` (or ``-s``) to certify the
+     :ref:`Developer Certificate of Origin <code-contributions>`.
+   * **Clean up your commit history** before the pull request can be merged.
+     Pull requests naturally accumulate merge commits, review fixups, and
+     work-in-progress saves. These clutter ``git log`` and make
+     ``git bisect`` and ``git cherry-pick`` less effective on ``main``.
+
+     Organize your branch into a small number of logical, self-contained commits
+     (often just one). Each commit should represent a coherent unit of change,
+     pass tests on its own, and have a clear commit message. A multi-commit branch
+     is fine when the commits tell a meaningful story (e.g. "Add new API" followed
+     by "Add tests for new API"), but there is no reason to keep fixup or merge
+     commits around.
+
+     The simplest way to clean up a branch is to squash everything into one commit:
+
+     .. code-block:: bash
+
+        # Squash all commits on your branch into one
+        git fetch https://github.com/NVIDIA/warp.git main
+        git reset --soft FETCH_HEAD
+        git commit -s
+
 #. Push your branch to your GitHub fork, e.g. ``git push origin username/feature-name``.
 #. Submit a pull request on GitHub to the ``main`` branch (:ref:`pull-requests`).
    Work with reviewers to ensure the pull request is in a state suitable for merging.
+
+.. _quality-expectations:
+
+Contribution Quality Expectations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To keep the review process efficient and the codebase healthy, please ensure your
+contribution meets these expectations:
+
+* **Include tests.** Bug fixes should include tests that reproduce the failure without
+  the fix and pass with it. New features need tests that cover the core functionality
+  and important edge cases. Pull requests that modify core library code without
+  adequate test coverage will not be merged. That said, every test adds to the suite
+  runtime, so focus on meaningful tests that verify real behavior rather than
+  exhaustively testing trivial variations. See :ref:`testing-warp` for guidance.
+* **Follow the pull request template.** Fill out all relevant sections, including
+  a test plan that explains how you verified the changes. This also helps reviewers
+  reproduce and confirm your results. See :ref:`pull-requests`.
+* **Keep changes focused.** A pull request should address a single bug fix, feature, or
+  improvement. Do not bundle unrelated changes; split them into separate PRs.
+* **Minimize review cost.** Well-tested, clearly described contributions with clean
+  commit history get reviewed faster. Contributions that require substantial reviewer
+  effort to verify correctness may be deprioritized or declined.
 
 .. _coding-guidelines:
 
@@ -107,6 +177,11 @@ General Guidelines
 
 * Avoid generic function names like ``get_data()``.
 * Prioritize matching the existing style and conventions of the file being modified to maintain consistency.
+* Avoid introducing new dependencies. New required dependencies are not accepted. Optional
+  dependencies may be considered on a case-by-case basis (e.g. for examples or interop),
+  but even optional dependencies require an internal license review of the package and all
+  of its transitive dependencies to ensure compatibility with Warp's license. Discuss in
+  the issue or PR before adding one.
 
 Python Guidelines
 """""""""""""""""
@@ -143,23 +218,23 @@ Linting and Formatting
 `Ruff <https://docs.astral.sh/ruff/>`__ is used as the linter and code formatter for Python code in the Warp repository.
 The contents of pull requests will automatically be checked to ensure adherence to our formatting and linting standards.
 
-We recommend first running Ruff locally on your branch prior to opening a pull request.
+We recommend running the linters and formatters locally on your branch before opening a pull request.
 From the project root, run:
 
 .. code-block:: bash
 
-    pip install pre-commit
-    pre-commit run --all
+    uvx pre-commit run --all-files
 
 This command will attempt to fix any lint violations and then format the code.
 Some lint violations cannot be `fixed automatically <https://docs.astral.sh/ruff/linter/#fix-safety>`__
 and will require manual resolution.
 
-To run Ruff checks at the same time as ``git commit``, pre-commit hooks can be installed by running this command in the project root:
+To run linting and formatting checks automatically at ``git commit`` time, install the
+pre-commit hooks:
 
 .. code-block:: bash
 
-    pre-commit install
+    uvx pre-commit install
 
 C++ Code Formatting
 ^^^^^^^^^^^^^^^^^^^
@@ -174,10 +249,10 @@ The same pre-commit setup handles both Python (Ruff) and C++ (clang-format) code
 .. code-block:: bash
 
     # Run all formatters and linters (Python and C++)
-    pre-commit run --all-files
+    uvx pre-commit run --all-files
 
     # Run only clang-format on C++ files
-    pre-commit run clang-format --all-files
+    uvx pre-commit run clang-format --all-files
 
 **Optional: Installing clang-format locally**
 
@@ -235,8 +310,7 @@ The documentation can then be built by running the following from the project ro
 
 .. code-block:: bash
 
-    python -m pip install -e .[docs]
-    python build_docs.py
+    uv run --extra docs build_docs.py
 
 The default behavior skips running the
 `doctest tests <https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html>`__,
@@ -248,10 +322,10 @@ The ``--no-html`` flag can also be used to skip building the HTML documentation,
 .. code-block:: bash
 
     # Run only the doctest tests
-    python build_docs.py --no-html --doctest
+    uv run --extra docs build_docs.py --no-html --doctest
 
     # Build the HTML documentation AND run the doctest tests
-    python build_docs.py --doctest
+    uv run --extra docs build_docs.py --doctest
 
 Running ``build_docs.py`` also regenerates both the stub file (``warp/__init__.pyi``) and the reStructuredText files for the
 reference pages. After building the documentation, it is recommended to run a ``git status`` to
@@ -262,6 +336,8 @@ check if your changes have modified these files. If so, please commit the modifi
 Pull Request Guidelines
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+* Use the pull request template provided by the repository. Fill out all
+  applicable sections and delete the ones that do not apply.
 * Ensure your pull request has a descriptive title that clearly states the purpose of the changes.
 * Include a brief description covering:
 
@@ -269,7 +345,18 @@ Pull Request Guidelines
   * Areas affected by the changes.
   * The problem being solved.
   * Any limitations or non-handled areas in the changes.
-  * Any existing GitHub issues being addressed by the changes.
+  * Any existing GitHub issues being addressed by the changes (use "closes #1234" syntax).
+
+Design Documents
+^^^^^^^^^^^^^^^^
+
+For complex features (new user-facing APIs, architectural changes, or features with
+non-obvious design trade-offs), consider adding a design document in the ``design/``
+directory at the repository root. See ``design/README.md`` for guidelines and the
+template.
+
+Reviewers may request a design document during the review process for changes that
+would benefit from one.
 
 .. _testing-warp:
 
@@ -286,11 +373,11 @@ The majority of the Warp tests are located in the `warp/tests <https://github.co
 directory. As part of the test suite, most examples in the ``warp/examples`` subdirectories are tested via
 `test_examples.py <https://github.com/NVIDIA/warp/blob/main/warp/tests/test_examples.py>`__.
 
-After building and installing Warp (``pip install -e .`` from the project root), run the test suite using
-``python -m warp.tests``. The tests should take approximately 10–20 minutes to run. By default, only the test modules
+After building the Warp library (``uv run build_lib.py`` from the project root), run the test suite using
+``uv run --extra dev -m warp.tests``. The tests should take approximately 10–20 minutes to run. By default, only the test modules
 defined in ``default_suite()`` (in ``warp/tests/unittest_suites.py``) are run. To run the test suite
 using `test discovery <https://docs.python.org/3/library/unittest.html#test-discovery>`__, use
-``python -m warp.tests -s autodetect``, which will discover tests in modules matching the path
+``uv run --extra dev -m warp.tests -s autodetect``, which will discover tests in modules matching the path
 ``warp/tests/test*.py``.
 
 Running a subset of tests
@@ -304,7 +391,7 @@ For example, to run only tests that have ``mesh`` in the file name, use:
 
 .. code-block:: bash
 
-    python -m warp.tests -s autodetect -p '*mesh*.py'
+    uv run --extra dev -m warp.tests -s autodetect -p '*mesh*.py'
 
 Use ``-k TESTNAMEPATTERNS`` to define `wildcard test name patterns <https://docs.python.org/3/library/unittest.html#unittest.TestLoader.testNamePatterns>`__.
 This option can be used multiple times.
@@ -312,7 +399,7 @@ For example, to run only tests that have either ``mgpu`` or ``cuda`` in their na
 
 .. code-block:: bash
 
-    python -m warp.tests -s autodetect -k 'mgpu' -k 'cuda'
+    uv run --extra dev -m warp.tests -s autodetect -k 'mgpu' -k 'cuda'
 
 Adding New Tests
 ^^^^^^^^^^^^^^^^
@@ -321,9 +408,19 @@ For tests that should be run on multiple devices, e.g. ``"cpu"``, ``"cuda:0"``, 
 first defining a test function at the module scope and then using ``add_function_test()`` to add multiple
 test methods (a separate method for each device) to a test class.
 
+Always add new test modules to ``default_suite()`` in ``warp/tests/unittest_suites.py``
+so they are included in the default test run.
+
+.. important::
+
+   Never call ``wp.clear_kernel_cache()`` or ``wp.clear_lto_cache()`` in test files —
+   not in ``__main__`` blocks, test methods, or at module scope. Cache clearing is not
+   multi-process-safe; concurrent clears cause LLVM crashes. The test suite runner and
+   ``build_lib.py`` already handle cache management.
+
 .. code-block:: python
 
-    # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+    # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
     # SPDX-License-Identifier: Apache-2.0
     #
     # Licensed under the Apache License, Version 2.0 (the "License");
@@ -363,17 +460,17 @@ If we directly run this module, we get the following output:
 
 .. code-block:: bash
 
-    python test_amazing_code.py 
-    Warp 1.3.1 initialized:
-    CUDA Toolkit 12.6, Driver 12.6
+    uv run test_amazing_code.py
+    Warp 1.11.1 initialized:
+    CUDA Toolkit 12.9, Driver 13.1
     Devices:
         "cpu"      : "x86_64"
-        "cuda:0"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
-        "cuda:1"   : "NVIDIA GeForce RTX 3090" (24 GiB, sm_86, mempool enabled)
+        "cuda:0"   : "NVIDIA RTX 6000 Ada Generation" (48 GiB, sm_89, mempool enabled)
+        "cuda:1"   : "NVIDIA RTX 6000 Ada Generation" (48 GiB, sm_89, mempool enabled)
     CUDA peer access:
         Supported fully (all-directional)
     Kernel cache:
-        /home/nvidia/.cache/warp/1.3.1
+        /home/nvidia/.cache/warp/1.11.1
     test_amazing_code_test_one_cpu (__main__.TestAmazingCode) ... ok
     test_amazing_code_test_one_cuda_0 (__main__.TestAmazingCode) ... ok
     test_amazing_code_test_one_cuda_1 (__main__.TestAmazingCode) ... ok

@@ -87,18 +87,18 @@ def relu(x: dtype):
 
 @wp.kernel
 def compute(
-    indices: wp.array(dtype=int),
-    weights_0: wp.array2d(dtype=dtype),
-    bias_0: wp.array2d(dtype=dtype),
-    weights_1: wp.array2d(dtype=dtype),
-    bias_1: wp.array2d(dtype=dtype),
-    weights_2: wp.array2d(dtype=dtype),
-    bias_2: wp.array2d(dtype=dtype),
-    weights_3: wp.array2d(dtype=dtype),
-    bias_3: wp.array2d(dtype=dtype),
-    reference: wp.array2d(dtype=float),
-    loss: wp.array1d(dtype=float),
-    out: wp.array2d(dtype=float),
+    indices: wp.array[int],
+    weights_0: wp.array2d[dtype],
+    bias_0: wp.array2d[dtype],
+    weights_1: wp.array2d[dtype],
+    bias_1: wp.array2d[dtype],
+    weights_2: wp.array2d[dtype],
+    bias_2: wp.array2d[dtype],
+    weights_3: wp.array2d[dtype],
+    bias_3: wp.array2d[dtype],
+    reference: wp.array2d[float],
+    loss: wp.array1d[float],
+    out: wp.array2d[float],
 ):
     # batch indices
     linear = indices[wp.tid()]

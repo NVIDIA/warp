@@ -53,10 +53,10 @@ def compute_index(valid: int, scan_inclusive: int, offset: int) -> int:
 
 @wp.kernel
 def stream_compaction_kernel(
-    is_valid: wp.array(dtype=int),
-    data: wp.array(dtype=float),
-    num_output: wp.array(dtype=int),
-    output: wp.array(dtype=float),
+    is_valid: wp.array[int],
+    data: wp.array[float],
+    num_output: wp.array[int],
+    output: wp.array[float],
 ):
     i, j = wp.tid()  # i = block index, j = thread within block
 

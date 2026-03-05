@@ -22,11 +22,11 @@ import warp as wp
 
 def create_simple_kernel(dtype):
     def simple_kernel(
-        a: wp.array(dtype=dtype),
-        b: wp.array(dtype=dtype),
-        c: wp.array(dtype=dtype),
-        d: wp.array(dtype=dtype),
-        e: wp.array(dtype=dtype),
+        a: wp.array[dtype],
+        b: wp.array[dtype],
+        c: wp.array[dtype],
+        d: wp.array[dtype],
+        e: wp.array[dtype],
     ):
         pass
 
