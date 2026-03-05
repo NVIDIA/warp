@@ -412,6 +412,14 @@ class ParallelJunitTestResult(unittest.TextTestResult):
         self.start_time = time.perf_counter_ns()
         super(unittest.TextTestResult, self).startTest(test)
 
+    def stopTest(self, test):
+        super().stopTest(test)
+        # Force garbage collection of CPU-side allocations to reduce peak
+        # host RSS in parallel test runs.
+        import gc  # noqa: PLC0415
+
+        gc.collect()
+
     def _add_helper(self, test, dots_message, show_all_message):
         if self.showAll:
             self.stream.writeln(f"{self.getDescription(test)} ... {show_all_message}")
