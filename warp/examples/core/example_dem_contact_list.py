@@ -123,7 +123,7 @@ def _contact_update_kernel(
         if j_new != i:
             d = wp.length(x - positions[j_new])
             if d < radius:
-                # Check if already stored
+                # Duplicate check: O(current_count) scan — acceptable for small max_cpn.
                 found = int(0)
                 for c in range(current_count):
                     if neighbors[slot + c] == j_new:

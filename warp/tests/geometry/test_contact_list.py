@@ -359,7 +359,7 @@ def test_contact_list_capacity_overflow(test, device):
     for i in range(6):
         test.assertLessEqual(counts[i], 2, f"Particle {i} exceeds max_cpn")
 
-    # Middle particles would have 4 true neighbors but are capped at 2
+    # Middle particles have 5 true neighbors each within radius 0.45, but are capped at max_cpn=2
     test.assertEqual(counts[2], 2)
     test.assertEqual(counts[3], 2)
 
