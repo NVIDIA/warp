@@ -335,6 +335,7 @@ CUDA_CALLABLE inline void combine_precomputed_solid_angle_props(
     }
 
     for (int i = 0; i < (right_child_data ? 2 : 1); ++i) {
+        // cppcheck-suppress nullPointerRedundantCheck
         const SolidAngleProps& child_data = (i == 0) ? *left_child_data : *right_child_data;
         vec3 displacement = child_data.average_p - vec3(my_data.average_p);
         vec3 N = child_data.normal;
