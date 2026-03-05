@@ -214,9 +214,11 @@ class ContactList:
         """Incrementally update the contact list.
 
         Contacts whose particles have separated beyond ``radius + margin``
-        are removed.  New contacts discovered by the grid query are added.
-        Per-contact data entries are swapped/cleared in sync with their
-        neighbor entries.
+        are removed.  New contacts discovered by the grid query are added
+        with zero-initialized per-contact data; callers that require
+        non-zero defaults (e.g. rest lengths) must initialize them after
+        the update.  Per-contact data entries are swapped/cleared in sync
+        with their neighbor entries.
 
         Args:
             grid: A :class:`warp.HashGrid` (must be built for this frame).
@@ -305,6 +307,7 @@ def apply_bond_forces(
     data: wp.array[wp.float32],
     max_cpn: int,
     data_width: int,
+    point_radius: float,
     k_bond: float,
     k_damp_bond: float,
     break_strain: float,
@@ -315,10 +318,11 @@ def apply_bond_forces(
 ):
     """Compute forces from bonded contacts and ground contact.
 
-    Bonds that exceed ``break_strain`` are permanently marked as broken
-    in the per-contact data and no longer exert forces.  Broken entries
-    remain in the contact slots until the particles separate beyond the
-    update kernel's ``radius + margin`` threshold and are evicted.
+    Intact bonds exert spring + damping forces.  Bonds that exceed
+    ``break_strain`` are permanently marked as broken.  Broken bonds
+    (and contacts with no bond data, e.g. newly discovered by
+    ``update()``) fall back to standard DEM repulsion so that
+    fragments do not interpenetrate.
 
     Requires ``data_width >= 2`` with the following per-contact layout:
         field 0 -- rest length,  field 1 -- broken flag (0.0/1.0).
@@ -335,7 +339,7 @@ def apply_bond_forces(
     if c < cohesion_ground:
         f = f + contact_force(n, v, c, k_contact, k_damp, k_friction, k_mu)
 
-    # Bond forces from the persistent contact list
+    # Bond / contact forces from the persistent contact list
     slot = i * max_cpn
     for k in range(counts[i]):
         j = neighbors[slot + k]
@@ -344,25 +348,31 @@ def apply_bond_forces(
             rest_len = data[dpos + 0]
             broken = data[dpos + 1]
 
-            if broken < 0.5:
-                diff = x - particle_x[j]
-                d = wp.length(diff)
-                if d > 1.0e-6 and rest_len > 1.0e-6:
+            diff = x - particle_x[j]
+            d = wp.length(diff)
+
+            if d > 1.0e-6:
+                if broken < 0.5 and rest_len > 1.0e-6:
+                    # Active bond: spring + damping + breakage check
                     n_bond = diff / d
                     stretch = d - rest_len
                     strain = stretch / rest_len
 
                     if wp.abs(strain) > break_strain:
-                        # Break the bond permanently
                         data[dpos + 1] = 1.0
                     else:
-                        # Spring force along the bond
                         fn_bond = -k_bond * stretch
-                        # Damping along the bond axis
                         vrel = v - particle_v[j]
                         vn_bond = wp.dot(vrel, n_bond)
                         fd_bond = -k_damp_bond * vn_bond
                         f = f + n_bond * (fn_bond + fd_bond)
+                else:
+                    # Broken bond or non-bonded: standard DEM repulsion
+                    err = d - point_radius * 2.0
+                    if err < 0.0:
+                        n_contact = diff / d
+                        vrel = v - particle_v[j]
+                        f = f + contact_force(n_contact, vrel, err, k_contact, k_damp, k_friction, k_mu)
 
     particle_f[i] = f
 
@@ -465,6 +475,7 @@ class Example:
                     self.contacts.data,
                     self.contacts.max_cpn,
                     self.contacts.data_width,
+                    self.point_radius,
                     self.k_bond,
                     self.k_damp_bond,
                     self.break_strain,
