@@ -266,6 +266,47 @@ def test_contact_list_no_duplicates(test, device):
     test.assertEqual(counts[1], 1)
 
 
+def test_contact_list_data_persistence(test, device):
+    """Verify per-contact data survives incremental updates.
+
+    Writes known values into the per-contact data array, then runs
+    several updates with unchanged positions.  The data should remain
+    intact because the contacts are neither added nor removed.
+    """
+    positions = wp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ],
+        dtype=wp.vec3,
+        device=device,
+    )
+
+    grid = wp.HashGrid(32, 32, 32, device)
+    grid.build(positions, 1.5)
+
+    contacts = ContactList(2, max_contacts_per_particle=8, data_width=2, device=device)
+    contacts.build(grid, positions, 1.5)
+
+    test.assertEqual(contacts.counts.numpy()[0], 1)
+
+    # Write known values into particle 0's contact data.
+    # Particle 0, contact slot 0, data_width=2: offset = (0*8 + 0)*2 = 0
+    data_np = contacts.data.numpy()
+    data_np[0] = 42.0
+    data_np[1] = 7.0
+    contacts.data = wp.array(data_np, dtype=wp.float32, device=device)
+
+    # Run several updates with unchanged positions
+    for _ in range(3):
+        contacts.update(grid, positions, 1.5, margin=0.5)
+
+    test.assertEqual(contacts.counts.numpy()[0], 1)
+    data_after = contacts.data.numpy()
+    test.assertAlmostEqual(float(data_after[0]), 42.0)
+    test.assertAlmostEqual(float(data_after[1]), 7.0)
+
+
 def test_contact_list_cluster(test, device):
     """Verify correct contact counts for a tight cluster of 4 particles."""
     # Square arrangement: all pairs within radius 1.5
@@ -294,6 +335,35 @@ def test_contact_list_cluster(test, device):
         test.assertEqual(counts[i], 3, f"Particle {i} should have 3 contacts, got {counts[i]}")
 
 
+def test_contact_list_capacity_overflow(test, device):
+    """Verify that contacts are capped at max_contacts_per_particle.
+
+    When the true neighbor count exceeds max_cpn, excess contacts are
+    silently truncated.  This test documents that behaviour.
+    """
+    # 6 particles in a line with spacing 0.1, query radius 0.45
+    # covers up to 4 neighbors per particle, but we cap at 2.
+    positions = wp.array(
+        [[0.1 * i, 0.0, 0.0] for i in range(6)],
+        dtype=wp.vec3,
+        device=device,
+    )
+
+    grid = wp.HashGrid(32, 32, 32, device)
+    grid.build(positions, 0.45)
+
+    contacts = ContactList(6, max_contacts_per_particle=2, device=device)
+    contacts.build(grid, positions, 0.45)
+
+    counts = contacts.counts.numpy()
+    for i in range(6):
+        test.assertLessEqual(counts[i], 2, f"Particle {i} exceeds max_cpn")
+
+    # Middle particles would have 4 true neighbors but are capped at 2
+    test.assertEqual(counts[2], 2)
+    test.assertEqual(counts[3], 2)
+
+
 devices = get_test_devices()
 
 
@@ -314,7 +384,13 @@ add_function_test(
     TestContactList, "test_contact_list_rebuild_clears", test_contact_list_rebuild_clears, devices=devices
 )
 add_function_test(TestContactList, "test_contact_list_no_duplicates", test_contact_list_no_duplicates, devices=devices)
+add_function_test(
+    TestContactList, "test_contact_list_data_persistence", test_contact_list_data_persistence, devices=devices
+)
 add_function_test(TestContactList, "test_contact_list_cluster", test_contact_list_cluster, devices=devices)
+add_function_test(
+    TestContactList, "test_contact_list_capacity_overflow", test_contact_list_capacity_overflow, devices=devices
+)
 
 
 if __name__ == "__main__":
