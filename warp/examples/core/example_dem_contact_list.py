@@ -99,7 +99,7 @@ def _contact_update_kernel(
     slot = i * max_cpn
     current_count = counts[i]
 
-    # Pass 1 — mark broken contacts by swapping with the last active entry.
+    # Pass 1 — evict contacts that have moved out of range (geometric separation).
     # Walk backwards so that swaps don't skip elements.
     k = current_count - 1
     while k >= 0:
@@ -193,7 +193,8 @@ class ContactList:
         performs a complete rebuild.
 
         Args:
-            grid: A :class:`warp.HashGrid` that has already been built.
+            grid: A :class:`warp.HashGrid` built with
+                ``cell_size >= radius`` to ensure all neighbors are found.
             positions: ``wp.array[wp.vec3]`` of particle positions.
             radius: Search radius for neighbor queries.
         """
@@ -221,7 +222,8 @@ class ContactList:
         with their neighbor entries.
 
         Args:
-            grid: A :class:`warp.HashGrid` (must be built for this frame).
+            grid: A :class:`warp.HashGrid` built with
+                ``cell_size >= radius`` for this frame.
             positions: ``wp.array[wp.vec3]`` of current positions.
             radius: Search radius for neighbor queries.
             margin: Extra tolerance before a contact is removed.  A small
