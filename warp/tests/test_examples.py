@@ -211,6 +211,12 @@ class TestCoreExamples(unittest.TestCase):
 add_example_test(TestCoreExamples, name="core.example_dem", devices=test_devices, test_options_cpu={"num_frames": 2})
 add_example_test(
     TestCoreExamples,
+    name="core.example_dem_contact_list",
+    devices=test_devices,
+    test_options={"num_frames": 2, "num_particles_axis": 4},
+)
+add_example_test(
+    TestCoreExamples,
     name="core.example_fluid",
     devices=test_devices,
     test_options={"num_frames": 100, "headless": True},
