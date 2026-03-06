@@ -19,6 +19,7 @@ body:
       label: System Information
       description: >-
         Provide some details about your environment, such as the Warp version, Python version, and OS.
+        You can also paste the output of `python -c "import warp; warp.print_diagnostics()"` (Warp 1.12+).
       placeholder: (Optional)
     validations:
       required: false
