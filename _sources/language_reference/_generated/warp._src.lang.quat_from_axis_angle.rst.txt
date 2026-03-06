@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_from\_axis\_angle
+=======================================
+
+.. function:: warp._src.lang.quat_from_axis_angle(axis: Vector[Float,Literal[3]], angle: Float) -> Quaternion[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a quaternion representing a rotation of angle radians around the given axis.

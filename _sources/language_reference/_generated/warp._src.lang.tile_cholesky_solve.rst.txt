@@ -1,0 +1,23 @@
+﻿warp.\_src.lang.tile\_cholesky\_solve
+=====================================
+
+.. function:: warp._src.lang.tile_cholesky_solve(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> Tile[Float,tuple[int]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Solve for ``x`` in ``Ax = y``.
+   
+   Note that computing the adjoint is not yet supported.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param L: A square, lower triangular, matrix, such that ``LL^T = A``.
+   :param y: A 1D or 2D tile of length ``M``.
+   
+   :returns: A tile of the same shape as ``y`` such that ``LL^T x = y``.
+   

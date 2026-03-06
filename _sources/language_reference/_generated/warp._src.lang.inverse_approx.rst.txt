@@ -1,0 +1,40 @@
+﻿warp.\_src.lang.inverse\_approx
+===============================
+
+.. function:: warp._src.lang.inverse_approx(a: Matrix[Float,Literal[2],Literal[2]]) -> Matrix[Float,Any,Any]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+   
+   Falls back to exact inverse on CPU.
+
+.. function:: warp._src.lang.inverse_approx(a: Matrix[Float,Literal[3],Literal[3]]) -> Matrix[Float,Any,Any]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+   
+   Falls back to exact inverse on CPU.
+
+.. function:: warp._src.lang.inverse_approx(a: Matrix[Float,Literal[4],Literal[4]]) -> Matrix[Float,Any,Any]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
+   
+   Falls back to exact inverse on CPU.

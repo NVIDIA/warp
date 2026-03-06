@@ -1,0 +1,32 @@
+﻿warp.\_src.lang.transform\_from\_matrix
+=======================================
+
+.. function:: warp._src.lang.transform_from_matrix(mat: Matrix[float32,Literal[4],Literal[4]]) -> Transformation[float32]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a transformation from a 4x4 matrix.
+   
+   .. math::
+       M = \begin{bmatrix}
+       R_{00} & R_{01} & R_{02} & p_x \\
+       R_{10} & R_{11} & R_{12} & p_y \\
+       R_{20} & R_{21} & R_{22} & p_z \\
+       0 & 0 & 0 & 1
+       \end{bmatrix}
+   
+   Where:
+   
+   * :math:`R` is the 3x3 rotation matrix extracted from the rotational part of the input matrix.
+   * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` extracted from the input matrix.
+   
+   :param mat: Matrix to convert.
+   :type mat: Matrix[Float, 4, 4]
+   
+   :returns: The transformation.
+   :rtype: Transformation[Float]
+   

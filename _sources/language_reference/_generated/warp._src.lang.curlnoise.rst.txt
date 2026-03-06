@@ -1,0 +1,40 @@
+﻿warp.\_src.lang.curlnoise
+=========================
+
+.. function:: warp._src.lang.curlnoise(state: uint32, xy: vec2f, octaves: uint32, lacunarity: float32, gain: float32) -> vec2f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Divergence-free vector field based on Perlin noise.
+   
+   Use the gradient of a Perlin noise function.
+
+.. function:: warp._src.lang.curlnoise(state: uint32, xyz: vec3f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Divergence-free vector field based on Perlin noise.
+   
+   Use the curl of three Perlin noise functions.
+
+.. function:: warp._src.lang.curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, gain: float32) -> vec3f
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Divergence-free vector field based on Perlin noise.
+   
+   Use the curl of three Perlin noise functions.

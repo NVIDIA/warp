@@ -1,0 +1,16 @@
+﻿warp.\_src.lang.volume\_sample\_grad\_index
+===========================================
+
+.. function:: warp._src.lang.volume_sample_grad_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any, grad: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+   
+   Values for allocated voxels are read from the ``voxel_data`` array, and ``background`` is used as the value of non-existing voxels.
+   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
+   This function is available for both index grids and classical volumes.

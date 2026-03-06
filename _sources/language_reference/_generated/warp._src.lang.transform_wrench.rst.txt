@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.transform\_wrench
+=================================
+
+.. function:: warp._src.lang.transform_wrench(t: transformf, x: spatial_vectorf) -> spatial_vectorf
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Transform a spatial wrench between coordinate frames.
+   
+   For transform ``t = (R, p)`` and wrench ``x = (tau, f)``, the mapped wrench is:
+   
+   .. math::
+      f' = R f,\quad \tau' = R \tau + p \times f'
+   
+   :param t: Rigid transform from source frame to destination frame.
+   :param x: Spatial wrench ``(torque, force)`` expressed in the source frame.
+   
+   :returns: Wrench expressed in the destination frame.
+   :rtype: wp.spatial_vector
+   

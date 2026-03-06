@@ -1,0 +1,26 @@
+﻿warp.Kernel
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: Kernel
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Kernel.__init__
+      ~Kernel.add_overload
+      ~Kernel.get_mangled_name
+      ~Kernel.get_overload
+      ~Kernel.infer_argument_types
+   
+   
+
+   
+   
+   

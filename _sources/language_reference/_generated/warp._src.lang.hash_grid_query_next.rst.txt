@@ -1,0 +1,37 @@
+﻿warp.\_src.lang.hash\_grid\_query\_next
+=======================================
+
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next point in the hash grid query.
+   
+   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQueryH, index: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next point in the hash grid query (float16 precision).
+   
+   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQueryD, index: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next point in the hash grid query (float64 precision).
+   
+   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.

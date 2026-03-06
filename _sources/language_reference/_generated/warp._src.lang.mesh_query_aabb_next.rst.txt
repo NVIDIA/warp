@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.mesh\_query\_aabb\_next
+=======================================
+
+.. function:: warp._src.lang.mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next triangle whose bounding box overlaps the query bounding box.
+   
+   The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.

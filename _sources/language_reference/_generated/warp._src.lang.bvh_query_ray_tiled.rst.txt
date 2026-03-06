@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.bvh\_query\_ray\_tiled
+======================================
+
+.. function:: warp._src.lang.bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct a ray query against a BVH object for thread-block parallel traversal.
+   
+   This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+   
+   :param id: The BVH identifier
+   :param start: The ray origin (must be the same for all threads in the block)
+   :param dir: The ray direction (must be the same for all threads in the block)
+   

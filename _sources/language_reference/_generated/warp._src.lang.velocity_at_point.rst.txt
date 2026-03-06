@@ -1,0 +1,25 @@
+﻿warp.\_src.lang.velocity\_at\_point
+===================================
+
+.. function:: warp._src.lang.velocity_at_point(qd: spatial_vectorf, r: vec3f) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Evaluate the linear velocity of an offset point on a rigid body.
+   
+   Given a spatial twist ``qd = (w, v)`` and a point offset ``r`` from the twist
+   origin, this computes:
+   
+   .. math::
+      v_p = v + w \times r
+   
+   :param qd: Spatial velocity ``(angular, linear)`` of the reference frame.
+   :param r: Point position relative to the same frame origin.
+   
+   :returns: Linear velocity of the point.
+   :rtype: wp.vec3
+   

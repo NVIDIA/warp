@@ -1,0 +1,23 @@
+﻿warp.\_src.lang.cw\_mul
+=======================
+
+.. function:: warp._src.lang.cw_mul(a: Vector[Scalar,Any], b: Vector[Scalar,Any]) -> Vector[Scalar,Any]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the component-wise product of ``a`` and ``b``.
+
+.. function:: warp._src.lang.cw_mul(a: Matrix[Scalar,Any,Any], b: Matrix[Scalar,Any,Any]) -> Matrix[Scalar,Any,Any]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the component-wise product of ``a`` and ``b``.

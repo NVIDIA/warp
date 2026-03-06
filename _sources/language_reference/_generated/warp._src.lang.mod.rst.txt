@@ -1,0 +1,22 @@
+﻿warp.\_src.lang.mod
+===================
+
+.. function:: warp._src.lang.mod(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Modulo operation using truncated division.
+
+.. function:: warp._src.lang.mod(a: Vector[Scalar,Any], b: Vector[Scalar,Any]) -> Vector[Scalar,Any]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Modulo operation using truncated division.

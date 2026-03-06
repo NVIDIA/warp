@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.breakpoint
+==========================
+
+.. function:: warp._src.lang.breakpoint() -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Trigger a debugger breakpoint.

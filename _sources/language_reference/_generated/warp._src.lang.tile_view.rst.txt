@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.tile\_view
+==========================
+
+.. function:: warp._src.lang.tile_view(t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], shape: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
+   
+   :param t: Input tile to extract a subrange from
+   :param offset: Offset in the source tile
+   :param shape: Shape of the returned slice
+   
+   :returns: A tile with dimensions given by the specified shape or the remaining source tile dimensions.
+   

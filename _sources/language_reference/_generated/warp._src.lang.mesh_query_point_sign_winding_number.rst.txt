@@ -1,0 +1,25 @@
+﻿warp.\_src.lang.mesh\_query\_point\_sign\_winding\_number
+=========================================================
+
+.. function:: warp._src.lang.mesh_query_point_sign_winding_number(id: uint64, point: vec3f, max_dist: float32, accuracy: float32, threshold: float32) -> MeshQueryPoint
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given point in space.
+   
+   Identifies the sign using the winding number of the mesh relative to the query point. This method of sign determination is robust for poorly conditioned meshes
+   and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
+   but also the most expensive.
+   
+   .. note:: The :class:`warp.Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
+   
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
+   :param threshold: The threshold of the winding number to be considered inside, default 0.5.
+   

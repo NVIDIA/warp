@@ -1,0 +1,19 @@
+﻿warp.\_src.lang.mesh\_query\_point\_no\_sign
+============================================
+
+.. function:: warp._src.lang.mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
+   
+   This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
+   
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param max_dist: Mesh faces above this distance will not be considered by the query.
+   

@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.volume\_index\_to\_world\_dir
+=============================================
+
+.. function:: warp._src.lang.volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.

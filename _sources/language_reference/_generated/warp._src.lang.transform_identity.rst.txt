@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_identity
+===================================
+
+.. function:: warp._src.lang.transform_identity(dtype: Float) -> transformf
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Construct an identity transform with zero translation and identity rotation.

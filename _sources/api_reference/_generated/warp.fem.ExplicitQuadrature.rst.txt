@@ -1,0 +1,43 @@
+﻿warp.fem.ExplicitQuadrature
+===========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ExplicitQuadrature
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ExplicitQuadrature.__init__
+      ~ExplicitQuadrature.arg_value
+      ~ExplicitQuadrature.element_index_arg_value
+      ~ExplicitQuadrature.evaluation_point_count
+      ~ExplicitQuadrature.fill_arg
+      ~ExplicitQuadrature.max_points_per_element
+      ~ExplicitQuadrature.point_coords
+      ~ExplicitQuadrature.point_evaluation_index
+      ~ExplicitQuadrature.point_index
+      ~ExplicitQuadrature.point_weight
+      ~ExplicitQuadrature.total_point_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ExplicitQuadrature.Arg
+      ~ExplicitQuadrature.ElementIndexArg
+      ~ExplicitQuadrature.domain
+      ~ExplicitQuadrature.evaluation_point_element_index
+      ~ExplicitQuadrature.name
+      ~ExplicitQuadrature.point_count
+   
+   

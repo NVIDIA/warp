@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.randn
+=====================
+
+.. function:: warp._src.lang.randn(state: uint32) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Sample a normal (Gaussian) distribution of mean 0 and variance 1.

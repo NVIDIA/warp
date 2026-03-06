@@ -1,0 +1,145 @@
+﻿warp.\_src.lang.atomic\_xor
+===========================
+
+.. function:: warp._src.lang.atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
+
+.. function:: warp._src.lang.atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.

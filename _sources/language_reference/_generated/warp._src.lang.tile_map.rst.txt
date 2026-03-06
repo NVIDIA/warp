@@ -1,0 +1,127 @@
+﻿warp.\_src.lang.tile\_map
+=========================
+
+.. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any,tuple[int, ...]]) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Apply a function to tile elements.
+   
+   Apply a unary function to each element using all threads in the block.
+   
+   :param op: A callable function that accepts one argument and returns one argument, may be a user function or builtin
+   :param a: The input tile, the operator (or one of its overloads) must be able to accept the tile's data type
+   
+   :returns: A tile with the same dimensions as the input tile. Its datatype is specified by the return type of ``op``.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           t = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+           s = wp.tile_map(wp.sin, t)
+   
+           print(s)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+   
+   .. code-block:: text
+   
+       [0 0.0998334 0.198669 0.29552 0.389418 0.479426 0.564642 0.644218 0.717356 0.783327] = tile(shape=(10), storage=register)
+   
+
+.. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any,tuple[int, ...]], b: Any) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Apply a function to tile elements.
+   
+   This function cooperatively applies a binary function to each element of the tile using all threads in the block.
+   The second argument can be a tile (must have same dimensions as ``a``), or a non-tile constant (scalar, vector, or matrix)
+   which will be broadcast across all elements.
+   
+   :param op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin.
+   :param a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype.
+   :param b: Either a tile with matching dimensions, or a scalar/vector/matrix constant.
+   
+   :returns: A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+           b = wp.tile_ones(shape=10, dtype=float)
+   
+           s = wp.tile_map(wp.add, a, b)
+   
+           print(s)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+   
+   .. code-block:: text
+   
+       [1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9] = tile(shape=(10), storage=register)
+   
+
+.. function:: warp._src.lang.tile_map(op: Callable, a: Tile[Any,tuple[int, ...]], *args: Any) -> Tile[Scalar,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Apply a function to tile elements.
+   
+   This function cooperatively applies a user-defined function to corresponding elements using all threads in the block.
+   The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same dimensions)
+   or non-tile constants (scalar, vector, or matrix) which will be broadcast across all elements.
+   
+   :param op: A callable function that accepts N arguments and returns one value, must be a user function.
+   :param a: The first input tile, determines the output shape.
+   :param args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix constants.
+   
+   :returns: A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.func
+       def weighted_sum(a: float, b: float, c: float):
+           return 0.5 * a + 0.3 * b + 0.2 * c
+   
+       @wp.kernel
+       def compute():
+   
+           a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
+           b = wp.tile_ones(shape=10, dtype=float)
+           c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
+   
+           s = wp.tile_map(weighted_sum, a, b, c)
+   
+           print(s)
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=16)
+   
+   .. code-block:: text
+   
+       [0.5 0.57 0.64 0.71 0.78 0.85 0.92 0.99 1.06 1.13] = tile(shape=(10), storage=register)
+   

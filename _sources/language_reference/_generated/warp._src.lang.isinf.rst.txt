@@ -1,0 +1,49 @@
+﻿warp.\_src.lang.isinf
+=====================
+
+.. function:: warp._src.lang.isinf(a: Scalar) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+.. function:: warp._src.lang.isinf(a: Vector[Scalar,Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+.. function:: warp._src.lang.isinf(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.
+
+.. function:: warp._src.lang.isinf(a: Matrix[Scalar,Any,Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.
+   
+   .. attention:: This function will no longer support integer types as input. Please use float types instead.

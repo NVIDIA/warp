@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_dot
+============================
+
+.. function:: warp._src.lang.spatial_dot(a: Vector[Float,Literal[6]], b: Vector[Float,Literal[6]]) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the dot product of two 6D screw vectors.

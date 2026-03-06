@@ -1,0 +1,34 @@
+﻿warp.\_src.lang.determinant
+===========================
+
+.. function:: warp._src.lang.determinant(a: Matrix[Float,Literal[2],Literal[2]]) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the determinant of matrix ``a``.
+
+.. function:: warp._src.lang.determinant(a: Matrix[Float,Literal[3],Literal[3]]) -> Float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the determinant of matrix ``a``.
+
+.. function:: warp._src.lang.determinant(a: Matrix[Float,Literal[4],Literal[4]]) -> Float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the determinant of matrix ``a``.

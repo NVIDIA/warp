@@ -1,0 +1,157 @@
+﻿warp.\_src.lang.atomic\_max
+===========================
+
+.. function:: warp._src.lang.atomic_max(arr: Array[Any], i: Int, value: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: FabricArray[Any], i: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.
+
+.. function:: warp._src.lang.atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
+   
+   The operation is only atomic on a per-component basis for vectors and matrices.

@@ -1,0 +1,22 @@
+﻿warp.uint32
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: uint32
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~uint32.__init__
+   
+   
+
+   
+   
+   

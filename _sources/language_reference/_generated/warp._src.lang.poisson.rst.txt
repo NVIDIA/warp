@@ -1,0 +1,16 @@
+﻿warp.\_src.lang.poisson
+=======================
+
+.. function:: warp._src.lang.poisson(state: uint32, lam: float32) -> uint32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random sample from a Poisson distribution.
+   
+   :param state: RNG state
+   :param lam: The expected value of the distribution.
+   

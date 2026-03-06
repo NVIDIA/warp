@@ -1,0 +1,157 @@
+﻿warp.\_src.lang.atomic\_sub
+===========================
+
+.. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
+
+.. function:: warp._src.lang.atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+   
+   This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.

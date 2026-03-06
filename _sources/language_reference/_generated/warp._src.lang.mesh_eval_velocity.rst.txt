@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.mesh\_eval\_velocity
+====================================
+
+.. function:: warp._src.lang.mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Evaluate the velocity on the :class:`warp.Mesh` given a face index and barycentric coordinates.

@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.volume\_sample\_i
+=================================
+
+.. function:: warp._src.lang.volume_sample_i(id: uint64, uvw: vec3f) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``.

@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_rotate
+============================
+
+.. function:: warp._src.lang.quat_rotate(quat: Quaternion[Float], vec: Vector[Float,Literal[3]]) -> Vector[Float,Literal[3]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Rotate a vector by a quaternion.

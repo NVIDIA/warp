@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.floor
+=====================
+
+.. function:: warp._src.lang.floor(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the largest integer that is less than or equal to ``x``.

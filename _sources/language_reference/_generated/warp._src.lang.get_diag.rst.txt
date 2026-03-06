@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.get\_diag
+=========================
+
+.. function:: warp._src.lang.get_diag(mat: Matrix[Scalar,Any,Any]) -> Vector[Scalar,Any]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a vector containing the diagonal elements of square matrix ``mat``.

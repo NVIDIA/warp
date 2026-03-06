@@ -1,0 +1,39 @@
+﻿warp.\_src.lang.quat\_to\_euler
+===============================
+
+.. function:: warp._src.lang.quat_to_euler(q: quatf, i: int, j: int, k: int) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Convert a quaternion into Euler angles for an axis sequence.
+   
+   The integers ``i``, ``j``, and ``k`` are axis indices in ``{0, 1, 2}``
+   with ``i != j`` and ``j != k``. Axis-indexed output (suitable for
+   :func:`quat_from_euler`) is supported for Tait-Bryan sequences
+   (``i != k``).
+   
+   .. caution::
+   
+       This function returns an axis-indexed vector where ``e[0]`` is the
+       angle about X, ``e[1]`` about Y, and ``e[2]`` about Z.
+   
+       That layout is only unambiguous for Tait-Bryan sequences
+       (``i != k``), where all three rotations use distinct axis slots.
+   
+       For proper Euler sequences (``i == k``), the first and third
+       rotations are both about the same axis. In that case, two different
+       sequence positions must share one output slot, so the mapping loses
+       information and cannot be a clean inverse of :func:`quat_from_euler`.
+   
+   :param q: Input quaternion.
+   :param i: Index of the first axis.
+   :param j: Index of the second axis.
+   :param k: Index of the third axis.
+   
+   :returns: Euler angles in radians.
+   :rtype: wp.vec3
+   

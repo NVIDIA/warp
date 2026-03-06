@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_axpy
+=====================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_axpy

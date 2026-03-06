@@ -1,0 +1,33 @@
+﻿warp.\_src.lang.rand\_init
+==========================
+
+.. function:: warp._src.lang.rand_init(seed: int32) -> uint32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Initialize a random number generator.
+   
+   Initialize from a user-defined seed.
+   
+   :returns: A 32-bit integer representing the RNG state.
+   
+
+.. function:: warp._src.lang.rand_init(seed: int32, offset: int32) -> uint32
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Initialize a random number generator.
+   
+   Initialize from a user-defined seed and an offset.
+   
+   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
+   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``.

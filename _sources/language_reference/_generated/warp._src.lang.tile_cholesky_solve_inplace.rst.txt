@@ -1,0 +1,22 @@
+﻿warp.\_src.lang.tile\_cholesky\_solve\_inplace
+==============================================
+
+.. function:: warp._src.lang.tile_cholesky_solve_inplace(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+   
+   Note: This inplace variant does not support automatic differentiation (adjoint computation),
+   but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param L: A square, lower triangular, matrix, such that ``LL^T = A``.
+   :param y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``LL^T x = y``.
+   

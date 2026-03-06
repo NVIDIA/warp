@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.sample\_unit\_ring
+==================================
+
+.. function:: warp._src.lang.sample_unit_ring(state: uint32) -> vec2f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Uniformly sample a ring in the xy plane.

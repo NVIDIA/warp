@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.cos
+===================
+
+.. function:: warp._src.lang.cos(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the cosine of ``x`` in radians.

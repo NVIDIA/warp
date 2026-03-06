@@ -1,0 +1,57 @@
+﻿warp.\_src.lang.pnoise
+======================
+
+.. function:: warp._src.lang.pnoise(state: uint32, x: float32, px: int32) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Periodic Perlin-style noise.
+   
+   Sample 1D noise.
+
+.. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Periodic Perlin-style noise.
+   
+   Sample 2D noise.
+
+.. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Periodic Perlin-style noise.
+   
+   Sample 3D noise.
+
+.. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+      * Differentiable
+
+   Periodic Perlin-style noise.
+   
+   Sample 4D noise.

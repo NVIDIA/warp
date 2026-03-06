@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_set\_rotation
+========================================
+
+.. function:: warp._src.lang.transform_set_rotation(xform: Transformation[Float], q: Quaternion[Float]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Set the rotational part of a transform ``xform``.

@@ -1,0 +1,15 @@
+﻿warp.\_src.lang.volume\_lookup\_index
+=====================================
+
+.. function:: warp._src.lang.volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Query the index associated with the voxel at coordinates ``i``, ``j``, ``k``.
+   
+   If the voxel at this index does not exist, this function returns -1.
+   This function is available for both index grids and classical volumes.

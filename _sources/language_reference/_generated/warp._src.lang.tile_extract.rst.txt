@@ -1,0 +1,142 @@
+﻿warp.\_src.lang.tile\_extract
+=============================
+
+.. function:: warp._src.lang.tile_extract(a: Tile[Any,tuple[int]], i: int32) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a single element from the tile.
+   
+   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   
+   Note that this may incur additional synchronization if the source tile is a register tile.
+   
+   :param a: Tile to extract the element from
+   :param i: Coordinate of element on first dimension
+   
+   :returns: The value of the element at the specified tile location with the same data type as the input tile.
+   
+
+.. function:: warp._src.lang.tile_extract(a: Tile[Any,tuple[int, ...]], i: int32, j: int32) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a single element from the tile.
+   
+   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   
+   Note that this may incur additional synchronization if the source tile is a register tile.
+   
+   :param a: Tile to extract the element from
+   :param i: Coordinate of element on first dimension
+   :param j: Coordinate of element on the second dimension, or vector index
+   
+   :returns: The value of the element at the specified tile location with the same data type as the input tile.
+   
+
+.. function:: warp._src.lang.tile_extract(a: Tile[Any,tuple[int, ...]], i: int32, j: int32, k: int32) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a single element from the tile.
+   
+   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   
+   Note that this may incur additional synchronization if the source tile is a register tile.
+   
+   :param a: Tile to extract the element from
+   :param i: Coordinate of element on first dimension
+   :param j: Coordinate of element on the second dimension, or first matrix index
+   :param k: Coordinate of element on the third dimension, or vector index, or second matrix index
+   
+   :returns: The value of the element at the specified tile location with the same data type as the input tile.
+   
+
+.. function:: warp._src.lang.tile_extract(a: Tile[Any,tuple[int, ...]], i: int32, j: int32, k: int32, l: int32) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a single element from the tile.
+   
+   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   
+   Note that this may incur additional synchronization if the source tile is a register tile.
+   
+   :param a: Tile to extract the element from
+   :param i: Coordinate of element on first dimension
+   :param j: Coordinate of element on the second dimension
+   :param k: Coordinate of element on the third dimension, or first matrix index
+   :param l: Coordinate of element on the fourth dimension, or vector index, or second matrix index
+   
+   :returns: The value of the element at the specified tile location, with the same data type as the input tile.
+   
+
+.. function:: warp._src.lang.tile_extract(a: Tile[Any,tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, m: int32) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a single element from the tile.
+   
+   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   
+   Note that this may incur additional synchronization if the source tile is a register tile.
+   
+   :param a: Tile to extract the element from
+   :param i: Coordinate of element on first dimension
+   :param j: Coordinate of element on the second dimension
+   :param k: Coordinate of element on the third dimension
+   :param l: Coordinate of element on the fourth dimension, or first matrix index
+   :param m: Vector index, or second matrix index
+   
+   :returns: The value of the element at the specified tile location, with the same data type as the input tile.
+   
+
+.. function:: warp._src.lang.tile_extract(a: Tile[Any,tuple[int, int, int, int]], i: int32, j: int32, k: int32, l: int32, m: int32, n: int32) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract a single element from the tile.
+   
+   This function will extract an element from the tile and broadcast its value to all threads in the block.
+   
+   Note that this may incur additional synchronization if the source tile is a register tile.
+   
+   :param a: Tile to extract the element from
+   :param i: Coordinate of element on first dimension
+   :param j: Coordinate of element on the second dimension
+   :param k: Coordinate of element on the third dimension
+   :param l: Coordinate of element on the fourth dimension
+   :param m: Vector index, or first matrix index
+   :param n: Second matrix index
+   
+   :returns: The value of the element at the specified tile location, with the same data type as the input tile.
+   

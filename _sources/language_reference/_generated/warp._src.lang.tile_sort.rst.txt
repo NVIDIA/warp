@@ -1,0 +1,39 @@
+﻿warp.\_src.lang.tile\_sort
+==========================
+
+.. function:: warp._src.lang.tile_sort(keys: Tile[Any,tuple[int]], values: Tile[Any,tuple[int]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
+   
+   :param keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`, :class:`int64`, :class:`uint64`. Must be in shared memory.
+   :param values: Values to sort along with keys. No type restrictions. Must be in shared memory.
+   
+   :returns: No return value. Sorts both tiles in-place.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
+           values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
+           wp.tile_sort(keys, values)
+   
+           print(keys)
+           print(values)
+   
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [1, 2, ..., 32] = tile(shape=(32), storage=shared)
+       [31, 30, 29, ..., 0] = tile(shape=(32), storage=shared)
+   

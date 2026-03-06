@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.print
+=====================
+
+.. function:: warp._src.lang.print(value: Any) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Print a variable to stdout.

@@ -1,0 +1,25 @@
+﻿warp.\_src.lang.tile\_lower\_solve
+==================================
+
+.. function:: warp._src.lang.tile_lower_solve(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> Tile[Float,tuple[int]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix.
+   
+   This performs general forward substitution for a lower triangular system.
+   
+   Note that computing the adjoint is not yet supported.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param L: A square, non-singular, lower triangular matrix
+   :param y: A 1D or 2D tile with compatible shape
+   
+   :returns: A tile of the same shape as ``y`` such that ``Lz = y``.
+   

@@ -1,0 +1,32 @@
+﻿warp.optim.linear.LinearOperator
+================================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: LinearOperator
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LinearOperator.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LinearOperator.device
+      ~LinearOperator.dtype
+      ~LinearOperator.matvec
+      ~LinearOperator.scalar_type
+      ~LinearOperator.shape
+   
+   

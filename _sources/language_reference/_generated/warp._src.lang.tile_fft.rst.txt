@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.tile\_fft
+=========================
+
+.. function:: warp._src.lang.tile_fft(inout: Tile[Vector[Float,Literal[2]],tuple[int, int]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the forward FFT along the second dimension of a 2D tile of data.
+   
+   This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+   
+   The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
+   will scale the data by N, where N is the FFT size (the second dimension of the tile).
+   Normalization is left to the user to perform as needed.
+   
+   Supported datatypes are:
+       * vec2f, vec2d
+   
+   :param inout: The input/output tile.
+   

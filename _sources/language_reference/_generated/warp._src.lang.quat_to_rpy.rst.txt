@@ -1,0 +1,21 @@
+﻿warp.\_src.lang.quat\_to\_rpy
+=============================
+
+.. function:: warp._src.lang.quat_to_rpy(q: quatf) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Convert a quaternion to roll-pitch-yaw angles (ZYX convention).
+   
+   The output is ``(roll, pitch, yaw)`` in radians using extrinsic rotations
+   about X, Y, and Z respectively.
+   
+   :param q: Input quaternion in ``(x, y, z, w)`` order.
+   
+   :returns: ``(roll, pitch, yaw)`` in radians.
+   :rtype: wp.vec3
+   

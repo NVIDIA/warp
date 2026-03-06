@@ -1,0 +1,30 @@
+﻿warp.\_src.lang.mesh\_query\_ray\_count\_intersections
+======================================================
+
+.. function:: warp._src.lang.mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Count the number of intersections between a ray and a :class:`warp.Mesh`.
+   
+   This function casts a ray through the mesh and counts all triangle intersections with ``t >= 0``.
+   Unlike :func:`mesh_query_ray`, this function does not stop at the first hit and continues
+   traversing to count all intersections along the entire ray.
+   
+   This function can be used to determine whether the ray origin lies inside a watertight, intersection-free mesh.
+   An odd number of intersections indicates the origin is inside the mesh, while an even number indicates it is outside.
+   
+   The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
+   When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
+   If ``root`` is -1 (default), traversal starts at the mesh's global root.
+   
+   :param id: The mesh identifier
+   :param start: The start point of the ray
+   :param dir: The ray direction (should be normalized)
+   :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+   
+   :returns: The number of intersections (with ``t >= 0``) between the ray and the mesh.
+   

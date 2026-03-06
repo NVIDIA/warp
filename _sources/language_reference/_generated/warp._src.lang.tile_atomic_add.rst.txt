@@ -1,0 +1,33 @@
+﻿warp.\_src.lang.tile\_atomic\_add
+=================================
+
+.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically add a tile onto the array ``a``.
+   
+   Each element is updated atomically.
+   
+   :param a: Array in global memory, should have the same ``dtype`` as the input tile
+   :param t: Source tile to add to the destination array
+   :param offset: Offset in the destination array (optional)
+   :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times
+   
+   :returns: A tile with the same dimensions and data type as the source tile, holding the original value of the destination elements.
+   
+
+.. function:: warp._src.lang.tile_atomic_add(a: Array[Any], t: Tile[Any,tuple[int, ...]], offset: int32, bounds_check: bool) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically add a tile onto the array ``a``.

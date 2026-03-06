@@ -1,0 +1,14 @@
+﻿warp.\_src.lang.volume\_lookup\_f
+=================================
+
+.. function:: warp._src.lang.volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Query the value of voxel with coordinates ``i``, ``j``, ``k``.
+   
+   If the voxel at this index does not exist, this function returns the background value.

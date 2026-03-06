@@ -1,0 +1,22 @@
+﻿warp.\_src.lang.quat\_twist
+===========================
+
+.. function:: warp._src.lang.quat_twist(axis: vec3f, q: quatf) -> quatf
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Extract the twist quaternion of ``q`` around ``axis``.
+   
+   This performs a swing-twist decomposition and returns the component of
+   rotation in ``q`` whose rotation axis is parallel to ``axis``.
+   
+   :param axis: Twist axis (expected to be normalized).
+   :param q: Input quaternion in ``(x, y, z, w)`` layout.
+   
+   :returns: Unit twist quaternion.
+   :rtype: wp.quat
+   
