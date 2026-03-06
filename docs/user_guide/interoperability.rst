@@ -110,6 +110,75 @@ To convert a PyTorch CUDA stream to a Warp CUDA stream and vice versa, Warp prov
 * :func:`warp.stream_from_torch`
 * :func:`warp.stream_to_torch`
 
+CUDA Graph Capture with PyTorch and Warp
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to capture CUDA graphs that include both PyTorch and Warp operations,
+as long as they run on the same CUDA stream. By default, PyTorch uses the synchronous
+CUDA default stream, which is not suitable for graph capture. A new stream must be
+created prior to capture, as shown in the examples below.
+
+**Capturing a graph using a PyTorch stream:**
+
+.. code:: python
+
+    import torch
+    import warp as wp
+
+    @wp.kernel
+    def scale(a: wp.array(dtype=float), s: float):
+        tid = wp.tid()
+        a[tid] = a[tid] * s
+
+    n = 1024 * 1024
+    torch_device = wp.device_to_torch("cuda:0")
+
+    # Create a non-default PyTorch stream and convert it to Warp
+    torch_stream = torch.cuda.Stream(device=torch_device)
+    warp_stream = wp.stream_from_torch(torch_stream)
+
+    a = wp.ones(n, dtype=float, device="cuda:0")
+
+    # Capture a graph using the shared stream
+    with wp.ScopedStream(warp_stream):
+        with wp.ScopedCapture() as capture:
+            wp.launch(scale, dim=n, inputs=[a, 2.0])
+
+    # Replay the graph
+    wp.capture_launch(capture.graph, stream=warp_stream)
+
+**Capturing a graph using a Warp stream:**
+
+.. code:: python
+
+    import torch
+    import warp as wp
+
+    @wp.kernel
+    def scale(a: wp.array(dtype=float), s: float):
+        tid = wp.tid()
+        a[tid] = a[tid] * s
+
+    n = 1024 * 1024
+
+    a = wp.ones(n, dtype=float, device="cuda:0")
+
+    # Make PyTorch use the Warp stream
+    torch_stream = wp.stream_to_torch("cuda:0")
+
+    # Capture a graph using the Warp stream
+    with wp.ScopedDevice("cuda:0"), torch.cuda.stream(torch_stream):
+        with wp.ScopedCapture() as capture:
+            wp.launch(scale, dim=n, inputs=[a, 2.0])
+
+    # Replay the graph
+    wp.capture_launch(capture.graph)
+
+It can be tricky to capture arbitrary PyTorch code in CUDA graphs, because many
+PyTorch operations involve code that is not capturable. Some warmup steps may be
+required. For more information about PyTorch and CUDA graphs, see the
+`PyTorch blog post on CUDA graphs <https://pytorch.org/blog/accelerating-pytorch-with-cuda-graphs>`_.
+
 
 Example: Optimization using :func:`warp.from_torch`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
