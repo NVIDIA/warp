@@ -252,8 +252,6 @@ class Texture:
         """
         import warp._src.context  # noqa: PLC0415
 
-        self.runtime = warp._src.context.runtime
-
         self._ndim = self._default_ndim if self._default_ndim is not None else ndim
         if self._ndim not in (1, 2, 3):
             raise ValueError(
@@ -265,7 +263,10 @@ class Texture:
         resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1) if self._ndim >= 2 else 1
         resolved_w = self._resolve_address_mode(address_mode, address_mode_w, 2) if self._ndim == 3 else 1
 
+        # Note: get_device() calls wp.init() if needed, so we must capture
+        # self.runtime *after* this call to ensure it is not None.
         self.device = data.device if is_array(data) and device is None else warp._src.context.get_device(device)
+        self.runtime = warp._src.context.runtime
 
         if data is None:
             self._width = width

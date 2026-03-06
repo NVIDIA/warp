@@ -168,6 +168,8 @@
   causing unbounded memory growth in long-running simulations
   ([GH-1075](https://github.com/NVIDIA/warp/pull/1075)).
 - `warp.fem`: Fix uninitialized memory accesses in point-based function spaces with variable nodes per element.
+- Fix `Texture` creation crashing with `AttributeError` when `wp.init()` has not been called
+  ([GH-1272](https://github.com/NVIDIA/warp/issues/1272)).
 
 ### Documentation
 
