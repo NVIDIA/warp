@@ -20,6 +20,9 @@ on:
     branches:
       - "pull-request/[0-9]+"
 
+env:
+  PYTHONFAULTHANDLER: "1" # Dump tracebacks on fatal signals (SIGSEGV, SIGABRT, etc.)
+
 concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
   cancel-in-progress: true
