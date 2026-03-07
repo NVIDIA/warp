@@ -22,6 +22,9 @@ on:
       - v*
   workflow_dispatch:
 
+env:
+  PYTHONFAULTHANDLER: "1" # Dump tracebacks on fatal signals (SIGSEGV, SIGABRT, etc.)
+
 jobs:
   build:
     runs-on: ubuntu-latest
