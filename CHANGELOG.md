@@ -21,6 +21,9 @@
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
 - Preserve precision of compile-time constants in 64-bit scalar type constructors (`wp.float64()`, `wp.int64()`,
   `wp.uint64()`) and perform constant folding of negation ([GH-485](https://github.com/NVIDIA/warp/issues/485)).
+- Fix `set_module_options()`, `get_module_options()`, and `load_module()` crashing with `AttributeError` when
+  called from code executed via `runpy.run_module()` (e.g. `python -m package.module`)
+  ([GH-1274](https://github.com/NVIDIA/warp/issues/1274)).
 
 ### Documentation
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
