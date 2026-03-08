@@ -1188,7 +1188,7 @@ On the other hand, JAX dimensions are also accepted to allow passing shapes dire
 
     d, e, f = jax_vecmat(a, b, c, output_dims={"d": a.shape, "e": b.shape, "f": c.shape})
 
-See `example_jax_kernel.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_kernel.py>`_ for examples.
+See `example_jax_kernel.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_kernel.py>`_ for examples.
 
 
 JAX VMAP Support
@@ -1494,7 +1494,7 @@ just focus on the differences:
   ``GraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
   ``GraphMode.NONE`` disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
 
-See `example_jax_callable.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
+See `example_jax_callable.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
 
 
 Generic JAX FFI Callbacks
@@ -1585,7 +1585,7 @@ This approach leaves a lot of work up to the user, such as verifying argument ty
 but it can be used when other utilities like :func:`jax_kernel() <warp.jax_experimental.ffi.jax_kernel>` and
 :func:`jax_callable() <warp.jax_experimental.ffi.jax_callable>` are not sufficient.
 
-See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/tree/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
+See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
 
 
 Distributed Computation
