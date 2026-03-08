@@ -198,13 +198,13 @@ python -m warp.tests
             <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_diffray.png"></a></td>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_fluid_checkpoint.png"></a></td>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_particle_repulsion.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_particle_repulsion.png"></a></td>
-            <td width="25%"></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_navier_stokes_perturbation.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_navier_stokes_perturbation.png"></a></td>
         </tr>
         <tr>
             <td align="center">diffray</td>
             <td align="center">fluid checkpoint</td>
             <td align="center">particle repulsion</td>
-            <td align="center"></td>
+            <td align="center">navier-stokes perturbation</td>
         </tr>
     </tbody>
 </table>
