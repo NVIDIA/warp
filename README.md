@@ -103,10 +103,10 @@ python -m warp.tests
 <table>
     <tbody>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_dem.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_dem.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fluid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fluid.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_graph_capture.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_graph_capture.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_marching_cubes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_marching_cubes.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_dem.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_dem.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fluid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fluid.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_graph_capture.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_marching_cubes.png"></a></td>
         </tr>
         <tr>
             <td align="center">dem</td>
@@ -115,10 +115,10 @@ python -m warp.tests
             <td align="center">marching cubes</td>
         </tr>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_mesh.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_mesh.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_nvdb.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_nvdb.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raycast.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_raycast.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raymarch.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_raymarch.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_mesh.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_nvdb.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_nvdb.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raycast.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_raycast.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raymarch.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_raymarch.png"></a></td>
         </tr>
         <tr>
             <td align="center">mesh</td>
@@ -127,10 +127,10 @@ python -m warp.tests
             <td align="center">raymarch</td>
         </tr>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sample_mesh.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_sample_mesh.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sph.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_sph.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_torch.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_torch.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_wave.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_wave.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sample_mesh.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_sample_mesh.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_sph.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_torch.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_torch.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_wave.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_wave.png"></a></td>
         </tr>
         <tr>
             <td align="center">sample mesh</td>
@@ -139,7 +139,7 @@ python -m warp.tests
             <td align="center">wave</td>
         </tr>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fft_poisson_navier_stokes_2d.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fft_poisson_navier_stokes_2d.png"></a></td>
         </tr>
         <tr>
             <td align="center">2-D incompressible turbulence in a periodic box</td>
@@ -152,10 +152,10 @@ python -m warp.tests
 <table>
     <tbody>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion_3d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_diffusion_3d.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_mixed_elasticity.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_mixed_elasticity.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_apic_fluid.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_streamlines.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_streamlines.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_diffusion_3d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_diffusion_3d.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_mixed_elasticity.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_mixed_elasticity.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_apic_fluid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_apic_fluid.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_streamlines.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_streamlines.png"></a></td>
         </tr>
         <tr>
             <td align="center">diffusion 3d</td>
@@ -164,10 +164,10 @@ python -m warp.tests
             <td align="center">streamlines</td>
         </tr>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_distortion_energy.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_distortion_energy.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_navier_stokes.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_burgers.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_burgers.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_magnetostatics.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_magnetostatics.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_distortion_energy.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_distortion_energy.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_navier_stokes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_navier_stokes.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_burgers.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_burgers.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_magnetostatics.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_magnetostatics.png"></a></td>
         </tr>
         <tr>
             <td align="center">distortion energy</td>
@@ -176,10 +176,10 @@ python -m warp.tests
             <td align="center">magnetostatics</td>
         </tr>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_adaptive_grid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_adaptive_grid.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_nonconforming_contact.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_nonconforming_contact.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_darcy_ls_optimization.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_darcy_ls_optimization.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_elastic_shape_optimization.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_elastic_shape_optimization.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_adaptive_grid.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_adaptive_grid.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_nonconforming_contact.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_nonconforming_contact.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_darcy_ls_optimization.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_darcy_ls_optimization.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_elastic_shape_optimization.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_elastic_shape_optimization.png"></a></td>
         </tr>
         <tr>
             <td align="center">adaptive grid</td>
@@ -195,10 +195,10 @@ python -m warp.tests
 <table>
     <tbody>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_diffray.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_fluid_checkpoint.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_particle_repulsion.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_particle_repulsion.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_navier_stokes_perturbation.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_navier_stokes_perturbation.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_diffray.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_diffray.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_fluid_checkpoint.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_particle_repulsion.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_particle_repulsion.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_navier_stokes_perturbation.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/optim_navier_stokes_perturbation.png"></a></td>
         </tr>
         <tr>
             <td align="center">diffray</td>
@@ -214,9 +214,9 @@ python -m warp.tests
 <table>
     <tbody>
         <tr>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mlp.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_nbody.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mcgp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mcgp.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/tile/example_tile_mlp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mlp.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/tile/example_tile_nbody.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_nbody.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/tile/example_tile_mcgp.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/tile_mcgp.png"></a></td>
             <td width="25%"></td>
         </tr>
         <tr>

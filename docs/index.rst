@@ -126,43 +126,43 @@ warp/examples/core
     :class: gallery
 
     * - .. image:: ./img/examples/core_dem.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_dem.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_dem.py
       - .. image:: ./img/examples/core_fluid.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fluid.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fluid.py
       - .. image:: ./img/examples/core_graph_capture.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_graph_capture.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py
       - .. image:: ./img/examples/core_marching_cubes.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_marching_cubes.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py
     * - dem
       - fluid
       - graph capture
       - marching cubes
     * - .. image:: ./img/examples/core_mesh.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_mesh.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py
       - .. image:: ./img/examples/core_nvdb.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_nvdb.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_nvdb.py
       - .. image:: ./img/examples/core_raycast.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raycast.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raycast.py
       - .. image:: ./img/examples/core_raymarch.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_raymarch.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_raymarch.py
     * - mesh
       - nvdb
       - raycast
       - raymarch
     * - .. image:: ./img/examples/core_sample_mesh.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sample_mesh.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sample_mesh.py
       - .. image:: ./img/examples/core_sph.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_sph.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sph.py
       - .. image:: ./img/examples/core_torch.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_torch.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_torch.py
       - .. image:: ./img/examples/core_wave.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_wave.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_wave.py
     * - sample_mesh
       - sph
       - torch
       - wave
     * - .. image:: ./img/examples/core_fft_poisson_navier_stokes_2d.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
       -
       -
       -
@@ -179,37 +179,37 @@ warp/examples/fem
     :class: gallery
 
     * - .. image:: ./img/examples/fem_diffusion_3d.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_diffusion_3d.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_diffusion_3d.py
       - .. image:: ./img/examples/fem_mixed_elasticity.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_mixed_elasticity.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_mixed_elasticity.py
       - .. image:: ./img/examples/fem_apic_fluid.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_apic_fluid.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_apic_fluid.py
       - .. image:: ./img/examples/fem_streamlines.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_streamlines.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_streamlines.py
     * - diffusion 3d
       - mixed elasticity
       - apic fluid
       - streamlines
     * - .. image:: ./img/examples/fem_distortion_energy.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_distortion_energy.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_distortion_energy.py
       - .. image:: ./img/examples/fem_navier_stokes.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_navier_stokes.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_navier_stokes.py
       - .. image:: ./img/examples/fem_burgers.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_burgers.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_burgers.py
       - .. image:: ./img/examples/fem_magnetostatics.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_magnetostatics.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_magnetostatics.py
     * - distortion energy
       - navier stokes
       - burgers
       - magnetostatics
     * - .. image:: ./img/examples/fem_adaptive_grid.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_adaptive_grid.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_adaptive_grid.py
       - .. image:: ./img/examples/fem_nonconforming_contact.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_nonconforming_contact.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_nonconforming_contact.py
       - .. image:: ./img/examples/fem_darcy_ls_optimization.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_darcy_ls_optimization.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_darcy_ls_optimization.py
       - .. image:: ./img/examples/fem_elastic_shape_optimization.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/fem/example_elastic_shape_optimization.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_elastic_shape_optimization.py
     * - adaptive grid
       - nonconforming contact
       - darcy level-set optimization
@@ -223,13 +223,13 @@ warp/examples/optim
     :class: gallery
 
     * - .. image:: ./img/examples/optim_diffray.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_diffray.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_diffray.py
       - .. image:: ./img/examples/optim_fluid_checkpoint.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_fluid_checkpoint.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py
       - .. image:: ./img/examples/optim_particle_repulsion.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_particle_repulsion.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_particle_repulsion.py
       - .. image:: ./img/examples/optim_navier_stokes_perturbation.png
-           :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/optim/example_navier_stokes_perturbation.py
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_navier_stokes_perturbation.py
     * - diffray
       - fluid checkpoint
       - particle repulsion
@@ -243,11 +243,11 @@ warp/examples/tile
     :class: gallery
 
     * - .. image:: ./img/examples/tile_mlp.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mlp.py
+            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/tile/example_tile_mlp.py
       - .. image:: ./img/examples/tile_nbody.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_nbody.py
+            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/tile/example_tile_nbody.py
       - .. image:: ./img/examples/tile_mcgp.png
-            :target: https://github.com/NVIDIA/warp/tree/main/warp/examples/tile/example_tile_mcgp.py
+            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/tile/example_tile_mcgp.py
       -
     * - mlp
       - nbody
