@@ -248,6 +248,30 @@ def test_int64_negative(test, device):
     test.assertEqual(result, -9223372036854775807, f"Expected -9223372036854775807, got {result}")
 
 
+def test_scalar_constructor_edge_cases(test, device):
+    """Tests wp.INF, wp.NAN, and negative floats through scalar constructors."""
+    import math as m
+
+    @wp.kernel
+    def edge_cases_kernel(
+        inf_data: wp.array(dtype=wp.float64),
+        nan_data: wp.array(dtype=wp.float64),
+        neg_data: wp.array(dtype=wp.float64),
+    ):
+        i = wp.tid()
+        inf_data[i] = wp.float64(wp.INF)
+        nan_data[i] = wp.float64(wp.NAN)
+        neg_data[i] = wp.float64(-1.0)
+
+    inf_arr = wp.array([0.0], dtype=wp.float64, device=device)
+    nan_arr = wp.array([0.0], dtype=wp.float64, device=device)
+    neg_arr = wp.array([0.0], dtype=wp.float64, device=device)
+    wp.launch(edge_cases_kernel, dim=1, inputs=[inf_arr, nan_arr, neg_arr], device=device)
+    test.assertEqual(inf_arr.numpy()[0], m.inf)
+    test.assertTrue(m.isnan(nan_arr.numpy()[0]))
+    test.assertEqual(neg_arr.numpy()[0], -1.0)
+
+
 class TestConstants(unittest.TestCase):
     def test_constant_math(self):
         # test doing math with python defined constants in *python* scope
@@ -274,6 +298,9 @@ add_function_test(TestConstants, "test_uint64_large_constant", test_uint64_large
 add_function_test(TestConstants, "test_float64_precision", test_float64_precision, devices=devices)
 add_function_test(TestConstants, "test_float64_wp_pi", test_float64_wp_pi, devices=devices)
 add_function_test(TestConstants, "test_int64_negative", test_int64_negative, devices=devices)
+add_function_test(
+    TestConstants, "test_scalar_constructor_edge_cases", test_scalar_constructor_edge_cases, devices=devices
+)
 
 
 if __name__ == "__main__":
