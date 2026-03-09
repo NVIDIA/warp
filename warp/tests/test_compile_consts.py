@@ -272,6 +272,34 @@ def test_scalar_constructor_edge_cases(test, device):
     test.assertEqual(neg_arr.numpy()[0], -1.0)
 
 
+def test_negative_constant_codegen(test, device):
+    """Verifies negative float/int constants emit as negative literals in C++."""
+    from warp._src.codegen import codegen_func_forward
+
+    @wp.kernel
+    def neg_codegen_kernel(
+        f64_data: wp.array(dtype=wp.float64),
+        i64_data: wp.array(dtype=wp.int64),
+    ):
+        i = wp.tid()
+        f64_data[i] = wp.float64(-1.5)
+        i64_data[i] = wp.int64(-42)
+
+    f64_arr = wp.array([0.0], dtype=wp.float64, device=device)
+    i64_arr = wp.array([wp.int64(0)], dtype=wp.int64, device=device)
+    wp.launch(neg_codegen_kernel, dim=1, inputs=[f64_arr, i64_arr], device=device)
+
+    neg_codegen_kernel.adj.build(builder=None)
+    source = codegen_func_forward(neg_codegen_kernel.adj, func_type="kernel", device="cpu")
+
+    # Negative values must appear as literal negative constants
+    test.assertIn("-1.5", source, "float64(-1.5) should emit as a negative literal")
+    test.assertIn("-42ll", source, "int64(-42) should emit as a negative literal")
+
+    # There must be no neg() call for these constants
+    test.assertNotIn("neg(", source, "Negative constants should not generate neg() calls")
+
+
 class TestConstants(unittest.TestCase):
     def test_constant_math(self):
         # test doing math with python defined constants in *python* scope
@@ -301,6 +329,7 @@ add_function_test(TestConstants, "test_int64_negative", test_int64_negative, dev
 add_function_test(
     TestConstants, "test_scalar_constructor_edge_cases", test_scalar_constructor_edge_cases, devices=devices
 )
+add_function_test(TestConstants, "test_negative_constant_codegen", test_negative_constant_codegen, devices=devices)
 
 
 if __name__ == "__main__":
