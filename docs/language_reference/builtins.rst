@@ -3,6 +3,7 @@ Built-Ins
 
 .. automodule:: warp._src.lang
    :no-members:
+   :noindex:
 
 .. currentmodule:: warp._src.lang
 

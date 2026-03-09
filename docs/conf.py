@@ -216,6 +216,15 @@ autosummary_filename_map = {
     "warp.fem.integrand": "warp.fem.integrand_decorator",
 }
 
+# Map internal builtin function paths to public names for output filenames.
+# Autosummary generates stubs under ``warp._src.lang.<func>`` because that is
+# where builtins are defined; this mapping rewrites filenames to ``warp.<func>``
+# so that published URLs use the public API path.
+for _builtin_name in wp._src.context.builtin_functions:
+    _internal = f"warp._src.lang.{_builtin_name}"
+    _public = f"warp.{_builtin_name}"
+    autosummary_filename_map.setdefault(_internal, _public)
+
 
 def normalize_docstring(doc: str) -> str:
     """Normalize docstrings for consistent RST indentation and formatting."""

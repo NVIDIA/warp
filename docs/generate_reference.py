@@ -564,6 +564,9 @@ def write_module_page(
     # directives in the module docstring (e.g., :class:, admonitions, etc.).
     lines.append(f".. automodule:: {name}")
     lines.append("   :no-members:")
+    if name == BUILTINS_MODULE:
+        # Suppress the index entry for the internal module path.
+        lines.append("   :noindex:")
     lines.append("")
 
     lines.append(f".. currentmodule:: {current_module}")
