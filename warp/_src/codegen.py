@@ -1645,26 +1645,25 @@ class Adjoint:
 
         bound_args = bound_args.arguments
 
-        # Constant precision preservation: when calling a scalar type
-        # constructor with a single compile-time constant argument, produce
-        # a typed constant Var directly instead of emitting a C++ function
-        # call.  This avoids precision loss from the intermediate variable
-        # being narrowed to int32/float32.
-        if (
-            func.is_builtin()
-            and func.value_type is not None
-            and func.value_type in warp._src.types.scalar_types
-            and len(bound_args) == 1
-        ):
+        # Constant precision preservation: when calling a 64-bit scalar type
+        # constructor with a single compile-time constant argument, emit
+        # a variable of the target type initialized directly from the
+        # literal value.  This avoids precision loss from the intermediate
+        # variable being narrowed to int32/float32.
+        # The variable is NOT marked as a constant (via add_var's constant=
+        # parameter) because emit_Assign maps symbols directly to the Var
+        # returned here, and a const-qualified C++ variable cannot be passed
+        # by non-const reference to functions that write through it.
+        if func.is_builtin() and func.value_type in (float64, int64, uint64) and len(bound_args) == 1:
             arg = next(iter(bound_args.values()))
             if isinstance(arg, Var) and arg.constant is not None:
                 raw = arg.constant
                 # Unwrap Warp scalar type instances to their raw Python value
                 if type(raw) in warp._src.types.scalar_types:
                     raw = raw.value
-                if isinstance(raw, (builtins.int, builtins.float, builtins.bool)):
-                    constant = func.value_type(raw)
-                    output = adj.add_var(type=func.value_type, constant=constant)
+                if isinstance(raw, builtins.int) or (isinstance(raw, builtins.float) and not math.isnan(raw)):
+                    output = adj.add_var(type=func.value_type)
+                    adj.add_forward(f"var_{output} = {constant_str(func.value_type(raw))};")
                     return output
 
         # if it is a user-function then build it recursively
