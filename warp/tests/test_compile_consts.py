@@ -184,6 +184,56 @@ def test_hash_shadowed_var(test, device):
     test.assertEqual(module_hash_0, module_hash_1, "Module hashes should be the same since all constants are shadowed.")
 
 
+def test_uint64_large_constant(test, device):
+    """Tests that uint64 literals larger than uint32 max are not truncated."""
+
+    @wp.kernel
+    def uint64_large_const_kernel(data: wp.array(dtype=wp.uint64)):
+        i = wp.tid()
+        h = data[i]
+        h = h * wp.uint64(0xFF51AFD7ED558CCD)
+        data[i] = h
+
+    arr = wp.array([wp.uint64(1)], dtype=wp.uint64, device=device)
+    wp.launch(uint64_large_const_kernel, dim=1, inputs=[arr], device=device)
+    result = arr.numpy()[0]
+    test.assertEqual(result, 0xFF51AFD7ED558CCD, f"Expected 0xFF51AFD7ED558CCD, got {hex(result)}")
+
+
+def test_float64_precision(test, device):
+    """Tests that float64 literals are not truncated to float32 precision."""
+
+    @wp.kernel
+    def float64_precision_kernel(data: wp.array(dtype=wp.float64)):
+        i = wp.tid()
+        x = data[i]
+        x = x + wp.float64(3.141592653589793)
+        data[i] = x
+
+    arr = wp.array([0.0], dtype=wp.float64, device=device)
+    wp.launch(float64_precision_kernel, dim=1, inputs=[arr], device=device)
+    result = arr.numpy()[0]
+    # float32(3.141592653589793) == 3.1415927410125732 (loses precision)
+    # float64 should preserve the full value
+    test.assertEqual(result, 3.141592653589793, f"Expected 3.141592653589793, got {result!r}")
+
+
+def test_float64_wp_pi(test, device):
+    """Tests that wp.PI preserves full float64 precision through wp.float64()."""
+
+    @wp.kernel
+    def wp_pi_kernel(data: wp.array(dtype=wp.float64)):
+        i = wp.tid()
+        pi = wp.float64(wp.PI)
+        data[i] = pi + wp.float64(1.0)
+
+    arr = wp.array([0.0], dtype=wp.float64, device=device)
+    wp.launch(wp_pi_kernel, dim=1, inputs=[arr], device=device)
+    result = arr.numpy()[0]
+    expected = 3.14159265358979323846 + 1.0
+    test.assertEqual(result, expected, f"Expected {expected!r}, got {result!r}")
+
+
 class TestConstants(unittest.TestCase):
     def test_constant_math(self):
         # test doing math with python defined constants in *python* scope
@@ -206,6 +256,9 @@ add_function_test(TestConstants, "test_hash_global_capture", test_hash_global_ca
 add_function_test(TestConstants, "test_hash_redefine_kernel", test_hash_redefine_kernel, devices=devices)
 add_function_test(TestConstants, "test_hash_redefine_constant_only", test_hash_redefine_constant_only, devices=devices)
 add_function_test(TestConstants, "test_hash_shadowed_var", test_hash_shadowed_var, devices=devices)
+add_function_test(TestConstants, "test_uint64_large_constant", test_uint64_large_constant, devices=devices)
+add_function_test(TestConstants, "test_float64_precision", test_float64_precision, devices=devices)
+add_function_test(TestConstants, "test_float64_wp_pi", test_float64_wp_pi, devices=devices)
 
 
 if __name__ == "__main__":
