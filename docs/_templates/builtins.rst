@@ -1,4 +1,4 @@
-{{ fullname | escape | underline}}
+{{ wp_display_name | escape | underline}}
 {%- for overload in wp_overloads %}
 
 .. function:: {{ fullname }}({{ overload.args }}) -> {{ overload.return_type }}
