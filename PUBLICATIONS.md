@@ -8,6 +8,8 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 ## 2026
 
 - **Discovering neural cohesive zone laws from displacement fields**. *G. Barkoulis Gavris, W. Sun*. April 2026. [DOI:10.1016/j.cma.2026.118733](https://doi.org/10.1016/j.cma.2026.118733)
+- **cuRoboV2: Dynamics-Aware Motion Generation with Depth-Fused Distance Fields for High-DoF Robots**. *B. Sundaralingam, A. Murali, S. Birchfield*. March 2026. [arXiv:2603.05493](https://arxiv.org/abs/2603.05493)
+- **GaussTwin: Unified Simulation and Correction with Gaussian Splatting for Robotic Digital Twins**. *Y. Cai, P. Jansonnie, C. de Farias, O. Arenz, J. Peters*. March 2026. [arXiv:2603.05108](https://arxiv.org/abs/2603.05108)
 - **X-Loco: Towards Generalist Humanoid Locomotion Control via Synergetic Policy Distillation**. *D. Wang, X. Wang, C. Zhang, J. Shi, Y. Zhao, C. Bai, X. Li*. March 2026. [arXiv:2603.03733](https://arxiv.org/abs/2603.03733)
 - **RPL: Learning Robust Humanoid Perceptive Locomotion on Challenging Terrains**. *Y. Zhang, Y. Seo, J. Chen, Y. Yuan, K. Sreenath, P. Abbeel, C. Sferrazza, K. Liu, R. Duan, G. Shi*. February 2026. [arXiv:2602.03002](https://arxiv.org/abs/2602.03002)
 - **TTT-Parkour: Rapid Test-Time Training for Perceptive Robot Parkour**. *S. Zhu, B. Ye, J. Wang, J. Chen, Z. Zhuang, L. Mou, R. Huang, H. Zhao*. February 2026. [arXiv:2602.02331](https://arxiv.org/abs/2602.02331)
