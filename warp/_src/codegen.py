@@ -1645,6 +1645,32 @@ class Adjoint:
 
         bound_args = bound_args.arguments
 
+        # Constant precision preservation: when calling a 64-bit scalar type
+        # constructor with a single compile-time constant argument, emit
+        # a variable of the target type initialized directly from the
+        # literal value.  This avoids precision loss from the intermediate
+        # variable being narrowed to int32/float32.
+        # The variable is NOT marked as a constant (via add_var's constant=
+        # parameter) because emit_Assign maps symbols directly to the Var
+        # returned here, and a const-qualified C++ variable cannot be passed
+        # by non-const reference to functions that write through it.
+        if func.is_builtin() and func.value_type in (float64, int64, uint64) and len(bound_args) == 1:
+            arg = next(iter(bound_args.values()))
+            if isinstance(arg, Var) and arg.constant is not None:
+                raw = arg.constant
+                # Unwrap Warp scalar type instances to their raw Python value
+                if type(raw) in warp._src.types.scalar_types:
+                    raw = raw.value
+                if isinstance(raw, builtins.int) or (isinstance(raw, builtins.float) and not math.isnan(raw)):
+                    # Repurpose the original arg variable: change its type to
+                    # the 64-bit target and clear its constant so it emits as
+                    # an uninitialized variable of the correct type, avoiding
+                    # compiler warnings from narrowing a 64-bit literal.
+                    arg.type = func.value_type
+                    arg.constant = None
+                    adj.add_forward(f"var_{arg} = {constant_str(func.value_type(raw))};")
+                    return arg
+
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             # If the function called is a user function,
@@ -2480,8 +2506,16 @@ class Adjoint:
         arg = adj.eval(node.operand)
 
         # evaluate expression to a compile-time constant if arg is a constant
-        if arg.constant is not None and math.isfinite(arg.constant):
+        if isinstance(arg.constant, (builtins.int, builtins.float)):
             if isinstance(node.op, ast.USub):
+                # When the operand is a literal constant (ast.Constant), the
+                # arg Var was just created and is not referenced by any symbol,
+                # so we can safely repurpose it with the negated value to avoid
+                # emitting a dead variable with a potentially truncating
+                # constant initializer (e.g. int32 assigned a 64-bit literal).
+                if isinstance(node.operand, ast.Constant):
+                    arg.constant = -arg.constant
+                    return arg
                 return adj.add_constant(-arg.constant)
 
         name = builtin_operators[type(node.op)]
@@ -4365,8 +4399,25 @@ def constant_str(value):
         return f"{dtypestr}{{{', '.join(initlist)}}}"
 
     elif value_type in warp._src.types.scalar_types:
-        # make sure we emit the value of objects, e.g. uint32
-        return str(value.value)
+        # Unwrap the raw value and handle special floats before applying
+        # C++ literal suffixes for wide integer types.
+        raw = value.value
+        if isinstance(raw, builtins.float):
+            if raw == math.inf:
+                return "INFINITY"
+            if raw == -math.inf:
+                return "-INFINITY"
+            if math.isnan(raw):
+                return "NAN"
+        s = str(raw)
+        if isinstance(raw, builtins.int):
+            if value_type is uint64:
+                return s + "ull"
+            elif value_type is int64:
+                return s + "ll"
+            elif value_type is uint32:
+                return s + "u"
+        return s
 
     elif issubclass(value_type, StructInstance):
         # constant struct instance
@@ -4379,6 +4430,9 @@ def constant_str(value):
 
     elif value == math.inf:
         return "INFINITY"
+
+    elif value == -math.inf:
+        return "-INFINITY"
 
     elif math.isnan(value):
         return "NAN"

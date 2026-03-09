@@ -29,8 +29,10 @@ Kernels and User Functions
 * Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
   (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <load_module>`).
-* A :class:`wp.constant() <warp.constant>` can suffer precision loss if used with :class:`wp.float64 <float64>`
-  as it is initially assigned to a :class:`wp.float32 <float32>` variable in the generated code.
+* A :class:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
+  :class:`wp.float32 <float32>` (for Python floats) or :class:`wp.int32 <int32>` (for Python integers).
+  To preserve full 64-bit precision, wrap the constant in an explicit type constructor
+  (e.g., ``wp.float64(wp.PI)`` or ``wp.int64(large_value)``).
 * Python ``IntFlag`` values behave like raw integers in Warp kernels: bitwise negation (``~``)
   produces the integer negation, not a masked combination of flags as in standard Python ``IntFlag`` behavior.
 
