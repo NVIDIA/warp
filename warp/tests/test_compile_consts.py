@@ -271,6 +271,22 @@ def test_scalar_constructor_edge_cases(test, device):
     test.assertEqual(neg_inf_arr.numpy()[0], -math.inf)
 
 
+def test_float64_from_large_int(test, device):
+    """Tests that float64(large_int) preserves precision for ints beyond float32 range."""
+
+    @wp.kernel
+    def float64_large_int_kernel(data: wp.array(dtype=wp.float64)):
+        i = wp.tid()
+        # 2**53 - 1 = 9007199254740991, the largest integer exactly representable in float64.
+        # float32 cannot represent this exactly (float32 max exact int is 2**24).
+        data[i] = wp.float64(9007199254740991)
+
+    arr = wp.array([0.0], dtype=wp.float64, device=device)
+    wp.launch(float64_large_int_kernel, dim=1, inputs=[arr], device=device)
+    result = arr.numpy()[0]
+    test.assertEqual(result, 9007199254740991.0, f"Expected 9007199254740991.0, got {result!r}")
+
+
 def test_negative_constant_codegen(test, device):
     """Verifies negative float/int constants emit as negative literals in C++."""
     from warp._src.codegen import codegen_func_forward  # noqa: PLC0415
@@ -328,6 +344,7 @@ add_function_test(TestConstants, "test_int64_negative", test_int64_negative, dev
 add_function_test(
     TestConstants, "test_scalar_constructor_edge_cases", test_scalar_constructor_edge_cases, devices=devices
 )
+add_function_test(TestConstants, "test_float64_from_large_int", test_float64_from_large_int, devices=devices)
 add_function_test(TestConstants, "test_negative_constant_codegen", test_negative_constant_codegen, devices=devices)
 
 
