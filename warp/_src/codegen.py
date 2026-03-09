@@ -1645,6 +1645,28 @@ class Adjoint:
 
         bound_args = bound_args.arguments
 
+        # Constant precision preservation: when calling a scalar type
+        # constructor with a single compile-time constant argument, produce
+        # a typed constant Var directly instead of emitting a C++ function
+        # call.  This avoids precision loss from the intermediate variable
+        # being narrowed to int32/float32.
+        if (
+            func.is_builtin()
+            and func.value_type is not None
+            and func.value_type in warp._src.types.scalar_types
+            and len(bound_args) == 1
+        ):
+            arg = next(iter(bound_args.values()))
+            if isinstance(arg, Var) and arg.constant is not None:
+                raw = arg.constant
+                # Unwrap Warp scalar type instances to their raw Python value
+                if type(raw) in warp._src.types.scalar_types:
+                    raw = raw.value
+                if isinstance(raw, (builtins.int, builtins.float, builtins.bool)):
+                    constant = func.value_type(raw)
+                    output = adj.add_var(type=func.value_type, constant=constant)
+                    return output
+
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             # If the function called is a user function,
