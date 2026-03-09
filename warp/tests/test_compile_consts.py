@@ -234,6 +234,20 @@ def test_float64_wp_pi(test, device):
     test.assertEqual(result, expected, f"Expected {expected!r}, got {result!r}")
 
 
+def test_int64_negative(test, device):
+    """Tests that negative int64 literals preserve precision."""
+
+    @wp.kernel
+    def int64_neg_kernel(data: wp.array(dtype=wp.int64)):
+        i = wp.tid()
+        data[i] = wp.int64(-9223372036854775807)
+
+    arr = wp.array([wp.int64(0)], dtype=wp.int64, device=device)
+    wp.launch(int64_neg_kernel, dim=1, inputs=[arr], device=device)
+    result = arr.numpy()[0]
+    test.assertEqual(result, -9223372036854775807, f"Expected -9223372036854775807, got {result}")
+
+
 class TestConstants(unittest.TestCase):
     def test_constant_math(self):
         # test doing math with python defined constants in *python* scope
@@ -259,6 +273,7 @@ add_function_test(TestConstants, "test_hash_shadowed_var", test_hash_shadowed_va
 add_function_test(TestConstants, "test_uint64_large_constant", test_uint64_large_constant, devices=devices)
 add_function_test(TestConstants, "test_float64_precision", test_float64_precision, devices=devices)
 add_function_test(TestConstants, "test_float64_wp_pi", test_float64_wp_pi, devices=devices)
+add_function_test(TestConstants, "test_int64_negative", test_int64_negative, devices=devices)
 
 
 if __name__ == "__main__":
