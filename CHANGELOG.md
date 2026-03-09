@@ -21,6 +21,8 @@
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
 
 ### Documentation
+- Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
+  results for built-in functions ([GH-1275](https://github.com/NVIDIA/warp/issues/1275)).
 - Add differentiable 2-D Navier-Stokes example (`warp/examples/optim/example_navier_stokes_perturbation.py`)
   demonstrating an optimal initial perturbation problem. Differentiable counterpart to the solver
   in `warp/examples/core/example_fft_poisson_navier_stokes_2d.py`.
