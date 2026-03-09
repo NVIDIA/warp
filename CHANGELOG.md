@@ -19,6 +19,8 @@
 - Fix kernel dispatch using incorrect `block_dim` when the same kernel is launched on different devices, which could
   cause out-of-bounds shared memory access and memory corruption in tile infrastructure
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
+- Preserve precision of compile-time constants in 64-bit scalar type constructors (`wp.float64()`, `wp.int64()`,
+  `wp.uint64()`) and perform constant folding of negation ([GH-485](https://github.com/NVIDIA/warp/issues/485)).
 
 ### Documentation
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
