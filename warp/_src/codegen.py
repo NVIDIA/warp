@@ -1662,9 +1662,14 @@ class Adjoint:
                 if type(raw) in warp._src.types.scalar_types:
                     raw = raw.value
                 if isinstance(raw, builtins.int) or (isinstance(raw, builtins.float) and not math.isnan(raw)):
-                    output = adj.add_var(type=func.value_type)
-                    adj.add_forward(f"var_{output} = {constant_str(func.value_type(raw))};")
-                    return output
+                    # Repurpose the original arg variable: change its type to
+                    # the 64-bit target and clear its constant so it emits as
+                    # an uninitialized variable of the correct type, avoiding
+                    # compiler warnings from narrowing a 64-bit literal.
+                    arg.type = func.value_type
+                    arg.constant = None
+                    adj.add_forward(f"var_{arg} = {constant_str(func.value_type(raw))};")
+                    return arg
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
@@ -2503,6 +2508,14 @@ class Adjoint:
         # evaluate expression to a compile-time constant if arg is a constant
         if isinstance(arg.constant, (builtins.int, builtins.float)):
             if isinstance(node.op, ast.USub):
+                # When the operand is a literal constant (ast.Constant), the
+                # arg Var was just created and is not referenced by any symbol,
+                # so we can safely repurpose it with the negated value to avoid
+                # emitting a dead variable with a potentially truncating
+                # constant initializer (e.g. int32 assigned a 64-bit literal).
+                if isinstance(node.operand, ast.Constant):
+                    arg.constant = -arg.constant
+                    return arg
                 return adj.add_constant(-arg.constant)
 
         name = builtin_operators[type(node.op)]
