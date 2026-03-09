@@ -1,0 +1,42 @@
+﻿warp.fem.space.shape.CubeBSplineShapeFunctions
+==============================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeBSplineShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeBSplineShapeFunctions.__init__
+      ~CubeBSplineShapeFunctions.element_node_hexes
+      ~CubeBSplineShapeFunctions.element_vtk_cells
+      ~CubeBSplineShapeFunctions.make_element_inner_weight
+      ~CubeBSplineShapeFunctions.make_element_inner_weight_gradient
+      ~CubeBSplineShapeFunctions.make_node_coords_in_element
+      ~CubeBSplineShapeFunctions.make_node_quadrature_weight
+      ~CubeBSplineShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeBSplineShapeFunctions.EDGE
+      ~CubeBSplineShapeFunctions.FACE
+      ~CubeBSplineShapeFunctions.INTERIOR
+      ~CubeBSplineShapeFunctions.VERTEX
+      ~CubeBSplineShapeFunctions.name
+      ~CubeBSplineShapeFunctions.value
+      ~CubeBSplineShapeFunctions.ORDER
+      ~CubeBSplineShapeFunctions.NODES_PER_ELEMENT
+   
+   

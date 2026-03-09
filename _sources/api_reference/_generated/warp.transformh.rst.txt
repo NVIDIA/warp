@@ -1,0 +1,25 @@
+﻿warp.transformh
+===============
+
+.. currentmodule:: warp
+
+.. autoclass:: transformh
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~transformh.__init__
+      ~transformh.from_ptr
+      ~transformh.scalar_export
+      ~transformh.scalar_import
+   
+   
+
+   
+   
+   

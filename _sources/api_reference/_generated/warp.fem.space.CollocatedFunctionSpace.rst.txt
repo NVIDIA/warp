@@ -1,0 +1,54 @@
+﻿warp.fem.space.CollocatedFunctionSpace
+======================================
+
+.. currentmodule:: warp.fem.space
+
+.. autoclass:: CollocatedFunctionSpace
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CollocatedFunctionSpace.__init__
+      ~CollocatedFunctionSpace.divergence_valid
+      ~CollocatedFunctionSpace.dof_value
+      ~CollocatedFunctionSpace.gradient_valid
+      ~CollocatedFunctionSpace.make_field
+      ~CollocatedFunctionSpace.node_basis_element
+      ~CollocatedFunctionSpace.node_count
+      ~CollocatedFunctionSpace.node_positions
+      ~CollocatedFunctionSpace.space_divergence
+      ~CollocatedFunctionSpace.space_gradient
+      ~CollocatedFunctionSpace.space_value
+      ~CollocatedFunctionSpace.trace
+      ~CollocatedFunctionSpace.value_basis_element
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CollocatedFunctionSpace.basis
+      ~CollocatedFunctionSpace.degree
+      ~CollocatedFunctionSpace.dimension
+      ~CollocatedFunctionSpace.element_kind
+      ~CollocatedFunctionSpace.geometry
+      ~CollocatedFunctionSpace.local_value_map_inner
+      ~CollocatedFunctionSpace.local_value_map_outer
+      ~CollocatedFunctionSpace.name
+      ~CollocatedFunctionSpace.topology
+      ~CollocatedFunctionSpace.dtype
+      ~CollocatedFunctionSpace.dof_dtype
+      ~CollocatedFunctionSpace.weight_dtype
+      ~CollocatedFunctionSpace.VALUE_DOF_COUNT
+      ~CollocatedFunctionSpace.NODE_DOF_COUNT
+      ~CollocatedFunctionSpace.ORDER
+   
+   

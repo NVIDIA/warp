@@ -1,0 +1,6 @@
+﻿warp.types.is\_struct
+=====================
+
+.. currentmodule:: warp.types
+
+.. autofunction:: is_struct

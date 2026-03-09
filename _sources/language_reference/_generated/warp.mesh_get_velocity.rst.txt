@@ -1,0 +1,11 @@
+﻿warp.mesh\_get\_velocity
+========================
+
+.. function:: warp._src.lang.mesh_get_velocity(id: uint64, index: int32) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the velocity of the mesh given an index.

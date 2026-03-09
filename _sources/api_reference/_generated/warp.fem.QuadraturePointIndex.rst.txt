@@ -1,0 +1,38 @@
+﻿warp.fem.QuadraturePointIndex
+=============================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: QuadraturePointIndex
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~QuadraturePointIndex.__init__
+      ~QuadraturePointIndex.as_integer_ratio
+      ~QuadraturePointIndex.bit_count
+      ~QuadraturePointIndex.bit_length
+      ~QuadraturePointIndex.conjugate
+      ~QuadraturePointIndex.from_bytes
+      ~QuadraturePointIndex.is_integer
+      ~QuadraturePointIndex.to_bytes
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QuadraturePointIndex.denominator
+      ~QuadraturePointIndex.imag
+      ~QuadraturePointIndex.numerator
+      ~QuadraturePointIndex.real
+   
+   
