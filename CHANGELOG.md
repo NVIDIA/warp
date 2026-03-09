@@ -10,6 +10,9 @@
 
 ### Changed
 
+- Allow `wp.Volume.load_from_numpy()` and `wp.Volume.allocate()` to accept a 3-element sequence for
+  `voxel_size`, enabling volumes with anisotropic voxel spacing
+  ([GH-1193](https://github.com/NVIDIA/warp/issues/1193)).
 - Include the Warp version in kernel cache paths when `WARP_CACHE_PATH` is set or a path is passed to
   `init_kernel_cache()`, matching the default cache-path behavior. This prevents stale artifacts from a previous Warp
   version from interfering after an upgrade ([GH-1260](https://github.com/NVIDIA/warp/issues/1260)).
