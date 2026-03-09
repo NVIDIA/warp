@@ -2502,7 +2502,7 @@ class Adjoint:
         arg = adj.eval(node.operand)
 
         # evaluate expression to a compile-time constant if arg is a constant
-        if arg.constant is not None and math.isfinite(arg.constant):
+        if isinstance(arg.constant, (builtins.int, builtins.float)):
             if isinstance(node.op, ast.USub):
                 return adj.add_constant(-arg.constant)
 
@@ -4398,12 +4398,13 @@ def constant_str(value):
             if math.isnan(raw):
                 return "NAN"
         s = str(raw)
-        if value_type is uint64:
-            return s + "ull"
-        elif value_type is int64:
-            return s + "ll"
-        elif value_type is uint32:
-            return s + "u"
+        if isinstance(raw, builtins.int):
+            if value_type is uint64:
+                return s + "ull"
+            elif value_type is int64:
+                return s + "ll"
+            elif value_type is uint32:
+                return s + "u"
         return s
 
     elif issubclass(value_type, StructInstance):
@@ -4417,6 +4418,9 @@ def constant_str(value):
 
     elif value == math.inf:
         return "INFINITY"
+
+    elif value == -math.inf:
+        return "-INFINITY"
 
     elif math.isnan(value):
         return "NAN"
