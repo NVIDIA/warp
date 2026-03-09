@@ -4365,8 +4365,24 @@ def constant_str(value):
         return f"{dtypestr}{{{', '.join(initlist)}}}"
 
     elif value_type in warp._src.types.scalar_types:
-        # make sure we emit the value of objects, e.g. uint32
-        return str(value.value)
+        # Unwrap the raw value and handle special floats before applying
+        # C++ literal suffixes for wide integer types.
+        raw = value.value
+        if isinstance(raw, builtins.float):
+            if raw == math.inf:
+                return "INFINITY"
+            if raw == -math.inf:
+                return "-INFINITY"
+            if math.isnan(raw):
+                return "NAN"
+        s = str(raw)
+        if value_type is uint64:
+            return s + "ull"
+        elif value_type is int64:
+            return s + "ll"
+        elif value_type is uint32:
+            return s + "u"
+        return s
 
     elif issubclass(value_type, StructInstance):
         # constant struct instance
