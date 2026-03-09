@@ -249,32 +249,31 @@ def test_int64_negative(test, device):
 
 
 def test_scalar_constructor_edge_cases(test, device):
-    """Tests wp.INF, wp.NAN, and negative floats through scalar constructors."""
-    import math as m
+    """Tests wp.INF, wp.NAN, and -wp.INF through scalar constructors."""
 
     @wp.kernel
-    def edge_cases_kernel(
+    def special_float_kernel(
         inf_data: wp.array(dtype=wp.float64),
         nan_data: wp.array(dtype=wp.float64),
-        neg_data: wp.array(dtype=wp.float64),
+        neg_inf_data: wp.array(dtype=wp.float64),
     ):
         i = wp.tid()
         inf_data[i] = wp.float64(wp.INF)
         nan_data[i] = wp.float64(wp.NAN)
-        neg_data[i] = wp.float64(-1.0)
+        neg_inf_data[i] = wp.float64(-wp.INF)
 
     inf_arr = wp.array([0.0], dtype=wp.float64, device=device)
     nan_arr = wp.array([0.0], dtype=wp.float64, device=device)
-    neg_arr = wp.array([0.0], dtype=wp.float64, device=device)
-    wp.launch(edge_cases_kernel, dim=1, inputs=[inf_arr, nan_arr, neg_arr], device=device)
-    test.assertEqual(inf_arr.numpy()[0], m.inf)
-    test.assertTrue(m.isnan(nan_arr.numpy()[0]))
-    test.assertEqual(neg_arr.numpy()[0], -1.0)
+    neg_inf_arr = wp.array([0.0], dtype=wp.float64, device=device)
+    wp.launch(special_float_kernel, dim=1, inputs=[inf_arr, nan_arr, neg_inf_arr], device=device)
+    test.assertEqual(inf_arr.numpy()[0], math.inf)
+    test.assertTrue(math.isnan(nan_arr.numpy()[0]))
+    test.assertEqual(neg_inf_arr.numpy()[0], -math.inf)
 
 
 def test_negative_constant_codegen(test, device):
     """Verifies negative float/int constants emit as negative literals in C++."""
-    from warp._src.codegen import codegen_func_forward
+    from warp._src.codegen import codegen_func_forward  # noqa: PLC0415
 
     @wp.kernel
     def neg_codegen_kernel(
