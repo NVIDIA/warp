@@ -119,6 +119,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_atomic import TestAtomic
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
+    from warp.tests.test_augmented_assign import TestAugmentedAssign
     from warp.tests.test_block_dim_dispatch import TestBlockDimDispatch
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
@@ -215,6 +216,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAtomic,
         TestAtomicBitwise,
         TestAtomicCAS,
+        TestAugmentedAssign,
         TestBlockDimDispatch,
         TestBool,
         TestBuiltinsResolution,
@@ -362,6 +364,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.matrix.test_mat_linalg import TestMatLinalg
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_atomic import TestAtomic
+    from warp.tests.test_augmented_assign import TestAugmentedAssign
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_codegen import TestCodeGen
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
@@ -393,6 +396,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
 
     test_classes = [
         # Codegen & compilation
+        TestAugmentedAssign,
         TestBuiltinsResolution,
         TestCodeGen,
         TestCodeGenInstancing,
