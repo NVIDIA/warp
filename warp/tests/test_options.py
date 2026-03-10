@@ -14,10 +14,16 @@
 # limitations under the License.
 
 import contextlib
+import importlib
 import io
+import runpy
+import sys
+import types
 import unittest
+from unittest.mock import patch
 
 import warp as wp
+from warp._src.context import _get_caller_module_name
 from warp.tests.unittest_utils import *
 
 
@@ -131,7 +137,58 @@ devices = get_test_devices()
 
 
 class TestOptions(unittest.TestCase):
-    pass
+    def test_set_module_options_via_runpy(self):
+        """set_module_options/get_module_options should work when the calling module is run via runpy."""
+        namespace = runpy.run_module("warp.tests.aux_test_options_runpy", run_name="__main__")
+        self.assertTrue(namespace["_result"]["success"])
+        self.assertFalse(namespace["_result"]["enable_backward"])
+
+    def test_set_module_options_via_runpy_preimported(self):
+        """set_module_options should target __main__ even when the module is already in sys.modules.
+
+        When a launcher does ``runpy.run_module(mod, run_name="__main__")``,
+        the module may already be imported under its qualified name.
+        ``set_module_options`` must still target the ``__main__`` module
+        (matching ``@wp.kernel``'s use of ``f.__module__``), not the
+        pre-imported module.
+        """
+        mod_name = "warp.tests.aux_test_options_runpy"
+
+        # Pre-import the module so it exists in sys.modules under its real name,
+        # simulating what happens with ``python -m pkg.examples example_name``.
+        pre_imported = importlib.import_module(mod_name)
+        self.assertIn(mod_name, sys.modules)
+
+        # Now run it via runpy with run_name="__main__", same as the launcher.
+        namespace = runpy.run_module(mod_name, run_name="__main__")
+
+        # The options must be set on "__main__", not on the pre-imported module.
+        self.assertTrue(namespace["_result"]["success"])
+        self.assertFalse(namespace["_result"]["enable_backward"])
+
+        main_module = wp.get_module("__main__")
+        self.assertFalse(main_module.options["enable_backward"])
+
+    def test_get_caller_module_name_error_message(self):
+        """_get_caller_module_name should raise RuntimeError with a helpful message when all fallbacks fail."""
+        # Build a fake frame where all fallback steps fail:
+        # - __name__ is None (not a normal module or __main__)
+        # - __spec__ is None
+        # - inspect.getmodule() returns None (patched)
+        # - filename doesn't match any sys.modules entry
+        fake_code = types.SimpleNamespace(co_filename="<nonexistent>")
+        fake_frame = types.SimpleNamespace(
+            f_globals={"__spec__": None, "__name__": None},
+            f_code=fake_code,
+        )
+
+        with (
+            patch("warp._src.context.inspect.getmodule", return_value=None),
+            patch("warp._src.context.sys._getframe", return_value=fake_frame),
+        ):
+            with self.assertRaises(RuntimeError) as cm:
+                _get_caller_module_name(stack_level=1)
+            self.assertIn("Could not determine the calling module", str(cm.exception))
 
 
 add_function_test(TestOptions, "test_options_backward_1", test_options_backward_1, devices=devices)

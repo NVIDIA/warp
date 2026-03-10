@@ -7799,6 +7799,74 @@ def force_load(
         runtime.core.wp_cuda_context_set_current(saved_context)
 
 
+def _get_caller_module_name(stack_level: int = 1) -> str:
+    """Return the fully qualified module name of the caller.
+
+    Uses a multi-step fallback chain so that callers running under
+    ``runpy.run_module()`` (e.g. ``python -m pkg.example``) are handled
+    correctly even when the module is not yet registered in
+    ``sys.modules``.
+
+    Args:
+        stack_level: How many frames to walk up from **this** function.
+            Callers that are themselves one level above the user code
+            should pass ``2`` (one for this helper, one for the wrapper).
+
+    Returns:
+        The fully qualified name of the caller's module.
+
+    Raises:
+        RuntimeError: If the calling module cannot be determined.
+    """
+    frame = sys._getframe(stack_level)
+    try:
+        # 1. Use the frame's __name__, which is what Python assigns to
+        #    f.__module__ for functions defined in this scope.  This ensures
+        #    consistency with ``@wp.kernel`` (which reads ``f.__module__``).
+        #    In particular, under ``runpy.run_module(..., run_name="__main__")``
+        #    the frame's __name__ is "__main__" even though
+        #    ``inspect.getmodule()`` would find the pre-imported module under
+        #    its real qualified name.
+        name = frame.f_globals.get("__name__")
+        if name and name != "__main__":
+            return name
+
+        # 2. If __name__ is "__main__", this may be a regular script or a
+        #    module executed via ``python -m``.  Accept it—the @wp.kernel
+        #    decorator will also see "__main__" as f.__module__.
+        if name == "__main__":
+            return name
+
+        # 3. runpy sets __spec__ on the executed namespace even before the
+        #    module is registered in sys.modules.
+        spec = frame.f_globals.get("__spec__")
+        if spec is not None and spec.name:
+            return spec.name
+
+        # 4. Standard lookup — works when the module is in sys.modules.
+        m = inspect.getmodule(frame)
+        if m is not None:
+            return m.__name__
+
+        # 5. Match the caller's filename against sys.modules entries.
+        filename = frame.f_code.co_filename
+        if filename:
+            filename = os.path.realpath(filename)
+            for mod in list(sys.modules.values()):
+                mod_file = getattr(mod, "__file__", None)
+                if mod_file and os.path.realpath(mod_file) == filename:
+                    return mod.__name__
+
+        raise RuntimeError(
+            f"Could not determine the calling module (frame file: {frame.f_code.co_filename!r}). "
+            "This can happen when code is executed via runpy.run_module() before the module "
+            "is registered in sys.modules. Pass the module explicitly using the 'module' "
+            "parameter, e.g. wp.set_module_options({...}, module=<your_module>)."
+        )
+    finally:
+        del frame
+
+
 def load_module(
     module: Module | types.ModuleType | str | None = None,
     device: Device | str | list[Device] | list[str] | None = None,
@@ -7841,8 +7909,7 @@ def load_module(
     """
     if module is None:
         # if module not specified, use the module that called us
-        module = inspect.getmodule(inspect.stack()[1][0])
-        module_name = module.__name__
+        module_name = _get_caller_module_name(stack_level=2)
     elif isinstance(module, Module):
         module_name = module.name
     elif isinstance(module, types.ModuleType):
@@ -8150,22 +8217,22 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     """
 
     if module is None:
-        m = inspect.getmodule(inspect.stack()[1][0])
+        module_name = _get_caller_module_name(stack_level=2)
     else:
-        m = module
+        module_name = module.__name__
 
-    get_module(m.__name__).options.update(options)
-    get_module(m.__name__).mark_modified()
+    get_module(module_name).options.update(options)
+    get_module(module_name).mark_modified()
 
 
 def get_module_options(module: Any = None) -> dict[str, Any]:
     """Return a list of options for the current module."""
     if module is None:
-        m = inspect.getmodule(inspect.stack()[1][0])
+        module_name = _get_caller_module_name(stack_level=2)
     else:
-        m = module
+        module_name = module.__name__
 
-    return get_module(m.__name__).options
+    return get_module(module_name).options
 
 
 def _unregister_capture(device: Device, stream: Stream, graph: Graph):
