@@ -3229,8 +3229,11 @@ class Adjoint:
             # call based on the number of expected outputs
             node.value.expects = len(lhs.elts)
 
-        # evaluate rhs
-        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
+        # evaluate rhs (or use pre-computed value from emit_AugAssign)
+        _precomputed = getattr(node, "_wp_precomputed_rhs", None)
+        if _precomputed is not None:
+            rhs = _precomputed
+        elif isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
             rhs = [adj.eval(v) for v in node.value.elts]
         else:
             rhs = adj.eval(node.value)
@@ -3504,18 +3507,46 @@ class Adjoint:
             adj.symbols[lhs.id] = result
             return
 
-        # replace augmented assignment with assignment statement + binary op (default behaviour)
-        def make_new_assign_statement():
-            new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
-            adj.eval(new_node)
-
         rhs = adj.eval(node.value)
+
+        def do_augmented_assign():
+            """Compute target OP rhs and assign back to target.
+
+            Unlike the old make_new_assign_statement(), this uses the
+            already-evaluated rhs instead of re-evaluating node.value
+            from its raw AST, avoiding double evaluation of side effects.
+            """
+            # Save and restore arg read flags around LHS evaluation so that
+            # the implicit read of the target is not tracked as a separate
+            # read for autograd purposes (same pattern as emit_BinOp).
+            if warp.config.verify_autograd_array_access:
+                is_read_states = [arg.is_read for arg in adj.args]
+
+            target_val = adj.eval(lhs)
+
+            if warp.config.verify_autograd_array_access:
+                for i, arg in enumerate(adj.args):
+                    arg.is_read = is_read_states[i]
+
+            op_name = builtin_operators[type(node.op)]
+            try:
+                user_func = adj.resolve_external_reference(op_name)
+                if isinstance(user_func, warp._src.context.Function):
+                    result = adj.add_call(user_func, (target_val, rhs), {}, {})
+                else:
+                    result = adj.add_builtin_call(op_name, [target_val, rhs])
+            except WarpCodegenError:
+                result = adj.add_builtin_call(op_name, [target_val, rhs])
+
+            new_node = ast.Assign(targets=[lhs], value=node.value)
+            new_node._wp_precomputed_rhs = result
+            adj.eval(new_node)
 
         if isinstance(lhs, ast.Subscript):
             # wp.adjoint[var] appears in custom grad functions, and does not require
             # special consideration in the AugAssign case
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
-                make_new_assign_statement()
+                do_augmented_assign()
                 return
 
             target, indices = adj.eval_subscript(lhs)
@@ -3526,7 +3557,7 @@ class Adjoint:
             if is_array(target_type):
                 # target_types int8, uint8, int16, uint16 are not suitable for atomic array accumulation
                 if target_type.dtype in warp._src.types.non_atomic_types:
-                    make_new_assign_statement()
+                    do_augmented_assign()
                     return
 
                 # the same holds true for vecs/mats/quats that are composed of these types
@@ -3538,7 +3569,7 @@ class Adjoint:
                 ):
                     dtype = getattr(target_type.dtype, "_wp_scalar_type_", None)
                     if dtype in warp._src.types.non_atomic_types:
-                        make_new_assign_statement()
+                        do_augmented_assign()
                         return
 
                 kernel_name = adj.fun_name
@@ -3577,7 +3608,7 @@ class Adjoint:
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
-                    make_new_assign_statement()
+                    do_augmented_assign()
                     return
 
             elif (
@@ -3599,7 +3630,7 @@ class Adjoint:
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
-                    make_new_assign_statement()
+                    do_augmented_assign()
                     return
 
             elif is_tile(target.type):
@@ -3616,7 +3647,7 @@ class Adjoint:
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
-                    make_new_assign_statement()
+                    do_augmented_assign()
                     return
 
             else:
@@ -3624,11 +3655,11 @@ class Adjoint:
 
         # TODO
         elif isinstance(lhs, ast.Attribute):
-            make_new_assign_statement()
+            do_augmented_assign()
             return
 
         else:
-            make_new_assign_statement()
+            do_augmented_assign()
             return
 
     def emit_Tuple(adj, node):
