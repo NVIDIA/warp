@@ -3766,7 +3766,7 @@ size_t wp_cuda_compile_program(
     bool compile_time_trace,
     bool precompiled_headers,
     const char* output_path,
-    const char* kernel_cache_dir,
+    const char* pch_dir,
     size_t num_ltoirs,
     char** ltoirs,
     size_t* ltoir_sizes,
@@ -3795,7 +3795,6 @@ size_t wp_cuda_compile_program(
         int minor = 0;
         nvrtcVersion(&major, &minor);
         printf("NVRTC version %d.%d\n", major, minor);
-        printf("Kernel cache directory: %s\n", kernel_cache_dir);
     }
 
     char include_opt[max_path];
@@ -3850,8 +3849,11 @@ size_t wp_cuda_compile_program(
         opts.push_back("-pch");
 #if CUDA_VERSION < 13000
         // CUDA 12.x series puts .pch files in the current working directory unless explicitly set
-        if (kernel_cache_dir != nullptr) {
-            std::string pch_dir_opt = std::string("--pch-dir=") + kernel_cache_dir;
+        if (pch_dir != nullptr) {
+            if (print_debug) {
+                printf("PCH directory: %s\n", pch_dir);
+            }
+            std::string pch_dir_opt = std::string("--pch-dir=") + pch_dir;
             stored_options.push_back(pch_dir_opt);
             opts.push_back(stored_options.back().c_str());
         }

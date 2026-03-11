@@ -2866,6 +2866,7 @@ class Module:
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
+                        pch_dir=build_dir,
                     )
 
             except Exception as e:
