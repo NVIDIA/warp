@@ -30,6 +30,8 @@
 - Fix `set_module_options()`, `get_module_options()`, and `load_module()` crashing with `AttributeError` when
   called from code executed via `runpy.run_module()` (e.g. `python -m package.module`)
   ([GH-1274](https://github.com/NVIDIA/warp/issues/1274)).
+- Fix `wp.HashGrid` neighbor queries missing results near negative cell boundaries when grid wrapping maps
+  truncated cell indices to incorrect physical buckets ([GH-1256](https://github.com/NVIDIA/warp/issues/1256)).
 
 ### Documentation
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
