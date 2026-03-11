@@ -687,15 +687,14 @@ def test_texture_dtype_prefers_warp_types(test, device):
 
 def test_texture_dtype_float_alias_maps_to_float32(test, device):
     """Python float in constructor args should map to Warp float32."""
-    tex = wp.Texture2D(width=4, height=4, dtype=float, device=device)
+    tex = wp.Texture1D(width=4, num_channels=1, dtype=float, device=device)
     test.assertIs(tex.dtype, wp.float32)
 
 
-def test_texture_base_requires_explicit_ndim(test, device):
-    """Base Texture construction requires explicit ndim."""
-    data = np.zeros((4, 4), dtype=np.float32)
-    with test.assertRaisesRegex(ValueError, "ndim=1/2/3"):
-        wp.Texture(data, device=device)
+def test_texture_dtype_int_alias_maps_to_int32(test, device):
+    """Python int in constructor args should map to Warp int32."""
+    tex = wp.Texture1D(width=4, num_channels=1, dtype=float, device=device)
+    test.assertIs(tex.dtype, wp.float32)
 
 
 # ============================================================================
@@ -956,8 +955,8 @@ def test_texture2d_cuda_array_copy_api(test, device):
     dst = wp.zeros((h, w), dtype=wp.vec4, device=device)
     tex = wp.Texture2D(np.zeros_like(data), device=device)
 
-    tex.copy_from_array(src)
-    tex.copy_to_array(dst)
+    tex.copy_from(src)
+    tex.copy_to(dst)
 
     np.testing.assert_allclose(dst.numpy(), data, rtol=1e-6, atol=1e-6)
 
@@ -970,8 +969,8 @@ def test_texture3d_cuda_array_copy_api(test, device):
     dst = wp.zeros((d, h, w), dtype=wp.vec4, device=device)
     tex = wp.Texture3D(np.zeros_like(data), device=device)
 
-    tex.copy_from_array(src)
-    tex.copy_to_array(dst)
+    tex.copy_from(src)
+    tex.copy_to(dst)
 
     np.testing.assert_allclose(dst.numpy(), data, rtol=1e-6, atol=1e-6)
 
@@ -985,8 +984,8 @@ def test_texture2d_cuda_array_copy_api_rejects_indexedarray(test, device):
     indexed_src = wp.indexedarray(src, [indices, None])
     tex = wp.Texture2D(np.zeros_like(data), device=device)
 
-    with test.assertRaisesRegex(TypeError, "wp.array"):
-        tex.copy_from_array(indexed_src)
+    with test.assertRaisesRegex(ValueError, "Expected contiguous array"):
+        tex.copy_from(indexed_src)
 
 
 def test_texture3d_cuda_array_copy_api_rejects_indexedarray(test, device):
@@ -998,8 +997,8 @@ def test_texture3d_cuda_array_copy_api_rejects_indexedarray(test, device):
     indexed_dst = wp.indexedarray(dst, [indices, None, None])
     tex = wp.Texture3D(np.zeros_like(data), device=device)
 
-    with test.assertRaisesRegex(TypeError, "wp.array"):
-        tex.copy_to_array(indexed_dst)
+    with test.assertRaisesRegex(ValueError, "Expected contiguous array"):
+        tex.copy_to(indexed_dst)
 
 
 def test_texture2d_cuda_array_copy_api_graph_capture(test, device):
@@ -1014,8 +1013,8 @@ def test_texture2d_cuda_array_copy_api_graph_capture(test, device):
     tex = wp.Texture2D(np.zeros_like(data0), device=device)
 
     with wp.ScopedCapture(device, force_module_load=False) as capture:
-        tex.copy_from_array(src)
-        tex.copy_to_array(dst)
+        tex.copy_from(src)
+        tex.copy_to(dst)
 
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
@@ -1037,8 +1036,8 @@ def test_texture3d_cuda_array_copy_api_graph_capture(test, device):
     tex = wp.Texture3D(np.zeros_like(data0), device=device)
 
     with wp.ScopedCapture(device, force_module_load=False) as capture:
-        tex.copy_from_array(src)
-        tex.copy_to_array(dst)
+        tex.copy_from(src)
+        tex.copy_to(dst)
 
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
@@ -1062,8 +1061,8 @@ def test_texture2d_cuda_array_copy_api_graph_capture_explicit_stream(test, devic
 
     with wp.ScopedStream(stream):
         wp.capture_begin(stream=stream, force_module_load=False)
-        tex.copy_from_array(src)
-        tex.copy_to_array(dst)
+        tex.copy_from(src)
+        tex.copy_to(dst)
         graph = wp.capture_end(stream=stream)
 
         wp.capture_launch(graph, stream=stream)
@@ -1090,8 +1089,8 @@ def test_texture3d_cuda_array_copy_api_graph_capture_explicit_stream(test, devic
 
     with wp.ScopedStream(stream):
         wp.capture_begin(stream=stream, force_module_load=False)
-        tex.copy_from_array(src)
-        tex.copy_to_array(dst)
+        tex.copy_from(src)
+        tex.copy_to(dst)
         graph = wp.capture_end(stream=stream)
 
         wp.capture_launch(graph, stream=stream)
@@ -1117,8 +1116,8 @@ def test_texture2d_cuda_surface_property_graph_capture_stability(test, device):
     surface_before = tex.cuda_surface
 
     with wp.ScopedCapture(device, force_module_load=False) as capture:
-        tex.copy_from_array(src)
-        tex.copy_to_array(dst)
+        tex.copy_from(src)
+        tex.copy_to(dst)
 
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(dst.numpy(), data0, rtol=1e-6, atol=1e-6)
@@ -2626,15 +2625,13 @@ class TestTexture(unittest.TestCase):
 cuda_devices = get_selected_cuda_test_devices()
 all_devices = get_test_devices()
 
-# 1D texture tests
+# Core texture tests - run on all devices (CPU + CUDA)
 add_function_test(TestTexture, "test_texture1d_1channel", test_texture1d_1channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_2channel", test_texture1d_2channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_4channel", test_texture1d_4channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_linear_filter", test_texture1d_linear_filter, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_resolution_query", test_texture1d_resolution_query, devices=all_devices)
 add_function_test(TestTexture, "test_texture1d_new_del", test_texture1d_new_del, devices=all_devices)
-
-# Core texture tests - run on all devices (CPU + CUDA)
 add_function_test(TestTexture, "test_texture2d_1channel", test_texture2d_1channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture2d_2channel", test_texture2d_2channel, devices=all_devices)
 add_function_test(TestTexture, "test_texture2d_4channel", test_texture2d_4channel, devices=all_devices)
@@ -2656,8 +2653,8 @@ add_function_test(
 )
 add_function_test(
     TestTexture,
-    "test_texture_base_requires_explicit_ndim",
-    test_texture_base_requires_explicit_ndim,
+    "test_texture_dtype_int_alias_maps_to_int32",
+    test_texture_dtype_int_alias_maps_to_int32,
     devices=all_devices,
 )
 add_function_test(

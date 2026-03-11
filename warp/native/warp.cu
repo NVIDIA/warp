@@ -4627,217 +4627,31 @@ void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, uns
     return resource;
 }
 
-bool wp_texture1d_copy_from_array_device(
-    void* context, void* stream, uint64_t dst_array_handle, uint64_t src_ptr, size_t width_bytes
+void* wp_cuda_graphics_register_gl_image(void* context, uint32_t image, uint32_t target, unsigned int flags)
+{
+    ContextGuard guard(context);
+
+    CUgraphicsResource* resource = new CUgraphicsResource;
+    bool success = check_cu(cuGraphicsGLRegisterImage_f(resource, image, target, flags));
+    if (!success) {
+        delete resource;
+        return NULL;
+    }
+
+    return resource;
+}
+
+uint64_t wp_cuda_graphics_sub_resource_get_mapped_array(
+    void* context, void* resource, unsigned int array_index, unsigned int mip_level
 )
 {
     ContextGuard guard(context);
-    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
 
-    // Use 2D copy with height=1 for 1D arrays
-    CUDA_MEMCPY2D copy_params = {};
-    copy_params.srcXInBytes = 0;
-    copy_params.srcY = 0;
-    copy_params.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-    copy_params.srcDevice = static_cast<CUdeviceptr>(src_ptr);
-    copy_params.srcPitch = width_bytes;
-
-    copy_params.dstXInBytes = 0;
-    copy_params.dstY = 0;
-    copy_params.dstMemoryType = CU_MEMORYTYPE_ARRAY;
-    copy_params.dstArray = reinterpret_cast<CUarray>(dst_array_handle);
-
-    copy_params.WidthInBytes = width_bytes;
-    copy_params.Height = 1;
-
-    return check_cu(cuMemcpy2DAsync_f(&copy_params, copy_stream));
-}
-
-bool wp_texture1d_copy_to_array_device(
-    void* context, void* stream, uint64_t dst_ptr, uint64_t src_array_handle, size_t width_bytes
-)
-{
-    ContextGuard guard(context);
-    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
-
-    // Use 2D copy with height=1 for 1D arrays
-    CUDA_MEMCPY2D copy_params = {};
-    copy_params.srcXInBytes = 0;
-    copy_params.srcY = 0;
-    copy_params.srcMemoryType = CU_MEMORYTYPE_ARRAY;
-    copy_params.srcArray = reinterpret_cast<CUarray>(src_array_handle);
-
-    copy_params.dstXInBytes = 0;
-    copy_params.dstY = 0;
-    copy_params.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-    copy_params.dstDevice = static_cast<CUdeviceptr>(dst_ptr);
-    copy_params.dstPitch = width_bytes;
-
-    copy_params.WidthInBytes = width_bytes;
-    copy_params.Height = 1;
-
-    return check_cu(cuMemcpy2DAsync_f(&copy_params, copy_stream));
-}
-
-bool wp_texture2d_copy_from_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_array_handle,
-    uint64_t src_ptr,
-    size_t src_pitch,
-    size_t width_bytes,
-    size_t height
-)
-{
-    ContextGuard guard(context);
-    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
-
-    CUDA_MEMCPY2D copy_params = {};
-    copy_params.srcXInBytes = 0;
-    copy_params.srcY = 0;
-    copy_params.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-    copy_params.srcDevice = static_cast<CUdeviceptr>(src_ptr);
-    copy_params.srcPitch = src_pitch;
-
-    copy_params.dstXInBytes = 0;
-    copy_params.dstY = 0;
-    copy_params.dstMemoryType = CU_MEMORYTYPE_ARRAY;
-    copy_params.dstArray = reinterpret_cast<CUarray>(dst_array_handle);
-
-    copy_params.WidthInBytes = width_bytes;
-    copy_params.Height = height;
-
-    return check_cu(cuMemcpy2DAsync_f(&copy_params, copy_stream));
-}
-
-bool wp_texture2d_copy_to_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_ptr,
-    size_t dst_pitch,
-    uint64_t src_array_handle,
-    size_t width_bytes,
-    size_t height
-)
-{
-    ContextGuard guard(context);
-    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
-
-    CUDA_MEMCPY2D copy_params = {};
-    copy_params.srcXInBytes = 0;
-    copy_params.srcY = 0;
-    copy_params.srcMemoryType = CU_MEMORYTYPE_ARRAY;
-    copy_params.srcArray = reinterpret_cast<CUarray>(src_array_handle);
-
-    copy_params.dstXInBytes = 0;
-    copy_params.dstY = 0;
-    copy_params.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-    copy_params.dstDevice = static_cast<CUdeviceptr>(dst_ptr);
-    copy_params.dstPitch = dst_pitch;
-
-    copy_params.WidthInBytes = width_bytes;
-    copy_params.Height = height;
-
-    return check_cu(cuMemcpy2DAsync_f(&copy_params, copy_stream));
-}
-
-bool wp_texture3d_copy_from_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_array_handle,
-    uint64_t src_ptr,
-    size_t src_pitch,
-    size_t src_height,
-    size_t width_bytes,
-    size_t height,
-    size_t depth
-)
-{
-    ContextGuard guard(context);
-    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
-
-    CUDA_MEMCPY3D copy_params = {};
-    copy_params.srcXInBytes = 0;
-    copy_params.srcY = 0;
-    copy_params.srcZ = 0;
-    copy_params.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-    copy_params.srcDevice = static_cast<CUdeviceptr>(src_ptr);
-    copy_params.srcPitch = src_pitch;
-    copy_params.srcHeight = src_height;
-
-    copy_params.dstXInBytes = 0;
-    copy_params.dstY = 0;
-    copy_params.dstZ = 0;
-    copy_params.dstMemoryType = CU_MEMORYTYPE_ARRAY;
-    copy_params.dstArray = reinterpret_cast<CUarray>(dst_array_handle);
-
-    copy_params.WidthInBytes = width_bytes;
-    copy_params.Height = height;
-    copy_params.Depth = depth;
-
-    return check_cu(cuMemcpy3DAsync_f(&copy_params, copy_stream));
-}
-
-bool wp_texture3d_copy_to_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_ptr,
-    size_t dst_pitch,
-    size_t dst_height,
-    uint64_t src_array_handle,
-    size_t width_bytes,
-    size_t height,
-    size_t depth
-)
-{
-    ContextGuard guard(context);
-    CUstream copy_stream = stream ? static_cast<CUstream>(stream) : get_current_stream(context);
-
-    CUDA_MEMCPY3D copy_params = {};
-    copy_params.srcXInBytes = 0;
-    copy_params.srcY = 0;
-    copy_params.srcZ = 0;
-    copy_params.srcMemoryType = CU_MEMORYTYPE_ARRAY;
-    copy_params.srcArray = reinterpret_cast<CUarray>(src_array_handle);
-
-    copy_params.dstXInBytes = 0;
-    copy_params.dstY = 0;
-    copy_params.dstZ = 0;
-    copy_params.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-    copy_params.dstDevice = static_cast<CUdeviceptr>(dst_ptr);
-    copy_params.dstPitch = dst_pitch;
-    copy_params.dstHeight = dst_height;
-
-    copy_params.WidthInBytes = width_bytes;
-    copy_params.Height = height;
-    copy_params.Depth = depth;
-
-    return check_cu(cuMemcpy3DAsync_f(&copy_params, copy_stream));
-}
-
-bool wp_texture_array_create_surface_device(void* context, uint64_t array_handle, uint64_t* surface_handle_out)
-{
-    ContextGuard guard(context);
-
-    cudaResourceDesc desc {};
-    desc.resType = cudaResourceTypeArray;
-    desc.res.array.array = reinterpret_cast<cudaArray_t>(array_handle);
-
-    cudaSurfaceObject_t surface = 0;
-    if (!check_cuda(cudaCreateSurfaceObject(&surface, &desc)))
-        return false;
-
-    *surface_handle_out = static_cast<uint64_t>(surface);
-    return true;
-}
-
-void wp_texture_array_destroy_surface_device(void* context, uint64_t surface_handle)
-{
-    if (!surface_handle)
-        return;
-
-    ContextGuard guard(context);
-    check_cuda(cudaDestroySurfaceObject(static_cast<cudaSurfaceObject_t>(surface_handle)));
+    CUarray cuda_array = NULL;
+    check_cu(
+        cuGraphicsSubResourceGetMappedArray_f(&cuda_array, *(CUgraphicsResource*)resource, array_index, mip_level)
+    );
+    return reinterpret_cast<uint64_t>(cuda_array);
 }
 
 void wp_cuda_graphics_unregister_resource(void* context, void* resource)

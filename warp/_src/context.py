@@ -4514,215 +4514,73 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
-            # Texture functions (device - CUDA)
-            self.core.wp_texture1d_create_device.argtypes = [
+            self.core.wp_texture_create_device.argtypes = [
                 ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
+                ctypes.c_int,  # ndim
+                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
             ]
-            self.core.wp_texture1d_create_device.restype = ctypes.c_bool
+            self.core.wp_texture_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture1d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture1d_destroy_device.restype = None
+            self.core.wp_texture_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_destroy_device.restype = None
 
-            self.core.wp_texture2d_create_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
-            ]
-            self.core.wp_texture2d_create_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture2d_destroy_device.restype = None
-
-            self.core.wp_texture3d_create_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # depth
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_int,  # address_mode_w
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
-            ]
-            self.core.wp_texture3d_create_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture3d_destroy_device.restype = None
-
-            self.core.wp_texture1d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # width_bytes
-            ]
-            self.core.wp_texture1d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture1d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-            ]
-            self.core.wp_texture1d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # src_pitch
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-            ]
-            self.core.wp_texture2d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_size_t,  # dst_pitch
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-            ]
-            self.core.wp_texture2d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # src_pitch
-                ctypes.c_size_t,  # src_height
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-                ctypes.c_size_t,  # depth
-            ]
-            self.core.wp_texture3d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_size_t,  # dst_pitch
-                ctypes.c_size_t,  # dst_height
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-                ctypes.c_size_t,  # depth
-            ]
-            self.core.wp_texture3d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture_array_create_surface_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # array_handle
-                ctypes.POINTER(ctypes.c_uint64),  # surface_handle_out
-            ]
-            self.core.wp_texture_array_create_surface_device.restype = ctypes.c_bool
-
-            self.core.wp_texture_array_destroy_surface_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # surface_handle
-            ]
-            self.core.wp_texture_array_destroy_surface_device.restype = None
-
-            # Texture functions (host - CPU)
-            self.core.wp_texture1d_create_host.argtypes = [
-                ctypes.c_int,  # width
+            self.core.wp_texture_create_host.argtypes = [
+                ctypes.c_int,  # ndim
+                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
+                ctypes.c_bool,  # surface_access
+                ctypes.c_int,  # filter mode
+                ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+                ctypes.c_void_p,  # data_ptr_out
             ]
-            self.core.wp_texture1d_create_host.restype = ctypes.c_bool
+            self.core.wp_texture_create_host.restype = ctypes.c_uint64
 
-            self.core.wp_texture1d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
-            ]
-            self.core.wp_texture1d_destroy_host.restype = None
+            self.core.wp_texture_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_texture_destroy_host.restype = None
 
-            self.core.wp_texture2d_create_host.argtypes = [
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
+            self.core.wp_texture_object_create_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # array_handle
+                ctypes.c_int,  # ndim
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
+                ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]
-            self.core.wp_texture2d_create_host.restype = ctypes.c_bool
+            self.core.wp_texture_object_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture2d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
-            ]
-            self.core.wp_texture2d_destroy_host.restype = None
+            self.core.wp_texture_object_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_object_destroy_device.restype = None
 
-            self.core.wp_texture3d_create_host.argtypes = [
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # depth
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_int,  # address_mode_w
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-            ]
-            self.core.wp_texture3d_create_host.restype = ctypes.c_bool
+            self.core.wp_surface_object_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_surface_object_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture3d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
+            self.core.wp_surface_object_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_surface_object_destroy_device.restype = None
+
+            self.core.wp_texture_copy_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint,  # width_bytes
+                ctypes.c_uint,  # height
+                ctypes.c_uint,  # depth
+                ctypes.c_int,  # dst_memory_type
+                ctypes.c_uint64,  # dst_handle
+                ctypes.c_uint,  # dst_pitch
+                ctypes.c_uint,  # dst_height
+                ctypes.c_int,  # src_memory_type
+                ctypes.c_uint64,  # src_handle
+                ctypes.c_uint,  # src_pitch
+                ctypes.c_uint,  # src_height
+                ctypes.c_void_p,  # stream
             ]
-            self.core.wp_texture3d_destroy_host.restype = None
+            self.core.wp_texture_copy_device.restype = ctypes.c_bool
+
+            self.core.wp_texture_descriptor_from_cuda_array.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_descriptor_from_cuda_array.restype = ctypes.c_bool
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
@@ -5164,6 +5022,20 @@ class Runtime:
             self.core.wp_cuda_graphics_device_ptr_and_size.restype = None
             self.core.wp_cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
             self.core.wp_cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_register_gl_image.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint,
+            ]
+            self.core.wp_cuda_graphics_register_gl_image.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_sub_resource_get_mapped_array.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint,
+                ctypes.c_uint,
+            ]
+            self.core.wp_cuda_graphics_sub_resource_get_mapped_array.restype = ctypes.c_uint64
             self.core.wp_cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_graphics_unregister_resource.restype = None
 
