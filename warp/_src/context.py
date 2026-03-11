@@ -4532,7 +4532,6 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_bool,  # surface_access
                 ctypes.c_int,  # filter mode
                 ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
@@ -4579,7 +4578,11 @@ class Runtime:
             ]
             self.core.wp_texture_copy_device.restype = ctypes.c_bool
 
-            self.core.wp_texture_descriptor_from_cuda_array.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_descriptor_from_cuda_array.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
             self.core.wp_texture_descriptor_from_cuda_array.restype = ctypes.c_bool
 
             bsr_matrix_from_triplets_argtypes = [

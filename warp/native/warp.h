@@ -195,7 +195,6 @@ WP_API uint64_t wp_texture_create_host(
     int* shape,
     int num_channels,
     int dtype,
-    bool surface_access,
     int filter_mode,
     int* address_modes,
     bool use_normalized_coords,

@@ -36,7 +36,6 @@ uint64_t wp_texture_create_host(
     int* shape,
     int num_channels,
     int dtype,
-    bool surface_access,
     int filter_mode,
     int* address_modes,
     bool use_normalized_coords,
@@ -335,7 +334,7 @@ uint64_t wp_texture_object_create_device(
 
     // Per-axis address modes
     for (int i = 0; i < 3; i++) {
-        if (i <= ndim)
+        if (i < ndim)
             tex_desc.addressMode[i] = get_cuda_address_mode(address_modes[i]);
         else
             tex_desc.addressMode[i] = CU_TR_ADDRESS_MODE_CLAMP;

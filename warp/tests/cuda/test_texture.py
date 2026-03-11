@@ -693,8 +693,8 @@ def test_texture_dtype_float_alias_maps_to_float32(test, device):
 
 def test_texture_dtype_int_alias_maps_to_int32(test, device):
     """Python int in constructor args should map to Warp int32."""
-    tex = wp.Texture1D(width=4, num_channels=1, dtype=float, device=device)
-    test.assertIs(tex.dtype, wp.float32)
+    tex = wp.Texture1D(width=4, num_channels=1, dtype=int, device=device)
+    test.assertIs(tex.dtype, wp.int32)
 
 
 # ============================================================================

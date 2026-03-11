@@ -397,7 +397,6 @@ class Texture:
                 c_shape,
                 num_channels,
                 dtype_code,
-                surface_access,
                 filter_mode,
                 c_address_modes,
                 normalized_coords,
