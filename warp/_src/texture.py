@@ -918,10 +918,10 @@ class Texture1D(Texture):
     _wp_native_name_ = "texture1d_t"
     _wp_ctype_ = texture1d_t  # ctypes struct for arrays of textures
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
-    vars: ClassVar[dict[str, Var]] = {
-        "width": Var("width", int32),
+    vars: ClassVar[dict[str, _Var]] = {
+        "width": _Var("width", int32),
     }
 
     def __init__(
@@ -993,11 +993,11 @@ class Texture2D(Texture):
     _wp_native_name_ = "texture2d_t"
     _wp_ctype_ = texture2d_t  # ctypes struct for arrays of textures
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
-    vars: ClassVar[dict[str, Var]] = {
-        "width": Var("width", int32),
-        "height": Var("height", int32),
+    vars: ClassVar[dict[str, _Var]] = {
+        "width": _Var("width", int32),
+        "height": _Var("height", int32),
     }
 
     def __init__(
@@ -1070,12 +1070,12 @@ class Texture3D(Texture):
     _wp_native_name_ = "texture3d_t"
     _wp_ctype_ = texture3d_t  # ctypes struct for arrays of textures
 
-    from warp._src.codegen import Var  # noqa: PLC0415
+    from warp._src.codegen import Var as _Var  # noqa: PLC0415
 
-    vars: ClassVar[dict[str, Var]] = {
-        "width": Var("width", int32),
-        "height": Var("height", int32),
-        "depth": Var("depth", int32),
+    vars: ClassVar[dict[str, _Var]] = {
+        "width": _Var("width", int32),
+        "height": _Var("height", int32),
+        "depth": _Var("depth", int32),
     }
 
     def __init__(

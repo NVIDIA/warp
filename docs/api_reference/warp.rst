@@ -228,13 +228,23 @@ Spatial Acceleration
    MeshQueryAABBTiled
    MeshQueryPoint
    MeshQueryRay
+   Volume
+
+Textures
+--------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   GLTextureResource
    Texture
    Texture1D
    Texture2D
    Texture3D
    TextureAddressMode
    TextureFilterMode
-   Volume
+   TextureResourceFlags
 
 Runtime
 -------
