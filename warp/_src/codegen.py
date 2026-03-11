@@ -3528,14 +3528,17 @@ class Adjoint:
                 for i, arg in enumerate(adj.args):
                     arg.is_read = is_read_states[i]
 
+            # Check for user-defined operator overloads first (same as ast.Name handler).
             op_name = builtin_operators[type(node.op)]
+            result = None
             try:
                 user_func = adj.resolve_external_reference(op_name)
                 if isinstance(user_func, warp._src.context.Function):
                     result = adj.add_call(user_func, (target_val, rhs), {}, {})
-                else:
-                    result = adj.add_builtin_call(op_name, [target_val, rhs])
             except WarpCodegenError:
+                pass
+
+            if result is None:
                 result = adj.add_builtin_call(op_name, [target_val, rhs])
 
             new_node = ast.Assign(targets=[lhs], value=node.value)
