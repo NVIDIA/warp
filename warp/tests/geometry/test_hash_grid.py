@@ -401,7 +401,7 @@ def test_hashgrid_negative_coordinates(test, device):
 
     Verifies that points in negative coordinate space are correctly binned
     and found by neighbor queries.  Regression test for issue #1256 where
-    C++ int() truncation (toward zero) was used instead of floor() (toward
+    C++ ``int()`` truncation (toward zero) was used instead of ``floor()`` (toward
     negative infinity), causing missed neighbors when coordinates cross the
     zero boundary.
     """
@@ -501,7 +501,7 @@ def test_hashgrid_negative_coordinates(test, device):
 def test_hashgrid_negative_brute_force(test, device):
     """Cross-validate hash grid against brute-force for negative-space points.
 
-    Uses the same reference kernel approach as test_hashgrid_query but with
+    Uses the same reference kernel approach as ``test_hashgrid_query`` but with
     points spanning negative and positive coordinates.
     """
     grid_dim = 64
