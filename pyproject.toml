@@ -192,7 +192,7 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.typos]
-files.extend-exclude = ["/tools/packman", "/tools/repoman", "/PUBLICATIONS.md", "/licenses", "/warp/native/nanovdb", "*.svg", "*.usda"]
+files.extend-exclude = ["/tools/packman", "/tools/repoman", "/PUBLICATIONS.md", "/licenses", "/warp/native/nanovdb", "/warp/native/cuBQL", "*.svg", "*.usda"]
 
 [tool.typos.default]
 extend-ignore-re = [
