@@ -415,7 +415,10 @@ def _from_dlpack(capsule, dtype=None, hint=None) -> warp.array:
     Args:
         capsule: A DLPack capsule wrapping an external array or tensor.
         dtype: An optional Warp data type to interpret the source data.
-        hint: A hint that helps to interpret opaque data (internal use only).
+        hint: A hint that helps to interpret opaque pointers. Currently supported hints are
+            ``wp.Texture1D``, ``wp.Texture2D``, and ``wp.Texture3D`` when the opaque
+            pointer is a ``cudaArray_t`` handle. Hints are ignored when the data type
+            is not ``kDLOpaquePointer``.
 
     Returns:
         A new Warp array that uses the same underlying memory as the input capsule.
