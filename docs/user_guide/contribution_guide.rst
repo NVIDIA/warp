@@ -298,7 +298,8 @@ carefully aligned matrices), you can disable clang-format for a specific section
 
 Use this sparingly. Add a comment explaining why if the reason isn't obvious. See ``warp/native/builtin.h`` for examples.
 
-**Note:** The NanoVDB directory (``warp/native/nanovdb/``) is third-party code and automatically excluded via its own ``.clang-format`` configuration.
+**Note:** The NanoVDB (``warp/native/nanovdb/``) and cuBQL (``warp/native/cuBQL/``) directories are third-party code and
+are automatically excluded via their own ``.clang-format`` configurations.
 
 .. _building-docs:
 

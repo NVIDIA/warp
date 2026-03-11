@@ -81,6 +81,7 @@ jobs:
             --error-exitcode=1 \
             -j $(nproc) \
             --suppress=*:warp/native/nanovdb/* \
+            --suppress=*:warp/native/cuBQL/* \
             --suppress=normalCheckLevelMaxBranches \
             warp
       
@@ -98,6 +99,7 @@ jobs:
             --xml-version=2 \
             -j $(nproc) \
             --suppress=*:warp/native/nanovdb/* \
+            --suppress=*:warp/native/cuBQL/* \
             --suppress=normalCheckLevelMaxBranches \
             warp \
             2> cppcheck-report.xml

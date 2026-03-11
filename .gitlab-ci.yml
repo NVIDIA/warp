@@ -278,6 +278,7 @@ cppcheck:
       --error-exitcode=1
       -j $(nproc)
       --suppress=*:warp/native/nanovdb/*
+      --suppress=*:warp/native/cuBQL/*
       --suppress=normalCheckLevelMaxBranches
       warp
       || cppcheck_exit_code=$?
@@ -292,6 +293,7 @@ cppcheck:
       --xml-version=2
       -j $(nproc)
       --suppress=*:warp/native/nanovdb/*
+      --suppress=*:warp/native/cuBQL/*
       --suppress=normalCheckLevelMaxBranches
       warp
       2> cppcheck-report.xml
