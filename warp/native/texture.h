@@ -144,6 +144,9 @@ struct CpuTexture {
         data = new uint8[data_size];
     }
 
+    CpuTexture(const CpuTexture&) = delete;
+    CpuTexture& operator=(const CpuTexture&) = delete;
+
     ~CpuTexture() { delete[] (uint8*)data; }
 
     void* data;
