@@ -1007,8 +1007,17 @@ add_builtin(
 
 # scalar type constructors between all storage / compute types
 scalar_types_all = [*scalar_types, bool, int, float]
+
+unsigned_int_types = (uint8, uint16, uint32, uint64)
+float_src_types = {float16: "float16", float32: "float32", float64: "float64", float: "float32"}
+
 for t in scalar_types_all:
     for u in scalar_types_all:
+        # Use safe cast for float -> unsigned to avoid C++ UB
+        safe_native = None
+        if t in unsigned_int_types and u in float_src_types:
+            safe_native = f"{float_src_types[u]}_to_{t.__name__}"
+
         add_builtin(
             t.__name__,
             input_types={"a": u},
@@ -1017,7 +1026,8 @@ for t in scalar_types_all:
             hidden=True,
             group="Scalar Math",
             export=False,
-            namespace="wp::" if t is not bool else "",
+            namespace="wp::" if t is not bool and not safe_native else "",
+            native_func=safe_native if safe_native else t.__name__,
         )
 
 
