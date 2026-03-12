@@ -708,6 +708,7 @@ class Texture:
         warp._src.utils.warn(
             "The Texture.copy_from_array() method is deprecated, use Texture.copy_from() instead.",
             DeprecationWarning,
+            stacklevel=2,
         )
 
         self.copy_from(src)
@@ -720,6 +721,7 @@ class Texture:
         warp._src.utils.warn(
             "The Texture.copy_to_array() method is deprecated, use Texture.copy_to() instead.",
             DeprecationWarning,
+            stacklevel=2,
         )
 
         self.copy_to(dst)
@@ -769,7 +771,7 @@ class Texture:
             return axis_address_mode
         elif address_mode is not None:
             if isinstance(address_mode, tuple):
-                return address_mode[axis_index] if axis_index < len(address_mode) else 1
+                return address_mode[axis_index] if axis_index < len(address_mode) else TextureAddressMode.CLAMP
             else:
                 return address_mode
         else:

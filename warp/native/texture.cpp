@@ -323,6 +323,8 @@ uint64_t wp_texture_object_create_device(
         return 0;
     }
 
+    ContextGuard guard(context);
+
     // Create resource descriptor
     CUDA_RESOURCE_DESC res_desc = {};
     res_desc.resType = CU_RESOURCE_TYPE_ARRAY;
