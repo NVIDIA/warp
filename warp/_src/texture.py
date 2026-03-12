@@ -289,10 +289,12 @@ class Texture:
             if not result:
                 raise RuntimeError(f"Failed to get descriptor for cuda_array {self._array_handle}")
 
+            if texture_desc.ndim != ndim:
+                raise ValueError(f"Invalid CUDA array dimensionality, expected {ndim}, got {texture_desc.ndim}")
+
             width = int(texture_desc.shape[0])
             height = int(texture_desc.shape[1])
             depth = int(texture_desc.shape[2])
-            ndim = int(texture_desc.ndim)
             num_channels = int(texture_desc.num_channels)
             dtype_code = int(texture_desc.dtype)
             dtype = self._code_to_dtype(dtype_code)
@@ -1252,14 +1254,22 @@ class GLTextureResource:
         if self._mapped_texture is not None:
             return self._mapped_texture
 
-        self._runtime.core.wp_cuda_graphics_map(self._device.context, self._resource)
+        if not self._runtime.core.wp_cuda_graphics_map(self._device.context, self._resource):
+            raise RuntimeError(f"Failed to map graphics resource: {self._runtime.get_error_string()}")
+
         cuda_array = self._runtime.core.wp_cuda_graphics_sub_resource_get_mapped_array(
             self._device.context, self._resource, 0, 0
         )
         if not cuda_array:
-            raise RuntimeError(f"Failed to map GL texture: {self._runtime.get_error_string()}")
+            self._runtime.core.wp_cuda_graphics_unmap(self._device.context, self._resource)
+            raise RuntimeError(f"Failed to get mapped CUDA array: {self._runtime.get_error_string()}")
 
-        self._mapped_texture = self._TextureClass(cuda_array=cuda_array)
+        try:
+            self._mapped_texture = self._TextureClass(cuda_array=cuda_array, device=self._device)
+        except:
+            self._runtime.core.wp_cuda_graphics_unmap(self._device.context, self._resource)
+            raise
+
         return self._mapped_texture
 
     def unmap(self):

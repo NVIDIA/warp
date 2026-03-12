@@ -4587,11 +4587,11 @@ size_t wp_cuda_launch_kernel(
     return res;
 }
 
-void wp_cuda_graphics_map(void* context, void* resource)
+bool wp_cuda_graphics_map(void* context, void* resource)
 {
     ContextGuard guard(context);
 
-    check_cu(cuGraphicsMapResources_f(1, (CUgraphicsResource*)resource, get_current_stream()));
+    return check_cu(cuGraphicsMapResources_f(1, (CUgraphicsResource*)resource, get_current_stream()));
 }
 
 void wp_cuda_graphics_unmap(void* context, void* resource)

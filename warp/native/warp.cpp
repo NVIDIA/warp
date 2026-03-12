@@ -1094,7 +1094,7 @@ WP_API int wp_cuda_get_context_restore_policy() { return false; }
 WP_API void wp_array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive) { }
 WP_API void wp_array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive) { }
 
-WP_API void wp_cuda_graphics_map(void* context, void* resource) { }
+WP_API bool wp_cuda_graphics_map(void* context, void* resource) { return false; }
 WP_API void wp_cuda_graphics_unmap(void* context, void* resource) { }
 WP_API void wp_cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size) { }
 WP_API void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags) { return NULL; }
@@ -1102,7 +1102,7 @@ WP_API void* wp_cuda_graphics_register_gl_image(void* context, uint32_t image, u
 {
     return NULL;
 }
-uint64_t wp_cuda_graphics_sub_resource_get_mapped_array(
+WP_API uint64_t wp_cuda_graphics_sub_resource_get_mapped_array(
     void* context, void* resource, unsigned int array_index, unsigned int mip_level
 )
 {

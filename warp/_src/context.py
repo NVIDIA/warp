@@ -5013,7 +5013,7 @@ class Runtime:
             self.core.wp_cuda_launch_kernel.restype = ctypes.c_size_t
 
             self.core.wp_cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.wp_cuda_graphics_map.restype = None
+            self.core.wp_cuda_graphics_map.restype = ctypes.c_bool
             self.core.wp_cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_graphics_unmap.restype = None
             self.core.wp_cuda_graphics_device_ptr_and_size.argtypes = [

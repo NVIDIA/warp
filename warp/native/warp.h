@@ -597,7 +597,7 @@ WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
 WP_API void wp_cuda_set_context_restore_policy(bool always_restore);
 WP_API int wp_cuda_get_context_restore_policy();
 
-WP_API void wp_cuda_graphics_map(void* context, void* resource);
+WP_API bool wp_cuda_graphics_map(void* context, void* resource);
 WP_API void wp_cuda_graphics_unmap(void* context, void* resource);
 WP_API void wp_cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size);
 WP_API void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags);

@@ -444,7 +444,7 @@ void wp_texture_object_destroy_device(void* context, uint64_t tex_handle) { }
 WP_API uint64_t wp_surface_object_create_device(void* context, uint64_t array_handle)
 {
     wp::set_error_string("Warp error: CUDA not enabled");
-    return false;
+    return 0;
 }
 
 WP_API void wp_surface_object_destroy_device(void* context, uint64_t surface_handle) { }
