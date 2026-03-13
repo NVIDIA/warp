@@ -1161,7 +1161,7 @@ namespace cuBQL {
       using atomic_box_t = typename ctx_t::atomic_box_t;
       const int makeLeafThreshold
         = (buildConfig.makeLeafThreshold > 0)
-        ? min(buildConfig.makeLeafThreshold,buildConfig.maxAllowedLeafSize)
+        ? std::min(buildConfig.makeLeafThreshold,buildConfig.maxAllowedLeafSize)
         : 1;
 
       // ==================================================================
