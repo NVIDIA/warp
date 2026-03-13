@@ -234,9 +234,9 @@ def query_ray_group_kernel(
 
 def test_mesh_query_ray(test, device):
     if device.is_cpu:
-        constructors = ["sah", "median"]
+        constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh"]
+        constructors = ["sah", "median", "lbvh", "cubql"]
 
     leaf_sizes = [1, 2, 4]
 
@@ -361,6 +361,19 @@ def test_mesh_exceptions(test, device):
         indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
         indices = indices.reshape((3, -1))
         wp.Mesh(points=points, indices=indices)
+
+    # grouped queries are not supported with cuBQL backend
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        groups = wp.zeros(FACE_COUNT, dtype=int, device=device)
+        wp.Mesh(points=points, indices=indices, groups=groups, bvh_constructor="cubql")
+
+    # winding number support is not available with cuBQL backend
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        wp.Mesh(points=points, indices=indices, support_winding_number=True, bvh_constructor="cubql")
 
 
 devices = get_test_devices()
