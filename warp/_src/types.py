@@ -55,6 +55,14 @@ Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
 Shape = TypeVar("Shape", bound=tuple[int, ...])
 
+# NDim has a default under TYPE_CHECKING so that static type checkers (mypy, pyright)
+# accept both array[dtype] and array[dtype, Literal[ndim]] subscript syntax (PEP 696).
+# At runtime Generic doesn't enforce TypeVar defaults, so a plain TypeVar suffices.
+if TYPE_CHECKING:
+    NDim = TypeVar("NDim", bound=int, default=int)
+else:
+    NDim = TypeVar("NDim", bound=int)
+
 
 # =============================================================================
 # Scalar types - defined early so TypeVars can reference them
@@ -489,7 +497,7 @@ class Transformation(Generic[Float]):
         return transformation(type_to_warp(params))
 
 
-class Array(Generic[DType]):
+class Array(Generic[DType, NDim]):
     # Type annotations are guarded to prevent Sphinx from documenting them
     # as inherited attributes, which would conflict with the docstring
     # attributes in the `array` subclass.
@@ -2808,7 +2816,7 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
     return array_ctype
 
 
-class array(Array):
+class array(Array[DType, NDim]):
     """A fixed-size multi-dimensional array containing values of the same type.
 
     Attributes:
@@ -4191,7 +4199,7 @@ class array(Array):
 
 
 # aliases for arrays with small dimensions
-class array1d(Array):
+class array1d(Array[DType, NDim]):
     """Create or annotate a 1-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4206,7 +4214,7 @@ class array1d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=1)
 
 
-class array2d(Array):
+class array2d(Array[DType, NDim]):
     """Create or annotate a 2-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4221,7 +4229,7 @@ class array2d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=2)
 
 
-class array3d(Array):
+class array3d(Array[DType, NDim]):
     """Create or annotate a 3-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4236,7 +4244,7 @@ class array3d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=3)
 
 
-class array4d(Array):
+class array4d(Array[DType, NDim]):
     """Create or annotate a 4-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4390,7 +4398,7 @@ class fixedarray(array):
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like
 # contiguous(), to(), numpy(), list(), assign(), zero_(), and fill_().
-class noncontiguous_array_base(Array):
+class noncontiguous_array_base(Array[DType, NDim]):
     def __init__(self, array_type_id):
         self.type_id = array_type_id
         self.is_contiguous = False
@@ -4487,7 +4495,7 @@ def check_index_array(indices, expected_device):
         raise ValueError(f"Index array device ({indices.device} does not match data array device ({expected_device}))")
 
 
-class indexedarray(noncontiguous_array_base):
+class indexedarray(noncontiguous_array_base[DType, NDim]):
     """Array providing indexed access to a subset of elements in a source :class:`warp.array`."""
 
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
