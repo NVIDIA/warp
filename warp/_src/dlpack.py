@@ -17,6 +17,7 @@
 # https://dmlc.github.io/dlpack/latest/python_spec.html
 
 import ctypes
+from typing import Union
 
 import warp
 from warp._src.thirdparty.dlpack import (
@@ -25,6 +26,7 @@ from warp._src.thirdparty.dlpack import (
     DLDevice,
     DLDeviceType,
     DLManagedTensor,
+    DLTensor,
     _c_str_dltensor,
 )
 
@@ -343,23 +345,7 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
         raise RuntimeError(f"Unsupported DLPack dtype {(str(dl_dtype.type_code), dl_dtype.bits)}")
 
 
-def _from_dlpack(capsule, dtype=None) -> warp.array:
-    """Convert a DLPack capsule into a Warp array without copying.
-
-    Args:
-        capsule: A DLPack capsule wrapping an external array or tensor.
-        dtype: An optional Warp data type to interpret the source data.
-
-    Returns:
-        A new Warp array that uses the same underlying memory as the input capsule.
-    """
-
-    assert PyCapsule_IsValid(capsule, _c_str_dltensor), "Invalid capsule"
-    mem_ptr = PyCapsule_GetPointer(capsule, _c_str_dltensor)
-    managed_tensor = DLManagedTensor.from_address(mem_ptr)
-
-    dlt = managed_tensor.dl_tensor
-
+def _unpack_array(dlt: DLTensor, dtype=None):
     device = device_from_dlpack(dlt.device)
     pinned = dlt.device.device_type.value == DLDeviceType.kDLCUDAHost
     shape = tuple(dlt.shape[dim] for dim in range(dlt.ndim))
@@ -415,25 +401,68 @@ def _from_dlpack(capsule, dtype=None) -> warp.array:
         ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
     )
 
+    return a
+
+
+def _unpack_texture(dlt: DLTensor, TextureClass: type):
+    # assumes that dlt.data is a cudaArray_t
+    device = device_from_dlpack(dlt.device)
+    return TextureClass(cuda_array=dlt.data, device=device)
+
+
+def _from_dlpack(capsule, dtype=None, hint=None) -> Union[warp.array, warp.Texture]:
+    """Convert a DLPack capsule into a Warp array without copying.
+
+    Args:
+        capsule: A DLPack capsule wrapping an external array or tensor.
+        dtype: An optional Warp data type to interpret the source data.
+        hint: A hint that helps to interpret opaque pointers. Currently supported hints are
+            ``wp.Texture1D``, ``wp.Texture2D``, and ``wp.Texture3D`` when the opaque
+            pointer is a ``cudaArray_t`` handle. Hints are ignored when the data type
+            is not ``kDLOpaquePointer``.
+
+    Returns:
+        A new Warp array or texture that uses the same underlying memory as the input capsule.
+    """
+
+    assert PyCapsule_IsValid(capsule, _c_str_dltensor), "Invalid capsule"
+    mem_ptr = PyCapsule_GetPointer(capsule, _c_str_dltensor)
+    managed_tensor = DLManagedTensor.from_address(mem_ptr)
+
+    dlt = managed_tensor.dl_tensor
+
+    if dlt.dtype.type_code.value != DLDataTypeCode.kDLOpaquePointer:
+        # regular array
+        obj = _unpack_array(dlt, dtype=dtype)
+    else:
+        # opaque pointers need a hint to interpret them correctly
+        if hint in (warp.Texture1D, warp.Texture2D, warp.Texture3D):
+            obj = _unpack_texture(dlt, hint)
+        else:
+            raise ValueError(f"Unable to interpret opaque pointer (hint={hint})")
+
     # take ownership of the DLManagedTensor
-    a._dlpack_tensor_holder = _DLPackTensorHolder(mem_ptr)
+    obj._dlpack_tensor_holder = _DLPackTensorHolder(mem_ptr)
 
     # rename the capsule so that it no longer owns the DLManagedTensor
     PyCapsule_SetName(capsule, _c_str_used_dltensor)
 
-    return a
+    return obj
 
 
-def from_dlpack(source, dtype=None) -> warp.array:
+def from_dlpack(source, dtype=None, hint=None) -> Union[warp.array, warp.Texture]:
     """Convert a source array or DLPack capsule into a Warp array without copying.
 
     Args:
         source: A DLPack-compatible array or PyCapsule
         dtype: An optional Warp data type to interpret the source data.
+        hint: A hint that helps to interpret opaque pointers. Currently supported hints are
+            ``wp.Texture1D``, ``wp.Texture2D``, and ``wp.Texture3D`` when the opaque
+            pointer is a ``cudaArray_t`` handle. Hints are ignored when the data type
+            is not ``kDLOpaquePointer``.
 
     Returns:
-        A new Warp array that uses the same underlying memory as the input
-        pycapsule.
+        A new Warp array or texture that uses the same underlying memory as the source.
     """
 
     # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack__.html
@@ -461,4 +490,4 @@ def from_dlpack(source, dtype=None) -> warp.array:
         # legacy behaviour, assume source is a capsule
         capsule = source
 
-    return _from_dlpack(capsule, dtype=dtype)
+    return _from_dlpack(capsule, dtype=dtype, hint=hint)
