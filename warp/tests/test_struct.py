@@ -807,6 +807,54 @@ class TestStruct(unittest.TestCase):
 
         wp.launch(check_default_attributes_kernel, dim=1, inputs=[s])
 
+    def test_struct_field_type_preservation(self):
+        """Assigning a Warp scalar to a struct field should preserve the Warp type (GH-1288)."""
+
+        @wp.struct
+        class ScalarStruct:
+            u8: wp.uint8
+            i32: wp.int32
+            f16: wp.float16
+            f32: wp.float32
+            f64: wp.float64
+
+        s = ScalarStruct()
+
+        # Default-initialized fields should already have the correct Warp type.
+        self.assertIsInstance(s.u8, wp.uint8)
+        self.assertIsInstance(s.i32, wp.int32)
+        self.assertIsInstance(s.f16, wp.float16)
+        self.assertIsInstance(s.f32, wp.float32)
+        self.assertIsInstance(s.f64, wp.float64)
+
+        # After assignment of Warp scalars the type must be preserved,
+        # not decayed to int/float.
+        s.u8 = wp.uint8(1)
+        s.i32 = wp.int32(-7)
+        s.f16 = wp.float16(3.14)
+        s.f32 = wp.float32(3.14)
+        s.f64 = wp.float64(2.718)
+
+        self.assertIsInstance(s.u8, wp.uint8)
+        self.assertIsInstance(s.i32, wp.int32)
+        self.assertIsInstance(s.f16, wp.float16)
+        self.assertIsInstance(s.f32, wp.float32)
+        self.assertIsInstance(s.f64, wp.float64)
+
+        # Values should be correct too.
+        self.assertEqual(int(s.u8), 1)
+        self.assertEqual(int(s.i32), -7)
+        self.assertAlmostEqual(float(s.f16), 3.14, places=2)
+        self.assertAlmostEqual(float(s.f32), 3.14, places=6)
+        self.assertAlmostEqual(float(s.f64), 2.718, places=15)
+
+        # Assigning plain Python values should preserve the Python type,
+        # not wrap in Warp scalars (important for isinstance checks downstream).
+        s.i32 = 42
+        s.f64 = 1.5
+        self.assertIsInstance(s.i32, int)
+        self.assertIsInstance(s.f64, float)
+
     def test_nested_vec_assignment(self):
         v = VecStruct()
         v.value[0] = 1.0

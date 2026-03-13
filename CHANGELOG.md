@@ -31,6 +31,9 @@
   truncated cell indices to incorrect physical buckets ([GH-1256](https://github.com/NVIDIA/warp/issues/1256)).
 - Fix ``wp.array[dtype]`` subscript syntax not being recognized by mypy, which reported
   ``"array" expects no type arguments`` ([GH-1278](https://github.com/NVIDIA/warp/issues/1278)).
+- Fix struct field assignment unwrapping Warp scalar types (e.g., ``wp.float32``, ``wp.int32``) to their
+  underlying Python types, causing subsequent reads to return plain ``float`` or ``int`` instead of the
+  original Warp type ([GH-1288](https://github.com/NVIDIA/warp/issues/1288)).
 
 ### Documentation
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
