@@ -8,6 +8,9 @@
 - Add `Texture.copy_from()` that can copy from host and device arrays as well as other textures.
 - Add `Texture.copy_to()` that can copy to host and device arrays as well as other textures.
 
+- **Experimental**: Add optional cuBQL BVH backend for `wp.Mesh`, selectable via `bvh_constructor="cubql"`
+  ([GH-1286](https://github.com/NVIDIA/warp/issues/1286)).
+
 ### Removed
 
 ### Deprecated
