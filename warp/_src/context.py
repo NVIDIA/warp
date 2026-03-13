@@ -9403,6 +9403,8 @@ def export_stubs(file):  # pragma: no cover
     print('Rows = TypeVar("Rows", bound=int)', file=file)
     print('Cols = TypeVar("Cols", bound=int)', file=file)
     print('DType = TypeVar("DType")', file=file)
+    # NDim uses PEP 696 default so type checkers accept both array[dtype] and array[dtype, ndim]
+    print('NDim = TypeVar("NDim", bound=int, default=int)', file=file)
     print('Shape = TypeVar("Shape")', file=file)
 
     # Generic type stubs - must be proper class definitions, not type alias assignments.
@@ -9411,9 +9413,9 @@ def export_stubs(file):  # pragma: no cover
     print("class Matrix(Generic[Scalar, Rows, Cols]): ...", file=file)
     print("class Quaternion(Generic[Float]): ...", file=file)
     print("class Transformation(Generic[Float]): ...", file=file)
-    print("class Array(Generic[DType]): ...", file=file)
-    print("class FabricArray(Generic[DType]): ...", file=file)
-    print("class IndexedFabricArray(Generic[DType]): ...", file=file)
+    print("class Array(Generic[DType, NDim]): ...", file=file)
+    print("class FabricArray(Generic[DType, NDim]): ...", file=file)
+    print("class IndexedFabricArray(Generic[DType, NDim]): ...", file=file)
     print("class Tile(Generic[DType, Shape]): ...", file=file)
 
     # =========================================================================
