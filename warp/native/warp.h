@@ -185,207 +185,49 @@ WP_API const char* wp_volume_get_blind_data_info(
     uint64_t id, uint32_t data_index, void** buf, uint64_t* value_count, uint32_t* value_size, char type_str[16]
 );
 
-// Texture1D functions (CUDA device)
-// Creates a 1D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
-// data: pointer to HOST data (will be copied into a CUDA array)
-// width: texture width
-// num_channels: 1, 2, or 4
-// dtype: 0=uint8, 1=uint16, 2=float32, 3=int8, 4=int16, 5=float16, 6=uint32, 7=int32
-// filter_mode: 0=nearest, 1=linear
-// address_mode_u: 0=wrap, 1=clamp, 2=mirror, 3=border
-// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width]
-// surface_access: if true, allocate CUDA array with surface load/store support
-WP_API bool wp_texture1d_create_device(
-    void* context,
-    int width,
+// Textures
+WP_API uint64_t
+wp_texture_create_device(void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access);
+WP_API void wp_texture_destroy_device(void* context, uint64_t array_handle);
+
+WP_API uint64_t wp_texture_create_host(
+    int ndim,
+    int* shape,
     int num_channels,
     int dtype,
     int filter_mode,
-    int address_mode_u,
+    int* address_modes,
     bool use_normalized_coords,
-    bool surface_access,
-    const void* data,
-    uint64_t* tex_handle_out,
-    uint64_t* array_handle_out
+    void** data_ptr_out
 );
-WP_API void wp_texture1d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
+WP_API void wp_texture_destroy_host(uint64_t tex_handle);
 
-// Texture1D functions (CPU host)
-// Creates a 1D texture from data on the host. Returns texture handle (pointer to internal data).
-// data: pointer to host data (will be copied internally)
-// width: texture width
-// num_channels: 1, 2, or 4
-// dtype: 0=uint8, 1=uint16, 2=float32, 3=int8, 4=int16, 5=float16, 6=uint32, 7=int32
-// filter_mode: 0=nearest, 1=linear
-// address_mode_u: 0=wrap, 1=clamp, 2=mirror, 3=border
-// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width]
-WP_API bool wp_texture1d_create_host(
-    int width,
-    int num_channels,
-    int dtype,
-    int filter_mode,
-    int address_mode_u,
-    bool use_normalized_coords,
-    const void* data,
-    uint64_t* tex_handle_out
-);
-WP_API void wp_texture1d_destroy_host(uint64_t tex_handle);
+WP_API bool
+wp_texture_descriptor_from_cuda_array(void* context, uint64_t array_handle, wp::cuda_array_desc_t* desc_out);
 
-// Texture2D functions (CUDA device)
-// Creates a 2D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
-// data: pointer to HOST data (will be copied into a CUDA array)
-// width, height: texture dimensions
-// num_channels: 1, 2, or 4
-// dtype: 0=uint8, 1=uint16, 2=float32, 3=int8, 4=int16, 5=float16, 6=uint32, 7=int32
-// filter_mode: 0=nearest, 1=linear
-// address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
-// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
-// surface_access: if true, allocate CUDA array with surface load/store support
-WP_API bool wp_texture2d_create_device(
-    void* context,
-    int width,
-    int height,
-    int num_channels,
-    int dtype,
-    int filter_mode,
-    int address_mode_u,
-    int address_mode_v,
-    bool use_normalized_coords,
-    bool surface_access,
-    const void* data,
-    uint64_t* tex_handle_out,
-    uint64_t* array_handle_out
+WP_API uint64_t wp_texture_object_create_device(
+    void* context, uint64_t array_handle, int ndim, int filter_mode, int* address_modes, bool use_normalized_coords
 );
-WP_API void wp_texture2d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
+WP_API void wp_texture_object_destroy_device(void* context, uint64_t tex_handle);
 
-// Texture2D functions (CPU host)
-// Creates a 2D texture from data on the host. Returns texture handle (pointer to internal data).
-// data: pointer to host data (will be copied internally)
-// width, height: texture dimensions
-// num_channels: 1, 2, or 4
-// dtype: 0=uint8, 1=uint16, 2=float32, 3=int8, 4=int16, 5=float16, 6=uint32, 7=int32
-// filter_mode: 0=nearest, 1=linear
-// address_mode_u, address_mode_v: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
-// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height]
-WP_API bool wp_texture2d_create_host(
-    int width,
-    int height,
-    int num_channels,
-    int dtype,
-    int filter_mode,
-    int address_mode_u,
-    int address_mode_v,
-    bool use_normalized_coords,
-    const void* data,
-    uint64_t* tex_handle_out
-);
-WP_API void wp_texture2d_destroy_host(uint64_t tex_handle);
+WP_API uint64_t wp_surface_object_create_device(void* context, uint64_t array_handle);
+WP_API void wp_surface_object_destroy_device(void* context, uint64_t surface_handle);
 
-// Texture3D functions (CUDA device)
-// Creates a 3D texture using the given CUDA context. Returns texture handle (combines tex object + array handle).
-// data: pointer to HOST data (will be copied into a CUDA array)
-// width, height, depth: texture dimensions
-// num_channels: 1, 2, or 4
-// dtype: 0=uint8, 1=uint16, 2=float32, 3=int8, 4=int16, 5=float16, 6=uint32, 7=int32
-// filter_mode: 0=nearest, 1=linear
-// address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
-// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
-// surface_access: if true, allocate CUDA array with surface load/store support
-WP_API bool wp_texture3d_create_device(
+WP_API bool wp_texture_copy_device(
     void* context,
-    int width,
-    int height,
-    int depth,
-    int num_channels,
-    int dtype,
-    int filter_mode,
-    int address_mode_u,
-    int address_mode_v,
-    int address_mode_w,
-    bool use_normalized_coords,
-    bool surface_access,
-    const void* data,
-    uint64_t* tex_handle_out,
-    uint64_t* array_handle_out
+    unsigned width_bytes,
+    unsigned height,
+    unsigned depth,
+    int dst_memory_type,
+    uint64_t dst_handle,
+    unsigned dst_pitch,
+    unsigned dst_height,
+    int src_memory_type,
+    uint64_t src_handle,
+    unsigned src_pitch,
+    unsigned src_height,
+    void* stream
 );
-WP_API void wp_texture3d_destroy_device(void* context, uint64_t tex_handle, uint64_t array_handle);
-
-// Texture3D functions (CPU host)
-// Creates a 3D texture from data on the host. Returns texture handle (pointer to internal data).
-// data: pointer to host data (will be copied internally)
-// width, height, depth: texture dimensions
-// num_channels: 1, 2, or 4
-// dtype: 0=uint8, 1=uint16, 2=float32, 3=int8, 4=int16, 5=float16, 6=uint32, 7=int32
-// filter_mode: 0=nearest, 1=linear
-// address_mode_u, address_mode_v, address_mode_w: 0=wrap, 1=clamp, 2=mirror, 3=border (per-axis)
-// use_normalized_coords: if true, texture coordinates are in [0,1]; if false, in texel space [0,width/height/depth]
-WP_API bool wp_texture3d_create_host(
-    int width,
-    int height,
-    int depth,
-    int num_channels,
-    int dtype,
-    int filter_mode,
-    int address_mode_u,
-    int address_mode_v,
-    int address_mode_w,
-    bool use_normalized_coords,
-    const void* data,
-    uint64_t* tex_handle_out
-);
-WP_API void wp_texture3d_destroy_host(uint64_t tex_handle);
-
-// CUDA texture-array interop helpers (device).
-// These use CUDA device-to-device copies and are useful for interop pipelines
-// that consume CUDA arrays/texture/surface objects (e.g., denoisers/upscalers).
-WP_API bool wp_texture1d_copy_from_array_device(
-    void* context, void* stream, uint64_t dst_array_handle, uint64_t src_ptr, size_t width_bytes
-);
-WP_API bool wp_texture1d_copy_to_array_device(
-    void* context, void* stream, uint64_t dst_ptr, uint64_t src_array_handle, size_t width_bytes
-);
-WP_API bool wp_texture2d_copy_from_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_array_handle,
-    uint64_t src_ptr,
-    size_t src_pitch,
-    size_t width_bytes,
-    size_t height
-);
-WP_API bool wp_texture2d_copy_to_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_ptr,
-    size_t dst_pitch,
-    uint64_t src_array_handle,
-    size_t width_bytes,
-    size_t height
-);
-WP_API bool wp_texture3d_copy_from_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_array_handle,
-    uint64_t src_ptr,
-    size_t src_pitch,
-    size_t src_height,
-    size_t width_bytes,
-    size_t height,
-    size_t depth
-);
-WP_API bool wp_texture3d_copy_to_array_device(
-    void* context,
-    void* stream,
-    uint64_t dst_ptr,
-    size_t dst_pitch,
-    size_t dst_height,
-    uint64_t src_array_handle,
-    size_t width_bytes,
-    size_t height,
-    size_t depth
-);
-WP_API bool wp_texture_array_create_surface_device(void* context, uint64_t array_handle, uint64_t* surface_handle_out);
-WP_API void wp_texture_array_destroy_surface_device(void* context, uint64_t surface_handle);
 
 WP_API uint64_t wp_marching_cubes_create_device(void* context);
 WP_API void wp_marching_cubes_destroy_device(uint64_t id);
@@ -755,10 +597,14 @@ WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
 WP_API void wp_cuda_set_context_restore_policy(bool always_restore);
 WP_API int wp_cuda_get_context_restore_policy();
 
-WP_API void wp_cuda_graphics_map(void* context, void* resource);
+WP_API bool wp_cuda_graphics_map(void* context, void* resource);
 WP_API void wp_cuda_graphics_unmap(void* context, void* resource);
 WP_API void wp_cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size);
 WP_API void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags);
+WP_API void* wp_cuda_graphics_register_gl_image(void* context, uint32_t image, uint32_t target, unsigned int flags);
+WP_API uint64_t wp_cuda_graphics_sub_resource_get_mapped_array(
+    void* context, void* resource, unsigned int array_index, unsigned int mip_level
+);
 WP_API void wp_cuda_graphics_unregister_resource(void* context, void* resource);
 
 // CUDA timing
