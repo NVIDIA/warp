@@ -85,7 +85,7 @@ namespace cuBQL {
     {
       float bestCost = CUBQL_INF;
 
-      float rLengths[(int)elh.numBins];
+      float rLengths[(int)ELHBins<T,D>::numBins];
       for (int d=0;d<D;d++) {
         box_t<T,D> box; box.set_empty();
         int   rCount = 0;

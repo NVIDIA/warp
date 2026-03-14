@@ -27,8 +27,7 @@ namespace cuBQL {
 # define CUBQL_INF std::numeric_limits<float>::infinity()
 #endif
 
-#ifdef __CUDA_ARCH__
-#else
+#if !defined(__CUDACC__)
     inline float __int_as_float(int i) { return (const float &)i; }
     inline int __float_as_int(float f) { return (const int &)f; }
 #endif
