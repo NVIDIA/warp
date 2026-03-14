@@ -32,7 +32,9 @@
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 #define REORDER_HOST_TREE
 
+#ifndef WP_DISABLE_CUBQL
 #include "cuBQL/bvh.h"
+#endif
 #include <cub/cub.cuh>
 
 extern CUcontext get_current_context();
@@ -787,6 +789,8 @@ void bvh_rebuild_device(BVH& bvh)
     builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL, bvh.item_groups);
 }
 
+#ifndef WP_DISABLE_CUBQL
+
 __global__ void cubql_make_boxes(const vec3* lowers, const vec3* uppers, cuBQL::box3f* boxes, int n)
 {
     const int tid = blockDim.x * blockIdx.x + threadIdx.x;
@@ -935,6 +939,22 @@ void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
     cubql_assign(bvh, native);
 }
 
+#else  // WP_DISABLE_CUBQL
+
+void cubql_bvh_create_device(
+    void* context, vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh_device_on_host
+)
+{
+    fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
+    memset(&bvh_device_on_host, 0, sizeof(CuBQLBVH));
+}
+
+void cubql_bvh_destroy_device(CuBQLBVH&) { }
+void cubql_bvh_refit_device(CuBQLBVH&) { }
+void cubql_bvh_rebuild_device(CuBQLBVH&) { }
+
+#endif  // WP_DISABLE_CUBQL
+
 
 }  // namespace wp
 
@@ -991,11 +1011,15 @@ uint64_t wp_cubql_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* u
 {
     ContextGuard guard(context);
     wp::CuBQLBVH bvh_device_on_host;
-    wp::CuBQLBVH* bvh_device_ptr = nullptr;
+    memset(&bvh_device_on_host, 0, sizeof(wp::CuBQLBVH));
 
     wp::cubql_bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, leaf_size, bvh_device_on_host);
 
-    bvh_device_ptr = (wp::CuBQLBVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::CuBQLBVH));
+    if (!bvh_device_on_host.nodes && num_items > 0) {
+        return 0;
+    }
+
+    wp::CuBQLBVH* bvh_device_ptr = (wp::CuBQLBVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::CuBQLBVH));
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_ptr, &bvh_device_on_host, sizeof(wp::CuBQLBVH));
 
     uint64_t bvh_id = (uint64_t)bvh_device_ptr;
