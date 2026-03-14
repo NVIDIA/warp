@@ -64,7 +64,6 @@ stages:
     - source $CI_PROJECT_DIR/uv/env
     - unset CUDA_HOME
     - !reference [.snippets, setup-packman-config]
-  allow_failure: true
 
 linux-x86_64 build:
   image: ${CI_REGISTRY_IMAGE}/cuda:12.8.1-devel-ubuntu24.04
@@ -109,4 +108,3 @@ linux-x86_64 test:
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
-  allow_failure: true
