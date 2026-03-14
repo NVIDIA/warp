@@ -195,7 +195,8 @@ struct BVH {
 
 // Node layout compatible with cuBQL::BinaryBVH<float, 3>::Node.
 // lower/upper store bounds, admin packs:
-//  - lower 48 bits: offset (children for inner nodes, prim range start for leaves)
+//  - lower 48 bits: offset (children for inner nodes, prim range start for leaves).
+//    Inner-node children are stored as a pair at offset+0 and offset+1.
 //  - upper 16 bits: count (0 for inner, >0 for leaves)
 struct CuBQLNode {
     vec3 lower;

@@ -4938,7 +4938,7 @@ class BvhConstructor(enum.IntEnum):
     LBVH = 2
     """GPU-based bottom-up constructor maximizing parallelism."""
     CUBQL = -1
-    """GPU-based cuBQL constructor (Mesh only)."""
+    """cuBQL library constructor (Mesh only)."""
 
     @classmethod
     def from_str(cls, value: str) -> BvhConstructor:
