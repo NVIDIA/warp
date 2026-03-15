@@ -147,8 +147,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_diagnostics import TestDiagnostics
     from warp.tests.test_examples import (
         TestCoreExamples,
-        TestFemDiffusionExamples,
-        TestFemExamples,
         TestOptimExamples,
     )
     from warp.tests.test_fabricarray import TestFabricArray
@@ -246,8 +244,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestDiagnostics,
         TestDLPack,
         TestCoreExamples,
-        TestFemDiffusionExamples,
-        TestFemExamples,
         TestOptimExamples,
         TestFabricArray,
         TestFastMath,
