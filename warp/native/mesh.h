@@ -29,6 +29,9 @@
 
 namespace wp {
 
+constexpr int MESH_BVH_BACKEND_WARP = 0;
+constexpr int MESH_BVH_BACKEND_CUBQL = 1;
+
 struct Mesh {
     array_t<vec3> points;
     array_t<vec3> velocities;
@@ -44,6 +47,8 @@ struct Mesh {
     int num_tris;
 
     BVH bvh;
+    CuBQLBVH cubql_bvh;
+    int bvh_backend;
 
     void* context;
     float average_edge_length;
@@ -59,6 +64,8 @@ struct Mesh {
         solid_angle_props = nullptr;
         average_edge_length = 0.0f;
         bvh = BVH {};
+        cubql_bvh = CuBQLBVH {};
+        bvh_backend = MESH_BVH_BACKEND_WARP;
     }
 
     inline CUDA_CALLABLE Mesh(
@@ -81,14 +88,23 @@ struct Mesh {
         solid_angle_props = nullptr;
         average_edge_length = 0.0f;
         bvh = BVH {};
+        cubql_bvh = CuBQLBVH {};
+        bvh_backend = MESH_BVH_BACKEND_WARP;
     }
 };
 
 CUDA_CALLABLE inline Mesh mesh_get(uint64_t id) { return *(Mesh*)(id); }
+CUDA_CALLABLE inline bool mesh_uses_cubql(const Mesh& mesh) { return mesh.bvh_backend == MESH_BVH_BACKEND_CUBQL; }
 
 CUDA_CALLABLE inline int mesh_get_group_root(uint64_t id, int group_id)
 {
     Mesh* mesh = (Mesh*)(id);
+    if (mesh_uses_cubql(*mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_get_group_root not supported for cubql\n");
+#endif
+        return -1;
+    }
     return bvh_get_group_root((uint64_t)&mesh->bvh, group_id);
 }
 
@@ -139,6 +155,12 @@ CUDA_CALLABLE inline bool
 mesh_query_point(uint64_t id, const vec3& point, float max_dist, float& inside, int& face, float& u, float& v)
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_point not supported for cubql\n");
+#endif
+        return false;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
@@ -330,6 +352,12 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_parity(
 )
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_point_sign_parity not supported for cubql\n");
+#endif
+        return false;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
@@ -512,6 +540,12 @@ CUDA_CALLABLE inline bool
 mesh_query_point_no_sign(uint64_t id, const vec3& point, float max_dist, int& face, float& u, float& v)
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_point_no_sign not supported for cubql\n");
+#endif
+        return false;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
@@ -690,6 +724,12 @@ CUDA_CALLABLE inline bool
 mesh_query_furthest_point_no_sign(uint64_t id, const vec3& point, float min_dist, int& face, float& u, float& v)
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_furthest_point_no_sign not supported for cubql\n");
+#endif
+        return false;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
@@ -879,6 +919,12 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(
 )
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_point_sign_normal not supported for cubql\n");
+#endif
+        return false;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
@@ -1102,6 +1148,12 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_normal(
 CUDA_CALLABLE inline float solid_angle_iterative(uint64_t id, const vec3& p, const float accuracy_sq)
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: solid_angle_iterative not supported for cubql\n");
+#endif
+        return 0.0f;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     int at_child[BVH_QUERY_STACK_SIZE];  // 0 for left, 1 for right, 2 for done
@@ -1191,6 +1243,12 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(
 )
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_point_sign_winding_number not supported for cubql\n");
+#endif
+        return false;
+    }
 
     int stack[BVH_QUERY_STACK_SIZE];
     stack[0] = *mesh.bvh.root;
@@ -1742,6 +1800,178 @@ CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(
     );
 }
 
+enum class CuBQLRayMode { ClosestHit, AnyHit, CountAll };
+
+// Unified cuBQL BVH ray traversal. The Mode template parameter controls:
+//   ClosestHit  – prune by shrinking t bound, sort children near-to-far, track closest hit
+//   AnyHit      – prune by max_t, return immediately on first hit
+//   CountAll    – no distance pruning, count every intersection with tri_t >= 0
+template <CuBQLRayMode Mode>
+CUDA_CALLABLE inline int cubql_ray_traversal(
+    const Mesh& mesh,
+    const vec3& start,
+    const vec3& dir,
+    float max_t,
+    float& hit_t,
+    float& hit_u,
+    float& hit_v,
+    float& hit_sign,
+    vec3& hit_normal,
+    int& hit_face
+)
+{
+    if (!mesh.cubql_bvh.nodes || !mesh.cubql_bvh.primitive_indices)
+        return 0;
+
+    const int root_index = mesh.cubql_bvh.root ? *mesh.cubql_bvh.root : -1;
+    if (root_index < 0)
+        return 0;
+
+    vec3 ray_dir = dir;
+    if (ray_dir[0] == 0.0f)
+        ray_dir[0] = 1.0e-20f;
+    if (ray_dir[1] == 0.0f)
+        ray_dir[1] = 1.0e-20f;
+    if (ray_dir[2] == 0.0f)
+        ray_dir[2] = 1.0e-20f;
+    const vec3 rcp_dir = vec3(1.0f / ray_dir[0], 1.0f / ray_dir[1], 1.0f / ray_dir[2]);
+
+    float prune_t = (Mode == CuBQLRayMode::CountAll) ? FLT_MAX : max_t;
+    int result = 0;
+
+    uint64_t stack[CUBQL_BVH_QUERY_STACK_SIZE];
+    int stack_size = 0;
+    uint64_t node_admin = mesh.cubql_bvh.nodes[root_index].admin;
+
+    while (true) {
+        while (true) {
+            const uint16_t node_count = uint16_t(node_admin >> 48);
+            if (node_count != 0)
+                break;
+
+            const uint32_t child_offset = uint32_t(node_admin & 0x0000FFFFFFFFFFFFull);
+            const CuBQLNode& n0 = mesh.cubql_bvh.nodes[child_offset + 0];
+            const CuBQLNode& n1 = mesh.cubql_bvh.nodes[child_offset + 1];
+
+            float t0 = FLT_MAX;
+            float t1 = FLT_MAX;
+            const bool o0 = intersect_ray_aabb(start, rcp_dir, n0.lower, n0.upper, t0)
+                && (Mode == CuBQLRayMode::CountAll || t0 < prune_t);
+            const bool o1 = intersect_ray_aabb(start, rcp_dir, n1.lower, n1.upper, t1)
+                && (Mode == CuBQLRayMode::CountAll || t1 < prune_t);
+
+            if (o0) {
+                if (o1) {
+                    if (Mode == CuBQLRayMode::ClosestHit) {
+                        const bool n0_near = (t0 < t1);
+                        if (stack_size >= CUBQL_BVH_QUERY_STACK_SIZE)
+                            return result;  // stack overflow
+                        stack[stack_size++] = n0_near ? n1.admin : n0.admin;
+                        node_admin = n0_near ? n0.admin : n1.admin;
+                    } else {
+                        if (stack_size >= CUBQL_BVH_QUERY_STACK_SIZE)
+                            return result;  // stack overflow
+                        stack[stack_size++] = n1.admin;
+                        node_admin = n0.admin;
+                    }
+                } else {
+                    node_admin = n0.admin;
+                }
+            } else if (o1) {
+                node_admin = n1.admin;
+            } else {
+                node_admin = 0;
+                break;
+            }
+        }
+
+        const uint16_t node_count = uint16_t(node_admin >> 48);
+        if (node_count != 0) {
+            const uint32_t prim_offset = uint32_t(node_admin & 0x0000FFFFFFFFFFFFull);
+            for (int i = 0; i < int(node_count); ++i) {
+                const int primitive_index = int(mesh.cubql_bvh.primitive_indices[prim_offset + i]);
+                const int i0 = mesh.indices[primitive_index * 3 + 0];
+                const int i1 = mesh.indices[primitive_index * 3 + 1];
+                const int i2 = mesh.indices[primitive_index * 3 + 2];
+
+                const vec3 p = mesh.points[i0];
+                const vec3 q = mesh.points[i1];
+                const vec3 r = mesh.points[i2];
+
+                float tri_t, tri_u, tri_v, tri_sign;
+                vec3 tri_n;
+                if (intersect_ray_tri_woop(start, ray_dir, p, q, r, tri_t, tri_u, tri_v, tri_sign, &tri_n)) {
+                    if (tri_t >= 0.0f && (Mode == CuBQLRayMode::CountAll || tri_t < prune_t)) {
+                        if (Mode == CuBQLRayMode::ClosestHit) {
+                            prune_t = tri_t;
+                            hit_t = tri_t;
+                            hit_face = primitive_index;
+                            hit_u = tri_u;
+                            hit_v = tri_v;
+                            hit_sign = tri_sign;
+                            hit_normal = tri_n;
+                        } else if (Mode == CuBQLRayMode::AnyHit) {
+                            return 1;
+                        }
+                        result++;
+                    }
+                }
+            }
+        }
+
+        if (stack_size == 0)
+            break;
+        node_admin = stack[--stack_size];
+    }
+
+    return result;
+}
+
+CUDA_CALLABLE inline bool mesh_query_ray_cubql(
+    const Mesh& mesh,
+    const vec3& start,
+    const vec3& dir,
+    float max_t,
+    float& t,
+    float& u,
+    float& v,
+    float& sign,
+    vec3& normal,
+    int& face,
+    int root
+)
+{
+    if (root != -1)
+        return false;
+    if (cubql_ray_traversal<CuBQLRayMode::ClosestHit>(mesh, start, dir, max_t, t, u, v, sign, normal, face) > 0) {
+        normal = normalize(normal);
+        return true;
+    }
+    return false;
+}
+
+CUDA_CALLABLE inline bool
+mesh_query_ray_anyhit_cubql(const Mesh& mesh, const vec3& start, const vec3& dir, float max_t, int root)
+{
+    if (root != -1)
+        return false;
+    float t, u, v, s;
+    vec3 n;
+    int f;
+    return cubql_ray_traversal<CuBQLRayMode::AnyHit>(mesh, start, dir, max_t, t, u, v, s, n, f) > 0;
+}
+
+CUDA_CALLABLE inline int
+mesh_query_ray_count_intersections_cubql(const Mesh& mesh, const vec3& start, const vec3& dir, int root)
+{
+    if (root != -1)
+        return 0;
+    float t, u, v, s;
+    vec3 n;
+    int f;
+    return cubql_ray_traversal<CuBQLRayMode::CountAll>(mesh, start, dir, FLT_MAX, t, u, v, s, n, f);
+}
+
 CUDA_CALLABLE inline bool mesh_query_ray(
     uint64_t id,
     const vec3& start,
@@ -1757,6 +1987,8 @@ CUDA_CALLABLE inline bool mesh_query_ray(
 )
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh))
+        return mesh_query_ray_cubql(mesh, start, dir, max_t, t, u, v, sign, normal, face, root);
 
     int stack[BVH_QUERY_STACK_SIZE];
 
@@ -1842,6 +2074,8 @@ CUDA_CALLABLE inline bool
 mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max_t, int root = -1)
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh))
+        return mesh_query_ray_anyhit_cubql(mesh, start, dir, max_t, root);
 
     int stack[BVH_QUERY_STACK_SIZE];
 
@@ -1903,6 +2137,8 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
 CUDA_CALLABLE inline int mesh_query_ray_count_intersections(uint64_t id, const vec3& start, const vec3& dir, int root)
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh))
+        return mesh_query_ray_count_intersections_cubql(mesh, start, dir, root);
 
     int stack[BVH_QUERY_STACK_SIZE];
 
@@ -1983,6 +2219,8 @@ CUDA_CALLABLE inline bool mesh_query_ray_ordered(
 )
 {
     Mesh mesh = mesh_get(id);
+    if (mesh_uses_cubql(mesh))
+        return mesh_query_ray_cubql(mesh, start, dir, max_t, t, u, v, sign, normal, face, root);
 
     int stack[BVH_QUERY_STACK_SIZE];
     float stack_dist[BVH_QUERY_STACK_SIZE];
@@ -2351,6 +2589,12 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& 
 
     Mesh mesh = mesh_get(id);
     query.mesh = mesh;
+    if (mesh_uses_cubql(mesh)) {
+#if BVH_DEBUG
+        printf("ERROR: mesh_query_aabb not supported for cubql\n");
+#endif
+        return query;
+    }
 
 #if BVH_SHARED_STACK
     __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];

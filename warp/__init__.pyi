@@ -33,15 +33,16 @@ Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
+NDim = TypeVar("NDim", bound=int, default=int)
 Shape = TypeVar("Shape")
 
 class Vector(Generic[Scalar, Length]): ...
 class Matrix(Generic[Scalar, Rows, Cols]): ...
 class Quaternion(Generic[Float]): ...
 class Transformation(Generic[Float]): ...
-class Array(Generic[DType]): ...
-class FabricArray(Generic[DType]): ...
-class IndexedFabricArray(Generic[DType]): ...
+class Array(Generic[DType, NDim]): ...
+class FabricArray(Generic[DType, NDim]): ...
+class IndexedFabricArray(Generic[DType, NDim]): ...
 class Tile(Generic[DType, Shape]): ...
 
 """The ``warp`` package provides array types and functions for creating and manipulating
@@ -135,12 +136,6 @@ from warp._src.types import Bvh as Bvh
 from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
-from warp._src.types import Texture as Texture
-from warp._src.types import Texture1D as Texture1D
-from warp._src.types import Texture2D as Texture2D
-from warp._src.types import Texture3D as Texture3D
-from warp._src.texture import TextureFilterMode as TextureFilterMode
-from warp._src.texture import TextureAddressMode as TextureAddressMode
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
@@ -150,6 +145,15 @@ from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
+
+from warp._src.texture import Texture as Texture
+from warp._src.texture import Texture1D as Texture1D
+from warp._src.texture import Texture2D as Texture2D
+from warp._src.texture import Texture3D as Texture3D
+from warp._src.texture import TextureResourceFlags as TextureResourceFlags
+from warp._src.texture import GLTextureResource as GLTextureResource
+from warp._src.texture import TextureFilterMode as TextureFilterMode
+from warp._src.texture import TextureAddressMode as TextureAddressMode
 
 from warp._src.context import init as init
 

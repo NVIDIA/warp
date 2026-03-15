@@ -117,7 +117,7 @@ def fabric_to_warp_dtype(type_info, attrib_name):
         return base_dtype
 
 
-class fabricarray(noncontiguous_array_base):
+class fabricarray(noncontiguous_array_base[DType, NDim]):
     """Array type for accessing data stored in Omniverse Runtime Fabric.
 
     Fabric arrays provide a view into attribute data stored across multiple
@@ -328,7 +328,7 @@ def fabricarrayarray(**kwargs):
     return fabricarray(**kwargs)
 
 
-class indexedfabricarray(noncontiguous_array_base):
+class indexedfabricarray(noncontiguous_array_base[DType, NDim]):
     """Indexed view into a :class:`fabricarray`.
 
     Provides access to a subset of elements from a Fabric array, selected by

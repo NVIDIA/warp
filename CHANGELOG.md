@@ -4,9 +4,20 @@
 
 ### Added
 
+- Add external CUDA texture interoperability, e.g., `wp.Texture2D(cuda_array=handle)` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
+- Add OpenGL texture interoperability using `wp.GLTextureResource` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
+- Add `Texture.copy_from()` that can copy from host and device arrays as well as other textures.
+- Add `Texture.copy_to()` that can copy to host and device arrays as well as other textures.
+- **Experimental**: Add cuBQL BVH backend for `wp.Mesh`, selectable via `bvh_constructor="cubql"`.
+  Currently only supports `wp.mesh_query_ray()`. Point queries, AABB queries, grouped queries,
+  and winding number queries are not yet supported ([GH-1286](https://github.com/NVIDIA/warp/issues/1286)).
+
 ### Removed
 
 ### Deprecated
+
+- Deprecate `Texture.copy_from_array()`, use `Texture.copy_from()` instead.
+- Deprecate `Texture.copy_to_array()`, use `Texture.copy_to()` instead.
 
 ### Changed
 
@@ -19,6 +30,9 @@
 
 ### Fixed
 
+- Fix compilation failures or crashes when multiple processes compile CUDA kernels concurrently with a shared kernel
+  cache, caused by NVRTC precompiled header files racing in the shared `--pch-dir` directory; affects builds with
+  CUDA Toolkit 12.8–12.9 ([GH-1284](https://github.com/NVIDIA/warp/issues/1284)).
 - Fix kernel dispatch using incorrect `block_dim` when the same kernel is launched on different devices, which could
   cause out-of-bounds shared memory access and memory corruption in tile infrastructure
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
@@ -27,8 +41,13 @@
 - Fix `set_module_options()`, `get_module_options()`, and `load_module()` crashing with `AttributeError` when
   called from code executed via `runpy.run_module()` (e.g. `python -m package.module`)
   ([GH-1274](https://github.com/NVIDIA/warp/issues/1274)).
+- Fix `wp.HashGrid` neighbor queries missing results near negative cell boundaries when grid wrapping maps
+  truncated cell indices to incorrect physical buckets ([GH-1256](https://github.com/NVIDIA/warp/issues/1256)).
+- Fix ``wp.array[dtype]`` subscript syntax not being recognized by mypy, which reported
+  ``"array" expects no type arguments`` ([GH-1278](https://github.com/NVIDIA/warp/issues/1278)).
 
 ### Documentation
+
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
   results for built-in functions ([GH-1275](https://github.com/NVIDIA/warp/issues/1275)).
 - Add differentiable 2-D Navier-Stokes example (`warp/examples/optim/example_navier_stokes_perturbation.py`)

@@ -27,6 +27,8 @@
 #include <map>
 #include <vector>
 
+#include "cuBQL/builder/cpu.h"
+
 using namespace wp;
 
 namespace wp {
@@ -753,6 +755,7 @@ void bvh_rebuild_host(BVH& bvh, int constructor_type)
 namespace {
 // host-side copy of bvh descriptors, maps GPU bvh address (id) to a CPU desc
 std::map<uint64_t, BVH> g_bvh_descriptors;
+std::map<uint64_t, CuBQLBVH> g_cubql_bvh_descriptors;
 }  // anonymous namespace
 
 
@@ -771,6 +774,54 @@ bool bvh_get_descriptor(uint64_t id, BVH& bvh)
 void bvh_add_descriptor(uint64_t id, const BVH& bvh) { g_bvh_descriptors[id] = bvh; }
 
 void bvh_rem_descriptor(uint64_t id) { g_bvh_descriptors.erase(id); }
+
+bool cubql_bvh_get_descriptor(uint64_t id, CuBQLBVH& bvh)
+{
+    const auto& iter = g_cubql_bvh_descriptors.find(id);
+    if (iter == g_cubql_bvh_descriptors.end())
+        return false;
+    else
+        bvh = iter->second;
+    return true;
+}
+
+void cubql_bvh_add_descriptor(uint64_t id, const CuBQLBVH& bvh) { g_cubql_bvh_descriptors[id] = bvh; }
+
+void cubql_bvh_rem_descriptor(uint64_t id) { g_cubql_bvh_descriptors.erase(id); }
+
+static inline cuBQL::box3f make_cubql_box(const vec3& lower, const vec3& upper)
+{
+    return cuBQL::box3f(cuBQL::vec3f(lower[0], lower[1], lower[2]), cuBQL::vec3f(upper[0], upper[1], upper[2]));
+}
+
+static void cubql_update_host_boxes(CuBQLBVH& bvh)
+{
+    cuBQL::box3f* boxes = reinterpret_cast<cuBQL::box3f*>(bvh.boxes);
+    for (int i = 0; i < bvh.num_items; ++i) {
+        boxes[i] = make_cubql_box(bvh.item_lowers[i], bvh.item_uppers[i]);
+    }
+}
+
+static cuBQL::bvh3f make_cubql_native_view(const CuBQLBVH& bvh)
+{
+    cuBQL::bvh3f native;
+    native.nodes = reinterpret_cast<cuBQL::bvh3f::node_t*>(bvh.nodes);
+    native.numNodes = uint32_t(bvh.num_nodes);
+    native.primIDs = reinterpret_cast<uint32_t*>(bvh.primitive_indices);
+    native.numPrims = uint32_t(bvh.num_prims);
+    return native;
+}
+
+static void cubql_assign_from_native(CuBQLBVH& bvh, const cuBQL::bvh3f& native)
+{
+    bvh.nodes = reinterpret_cast<CuBQLNode*>(native.nodes);
+    bvh.num_nodes = int(native.numNodes);
+    bvh.primitive_indices = native.primIDs;
+    bvh.num_prims = int(native.numPrims);
+    if (bvh.root) {
+        bvh.root[0] = native.numNodes > 0 ? 0 : -1;
+    }
+}
 
 
 // create in-place given existing descriptor
@@ -809,6 +860,95 @@ void bvh_destroy_host(BVH& bvh)
     bvh.num_items = 0;
 }
 
+void cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh)
+{
+    memset(&bvh, 0, sizeof(CuBQLBVH));
+
+    bvh.item_lowers = lowers;
+    bvh.item_uppers = uppers;
+    bvh.num_items = num_items;
+    bvh.leaf_size = leaf_size;
+    bvh.context = nullptr;
+
+    bvh.root = new int[1];
+    bvh.root[0] = -1;
+
+    if (num_items <= 0) {
+        bvh.boxes = nullptr;
+        return;
+    }
+
+    bvh.boxes = reinterpret_cast<void*>(new cuBQL::box3f[num_items]);
+    cubql_update_host_boxes(bvh);
+
+    cuBQL::bvh3f native;
+    cuBQL::BuildConfig build_config;
+    build_config.enableSAH();
+    build_config.makeLeafThreshold = leaf_size;
+    cuBQL::cpuBuilder(native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), uint32_t(num_items), build_config);
+    cubql_assign_from_native(bvh, native);
+}
+
+void cubql_bvh_destroy_host(CuBQLBVH& bvh)
+{
+    if (bvh.nodes || bvh.primitive_indices) {
+        cuBQL::bvh3f native = make_cubql_native_view(bvh);
+        cuBQL::cpu::freeBVH(native);
+    }
+
+    delete[] reinterpret_cast<cuBQL::box3f*>(bvh.boxes);
+    delete[] bvh.root;
+
+    bvh.nodes = nullptr;
+    bvh.num_nodes = 0;
+    bvh.primitive_indices = nullptr;
+    bvh.num_prims = 0;
+    bvh.leaf_size = 0;
+    bvh.boxes = nullptr;
+    bvh.root = nullptr;
+}
+
+void cubql_bvh_refit_host(CuBQLBVH& bvh)
+{
+    if (!bvh.nodes || !bvh.boxes || bvh.num_items == 0)
+        return;
+
+    cubql_update_host_boxes(bvh);
+    cuBQL::bvh3f native = make_cubql_native_view(bvh);
+    cuBQL::cpu::spatialMedian_impl::refit(0, native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes));
+}
+
+void cubql_bvh_rebuild_host(CuBQLBVH& bvh)
+{
+    if (bvh.nodes || bvh.primitive_indices) {
+        cuBQL::bvh3f old_native = make_cubql_native_view(bvh);
+        cuBQL::cpu::freeBVH(old_native);
+    }
+
+    if (bvh.num_items <= 0) {
+        bvh.nodes = nullptr;
+        bvh.primitive_indices = nullptr;
+        bvh.num_nodes = 0;
+        bvh.num_prims = 0;
+        if (bvh.root) {
+            bvh.root[0] = -1;
+        }
+        return;
+    }
+
+    if (!bvh.boxes) {
+        bvh.boxes = reinterpret_cast<void*>(new cuBQL::box3f[bvh.num_items]);
+    }
+    cubql_update_host_boxes(bvh);
+
+    cuBQL::bvh3f native;
+    cuBQL::BuildConfig build_config;
+    build_config.enableSAH();
+    build_config.makeLeafThreshold = bvh.leaf_size;
+    cuBQL::cpuBuilder(native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), uint32_t(bvh.num_items), build_config);
+    cubql_assign_from_native(bvh, native);
+}
+
 }  // namespace wp
 
 uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size)
@@ -838,6 +978,32 @@ void wp_bvh_destroy_host(uint64_t id)
     delete bvh;
 }
 
+uint64_t wp_cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_size)
+{
+    CuBQLBVH* bvh = new CuBQLBVH();
+    wp::cubql_bvh_create_host(lowers, uppers, num_items, leaf_size, *bvh);
+    return (uint64_t)bvh;
+}
+
+void wp_cubql_bvh_refit_host(uint64_t id)
+{
+    CuBQLBVH* bvh = (CuBQLBVH*)(id);
+    wp::cubql_bvh_refit_host(*bvh);
+}
+
+void wp_cubql_bvh_rebuild_host(uint64_t id)
+{
+    CuBQLBVH* bvh = (CuBQLBVH*)(id);
+    wp::cubql_bvh_rebuild_host(*bvh);
+}
+
+void wp_cubql_bvh_destroy_host(uint64_t id)
+{
+    CuBQLBVH* bvh = (CuBQLBVH*)(id);
+    wp::cubql_bvh_destroy_host(*bvh);
+    delete bvh;
+}
+
 
 // stubs for non-CUDA platforms
 #if !WP_ENABLE_CUDA
@@ -851,5 +1017,13 @@ uint64_t wp_bvh_create_device(
 void wp_bvh_refit_device(uint64_t id) { }
 void wp_bvh_destroy_device(uint64_t id) { }
 void wp_bvh_rebuild_device(uint64_t id) { }
+
+uint64_t wp_cubql_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int leaf_size)
+{
+    return 0;
+}
+void wp_cubql_bvh_refit_device(uint64_t id) { }
+void wp_cubql_bvh_destroy_device(uint64_t id) { }
+void wp_cubql_bvh_rebuild_device(uint64_t id) { }
 
 #endif  // !WP_ENABLE_CUDA

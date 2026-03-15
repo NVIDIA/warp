@@ -11,7 +11,7 @@ reviews:
   auto_review:
     enabled: true
     drafts: true
-  path_filters: ["!tools/ci/packman/**", "!tools/ci/repoman/**"]
+  path_filters: ["!tools/ci/packman/**", "!tools/ci/repoman/**", "!warp/native/cuBQL/**", "!warp/native/nanovdb/**"]
 chat:
   auto_reply: true
 issue_enrichment:

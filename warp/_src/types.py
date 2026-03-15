@@ -55,6 +55,14 @@ Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
 Shape = TypeVar("Shape", bound=tuple[int, ...])
 
+# NDim has a default under TYPE_CHECKING so that static type checkers (mypy, pyright)
+# accept both array[dtype] and array[dtype, Literal[ndim]] subscript syntax (PEP 696).
+# At runtime Generic doesn't enforce TypeVar defaults, so a plain TypeVar suffices.
+if TYPE_CHECKING:
+    NDim = TypeVar("NDim", bound=int, default=int)
+else:
+    NDim = TypeVar("NDim", bound=int)
+
 
 # =============================================================================
 # Scalar types - defined early so TypeVars can reference them
@@ -489,7 +497,7 @@ class Transformation(Generic[Float]):
         return transformation(type_to_warp(params))
 
 
-class Array(Generic[DType]):
+class Array(Generic[DType, NDim]):
     # Type annotations are guarded to prevent Sphinx from documenting them
     # as inherited attributes, which would conflict with the docstring
     # attributes in the `array` subclass.
@@ -2808,7 +2816,7 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
     return array_ctype
 
 
-class array(Array):
+class array(Array[DType, NDim]):
     """A fixed-size multi-dimensional array containing values of the same type.
 
     Attributes:
@@ -4191,7 +4199,7 @@ class array(Array):
 
 
 # aliases for arrays with small dimensions
-class array1d(Array):
+class array1d(Array[DType, NDim]):
     """Create or annotate a 1-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4206,7 +4214,7 @@ class array1d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=1)
 
 
-class array2d(Array):
+class array2d(Array[DType, NDim]):
     """Create or annotate a 2-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4221,7 +4229,7 @@ class array2d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=2)
 
 
-class array3d(Array):
+class array3d(Array[DType, NDim]):
     """Create or annotate a 3-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4236,7 +4244,7 @@ class array3d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=3)
 
 
-class array4d(Array):
+class array4d(Array[DType, NDim]):
     """Create or annotate a 4-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4390,7 +4398,7 @@ class fixedarray(array):
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like
 # contiguous(), to(), numpy(), list(), assign(), zero_(), and fill_().
-class noncontiguous_array_base(Array):
+class noncontiguous_array_base(Array[DType, NDim]):
     def __init__(self, array_type_id):
         self.type_id = array_type_id
         self.is_contiguous = False
@@ -4487,7 +4495,7 @@ def check_index_array(indices, expected_device):
         raise ValueError(f"Index array device ({indices.device} does not match data array device ({expected_device}))")
 
 
-class indexedarray(noncontiguous_array_base):
+class indexedarray(noncontiguous_array_base[DType, NDim]):
     """Array providing indexed access to a subset of elements in a source :class:`warp.array`."""
 
     # member attributes available during code-gen (e.g.: d = arr.shape[0])
@@ -4920,7 +4928,26 @@ def is_tile(t):
     return isinstance(t, tile)
 
 
-bvh_constructor_values = {"sah": 0, "median": 1, "lbvh": 2}
+class BvhConstructor(enum.IntEnum):
+    """BVH construction algorithm selection."""
+
+    SAH = 0
+    """CPU-based top-down constructor using Surface Area Heuristics."""
+    MEDIAN = 1
+    """CPU-based top-down constructor splitting on median centroids."""
+    LBVH = 2
+    """GPU-based bottom-up constructor maximizing parallelism."""
+    CUBQL = -1
+    """cuBQL library constructor (Mesh only)."""
+
+    @classmethod
+    def from_str(cls, value: str) -> BvhConstructor:
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            raise ValueError(
+                f"Unknown BVH constructor '{value}', expected one of: {', '.join(m.name.lower() for m in cls)}"
+            ) from None
 
 
 class Bvh:
@@ -4935,7 +4962,7 @@ class Bvh:
         self,
         lowers: array,
         uppers: array,
-        constructor: str | None = None,
+        constructor: BvhConstructor | str | None = None,
         groups: array | None = None,
         leaf_size: int = 1,
     ):
@@ -5049,28 +5076,31 @@ class Bvh:
 
         if constructor is None:
             if self.device.is_cpu:
-                constructor = "sah"
+                constructor = BvhConstructor.SAH
             else:
-                constructor = "lbvh"
+                constructor = BvhConstructor.LBVH
 
-        if constructor not in bvh_constructor_values:
-            raise ValueError(f"Unrecognized BVH constructor type: {constructor}")
+        if not isinstance(constructor, BvhConstructor):
+            constructor = BvhConstructor.from_str(constructor)
+
+        if constructor == BvhConstructor.CUBQL:
+            raise ValueError("CUBQL constructor is not available for wp.Bvh")
 
         if leaf_size < 1:
             raise ValueError(f"leaf_size must be greater than or equal to 1, current value: {leaf_size}")
 
         if self.device.is_cpu:
-            if constructor == "lbvh":
+            if constructor == BvhConstructor.LBVH:
                 warp.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
-                constructor = "sah"
+                constructor = BvhConstructor.SAH
 
             self.id = self.runtime.core.wp_bvh_create_host(
                 get_data(lowers),
                 get_data(uppers),
                 len(lowers),
-                bvh_constructor_values[constructor],
+                constructor,
                 get_data(groups),
                 leaf_size,
             )
@@ -5080,7 +5110,7 @@ class Bvh:
                 get_data(lowers),
                 get_data(uppers),
                 len(lowers),
-                bvh_constructor_values[constructor],
+                constructor,
                 get_data(groups),
                 leaf_size,
             )
@@ -5140,24 +5170,28 @@ class Bvh:
         Raises:
             ValueError: If an unknown constructor is provided.
         """
+
         if constructor is None:
             if self.device.is_cpu:
-                constructor = "sah"
+                constructor = BvhConstructor.SAH
             else:
-                constructor = "lbvh"
+                constructor = BvhConstructor.LBVH
 
-        if constructor not in bvh_constructor_values:
-            raise ValueError(f"Unrecognized BVH constructor type: {constructor}")
+        if not isinstance(constructor, BvhConstructor):
+            constructor = BvhConstructor.from_str(constructor)
+
+        if constructor == BvhConstructor.CUBQL:
+            raise ValueError("CUBQL constructor is not available for wp.Bvh")
 
         if self.device.is_cpu:
-            if constructor == "lbvh":
+            if constructor == BvhConstructor.LBVH:
                 warp.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
-                constructor = "sah"
-            self.runtime.core.wp_bvh_rebuild_host(self.id, bvh_constructor_values[constructor])
+                constructor = BvhConstructor.SAH
+            self.runtime.core.wp_bvh_rebuild_host(self.id, constructor)
         else:
-            if constructor != "lbvh":
+            if constructor != BvhConstructor.LBVH:
                 warp.utils.warn(
                     "In-place rebuild method on the CUDA device only supports LBVH constructor. Falling back to LBVH constructor.",
                     stacklevel=2,
@@ -5188,8 +5222,8 @@ class Mesh:
         indices: array,
         velocities: array | None = None,
         support_winding_number: builtins.bool = False,
-        bvh_constructor: str | None = None,
-        bvh_leaf_size: int = 4,
+        bvh_constructor: BvhConstructor | str | None = None,
+        bvh_leaf_size: int | None = None,
         groups: array | None = None,
     ):
         """Class representing a triangle mesh.
@@ -5207,9 +5241,12 @@ class Mesh:
               data structures to support ``wp.mesh_query_point_sign_winding_number()`` queries.
             bvh_constructor: The construction algorithm for the underlying BVH
               (see the docstring of :class:`Bvh` for explanation).
-              Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
+              Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, ``"cubql"``, or ``None``.
+              When ``"cubql"`` is selected (**experimental**), only ray query APIs are supported.
+              All other queries will silently return no results.
             bvh_leaf_size: The number of primitives (AABBs) stored in each leaf node
-              (see the docstring of :class:`Bvh` for more details).
+              (see the docstring of :class:`Bvh` for more details). If ``None`` the default
+              value based on the ``bvh_constructor`` will be used.
             groups: Optional array of triangle group indices of data type :class:`warp.int32`.
               Should be a 1D array with shape ``(num_tris)``.
         """
@@ -5245,22 +5282,34 @@ class Mesh:
 
         if bvh_constructor is None:
             if self.device.is_cpu:
-                bvh_constructor = "sah"
+                bvh_constructor = BvhConstructor.SAH
             else:
-                bvh_constructor = "lbvh"
+                bvh_constructor = BvhConstructor.LBVH
 
-        if bvh_constructor not in bvh_constructor_values:
-            raise ValueError(f"Unrecognized BVH constructor type: {bvh_constructor}")
+        if not isinstance(bvh_constructor, BvhConstructor):
+            bvh_constructor = BvhConstructor.from_str(bvh_constructor)
 
-        if bvh_leaf_size < 1:
-            raise ValueError(f"bvh_leaf_size must be greater than or equal to 1, current value: {bvh_leaf_size}")
+        if bvh_constructor == BvhConstructor.CUBQL:
+            if groups is not None:
+                raise RuntimeError("Grouped mesh queries are not supported with bvh_constructor='cubql'")
+            if support_winding_number:
+                raise RuntimeError("support_winding_number=True is not supported with bvh_constructor='cubql'")
+            if bvh_leaf_size is None:
+                bvh_leaf_size = 0
+            elif bvh_leaf_size < 0:
+                raise ValueError(f"bvh_leaf_size must be greater than or equal to 0, current value: {bvh_leaf_size}")
+        else:
+            if bvh_leaf_size is None:
+                bvh_leaf_size = 4
+            elif bvh_leaf_size < 1:
+                raise ValueError(f"bvh_leaf_size must be greater than or equal to 1, current value: {bvh_leaf_size}")
 
         if self.device.is_cpu:
-            if bvh_constructor == "lbvh":
+            if bvh_constructor == BvhConstructor.LBVH:
                 warp._src.utils.warn(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
-                bvh_constructor = "sah"
+                bvh_constructor = BvhConstructor.SAH
 
             self.id = self.runtime.core.wp_mesh_create_host(
                 points.__ctype__(),
@@ -5269,7 +5318,7 @@ class Mesh:
                 len(points),
                 int(indices.size // 3),
                 int(support_winding_number),
-                bvh_constructor_values[bvh_constructor],
+                bvh_constructor,
                 ctypes.c_void_p(groups.ptr) if groups else ctypes.c_void_p(0),
                 bvh_leaf_size,
             )
@@ -5282,7 +5331,7 @@ class Mesh:
                 len(points),
                 int(indices.size // 3),
                 int(support_winding_number),
-                bvh_constructor_values[bvh_constructor],
+                bvh_constructor,
                 ctypes.c_void_p(groups.ptr) if groups else ctypes.c_void_p(0),
                 bvh_leaf_size,
             )
@@ -6729,7 +6778,7 @@ simple_type_codes = {
     MeshQueryPoint: "mqp",
     MeshQueryRay: "mqr",
     BvhQuery: "bvhq",
-    # Texture2D and Texture3D are added at the end of the file to avoid circular imports
+    # Textures are added at the end of the file to avoid circular imports
 }
 
 
@@ -6847,14 +6896,9 @@ def is_generic_signature(sig):
 
 
 # Import texture classes from texture module at the end to avoid circular imports
-# These are re-exported from types.py for backward compatibility
-from warp._src.texture import Texture as Texture  # noqa: E402
 from warp._src.texture import Texture1D as Texture1D  # noqa: E402
 from warp._src.texture import Texture2D as Texture2D  # noqa: E402
 from warp._src.texture import Texture3D as Texture3D  # noqa: E402
-from warp._src.texture import texture1d_t as texture1d_t  # noqa: E402
-from warp._src.texture import texture2d_t as texture2d_t  # noqa: E402
-from warp._src.texture import texture3d_t as texture3d_t  # noqa: E402
 
 # Add texture types to simple_type_codes now that they're imported
 simple_type_codes[Texture1D] = "t1"

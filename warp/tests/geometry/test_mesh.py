@@ -234,9 +234,9 @@ def query_ray_group_kernel(
 
 def test_mesh_query_ray(test, device):
     if device.is_cpu:
-        constructors = ["sah", "median"]
+        constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh"]
+        constructors = ["sah", "median", "lbvh", "cubql"]
 
     leaf_sizes = [1, 2, 4]
 
@@ -303,6 +303,65 @@ def test_grouped_mesh_query_ray(test, device):
         wp.synchronize_device(device)
 
 
+@wp.kernel(enable_backward=False)
+def query_ray_hit_kernel(
+    mesh_id: wp.uint64,
+    origin: wp.vec3,
+    direction: wp.vec3,
+    hit_result: wp.array(dtype=wp.int32),
+):
+    t = float(0.0)
+    bary_u = float(0.0)
+    bary_v = float(0.0)
+    sign = float(0.0)
+    normal = wp.vec3(0.0, 0.0, 0.0)
+    face = int(0)
+
+    hit = wp.mesh_query_ray(mesh_id, origin, direction, 1e6, t, bary_u, bary_v, sign, normal, face)
+    if hit:
+        hit_result[0] = 1
+    else:
+        hit_result[0] = 0
+
+
+def test_mesh_refit(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median", "cubql"]
+    else:
+        constructors = ["sah", "median", "lbvh", "cubql"]
+
+    # Ray aimed at the origin — hits the unit cube centered there
+    origin = wp.vec3(0.0, 5.0, 0.0)
+    direction = wp.vec3(0.0, -1.0, 0.0)
+    offset = wp.vec3(10.0, 0.0, 0.0)
+
+    for constructor in constructors:
+        points_np = np.array(POINT_POSITIONS, dtype=np.float32)
+        points = wp.array(points_np, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+
+        hit_result = wp.zeros(1, dtype=wp.int32, device=device)
+
+        # Ray should hit the original mesh at the origin
+        wp.launch(query_ray_hit_kernel, dim=1, inputs=[mesh.id, origin, direction, hit_result], device=device)
+        test.assertEqual(hit_result.numpy()[0], 1, f"Expected hit at origin ({constructor})")
+
+        # Move the mesh, refit, and shoot at the new location
+        moved_origin = wp.vec3(origin.x + offset.x, origin.y + offset.y, origin.z + offset.z)
+        points_np += np.array([offset.x, offset.y, offset.z], dtype=np.float32)
+        wp.copy(points, wp.array(points_np, dtype=wp.vec3, device=device))
+        mesh.refit()
+
+        # Ray at the new location should hit
+        wp.launch(query_ray_hit_kernel, dim=1, inputs=[mesh.id, moved_origin, direction, hit_result], device=device)
+        test.assertEqual(hit_result.numpy()[0], 1, f"Expected hit at moved location after refit ({constructor})")
+
+        # Ray at the old location should miss
+        wp.launch(query_ray_hit_kernel, dim=1, inputs=[mesh.id, origin, direction, hit_result], device=device)
+        test.assertEqual(hit_result.numpy()[0], 0, f"Expected miss at origin after move ({constructor})")
+
+
 def test_mesh_refit_graph(test, device):
     if device.is_cpu:
         constructors = ["sah", "median"]
@@ -362,6 +421,25 @@ def test_mesh_exceptions(test, device):
         indices = indices.reshape((3, -1))
         wp.Mesh(points=points, indices=indices)
 
+    # grouped queries are not supported with cuBQL backend
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        groups = wp.zeros(FACE_COUNT, dtype=int, device=device)
+        wp.Mesh(points=points, indices=indices, groups=groups, bvh_constructor="cubql")
+
+    # winding number support is not available with cuBQL backend
+    with test.assertRaises(RuntimeError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        wp.Mesh(points=points, indices=indices, support_winding_number=True, bvh_constructor="cubql")
+
+    # unknown bvh_constructor string raises ValueError
+    with test.assertRaises(ValueError):
+        points = wp.array(POINT_POSITIONS, dtype=wp.vec3, device=device)
+        indices = wp.array(RIGHT_HANDED_FACE_VERTEX_INDICES, dtype=int, device=device)
+        wp.Mesh(points=points, indices=indices, bvh_constructor="cuqbl")
+
 
 devices = get_test_devices()
 
@@ -377,6 +455,7 @@ add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properti
 add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
 add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_grouped_mesh_query_ray", test_grouped_mesh_query_ray, devices=devices)
+add_function_test(TestMesh, "test_mesh_refit", test_mesh_refit, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=get_selected_cuda_test_devices())
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 

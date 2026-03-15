@@ -65,6 +65,43 @@ count_neighbors_f64 = wp.overload(
 )
 
 
+@wp.func
+def periodic_dist_1d(a: float, b: float, period: float) -> float:
+    """Minimum image signed displacement in 1D."""
+    d = a - b
+    half = period * 0.5
+    if d > half:
+        d -= period
+    elif d < -half:
+        d += period
+    return d
+
+
+@wp.kernel
+def count_neighbors_periodic(
+    grid: wp.uint64,
+    radius: float,
+    period: float,
+    points: wp.array(dtype=wp.vec3),
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    i = wp.hash_grid_point_id(grid, tid)
+    p = points[i]
+    count = int(0)
+
+    for index in wp.hash_grid_query(grid, p, radius):
+        q = points[index]
+        dx = periodic_dist_1d(p[0], q[0], period)
+        dy = periodic_dist_1d(p[1], q[1], period)
+        dz = periodic_dist_1d(p[2], q[2], period)
+        d = wp.sqrt(dx * dx + dy * dy + dz * dz)
+        if d <= radius:
+            count += 1
+
+    counts[i] = count
+
+
 @wp.kernel
 def count_neighbors_reference(
     radius: float, points: wp.array(dtype=wp.vec3), counts: wp.array(dtype=int), num_points: int
@@ -359,6 +396,52 @@ def test_hashgrid_edge_cases(test, device):
         test.assertEqual(counts_np[1], 1)
 
 
+def test_hashgrid_negative_wrapping(test, device):
+    """Test that hash grid wrapping works correctly with negative coordinates.
+
+    With a small grid, the truncation bug (int() instead of floor()) causes
+    points near negative cell boundaries to map to the wrong physical cell.
+    Virtual cell -1 and cell 0 map to different physical cells after modulo
+    wrapping, so a misplaced point becomes invisible to queries that should
+    find it via the wrapped cell.
+    """
+    grid_dim = 4
+    cell_width = 1.0
+    period = float(grid_dim) * cell_width
+    radius = 0.5
+
+    grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+
+    # Point A at -0.3: should be virtual cell -1 (physical 3)
+    #   Bug: int(-0.3) = 0 -> physical cell 0 (WRONG)
+    # Point B at 3.9: virtual cell 3 -> physical cell 3 (correct in both cases)
+    # Periodic distance: 0.2 (A wraps to 3.7 in [0, 4), |3.9 - 3.7| = 0.2),
+    # well within radius 0.5.
+    #
+    # With the bug, query from A searches only physical cell 0 and misses B
+    # in physical cell 3. Query from B wraps to include physical cell 0 and
+    # finds the misplaced A, producing an asymmetric result [1, 2].
+    points = wp.array(
+        [[-0.3, 0.0, 0.0], [3.9, 0.0, 0.0]],
+        dtype=wp.vec3,
+        device=device,
+    )
+    counts = wp.zeros(2, dtype=int, device=device)
+
+    grid.build(points, cell_width)
+
+    wp.launch(
+        kernel=count_neighbors_periodic,
+        dim=2,
+        inputs=[wp.uint64(grid.id), radius, period, points, counts],
+        device=device,
+    )
+
+    counts_np = counts.numpy()
+    test.assertEqual(counts_np[0], 2)  # A finds self + B
+    test.assertEqual(counts_np[1], 2)  # B finds self + A
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -391,6 +474,7 @@ add_function_test(
 )
 add_function_test(TestHashGrid, "test_hashgrid_dtype_validation", test_hashgrid_dtype_validation, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_edge_cases", test_hashgrid_edge_cases, devices=devices)
+add_function_test(TestHashGrid, "test_hashgrid_negative_wrapping", test_hashgrid_negative_wrapping, devices=devices)
 
 
 if __name__ == "__main__":

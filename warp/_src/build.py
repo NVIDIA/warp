@@ -41,6 +41,8 @@ def build_cuda(
     cu_path,
     arch,
     output_path,
+    *,
+    pch_dir,
     config="release",
     optimization_level=3,
     verify_fp=False,
@@ -76,7 +78,9 @@ def build_cuda(
             fatbins
         )
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-        kernel_cache_dir_bytes = warp.config.kernel_cache_dir.encode("utf-8")
+        # Must be a unique directory per compilation to avoid .pch races
+        # when multiple processes compile concurrently with a shared cache.
+        pch_dir_bytes = pch_dir.encode("utf-8")
         arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
@@ -96,7 +100,7 @@ def build_cuda(
             compile_time_trace,
             warp.config.use_precompiled_headers,
             output_path,
-            kernel_cache_dir_bytes,
+            pch_dir_bytes,
             num_link,
             arr_link,
             arr_link_sizes,
