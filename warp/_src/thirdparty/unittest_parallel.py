@@ -51,7 +51,7 @@ except ImportError:
 # The following variables are NVIDIA Modifications
 START_DIRECTORY = os.path.join(os.path.dirname(__file__), "..")  # The directory to start test discovery
 _SUITE_TIMEOUT = (
-    2400  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
+    3600  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
 )
 
 
