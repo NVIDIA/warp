@@ -412,7 +412,6 @@ linux-x86_64 test:
   extends:
     - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
-  allow_failure: true # 2x multi-GPU runners are unstable
   before_script:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
