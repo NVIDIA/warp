@@ -441,6 +441,21 @@ linux-x86_64-blackwell test:
     - os/linux
     - platform/horde
 
+linux-x86_64 test debug mode:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: $UV_TRIXIE_SLIM_IMAGE
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  timeout: 45m
+  before_script:
+    - df -h
+    - !reference [.snippets, move-linux-x86_64-binaries]
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
+
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
   stage: test
