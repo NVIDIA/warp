@@ -103,7 +103,7 @@ To build Warp from source, you need:
 
   * Minimum: CUDA Toolkit 12.0
   * For full libmathdx support: CUDA Toolkit 12.6.3+
-  * For conditional graph node support: CUDA Toolkit 12.3+
+  * For conditional graph node support: CUDA Toolkit 12.4+
 
 * libmathdx (auto-fetched via Packman by default)
 * LLVM/Clang (auto-fetched via Packman by default)

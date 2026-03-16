@@ -28,7 +28,7 @@ Kernels and User Functions
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
 * Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
-  (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <load_module>`).
+  (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <warp.load_module>`).
 * A :class:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
   :class:`wp.float32 <float32>` (for Python floats) or :class:`wp.int32 <int32>` (for Python integers).
   To preserve full 64-bit precision, wrap the constant in an explicit type constructor
