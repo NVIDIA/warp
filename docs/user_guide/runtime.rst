@@ -1787,7 +1787,7 @@ Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.in
 normalized to the [0, 1] range when sampled; signed integer textures are normalized to [-1, 1];
 float types are returned as-is.
 
-.. seealso:: `Reference <language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
+.. seealso:: `Reference <../language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
 
 
 Bounding Volume Hierarchies (BVH)
