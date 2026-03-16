@@ -3076,7 +3076,7 @@ class Module:
 class CpuDefaultAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_host(size_in_bytes)
@@ -3091,7 +3091,7 @@ class CpuDefaultAllocator:
 class CpuPinnedAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_pinned(size_in_bytes)
@@ -3107,7 +3107,7 @@ class CudaDefaultAllocator:
     def __init__(self, device):
         assert device.is_cuda
         self.device = device
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes)
@@ -3140,7 +3140,7 @@ class CudaMempoolAllocator:
         assert device.is_cuda
         assert device.is_mempool_supported
         self.device = device
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes)

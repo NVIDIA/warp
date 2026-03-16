@@ -149,7 +149,7 @@ def test_multiple_return_values(test, device):
         test.assertEqual(out[2][i].y, i)
         test.assertEqual(out[2][i].z, i)
 
-    out = wp.map(lambda a: multiple_return(a), a1)
+    out = wp.map(multiple_return, a1)
     assert isinstance(out, list)
     out = [o.list() for o in out]
     for i in range(10):

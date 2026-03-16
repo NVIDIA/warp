@@ -33,7 +33,7 @@ class NodalFieldBase(DiscreteField):
     _dynamic_attribute_constructors: ClassVar = {
         "EvalArg": lambda obj: obj._make_eval_arg(),
         "ElementEvalArg": lambda obj: obj._make_element_eval_arg(),
-        "eval_degree": lambda obj: DiscreteField._make_eval_degree(obj),
+        "eval_degree": DiscreteField._make_eval_degree,
         "_read_node_value": lambda obj: obj._make_read_node_value(),
         "eval_inner": lambda obj: obj._make_eval_inner(),
         "eval_outer": lambda obj: obj._make_eval_outer(),
