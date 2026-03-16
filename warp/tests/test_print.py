@@ -347,7 +347,7 @@ def test_print_adjoint(test, device):
 
 
 def test_print_error_variadic_arg_count(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         # fmt: off
         wp.printf(

@@ -627,19 +627,6 @@ def test_mesh_query_ray_and_groups(test, device):
 
         counts_anyhit = wp.empty(n=num_rays, dtype=int, device=device)
 
-        @wp.kernel
-        def mesh_query_ray_anyhit_kernel(
-            mesh: wp.uint64,
-            ray_starts: wp.array(dtype=wp.vec3),
-            ray_directions: wp.array(dtype=wp.vec3),
-            max_t: float,
-            counts: wp.array(dtype=int),
-        ):
-            tid = wp.tid()
-            p = ray_starts[tid]
-            dir = ray_directions[tid]
-            counts[tid] = int(wp.mesh_query_ray_anyhit(mesh, p, dir, max_t))
-
         wp.launch(
             kernel=mesh_query_ray_anyhit_kernel,
             dim=num_rays,
@@ -651,6 +638,20 @@ def test_mesh_query_ray_and_groups(test, device):
         assert_array_equal(counts_anyhit, counts_brutal)
 
         wp.synchronize_device(device)
+
+
+@wp.kernel
+def mesh_query_ray_anyhit_kernel(
+    mesh: wp.uint64,
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    max_t: float,
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+    counts[tid] = int(wp.mesh_query_ray_anyhit(mesh, p, dir, max_t))
 
 
 @wp.kernel
