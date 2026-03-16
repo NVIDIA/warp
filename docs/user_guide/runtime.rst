@@ -762,7 +762,7 @@ Quaternions can be used to transform vectors as follows::
         ...
 
         # construct a 30 degree rotation around the x-axis
-        q = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), wp.degrees(30.0))
+        q = wp.quat_from_axis_angle(wp.vec3(1.0, 0.0, 0.0), wp.radians(30.0))
 
         # rotate an axis by this quaternion
         v = wp.quat_rotate(q, wp.vec3(0.0, 1.0, 0.0))
@@ -821,7 +821,7 @@ Transforms can be constructed inside kernels from translation and rotation parts
         # create a transform from a vector/quaternion:
         t = wp.transform(
                 wp.vec3(1.0, 2.0, 3.0),
-                wp.quat_from_axis_angle(wp.vec3(0.0, 1.0, 0.0), wp.degrees(30.0)))
+                wp.quat_from_axis_angle(wp.vec3(0.0, 1.0, 0.0), wp.radians(30.0)))
 
         # transform a point
         p = wp.transform_point(t, wp.vec3(10.0, 0.5, 1.0))
