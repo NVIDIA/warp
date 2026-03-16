@@ -1198,7 +1198,7 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
     grad_fn = jax.grad(loss, argnums=(0, 1))
 
     # more typical: jit(grad(...)) with static scalar
-    jitted_grad = jax.jit(lambda a, b, s: grad_fn(a, b, s), static_argnames=("s",))
+    jitted_grad = jax.jit(grad_fn, static_argnames=("s",))
 
     n = ARRAY_SIZE
     a = jp.arange(n, dtype=jp.float32)
@@ -1281,7 +1281,7 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output(test, device):
         return jp.sum(c + d)
 
     grad_fn = jax.grad(loss, argnums=(0, 1))
-    jitted_grad = jax.jit(lambda a, b, s: grad_fn(a, b, s), static_argnames=("s",))
+    jitted_grad = jax.jit(grad_fn, static_argnames=("s",))
 
     n = ARRAY_SIZE
     a = jp.arange(n, dtype=jp.float32)

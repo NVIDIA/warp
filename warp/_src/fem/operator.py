@@ -211,9 +211,11 @@ def element_coordinates(domain: Domain, element_index: ElementIndex, x: Any) -> 
 
 @operator(
     resolver=lambda x: x.domain_cell_arg if isinstance(x, Domain) else x.cell_field_eval_arg,
-    field_result=lambda x: (x.cell_domain(), Domain, x.cell_domain().DomainArg)
-    if isinstance(x, Domain)
-    else (x.cell_field, Field, x.cell_field.ElementEvalArg),
+    field_result=lambda x: (
+        (x.cell_domain(), Domain, x.cell_domain().DomainArg)
+        if isinstance(x, Domain)
+        else (x.cell_field, Field, x.cell_field.ElementEvalArg)
+    ),
 )
 def cells(domain_or_field: Union[Domain, Field]) -> Union[Domain, Field]:
     """Convert a side domain to a cell domain, or a traced field to its cell-level field.

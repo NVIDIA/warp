@@ -56,3 +56,6 @@ asv/env
 asv/results
 asv/html
 asv/warp-lang
+
+# Core dumps
+core.[0-9]*

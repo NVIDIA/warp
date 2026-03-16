@@ -270,7 +270,7 @@ class OmniWarpExtension(omni.ext.IExt):
         action_registry.register_action(
             self._ext_name,
             "getting_started",
-            lambda: self._on_getting_started_click(),
+            self._on_getting_started_click,
             display_name="Warp->Getting Started",
             description="",
             tag=actions_tag,
@@ -279,7 +279,7 @@ class OmniWarpExtension(omni.ext.IExt):
         action_registry.register_action(
             self._ext_name,
             "documentation",
-            lambda: self._on_documentation_click(),
+            self._on_documentation_click,
             display_name="Warp->Documentation",
             description="",
             tag=actions_tag,
@@ -288,7 +288,7 @@ class OmniWarpExtension(omni.ext.IExt):
         action_registry.register_action(
             self._ext_name,
             "browse_scenes",
-            lambda: self._on_browse_scenes_click(),
+            self._on_browse_scenes_click,
             display_name="Warp->Browse Scenes",
             description="",
             tag=actions_tag,
@@ -298,7 +298,7 @@ class OmniWarpExtension(omni.ext.IExt):
         action_registry = omni.kit.actions.core.get_action_registry()
         action_registry.deregister_all_actions_for_extension(self._ext_name)
 
-    def _on_browse_scenes_click(self):
+    def _on_browse_scenes_click(self, *_):
         open_file(SCENES_PATH)
 
     def _on_getting_started_click(self, *_):
