@@ -2964,7 +2964,12 @@ Instances: {len(self._instances)}"""
             width: The width of the plane
             length: The length of the plane
             color: The color of the plane
-            texture: The texture of the plane (optional)
+            color2: The secondary color for the checkerboard pattern (optional)
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the plane is a template
+            u_scaling: The scaling factor for the U texture coordinate
+            v_scaling: The scaling factor for the V texture coordinate
+            visible: Whether the plane is visible
         """
         geo_hash = hash(("plane", width, length))
         if geo_hash in self._shape_geo_hash:
@@ -2999,6 +3004,7 @@ Instances: {len(self._instances)}"""
 
         Args:
             size: The size of the ground plane
+            plane: The plane equation as (nx, ny, nz, d) where (nx, ny, nz) is the normal and d is the offset (optional)
         """
         color1 = (200 / 255, 200 / 255, 200 / 255)
         color2 = (150 / 255, 150 / 255, 150 / 255)
@@ -3049,10 +3055,14 @@ Instances: {len(self._instances)}"""
         """Add a sphere for visualization
 
         Args:
+            name: The name of the sphere
             pos: The position of the sphere
+            rot: The rotation of the sphere
             radius: The radius of the sphere
-            name: A name for the USD prim on the stage
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the sphere is a template
             color: The color of the sphere
+            visible: Whether the sphere is visible
         """
         geo_hash = hash(("sphere", radius))
         if geo_hash in self._shape_geo_hash:
@@ -3083,12 +3093,16 @@ Instances: {len(self._instances)}"""
         """Add a capsule for visualization
 
         Args:
+            name: The name of the capsule
             pos: The position of the capsule
+            rot: The rotation of the capsule
             radius: The radius of the capsule
             half_height: The half height of the capsule
-            name: A name for the USD prim on the stage
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the capsule is a template
             up_axis: The axis of the capsule that points up (0: x, 1: y, 2: z)
             color: The color of the capsule
+            visible: Whether the capsule is visible
         """
         geo_hash = hash(("capsule", radius, half_height, up_axis))
         if geo_hash in self._shape_geo_hash:
@@ -3119,12 +3133,16 @@ Instances: {len(self._instances)}"""
         """Add a cylinder for visualization
 
         Args:
+            name: The name of the cylinder
             pos: The position of the cylinder
+            rot: The rotation of the cylinder
             radius: The radius of the cylinder
             half_height: The half height of the cylinder
-            name: A name for the USD prim on the stage
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the cylinder is a template
             up_axis: The axis of the cylinder that points up (0: x, 1: y, 2: z)
-            color: The color of the capsule
+            color: The color of the cylinder
+            visible: Whether the cylinder is visible
         """
         geo_hash = hash(("cylinder", radius, half_height, up_axis))
         if geo_hash in self._shape_geo_hash:
@@ -3155,12 +3173,16 @@ Instances: {len(self._instances)}"""
         """Add a cone for visualization
 
         Args:
+            name: The name of the cone
             pos: The position of the cone
+            rot: The rotation of the cone
             radius: The radius of the cone
             half_height: The half height of the cone
-            name: A name for the USD prim on the stage
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the cone is a template
             up_axis: The axis of the cone that points up (0: x, 1: y, 2: z)
             color: The color of the cone
+            visible: Whether the cone is visible
         """
         geo_hash = hash(("cone", radius, half_height, up_axis))
         if geo_hash in self._shape_geo_hash:
@@ -3189,10 +3211,14 @@ Instances: {len(self._instances)}"""
         """Add a box for visualization
 
         Args:
+            name: The name of the box
             pos: The position of the box
+            rot: The rotation of the box
             extents: The extents of the box
-            name: A name for the USD prim on the stage
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the box is a template
             color: The color of the box
+            visible: Whether the box is visible
         """
         geo_hash = hash(("box", tuple(extents)))
         if geo_hash in self._shape_geo_hash:
@@ -3225,14 +3251,18 @@ Instances: {len(self._instances)}"""
         """Add a mesh for visualization
 
         Args:
+            name: The name of the mesh
             points: The points of the mesh
             indices: The indices of the mesh
             colors: The colors of the mesh
             pos: The position of the mesh
             rot: The rotation of the mesh
             scale: The scale of the mesh
-            name: A name for the USD prim on the stage
+            update_topology: Whether to update the topology of an existing mesh
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the mesh is a template
             smooth_shading: Whether to average face normals at each vertex or introduce additional vertices for each face
+            visible: Whether the mesh is visible
         """
         if colors is not None:
             colors = np.array(colors, dtype=np.float32)
@@ -3342,16 +3372,21 @@ Instances: {len(self._instances)}"""
         color: tuple[float, float, float] | None = None,
         visible: bool = True,
     ):
-        """Add a arrow for visualization
+        """Add an arrow for visualization
 
         Args:
+            name: The name of the arrow
             pos: The position of the arrow
+            rot: The rotation of the arrow
             base_radius: The radius of the cylindrical base of the arrow
             base_height: The height of the cylindrical base of the arrow
             cap_radius: The radius of the conical cap of the arrow
             cap_height: The height of the conical cap of the arrow
-            name: A name for the USD prim on the stage
+            parent_body: The name of the parent body (optional)
+            is_template: Whether the arrow is a template
             up_axis: The axis of the arrow that points up (0: x, 1: y, 2: z)
+            color: The color of the arrow
+            visible: Whether the arrow is visible
         """
         geo_hash = hash(("arrow", base_radius, base_height, cap_radius, cap_height, up_axis))
         if geo_hash in self._shape_geo_hash:
@@ -3392,10 +3427,12 @@ Instances: {len(self._instances)}"""
         """Add a set of points
 
         Args:
+            name: The name of the points
             points: The points to render
             radius: The radius of the points (scalar or list)
             colors: The colors of the points
-            name: A name for the USD prim on the stage
+            as_spheres: Whether to render the points as spheres
+            visible: Whether the points are visible
         """
 
         if len(points) == 0:
@@ -3479,10 +3516,12 @@ Instances: {len(self._instances)}"""
         """Add a line list as a set of capsules
 
         Args:
+            name: The name of the line list
             vertices: The vertices of the line-list
             indices: The indices of the line-list
             color: The color of the line
             radius: The radius of the line
+            visible: Whether the lines are visible
         """
         lines = []
         for i in range(len(indices) // 2):
@@ -3501,9 +3540,11 @@ Instances: {len(self._instances)}"""
         """Add a line strip as a set of capsules
 
         Args:
+            name: The name of the line strip
             vertices: The vertices of the line-strip
             color: The color of the line
             radius: The radius of the line
+            visible: Whether the lines are visible
         """
         lines = []
         for i in range(len(vertices) - 1):
