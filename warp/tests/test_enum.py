@@ -33,7 +33,7 @@ class MyIntFlag(enum.IntFlag):
 
 
 def test_intenum_ints(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def expect_intenum_ints():
         wp.expect_eq(MyIntEnum.A, 1)
         wp.expect_eq(MyIntEnum.B, 2)
@@ -44,7 +44,7 @@ def test_intenum_ints(test, device):
 
 
 def test_intflag_ints(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def expect_intflag_ints():
         wp.expect_eq(MyIntFlag.A, 1)
         wp.expect_eq(MyIntFlag.B, 2)
@@ -56,7 +56,7 @@ def test_intflag_ints(test, device):
 
 
 def test_alternative_accessors(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def expect_alternative_accessors():
         wp.expect_eq(int(MyIntEnum.A), 1)
         wp.expect_eq(int(MyIntEnum.B.value), 2)
@@ -72,7 +72,7 @@ def test_alternative_accessors(test, device):
 
 
 def test_static_accessors(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def expect_static_accessors():
         wp.expect_eq(wp.static(MyIntEnum.A), 1)
         wp.expect_eq(wp.static(int(MyIntEnum.A)), 1)
@@ -85,7 +85,7 @@ def test_static_accessors(test, device):
 
 
 def test_intflag_compare(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def compute_intflag_compare(ins: wp.array(dtype=wp.int32), outs: wp.array(dtype=wp.int32)):
         tid = wp.tid()
         if ins[tid] & MyIntFlag.A:

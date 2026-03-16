@@ -33,7 +33,7 @@ def getkernel(func, suffix=""):
 
 
 def test_anon_constructor_error_length_mismatch(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.vector(wp.types.vector(length=2, dtype=float), length=3, dtype=float)
 
@@ -45,7 +45,7 @@ def test_anon_constructor_error_length_mismatch(test, device):
 
 
 def test_anon_constructor_error_numeric_arg_missing(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.vector(1.0, 2.0, length=12345)
 
@@ -57,7 +57,7 @@ def test_anon_constructor_error_numeric_arg_missing(test, device):
 
 
 def test_anon_constructor_error_length_arg_missing(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.vector()
 
@@ -69,7 +69,7 @@ def test_anon_constructor_error_length_arg_missing(test, device):
 
 
 def test_anon_constructor_error_numeric_args_mismatch(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.vector(1.0, 2)
 
@@ -81,7 +81,7 @@ def test_anon_constructor_error_numeric_args_mismatch(test, device):
 
 
 def test_tpl_constructor_error_incompatible_sizes(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.vec3(wp.vec2(1.0, 2.0))
 
@@ -92,7 +92,7 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
 
 
 def test_tpl_constructor_error_numeric_args_mismatch(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.vec2(1.0, 2)
 

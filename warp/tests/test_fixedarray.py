@@ -141,7 +141,7 @@ def test_error_invalid_func_return_annotation(test, device):
 
 
 def test_error_runtime_shape(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         tid = wp.tid()
         wp.zeros(shape=(tid,), dtype=int)
