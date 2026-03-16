@@ -3654,6 +3654,7 @@ def tile_sum(a: Tile[Any, tuple[int, ...]], axis: int32) -> Tile[Any, tuple[int,
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_ones(dtype=float, shape=(8, 8))
                 s = wp.tile_sum(t, axis=0)
 
@@ -3686,6 +3687,7 @@ def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_ones(dtype=float, shape=(16, 16))
                 s = wp.tile_sum(t)
 
@@ -3716,6 +3718,7 @@ def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> Non
 
             @wp.kernel
             def compute():
+
                 keys = wp.tile_arange(32, 0, -1, dtype=int, storage="shared")
                 values = wp.tile_arange(0, 32, 1, dtype=int, storage="shared")
                 wp.tile_sort(keys, values)
@@ -3748,6 +3751,7 @@ def tile_min(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_arange(64, 128)
                 s = wp.tile_min(t)
 
@@ -3777,6 +3781,7 @@ def tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_arange(64, 128)
                 s = wp.tile_argmin(t)
 
@@ -3806,6 +3811,7 @@ def tile_max(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[Literal[1]]
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_arange(64, 128)
                 s = wp.tile_max(t)
 
@@ -3835,6 +3841,7 @@ def tile_argmax(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_arange(64, 128)
                 s = wp.tile_argmax(t)
 
@@ -3868,6 +3875,7 @@ def tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[
 
             @wp.kernel
             def factorial():
+
                 t = wp.tile_arange(1, 10, dtype=int)
                 s = wp.tile_reduce(wp.mul, t)
 
@@ -3905,6 +3913,7 @@ def tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> 
 
             @wp.kernel
             def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+
                 a = wp.tile_load(x, shape=(TILE_M, TILE_N))
                 b = wp.tile_reduce(wp.add, a, axis=1)
                 wp.tile_store(y, b)
@@ -4071,6 +4080,7 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int
 
             @wp.kernel
             def compute():
+
                 t = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
                 s = wp.tile_map(wp.sin, t)
 
@@ -4107,6 +4117,7 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, t
 
             @wp.kernel
             def compute():
+
                 a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
                 b = wp.tile_ones(shape=10, dtype=float)
 
@@ -4149,6 +4160,7 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Sc
 
             @wp.kernel
             def compute():
+
                 a = wp.tile_arange(0.0, 1.0, 0.1, dtype=float)
                 b = wp.tile_ones(shape=10, dtype=float)
                 c = wp.tile_arange(1.0, 2.0, 0.1, dtype=float)
