@@ -84,7 +84,7 @@ def test_closure_precedence(test, device):
 
     SHADOWED_GLOBAL = wp.constant(42)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def closure_kernel():
         wp.expect_eq(SHADOWED_GLOBAL, 42)
 

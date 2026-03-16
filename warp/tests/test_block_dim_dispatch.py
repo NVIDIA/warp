@@ -43,7 +43,7 @@ def test_block_dim_cpu_then_cuda(test, device):
     for the different (device.context, block_dim) pairs.
     """
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def simple_conditional(x: float, result: wp.array(dtype=wp.int32)):
         wp.atomic_add(result, 0, 1) if x > 0.0 else wp.atomic_add(result, 1, 1)
 
@@ -88,7 +88,7 @@ def test_block_dim_record_cmd_cpu(test, device):
     has been set to 256 by a previous CUDA launch.
     """
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def simple_conditional(x: float, result: wp.array(dtype=wp.int32)):
         wp.atomic_add(result, 0, 1) if x > 0.0 else wp.atomic_add(result, 1, 1)
 
