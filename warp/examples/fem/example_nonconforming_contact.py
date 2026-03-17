@@ -243,7 +243,7 @@ class Example:
         # solve
         x = wp.zeros_like(u_rhs)
         wp.utils.array_cast(in_array=u_field.dof_values, out_array=x)
-        fem_example_utils.bsr_cg(stiffness_matrix, b=u_rhs, x=x, tol=1.0e-6, quiet=True)
+        fem_example_utils.bsr_cg(stiffness_matrix, b=u_rhs, x=x, tol=1.0e-6, quiet=not wp.config.verbose)
 
         # Extract result
         stress = stress_matrix @ x

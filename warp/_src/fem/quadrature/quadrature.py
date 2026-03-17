@@ -17,6 +17,7 @@ from functools import cached_property
 from typing import Any, ClassVar, Optional
 
 import warp as wp
+from warp._src.context import capture_pause, capture_resume
 from warp._src.fem import cache
 from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.geometry import Element
@@ -297,7 +298,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
             # pause graph capture while we copy from host
             # we want the cached result to be available outside of the graph
             if device.is_capturing:
-                graph = wp.context.capture_pause()
+                graph = capture_pause()
             else:
                 graph = None
 
@@ -305,7 +306,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
             arg.weights = wp.array(self.weights, device=device, dtype=float)
 
             if graph is not None:
-                wp.context.capture_resume(graph)
+                capture_resume(graph)
             return arg
 
         def fill_arg(self, arg: "RegularQuadrature.Arg", device):

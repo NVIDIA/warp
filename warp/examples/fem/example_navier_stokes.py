@@ -198,7 +198,7 @@ class Example:
             x_p=x_p,
             b_u=u_rhs,
             b_p=p_rhs,
-            quiet=self._quiet,
+            quiet=not wp.config.verbose,
         )
 
         wp.utils.array_cast(in_array=x_u, out_array=self._u_field.dof_values)
@@ -247,8 +247,7 @@ if __name__ == "__main__":
             mesh=args.mesh,
         )
 
-        for k in range(args.num_frames):
-            print(f"Frame {k}:")
+        for _k, _set_info in fem_example_utils.progress_bar(args.num_frames, quiet=args.quiet):
             example.step()
             example.render()
 

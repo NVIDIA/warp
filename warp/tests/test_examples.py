@@ -418,6 +418,36 @@ add_example_test(
 #     devices=test_devices,
 #     test_options={"headless": True, "resolution": 16, "num_steps": 2},
 # )
+# add_example_test(
+#     TestFemExamples,
+#     name="fem.example_elastic_shape_optimization",
+#     devices=cuda_test_devices,
+#     test_options={"num_iters": 5, "headless": True},
+# )
+# add_example_test(
+#     TestFemExamples,
+#     name="fem.example_darcy_ls_optimization",
+#     devices=cuda_test_devices,
+#     test_options={"num_iters": 5, "resolution": 25, "headless": True},
+# )
+# add_example_test(
+#     TestFemExamples,
+#     name="fem.example_taylor_green",
+#     devices=cuda_test_devices,
+#     test_options={"num_frames": 10, "resolution": 10, "headless": True},
+# )
+# add_example_test(
+#     TestFemExamples,
+#     name="fem.example_shallow_water",
+#     devices=cuda_test_devices,
+#     test_options={"num_frames": 10, "resolution": 10, "headless": True},
+# )
+# add_example_test(
+#     TestFemExamples,
+#     name="fem.example_kelvin_helmholtz",
+#     devices=cuda_test_devices,
+#     test_options={"num_frames": 25, "resolution": 20, "headless": True},
+# )
 
 
 class TestTileExamples(unittest.TestCase):
