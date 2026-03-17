@@ -305,10 +305,24 @@ uint64_t wp_mesh_create_device(
         WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, mesh.num_tris,
         (mesh.num_tris, mesh.points, mesh.indices, mesh.lowers, mesh.uppers)
     );
+#ifndef WP_DISABLE_CUBQL
     if (use_cubql) {
         wp::cubql_bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, bvh_leaf_size, mesh.cubql_bvh);
         wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->cubql_bvh), &mesh.cubql_bvh, sizeof(wp::CuBQLBVH));
-    } else {
+    } else
+#else
+    if (use_cubql) {
+        fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
+        wp_free_device(WP_CURRENT_CONTEXT, mesh.lowers);
+        wp_free_device(WP_CURRENT_CONTEXT, mesh.uppers);
+        if (mesh.solid_angle_props) {
+            wp_free_device(WP_CURRENT_CONTEXT, mesh.solid_angle_props);
+        }
+        wp_free_device(WP_CURRENT_CONTEXT, mesh_device);
+        return 0;
+    }
+#endif
+    {
         wp::bvh_create_device(
             mesh.context, mesh.lowers, mesh.uppers, num_tris, constructor_type, groups, bvh_leaf_size, mesh.bvh
         );
@@ -330,9 +344,12 @@ void wp_mesh_destroy_device(uint64_t id)
     if (wp::mesh_get_descriptor(id, mesh)) {
         ContextGuard guard(mesh.context);
 
+#ifndef WP_DISABLE_CUBQL
         if (mesh.bvh_backend == wp::MESH_BVH_BACKEND_CUBQL) {
             wp::cubql_bvh_destroy_device(mesh.cubql_bvh);
-        } else {
+        } else
+#endif
+        {
             wp::bvh_destroy_device(mesh.bvh);
         }
 
@@ -377,9 +394,12 @@ void wp_mesh_refit_device(uint64_t id)
             (m.num_tris, m.points, m.indices, m.lowers, m.uppers)
         );
 
+#ifndef WP_DISABLE_CUBQL
         if (m.bvh_backend == wp::MESH_BVH_BACKEND_CUBQL) {
             wp::cubql_bvh_refit_device(m.cubql_bvh);
-        } else if (m.solid_angle_props) {
+        } else
+#endif
+            if (m.solid_angle_props) {
             // update solid angle data
             bvh_refit_with_solid_angle_device(m.bvh, m);
         } else {

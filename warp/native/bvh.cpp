@@ -27,7 +27,9 @@
 #include <map>
 #include <vector>
 
+#ifndef WP_DISABLE_CUBQL
 #include "cuBQL/builder/cpu.h"
+#endif
 
 using namespace wp;
 
@@ -789,6 +791,8 @@ void cubql_bvh_add_descriptor(uint64_t id, const CuBQLBVH& bvh) { g_cubql_bvh_de
 
 void cubql_bvh_rem_descriptor(uint64_t id) { g_cubql_bvh_descriptors.erase(id); }
 
+#ifndef WP_DISABLE_CUBQL
+
 static inline cuBQL::box3f make_cubql_box(const vec3& lower, const vec3& upper)
 {
     return cuBQL::box3f(cuBQL::vec3f(lower[0], lower[1], lower[2]), cuBQL::vec3f(upper[0], upper[1], upper[2]));
@@ -822,6 +826,8 @@ static void cubql_assign_from_native(CuBQLBVH& bvh, const cuBQL::bvh3f& native)
         bvh.root[0] = native.numNodes > 0 ? 0 : -1;
     }
 }
+
+#endif  // !WP_DISABLE_CUBQL
 
 
 // create in-place given existing descriptor
@@ -859,6 +865,8 @@ void bvh_destroy_host(BVH& bvh)
     bvh.max_nodes = 0;
     bvh.num_items = 0;
 }
+
+#ifndef WP_DISABLE_CUBQL
 
 void cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh)
 {
@@ -949,6 +957,20 @@ void cubql_bvh_rebuild_host(CuBQLBVH& bvh)
     cubql_assign_from_native(bvh, native);
 }
 
+#else  // WP_DISABLE_CUBQL
+
+void cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh)
+{
+    fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
+    memset(&bvh, 0, sizeof(CuBQLBVH));
+}
+
+void cubql_bvh_destroy_host(CuBQLBVH&) { }
+void cubql_bvh_refit_host(CuBQLBVH&) { }
+void cubql_bvh_rebuild_host(CuBQLBVH&) { }
+
+#endif  // WP_DISABLE_CUBQL
+
 }  // namespace wp
 
 uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size)
@@ -981,7 +1003,12 @@ void wp_bvh_destroy_host(uint64_t id)
 uint64_t wp_cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_size)
 {
     CuBQLBVH* bvh = new CuBQLBVH();
+    memset(bvh, 0, sizeof(CuBQLBVH));
     wp::cubql_bvh_create_host(lowers, uppers, num_items, leaf_size, *bvh);
+    if (!bvh->nodes && num_items > 0) {
+        delete bvh;
+        return 0;
+    }
     return (uint64_t)bvh;
 }
 

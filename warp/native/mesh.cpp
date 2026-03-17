@@ -165,9 +165,20 @@ uint64_t wp_mesh_create_host(
     }
     m->average_edge_length = sum / (num_tris * 3);
 
+#ifndef WP_DISABLE_CUBQL
     if (use_cubql) {
         wp::cubql_bvh_create_host(m->lowers, m->uppers, num_tris, bvh_leaf_size, m->cubql_bvh);
-    } else {
+    } else
+#else
+    if (use_cubql) {
+        fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
+        delete[] m->lowers;
+        delete[] m->uppers;
+        delete m;
+        return 0;
+    }
+#endif
+    {
         wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, groups, bvh_leaf_size, m->bvh);
 
         if (support_winding_number) {
@@ -192,9 +203,12 @@ void wp_mesh_destroy_host(uint64_t id)
     if (m->solid_angle_props) {
         delete[] m->solid_angle_props;
     }
+#ifndef WP_DISABLE_CUBQL
     if (m->bvh_backend == MESH_BVH_BACKEND_CUBQL) {
         wp::cubql_bvh_destroy_host(m->cubql_bvh);
-    } else {
+    } else
+#endif
+    {
         wp::bvh_destroy_host(m->bvh);
     }
 
@@ -224,9 +238,12 @@ void wp_mesh_refit_host(uint64_t id)
     }
     m->average_edge_length = sum / (m->num_tris * 3);
 
+#ifndef WP_DISABLE_CUBQL
     if (m->bvh_backend == MESH_BVH_BACKEND_CUBQL) {
         wp::cubql_bvh_refit_host(m->cubql_bvh);
-    } else if (m->solid_angle_props) {
+    } else
+#endif
+        if (m->solid_angle_props) {
         // If solid angle were used, use refit solid angle
         bvh_refit_with_solid_angle_host(m->bvh, *m);
     } else {
