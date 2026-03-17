@@ -48,6 +48,8 @@
   in `warp/examples/core/example_fft_poisson_navier_stokes_2d.py`.
 - Add `warp.fem` examples for Taylor-Green vortex (`example_taylor_green.py`), Kelvin-Helmholtz instability
   (`example_kelvin_helmholtz.py`), and shallow water equations (`example_shallow_water.py`).
+- Fix spectral Poisson solver in 2-D Navier-Stokes examples to use modified wavenumbers consistent with
+  the 2nd-order FD stencil used in the vorticity equation ([GH-1290](https://github.com/NVIDIA/warp/issues/1290)).
 
 ## [1.12.0] - 2026-03-06
 
