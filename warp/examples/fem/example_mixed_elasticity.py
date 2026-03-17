@@ -126,6 +126,13 @@ def area_form(s: fem.Sample, u_cur: fem.Field):
     return wp.determinant(F)
 
 
+@fem.integrand
+def stress_norm_form(s: fem.Sample, stress: fem.Field):
+    """Frobenius norm of the stress tensor"""
+    P = stress(s)
+    return wp.sqrt(wp.ddot(P, P))
+
+
 class Example:
     def __init__(
         self,
@@ -165,7 +172,9 @@ class Example:
             tau_degree = degree - 1
         else:
             # square elements
-            tau_basis = fem.ElementBasis.LAGRANGE
+            tau_basis = (
+                fem.ElementBasis.NONCONFORMING_POLYNOMIAL if nonconforming_stresses else fem.ElementBasis.LAGRANGE
+            )
             tau_degree = degree
 
         self._tau_space = fem.make_polynomial_space(
@@ -178,6 +187,14 @@ class Example:
         )
 
         self._u_field = self._u_space.make_field()
+
+        self._stress_field = self._tau_space.make_field()
+        self._stress_norm_space = fem.make_polynomial_space(
+            self._geo,
+            degree=degree,
+            dtype=float,
+        )
+        self._stress_norm_field = self._stress_norm_space.make_field()
 
         self.renderer = fem_example_utils.Plot()
 
@@ -242,6 +259,14 @@ class Example:
             wp.utils.array_cast(in_array=x, out_array=delta_u)
             fem.linalg.array_axpy(x=delta_u, y=self._u_field.dof_values)
 
+        # Compute stress field from last Newton iteration: sigma = M_tau^{-1} * stress_rhs
+        stress_dofs_f64 = wp.zeros_like(stress_rhs)
+        wp.sparse.bsr_mv(tau_inv_mass_matrix, x=stress_rhs, y=stress_dofs_f64)
+        wp.utils.array_cast(in_array=stress_dofs_f64, out_array=self._stress_field.dof_values)
+
+        # Compute scalar stress norm for visualization
+        fem.interpolate(stress_norm_form, dest=self._stress_norm_field, fields={"stress": self._stress_field})
+
         # Evaluate area conservation, should converge to 1.0 as Poisson ratio approaches 1.0
         final_area = fem.integrate(
             area_form, quadrature=fem.RegularQuadrature(domain, order=4), fields={"u_cur": self._u_field}
@@ -250,6 +275,7 @@ class Example:
 
     def render(self):
         self.renderer.add_field("solution", self._u_field)
+        self.renderer.add_field("stress", self._stress_norm_field)
 
 
 if __name__ == "__main__":

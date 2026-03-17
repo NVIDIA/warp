@@ -64,30 +64,38 @@ def classify_boundary_sides(
     dirichlet: wp.array[int],
     inflow: wp.array[int],
 ):
-    """Assign boundary sides to inflow or Dirichlet subdomains based on normal direction"""
+    """Assign boundary sides to inflow or Dirichlet subdomains based on normal direction and position"""
     nor = fem.normal(domain, s)
+    pos = domain(s)
+    y = pos[1]
 
-    if nor[0] < -0.5:
+    # Only the centered half of left/right boundaries are inlet/outlet
+    if nor[0] < -0.5 and y > 0.25 and y < 0.75:
         inflow[s.qp_index] = 1
         dirichlet[s.qp_index] = 1
-    elif nor[0] > 0.5:
+    elif nor[0] > 0.5 and y > 0.25 and y < 0.75:
         dirichlet[s.qp_index] = 1
 
 
 @wp.func
-def initial_level_set(x: wp.vec2, radius: float):
-    """Initial level set function for the material region -- three circles"""
+def initial_level_set(x: wp.vec2, radius: float, obstacle_radius: float):
+    """Initial level set function for the material region -- four blobs with corner obstacles"""
 
-    return (
-        wp.min(
-            wp.vec3(
-                wp.length(x - wp.vec2(0.667, 0.5)),
-                wp.length(x - wp.vec2(0.333, 0.333)),
-                wp.length(x - wp.vec2(0.333, 0.667)),
-            )
-        )
-        - radius
-    )
+    # Material blobs (negative inside, i.e. low-material void regions)
+    d0 = wp.length(x - wp.vec2(0.35, 0.35))
+    d1 = wp.length(x - wp.vec2(0.35, 0.65))
+    d2 = wp.length(x - wp.vec2(0.65, 0.55))
+    d3 = wp.length(x - wp.vec2(0.65, 0.25))
+    ls = wp.min(wp.vec4(d0, d1, d2, d3)) - radius
+
+    # Circular obstacles at grid corners (negative inside obstacle)
+    c0 = wp.length(x - wp.vec2(0.0, 0.0)) - obstacle_radius
+    c1 = wp.length(x - wp.vec2(1.0, 0.0)) - obstacle_radius
+    c2 = wp.length(x - wp.vec2(0.0, 1.0)) - obstacle_radius
+    c3 = wp.length(x - wp.vec2(1.0, 1.0)) - obstacle_radius
+    obstacle = wp.min(wp.vec4(c0, c1, c2, c3))
+
+    return wp.min(ls, obstacle)
 
 
 @fem.integrand
@@ -106,26 +114,38 @@ def material_fraction(s: fem.Sample, level_set: fem.Field, smoothing: float):
 
 
 @fem.integrand
-def permeability(s: fem.Sample, level_set: fem.Field, smoothing: float):
-    """Define permeability as strictly proportional to material fraction (arbitrary choice)"""
-    return material_fraction(s, level_set, smoothing)
+def permeability(s: fem.Sample, level_set: fem.Field, smoothing: float, simp: float, k_min: float):
+    """Permeability with background minimum and optional SIMP penalization"""
+    f = material_fraction(s, level_set, smoothing)
+    return k_min + (1.0 - k_min) * wp.pow(f, simp)
 
 
 @fem.integrand
-def velocity_field(s: fem.Sample, level_set: fem.Field, p: fem.Field, smoothing: float):
+def velocity_field(s: fem.Sample, level_set: fem.Field, p: fem.Field, smoothing: float, simp: float, k_min: float):
     """Velocity field based on permeability and pressure gradient according to Darcy's law"""
-    return -permeability(s, level_set, smoothing) * fem.grad(p, s)
+    return -permeability(s, level_set, smoothing, simp, k_min) * fem.grad(p, s)
 
 
 @fem.integrand
-def diffusion_form(s: fem.Sample, level_set: fem.Field, p: fem.Field, q: fem.Field, smoothing: float, scale: float):
+def diffusion_form(
+    s: fem.Sample,
+    level_set: fem.Field,
+    p: fem.Field,
+    q: fem.Field,
+    smoothing: float,
+    simp: float,
+    k_min: float,
+    scale: float,
+):
     """Inhomogeneous diffusion form"""
-    return scale * wp.dot(velocity_field(s, level_set, p, smoothing), fem.grad(q, s))
+    return scale * wp.dot(velocity_field(s, level_set, p, smoothing, simp, k_min), fem.grad(q, s))
 
 
 @fem.integrand
-def inflow_velocity(s: fem.Sample, domain: fem.Domain, level_set: fem.Field, p: fem.Field, smoothing: float):
-    return wp.dot(velocity_field(s, level_set, p, smoothing), fem.normal(domain, s))
+def inflow_velocity(
+    s: fem.Sample, domain: fem.Domain, level_set: fem.Field, p: fem.Field, smoothing: float, simp: float, k_min: float
+):
+    return wp.dot(velocity_field(s, level_set, p, smoothing, simp, k_min), fem.normal(domain, s))
 
 
 @fem.integrand
@@ -178,13 +198,23 @@ def advected_level_set_upwind(
 
 class Example:
     def __init__(
-        self, quiet=False, degree=2, resolution=25, mesh: str = "grid", dt: float = 1.0, discontinuous: bool = False
+        self,
+        quiet=False,
+        degree=2,
+        resolution=25,
+        mesh: str = "grid",
+        dt: float = 1.0,
+        discontinuous: bool = False,
+        simp: float = 1.0,
+        k_min: float = 0.0,
     ):
         self._quiet = quiet
 
         self._smoothing = 0.5 / resolution  # smoothing for level set interface approximation as sigmoid
         self._dt = dt  # level set advection time step (~gradient step size)
         self._discontinuous = discontinuous
+        self._simp = simp  # SIMP penalization exponent (1.0 = no penalization)
+        self._k_min = k_min  # minimum permeability in obstacle regions
 
         if mesh == "tri":
             positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution, resolution))
@@ -210,7 +240,9 @@ class Example:
         self._level_set_velocity_field.dof_values.requires_grad = True
 
         fem.interpolate(
-            fem.ImplicitField(fem.Cells(self._geo), initial_level_set, values={"radius": 0.125}),
+            fem.ImplicitField(
+                fem.Cells(self._geo), initial_level_set, values={"radius": 0.15, "obstacle_radius": 0.15}
+            ),
             dest=self._level_set_field,
         )
 
@@ -304,7 +336,7 @@ class Example:
                     "p": self._p_field,
                     "q": self._p_test,
                 },
-                values={"smoothing": self._smoothing, "scale": -1.0},
+                values={"smoothing": self._smoothing, "simp": self._simp, "k_min": self._k_min, "scale": -1.0},
                 output=p_rhs,
             )
 
@@ -316,7 +348,7 @@ class Example:
                 "p": self._p_trial,
                 "q": self._p_test,
             },
-            values={"smoothing": self._smoothing, "scale": 1.0},
+            values={"smoothing": self._smoothing, "simp": self._simp, "k_min": self._k_min, "scale": 1.0},
             output_dtype=float,
         )
 
@@ -343,7 +375,7 @@ class Example:
             fem.integrate(
                 inflow_velocity,
                 fields={"level_set": advected_level_set.trace(), "p": self._p_field.trace()},
-                values={"smoothing": self._smoothing},
+                values={"smoothing": self._smoothing, "simp": self._simp, "k_min": self._k_min},
                 domain=self._inflow,
                 output=loss,
             )
@@ -356,8 +388,6 @@ class Example:
                 domain=self._p_test.domain,
                 output=vol,
             )
-
-            print("Total inflow", loss, "Volume", vol)
 
             vol_loss_weight = 1000.0
             wp.launch(
@@ -380,6 +410,8 @@ class Example:
 
         # Zero-out gradients used in tape
         tape.zero()
+
+        return float(loss.numpy()[0])
 
     def advect_level_set(self, level_set_in: fem.Field, level_set_out: fem.Field, velocity: fem.Field, dt: float):
         if self._discontinuous:
@@ -430,7 +462,7 @@ class Example:
         fem.interpolate(
             velocity_field,
             fields={"level_set": self._level_set_field, "p": self._p_field},
-            values={"smoothing": self._smoothing},
+            values={"smoothing": self._smoothing, "simp": self._simp, "k_min": self._k_min},
             dest=u_field,
         )
 
@@ -456,8 +488,10 @@ if __name__ == "__main__":
     parser.add_argument("--degree", type=int, default=1, help="Polynomial degree of shape functions.")
     parser.add_argument("--discontinuous", action="store_true", help="Use discontinuous level set advection.")
     parser.add_argument("--mesh", type=str, default="grid", help="Mesh type.")
-    parser.add_argument("--num-iters", type=int, default=100, help="Number of iterations.")
+    parser.add_argument("--num-iters", type=int, default=500, help="Number of iterations.")
     parser.add_argument("--dt", type=float, default=0.05, help="Level set update time step.")
+    parser.add_argument("--simp", type=float, default=3.0, help="SIMP penalization exponent (1.0 = disabled).")
+    parser.add_argument("--k-min", type=float, default=0.0, help="Minimum permeability in obstacle regions.")
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -474,11 +508,15 @@ if __name__ == "__main__":
             discontinuous=args.discontinuous,
             mesh=args.mesh,
             dt=args.dt,
+            simp=args.simp,
+            k_min=args.k_min,
         )
 
-        for _iter in range(args.num_iters):
-            example.step()
-            example.render()
+        for _k, set_info in fem_example_utils.progress_bar(args.num_iters, quiet=args.headless):
+            loss = example.step()
+            set_info("loss", loss)
+            if _k % 10 == 0:
+                example.render()
 
         if not args.headless:
             example.renderer.plot(

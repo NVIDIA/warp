@@ -15,6 +15,9 @@
 
 
 import gc
+import os
+import sys
+import time
 from typing import Any, Optional
 
 import numpy as np
@@ -35,7 +38,57 @@ __all__ = [
     "gen_tetmesh",
     "gen_trimesh",
     "invert_diagonal_bsr_matrix",
+    "progress_bar",
 ]
+
+
+def progress_bar(num_frames, quiet=False):
+    """Iterator that displays a progress bar for frame-based simulations.
+
+    Yields ``(frame_index, set_info)`` tuples.  Call ``set_info(key, value)``
+    to display extra metrics (e.g. ``set_info("loss", 0.42)``).
+
+    Args:
+        num_frames: Total number of frames to iterate over.
+        quiet: If ``True``, suppress all progress bar output.
+
+    Example::
+
+        for k, set_info in progress_bar(args.num_frames):
+            set_info("loss", example.step())
+            example.render()
+    """
+
+    bar_width = 40
+    t_start = time.perf_counter()
+    extra = {}
+
+    def _set_info(key, value):
+        extra[key] = value
+
+    def _print_bar(done, final=False):
+        if quiet:
+            return
+        frac = done / num_frames if num_frames > 0 else 1.0
+        filled = int(bar_width * frac)
+        bar = "#" * filled + "-" * (bar_width - filled)
+        elapsed = time.perf_counter() - t_start
+        eta = elapsed / done * (num_frames - done) if done > 0 else 0.0
+        info = "  ".join(f"{k}={v:.4g}" if isinstance(v, float) else f"{k}={v}" for k, v in extra.items())
+        if info:
+            info = "  " + info
+        if final:
+            sys.stdout.write(f"\r[{bar}] {done}/{num_frames}{info}  done in {elapsed:.1f}s\n")
+        else:
+            sys.stdout.write(f"\r[{bar}] {done}/{num_frames}{info}  eta={eta:.0f}s")
+        sys.stdout.flush()
+
+    for k in range(num_frames):
+        yield k, _set_info
+        _print_bar(k + 1)
+
+    _print_bar(num_frames, final=True)
+
 
 # matrix inversion routines contain nested loops,
 # default unrolling leads to code explosion
@@ -554,6 +607,18 @@ def _block_diagonal_invert(values: wp.array[Any]):
 #
 
 
+def _classify_save_path(save):
+    """Return ``'video'``, ``'frames'``, or ``'image'`` based on the save path."""
+    if save is None:
+        return None
+    if os.path.isdir(save) or save.endswith("/") or save.endswith(os.sep):
+        return "frames"
+    ext = os.path.splitext(save)[1].lower()
+    if ext in (".mp4", ".avi", ".gif", ".mov", ".ogv"):
+        return "video"
+    return "image"
+
+
 class Plot:
     def __init__(self, stage=None, default_point_radius=0.01):
         self.default_point_radius = default_point_radius
@@ -611,32 +676,72 @@ class Plot:
         else:
             self._usd_renderer.render_points(name, points, radius=self.default_point_radius)
 
-    def plot(self, options: Optional[dict[str, Any]] = None, backend: str = "auto"):
+    def _color_only_fields(self, options: dict[str, Any]) -> set[str]:
+        """Return the set of field names that are only used as color sources."""
+        color_refs = set()
+        for args in options.values():
+            if isinstance(args, dict):
+                c = args.get("color")
+                if c and c in self._fields:
+                    color_refs.add(c)
+        # A field is color-only if it is referenced as a color source
+        # but has no options of its own (or its only option entry comes
+        # from being a color target).
+        color_only = set()
+        for name in color_refs:
+            if name not in options or options[name] == {}:
+                color_only.add(name)
+        return color_only
+
+    def plot(self, options: Optional[dict[str, Any]] = None, backend: str = "auto", save: Optional[str] = None):
+        """Display or export the accumulated field snapshots.
+
+        Args:
+            options: Per-field visualization options forwarded to the backend.
+            backend: ``"pyvista"``, ``"matplotlib"``, or ``"auto"``
+                (default).  When ``"auto"``, the ``WARP_FEM_PLOT_BACKEND``
+                environment variable is consulted first; if unset, pyvista
+                is tried before falling back to matplotlib.
+            save: If ``None`` (default), show an interactive window.  Otherwise
+                a file path controlling export behaviour:
+                ``"animation.mp4"`` / ``".gif"`` exports a video,
+                a path ending in ``"/"`` or an existing directory exports
+                numbered PNG frames, and any other image extension
+                (e.g. ``".png"``) exports a single screenshot.
+        """
         if options is None:
             options = {}
 
+        if backend == "auto":
+            backend = os.environ.get("WARP_FEM_PLOT_BACKEND", "auto")
+
         if backend == "pyvista":
-            return self._plot_pyvista(options)
+            return self._plot_pyvista(options, save=save)
         if backend == "matplotlib":
-            return self._plot_matplotlib(options)
+            return self._plot_matplotlib(options, save=save)
 
         # try both
         try:
-            return self._plot_pyvista(options)
+            return self._plot_pyvista(options, save=save)
         except ModuleNotFoundError:
             try:
-                return self._plot_matplotlib(options)
+                return self._plot_matplotlib(options, save=save)
             except ModuleNotFoundError:
                 wp.utils.warn("pyvista or matplotlib must be installed to visualize solution results")
 
-    def _plot_pyvista(self, options: dict[str, Any]):
+    def _plot_pyvista(self, options: dict[str, Any], save: Optional[str] = None):
         import pyvista  # noqa: PLC0415
+
+        save_mode = _classify_save_path(save)
+
+        color_only = self._color_only_fields(options)
 
         grids = {}
         scales = {}
         markers = {}
 
         animate = False
+        num_frames = 1
 
         ref_geom = options.get("ref_geom", None)
         if ref_geom is not None:
@@ -652,13 +757,21 @@ class Plot:
                 ref_geom = pyvista.PolyData(ref_geom)
 
         for name, (field, values) in self._fields.items():
+            if name in color_only:
+                continue
+
             cells, types = field.space.vtk_cells()
             node_pos = field.space.node_positions().numpy()
 
             args = options.get(name, {})
 
             grid_scale = np.max(np.max(node_pos, axis=0) - np.min(node_pos, axis=0))
-            value_range = self._get_field_value_range(values, args)
+            color_field_name = args.get("color", None)
+            if color_field_name and color_field_name in self._fields:
+                color_values = self._fields[color_field_name][1]
+                value_range = self._get_field_value_range(color_values, options.get(color_field_name, {}))
+            else:
+                value_range = self._get_field_value_range(values, args)
             scales[name] = (grid_scale, value_range)
 
             if node_pos.shape[1] == 2:
@@ -669,9 +782,12 @@ class Plot:
 
             if len(values) > 1:
                 animate = True
+                num_frames = max(num_frames, len(values))
 
         def set_frame_data(frame):
             for name, (field, values) in self._fields.items():
+                if name in color_only:
+                    continue
                 if frame > 0 and len(values) == 1:
                     continue
 
@@ -689,6 +805,13 @@ class Plot:
 
                 if v.ndim == 2:
                     grid.point_data[name + "_mag"] = np.linalg.norm(v, axis=1)
+
+                # Override coloring with another field's values
+                color_field_name = field_args.get("color", None)
+                if color_field_name and color_field_name in self._fields:
+                    color_vals = self._fields[color_field_name][1]
+                    cv = color_vals[frame % len(color_vals)]
+                    grid.point_data[name + "_color"] = _value_or_magnitude(cv)
 
                 if "arrows" in field_args:
                     glyph_scale = field_args["arrows"].get("glyph_scale", 1.0)
@@ -744,7 +867,9 @@ class Plot:
                         grid.points = field.space.node_positions().numpy() + v
 
                 if frame == 0:
-                    if v.ndim == 1:
+                    if color_field_name and color_field_name in self._fields:
+                        grid.set_active_scalars(name + "_color")
+                    elif v.ndim == 1:
                         grid.set_active_scalars(name)
                     else:
                         grid.set_active_vectors(name)
@@ -758,45 +883,96 @@ class Plot:
         subplot_rows = options.get("rows", 1)
         subplot_shape = (subplot_rows, (len(grids) + subplot_rows - 1) // subplot_rows)
 
-        plotter = pyvista.Plotter(shape=subplot_shape, theme=pyvista.themes.DocumentProTheme())
-        plotter.link_views()
-        plotter.add_camera_orientation_widget()
+        plotter_kwargs = {}
+        if save_mode is not None:
+            plotter_kwargs["off_screen"] = True
+
+        theme = pyvista.themes.DocumentProTheme()
+        # SSAA anti-aliasing is broken with multiple subplots in VTK;
+        # fall back to MSAA which renders all viewports correctly.
+        if subplot_shape[0] * subplot_shape[1] > 1:
+            theme.anti_aliasing = "msaa"
+        plotter = pyvista.Plotter(shape=subplot_shape, theme=theme, **plotter_kwargs)
+        if save_mode is None:
+            plotter.add_camera_orientation_widget()
         for index, (name, grid) in enumerate(grids.items()):
             plotter.subplot(index // subplot_shape[1], index % subplot_shape[1])
             grid_scale, value_range = scales[name]
             field = self._fields[name][0]
+            field_args = options.get(name, {})
+            cmap = field_args.get("cmap", None)
             marker = markers[name]
+            is_contour = "contours" in field_args
             if marker:
                 if field.space.dimension == 2:
-                    plotter.add_mesh(marker, show_scalar_bar=False)
-                    plotter.add_mesh(grid, opacity=0.25, clim=value_range)
+                    if is_contour:
+                        # Filled background at full opacity, contour lines on top
+                        plotter.add_mesh(grid, clim=value_range, cmap=cmap)
+                        plotter.add_mesh(marker, show_scalar_bar=False, color="gray", line_width=0.5, opacity=0.5)
+                    else:
+                        plotter.add_mesh(marker, show_scalar_bar=False, cmap=cmap)
+                        plotter.add_mesh(grid, opacity=0.25, clim=value_range, cmap=cmap)
                     plotter.view_xy()
                 else:
-                    plotter.add_mesh(marker)
+                    plotter.add_mesh(marker, cmap=cmap)
             elif field.space.geometry.cell_dimension == 3:
-                plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range, assign_to_axis="z")
+                plotter.add_mesh_clip_plane(grid, show_edges=True, clim=value_range, assign_to_axis="z", cmap=cmap)
             else:
-                plotter.add_mesh(grid, show_edges=True, clim=value_range)
+                plotter.add_mesh(grid, show_edges=True, clim=value_range, cmap=cmap)
 
             if ref_geom:
                 plotter.add_mesh(ref_geom)
 
-        plotter.show(interactive_update=animate)
+        plotter.link_views()
 
-        frame = 0
-        while animate and not plotter.iren.interactor.GetDone():
-            frame += 1
-            set_frame_data(frame)
-            plotter.update()
+        if save_mode == "image":
+            plotter.show(screenshot=save)
+        elif save_mode == "video":
+            plotter.show(interactive_update=True, auto_close=False)
+            plotter.open_movie(save, framerate=30)
+            # Frame 0 is already set up; write it, then loop from 1.
+            # Re-calling set_frame_data(0) would reassign markers, breaking
+            # the link between the plotter actors and the marker meshes.
+            plotter.render()
+            plotter.write_frame()
+            for frame in range(1, num_frames):
+                set_frame_data(frame)
+                plotter.render()
+                plotter.write_frame()
+            plotter.close()
+        elif save_mode == "frames":
+            os.makedirs(save, exist_ok=True)
+            plotter.show(interactive_update=True, auto_close=False)
+            # Frame 0 is already set up (see video comment above).
+            plotter.render()
+            plotter.screenshot(os.path.join(save, "frame_0000.png"))
+            for frame in range(1, num_frames):
+                set_frame_data(frame)
+                plotter.render()
+                plotter.screenshot(os.path.join(save, f"frame_{frame:04d}.png"))
+            plotter.close()
+        else:
+            plotter.show(interactive_update=animate)
+            frame = 0
+            while animate and not plotter.iren.interactor.GetDone():
+                frame += 1
+                set_frame_data(frame)
+                plotter.update()
 
-    def _plot_matplotlib(self, options: dict[str, Any]):
+    def _plot_matplotlib(self, options: dict[str, Any], save: Optional[str] = None):
         import matplotlib.animation as animation  # noqa: PLC0415
         import matplotlib.pyplot as plt  # noqa: PLC0415
         from matplotlib import cm  # noqa: PLC0415
 
-        def make_animation(fig, ax, cax, values, draw_func):
+        save_mode = _classify_save_path(save)
+        color_only = self._color_only_fields(options)
+
+        def make_animation(fig, ax, cax, values, draw_func, color_values=None):
             def animate(i):
-                cs = draw_func(ax, values[i])
+                if color_values is not None:
+                    cs = draw_func(ax, values[i], color_values=color_values[i % len(color_values)])
+                else:
+                    cs = draw_func(ax, values[i])
 
                 cax.cla()
                 fig.colorbar(cs, cax)
@@ -812,11 +988,16 @@ class Plot:
             )
 
         def make_draw_func(field, args, plot_func, plot_opts):
-            def draw_fn(axes, values):
+            supports_color = "displacement" in args
+
+            def draw_fn(axes, values, color_values=None):
                 axes.clear()
 
                 field.dof_values = values
-                cs = plot_func(field, axes=axes, **plot_opts)
+                opts = dict(plot_opts)
+                if color_values is not None and supports_color:
+                    opts["color_values"] = color_values
+                cs = plot_func(field, axes=axes, **opts)
 
                 if "xlim" in args:
                     axes.set_xlim(*args["xlim"])
@@ -828,20 +1009,37 @@ class Plot:
             return draw_fn
 
         anims = []
+        draw_fns = []
+        all_values = []
 
-        field_count = len(self._fields)
+        visible_fields = {n: fv for n, fv in self._fields.items() if n not in color_only}
+        field_count = len(visible_fields)
+
+        if field_count == 0:
+            return
+
         subplot_rows = options.get("rows", 1)
         subplot_shape = (subplot_rows, (field_count + subplot_rows - 1) // subplot_rows)
 
-        for index, (name, (field, values)) in enumerate(self._fields.items()):
+        for index, (name, (field, values)) in enumerate(visible_fields.items()):
             args = options.get(name, {})
             v = values[0]
 
+            # Resolve "color" option: use another field's values for coloring
+            color_field_name = args.get("color", None)
+            color_values_list = None
+            if color_field_name and color_field_name in self._fields:
+                color_values_list = self._fields[color_field_name][1]
+
             plot_fn = None
             plot_3d = False
-            plot_opts = {"cmap": cm.viridis}
+            cmap_name = args.get("cmap", None)
+            plot_opts = {"cmap": cm.colormaps.get_cmap(cmap_name) if cmap_name else cm.viridis}
 
-            plot_opts["clim"] = self._get_field_value_range(values, args)
+            if color_values_list is not None:
+                plot_opts["clim"] = self._get_field_value_range(color_values_list, options.get(color_field_name, {}))
+            else:
+                plot_opts["clim"] = self._get_field_value_range(values, args)
 
             if field.space.dimension == 2:
                 if "contours" in args:
@@ -878,15 +1076,38 @@ class Plot:
                 axes.set_aspect("equal")
 
             draw_fn = make_draw_func(field, args, plot_func=plot_fn, plot_opts=plot_opts)
-            cs = draw_fn(axes, values[0])
+            cv0 = color_values_list[0] if color_values_list else None
+            cs = draw_fn(axes, values[0], color_values=cv0)
 
             fig = plt.gcf()
             cax = fig.colorbar(cs).ax
 
             if len(values) > 1:
-                anims.append(make_animation(fig, axes, cax, values, draw_func=draw_fn))
+                anims.append(make_animation(fig, axes, cax, values, draw_func=draw_fn, color_values=color_values_list))
+                draw_fns.append((draw_fn, axes, values, color_values_list))
+                all_values.append(values)
 
-        plt.show()
+        if save_mode == "image":
+            fig.savefig(save)
+        elif save_mode == "video":
+            if anims:
+                writer = "ffmpeg" if not save.lower().endswith(".gif") else "pillow"
+                anims[0].save(save, writer=writer, fps=30)
+            else:
+                fig.savefig(save)
+        elif save_mode == "frames":
+            os.makedirs(save, exist_ok=True)
+            if draw_fns:
+                num_frames = max(len(v) for v in all_values)
+                for i in range(num_frames):
+                    for draw_fn, axes, values, cvl in draw_fns:
+                        cv = cvl[i % len(cvl)] if cvl else None
+                        draw_fn(axes, values[i % len(values)], color_values=cv)
+                    fig.savefig(os.path.join(save, f"frame_{i:04d}.png"))
+            else:
+                fig.savefig(os.path.join(save, "frame_0000.png"))
+        else:
+            plt.show()
 
     @staticmethod
     def _get_field_value_range(values, field_options: dict[str, Any]):
@@ -953,14 +1174,14 @@ def _plot_surface(field, axes, **kwargs):
     return axes.scatter(X, Y, Z, c=C, **kwargs)
 
 
-def _plot_displaced_tri_mesh(field, axes, **kwargs):
+def _plot_displaced_tri_mesh(field, axes, color_values=None, **kwargs):
     triangulation = _field_triangulation(field)
 
     displacement = field.dof_values.numpy()
     triangulation.x += displacement[:, 0]
     triangulation.y += displacement[:, 1]
 
-    Z = _value_or_magnitude(displacement)
+    Z = color_values if color_values is not None else _value_or_magnitude(displacement)
 
     # Plot the surface.
     cs = axes.tripcolor(triangulation, Z, **kwargs)
@@ -1020,6 +1241,10 @@ def _plot_contours(field, axes, clim=None, **kwargs):
     triangulation = _field_triangulation(field)
 
     Z = _value_or_magnitude(field.dof_values.numpy())
+
+    if clim is not None:
+        kwargs.setdefault("vmin", clim[0])
+        kwargs.setdefault("vmax", clim[1])
 
     tc = axes.tricontourf(triangulation, Z, **kwargs)
     axes.tricontour(triangulation, Z, **kwargs)
