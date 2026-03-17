@@ -403,6 +403,31 @@ def test_return_fixedarray(test, device):
     np.testing.assert_allclose(o2.numpy(), [12.0, 22.0, 32.0])
 
 
+def test_return_struct_unsupported(test, device):
+    """Test that func_native rejects struct return types with a clear error."""
+
+    @wp.struct
+    class Pair:
+        x: wp.float32
+        y: wp.float32
+
+    snippet = "return {};"
+
+    @wp.func_native(snippet)
+    def make_pair(a: wp.float32) -> Pair: ...
+
+    @wp.kernel
+    def kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        p = make_pair(input[tid])
+        output[tid] = p.x
+
+    x = wp.array([1.0], dtype=wp.float32, device=device)
+    y = wp.zeros(1, dtype=wp.float32, device=device)
+    with test.assertRaisesRegex(Exception, "unsupported return type"):
+        wp.launch(kernel, dim=1, inputs=[x, y], device=device)
+
+
 class TestSnippets(unittest.TestCase):
     pass
 
@@ -436,6 +461,12 @@ add_function_test(
     TestSnippets,
     "test_return_fixedarray",
     test_return_fixedarray,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestSnippets,
+    "test_return_struct_unsupported",
+    test_return_struct_unsupported,
     devices=get_selected_cuda_test_devices(),
 )
 
