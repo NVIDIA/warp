@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.codegen import WarpCodegenError
 from warp.tests.unittest_utils import *
 
 
@@ -318,30 +319,50 @@ def test_return_vector_matrix(test, device):
     def make_mat22_named(x: wp.float32) -> wp.mat22f: ...
 
     @wp.kernel
-    def vec_kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+    def vec_kernel_generic(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
         tid = wp.tid()
         output[tid] = make_vec3_generic(input[tid])
 
     @wp.kernel
-    def mat_kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+    def vec_kernel_named(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+        tid = wp.tid()
+        output[tid] = make_vec3_named(input[tid])
+
+    @wp.kernel
+    def mat_kernel_generic(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
         tid = wp.tid()
         output[tid] = make_mat22_generic(input[tid])
 
+    @wp.kernel
+    def mat_kernel_named(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+        tid = wp.tid()
+        output[tid] = make_mat22_named(input[tid])
+
     N = 3
     x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    expected_vec = [[float(i + 1)] * 3 for i in range(N)]
 
     y_vec = wp.zeros(N, dtype=wp.vec3f, device=device)
-    wp.launch(vec_kernel, dim=N, inputs=[x, y_vec], device=device)
-    result = y_vec.numpy()
+    wp.launch(vec_kernel_generic, dim=N, inputs=[x, y_vec], device=device)
     for i in range(N):
-        np.testing.assert_allclose(result[i], [float(i + 1)] * 3)
+        np.testing.assert_allclose(y_vec.numpy()[i], expected_vec[i])
+
+    y_vec_named = wp.zeros(N, dtype=wp.vec3f, device=device)
+    wp.launch(vec_kernel_named, dim=N, inputs=[x, y_vec_named], device=device)
+    for i in range(N):
+        np.testing.assert_allclose(y_vec_named.numpy()[i], expected_vec[i])
 
     y_mat = wp.zeros(N, dtype=wp.mat22f, device=device)
-    wp.launch(mat_kernel, dim=N, inputs=[x, y_mat], device=device)
-    result = y_mat.numpy()
+    wp.launch(mat_kernel_generic, dim=N, inputs=[x, y_mat], device=device)
     for i in range(N):
         expected = np.array([[float(i + 1), 0.0], [0.0, float(i + 1)]])
-        np.testing.assert_allclose(result[i], expected)
+        np.testing.assert_allclose(y_mat.numpy()[i], expected)
+
+    y_mat_named = wp.zeros(N, dtype=wp.mat22f, device=device)
+    wp.launch(mat_kernel_named, dim=N, inputs=[x, y_mat_named], device=device)
+    for i in range(N):
+        expected = np.array([[float(i + 1), 0.0], [0.0, float(i + 1)]])
+        np.testing.assert_allclose(y_mat_named.numpy()[i], expected)
 
 
 def test_return_array(test, device):
@@ -424,7 +445,7 @@ def test_return_struct_unsupported(test, device):
 
     x = wp.array([1.0], dtype=wp.float32, device=device)
     y = wp.zeros(1, dtype=wp.float32, device=device)
-    with test.assertRaisesRegex(Exception, "unsupported return type"):
+    with test.assertRaisesRegex(WarpCodegenError, "unsupported return type"):
         wp.launch(kernel, dim=1, inputs=[x, y], device=device)
 
 

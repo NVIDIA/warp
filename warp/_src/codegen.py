@@ -2189,7 +2189,7 @@ class Adjoint:
             if not (type_is_value(ret_type) or is_array(ret_type)):
                 raise WarpCodegenError(
                     f"Native function '{adj.fun_name}' has unsupported return type `{ret_type}`. "
-                    f"Expected a Warp scalar, vector, matrix, quaternion, or array type."
+                    f"Expected a Warp scalar, vector, matrix, quaternion, array, or fixedarray type."
                 )
             var = Var(label="return_type", type=ret_type)
             adj.return_var = (var,)
