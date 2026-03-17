@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright (c) 2017 Contributors
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/dmlc/dlpack
+
 import ctypes
 
 _c_str_dltensor = b"dltensor"
