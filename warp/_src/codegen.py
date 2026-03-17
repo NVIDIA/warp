@@ -2186,10 +2186,10 @@ class Adjoint:
                         is_func_native = True
         if is_func_native and "return" in adj.arg_types:
             ret_type = adj.arg_types["return"]
-            if not (type_is_value(ret_type) or is_array(ret_type) or isinstance(ret_type, Struct)):
+            if not (type_is_value(ret_type) or is_array(ret_type)):
                 raise WarpCodegenError(
                     f"Native function '{adj.fun_name}' has unsupported return type `{ret_type}`. "
-                    f"Expected a Warp scalar, vector, matrix, quaternion, array, or struct type."
+                    f"Expected a Warp scalar, vector, matrix, quaternion, or array type."
                 )
             var = Var(label="return_type", type=ret_type)
             adj.return_var = (var,)
