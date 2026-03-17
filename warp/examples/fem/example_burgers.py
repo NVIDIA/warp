@@ -252,8 +252,7 @@ if __name__ == "__main__":
             degree=args.degree,
         )
 
-        for k in range(args.num_frames):
-            print(f"Frame {k}:")
+        for _k, _ in fem_example_utils.progress_bar(args.num_frames, quiet=args.quiet):
             example.step()
             example.render()
 

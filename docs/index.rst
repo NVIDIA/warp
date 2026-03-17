@@ -192,15 +192,15 @@ warp/examples/fem
       - streamlines
     * - .. image:: ./img/examples/fem_distortion_energy.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_distortion_energy.py
-      - .. image:: ./img/examples/fem_navier_stokes.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_navier_stokes.py
-      - .. image:: ./img/examples/fem_burgers.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_burgers.py
+      - .. image:: ./img/examples/fem_taylor_green.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_taylor_green.py
+      - .. image:: ./img/examples/fem_kelvin_helmholtz.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_kelvin_helmholtz.py
       - .. image:: ./img/examples/fem_magnetostatics.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_magnetostatics.py
     * - distortion energy
-      - navier stokes
-      - burgers
+      - taylor green
+      - kelvin helmholtz
       - magnetostatics
     * - .. image:: ./img/examples/fem_adaptive_grid.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_adaptive_grid.py

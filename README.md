@@ -165,14 +165,14 @@ python -m warp.tests
         </tr>
         <tr>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_distortion_energy.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_distortion_energy.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_navier_stokes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_navier_stokes.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_burgers.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_burgers.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_taylor_green.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_taylor_green.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_kelvin_helmholtz.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_kelvin_helmholtz.png"></a></td>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_magnetostatics.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_magnetostatics.png"></a></td>
         </tr>
         <tr>
             <td align="center">distortion energy</td>
-            <td align="center">navier stokes</td>
-            <td align="center">burgers</td>
+            <td align="center">taylor green</td>
+            <td align="center">kelvin helmholtz</td>
             <td align="center">magnetostatics</td>
         </tr>
         <tr>

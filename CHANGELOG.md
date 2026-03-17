@@ -41,6 +41,8 @@
 - Add differentiable 2-D Navier-Stokes example (`warp/examples/optim/example_navier_stokes_perturbation.py`)
   demonstrating an optimal initial perturbation problem. Differentiable counterpart to the solver
   in `warp/examples/core/example_fft_poisson_navier_stokes_2d.py`.
+- Add `warp.fem` examples for Taylor-Green vortex (`example_taylor_green.py`), Kelvin-Helmholtz instability
+  (`example_kelvin_helmholtz.py`), and shallow water equations (`example_shallow_water.py`).
 
 ## [1.12.0] - 2026-03-06
 

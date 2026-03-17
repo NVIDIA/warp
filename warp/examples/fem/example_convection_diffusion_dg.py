@@ -157,7 +157,7 @@ class Example:
         )
 
         phi = wp.zeros_like(rhs)
-        fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
+        fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=not wp.config.verbose)
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 
         # for visualization purposes only
@@ -216,8 +216,7 @@ if __name__ == "__main__":
             ang_vel=args.ang_vel,
         )
 
-        for k in range(args.num_frames):
-            print(f"Frame {k}:")
+        for _k, _ in fem_example_utils.progress_bar(args.num_frames, quiet=args.quiet):
             example.step()
             example.render()
 
