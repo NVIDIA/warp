@@ -389,7 +389,20 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     a = (1.0, 2.0, 3.0)        
 
     # valid
-    a = wp.vec3(1.0, 2.0, 3.0) 
+    a = wp.vec3(1.0, 2.0, 3.0)
+
+Similarly, Python lists are not supported inside kernels. For small fixed-size collections,
+use vector types like :class:`wp.vec3() <warp.vec3>`. For larger collections, use
+:func:`wp.zeros() <warp.zeros>` to create a stack-allocated fixed-size array::
+
+    # invalid
+    my_data = [1.0, 2.0, 3.0]
+
+    # valid: vector (good for 2-4 elements)
+    my_data = wp.vec3(1.0, 2.0, 3.0)
+
+    # valid: fixed-size array (stack-allocated, supports array indexing and slicing)
+    my_data = wp.zeros(shape=16, dtype=float)
 
 
 Limitations and Unsupported Features

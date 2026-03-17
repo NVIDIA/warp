@@ -470,7 +470,7 @@ def test_error_collection_construct(test, device):
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
+        r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small fixed-size collections, or `wp.zeros\(shape=N, dtype=\.\.\.\)` for stack-allocated arrays.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
