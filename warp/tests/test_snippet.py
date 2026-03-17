@@ -295,6 +295,55 @@ def test_return_type(test, device):
     assert_np_equal(x.grad.numpy(), np.array([0.0, 2.0, 4.0, 6.0, 8.0]))
 
 
+def test_return_vector_matrix(test, device):
+    """Test that func_native correctly handles vector and matrix return types."""
+    vec_snippet = """
+        return wp::vec_t<3, wp::float32>(x, x, x);
+        """
+
+    @wp.func_native(vec_snippet)
+    def make_vec3_generic(x: wp.float32) -> wp.types.vector(length=3, dtype=wp.float32): ...
+
+    @wp.func_native(vec_snippet)
+    def make_vec3_named(x: wp.float32) -> wp.vec3f: ...
+
+    mat_snippet = """
+        return wp::mat_t<2, 2, wp::float32>(x, 0.0f, 0.0f, x);
+        """
+
+    @wp.func_native(mat_snippet)
+    def make_mat22_generic(x: wp.float32) -> wp.types.matrix(shape=(2, 2), dtype=wp.float32): ...
+
+    @wp.func_native(mat_snippet)
+    def make_mat22_named(x: wp.float32) -> wp.mat22f: ...
+
+    @wp.kernel
+    def vec_kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+        tid = wp.tid()
+        output[tid] = make_vec3_generic(input[tid])
+
+    @wp.kernel
+    def mat_kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+        tid = wp.tid()
+        output[tid] = make_mat22_generic(input[tid])
+
+    N = 3
+    x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+
+    y_vec = wp.zeros(N, dtype=wp.vec3f, device=device)
+    wp.launch(vec_kernel, dim=N, inputs=[x, y_vec], device=device)
+    result = y_vec.numpy()
+    for i in range(N):
+        np.testing.assert_allclose(result[i], [float(i + 1)] * 3)
+
+    y_mat = wp.zeros(N, dtype=wp.mat22f, device=device)
+    wp.launch(mat_kernel, dim=N, inputs=[x, y_mat], device=device)
+    result = y_mat.numpy()
+    for i in range(N):
+        expected = np.array([[float(i + 1), 0.0], [0.0, float(i + 1)]])
+        np.testing.assert_allclose(result[i], expected)
+
+
 class TestSnippets(unittest.TestCase):
     pass
 
@@ -312,6 +361,12 @@ add_function_test(
     TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestSnippets, "test_return_type", test_return_type, devices=get_selected_cuda_test_devices())
+add_function_test(
+    TestSnippets,
+    "test_return_vector_matrix",
+    test_return_vector_matrix,
+    devices=get_selected_cuda_test_devices(),
+)
 
 
 if __name__ == "__main__":
