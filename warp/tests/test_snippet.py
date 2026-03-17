@@ -344,6 +344,65 @@ def test_return_vector_matrix(test, device):
         np.testing.assert_allclose(result[i], expected)
 
 
+def test_return_array(test, device):
+    """Test that func_native correctly handles array return types."""
+    snippet = """
+        return arr;
+        """
+
+    @wp.func_native(snippet)
+    def passthrough(arr: wp.array(dtype=wp.float32)) -> wp.array(dtype=wp.float32): ...
+
+    @wp.kernel
+    def kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        a = passthrough(input)
+        output[tid] = a[tid]
+
+    N = 3
+    x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    y = wp.zeros(N, dtype=wp.float32, device=device)
+    wp.launch(kernel, dim=N, inputs=[x, y], device=device)
+    np.testing.assert_allclose(y.numpy(), [1.0, 2.0, 3.0])
+
+
+def test_return_fixedarray(test, device):
+    """Test that func_native correctly handles fixedarray return types."""
+    snippet = """
+        wp::fixedarray_t<3, wp::float32> result;
+        result[0] = x;
+        result[1] = x + 1.0f;
+        result[2] = x + 2.0f;
+        return result;
+        """
+
+    @wp.func_native(snippet)
+    def make_fixed(x: wp.float32) -> wp.fixedarray(dtype=wp.float32, shape=3): ...
+
+    @wp.kernel
+    def kernel(
+        input: wp.array(dtype=wp.float32),
+        out0: wp.array(dtype=wp.float32),
+        out1: wp.array(dtype=wp.float32),
+        out2: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        f = make_fixed(input[tid])
+        out0[tid] = f[0]
+        out1[tid] = f[1]
+        out2[tid] = f[2]
+
+    N = 3
+    x = wp.array([10.0, 20.0, 30.0], dtype=wp.float32, device=device)
+    o0 = wp.zeros(N, dtype=wp.float32, device=device)
+    o1 = wp.zeros(N, dtype=wp.float32, device=device)
+    o2 = wp.zeros(N, dtype=wp.float32, device=device)
+    wp.launch(kernel, dim=N, inputs=[x, o0, o1, o2], device=device)
+    np.testing.assert_allclose(o0.numpy(), [10.0, 20.0, 30.0])
+    np.testing.assert_allclose(o1.numpy(), [11.0, 21.0, 31.0])
+    np.testing.assert_allclose(o2.numpy(), [12.0, 22.0, 32.0])
+
+
 class TestSnippets(unittest.TestCase):
     pass
 
@@ -365,6 +424,18 @@ add_function_test(
     TestSnippets,
     "test_return_vector_matrix",
     test_return_vector_matrix,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestSnippets,
+    "test_return_array",
+    test_return_array,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestSnippets,
+    "test_return_fixedarray",
+    test_return_fixedarray,
     devices=get_selected_cuda_test_devices(),
 )
 
