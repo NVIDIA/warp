@@ -19,6 +19,9 @@
 - Fix compilation failures or crashes when multiple processes compile CUDA kernels concurrently with a shared kernel
   cache, caused by NVRTC precompiled header files racing in the shared `--pch-dir` directory; affects builds with
   CUDA Toolkit 12.8–12.9 ([GH-1284](https://github.com/NVIDIA/warp/issues/1284)).
+- Fix `@wp.func_native` return type resolution to support `wp.types.vector()`, `wp.types.matrix()`, and other
+  complex type annotations. Invalid return types are now rejected at codegen time with a clear error message
+  ([GH-1300](https://github.com/NVIDIA/warp/issues/1300)).
 - Fix kernel dispatch using incorrect `block_dim` when the same kernel is launched on different devices, which could
   cause out-of-bounds shared memory access and memory corruption in tile infrastructure
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
