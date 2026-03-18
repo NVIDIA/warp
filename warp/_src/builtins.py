@@ -7809,7 +7809,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
@@ -7856,7 +7856,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 # texture_sample for 2D textures with separate u, v coordinates
@@ -7886,7 +7886,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
@@ -7933,7 +7933,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 # texture_sample for 3D textures with separate u, v, w coordinates
@@ -7965,7 +7965,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
@@ -9828,17 +9828,6 @@ add_builtin(
     group="Utility",
 )
 
-# Bool vector assign_inplace (bool is not part of Scalar)
-add_builtin(
-    "assign_inplace",
-    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
-    value_type=None,
-    dispatch_func=vector_assign_dispatch_func,
-    hidden=True,
-    export=False,
-    group="Utility",
-)
-
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
@@ -9870,17 +9859,6 @@ def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Map
 add_builtin(
     "assign_copy",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
-    value_func=vector_assign_copy_value_func,
-    dispatch_func=vector_assign_dispatch_func,
-    hidden=True,
-    export=False,
-    group="Utility",
-)
-
-# Bool vector assign_copy (bool is not part of Scalar)
-add_builtin(
-    "assign_copy",
-    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
     value_func=vector_assign_copy_value_func,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
