@@ -48,6 +48,8 @@
 - Fix struct field assignment unwrapping Warp scalar types (e.g., ``wp.float32``, ``wp.int32``) to their
   underlying Python types, causing subsequent reads to return plain ``float`` or ``int`` instead of the
   original Warp type ([GH-1288](https://github.com/NVIDIA/warp/issues/1288)).
+- Fix element assignment for boolean vectors failing with a missing function overload
+  ([GH-1302](https://github.com/NVIDIA/warp/issues/1302)).
 
 ### Documentation
 
