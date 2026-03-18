@@ -2836,12 +2836,16 @@ def test_texture2d_adj_vec2f_linear_x(test, device):
     H, W = 6, 10
     data = np.zeros((H, W, 2), dtype=np.float32)
     for x in range(W):
-        data[:, x, 0] = x / W          # channel 0: linear in x
+        data[:, x, 0] = x / W  # channel 0: linear in x
         data[:, x, 1] = (W - 1 - x) / W  # channel 1: linear in x, reversed
 
-    tex = wp.Texture2D(data, normalized_coords=False,
-                       filter_mode=wp.TextureFilterMode.LINEAR,
-                       address_mode=wp.TextureAddressMode.BORDER, device=device)
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
 
     @wp.kernel
     def sample_2d_vec2(tex: wp.Texture2D, pos: wp.array(dtype=wp.vec2f), out: wp.array(dtype=wp.vec2f)):
@@ -2868,12 +2872,16 @@ def test_texture2d_adj_vec2f_channels_independent(test, device):
     H, W = 6, 10
     data = np.zeros((H, W, 2), dtype=np.float32)
     for x in range(W):
-        data[:, x, 0] = x / W   # channel 0: linear in x
-        data[:, x, 1] = 0.0     # channel 1: constant
+        data[:, x, 0] = x / W  # channel 0: linear in x
+        data[:, x, 1] = 0.0  # channel 1: constant
 
-    tex = wp.Texture2D(data, normalized_coords=False,
-                       filter_mode=wp.TextureFilterMode.LINEAR,
-                       address_mode=wp.TextureAddressMode.BORDER, device=device)
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
 
     @wp.kernel
     def sample_2d_vec2(tex: wp.Texture2D, pos: wp.array(dtype=wp.vec2f), out: wp.array(dtype=wp.vec2f)):
@@ -2899,12 +2907,16 @@ def test_texture3d_adj_vec2f_linear_z(test, device):
     D, H, W = 8, 6, 10
     data = np.zeros((D, H, W, 2), dtype=np.float32)
     for z in range(D):
-        data[z, :, :, 0] = z / D   # channel 0: linear in z
-        data[z, :, :, 1] = 0.0     # channel 1: constant
+        data[z, :, :, 0] = z / D  # channel 0: linear in z
+        data[z, :, :, 1] = 0.0  # channel 1: constant
 
-    tex = wp.Texture3D(data, normalized_coords=False,
-                       filter_mode=wp.TextureFilterMode.LINEAR,
-                       address_mode=wp.TextureAddressMode.BORDER, device=device)
+    tex = wp.Texture3D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
 
     @wp.kernel
     def sample_3d_vec2(tex: wp.Texture3D, pos: wp.array(dtype=wp.vec3f), out: wp.array(dtype=wp.vec2f)):
@@ -2923,6 +2935,7 @@ def test_texture3d_adj_vec2f_linear_z(test, device):
     np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
     np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
     np.testing.assert_allclose(g[2], 1.0 / D, atol=1e-5)
+
 
 # ============================================================================
 # Test Class
@@ -3212,9 +3225,18 @@ add_function_test(TestTexture, "test_texture3d_adj_uniform_zero", test_texture3d
 add_function_test(TestTexture, "test_texture3d_adj_linear_x", test_texture3d_adj_linear_x, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_adj_linear_y", test_texture3d_adj_linear_y, devices=all_devices)
 add_function_test(TestTexture, "test_texture3d_adj_linear_z", test_texture3d_adj_linear_z, devices=all_devices)
-add_function_test(TestTexture, "test_texture2d_adj_vec2f_linear_x", test_texture2d_adj_vec2f_linear_x, devices=all_devices)
-add_function_test(TestTexture, "test_texture2d_adj_vec2f_channels_independent", test_texture2d_adj_vec2f_channels_independent, devices=all_devices)
-add_function_test(TestTexture, "test_texture3d_adj_vec2f_linear_z", test_texture3d_adj_vec2f_linear_z, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture2d_adj_vec2f_linear_x", test_texture2d_adj_vec2f_linear_x, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_adj_vec2f_channels_independent",
+    test_texture2d_adj_vec2f_channels_independent,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_vec2f_linear_z", test_texture3d_adj_vec2f_linear_z, devices=all_devices
+)
 
 
 if __name__ == "__main__":
