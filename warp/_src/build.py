@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import ctypes
 import errno
@@ -41,6 +29,8 @@ def build_cuda(
     cu_path,
     arch,
     output_path,
+    *,
+    pch_dir,
     config="release",
     optimization_level=3,
     verify_fp=False,
@@ -76,7 +66,9 @@ def build_cuda(
             fatbins
         )
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-        kernel_cache_dir_bytes = warp.config.kernel_cache_dir.encode("utf-8")
+        # Must be a unique directory per compilation to avoid .pch races
+        # when multiple processes compile concurrently with a shared cache.
+        pch_dir_bytes = pch_dir.encode("utf-8")
         arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
@@ -96,7 +88,7 @@ def build_cuda(
             compile_time_trace,
             warp.config.use_precompiled_headers,
             output_path,
-            kernel_cache_dir_bytes,
+            pch_dir_bytes,
             num_link,
             arr_link,
             arr_link_sizes,

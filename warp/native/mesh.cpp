@@ -1,19 +1,5 @@
-/*
- * SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include "warp.h"
 
@@ -139,6 +125,8 @@ uint64_t wp_mesh_create_host(
 )
 {
     Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
+    const bool use_cubql = (constructor_type == CUBQL_MESH_CONSTRUCTOR_TYPE);
+    m->bvh_backend = use_cubql ? MESH_BVH_BACKEND_CUBQL : MESH_BVH_BACKEND_WARP;
 
     m->lowers = new vec3[num_tris];
     m->uppers = new vec3[num_tris];
@@ -163,13 +151,28 @@ uint64_t wp_mesh_create_host(
     }
     m->average_edge_length = sum / (num_tris * 3);
 
-    wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, groups, bvh_leaf_size, m->bvh);
+#ifndef WP_DISABLE_CUBQL
+    if (use_cubql) {
+        wp::cubql_bvh_create_host(m->lowers, m->uppers, num_tris, bvh_leaf_size, m->cubql_bvh);
+    } else
+#else
+    if (use_cubql) {
+        fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
+        delete[] m->lowers;
+        delete[] m->uppers;
+        delete m;
+        return 0;
+    }
+#endif
+    {
+        wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, groups, bvh_leaf_size, m->bvh);
 
-    if (support_winding_number) {
-        // Let's first compute the sold
-        int num_bvh_nodes = 2 * num_tris - 1;
-        m->solid_angle_props = new SolidAngleProps[num_bvh_nodes];
-        bvh_refit_with_solid_angle_host(m->bvh, *m);
+        if (support_winding_number) {
+            // Let's first compute the sold
+            int num_bvh_nodes = 2 * num_tris - 1;
+            m->solid_angle_props = new SolidAngleProps[num_bvh_nodes];
+            bvh_refit_with_solid_angle_host(m->bvh, *m);
+        }
     }
 
     return (uint64_t)m;
@@ -186,7 +189,14 @@ void wp_mesh_destroy_host(uint64_t id)
     if (m->solid_angle_props) {
         delete[] m->solid_angle_props;
     }
-    wp::bvh_destroy_host(m->bvh);
+#ifndef WP_DISABLE_CUBQL
+    if (m->bvh_backend == MESH_BVH_BACKEND_CUBQL) {
+        wp::cubql_bvh_destroy_host(m->cubql_bvh);
+    } else
+#endif
+    {
+        wp::bvh_destroy_host(m->bvh);
+    }
 
     delete m;
 }
@@ -214,7 +224,12 @@ void wp_mesh_refit_host(uint64_t id)
     }
     m->average_edge_length = sum / (m->num_tris * 3);
 
-    if (m->solid_angle_props) {
+#ifndef WP_DISABLE_CUBQL
+    if (m->bvh_backend == MESH_BVH_BACKEND_CUBQL) {
+        wp::cubql_bvh_refit_host(m->cubql_bvh);
+    } else
+#endif
+        if (m->solid_angle_props) {
         // If solid angle were used, use refit solid angle
         bvh_refit_with_solid_angle_host(m->bvh, *m);
     } else {

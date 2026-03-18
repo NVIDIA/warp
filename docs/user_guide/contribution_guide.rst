@@ -167,8 +167,13 @@ Coding Guidelines
 General Guidelines
 """"""""""""""""""
 
-* Include the NVIDIA copyright header on all newly created files, updating the year to current year at the time of
-  the initial file creation.
+* Include the NVIDIA SPDX copyright header on all newly created files, updating the year to the current year at the
+  time of initial file creation. Use the two-line form::
+
+    # SPDX-FileCopyrightText: Copyright (c) <YEAR> NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+    # SPDX-License-Identifier: Apache-2.0
+
+  (Use ``//`` instead of ``#`` for C/C++/CUDA files.)
 * Aim for consistency in variable and function names.
 
   * Use the existing terminology when possible when naming new functions (e.g. use ``points`` instead of ``vertex_buffer``).
@@ -298,7 +303,8 @@ carefully aligned matrices), you can disable clang-format for a specific section
 
 Use this sparingly. Add a comment explaining why if the reason isn't obvious. See ``warp/native/builtin.h`` for examples.
 
-**Note:** The NanoVDB directory (``warp/native/nanovdb/``) is third-party code and automatically excluded via its own ``.clang-format`` configuration.
+**Note:** The NanoVDB (``warp/native/nanovdb/``) and cuBQL (``warp/native/cuBQL/``) directories are third-party code and
+are automatically excluded via their own ``.clang-format`` configurations.
 
 .. _building-docs:
 
@@ -422,18 +428,6 @@ so they are included in the default test run.
 
     # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
     # SPDX-License-Identifier: Apache-2.0
-    #
-    # Licensed under the Apache License, Version 2.0 (the "License");
-    # you may not use this file except in compliance with the License.
-    # You may obtain a copy of the License at
-    #
-    # http://www.apache.org/licenses/LICENSE-2.0
-    #
-    # Unless required by applicable law or agreed to in writing, software
-    # distributed under the License is distributed on an "AS IS" BASIS,
-    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    # See the License for the specific language governing permissions and
-    # limitations under the License.
 
     import unittest
 

@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import sys
 import unittest
@@ -470,7 +458,7 @@ def test_error_collection_construct(test, device):
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(
         RuntimeError,
-        r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small collections instead.",
+        r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small fixed-size collections, or `wp.zeros\(shape=N, dtype=\.\.\.\)` for stack-allocated arrays.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
@@ -500,14 +488,14 @@ def test_error_unmatched_arguments(test, device):
 
 def test_error_kernel_return_value(test, device):
     # kernels can return without a value
-    @wp.kernel
+    @wp.kernel(module="unique")
     def f0(x: float):
         return
 
     wp.launch(f0, dim=1, inputs=[3.0], device=device)
 
     # kernels can't return a value
-    @wp.kernel
+    @wp.kernel(module="unique")
     def f1(x: float) -> float:
         return x
 
@@ -515,7 +503,7 @@ def test_error_kernel_return_value(test, device):
         wp.launch(f1, dim=1, inputs=[3.0], device=device)
 
     # types that have no C-equivalent can't be returned from kernels either
-    @wp.kernel
+    @wp.kernel(module="unique")
     def f2(x: float) -> wp.vec4f:
         return wp.vec4f(x)
 
@@ -523,7 +511,7 @@ def test_error_kernel_return_value(test, device):
         wp.launch(f2, dim=1, inputs=[3.0], device=device)
 
     # also when the return type is not defined, no value can be returned
-    @wp.kernel
+    @wp.kernel(module="unique")
     def f3(x: float):
         return x
 
@@ -540,7 +528,7 @@ def test_error_kernel_return_value(test, device):
 
 
 def test_error_mutating_constant_in_dynamic_loop(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def dynamic_loop_kernel(n: int, input: wp.array(dtype=float)):
         my_constant = 0.0
         for i in range(n):
@@ -557,7 +545,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     const_a = 7
     const_b = 5
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def mixed_dyn_static_loop_kernel(dyn_a: int, dyn_b: int, dyn_c: int, output: wp.array(dtype=float, ndim=2)):
         tid = wp.tid()
         for i in range(const_a + 1):
@@ -584,7 +572,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     )
     assert_np_equal(output.numpy(), np.ones([num_threads, const_a + const_b + dyn_a + dyn_b + dyn_c + 1]))
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def static_then_dynamic_loop_kernel(mats: wp.array(dtype=wp.mat33d)):
         tid = wp.tid()
         mat = wp.mat33d()
@@ -603,7 +591,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     wp.launch(static_then_dynamic_loop_kernel, dim=1, inputs=[mats], device=device)
     assert_np_equal(mats.numpy(), np.ones((1, 3, 3)))
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def dynamic_then_static_loop_kernel(mats: wp.array(dtype=wp.mat33d)):
         tid = wp.tid()
         mat = wp.mat33d()

@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 # ==============================================================================
 # CI/CD Pipeline Configuration
@@ -278,6 +266,7 @@ cppcheck:
       --error-exitcode=1
       -j $(nproc)
       --suppress=*:warp/native/nanovdb/*
+      --suppress=*:warp/native/cuBQL/*
       --suppress=normalCheckLevelMaxBranches
       warp
       || cppcheck_exit_code=$?
@@ -292,6 +281,7 @@ cppcheck:
       --xml-version=2
       -j $(nproc)
       --suppress=*:warp/native/nanovdb/*
+      --suppress=*:warp/native/cuBQL/*
       --suppress=normalCheckLevelMaxBranches
       warp
       2> cppcheck-report.xml
@@ -439,11 +429,26 @@ linux-x86_64-blackwell test:
     - os/linux
     - platform/horde
 
+linux-x86_64 test debug mode:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: $UV_TRIXIE_SLIM_IMAGE
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  timeout: 45m
+  before_script:
+    - df -h
+    - !reference [.snippets, move-linux-x86_64-binaries]
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
+
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
   stage: test
   needs: [windows-x86_64 build]
-  timeout: 45m
+  timeout: 75m
   extends:
     - .runner-test-windows-x86_64-gpu
     - .test_common_with_coverage
@@ -468,7 +473,7 @@ windows-x86_64 test mgpu:
   needs: [windows-x86_64 build]
   extends:
     - .save_test_report_artifact
-  timeout: 45m
+  timeout: 75m
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG

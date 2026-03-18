@@ -138,6 +138,9 @@ Introductory Examples
  - ``example_magnetostatics.py``: 2D magnetostatics using a curl-curl formulation
  - ``example_elastic_shape_optimization.py``: Shape optimization of a 2D elastic cantilever beam 
  - ``example_darcy_ls_optimization.py``: Level-set-based optimization of a 2D Darcy flow
+ - ``example_taylor_green.py``: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration
+ - ``example_kelvin_helmholtz.py``: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter
+ - ``example_shallow_water.py``: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter
 
 Advanced Usages
 ---------------

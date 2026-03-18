@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 ###########################################################################
 # Example APIC Fluid Simulation
@@ -262,125 +250,122 @@ class Example:
 
         self.current_frame = self.current_frame + 1
 
-        with wp.ScopedTimer(f"simulate frame {self.current_frame}", synchronize=True):
-            for _s in range(self.sim_substeps):
-                # Allocate the voxels and create the warp.fem geometry
-                volume = wp.Volume.allocate_by_voxels(
-                    voxel_points=self.state_0.particle_q,
-                    voxel_size=self.voxel_size,
-                )
-                grid = fem.Nanogrid(volume)
+        for _s in range(self.sim_substeps):
+            # Allocate the voxels and create the warp.fem geometry
+            volume = wp.Volume.allocate_by_voxels(
+                voxel_points=self.state_0.particle_q,
+                voxel_size=self.voxel_size,
+            )
+            grid = fem.Nanogrid(volume)
 
-                # Define function spaces: linear (Q1) for velocity and volume fraction,
-                # piecewise-constant for pressure
-                linear_basis_space = fem.make_polynomial_basis_space(grid, degree=1)
-                velocity_space = fem.make_collocated_function_space(linear_basis_space, dtype=wp.vec3)
-                fraction_space = fem.make_collocated_function_space(linear_basis_space, dtype=float)
-                strain_space = fem.make_polynomial_space(
-                    grid,
-                    dtype=float,
-                    degree=0,
-                    discontinuous=True,
-                )
+            # Define function spaces: linear (Q1) for velocity and volume fraction,
+            # piecewise-constant for pressure
+            linear_basis_space = fem.make_polynomial_basis_space(grid, degree=1)
+            velocity_space = fem.make_collocated_function_space(linear_basis_space, dtype=wp.vec3)
+            fraction_space = fem.make_collocated_function_space(linear_basis_space, dtype=float)
+            strain_space = fem.make_polynomial_space(
+                grid,
+                dtype=float,
+                degree=0,
+                discontinuous=True,
+            )
 
-                pressure_field = strain_space.make_field()
-                velocity_field = velocity_space.make_field()
+            pressure_field = strain_space.make_field()
+            velocity_field = velocity_space.make_field()
 
-                # Define test and trial functions and integrating linear and bilinear forms
-                domain = fem.Cells(grid)
-                velocity_test = fem.make_test(velocity_space, domain=domain)
-                velocity_trial = fem.make_trial(velocity_space, domain=domain)
-                fraction_test = fem.make_test(fraction_space, domain=domain)
-                strain_test = fem.make_test(strain_space, domain=domain)
+            # Define test and trial functions and integrating linear and bilinear forms
+            domain = fem.Cells(grid)
+            velocity_test = fem.make_test(velocity_space, domain=domain)
+            velocity_trial = fem.make_trial(velocity_space, domain=domain)
+            fraction_test = fem.make_test(fraction_space, domain=domain)
+            strain_test = fem.make_test(strain_space, domain=domain)
 
-                # Build projector for Dirichlet boundary conditions
-                vel_projector = fem.integrate(
-                    velocity_boundary_projector_form,
-                    fields={"u": velocity_trial, "v": velocity_test},
-                    assembly="nodal",
-                    output_dtype=float,
-                )
-                fem.normalize_dirichlet_projector(vel_projector)
+            # Build projector for Dirichlet boundary conditions
+            vel_projector = fem.integrate(
+                velocity_boundary_projector_form,
+                fields={"u": velocity_trial, "v": velocity_test},
+                assembly="nodal",
+                output_dtype=float,
+            )
+            fem.normalize_dirichlet_projector(vel_projector)
 
-                # Bin particles to grid cells
-                pic = fem.PicQuadrature(
-                    domain=domain, positions=self.state_0.particle_q, measures=self.particle_volumes
-                )
+            # Bin particles to grid cells
+            pic = fem.PicQuadrature(domain=domain, positions=self.state_0.particle_q, measures=self.particle_volumes)
 
-                # Compute inverse particle volume for each grid node
-                inv_volume = fem.integrate(
-                    integrate_fraction,
-                    quadrature=pic,
-                    fields={"phi": fraction_test},
-                    output_dtype=float,
-                )
-                wp.launch(kernel=invert_volume_kernel, dim=inv_volume.shape, inputs=[inv_volume])
+            # Compute inverse particle volume for each grid node
+            inv_volume = fem.integrate(
+                integrate_fraction,
+                quadrature=pic,
+                fields={"phi": fraction_test},
+                output_dtype=float,
+            )
+            wp.launch(kernel=invert_volume_kernel, dim=inv_volume.shape, inputs=[inv_volume])
 
-                # Velocity right-hand side
-                velocity_int = fem.integrate(
-                    integrate_velocity,
-                    quadrature=pic,
-                    fields={"u": velocity_test},
-                    values={
-                        "velocities": self.state_0.particle_qd,
-                        "velocity_gradients": self.state_0.particle_qd_grad,
-                        "dt": self.sim_dt,
-                        "gravity": self.gravity,
-                    },
-                    output_dtype=wp.vec3,
-                )
+            # Velocity right-hand side
+            velocity_int = fem.integrate(
+                integrate_velocity,
+                quadrature=pic,
+                fields={"u": velocity_test},
+                values={
+                    "velocities": self.state_0.particle_qd,
+                    "velocity_gradients": self.state_0.particle_qd_grad,
+                    "dt": self.sim_dt,
+                    "gravity": self.gravity,
+                },
+                output_dtype=wp.vec3,
+            )
 
-                # Compute constraint-free velocity
-                wp.launch(
-                    kernel=scalar_vector_multiply,
-                    dim=inv_volume.shape[0],
-                    inputs=[inv_volume, velocity_int, velocity_field.dof_values],
-                )
+            # Compute constraint-free velocity
+            wp.launch(
+                kernel=scalar_vector_multiply,
+                dim=inv_volume.shape[0],
+                inputs=[inv_volume, velocity_int, velocity_field.dof_values],
+            )
 
-                # Apply velocity boundary conditions:
-                # velocity -= vel_projector * velocity
-                bsr_mv(
-                    A=vel_projector,
-                    x=velocity_field.dof_values,
-                    y=velocity_field.dof_values,
-                    alpha=-1.0,
-                    beta=1.0,
-                )
+            # Apply velocity boundary conditions:
+            # velocity -= vel_projector * velocity
+            bsr_mv(
+                A=vel_projector,
+                x=velocity_field.dof_values,
+                y=velocity_field.dof_values,
+                alpha=-1.0,
+                beta=1.0,
+            )
 
-                # Assemble divergence operator matrix
-                divergence_matrix = fem.integrate(
-                    divergence_form,
-                    quadrature=pic,
-                    fields={"u": velocity_trial, "psi": strain_test},
-                    output_dtype=float,
-                )
+            # Assemble divergence operator matrix
+            divergence_matrix = fem.integrate(
+                divergence_form,
+                quadrature=pic,
+                fields={"u": velocity_trial, "psi": strain_test},
+                output_dtype=float,
+            )
 
-                # Solve unilateral incompressibility
-                solve_incompressibility(
-                    divergence_matrix,
-                    vel_projector,
-                    inv_volume,
-                    pressure_field.dof_values,
-                    velocity_field.dof_values,
-                    quiet=self._quiet,
-                )
+            # Solve unilateral incompressibility
+            solve_incompressibility(
+                divergence_matrix,
+                vel_projector,
+                inv_volume,
+                pressure_field.dof_values,
+                velocity_field.dof_values,
+                quiet=not wp.config.verbose,
+            )
 
-                # (A)PIC advection
-                fem.interpolate(
-                    update_particles,
-                    at=pic,
-                    values={
-                        "pos": self.state_1.particle_q,
-                        "pos_prev": self.state_0.particle_q,
-                        "vel": self.state_1.particle_qd,
-                        "vel_grad": self.state_1.particle_qd_grad,
-                        "dt": self.sim_dt,
-                    },
-                    fields={"grid_vel": velocity_field},
-                )
+            # (A)PIC advection
+            fem.interpolate(
+                update_particles,
+                at=pic,
+                values={
+                    "pos": self.state_1.particle_q,
+                    "pos_prev": self.state_0.particle_q,
+                    "vel": self.state_1.particle_qd,
+                    "vel_grad": self.state_1.particle_qd_grad,
+                    "dt": self.sim_dt,
+                },
+                fields={"grid_vel": velocity_field},
+            )
 
-                # swap states
-                (self.state_0, self.state_1) = (self.state_1, self.state_0)
+            # swap states
+            (self.state_0, self.state_1) = (self.state_1, self.state_0)
 
         fem.set_default_temporary_store(None)
 
@@ -409,29 +394,28 @@ class Example:
         points = wp.array(np.ascontiguousarray(points), dtype=wp.vec3)
         return volumes, points
 
-    def render(self, is_live=False):
+    def render(self):
         if self.usd_renderer is None and self.opengl_renderer is None:
             return
 
-        with wp.ScopedTimer("render", synchronize=True):
-            time = self.current_frame * self.frame_dt
+        time = self.current_frame * self.frame_dt
 
-            if self.usd_renderer is not None:
-                self.usd_renderer.begin_frame(time)
-                self.usd_renderer.render_points(
-                    "particles",
-                    self.state_0.particle_q.numpy(),
-                    radius=self.radius,
-                )
-                self.usd_renderer.end_frame()
-            if self.opengl_renderer is not None:
-                self.opengl_renderer.begin_frame(time)
-                self.opengl_renderer.render_points(
-                    "particles",
-                    self.state_0.particle_q,
-                    radius=self.radius,
-                )
-                self.opengl_renderer.end_frame()
+        if self.usd_renderer is not None:
+            self.usd_renderer.begin_frame(time)
+            self.usd_renderer.render_points(
+                "particles",
+                self.state_0.particle_q.numpy(),
+                radius=self.radius,
+            )
+            self.usd_renderer.end_frame()
+        if self.opengl_renderer is not None:
+            self.opengl_renderer.begin_frame(time)
+            self.opengl_renderer.render_points(
+                "particles",
+                self.state_0.particle_q,
+                radius=self.radius,
+            )
+            self.opengl_renderer.end_frame()
 
 
 if __name__ == "__main__":
@@ -461,9 +445,14 @@ if __name__ == "__main__":
     with wp.ScopedDevice(args.device):
         example = Example(quiet=args.quiet, stage_path=args.stage_path, voxel_size=args.voxel_size, opengl=args.opengl)
 
-        for _ in range(args.num_frames):
-            example.step()
-            example.render()
+        for _, set_info in fem_example_utils.progress_bar(args.num_frames, quiet=args.quiet):
+            with wp.ScopedTimer("step", synchronize=True, print=False) as step_timer:
+                example.step()
+            with wp.ScopedTimer("render", synchronize=True, print=False) as render_timer:
+                example.render()
+
+            set_info("step_time", f"{step_timer.elapsed} ms")
+            set_info("render_time", f"{render_timer.elapsed} ms")
 
         if example.usd_renderer is not None:
             example.usd_renderer.save()

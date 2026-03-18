@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 
@@ -41,14 +29,14 @@ def test_basic(test, device):
     ):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def saxpy_cu(
         a: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)
     ):
         tid = wp.tid()
         saxpy(a, x, y, out, tid)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def saxpy_py(
         a: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)
     ):
@@ -102,7 +90,7 @@ def test_shared_memory(test, device):
         """Reverse the array d in place using shared memory."""
         return
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def reverse_kernel(d: wp.array(dtype=int), N: int):
         tid = wp.tid()
         reverse(d, N, tid)
@@ -131,7 +119,7 @@ def test_cpu_snippet(test, device):
     ):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def increment(x: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
         tid = wp.tid()
         increment_snippet(x, out, tid)
@@ -162,7 +150,7 @@ def test_custom_replay_grad(test, device):
     def reversible_increment(counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def run_atomic_add(
         input: wp.array(dtype=float),
         counter: wp.array(dtype=int),
@@ -198,7 +186,7 @@ def test_replay_simplification(test, device):
     def square(x: wp.array(dtype=float), y: wp.array(dtype=float), tid: int):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def log_square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
         tid = wp.tid()
         square(x, y, tid)
@@ -274,7 +262,7 @@ def test_return_type(test, device):
     @wp.func_native(snippet, adj_snippet)
     def square(x: wp.float32) -> wp.float32: ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def square_kernel(i: wp.array(dtype=float), o: wp.array(dtype=float)):
         tid = wp.tid()
         x = i[tid]

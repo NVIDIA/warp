@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
@@ -72,6 +60,7 @@ import warp._src.build
 import warp._src.codegen
 import warp.config
 from warp._src.codegen import WarpCodegenTypeError, synchronized
+from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -2866,6 +2855,7 @@ class Module:
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
+                        pch_dir=build_dir,
                     )
 
             except Exception as e:
@@ -3074,7 +3064,7 @@ class Module:
 class CpuDefaultAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_host(size_in_bytes)
@@ -3089,7 +3079,7 @@ class CpuDefaultAllocator:
 class CpuPinnedAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_pinned(size_in_bytes)
@@ -3105,7 +3095,7 @@ class CudaDefaultAllocator:
     def __init__(self, device):
         assert device.is_cuda
         self.device = device
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes)
@@ -3138,7 +3128,7 @@ class CudaMempoolAllocator:
         assert device.is_cuda
         assert device.is_mempool_supported
         self.device = device
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes)
@@ -4514,215 +4504,76 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
-            # Texture functions (device - CUDA)
-            self.core.wp_texture1d_create_device.argtypes = [
+            self.core.wp_texture_create_device.argtypes = [
                 ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
+                ctypes.c_int,  # ndim
+                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
             ]
-            self.core.wp_texture1d_create_device.restype = ctypes.c_bool
+            self.core.wp_texture_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture1d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture1d_destroy_device.restype = None
+            self.core.wp_texture_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_destroy_device.restype = None
 
-            self.core.wp_texture2d_create_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
-            ]
-            self.core.wp_texture2d_create_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture2d_destroy_device.restype = None
-
-            self.core.wp_texture3d_create_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # depth
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_int,  # address_mode_w
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
-            ]
-            self.core.wp_texture3d_create_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture3d_destroy_device.restype = None
-
-            self.core.wp_texture1d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # width_bytes
-            ]
-            self.core.wp_texture1d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture1d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-            ]
-            self.core.wp_texture1d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # src_pitch
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-            ]
-            self.core.wp_texture2d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_size_t,  # dst_pitch
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-            ]
-            self.core.wp_texture2d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # src_pitch
-                ctypes.c_size_t,  # src_height
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-                ctypes.c_size_t,  # depth
-            ]
-            self.core.wp_texture3d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_size_t,  # dst_pitch
-                ctypes.c_size_t,  # dst_height
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-                ctypes.c_size_t,  # depth
-            ]
-            self.core.wp_texture3d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture_array_create_surface_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # array_handle
-                ctypes.POINTER(ctypes.c_uint64),  # surface_handle_out
-            ]
-            self.core.wp_texture_array_create_surface_device.restype = ctypes.c_bool
-
-            self.core.wp_texture_array_destroy_surface_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # surface_handle
-            ]
-            self.core.wp_texture_array_destroy_surface_device.restype = None
-
-            # Texture functions (host - CPU)
-            self.core.wp_texture1d_create_host.argtypes = [
-                ctypes.c_int,  # width
+            self.core.wp_texture_create_host.argtypes = [
+                ctypes.c_int,  # ndim
+                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
+                ctypes.c_int,  # filter mode
+                ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+                ctypes.c_void_p,  # data_ptr_out
             ]
-            self.core.wp_texture1d_create_host.restype = ctypes.c_bool
+            self.core.wp_texture_create_host.restype = ctypes.c_uint64
 
-            self.core.wp_texture1d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
-            ]
-            self.core.wp_texture1d_destroy_host.restype = None
+            self.core.wp_texture_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_texture_destroy_host.restype = None
 
-            self.core.wp_texture2d_create_host.argtypes = [
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
+            self.core.wp_texture_object_create_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # array_handle
+                ctypes.c_int,  # ndim
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
+                ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]
-            self.core.wp_texture2d_create_host.restype = ctypes.c_bool
+            self.core.wp_texture_object_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture2d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
-            ]
-            self.core.wp_texture2d_destroy_host.restype = None
+            self.core.wp_texture_object_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_object_destroy_device.restype = None
 
-            self.core.wp_texture3d_create_host.argtypes = [
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # depth
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_int,  # address_mode_w
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-            ]
-            self.core.wp_texture3d_create_host.restype = ctypes.c_bool
+            self.core.wp_surface_object_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_surface_object_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture3d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
+            self.core.wp_surface_object_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_surface_object_destroy_device.restype = None
+
+            self.core.wp_texture_copy_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint,  # width_bytes
+                ctypes.c_uint,  # height
+                ctypes.c_uint,  # depth
+                ctypes.c_int,  # dst_memory_type
+                ctypes.c_uint64,  # dst_handle
+                ctypes.c_uint,  # dst_pitch
+                ctypes.c_uint,  # dst_height
+                ctypes.c_int,  # src_memory_type
+                ctypes.c_uint64,  # src_handle
+                ctypes.c_uint,  # src_pitch
+                ctypes.c_uint,  # src_height
+                ctypes.c_void_p,  # stream
             ]
-            self.core.wp_texture3d_destroy_host.restype = None
+            self.core.wp_texture_copy_device.restype = ctypes.c_bool
+
+            self.core.wp_texture_descriptor_from_cuda_array.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_texture_descriptor_from_cuda_array.restype = ctypes.c_bool
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
@@ -5152,7 +5003,7 @@ class Runtime:
             self.core.wp_cuda_launch_kernel.restype = ctypes.c_size_t
 
             self.core.wp_cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.wp_cuda_graphics_map.restype = None
+            self.core.wp_cuda_graphics_map.restype = ctypes.c_bool
             self.core.wp_cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_graphics_unmap.restype = None
             self.core.wp_cuda_graphics_device_ptr_and_size.argtypes = [
@@ -5164,6 +5015,20 @@ class Runtime:
             self.core.wp_cuda_graphics_device_ptr_and_size.restype = None
             self.core.wp_cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
             self.core.wp_cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_register_gl_image.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint,
+            ]
+            self.core.wp_cuda_graphics_register_gl_image.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_sub_resource_get_mapped_array.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint,
+                ctypes.c_uint,
+            ]
+            self.core.wp_cuda_graphics_sub_resource_get_mapped_array.restype = ctypes.c_uint64
             self.core.wp_cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_graphics_unregister_resource.restype = None
 
@@ -6929,36 +6794,36 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             return value.__ctype__()
 
     # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
-    elif arg_type is warp._src.types.Texture1D:
+    elif arg_type is Texture1D:
         if value is None:
-            return warp._src.types.texture1d_t()
-        if isinstance(value, warp._src.types.Texture1D):
+            return texture1d_t()
+        if isinstance(value, Texture1D):
             return value.__ctype__()
-        if isinstance(value, warp._src.types.texture1d_t):
+        if isinstance(value, texture1d_t):
             return value
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture1D "
             f"but got {type(value).__name__}"
         )
 
-    elif arg_type is warp._src.types.Texture2D:
+    elif arg_type is Texture2D:
         if value is None:
-            return warp._src.types.texture2d_t()
-        if isinstance(value, warp._src.types.Texture2D):
+            return texture2d_t()
+        if isinstance(value, Texture2D):
             return value.__ctype__()
-        if isinstance(value, warp._src.types.texture2d_t):
+        if isinstance(value, texture2d_t):
             return value
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture2D "
             f"but got {type(value).__name__}"
         )
 
-    elif arg_type is warp._src.types.Texture3D:
+    elif arg_type is Texture3D:
         if value is None:
-            return warp._src.types.texture3d_t()
-        if isinstance(value, warp._src.types.Texture3D):
+            return texture3d_t()
+        if isinstance(value, Texture3D):
             return value.__ctype__()
-        if isinstance(value, warp._src.types.texture3d_t):
+        if isinstance(value, texture3d_t):
             return value
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture3D "
@@ -6997,7 +6862,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # Already the correct ctypes structure, pass directly
             return value
         # Check if value is a Texture object that needs conversion
-        if arg_type is warp._src.types.texture1d_t and isinstance(value, warp._src.types.Texture1D):
+        if arg_type is texture1d_t and isinstance(value, Texture1D):
             # check device
             if value.device != device:
                 raise RuntimeError(
@@ -7005,7 +6870,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"but input texture for argument '{arg_name}' is on device={value.device}."
                 )
             return value.__ctype__()
-        if arg_type is warp._src.types.texture2d_t and isinstance(value, warp._src.types.Texture2D):
+        if arg_type is texture2d_t and isinstance(value, Texture2D):
             # check device
             if value.device != device:
                 raise RuntimeError(
@@ -7013,7 +6878,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"but input texture for argument '{arg_name}' is on device={value.device}."
                 )
             return value.__ctype__()
-        if arg_type is warp._src.types.texture3d_t and isinstance(value, warp._src.types.Texture3D):
+        if arg_type is texture3d_t and isinstance(value, Texture3D):
             # check device
             if value.device != device:
                 raise RuntimeError(
@@ -7799,6 +7664,74 @@ def force_load(
         runtime.core.wp_cuda_context_set_current(saved_context)
 
 
+def _get_caller_module_name(stack_level: int = 1) -> str:
+    """Return the fully qualified module name of the caller.
+
+    Uses a multi-step fallback chain so that callers running under
+    ``runpy.run_module()`` (e.g. ``python -m pkg.example``) are handled
+    correctly even when the module is not yet registered in
+    ``sys.modules``.
+
+    Args:
+        stack_level: How many frames to walk up from **this** function.
+            Callers that are themselves one level above the user code
+            should pass ``2`` (one for this helper, one for the wrapper).
+
+    Returns:
+        The fully qualified name of the caller's module.
+
+    Raises:
+        RuntimeError: If the calling module cannot be determined.
+    """
+    frame = sys._getframe(stack_level)
+    try:
+        # 1. Use the frame's __name__, which is what Python assigns to
+        #    f.__module__ for functions defined in this scope.  This ensures
+        #    consistency with ``@wp.kernel`` (which reads ``f.__module__``).
+        #    In particular, under ``runpy.run_module(..., run_name="__main__")``
+        #    the frame's __name__ is "__main__" even though
+        #    ``inspect.getmodule()`` would find the pre-imported module under
+        #    its real qualified name.
+        name = frame.f_globals.get("__name__")
+        if name and name != "__main__":
+            return name
+
+        # 2. If __name__ is "__main__", this may be a regular script or a
+        #    module executed via ``python -m``.  Accept it—the @wp.kernel
+        #    decorator will also see "__main__" as f.__module__.
+        if name == "__main__":
+            return name
+
+        # 3. runpy sets __spec__ on the executed namespace even before the
+        #    module is registered in sys.modules.
+        spec = frame.f_globals.get("__spec__")
+        if spec is not None and spec.name:
+            return spec.name
+
+        # 4. Standard lookup — works when the module is in sys.modules.
+        m = inspect.getmodule(frame)
+        if m is not None:
+            return m.__name__
+
+        # 5. Match the caller's filename against sys.modules entries.
+        filename = frame.f_code.co_filename
+        if filename:
+            filename = os.path.realpath(filename)
+            for mod in list(sys.modules.values()):
+                mod_file = getattr(mod, "__file__", None)
+                if mod_file and os.path.realpath(mod_file) == filename:
+                    return mod.__name__
+
+        raise RuntimeError(
+            f"Could not determine the calling module (frame file: {frame.f_code.co_filename!r}). "
+            "This can happen when code is executed via runpy.run_module() before the module "
+            "is registered in sys.modules. Pass the module explicitly using the 'module' "
+            "parameter, e.g. wp.set_module_options({...}, module=<your_module>)."
+        )
+    finally:
+        del frame
+
+
 def load_module(
     module: Module | types.ModuleType | str | None = None,
     device: Device | str | list[Device] | list[str] | None = None,
@@ -7841,8 +7774,7 @@ def load_module(
     """
     if module is None:
         # if module not specified, use the module that called us
-        module = inspect.getmodule(inspect.stack()[1][0])
-        module_name = module.__name__
+        module_name = _get_caller_module_name(stack_level=2)
     elif isinstance(module, Module):
         module_name = module.name
     elif isinstance(module, types.ModuleType):
@@ -8150,22 +8082,22 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     """
 
     if module is None:
-        m = inspect.getmodule(inspect.stack()[1][0])
+        module_name = _get_caller_module_name(stack_level=2)
     else:
-        m = module
+        module_name = module.__name__
 
-    get_module(m.__name__).options.update(options)
-    get_module(m.__name__).mark_modified()
+    get_module(module_name).options.update(options)
+    get_module(module_name).mark_modified()
 
 
 def get_module_options(module: Any = None) -> dict[str, Any]:
     """Return a list of options for the current module."""
     if module is None:
-        m = inspect.getmodule(inspect.stack()[1][0])
+        module_name = _get_caller_module_name(stack_level=2)
     else:
-        m = module
+        module_name = module.__name__
 
-    return get_module(m.__name__).options
+    return get_module(module_name).options
 
 
 def _unregister_capture(device: Device, stream: Stream, graph: Graph):
@@ -9291,18 +9223,6 @@ def export_stubs(file):  # pragma: no cover
     print(
         """# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """,
         file=file,
     )
@@ -9335,6 +9255,8 @@ def export_stubs(file):  # pragma: no cover
     print('Rows = TypeVar("Rows", bound=int)', file=file)
     print('Cols = TypeVar("Cols", bound=int)', file=file)
     print('DType = TypeVar("DType")', file=file)
+    # NDim uses PEP 696 default so type checkers accept both array[dtype] and array[dtype, ndim]
+    print('NDim = TypeVar("NDim", bound=int, default=int)', file=file)
     print('Shape = TypeVar("Shape")', file=file)
 
     # Generic type stubs - must be proper class definitions, not type alias assignments.
@@ -9343,9 +9265,9 @@ def export_stubs(file):  # pragma: no cover
     print("class Matrix(Generic[Scalar, Rows, Cols]): ...", file=file)
     print("class Quaternion(Generic[Float]): ...", file=file)
     print("class Transformation(Generic[Float]): ...", file=file)
-    print("class Array(Generic[DType]): ...", file=file)
-    print("class FabricArray(Generic[DType]): ...", file=file)
-    print("class IndexedFabricArray(Generic[DType]): ...", file=file)
+    print("class Array(Generic[DType, NDim]): ...", file=file)
+    print("class FabricArray(Generic[DType, NDim]): ...", file=file)
+    print("class IndexedFabricArray(Generic[DType, NDim]): ...", file=file)
     print("class Tile(Generic[DType, Shape]): ...", file=file)
 
     # =========================================================================

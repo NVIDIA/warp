@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 ###########################################################################
 # Example Navier Stokes
@@ -198,7 +186,7 @@ class Example:
             x_p=x_p,
             b_u=u_rhs,
             b_p=p_rhs,
-            quiet=self._quiet,
+            quiet=not wp.config.verbose,
         )
 
         wp.utils.array_cast(in_array=x_u, out_array=self._u_field.dof_values)
@@ -247,8 +235,7 @@ if __name__ == "__main__":
             mesh=args.mesh,
         )
 
-        for k in range(args.num_frames):
-            print(f"Frame {k}:")
+        for _k, _set_info in fem_example_utils.progress_bar(args.num_frames, quiet=args.quiet):
             example.step()
             example.render()
 

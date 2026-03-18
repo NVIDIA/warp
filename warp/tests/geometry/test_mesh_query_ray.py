@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import itertools
 import os
@@ -74,11 +62,11 @@ def mesh_query_ray_loss(
     loss[tid] = l
 
     query = wp.mesh_query_ray(mesh, p, D, max_t)
-    wp.expect_eq(query.t, t)
-    wp.expect_eq(query.u, bary_u)
-    wp.expect_eq(query.v, bary_v)
-    wp.expect_eq(query.sign, sign)
-    wp.expect_eq(query.normal, normal)
+    wp.expect_near(query.t, t, tolerance=1.0e-6)
+    wp.expect_near(query.u, bary_u, tolerance=1.0e-6)
+    wp.expect_near(query.v, bary_v, tolerance=1.0e-6)
+    wp.expect_near(query.sign, sign, tolerance=1.0e-6)
+    wp.expect_near(query.normal, normal, tolerance=1.0e-6)
     wp.expect_eq(query.face, face_index)
 
 
@@ -218,9 +206,9 @@ def test_mesh_query_ray_grad(test, device):
     mesh_indices = wp.array(np.array(tri_indices), dtype=int, device=device)
 
     if device.is_cpu:
-        constructors = ["sah", "median"]
+        constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh"]
+        constructors = ["sah", "median", "lbvh", "cubql"]
 
     leaf_sizes = [1, 2, 4]
 
@@ -410,9 +398,9 @@ def test_mesh_query_ray_count_intersections(test, device):
     indices = wp.array(indices_np, dtype=int, device=device)
 
     if device.is_cpu:
-        constructors = ["sah", "median"]
+        constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh"]
+        constructors = ["sah", "median", "lbvh", "cubql"]
 
     leaf_sizes = [1, 2, 4]
 
@@ -627,19 +615,6 @@ def test_mesh_query_ray_and_groups(test, device):
 
         counts_anyhit = wp.empty(n=num_rays, dtype=int, device=device)
 
-        @wp.kernel
-        def mesh_query_ray_anyhit_kernel(
-            mesh: wp.uint64,
-            ray_starts: wp.array(dtype=wp.vec3),
-            ray_directions: wp.array(dtype=wp.vec3),
-            max_t: float,
-            counts: wp.array(dtype=int),
-        ):
-            tid = wp.tid()
-            p = ray_starts[tid]
-            dir = ray_directions[tid]
-            counts[tid] = int(wp.mesh_query_ray_anyhit(mesh, p, dir, max_t))
-
         wp.launch(
             kernel=mesh_query_ray_anyhit_kernel,
             dim=num_rays,
@@ -651,6 +626,20 @@ def test_mesh_query_ray_and_groups(test, device):
         assert_array_equal(counts_anyhit, counts_brutal)
 
         wp.synchronize_device(device)
+
+
+@wp.kernel
+def mesh_query_ray_anyhit_kernel(
+    mesh: wp.uint64,
+    ray_starts: wp.array(dtype=wp.vec3),
+    ray_directions: wp.array(dtype=wp.vec3),
+    max_t: float,
+    counts: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    p = ray_starts[tid]
+    dir = ray_directions[tid]
+    counts[tid] = int(wp.mesh_query_ray_anyhit(mesh, p, dir, max_t))
 
 
 @wp.kernel
@@ -682,9 +671,9 @@ def raycast_kernel(
 
 def test_mesh_query_ray_edge(test, device):
     if device.is_cpu:
-        constructors = ["sah", "median"]
+        constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh"]
+        constructors = ["sah", "median", "lbvh", "cubql"]
 
     leaf_sizes = [1, 2, 4]
 

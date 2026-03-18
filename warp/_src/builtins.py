@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
@@ -733,9 +721,11 @@ add_builtin(
 add_builtin(
     "skew",
     input_types={"vec": vector(length=3, dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(3, 3), dtype=Scalar)
-    if arg_types is None
-    else matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        matrix(shape=(3, 3), dtype=Scalar)
+        if arg_types is None
+        else matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_)
+    ),
     group="Vector Math",
     doc="Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.",
 )
@@ -801,9 +791,11 @@ add_builtin(
 add_builtin(
     "transpose",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(Any, Any), dtype=Scalar)
-    if arg_types is None
-    else matrix(shape=(arg_types["a"]._shape_[1], arg_types["a"]._shape_[0]), dtype=arg_types["a"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        matrix(shape=(Any, Any), dtype=Scalar)
+        if arg_types is None
+        else matrix(shape=(arg_types["a"]._shape_[1], arg_types["a"]._shape_[0]), dtype=arg_types["a"]._wp_scalar_type_)
+    ),
     group="Vector Math",
     doc="Compute the transpose of matrix ``a``.",
 )
@@ -2230,18 +2222,22 @@ add_builtin(
 add_builtin(
     "spatial_top",
     input_types={"svec": vector(length=6, dtype=Float)},
-    value_func=lambda arg_types, arg_values: vector(length=3, dtype=Float)
-    if arg_types is None
-    else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        vector(length=3, dtype=Float)
+        if arg_types is None
+        else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
+    ),
     group="Spatial Math",
     doc="Extract the top (first) part of a 6D screw vector.",
 )
 add_builtin(
     "spatial_bottom",
     input_types={"svec": vector(length=6, dtype=Float)},
-    value_func=lambda arg_types, arg_values: vector(length=3, dtype=Float)
-    if arg_types is None
-    else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        vector(length=3, dtype=Float)
+        if arg_types is None
+        else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
+    ),
     group="Spatial Math",
     doc="Extract the bottom (second) part of a 6D screw vector.",
 )

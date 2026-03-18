@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """Warp Test Suites
 
@@ -147,8 +135,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_diagnostics import TestDiagnostics
     from warp.tests.test_examples import (
         TestCoreExamples,
-        TestFemDiffusionExamples,
-        TestFemExamples,
         TestOptimExamples,
     )
     from warp.tests.test_fabricarray import TestFabricArray
@@ -247,8 +233,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestDiagnostics,
         TestDLPack,
         TestCoreExamples,
-        TestFemDiffusionExamples,
-        TestFemExamples,
         TestOptimExamples,
         TestFabricArray,
         TestFastMath,
@@ -343,6 +327,111 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestVersion,
         TestVolume,
         TestVolumeWrite,
+    ]
+
+    return _create_suite_from_test_classes(test_loader, test_classes)
+
+
+def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
+    """Focused test suite for validating warp.config.mode = "debug".
+
+    Debug mode compiles kernels without optimizations and with full debug info,
+    which is significantly slower. This suite targets tests most likely to break
+    specifically in debug mode: codegen, gradients, generics, tile operations,
+    and complex kernel compilation patterns.
+
+    Usage:
+        python -m warp.tests --suite debug --warp-debug
+
+    Known debug-mode failures (`GH-1066 <https://github.com/NVIDIA/warp/issues/1066>`_):
+        - tile.test_tile: device-side assert in tile_broadcast_add_3d
+          (tile.h:1026, bounds check failure) which poisons the CUDA
+          context and cascades to all subsequent CUDA tests
+        - tile.test_tile_shared_memory: same tile.h:1026 bounds assert
+          in test_tile_shared_non_aligned
+        - tile.test_tile_cholesky: nvJitLink NVVM_ERROR_COMPILATION
+        - tile.test_tile_load: CUDA error 701 (too many resources for launch)
+        - tile.test_tile_mathdx: nvJitLink NVVM_ERROR_COMPILATION
+        - tile.test_tile_reduce: CUDA error 715 (illegal instruction)
+        - tile.test_tile_matmul: nvJitLink NVVM_ERROR_COMPILATION
+        - tile.test_tile_matmul_no_mathdx: nvJitLink NVVM_ERROR_COMPILATION
+        - test_verify_fp: deliberately triggers assertions which fire in debug
+    """
+    from warp.tests.geometry.test_bvh import TestBvh
+    from warp.tests.geometry.test_mesh import TestMesh
+    from warp.tests.matrix.test_mat_linalg import TestMatLinalg
+    from warp.tests.test_arithmetic import TestArithmetic
+    from warp.tests.test_atomic import TestAtomic
+    from warp.tests.test_builtins_resolution import TestBuiltinsResolution
+    from warp.tests.test_codegen import TestCodeGen
+    from warp.tests.test_codegen_instancing import TestCodeGenInstancing
+    from warp.tests.test_compile_consts import TestConstants
+    from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_fast_math import TestFastMath
+    from warp.tests.test_fp16 import TestFp16
+    from warp.tests.test_func import TestFunc
+    from warp.tests.test_generics import TestGenerics
+    from warp.tests.test_grad import TestGrad
+    from warp.tests.test_grad_customs import TestGradCustoms
+    from warp.tests.test_grad_debug import TestGradDebug
+    from warp.tests.test_launch import TestLaunch
+    from warp.tests.test_lvalue import TestLValue
+    from warp.tests.test_math import TestMath
+    from warp.tests.test_module_hashing import TestModuleHashing
+    from warp.tests.test_operators import TestOperators
+    from warp.tests.test_options import TestOptions
+    from warp.tests.test_scalar_ops import TestScalarOps
+    from warp.tests.test_sparse import TestSparse
+    from warp.tests.test_spatial import TestSpatial
+    from warp.tests.test_static import TestStatic
+    from warp.tests.test_struct import TestStruct
+    from warp.tests.test_tape import TestTape
+    from warp.tests.test_types import TestTypes
+    from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
+    from warp.tests.tile.test_tile_sort import TestTileSort
+    from warp.tests.tile.test_tile_view import TestTileView
+
+    test_classes = [
+        # Codegen & compilation
+        TestBuiltinsResolution,
+        TestCodeGen,
+        TestCodeGenInstancing,
+        TestConditional,
+        TestConstants,
+        TestFastMath,
+        TestFunc,
+        TestGenerics,
+        TestMath,
+        TestModuleHashing,
+        TestOperators,
+        TestOptions,
+        TestScalarOps,
+        TestStatic,
+        # Gradients
+        TestGrad,
+        TestGradCustoms,
+        TestGradDebug,
+        TestTape,
+        # Types & operators
+        TestArithmetic,
+        TestAtomic,
+        TestFp16,
+        TestLValue,
+        TestStruct,
+        TestTypes,
+        # Tile (debug-safe)
+        TestTileAtomicBitwise,
+        TestTileSort,
+        TestTileView,
+        # Geometry
+        TestBvh,
+        TestMesh,
+        # Matrix
+        TestMatLinalg,
+        # Subsystem representatives
+        TestLaunch,
+        TestSparse,
+        TestSpatial,
     ]
 
     return _create_suite_from_test_classes(test_loader, test_classes)

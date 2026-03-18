@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """The ``warp`` package provides array types and functions for creating and manipulating
 multi-dimensional data on CPU and CUDA devices. It includes kernel and function decorators
@@ -186,12 +174,6 @@ from warp._src.types import Bvh as Bvh
 from warp._src.types import Mesh as Mesh
 from warp._src.types import HashGrid as HashGrid
 from warp._src.types import Volume as Volume
-from warp._src.types import Texture as Texture
-from warp._src.types import Texture1D as Texture1D
-from warp._src.types import Texture2D as Texture2D
-from warp._src.types import Texture3D as Texture3D
-from warp._src.texture import TextureFilterMode as TextureFilterMode
-from warp._src.texture import TextureAddressMode as TextureAddressMode
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
@@ -201,6 +183,18 @@ from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
 from warp._src.types import MeshQueryRay as MeshQueryRay
+
+
+# category: Textures
+
+from warp._src.texture import Texture as Texture
+from warp._src.texture import Texture1D as Texture1D
+from warp._src.texture import Texture2D as Texture2D
+from warp._src.texture import Texture3D as Texture3D
+from warp._src.texture import TextureResourceFlags as TextureResourceFlags
+from warp._src.texture import GLTextureResource as GLTextureResource
+from warp._src.texture import TextureFilterMode as TextureFilterMode
+from warp._src.texture import TextureAddressMode as TextureAddressMode
 
 
 # category: Runtime

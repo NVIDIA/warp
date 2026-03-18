@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 from dataclasses import dataclass
@@ -98,21 +86,31 @@ TEST_DATA = {
 }
 
 
+def _make_lerp_kernel_fn(data_type):
+    def fn(
+        a: wp.array(dtype=data_type),
+        b: wp.array(dtype=data_type),
+        t: wp.array(dtype=float),
+        out: wp.array(dtype=data_type),
+    ):
+        out[0] = wp.lerp(a[0], b[0], t[0])
+
+    return fn
+
+
+# Pre-create all kernels at module scope to avoid per-test recompilation
+_lerp_kernels = {}
+for _dt in TEST_DATA:
+    _key = f"test_lerp_{_dt.__name__}_kernel"
+    _lerp_kernels[_dt] = wp.Kernel(
+        func=_make_lerp_kernel_fn(_dt),
+        key=_key,
+    )
+
+
 def test_lerp(test, device):
-    def make_kernel_fn(data_type):
-        def fn(
-            a: wp.array(dtype=data_type),
-            b: wp.array(dtype=data_type),
-            t: wp.array(dtype=float),
-            out: wp.array(dtype=data_type),
-        ):
-            out[0] = wp.lerp(a[0], b[0], t[0])
-
-        return fn
-
     for data_type, test_data_set in TEST_DATA.items():
-        kernel_fn = make_kernel_fn(data_type)
-        kernel = wp.Kernel(func=kernel_fn, key=f"test_lerp_{data_type.__name__}_kernel")
+        kernel = _lerp_kernels[data_type]
 
         with test.subTest(data_type=data_type):
             for test_data in test_data_set:

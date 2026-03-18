@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
@@ -462,8 +450,10 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             # zero initialize
             setattr(inst._ctype, field, var_type._type_())
+            cls.__setattr__(inst, field, var_type())
         else:
-            if hasattr(value, "_type_"):
+            is_warp_scalar = hasattr(value, "_type_")
+            if is_warp_scalar:
                 # assigning warp type value (e.g.: wp.float32)
                 value = value.value
             # float16 needs conversion to uint16 bits
@@ -472,7 +462,10 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             else:
                 setattr(inst._ctype, field, value)
 
-        cls.__setattr__(inst, field, value)
+            # Re-wrap in the Warp scalar type so the Python attribute preserves
+            # the declared type (e.g. wp.uint8) instead of decaying to plain
+            # int/float, but only when the caller passed a Warp scalar.
+            cls.__setattr__(inst, field, var_type(value) if is_warp_scalar else value)
 
     def set_texture_value(inst, value):
         # Texture2D, Texture3D, etc.
@@ -3218,7 +3211,7 @@ class Adjoint:
         # more generally in `adj.eval()`.
         if isinstance(node.value, ast.List):
             raise WarpCodegenError(
-                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
+                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small fixed-size collections, or `wp.zeros(shape=N, dtype=...)` for stack-allocated arrays."
             )
 
         lhs = node.targets[0]
