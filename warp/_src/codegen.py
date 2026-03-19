@@ -3297,9 +3297,7 @@ class Adjoint:
 
                     array_indices = adj.eval_indices(target_type, array_indices)
                     
-                    reads_saved = dict(adj.reads)
                     vec_target = adj.emit_indexing(target, array_indices)
-                    adj.reads = reads_saved
                     vec_target_type = strip_reference(vec_target.type)
                     
                     vec_indices = adj.eval_indices(vec_target_type, vec_indices)
@@ -3546,13 +3544,34 @@ class Adjoint:
                 return
 
             target, indices = adj.eval_subscript(lhs)
+            target_type = strip_reference(target.type)
+
             if is_reference(target.type):
-                make_new_assign_statement()
-                return
+                if is_array(target_type) and len(indices) > target_type.ndim:
+                    rhs = adj.eval(node.value)
+                    
+                    old_val = adj.emit_indexing(target, indices)
+                    op_name = builtin_operators[type(node.op)]
+                    new_val = adj.add_builtin_call(op_name, [old_val, rhs])
+                    
+                    array_indices = indices[:target_type.ndim]
+                    vec_indices = indices[target_type.ndim:]
+                    
+                    array_indices = adj.eval_indices(target_type, array_indices)
+                    vec_target = adj.emit_indexing(target, array_indices)
+                    vec_target_type = strip_reference(vec_target.type)
+                    
+                    vec_indices = adj.eval_indices(vec_target_type, vec_indices)
+                    
+                    new_vec = adj.add_builtin_call("assign_copy", [vec_target, *vec_indices, new_val])
+                    adj.add_builtin_call("array_store", [target, *array_indices, new_vec])
+                    return
+                else:
+                    make_new_assign_statement()
+                    return
 
             rhs = adj.eval(node.value)
-
-            target_type = strip_reference(target.type)
+            
             indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):

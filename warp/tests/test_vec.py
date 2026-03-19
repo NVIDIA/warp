@@ -992,7 +992,6 @@ def test_vec_array_assign(test, device):
         tape.backward()
 
         assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0]]], dtype=float))
-        # TODO: gradient propagation for in-place array assignment
         assert_np_equal(x.grad.numpy(), np.array([[6.0]], dtype=float))
 
     run(vec_array_assign_subscript)
