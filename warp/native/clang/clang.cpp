@@ -41,6 +41,11 @@
 #include <llvm/PassRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
+#if LLVM_VERSION_MAJOR >= 16
+#include <llvm/TargetParser/Host.h>
+#else
+#include <llvm/Support/Host.h>
+#endif
 
 #if defined(_WIN64)
 extern "C" void __chkstk();
@@ -83,6 +88,32 @@ static void initialize_llvm()
     llvm::InitializeAllAsmPrinters();
 }
 
+// Cached host CPU name and feature string, populated on first use.
+static std::string host_cpu_name;
+static std::string host_cpu_features;
+
+static void detect_host_cpu()
+{
+    if (!host_cpu_name.empty())
+        return;
+
+    host_cpu_name = llvm::sys::getHostCPUName().str();
+
+    llvm::StringMap<bool> feature_map;
+    llvm::sys::getHostCPUFeatures(feature_map);
+
+    // Build comma-separated feature string: "+avx2,+fma,-avx512f,..."
+    std::string features;
+    for (const auto& f : feature_map) {
+        if (!features.empty())
+            features += ",";
+        features += (f.second ? "+" : "-");
+        features += f.first().str();
+    }
+
+    host_cpu_features = features;
+}
+
 static std::unique_ptr<llvm::Module> source_to_llvm(
     bool is_cuda,
     const std::string& input_file,
@@ -96,6 +127,9 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
 {
     // Compilation arguments
     std::vector<const char*> args;
+    // Storage for feature strings whose lifetime must extend until CreateFromArgs() below
+    std::vector<std::string> feature_strings;
+
     args.push_back(input_file.c_str());
 
     args.push_back("-I");
@@ -113,10 +147,25 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         args.push_back("-triple");
         args.push_back(target_triple);
 
-#if defined(__x86_64__) || defined(_M_X64)
-        args.push_back("-target-feature");
-        args.push_back("+f16c");  // Enables support for _Float16
-#endif
+        detect_host_cpu();
+
+        // Only set -target-cpu if the host CPU is recognized (not "generic").
+        // LLVM may return "generic" for CPUs newer than its built-in database.
+        if (host_cpu_name != "generic") {
+            args.push_back("-target-cpu");
+            args.push_back(host_cpu_name.c_str());
+        }
+
+        // Add all detected host CPU features
+        llvm::StringMap<bool> feature_map;
+        llvm::sys::getHostCPUFeatures(feature_map);
+        for (const auto& f : feature_map) {
+            feature_strings.push_back((f.second ? "+" : "-") + f.first().str());
+        }
+        for (const auto& feat : feature_strings) {
+            args.push_back("-target-feature");
+            args.push_back(feat.c_str());
+        }
 
 #if defined(__aarch64__)
         if (tiles_in_stack_memory) {
@@ -235,8 +284,9 @@ WP_API int wp_compile_cpp(
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
 #endif
 
-    const char* CPU = "generic";
-    const char* features = "";
+    detect_host_cpu();
+    const char* CPU = host_cpu_name.c_str();
+    const char* features = host_cpu_features.c_str();
     llvm::TargetOptions target_options;
     if (fuse_fp)
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Standard;
@@ -508,6 +558,20 @@ WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
     }
 
     return func->getValue();
+}
+
+WP_API const char* wp_get_host_cpu_name()
+{
+    initialize_llvm();
+    detect_host_cpu();
+    return host_cpu_name.c_str();
+}
+
+WP_API const char* wp_get_host_cpu_features()
+{
+    initialize_llvm();
+    detect_host_cpu();
+    return host_cpu_features.c_str();
 }
 
 WP_API const char* wp_warp_clang_version() { return WP_VERSION_STRING; }

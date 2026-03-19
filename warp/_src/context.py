@@ -1936,6 +1936,17 @@ class ModuleHasher:
         # build config
         ch.update(bytes(warp.config.mode, "utf-8"))
 
+        # CPU target: include detected host CPU name and features so that
+        # moving to a different machine invalidates cached kernels
+        runtime = warp._src.context.runtime
+        if runtime is not None and runtime.llvm is not None and hasattr(runtime.llvm, "wp_get_host_cpu_name"):
+            cpu_name = runtime.llvm.wp_get_host_cpu_name()
+            if cpu_name:
+                ch.update(cpu_name)
+            cpu_features = runtime.llvm.wp_get_host_cpu_features()
+            if cpu_features:
+                ch.update(cpu_features)
+
         # save the module hash
         self.module_hash = ch.digest()
 
@@ -4001,6 +4012,14 @@ class Runtime:
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
 
+            if hasattr(self.llvm, "wp_get_host_cpu_name"):
+                self.llvm.wp_get_host_cpu_name.argtypes = []
+                self.llvm.wp_get_host_cpu_name.restype = ctypes.c_char_p
+
+            if hasattr(self.llvm, "wp_get_host_cpu_features"):
+                self.llvm.wp_get_host_cpu_features.argtypes = []
+                self.llvm.wp_get_host_cpu_features.restype = ctypes.c_char_p
+
             if hasattr(self.llvm, "wp_llvm_version"):
                 self.llvm.wp_llvm_version.argtypes = []
                 self.llvm.wp_llvm_version.restype = ctypes.c_char_p
@@ -5391,6 +5410,49 @@ class Runtime:
             version_ptr = self.llvm.wp_llvm_version()
             if version_ptr:
                 return version_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
+
+    def get_host_cpu_name(self) -> str:
+        """Get the host CPU name as detected by LLVM.
+
+        Returns:
+            CPU name string (e.g., ``"apple-m2"``, ``"znver4"``), or ``"unknown"`` if unavailable.
+        """
+        if self.llvm is None:
+            return "unknown"
+
+        if not hasattr(self.llvm, "wp_get_host_cpu_name"):
+            return "unknown"
+
+        try:
+            name_ptr = self.llvm.wp_get_host_cpu_name()
+            if name_ptr:
+                return name_ptr.decode("utf-8")
+        except (AttributeError, OSError, UnicodeDecodeError):
+            pass
+
+        return "unknown"
+
+    def get_host_cpu_features(self) -> str:
+        """Get the host CPU feature string as detected by LLVM.
+
+        Returns:
+            Comma-separated feature string (e.g., ``"+avx2,+fma,-avx512f"``),
+            or ``"unknown"`` if unavailable.
+        """
+        if self.llvm is None:
+            return "unknown"
+
+        if not hasattr(self.llvm, "wp_get_host_cpu_features"):
+            return "unknown"
+
+        try:
+            features_ptr = self.llvm.wp_get_host_cpu_features()
+            if features_ptr:
+                return features_ptr.decode("utf-8")
         except (AttributeError, OSError, UnicodeDecodeError):
             pass
 
