@@ -122,7 +122,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     bool debug,
     bool verify_fp,
     llvm::LLVMContext& context,
-    bool tiles_in_stack_memory
+    bool tiles_in_stack_memory,
+    const char* extra_flags = nullptr
 )
 {
     // Compilation arguments
@@ -176,6 +177,17 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
             args.push_back("+reserve-x28");
         }
 #endif
+    }
+
+    // Append extra compiler flags (split on whitespace)
+    std::string extra_flags_parsed;
+    if (extra_flags) {
+        extra_flags_parsed = extra_flags;
+        char* token = strtok(&extra_flags_parsed[0], " \t");
+        while (token) {
+            args.push_back(token);
+            token = strtok(nullptr, " \t");
+        }
     }
 
 #if LLVM_VERSION_MAJOR >= 21
@@ -264,14 +276,16 @@ WP_API int wp_compile_cpp(
     bool debug,
     bool verify_fp,
     bool fuse_fp,
-    bool tiles_in_stack_memory
+    bool tiles_in_stack_memory,
+    const char* extra_flags
 )
 {
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module
-        = source_to_llvm(false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory);
+    std::unique_ptr<llvm::Module> module = source_to_llvm(
+        false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory, extra_flags
+    );
 
     if (!module) {
         return -1;

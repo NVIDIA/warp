@@ -1936,6 +1936,10 @@ class ModuleHasher:
         # build config
         ch.update(bytes(warp.config.mode, "utf-8"))
 
+        # extra CPU compiler flags
+        if warp.config.cpu_compiler_flags:
+            ch.update(bytes(warp.config.cpu_compiler_flags, "utf-8"))
+
         # CPU target: include detected host CPU name and features so that
         # moving to a different machine invalidates cached kernels
         runtime = warp._src.context.runtime
@@ -2825,6 +2829,7 @@ class Module:
                         fast_math=self.options["fast_math"],
                         verify_fp=warp.config.verify_fp,
                         fuse_fp=self.options["fuse_fp"],
+                        extra_flags=warp.config.cpu_compiler_flags,
                     )
 
             except Exception as e:

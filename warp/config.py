@@ -195,6 +195,16 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
 """
 
+cpu_compiler_flags: _Optional[str] = None
+"""Extra flags to pass to the Clang frontend when compiling CPU kernels.
+
+The string is split on whitespace and appended to the compiler arguments after
+all other flags. This is intended for experimentation and debugging (e.g.
+``"-fno-vectorize -fno-slp-vectorize"``), not for production use.
+
+Changing this setting invalidates the kernel cache.
+"""
+
 llvm_cuda: bool = False
 """Use Clang/LLVM compiler instead of NVRTC for CUDA compilation."""
 
