@@ -157,6 +157,7 @@ struct texture1d_t {
     int32 num_channels;
     int32 filter_mode;
     int32 use_normalized_coords;
+    int32 address_mode_u;
 
     CUDA_CALLABLE inline texture1d_t()
         : tex(0)
@@ -164,17 +165,24 @@ struct texture1d_t {
         , num_channels(0)
         , filter_mode(0)
         , use_normalized_coords(1)
+        , address_mode_u(0)
     {
     }
 
     CUDA_CALLABLE inline texture1d_t(
-        uint64 tex, int32 width, int32 num_channels, int32 filter_mode, int32 use_normalized_coords
+        uint64 tex,
+        int32 width,
+        int32 num_channels,
+        int32 filter_mode,
+        int32 use_normalized_coords,
+        int32 address_mode_u
     )
         : tex(tex)
         , width(width)
         , num_channels(num_channels)
         , filter_mode(filter_mode)
         , use_normalized_coords(use_normalized_coords)
+        , address_mode_u(address_mode_u)
     {
     }
 };
@@ -186,6 +194,8 @@ struct texture2d_t {
     int32 num_channels;
     int32 filter_mode;
     int32 use_normalized_coords;
+    int32 address_mode_u;
+    int32 address_mode_v;
 
     CUDA_CALLABLE inline texture2d_t()
         : tex(0)
@@ -194,11 +204,20 @@ struct texture2d_t {
         , num_channels(0)
         , filter_mode(0)
         , use_normalized_coords(1)
+        , address_mode_u(0)
+        , address_mode_v(0)
     {
     }
 
     CUDA_CALLABLE inline texture2d_t(
-        uint64 tex, int32 width, int32 height, int32 num_channels, int32 filter_mode, int32 use_normalized_coords
+        uint64 tex,
+        int32 width,
+        int32 height,
+        int32 num_channels,
+        int32 filter_mode,
+        int32 use_normalized_coords,
+        int32 address_mode_u,
+        int32 address_mode_v
     )
         : tex(tex)
         , width(width)
@@ -206,6 +225,8 @@ struct texture2d_t {
         , num_channels(num_channels)
         , filter_mode(filter_mode)
         , use_normalized_coords(use_normalized_coords)
+        , address_mode_u(address_mode_u)
+        , address_mode_v(address_mode_v)
     {
     }
 };
@@ -218,6 +239,9 @@ struct texture3d_t {
     int32 num_channels;
     int32 filter_mode;
     int32 use_normalized_coords;
+    int32 address_mode_u;
+    int32 address_mode_v;
+    int32 address_mode_w;
 
     CUDA_CALLABLE inline texture3d_t()
         : tex(0)
@@ -227,6 +251,9 @@ struct texture3d_t {
         , num_channels(0)
         , filter_mode(0)
         , use_normalized_coords(1)
+        , address_mode_u(0)
+        , address_mode_v(0)
+        , address_mode_w(0)
     {
     }
 
@@ -237,7 +264,10 @@ struct texture3d_t {
         int32 depth,
         int32 num_channels,
         int32 filter_mode,
-        int32 use_normalized_coords
+        int32 use_normalized_coords,
+        int32 address_mode_u,
+        int32 address_mode_v,
+        int32 address_mode_w
     )
         : tex(tex)
         , width(width)
@@ -246,6 +276,9 @@ struct texture3d_t {
         , num_channels(num_channels)
         , filter_mode(filter_mode)
         , use_normalized_coords(use_normalized_coords)
+        , address_mode_u(address_mode_u)
+        , address_mode_v(address_mode_v)
+        , address_mode_w(address_mode_w)
     {
     }
 };
@@ -882,22 +915,23 @@ adj_texture_sample(const texture1d_t& tex, float u, texture1d_t& adj_tex, float&
     if (tex.filter_mode == WP_TEXTURE_FILTER_CLOSEST)
         return;
 
-#ifndef NDEBUG
-// Warning: This check is only active in debug builds
-// Differentiation is only correct for BORDER address mode
-#if !defined(__CUDA_ARCH__)
-    if (tex.tex != 0) {
-        const Texture* cpu_tex = (const Texture*)tex.tex;
-        if (cpu_tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
-            printf(
-                "WARNING: texture_sample adjoint may produce incorrect gradients. "
-                "Address mode is %d but differentiation only supports BORDER mode (3).\n",
-                cpu_tex->address_mode_u
-            );
-        }
+    // Check address mode compatibility with differentiation
+    if (tex.address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
+#if defined(__CUDA_ARCH__)
+        printf(
+            "ERROR: texture_sample gradient computation requires BORDER address mode. "
+            "Texture has address_mode_u=%d. Gradients will be incorrect.\n",
+            tex.address_mode_u
+        );
+#else
+        printf(
+            "ERROR: texture_sample gradient computation requires BORDER address mode. "
+            "Texture has address_mode_u=%d. Gradients will be incorrect.\n",
+            tex.address_mode_u
+        );
+#endif
+        return;  // Return zero gradient
     }
-#endif
-#endif
 
     float gtx_mult = tex.use_normalized_coords ? (float)tex.width : 1.0f;
 
@@ -957,21 +991,22 @@ CUDA_CALLABLE void adj_texture_sample(
     if (tex.filter_mode == WP_TEXTURE_FILTER_CLOSEST)
         return;
 
-#ifndef NDEBUG
-#if !defined(__CUDA_ARCH__)
-    if (tex.tex != 0) {
-        const Texture* cpu_tex = (const Texture*)tex.tex;
-        if (cpu_tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER
-            || cpu_tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
-            printf(
-                "WARNING: texture_sample adjoint may produce incorrect gradients. "
-                "Address modes are (%d, %d) but differentiation only supports BORDER mode (3).\n",
-                cpu_tex->address_mode_u, cpu_tex->address_mode_v
-            );
-        }
+    if (tex.address_mode_u != WP_TEXTURE_ADDRESS_BORDER || tex.address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
+#if defined(__CUDA_ARCH__)
+        printf(
+            "ERROR: texture_sample gradient computation requires BORDER address mode. "
+            "Texture has address modes (%d, %d). Gradients will be incorrect.\n",
+            tex.address_mode_u, tex.address_mode_v
+        );
+#else
+        printf(
+            "ERROR: texture_sample gradient computation requires BORDER address mode. "
+            "Texture has address modes (%d, %d). Gradients will be incorrect.\n",
+            tex.address_mode_u, tex.address_mode_v
+        );
+#endif
+        return;
     }
-#endif
-#endif
 
     float gtx_mult = tex.use_normalized_coords ? (float)tex.width : 1.0f;
     float gty_mult = tex.use_normalized_coords ? (float)tex.height : 1.0f;
@@ -1080,21 +1115,23 @@ CUDA_CALLABLE void adj_texture_sample(
     if (tex.filter_mode == WP_TEXTURE_FILTER_CLOSEST)
         return;
 
-#ifndef NDEBUG
-#if !defined(__CUDA_ARCH__)
-    if (tex.tex != 0) {
-        const Texture* cpu_tex = (const Texture*)tex.tex;
-        if (cpu_tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER || cpu_tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER
-            || cpu_tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
-            printf(
-                "WARNING: texture_sample adjoint may produce incorrect gradients. "
-                "Address modes are (%d, %d, %d) but differentiation only supports BORDER mode (3).\n",
-                cpu_tex->address_mode_u, cpu_tex->address_mode_v, cpu_tex->address_mode_w
-            );
-        }
+    if (tex.address_mode_u != WP_TEXTURE_ADDRESS_BORDER || tex.address_mode_v != WP_TEXTURE_ADDRESS_BORDER
+        || tex.address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
+#if defined(__CUDA_ARCH__)
+        printf(
+            "ERROR: texture_sample gradient computation requires BORDER address mode. "
+            "Texture has address modes (%d, %d, %d). Gradients will be incorrect.\n",
+            tex.address_mode_u, tex.address_mode_v, tex.address_mode_w
+        );
+#else
+        printf(
+            "ERROR: texture_sample gradient computation requires BORDER address mode. "
+            "Texture has address modes (%d, %d, %d). Gradients will be incorrect.\n",
+            tex.address_mode_u, tex.address_mode_v, tex.address_mode_w
+        );
+#endif
+        return;
     }
-#endif
-#endif
 
     float gtx_mult = tex.use_normalized_coords ? (float)tex.width : 1.0f;
     float gty_mult = tex.use_normalized_coords ? (float)tex.height : 1.0f;

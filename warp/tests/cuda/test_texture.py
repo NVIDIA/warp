@@ -2677,6 +2677,63 @@ def _grad_3d(data, coord, device):
     return pos.grad.numpy()[0]
 
 
+def _grad_1d_normalized(data, u_normalized, device):
+    """Helper for 1D gradient with normalized coordinates."""
+    tex = wp.Texture1D(
+        data,
+        normalized_coords=True,  # Use default normalized coordinates
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([u_normalized], dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_1d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_2d_normalized(data, coord_normalized, device):
+    """Helper for 2D gradient with normalized coordinates."""
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=True,  # Use default normalized coordinates
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([wp.vec2f(*coord_normalized)], dtype=wp.vec2f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_2d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_3d_normalized(data, coord_normalized, device):
+    """Helper for 3D gradient with normalized coordinates."""
+    tex = wp.Texture3D(
+        data,
+        normalized_coords=True,  # Use default normalized coordinates
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([wp.vec3f(*coord_normalized)], dtype=wp.vec3f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_3d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
 def test_texture1d_adj_boundary_zero(test, device):
     """Gradient is zero when sampling position straddles the near boundary."""
     data = np.random.default_rng(0).standard_normal(16).astype(np.float32)
@@ -2935,6 +2992,68 @@ def test_texture3d_adj_vec2f_linear_z(test, device):
     np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
     np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
     np.testing.assert_allclose(g[2], 1.0 / D, atol=1e-5)
+
+
+def test_texture1d_adj_normalized_boundary(test, device):
+    """1D normalized coords: gradient is zero at boundary (u ≈ 0.0 or u ≈ 1.0)."""
+    data = np.random.default_rng(10).standard_normal(16).astype(np.float32)
+    g_near = _grad_1d_normalized(data, 0.01, device)
+    g_far = _grad_1d_normalized(data, 0.99, device)
+    np.testing.assert_allclose(g_near, 0.0, atol=1e-6)
+    np.testing.assert_allclose(g_far, 0.0, atol=1e-6)
+
+
+def test_texture1d_adj_normalized_linear(test, device):
+    """1D normalized coords: gradient of linear signal."""
+    W = 16
+    data = np.arange(W, dtype=np.float32) / W
+    # With normalized coords, d(value)/d(u_norm) = d(value)/d(u_texel) * d(u_texel)/d(u_norm)
+    # = (1/W) * W = 1.0
+    g = _grad_1d_normalized(data, 0.5, device)
+    np.testing.assert_allclose(g, 1.0, atol=1e-4)
+
+
+def test_texture2d_adj_normalized_boundary(test, device):
+    """2D normalized coords: gradient is zero at boundaries."""
+    data = np.random.default_rng(11).standard_normal((8, 10)).astype(np.float32)
+    g_near = _grad_2d_normalized(data, (0.01, 0.01), device)
+    g_far = _grad_2d_normalized(data, (0.99, 0.99), device)
+    np.testing.assert_allclose(g_near, [0.0, 0.0], atol=1e-6)
+    np.testing.assert_allclose(g_far, [0.0, 0.0], atol=1e-6)
+
+
+def test_texture2d_adj_normalized_linear_x(test, device):
+    """2D normalized coords: x-gradient of signal linear in x."""
+    H, W = 6, 10
+    data = np.zeros((H, W), dtype=np.float32)
+    for x in range(W):
+        data[:, x] = x / W
+    g = _grad_2d_normalized(data, (0.5, 0.5), device)
+    # With normalized coords: d(value)/d(u_norm) = 1.0
+    np.testing.assert_allclose(g[0], 1.0, atol=1e-4)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+
+
+def test_texture3d_adj_normalized_boundary(test, device):
+    """3D normalized coords: gradient is zero at boundaries."""
+    data = np.random.default_rng(12).standard_normal((8, 6, 10)).astype(np.float32)
+    g_near = _grad_3d_normalized(data, (0.01, 0.01, 0.01), device)
+    g_far = _grad_3d_normalized(data, (0.99, 0.99, 0.99), device)
+    np.testing.assert_allclose(g_near, [0.0, 0.0, 0.0], atol=1e-6)
+    np.testing.assert_allclose(g_far, [0.0, 0.0, 0.0], atol=1e-6)
+
+
+def test_texture3d_adj_normalized_linear_z(test, device):
+    """3D normalized coords: z-gradient of signal linear in z."""
+    D, H, W = 8, 6, 10
+    data = np.zeros((D, H, W), dtype=np.float32)
+    for z in range(D):
+        data[z, :, :] = z / D
+    g = _grad_3d_normalized(data, (0.5, 0.5, 0.5), device)
+    # With normalized coords: d(value)/d(w_norm) = 1.0
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[2], 1.0, atol=1e-4)
 
 
 # ============================================================================
@@ -3236,6 +3355,24 @@ add_function_test(
 )
 add_function_test(
     TestTexture, "test_texture3d_adj_vec2f_linear_z", test_texture3d_adj_vec2f_linear_z, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture1d_adj_normalized_boundary", test_texture1d_adj_normalized_boundary, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture1d_adj_normalized_linear", test_texture1d_adj_normalized_linear, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_normalized_boundary", test_texture2d_adj_normalized_boundary, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_normalized_linear_x", test_texture2d_adj_normalized_linear_x, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_normalized_boundary", test_texture3d_adj_normalized_boundary, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_normalized_linear_z", test_texture3d_adj_normalized_linear_z, devices=all_devices
 )
 
 
