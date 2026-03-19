@@ -235,13 +235,7 @@ add_builtin(
     doc="Compute the cosh of ``x``.",
     group="Scalar Math",
 )
-add_builtin(
-    "copysign",
-    input_types={"x": Float, "y": Float},
-    value_func=sametypes_create_value_func(Float),
-    doc="Create a value with the magnitude of ``x`` and the sign of ``y``.",
-    group="Scalar Math",
-)
+
 add_builtin(
     "tanh",
     input_types={"x": Float},
@@ -740,9 +734,11 @@ add_builtin(
 add_builtin(
     "skew",
     input_types={"vec": vector(length=3, dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(3, 3), dtype=Scalar)
-    if arg_types is None
-    else matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        matrix(shape=(3, 3), dtype=Scalar)
+        if arg_types is None
+        else matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_)
+    ),
     group="Vector Math",
     doc="Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.",
 )
@@ -808,9 +804,11 @@ add_builtin(
 add_builtin(
     "transpose",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(Any, Any), dtype=Scalar)
-    if arg_types is None
-    else matrix(shape=(arg_types["a"]._shape_[1], arg_types["a"]._shape_[0]), dtype=arg_types["a"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        matrix(shape=(Any, Any), dtype=Scalar)
+        if arg_types is None
+        else matrix(shape=(arg_types["a"]._shape_[1], arg_types["a"]._shape_[0]), dtype=arg_types["a"]._wp_scalar_type_)
+    ),
     group="Vector Math",
     doc="Compute the transpose of matrix ``a``.",
 )
@@ -1015,16 +1013,8 @@ add_builtin(
 # scalar type constructors between all storage / compute types
 scalar_types_all = [*scalar_types, bool, int, float]
 
-unsigned_int_types = (uint8, uint16, uint32, uint64)
-float_src_types = {float16: "float16", float32: "float32", float64: "float64", float: "float32"}
-
 for t in scalar_types_all:
     for u in scalar_types_all:
-        # Use safe cast for float -> unsigned to avoid C++ UB
-        safe_native = None
-        if t in unsigned_int_types and u in float_src_types:
-            safe_native = f"{float_src_types[u]}_to_{t.__name__}"
-
         add_builtin(
             t.__name__,
             input_types={"a": u},
@@ -1033,8 +1023,7 @@ for t in scalar_types_all:
             hidden=True,
             group="Scalar Math",
             export=False,
-            namespace="wp::" if t is not bool and not safe_native else "",
-            native_func=safe_native if safe_native else t.__name__,
+            namespace="wp::" if t is not bool else "",
         )
 
 
@@ -2247,18 +2236,22 @@ add_builtin(
 add_builtin(
     "spatial_top",
     input_types={"svec": vector(length=6, dtype=Float)},
-    value_func=lambda arg_types, arg_values: vector(length=3, dtype=Float)
-    if arg_types is None
-    else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        vector(length=3, dtype=Float)
+        if arg_types is None
+        else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
+    ),
     group="Spatial Math",
     doc="Extract the top (first) part of a 6D screw vector.",
 )
 add_builtin(
     "spatial_bottom",
     input_types={"svec": vector(length=6, dtype=Float)},
-    value_func=lambda arg_types, arg_values: vector(length=3, dtype=Float)
-    if arg_types is None
-    else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        vector(length=3, dtype=Float)
+        if arg_types is None
+        else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
+    ),
     group="Spatial Math",
     doc="Extract the bottom (second) part of a 6D screw vector.",
 )
@@ -9849,6 +9842,17 @@ add_builtin(
     group="Utility",
 )
 
+# Bool vector assign_inplace (bool is not part of Scalar)
+add_builtin(
+    "assign_inplace",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
+    value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
@@ -9880,6 +9884,17 @@ def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Map
 add_builtin(
     "assign_copy",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# Bool vector assign_copy (bool is not part of Scalar)
+add_builtin(
+    "assign_copy",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
     value_func=vector_assign_copy_value_func,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,

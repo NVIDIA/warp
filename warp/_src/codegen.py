@@ -462,8 +462,10 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             # zero initialize
             setattr(inst._ctype, field, var_type._type_())
+            cls.__setattr__(inst, field, var_type())
         else:
-            if hasattr(value, "_type_"):
+            is_warp_scalar = hasattr(value, "_type_")
+            if is_warp_scalar:
                 # assigning warp type value (e.g.: wp.float32)
                 value = value.value
             # float16 needs conversion to uint16 bits
@@ -472,7 +474,10 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             else:
                 setattr(inst._ctype, field, value)
 
-        cls.__setattr__(inst, field, value)
+            # Re-wrap in the Warp scalar type so the Python attribute preserves
+            # the declared type (e.g. wp.uint8) instead of decaying to plain
+            # int/float, but only when the caller passed a Warp scalar.
+            cls.__setattr__(inst, field, var_type(value) if is_warp_scalar else value)
 
     def set_texture_value(inst, value):
         # Texture2D, Texture3D, etc.
@@ -3292,7 +3297,9 @@ class Adjoint:
 
                     array_indices = adj.eval_indices(target_type, array_indices)
                     
+                    reads_saved = dict(adj.reads)
                     vec_target = adj.emit_indexing(target, array_indices)
+                    adj.reads = reads_saved
                     vec_target_type = strip_reference(vec_target.type)
                     
                     vec_indices = adj.eval_indices(vec_target_type, vec_indices)
@@ -3531,8 +3538,6 @@ class Adjoint:
             new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
             adj.eval(new_node)
 
-        rhs = adj.eval(node.value)
-
         if isinstance(lhs, ast.Subscript):
             # wp.adjoint[var] appears in custom grad functions, and does not require
             # special consideration in the AugAssign case
@@ -3541,6 +3546,11 @@ class Adjoint:
                 return
 
             target, indices = adj.eval_subscript(lhs)
+            if is_reference(target.type):
+                make_new_assign_statement()
+                return
+
+            rhs = adj.eval(node.value)
 
             target_type = strip_reference(target.type)
             indices = adj.eval_indices(target_type, indices)
@@ -3608,14 +3618,6 @@ class Adjoint:
                 or type_is_matrix(target_type)
                 or type_is_transformation(target_type)
             ):
-                if is_reference(target.type):
-                    # References (pointers) like vector components in arrays cannot be passed
-                    # to `add_inplace` natively. However, generating an exact assignment
-                    # statement will correctly route through the comprehensive array vector
-                    # component logic inside `emit_Assign`.
-                    make_new_assign_statement()
-                    return
-
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
