@@ -1585,7 +1585,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // N-D tiles: incremental coordinate iteration
                 using Iter = tile_coord_iter_t<Shape>;
                 Iter iter;
-                iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), dest.data.strides, dest.offset.indices);
+                // only initialize for threads that will enter the loop
+                // (coord_from_linear asserts linear < Size)
+                if (WP_TILE_THREAD_IDX < Layout::Size)
+                    iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), dest.data.strides, dest.offset.indices);
 
                 WP_PRAGMA_UNROLL
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
@@ -1714,7 +1717,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // N-D tiles: incremental coordinate iteration
                 using Iter = tile_coord_iter_t<Shape>;
                 Iter iter;
-                iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), src.data.strides, src.offset.indices);
+                // only initialize for threads that will enter the loop
+                // (coord_from_linear asserts linear < Size)
+                if (WP_TILE_THREAD_IDX < Layout::Size)
+                    iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), src.data.strides, src.offset.indices);
 
                 WP_PRAGMA_UNROLL
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
