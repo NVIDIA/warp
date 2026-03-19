@@ -1,5 +1,17 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import unittest
 from typing import Any
@@ -50,7 +62,7 @@ def test_length_mismatch(test, device):
     test.assertNotEqual(wp.vec3f(0.0, 0.0, 0.0), wp.vec2f(0.0, 0.0))
     test.assertNotEqual(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
 
-    @wp.kernel(module="unique")
+    @wp.kernel
     def kernel():
         wp.expect_neq(wp.vec3f(0.0, 0.0, 0.0), wp.vec2f(0.0, 0.0))
         wp.expect_neq(wp.vec2f(0.0, 0.0), wp.vec3f(0.0, 0.0, 0.0))
@@ -981,7 +993,7 @@ def test_vec_array_assign(test, device):
 
         assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0]]], dtype=float))
         # TODO: gradient propagation for in-place array assignment
-        # assert_np_equal(x.grad.numpy(), np.array([[6.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[6.0]], dtype=float))
 
     run(vec_array_assign_subscript)
     run(vec_array_assign_attribute)
