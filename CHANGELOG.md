@@ -20,6 +20,7 @@
   factorization and solve, improving memory access patterns and eliminating shared memory
   bank conflicts at power-of-2 tile sizes
   ([GH-1318](https://github.com/NVIDIA/warp/issues/1318)).
+- Add `wp.get_suggested_block_size()` to query a suggested CUDA launch configuration for a kernel based on occupancy ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
 
 ### Removed
 

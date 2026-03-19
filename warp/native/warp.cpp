@@ -1077,6 +1077,12 @@ WP_API size_t wp_cuda_launch_kernel(
     return 0;
 }
 
+WP_API bool wp_cuda_get_suggested_block_size(
+    void* context, void* kernel, int shared_memory_bytes, int* block_size_out, int* min_grid_size_out
+)
+{
+    return false;
+}
 WP_API int wp_cuda_get_max_shared_memory(void* context) { return 0; }
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size) { return false; }
 
