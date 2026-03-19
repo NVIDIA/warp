@@ -42,6 +42,9 @@
 - Fix element assignment for boolean vectors failing with a missing function overload
   ([GH-1302](https://github.com/NVIDIA/warp/issues/1302)).
 - Fix `wp.sign()` vector overload returning incorrect type metadata for custom vector types.
+- Fix ``wp.tile_argmin()`` and ``wp.tile_argmax()`` crashing in debug mode when ``block_dim`` exceeds the tile
+  element count, and fix related debug-mode crashes in ``tile_reduce_axis`` and shared-memory tile load/store
+  for the same condition ([GH-1133](https://github.com/NVIDIA/warp/issues/1133)).
 
 ### Documentation
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
