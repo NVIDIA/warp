@@ -857,17 +857,47 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, flo
     return texture_sample_helper<T>::sample_3d(tex, u, v, w);
 }
 
-// Adjoints for texture sampling w.r.t. sampling coordinates.
-// Gradients w.r.t. texture data are not supported; adj_tex is a no-op.
-// On GPU, requires filter_mode and use_normalized_coords in the descriptor.
-// Boundary behavior matches PyTorch grid_sample with padding_mode="border":
-// gradient is zero when the sampling position straddles a volume boundary.
+// ============================================================================
+// Texture Sampling Adjoints
+// ============================================================================
+//
+// IMPORTANT: Differentiation is only correct when all texture address modes
+// are set to BORDER (WP_TEXTURE_ADDRESS_BORDER = 3).
+//
+// The gradient computation zeros out when sampling positions straddle texture
+// boundaries, which is correct for BORDER mode (returns 0 outside bounds) but
+// incorrect for WRAP/MIRROR/CLAMP modes where the forward pass returns valid
+// interpolated data across boundaries.
+//
+// Using differentiation with WRAP (mode 0), CLAMP (mode 1), or MIRROR (mode 2)
+// will silently produce incorrect gradients without error or warning.
+//
+// Future work: Implement proper gradient computation for all address modes.
+// ============================================================================
+
 template <typename T>
 CUDA_CALLABLE void
 adj_texture_sample(const texture1d_t& tex, float u, texture1d_t& adj_tex, float& adj_u, const T& adj_ret)
 {
     if (tex.filter_mode == WP_TEXTURE_FILTER_CLOSEST)
         return;
+
+#ifndef NDEBUG
+// Warning: This check is only active in debug builds
+// Differentiation is only correct for BORDER address mode
+#if !defined(__CUDA_ARCH__)
+    if (tex.tex != 0) {
+        const Texture* cpu_tex = (const Texture*)tex.tex;
+        if (cpu_tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER) {
+            printf(
+                "WARNING: texture_sample adjoint may produce incorrect gradients. "
+                "Address mode is %d but differentiation only supports BORDER mode (3).\n",
+                cpu_tex->address_mode_u
+            );
+        }
+    }
+#endif
+#endif
 
     float gtx_mult = tex.use_normalized_coords ? (float)tex.width : 1.0f;
 
@@ -926,6 +956,22 @@ CUDA_CALLABLE void adj_texture_sample(
 {
     if (tex.filter_mode == WP_TEXTURE_FILTER_CLOSEST)
         return;
+
+#ifndef NDEBUG
+#if !defined(__CUDA_ARCH__)
+    if (tex.tex != 0) {
+        const Texture* cpu_tex = (const Texture*)tex.tex;
+        if (cpu_tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER
+            || cpu_tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER) {
+            printf(
+                "WARNING: texture_sample adjoint may produce incorrect gradients. "
+                "Address modes are (%d, %d) but differentiation only supports BORDER mode (3).\n",
+                cpu_tex->address_mode_u, cpu_tex->address_mode_v
+            );
+        }
+    }
+#endif
+#endif
 
     float gtx_mult = tex.use_normalized_coords ? (float)tex.width : 1.0f;
     float gty_mult = tex.use_normalized_coords ? (float)tex.height : 1.0f;
@@ -1033,6 +1079,22 @@ CUDA_CALLABLE void adj_texture_sample(
 {
     if (tex.filter_mode == WP_TEXTURE_FILTER_CLOSEST)
         return;
+
+#ifndef NDEBUG
+#if !defined(__CUDA_ARCH__)
+    if (tex.tex != 0) {
+        const Texture* cpu_tex = (const Texture*)tex.tex;
+        if (cpu_tex->address_mode_u != WP_TEXTURE_ADDRESS_BORDER || cpu_tex->address_mode_v != WP_TEXTURE_ADDRESS_BORDER
+            || cpu_tex->address_mode_w != WP_TEXTURE_ADDRESS_BORDER) {
+            printf(
+                "WARNING: texture_sample adjoint may produce incorrect gradients. "
+                "Address modes are (%d, %d, %d) but differentiation only supports BORDER mode (3).\n",
+                cpu_tex->address_mode_u, cpu_tex->address_mode_v, cpu_tex->address_mode_w
+            );
+        }
+    }
+#endif
+#endif
 
     float gtx_mult = tex.use_normalized_coords ? (float)tex.width : 1.0f;
     float gty_mult = tex.use_normalized_coords ? (float)tex.height : 1.0f;

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ctypes
 import enum
+import warnings
 from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
@@ -176,6 +177,13 @@ class Texture:
     ``wp.float16``, and ``wp.float32`` data types. Unsigned integer textures are read as normalized
     floats in [0, 1]; signed integer textures are normalized to [-1, 1]; float types are returned as-is.
 
+    .. warning::
+        **Automatic differentiation is only correct when all texture address modes are set to BORDER.**
+        Using ``wp.texture_sample()`` with ``requires_grad=True`` on textures with WRAP, CLAMP, or
+        MIRROR address modes will produce silent gradient errors. The gradient computation zeros out
+        when sampling positions straddle texture boundaries, which is correct for BORDER mode but
+        incorrect for other modes where the forward pass returns valid interpolated data.
+
     This class should not be instantiated directly. A specific subclass should be used instead
     (:class:`Texture1D`, :class:`Texture2D`, or :class:`Texture3D`).
 
@@ -274,6 +282,25 @@ class Texture:
         address_mode_w = (
             self._resolve_address_mode(address_mode, address_mode_w, 2) if ndim > 2 else TextureAddressMode.CLAMP
         )
+
+        # Warn if using non-BORDER address modes (differentiation only supports BORDER)
+        non_border_modes = []
+        if address_mode_u != TextureAddressMode.BORDER:
+            non_border_modes.append(f"U={TextureAddressMode(address_mode_u).name}")
+        if ndim > 1 and address_mode_v != TextureAddressMode.BORDER:
+            non_border_modes.append(f"V={TextureAddressMode(address_mode_v).name}")
+        if ndim > 2 and address_mode_w != TextureAddressMode.BORDER:
+            non_border_modes.append(f"W={TextureAddressMode(address_mode_w).name}")
+
+        if non_border_modes:
+            warnings.warn(
+                f"Texture created with non-BORDER address mode(s): {', '.join(non_border_modes)}. "
+                f"Automatic differentiation (wp.texture_sample with requires_grad=True) only produces "
+                f"correct gradients when all address modes are BORDER. Non-BORDER modes will silently "
+                f"return incorrect gradients at texture boundaries.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         # if an external CUDA array was given, infer texture shape and dtype from it
         if cuda_array:
