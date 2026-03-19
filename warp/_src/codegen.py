@@ -3292,19 +3292,19 @@ class Adjoint:
             if is_array(target_type):
                 if len(indices) > target_type.ndim:
                     # Array vector/matrix component assignment
-                    array_indices = indices[:target_type.ndim]
-                    vec_indices = indices[target_type.ndim:]
+                    array_indices = indices[: target_type.ndim]
+                    vec_indices = indices[target_type.ndim :]
 
                     array_indices = adj.eval_indices(target_type, array_indices)
-                    
+
                     vec_target = adj.emit_indexing(target, array_indices)
                     vec_target_type = strip_reference(vec_target.type)
-                    
+
                     vec_indices = adj.eval_indices(vec_target_type, vec_indices)
-                    
+
                     new_vec = adj.add_builtin_call("assign_copy", [vec_target, *vec_indices, rhs])
                     adj.add_builtin_call("array_store", [target, *array_indices, new_vec])
-                    
+
                     if warp.config.verify_autograd_array_access:
                         kernel_name = adj.fun_name
                         filename = adj.filename
@@ -3549,20 +3549,20 @@ class Adjoint:
             if is_reference(target.type):
                 if is_array(target_type) and len(indices) > target_type.ndim:
                     rhs = adj.eval(node.value)
-                    
-                    old_val = adj.emit_indexing(target, indices)
-                    op_name = builtin_operators[type(node.op)]
-                    new_val = adj.add_builtin_call(op_name, [old_val, rhs])
-                    
-                    array_indices = indices[:target_type.ndim]
-                    vec_indices = indices[target_type.ndim:]
-                    
+
+                    array_indices = indices[: target_type.ndim]
+                    vec_indices = indices[target_type.ndim :]
+
                     array_indices = adj.eval_indices(target_type, array_indices)
                     vec_target = adj.emit_indexing(target, array_indices)
                     vec_target_type = strip_reference(vec_target.type)
-                    
+
                     vec_indices = adj.eval_indices(vec_target_type, vec_indices)
-                    
+                    old_val = adj.emit_indexing(vec_target, vec_indices)
+
+                    op_name = builtin_operators[type(node.op)]
+                    new_val = adj.add_builtin_call(op_name, [old_val, rhs])
+
                     new_vec = adj.add_builtin_call("assign_copy", [vec_target, *vec_indices, new_val])
                     adj.add_builtin_call("array_store", [target, *array_indices, new_vec])
                     return
@@ -3571,7 +3571,7 @@ class Adjoint:
                     return
 
             rhs = adj.eval(node.value)
-            
+
             indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
