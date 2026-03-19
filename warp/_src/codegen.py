@@ -2172,13 +2172,14 @@ class Adjoint:
                 if isinstance(obj.func, ast.Attribute):
                     if obj.func.attr == "func_native":
                         is_func_native = True
-        if is_func_native and node.returns is not None:
-            if isinstance(node.returns, ast.Name):  # python built-in type
-                var = Var(label="return_type", type=eval(node.returns.id))
-            elif isinstance(node.returns, ast.Attribute):  # warp type
-                var = Var(label="return_type", type=eval(node.returns.attr))
-            else:
-                raise WarpCodegenTypeError("Native function return type not recognized")
+        if is_func_native and "return" in adj.arg_types:
+            ret_type = adj.arg_types["return"]
+            if not (type_is_value(ret_type) or is_array(ret_type)):
+                raise WarpCodegenError(
+                    f"Native function '{adj.fun_name}' has unsupported return type `{ret_type}`. "
+                    f"Expected a Warp scalar, vector, matrix, quaternion, array, or fixedarray type."
+                )
+            var = Var(label="return_type", type=ret_type)
             adj.return_var = (var,)
 
     def emit_If(adj, node):
