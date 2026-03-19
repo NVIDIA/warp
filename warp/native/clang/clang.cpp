@@ -148,24 +148,49 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         args.push_back("-triple");
         args.push_back(target_triple);
 
-        detect_host_cpu();
-
-        // Only set -target-cpu if the host CPU is recognized (not "generic").
-        // LLVM may return "generic" for CPUs newer than its built-in database.
-        if (host_cpu_name != "generic") {
-            args.push_back("-target-cpu");
-            args.push_back(host_cpu_name.c_str());
+        // Parse extra_flags to determine CPU target mode and collect pass-through flags.
+        // Our "driver" interprets -march=native as host CPU detection. Any string without
+        // -march=native disables detection (generic target). Remaining flags pass through.
+        bool use_native = false;
+        std::string extra_flags_parsed;
+        std::vector<const char*> passthrough_flags;
+        if (extra_flags) {
+            extra_flags_parsed = extra_flags;
+            char* token = strtok(&extra_flags_parsed[0], " \t");
+            while (token) {
+                if (strcmp(token, "-march=native") == 0) {
+                    use_native = true;
+                } else {
+                    passthrough_flags.push_back(token);
+                }
+                token = strtok(nullptr, " \t");
+            }
         }
 
-        // Add all detected host CPU features
-        llvm::StringMap<bool> feature_map;
-        llvm::sys::getHostCPUFeatures(feature_map);
-        for (const auto& f : feature_map) {
-            feature_strings.push_back((f.second ? "+" : "-") + f.first().str());
+        if (use_native) {
+            detect_host_cpu();
+
+            // Only set -target-cpu if the host CPU is recognized (not "generic").
+            // LLVM may return "generic" for CPUs newer than its built-in database.
+            if (host_cpu_name != "generic") {
+                args.push_back("-target-cpu");
+                args.push_back(host_cpu_name.c_str());
+            }
+
+            // Add all detected host CPU features
+            llvm::StringMap<bool> feature_map;
+            llvm::sys::getHostCPUFeatures(feature_map);
+            for (const auto& f : feature_map) {
+                feature_strings.push_back((f.second ? "+" : "-") + f.first().str());
+            }
+            for (const auto& feat : feature_strings) {
+                args.push_back("-target-feature");
+                args.push_back(feat.c_str());
+            }
         }
-        for (const auto& feat : feature_strings) {
-            args.push_back("-target-feature");
-            args.push_back(feat.c_str());
+
+        for (const char* flag : passthrough_flags) {
+            args.push_back(flag);
         }
 
 #if defined(__aarch64__)
@@ -177,17 +202,6 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
             args.push_back("+reserve-x28");
         }
 #endif
-    }
-
-    // Append extra compiler flags (split on whitespace)
-    std::string extra_flags_parsed;
-    if (extra_flags) {
-        extra_flags_parsed = extra_flags;
-        char* token = strtok(&extra_flags_parsed[0], " \t");
-        while (token) {
-            args.push_back(token);
-            token = strtok(nullptr, " \t");
-        }
     }
 
 #if LLVM_VERSION_MAJOR >= 21
@@ -298,9 +312,16 @@ WP_API int wp_compile_cpp(
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
 #endif
 
-    detect_host_cpu();
-    const char* CPU = host_cpu_name.c_str();
-    const char* features = host_cpu_features.c_str();
+    // Match the frontend's -march=native logic.
+    bool use_native = extra_flags && strstr(extra_flags, "-march=native");
+
+    const char* CPU = "generic";
+    const char* features = "";
+    if (use_native) {
+        detect_host_cpu();
+        CPU = host_cpu_name.c_str();
+        features = host_cpu_features.c_str();
+    }
     llvm::TargetOptions target_options;
     if (fuse_fp)
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Standard;

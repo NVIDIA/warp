@@ -196,11 +196,20 @@ This setting can be overridden at the module level by setting the
 """
 
 cpu_compiler_flags: _Optional[str] = None
-"""Extra flags to pass to the Clang frontend when compiling CPU kernels.
+"""Flags controlling CPU kernel compilation.
 
-The string is split on whitespace and appended to the compiler arguments after
-all other flags. This is intended for experimentation and debugging (e.g.
-``"-fno-vectorize -fno-slp-vectorize"``), not for production use.
+Warp acts as a compiler driver for the embedded Clang frontend. The flag
+``-march=native`` is intercepted and triggers host CPU feature detection
+(equivalent to ``llvm::sys::getHostCPUName()`` + ``getHostCPUFeatures()``).
+All other flags are passed through to the Clang frontend as-is.
+
+The value controls both CPU target detection and extra compiler flags:
+
+- ``None`` (default): detect host CPU features (equivalent to ``"-march=native"``).
+- ``""``: disable host CPU detection; compile for a generic target.
+- ``"-march=native"``: explicitly detect host CPU features.
+- ``"-march=native -fno-vectorize"``: detect host CPU + pass ``-fno-vectorize``.
+- ``"-fno-vectorize"``: generic target + pass ``-fno-vectorize``.
 
 Changing this setting invalidates the kernel cache.
 """
