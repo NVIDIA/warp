@@ -358,8 +358,8 @@ jobs:
 
           echo "SUCCESS: All symbols are correctly namespaced."
 
-  # Validate that the type stub file (warp/__init__.pyi) passes pyright's type checking.
-  pyright-stubs:
+  # Validate that the type stub file (warp/__init__.pyi) passes static type checking.
+  type-check-stubs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -372,3 +372,5 @@ jobs:
         run: uv python install
       - name: Run pyright on stub file
         run: uvx pyright warp/__init__.pyi
+      - name: Run mypy on stub file
+        run: uvx mypy warp/__init__.pyi --follow-imports=silent

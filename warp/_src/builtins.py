@@ -7181,7 +7181,7 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
         input_types={"query": query_type, "index": int},
         value_type=builtins.bool,
         group="Geometry",
-        doc=f"""Move to the next point in the hash grid query{doc_suffix}.
+        doc="""Move to the next point in the hash grid query.
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
         export=False,
@@ -8498,11 +8498,11 @@ for t in int_types:
         value_func=select_value_func,
         doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-        .. versionremoved:: 1.10
-                Use :func:`where` instead, which has the more intuitive argument order:
-                ``where(cond, value_if_true, value_if_false)``.
+    .. versionremoved:: 1.10
+            Use :func:`where` instead, which has the more intuitive argument order:
+            ``where(cond, value_if_true, value_if_false)``.
 
-        .. deprecated:: 1.7""",
+    .. deprecated:: 1.7""",
         group="Utility",
     )
 add_builtin(
@@ -11336,7 +11336,10 @@ add_builtin(
     "unot",
     input_types={"a": builtins.bool},
     value_type=builtins.bool,
-    doc="""Compute logical NOT of ``a``.""",
+    doc="""Compute logical NOT of ``a``.
+
+    Returns:
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
     group="Operators",
     is_differentiable=False,
 )
@@ -11347,8 +11350,8 @@ for t in int_types:
         value_type=builtins.bool,
         doc="""Compute logical NOT of ``a``.
 
-        Returns:
-            ``True`` if the integer is 0, ``False`` otherwise.""",
+    Returns:
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
         group="Operators",
         is_differentiable=False,
     )
@@ -11361,7 +11364,7 @@ add_builtin(
     doc="""Compute logical NOT of ``a``.
 
     Returns:
-        ``True`` if the array is empty or null, ``False`` otherwise.""",
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
     group="Operators",
     is_differentiable=False,
 )
@@ -13087,7 +13090,11 @@ add_builtin(
     "len",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a vector.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13097,7 +13104,11 @@ add_builtin(
     "len",
     input_types={"a": quaternion(dtype=Float)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a quaternion.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13107,7 +13118,11 @@ add_builtin(
     "len",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=static_len_value_func,
-    doc="Query the number of rows in a matrix.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13117,7 +13132,11 @@ add_builtin(
     "len",
     input_types={"a": transformation(dtype=Float)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a transformation.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13127,7 +13146,11 @@ add_builtin(
     "len",
     input_types={"a": array(dtype=Any)},
     value_type=int,
-    doc="Query the size of the first dimension in an array.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13137,7 +13160,11 @@ add_builtin(
     "len",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=static_len_value_func,
-    doc="Query the number of rows in a tile.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13268,7 +13295,11 @@ add_builtin(
     "len",
     input_types={"a": tuple},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a tuple.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,

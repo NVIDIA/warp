@@ -155,7 +155,7 @@ pre-commit checks:
   script:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
-pyright stubs:
+type-check stubs:
   stage: quality
   image: $UV_TRIXIE_IMAGE
   needs: []
@@ -167,6 +167,7 @@ pyright stubs:
     - .ipp_lnx_x86_64_cpu_micro
   script:
     - uvx pyright warp/__init__.pyi
+    - uvx mypy warp/__init__.pyi --follow-imports=silent
 
 # This job tests code snippets in the documentation
 doctest:
