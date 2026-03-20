@@ -1895,7 +1895,7 @@ def sign(x: Scalar) -> Scalar:
     ...
 
 @over
-def sign(x: Vector[Scalar, Any]) -> Scalar:
+def sign(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
     """Compute the sign of ``x``.
 
     Returns:
