@@ -11,6 +11,10 @@
 - **Experimental**: Add cuBQL BVH backend for `wp.Mesh`, selectable via `bvh_constructor="cubql"`.
   Currently only supports `wp.mesh_query_ray()`. Point queries, AABB queries, grouped queries,
   and winding number queries are not yet supported ([GH-1286](https://github.com/NVIDIA/warp/issues/1286)).
+- Detect host CPU features at runtime for CPU kernel compilation, replacing the
+  hardcoded `"generic"` target. Use `warp.config.cpu_compiler_flags` to control
+  CPU targeting (e.g. `"-march=native"` for host detection, `""` for generic)
+  ([GH-1308](https://github.com/NVIDIA/warp/issues/1308)).
 
 ### Removed
 
