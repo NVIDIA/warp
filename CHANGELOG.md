@@ -6,6 +6,8 @@
 
 ### Removed
 
+- Remove the Kit extensions from this repository ([GH-1296](https://github.com/NVIDIA/warp/issues/1296)).
+
 ### Deprecated
 
 ### Changed
