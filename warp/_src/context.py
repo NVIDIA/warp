@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import collections
 import ctypes
 import enum
 import functools
@@ -9368,11 +9369,12 @@ def export_stubs(file):  # pragma: no cover
     print("import builtins as _builtins", file=file)
     print(file=file)
 
-    # Import type aliases needed for generic class definitions
+    # Import Int/Scalar/Float TypeVars from types.py. Their constraints are defined
+    # so that Int ⊂ Scalar and Float ⊂ Scalar, which lets mypy accept Vector[Int, Any]
+    # and Vector[Float, Any] when Vector is Generic[Scalar, Length].
     print("from warp._src.types import Int as Int", file=file)
-    print("from warp._src.types import Float as Float", file=file)
     print("from warp._src.types import Scalar as Scalar", file=file)
-    print(file=file)
+    print("from warp._src.types import Float as Float", file=file)
 
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
@@ -9446,11 +9448,17 @@ def export_stubs(file):  # pragma: no cover
                 pass  # Keep f.value_type as fallback
         return type_str(return_type)
 
-    def add_builtin_function_stub(f, use_overload=True):
+    def add_builtin_function_stub(f, use_overload=True, type_overrides=None):
         if f.hidden:  # or f.generic:
             return
 
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+        if type_overrides:
+            args = ", ".join(
+                f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(v)}"
+                for k, v in f.input_types.items()
+            )
+        else:
+            args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
         rt_str = get_return_type_str(f)
         return_str = f" -> {rt_str}"
 
@@ -9691,6 +9699,65 @@ def export_stubs(file):  # pragma: no cover
     # =========================================================================
     # Step 5: Generate stubs for non-conflicting builtins
     # =========================================================================
+
+    def _merge_overloads_by_union(overloads):
+        """Merge overloads that differ in only one parameter into a Union type.
+
+        When 3+ overloads share parameter names, return type, and all parameter
+        types except at one position, they are collapsed into a single overload
+        with a ``Union`` at that position.  This prevents mypy
+        ``overload-cannot-match`` errors when ``--follow-imports=silent`` causes
+        imported types to degenerate to ``Any``.
+
+        Returns ``[(function, type_overrides_or_None), ...]``.
+        """
+        if len(overloads) < 3:
+            return [(f, None) for f in overloads]
+
+        # Group overloads by (param_names, return_type)
+        groups = collections.defaultdict(list)
+        for f in overloads:
+            key = (tuple(f.input_types.keys()), get_return_type_str(f))
+            groups[key].append(f)
+
+        merged = set()  # ids of overloads consumed by a merge
+        result = []
+
+        for f in overloads:
+            if id(f) in merged:
+                continue
+
+            key = (tuple(f.input_types.keys()), get_return_type_str(f))
+            group = groups[key]
+
+            if len(group) >= 3:
+                # Find parameter positions where types differ
+                varying = [p for p in f.input_types if len({type_str(g.input_types[p]) for g in group}) > 1]
+                if len(varying) == 1:
+                    vp = varying[0]
+                    union = " | ".join(dict.fromkeys(type_str(g.input_types[vp]) for g in group))
+                    result.append((f, {vp: union}))
+                    merged.update(id(g) for g in group)
+                    continue
+
+            result.append((f, None))
+
+        return result
+
+    # Types considered "generic" for overload sorting — specific types (Vector,
+    # Matrix, etc.) must come before these so mypy doesn't flag them as
+    # unreachable.
+    _generic_types = {
+        warp._src.types.Scalar,
+        warp._src.types.Float,
+        warp._src.types.Int,
+        Any,
+        bool,
+        int,
+        float,
+        str,
+    }
+
     for g in builtin_functions.values():
         # Skip conflicts - already handled above
         if g.key in reexport_only:
@@ -9719,8 +9786,17 @@ def export_stubs(file):  # pragma: no cover
 
             # Otherwise emit separate @overload stubs as usual
             use_overload = len(non_hidden_overloads) > 1
-            for f in non_hidden_overloads:
-                add_builtin_function_stub(f, use_overload=use_overload)
+
+            # Sort specific overloads before generic ones for mypy
+            if use_overload:
+                non_hidden_overloads.sort(key=lambda f: sum(v in _generic_types for v in f.input_types.values()))
+
+            # Merge overloads that differ in only one parameter position
+            stubs = _merge_overloads_by_union(non_hidden_overloads)
+            use_overload = len(stubs) > 1
+
+            for f, type_overrides in stubs:
+                add_builtin_function_stub(f, use_overload=use_overload, type_overrides=type_overrides)
         elif isinstance(g, Function):
             # Single function without overloads - no @overload decorator needed
             add_builtin_function_stub(g, use_overload=False)
