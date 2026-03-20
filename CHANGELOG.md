@@ -14,6 +14,8 @@
 
 ### Removed
 
+- Remove the Kit extensions from this repository ([GH-1296](https://github.com/NVIDIA/warp/issues/1296)).
+
 ### Deprecated
 
 - Deprecate `Texture.copy_from_array()`, use `Texture.copy_from()` instead.
