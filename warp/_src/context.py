@@ -1871,11 +1871,6 @@ def get_module(name: str) -> Module:
         return user_modules[name]
 
 
-# ModuleHasher computes the module hash based on all the kernels, module options,
-# and build configuration.  For each kernel, it computes a deep hash by recursively
-_DEFAULT_CPU_COMPILER_FLAGS = "-march=native"
-
-
 def _resolve_cpu_compiler_flags(module_flags, config_flags):
     """Return the effective CPU compiler flags string (never None).
 
@@ -1883,9 +1878,11 @@ def _resolve_cpu_compiler_flags(module_flags, config_flags):
     at the config level to ``"-march=native"`` (the default).
     """
     flags = module_flags if module_flags is not None else config_flags
-    return flags if flags is not None else _DEFAULT_CPU_COMPILER_FLAGS
+    return flags if flags is not None else "-march=native"
 
 
+# ModuleHasher computes the module hash based on all the kernels, module options,
+# and build configuration.  For each kernel, it computes a deep hash by recursively
 # hashing all referenced functions, structs, and constants, even those defined in
 # other modules.  The module hash is computed in the constructor and can be retrieved
 # using get_module_hash().  In addition, the ModuleHasher takes care of filtering out

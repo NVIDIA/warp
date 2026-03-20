@@ -169,6 +169,13 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
             }
         }
 
+#if defined(__x86_64__) || defined(_M_X64)
+        // F16C is required for _Float16 conversions in builtin.h. Duplicate
+        // flags are harmless (last-wins semantics), so add unconditionally.
+        args.push_back("-target-feature");
+        args.push_back("+f16c");
+#endif
+
 #if defined(__aarch64__)
         if (tiles_in_stack_memory) {
             // Static memory support is broken on AArch64 CPUs. As a workaround we reserve some stack memory on kernel
