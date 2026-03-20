@@ -45,11 +45,6 @@
 /asv.conf.json
 /asv/
 
-^[Kit Extensions] @ccrouzet
-/exts/
-/repo.toml
-/deps/
-
 ^[Code Generation] @ncapens
 /warp/_src/codegen.py
 

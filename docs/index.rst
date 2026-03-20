@@ -257,13 +257,10 @@ warp/examples/tile
 Omniverse
 ---------
 
-Omniverse extensions for Warp are available in the extension registry inside
-Omniverse Kit or USD Composer.
-The ``omni.warp.core`` extension installs Warp into the Omniverse Application's
-Python environment, which allows users to import the module in their scripts and nodes. 
-The ``omni.warp`` extension provides a collection of OmniGraph nodes and sample
-scenes demonstrating uses of Warp in OmniGraph.
-Enabling the ``omni.warp`` extension automatically enables the ``omni.warp.core`` extension.
+Omniverse extensions for Warp are available in the extension registry inside Omniverse Kit.
+
+The ``omni.warp.core`` extension installs Warp into Omniverse Kit's Python environment,
+which allows users to import the module in their scripts and nodes.
 
 Please see the
 `Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`_

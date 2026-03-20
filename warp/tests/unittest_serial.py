@@ -20,7 +20,6 @@ def run_suite() -> bool:
     # Can swap out different suites
     suite = warp.tests.unittest_suites.default_suite()
     # suite = warp.tests.unittest_suites.auto_discover_suite()
-    # suite = warp.tests.unittest_suites.kit_suite()
 
     print(f"Test suite has {suite.countTestCases()} tests")
 
