@@ -27,6 +27,9 @@
 
 ### Changed
 
+- Centralize module option resolution so the hasher and compiler always see identical values, fixing unnecessary
+  recompilations when toggling config options between ``None`` and their explicit defaults
+  ([GH-1307](https://github.com/NVIDIA/warp/issues/1307)).
 - Allow `wp.Volume.load_from_numpy()` and `wp.Volume.allocate()` to accept a 3-element sequence for
   `voxel_size`, enabling volumes with anisotropic voxel spacing
   ([GH-1193](https://github.com/NVIDIA/warp/issues/1193)).
