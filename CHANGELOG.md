@@ -19,6 +19,9 @@
 ### Removed
 
 - Remove the Kit extensions from this repository ([GH-1296](https://github.com/NVIDIA/warp/issues/1296)).
+- Remove integer type support from `wp.isfinite()`, `wp.isnan()`, and `wp.isinf()`. Only float types are
+  now accepted. Previously a deprecation warning was issued
+  ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
 
 ### Deprecated
 
