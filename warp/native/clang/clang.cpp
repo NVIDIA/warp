@@ -590,18 +590,6 @@ WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
     return func->getValue();
 }
 
-WP_API const char* wp_get_host_cpu_name()
-{
-    initialize_llvm();
-    return get_host_cpu_info().name.c_str();
-}
-
-WP_API const char* wp_get_host_cpu_features()
-{
-    initialize_llvm();
-    return get_host_cpu_info().features.c_str();
-}
-
 WP_API const char* wp_warp_clang_version() { return WP_VERSION_STRING; }
 
 WP_API const char* wp_llvm_version()
