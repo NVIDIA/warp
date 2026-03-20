@@ -684,7 +684,7 @@ add_builtin(
     "sign",
     input_types={"x": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametypes_create_value_func(Scalar),
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="""Compute the sign of ``x``.
 
     Returns:
