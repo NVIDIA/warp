@@ -86,6 +86,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     Intended to be modified to create additional test suites
     """
     from warp.tests.cuda.test_async import TestAsync
+    from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_multigpu import TestMultiGPU
@@ -221,6 +222,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestBool,
         TestBuiltinsResolution,
         TestBvh,
+        TestClangCUDA,
         TestClosestPointEdgeEdgeMethods,
         TestCodeGen,
         TestCodeGenInstancing,

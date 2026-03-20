@@ -63,8 +63,9 @@
 __device__ inline void __debugbreak() { __brkpt(); }
 #endif
 
-#if defined(__clang__) && defined(__CUDA__)
-// clang compiling CUDA code, host and device (NOTE: Used when building core library with Clang)
+#if defined(__clang__) && defined(__CUDA__) && !defined(WP_NO_CRT)
+// clang compiling CUDA code, host and device (NOTE: Used when building core library with Clang).
+// Excluded for JIT-compiled kernels (WP_NO_CRT) where cuda_crt.h provides __half.
 #include <cuda_fp16.h>
 #endif
 
@@ -1871,7 +1872,13 @@ template <typename T> CUDA_CALLABLE inline void adj_atomic_xor(T* buf, T* adj_bu
 // bool and printf are defined outside of the wp namespace in crt.h, hence
 // their adjoint counterparts are also defined in the global namespace.
 template <typename T> CUDA_CALLABLE inline void adj_bool(T, T&, bool) { }
+// Variadic functions are not supported in CUDA device code when compiled with Clang.
+// Since adj_printf is a no-op, we use a template overload to accept and ignore any arguments.
+#if defined(__clang__) && defined(__CUDA__)
+template <typename... Args> inline CUDA_CALLABLE void adj_printf(const char* fmt, Args...) { }
+#else
 inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) { }
+#endif
 
 // clang-format off
 // These includes must remain in this order due to dependencies
