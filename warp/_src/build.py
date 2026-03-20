@@ -119,7 +119,8 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         # Default to True on aarch64 (Linux ARM), False otherwise
         enable_tiles_in_stack = platform.machine() == "aarch64"
 
-    extra_flags_bytes = extra_flags.encode("utf-8")
+    flags_list = extra_flags.split()
+    flags_array = (ctypes.c_char_p * (len(flags_list) + 1))(*[f.encode("utf-8") for f in flags_list], None)
 
     err = warp._src.context.runtime.llvm.wp_compile_cpp(
         src,
@@ -130,7 +131,7 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         verify_fp,
         fuse_fp,
         enable_tiles_in_stack,
-        extra_flags_bytes,
+        flags_array,
     )
     if err != 0:
         raise Exception(f"CPU kernel build failed with error code {err}")
