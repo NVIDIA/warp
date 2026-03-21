@@ -432,7 +432,7 @@ class Hexmesh(Geometry):
 
     @wp.func
     def side_from_cell_coords(args: SideArg, side_index: ElementIndex, hex_index: ElementIndex, hex_coords: Coords):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         if Hexmesh.side_inner_cell_index(args, side_index) == hex_index:
             local_face_index = args.face_hex_face_orientation[side_index][0]
             face_orientation = args.face_hex_face_orientation[side_index][1]

@@ -534,7 +534,7 @@ class Grid3D(Geometry):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         side = Grid3D.get_side(args, side_index)
         cell = Grid3D.get_cell(args.cell_arg.res, element_index)
 

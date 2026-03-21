@@ -3793,7 +3793,7 @@ class Device:
                 If ``None``, falls back to global config or automatic determination.
 
         Returns:
-            The output format to use: ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
+            ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
         """
 
         if self.is_cpu:
@@ -8339,7 +8339,7 @@ condition_host = None
 
 
 def capture_if(
-    condition: warp.array(dtype=int),
+    condition: warp.array[int],
     on_true: Callable | Graph | None = None,
     on_false: Callable | Graph | None = None,
     stream: Stream = None,
@@ -8486,9 +8486,7 @@ def capture_if(
     capture_resume(main_graph, stream=stream)
 
 
-def capture_while(
-    condition: warp.array(dtype=int), while_body: Callable | Graph, stream: Stream | None = None, **kwargs
-):
+def capture_while(condition: warp.array[int], while_body: Callable | Graph, stream: Stream | None = None, **kwargs):
     """Create a dynamic loop based on a condition.
 
     The condition value is retrieved from the first element of the ``condition`` array.

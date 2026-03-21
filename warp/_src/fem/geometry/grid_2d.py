@@ -478,7 +478,7 @@ class Grid2D(Geometry):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         side = Grid2D.get_side(args, side_index)
         cell = Grid2D.get_cell(args.cell_arg.res, element_index)
 

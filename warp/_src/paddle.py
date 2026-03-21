@@ -208,7 +208,7 @@ dtype_is_compatible.compatible_sets = None
 # wrap a paddle tensor to a wp array, data is not copied
 def from_paddle(
     t: paddle.Tensor,
-    dtype: paddle.dtype | None = None,
+    dtype: type | None = None,
     requires_grad: bool | None = None,
     grad: paddle.Tensor | None = None,
     return_ctype: bool = False,
@@ -217,10 +217,10 @@ def from_paddle(
 
     Args:
         t (paddle.Tensor): The paddle tensor to wrap.
-        dtype (warp.dtype, optional): The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
-        requires_grad (bool, optional): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
-        grad (paddle.Tensor, optional): The grad attached to given tensor. Defaults to None.
-        return_ctype (bool, optional): Whether to return a low-level array descriptor instead of a ``wp.array`` object (faster).  The descriptor can be passed to Warp kernels.
+        dtype: The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.
+        requires_grad (bool): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
+        grad (paddle.Tensor): The grad attached to given tensor. Defaults to None.
+        return_ctype (bool): Whether to return a low-level array descriptor instead of a ``warp.array`` object (faster).  The descriptor can be passed to Warp kernels.
 
     Returns:
         warp.array: The wrapped array or array descriptor.

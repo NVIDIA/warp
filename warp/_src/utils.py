@@ -191,8 +191,8 @@ def segmented_sort_pairs(
     keys,
     values,
     count: int,
-    segment_start_indices: wp.array(dtype=wp.int32),
-    segment_end_indices: wp.array(dtype=wp.int32) = None,
+    segment_start_indices: wp.array[wp.int32],
+    segment_end_indices: wp.array[wp.int32] = None,
 ):
     """Sort key-value pairs within segments.
 

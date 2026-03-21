@@ -322,7 +322,7 @@ add_builtin(
 
     This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like
     :func:`~warp._src.lang.rint`.
-    Differs from :func:`numpy.round`, which behaves the same way as :func:`numpy.rint`.""",
+    Differs from :func:`numpy.round`, which behaves the same way as :obj:`numpy.rint`.""",
     is_differentiable=False,
 )
 
@@ -334,7 +334,7 @@ add_builtin(
     doc="""Compute the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
     It is generally faster than :func:`~warp._src.lang.round`.
-    Equivalent to :func:`numpy.rint`.""",
+    Equivalent to :obj:`numpy.rint`.""",
     is_differentiable=False,
 )
 
@@ -347,7 +347,7 @@ add_builtin(
 
     In other words, it discards the fractional part of ``x``.
     It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
-    Equivalent to :func:`numpy.trunc` and :func:`numpy.fix`.""",
+    Equivalent to :obj:`numpy.trunc` and :func:`numpy.fix`.""",
     is_differentiable=False,
 )
 
@@ -5106,7 +5106,7 @@ add_builtin(
     doc="""Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
     Args:
-        keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`, :class:`int64`, :class:`uint64`. Must be in shared memory.
+        keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
         values: Values to sort along with keys. No type restrictions. Must be in shared memory.
 
     Returns:
@@ -7616,7 +7616,7 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3},
     value_type=int,
     group="Volumes",
-    doc="""Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``.""",
+    doc="""Sample the :class:`warp.int32` volume given by ``id`` at the volume local-space point ``uvw``.""",
 )
 
 add_builtin(
@@ -7624,7 +7624,7 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int},
     value_type=int,
     group="Volumes",
-    doc="""Query the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
+    doc="""Query the :class:`warp.int32` value of voxel with coordinates ``i``, ``j``, ``k``.
 
     If the voxel at this index does not exist, this function returns the background value.""",
     is_differentiable=False,

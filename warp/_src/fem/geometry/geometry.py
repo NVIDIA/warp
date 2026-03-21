@@ -225,7 +225,7 @@ class Geometry:
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        """Device function converting coordinates on a cell to coordinates on a side, or :data:`OUTSIDE`"""
+        """Device function converting coordinates on a cell to coordinates on a side, or :data:`warp.fem.OUTSIDE`"""
         raise NotImplementedError
 
     @staticmethod

@@ -170,9 +170,9 @@ class FunctionSpace:
         """Assemble the world-space value of the function space.
 
         Args:
-         - dof_value: node value in the degrees-of-freedom basis
-         - node_weight: weight associated to the node, as given per the basis space
-         - local_value_map: data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``
+            dof_value: Node value in the degrees-of-freedom basis.
+            node_weight: Weight associated to the node, as given per the basis space.
+            local_value_map: Data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``.
         """
         raise NotImplementedError
 
@@ -185,9 +185,9 @@ class FunctionSpace:
         """Assemble the world-space gradient of the function space.
 
         Args:
-         - dof_value: node value in the degrees-of-freedom basis
-         - node_weight_gradient: gradient of the weight associated to the node, either w.r.t element or world space
-         - local_value_map: data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``
+            dof_value: Node value in the degrees-of-freedom basis.
+            node_weight_gradient: Gradient of the weight associated to the node, either w.r.t element or world space.
+            local_value_map: Data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``.
         """
         raise NotImplementedError
 
@@ -200,9 +200,9 @@ class FunctionSpace:
         """Assemble the world-space divergence of the function space.
 
         Args:
-         - dof_value: node value in the degrees-of-freedom basis
-         - node_weight_gradient: gradient of the weight associated to the node, either w.r.t element or world space
-         - local_value_map: data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``
+            dof_value: Node value in the degrees-of-freedom basis.
+            node_weight_gradient: Gradient of the weight associated to the node, either w.r.t element or world space.
+            local_value_map: Data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``.
         """
         raise NotImplementedError
 
@@ -215,8 +215,8 @@ class FunctionSpace:
         """Compute the projection of a world-space value onto the basis of a single degree of freedom.
 
         Args:
-            - space_value: world-space value
-            - node_weight: weight associated to the node, as given per the basis space
-            - local_value_map: data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``
+            space_value: World-space value.
+            node_weight: Weight associated to the node, as given per the basis space.
+            local_value_map: Data encoding local transformation from node space to world space, as given per ``local_map_value_(inn|out)er``.
         """
         raise NotImplementedError

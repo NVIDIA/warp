@@ -189,7 +189,7 @@ dtype_is_compatible.compatible_sets = None
 # wrap a torch tensor to a wp array, data is not copied
 def from_torch(
     t: torch.Tensor,
-    dtype: warp.DType | None = None,
+    dtype: type | None = None,
     requires_grad: bool | None = None,
     grad=None,
     return_ctype: bool = False,
