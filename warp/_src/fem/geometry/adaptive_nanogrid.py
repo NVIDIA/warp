@@ -349,7 +349,7 @@ class AdaptiveNanogrid(NanogridBase):
         element_index: ElementIndex,
         element_coords: Coords,
     ):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         flags = args.face_flags[side_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)

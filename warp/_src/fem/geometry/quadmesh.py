@@ -479,7 +479,7 @@ class Quadmesh(Geometry):
         quad_index: ElementIndex,
         quad_coords: Coords,
     ):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         return Quadmesh._quad_to_edge_coords(args.topology, side_index, quad_index, quad_coords)
 
     @wp.func

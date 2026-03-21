@@ -286,7 +286,7 @@ class Tetmesh(Geometry):
 
     @wp.func
     def side_from_cell_coords(args: SideArg, side_index: ElementIndex, tet_index: ElementIndex, tet_coords: Coords):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         fvi = args.face_vertex_indices[side_index]
 
         tv1 = args.cell_arg.tet_vertex_indices[tet_index, 1]

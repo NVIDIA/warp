@@ -27,7 +27,7 @@ def adaptive_nanogrid_from_hierarchy(
 
     Args:
         grids: List of sparse Volumes, from finest to coarsest
-        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; see :func:`enforce_nanogrid_grading`
+        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; ``"face"`` ensures cells sharing a face differ by at most one level, ``"vertex"`` extends this to vertex neighbors
         temporary_store: Storage for temporary allocations
     """
     if not grids:
@@ -105,7 +105,7 @@ def adaptive_nanogrid_from_field(
         refinement_field: Scalar field used as a refinement oracle. If the returned value is negative, the corresponding voxel will be carved out.
             Positive values indicate the desired refinement with 0.0 corresponding to the finest level and 1.0 to the coarsest level.
         samples_per_voxel: How many samples to use for evaluating the refinement field within each voxel
-        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; see :func:`enforce_nanogrid_grading`
+        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; ``"face"`` ensures cells sharing a face differ by at most one level, ``"vertex"`` extends this to vertex neighbors
         temporary_store: Storage for temporary allocations
     """
 

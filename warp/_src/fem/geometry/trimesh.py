@@ -493,7 +493,7 @@ class Trimesh(Geometry):
         tri_index: ElementIndex,
         tri_coords: Coords,
     ):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+        """Convert cell coordinates to side coordinates, or :data:`warp.fem.OUTSIDE`."""
         return Trimesh._tri_to_edge_coords(args.topology, side_index, tri_index, tri_coords)
 
 
