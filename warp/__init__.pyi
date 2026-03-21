@@ -14,8 +14,8 @@ from typing import overload as over
 import builtins as _builtins
 
 from warp._src.types import Int as Int
-from warp._src.types import Float as Float
 from warp._src.types import Scalar as Scalar
+from warp._src.types import Float as Float
 
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
@@ -1825,11 +1825,6 @@ def zeros(shape: int32, dtype: Any) -> Array[Scalar]:
     ...
 
 @over
-def min(a: Scalar, b: Scalar) -> Scalar:
-    """Compute the minimum value."""
-    ...
-
-@over
 def min(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
     """Compute the minimum value.
 
@@ -1848,8 +1843,8 @@ def min(a: Vector[Scalar, Any]) -> Scalar:
     ...
 
 @over
-def max(a: Scalar, b: Scalar) -> Scalar:
-    """Compute the maximum value."""
+def min(a: Scalar, b: Scalar) -> Scalar:
+    """Compute the minimum value."""
     ...
 
 @over
@@ -1870,13 +1865,13 @@ def max(a: Vector[Scalar, Any]) -> Scalar:
     """
     ...
 
-def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
-    """Clamp the value of ``x`` to the range [low, high]."""
+@over
+def max(a: Scalar, b: Scalar) -> Scalar:
+    """Compute the maximum value."""
     ...
 
-@over
-def abs(x: Scalar) -> Scalar:
-    """Compute the absolute value of ``x``."""
+def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
+    """Clamp the value of ``x`` to the range [low, high]."""
     ...
 
 @over
@@ -1889,12 +1884,8 @@ def abs(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
     ...
 
 @over
-def sign(x: Scalar) -> Scalar:
-    """Compute the sign of ``x``.
-
-    Returns:
-        -1 if ``x`` < 0 and 1 otherwise.
-    """
+def abs(x: Scalar) -> Scalar:
+    """Compute the absolute value of ``x``."""
     ...
 
 @over
@@ -1903,6 +1894,15 @@ def sign(x: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
 
     Returns:
         -1 for negative elements of ``x`` and 1 otherwise.
+    """
+    ...
+
+@over
+def sign(x: Scalar) -> Scalar:
+    """Compute the sign of ``x``.
+
+    Returns:
+        -1 if ``x`` < 0 and 1 otherwise.
     """
     ...
 
@@ -2053,8 +2053,7 @@ def frac(x: Float) -> Float:
     """
     ...
 
-@over
-def isfinite(a: Scalar) -> bool:
+def isfinite(a: Vector[Scalar, Any] | Quaternion[Float] | Matrix[Scalar, Any, Any] | Scalar) -> bool:
     """Check if all elements of ``a`` are finite.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
@@ -2062,35 +2061,7 @@ def isfinite(a: Scalar) -> bool:
     """
     ...
 
-@over
-def isfinite(a: Vector[Scalar, Any]) -> bool:
-    """Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isfinite(a: Quaternion[Float]) -> bool:
-    """Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isfinite(a: Matrix[Scalar, Any, Any]) -> bool:
-    """Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isnan(a: Scalar) -> bool:
+def isnan(a: Vector[Scalar, Any] | Quaternion[Float] | Matrix[Scalar, Any, Any] | Scalar) -> bool:
     """Check if any element of ``a`` is NaN.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
@@ -2098,62 +2069,7 @@ def isnan(a: Scalar) -> bool:
     """
     ...
 
-@over
-def isnan(a: Vector[Scalar, Any]) -> bool:
-    """Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isnan(a: Quaternion[Float]) -> bool:
-    """Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isnan(a: Matrix[Scalar, Any, Any]) -> bool:
-    """Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isinf(a: Scalar) -> bool:
-    """Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isinf(a: Vector[Scalar, Any]) -> bool:
-    """Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isinf(a: Quaternion[Float]) -> bool:
-    """Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
-    ...
-
-@over
-def isinf(a: Matrix[Scalar, Any, Any]) -> bool:
+def isinf(a: Vector[Scalar, Any] | Quaternion[Float] | Matrix[Scalar, Any, Any] | Scalar) -> bool:
     """Check if any element of ``a`` is positive or negative infinity.
 
     .. attention:: This function will no longer support integer types as input. Please use float types instead.
@@ -2247,57 +2163,30 @@ def transpose(a: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]:
     """Compute the transpose of matrix ``a``."""
     ...
 
-@over
-def inverse(a: Matrix[Float, Literal[2], Literal[2]]) -> Matrix[Float, Any, Any]:
+def inverse(
+    a: Matrix[Float, Literal[2], Literal[2]]
+    | Matrix[Float, Literal[3], Literal[3]]
+    | Matrix[Float, Literal[4], Literal[4]],
+) -> Matrix[Float, Any, Any]:
     """Compute the inverse of matrix ``a``."""
     ...
 
-@over
-def inverse(a: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Any, Any]:
-    """Compute the inverse of matrix ``a``."""
-    ...
-
-@over
-def inverse(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]:
-    """Compute the inverse of matrix ``a``."""
-    ...
-
-@over
-def inverse_approx(a: Matrix[Float, Literal[2], Literal[2]]) -> Matrix[Float, Any, Any]:
+def inverse_approx(
+    a: Matrix[Float, Literal[2], Literal[2]]
+    | Matrix[Float, Literal[3], Literal[3]]
+    | Matrix[Float, Literal[4], Literal[4]],
+) -> Matrix[Float, Any, Any]:
     """Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
 
     Falls back to exact inverse on CPU.
     """
     ...
 
-@over
-def inverse_approx(a: Matrix[Float, Literal[3], Literal[3]]) -> Matrix[Float, Any, Any]:
-    """Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
-
-    Falls back to exact inverse on CPU.
-    """
-    ...
-
-@over
-def inverse_approx(a: Matrix[Float, Literal[4], Literal[4]]) -> Matrix[Float, Any, Any]:
-    """Compute the inverse of matrix ``a`` using approximate GPU intrinsics.
-
-    Falls back to exact inverse on CPU.
-    """
-    ...
-
-@over
-def determinant(a: Matrix[Float, Literal[2], Literal[2]]) -> Float:
-    """Compute the determinant of matrix ``a``."""
-    ...
-
-@over
-def determinant(a: Matrix[Float, Literal[3], Literal[3]]) -> Float:
-    """Compute the determinant of matrix ``a``."""
-    ...
-
-@over
-def determinant(a: Matrix[Float, Literal[4], Literal[4]]) -> Float:
+def determinant(
+    a: Matrix[Float, Literal[2], Literal[2]]
+    | Matrix[Float, Literal[3], Literal[3]]
+    | Matrix[Float, Literal[4], Literal[4]],
+) -> Float:
     """Compute the determinant of matrix ``a``."""
     ...
 
@@ -2468,10 +2357,10 @@ def quaternion(dtype: Float) -> Quaternion[Float]:
     ...
 
 @over
-def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]:
+def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
     """Construct a quaternion.
 
-    Use the supplied components (type inferred from component type).
+    Convert ``quat`` to the specified ``dtype``.
     """
     ...
 
@@ -2484,10 +2373,10 @@ def quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float) -> Qua
     ...
 
 @over
-def quaternion(quat: Quaternion[Float], dtype: Float) -> Quaternion[Float]:
+def quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Scalar) -> Quaternion[Float]:
     """Construct a quaternion.
 
-    Convert ``quat`` to the specified ``dtype``.
+    Use the supplied components (type inferred from component type).
     """
     ...
 
@@ -4611,25 +4500,8 @@ def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuer
     """
     ...
 
-@over
-def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
+def hash_grid_query_next(query: HashGridQuery | HashGridQueryH | HashGridQueryD, index: int32) -> bool:
     """Move to the next point in the hash grid query.
-
-    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
-    """
-    ...
-
-@over
-def hash_grid_query_next(query: HashGridQueryH, index: int32) -> bool:
-    """Move to the next point in the hash grid query (float16 precision).
-
-    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
-    """
-    ...
-
-@over
-def hash_grid_query_next(query: HashGridQueryD, index: int32) -> bool:
-    """Move to the next point in the hash grid query (float64 precision).
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
     """
@@ -5194,103 +5066,11 @@ def block_dim() -> int:
     ...
 
 @over
-def select(cond: bool, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: int8, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: uint8, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: int16, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: uint16, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: int32, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: uint32, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: int64, value_if_false: Any, value_if_true: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
-
-    .. versionremoved:: 1.10
-            Use :func:`where` instead, which has the more intuitive argument order:
-            ``where(cond, value_if_true, value_if_false)``.
-
-    .. deprecated:: 1.7
-    """
-    ...
-
-@over
-def select(cond: uint64, value_if_false: Any, value_if_true: Any) -> Any:
+def select(
+    cond: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64,
+    value_if_false: Any,
+    value_if_true: Any,
+) -> Any:
     """Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
     .. versionremoved:: 1.10
@@ -5314,47 +5094,11 @@ def select(arr: Array[Any], value_if_false: Any, value_if_true: Any) -> Any:
     ...
 
 @over
-def where(cond: bool, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: int8, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: uint8, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: int16, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: uint16, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: int32, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: uint32, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: int64, value_if_true: Any, value_if_false: Any) -> Any:
-    """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
-    ...
-
-@over
-def where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any:
+def where(
+    cond: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64,
+    value_if_true: Any,
+    value_if_false: Any,
+) -> Any:
     """Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``."""
     ...
 
@@ -5364,7 +5108,7 @@ def where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any:
     ...
 
 @over
-def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_add(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
 
     This function is automatically invoked when using the syntax ``arr[i] += value``.
@@ -5372,7 +5116,7 @@ def atomic_add(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_add(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
 
     This function is automatically invoked when using the syntax ``arr[i,j] += value``.
@@ -5380,7 +5124,7 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_add(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
@@ -5388,7 +5132,9 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_add(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
@@ -5396,71 +5142,7 @@ def atomic_add(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     ...
 
 @over
-def atomic_add(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
-
-    This function is automatically invoked when using the syntax ``arr[i] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
-
-    This function is automatically invoked when using the syntax ``arr[i] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] += value``.
-    """
-    ...
-
-@over
-def atomic_add(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically adds ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] += value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_sub(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
 
     This function is automatically invoked when using the syntax ``arr[i] -= value``.
@@ -5468,7 +5150,7 @@ def atomic_sub(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_sub(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
 
     This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
@@ -5476,7 +5158,7 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_sub(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
@@ -5484,7 +5166,9 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_sub(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
@@ -5492,71 +5176,7 @@ def atomic_sub(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     ...
 
 @over
-def atomic_sub(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
-
-    This function is automatically invoked when using the syntax ``arr[i] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
-
-    This function is automatically invoked when using the syntax ``arr[i] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``.
-    """
-    ...
-
-@over
-def atomic_sub(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``.
-    """
-    ...
-
-@over
-def atomic_min(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_min(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5564,7 +5184,7 @@ def atomic_min(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_min(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_min(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5572,7 +5192,7 @@ def atomic_min(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_min(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5580,7 +5200,9 @@ def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_min(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5588,71 +5210,7 @@ def atomic_min(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     ...
 
 @over
-def atomic_min(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_min(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Compute the minimum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_max(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5660,7 +5218,7 @@ def atomic_max(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_max(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_max(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5668,7 +5226,7 @@ def atomic_max(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_max(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5676,7 +5234,9 @@ def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_max(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5684,71 +5244,7 @@ def atomic_max(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     ...
 
 @over
-def atomic_max(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_max(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Compute the maximum of ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: Array[Any], i: Int, compare: Any, value: Any) -> Any:
+def atomic_cas(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5756,7 +5252,9 @@ def atomic_cas(arr: Array[Any], i: Int, compare: Any, value: Any) -> Any:
     ...
 
 @over
-def atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
+def atomic_cas(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value: Any
+) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5764,7 +5262,9 @@ def atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
     ...
 
 @over
-def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
+def atomic_cas(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any
+) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5772,7 +5272,15 @@ def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, compare: Any, value: Any
     ...
 
 @over
-def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
+def atomic_cas(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any],
+    i: Int,
+    j: Int,
+    k: Int,
+    l: Int,
+    compare: Any,
+    value: Any,
+) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5780,71 +5288,7 @@ def atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, va
     ...
 
 @over
-def atomic_cas(arr: FabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any:
-    """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_exch(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5852,7 +5296,7 @@ def atomic_exch(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_exch(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5860,7 +5304,9 @@ def atomic_exch(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_exch(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any
+) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5868,7 +5314,9 @@ def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_exch(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
 
     The operation is only atomic on a per-component basis for vectors and matrices.
@@ -5876,71 +5324,7 @@ def atomic_exch(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> 
     ...
 
 @over
-def atomic_exch(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i,j]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i,j,k]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_exch(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
-
-    The operation is only atomic on a per-component basis for vectors and matrices.
-    """
-    ...
-
-@over
-def atomic_and(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_and(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i] &= value``.
@@ -5948,7 +5332,7 @@ def atomic_and(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_and(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
@@ -5956,7 +5340,7 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_and(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
@@ -5964,7 +5348,9 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_and(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
@@ -5972,71 +5358,7 @@ def atomic_and(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> A
     ...
 
 @over
-def atomic_and(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] &= value``.
-    """
-    ...
-
-@over
-def atomic_and(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically performs a bitwise AND between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] &= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_or(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i] |= value``.
@@ -6044,7 +5366,7 @@ def atomic_or(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_or(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
@@ -6052,7 +5374,7 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_or(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
@@ -6060,7 +5382,9 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_or(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
@@ -6068,71 +5392,7 @@ def atomic_or(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> An
     ...
 
 @over
-def atomic_or(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] |= value``.
-    """
-    ...
-
-@over
-def atomic_or(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically performs a bitwise OR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] |= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any:
+def atomic_xor(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i] ^= value``.
@@ -6140,7 +5400,7 @@ def atomic_xor(arr: Array[Any], i: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
+def atomic_xor(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
@@ -6148,7 +5408,7 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
+def atomic_xor(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
@@ -6156,80 +5416,13 @@ def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
     ...
 
 @over
-def atomic_xor(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
+def atomic_xor(
+    arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any
+) -> Any:
     """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
 
     This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
     """
-    ...
-
-@over
-def atomic_xor(arr: FabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k] ^= value``.
-    """
-    ...
-
-@over
-def atomic_xor(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, value: Any) -> Any:
-    """Atomically performs a bitwise XOR between ``value`` and ``arr[i,j,k,l]``, atomically update the array, and return the old value.
-
-    This function is automatically invoked when using the syntax ``arr[i,j,k,l] ^= value``.
-    """
-    ...
-
-@over
-def lerp(a: Float, b: Float, t: Float) -> Float:
-    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``."""
     ...
 
 @over
@@ -6252,17 +5445,14 @@ def lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transf
     """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``."""
     ...
 
+@over
+def lerp(a: Float, b: Float, t: Float) -> Float:
+    """Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``."""
+    ...
+
 def smoothstep(a: Float, b: Float, x: Float) -> Float:
     """Smoothly interpolate between two values ``a`` and ``b`` using a factor ``x``,
     and return a result between 0 and 1 using a cubic Hermite interpolation after clamping.
-    """
-    ...
-
-@over
-def expect_near(a: Float, b: Float, tolerance: Float) -> None:
-    """Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
-
-    Compare scalar values.
     """
     ...
 
@@ -6291,6 +5481,14 @@ def expect_near(a: Matrix[Float, Any, Any], b: Matrix[Float, Any, Any], toleranc
     ...
 
 @over
+def expect_near(a: Float, b: Float, tolerance: Float) -> None:
+    """Print an error to stdout if ``a`` and ``b`` differ by more than ``tolerance``.
+
+    Compare scalar values.
+    """
+    ...
+
+@over
 def lower_bound(arr: Array[Scalar], value: Scalar) -> int:
     """Search a sorted array ``arr`` for the closest element greater than or equal to ``value``."""
     ...
@@ -6301,11 +5499,6 @@ def lower_bound(arr: Array[Scalar], arr_begin: int32, arr_end: int32, value: Sca
 
     Search the range [arr_begin, arr_end).
     """
-    ...
-
-@over
-def add(a: Scalar, b: Scalar) -> Scalar:
-    """Add ``a`` and ``b``."""
     ...
 
 @over
@@ -6334,8 +5527,8 @@ def add(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[An
     ...
 
 @over
-def sub(a: Scalar, b: Scalar) -> Scalar:
-    """Subtract ``b`` from ``a``."""
+def add(a: Scalar, b: Scalar) -> Scalar:
+    """Add ``a`` and ``b``."""
     ...
 
 @over
@@ -6364,8 +5557,8 @@ def sub(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[An
     ...
 
 @over
-def bit_and(a: Int, b: Int) -> Int:
-    """Compute the bitwise AND of ``a`` and ``b``."""
+def sub(a: Scalar, b: Scalar) -> Scalar:
+    """Subtract ``b`` from ``a``."""
     ...
 
 @over
@@ -6393,8 +5586,8 @@ def bit_and(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Til
     ...
 
 @over
-def bit_or(a: Int, b: Int) -> Int:
-    """Compute the bitwise OR of ``a`` and ``b``."""
+def bit_and(a: Int, b: Int) -> Int:
+    """Compute the bitwise AND of ``a`` and ``b``."""
     ...
 
 @over
@@ -6422,8 +5615,8 @@ def bit_or(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile
     ...
 
 @over
-def bit_xor(a: Int, b: Int) -> Int:
-    """Compute the bitwise XOR of ``a`` and ``b``."""
+def bit_or(a: Int, b: Int) -> Int:
+    """Compute the bitwise OR of ``a`` and ``b``."""
     ...
 
 @over
@@ -6451,8 +5644,8 @@ def bit_xor(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Til
     ...
 
 @over
-def lshift(a: Int, b: Int) -> Int:
-    """Compute ``a`` left-shifted by ``b`` bits."""
+def bit_xor(a: Int, b: Int) -> Int:
+    """Compute the bitwise XOR of ``a`` and ``b``."""
     ...
 
 @over
@@ -6472,8 +5665,8 @@ def lshift(a: Matrix[Int, Any, Any], b: Matrix[Int, Any, Any]) -> Matrix[Int, An
     ...
 
 @over
-def rshift(a: Int, b: Int) -> Int:
-    """Compute ``a`` right-shifted by ``b`` bits."""
+def lshift(a: Int, b: Int) -> Int:
+    """Compute ``a`` left-shifted by ``b`` bits."""
     ...
 
 @over
@@ -6493,8 +5686,8 @@ def rshift(a: Matrix[Int, Any, Any], b: Matrix[Int, Any, Any]) -> Matrix[Int, An
     ...
 
 @over
-def invert(a: Int) -> Int:
-    """Compute the bitwise complement of ``a``."""
+def rshift(a: Int, b: Int) -> Int:
+    """Compute ``a`` right-shifted by ``b`` bits."""
     ...
 
 @over
@@ -6514,40 +5707,8 @@ def invert(a: Matrix[Int, Any, Any]) -> Matrix[Int, Any, Any]:
     ...
 
 @over
-def mul(a: Scalar, b: Scalar) -> Scalar:
-    """Multiply two values."""
-    ...
-
-@over
-def mul(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]:
-    """Multiply two values.
-
-    Scale a vector by a scalar.
-    """
-    ...
-
-@over
-def mul(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
-    """Multiply two values.
-
-    Scale a vector by a scalar.
-    """
-    ...
-
-@over
-def mul(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]:
-    """Multiply two values.
-
-    Scale a quaternion by a scalar.
-    """
-    ...
-
-@over
-def mul(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]:
-    """Multiply two values.
-
-    Scale a quaternion by a scalar.
-    """
+def invert(a: Int) -> Int:
+    """Compute the bitwise complement of ``a``."""
     ...
 
 @over
@@ -6555,22 +5716,6 @@ def mul(a: Quaternion[Float], b: Quaternion[Float]) -> Quaternion[Float]:
     """Multiply two values.
 
     Compute the Hamilton product of two quaternions.
-    """
-    ...
-
-@over
-def mul(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]:
-    """Multiply two values.
-
-    Scale a matrix by a scalar.
-    """
-    ...
-
-@over
-def mul(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]:
-    """Multiply two values.
-
-    Scale a matrix by a scalar.
     """
     ...
 
@@ -6607,6 +5752,59 @@ def mul(a: Transformation[Float], b: Transformation[Float]) -> Transformation[Fl
     ...
 
 @over
+def mul(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+    """Element-wise multiplication of tiles."""
+    ...
+
+@over
+def mul(a: Vector[Scalar, Any], b: Scalar) -> Vector[Scalar, Any]:
+    """Multiply two values.
+
+    Scale a vector by a scalar.
+    """
+    ...
+
+@over
+def mul(a: Scalar, b: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
+    """Multiply two values.
+
+    Scale a vector by a scalar.
+    """
+    ...
+
+@over
+def mul(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]:
+    """Multiply two values.
+
+    Scale a quaternion by a scalar.
+    """
+    ...
+
+@over
+def mul(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]:
+    """Multiply two values.
+
+    Scale a quaternion by a scalar.
+    """
+    ...
+
+@over
+def mul(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]:
+    """Multiply two values.
+
+    Scale a matrix by a scalar.
+    """
+    ...
+
+@over
+def mul(a: Matrix[Scalar, Any, Any], b: Scalar) -> Matrix[Scalar, Any, Any]:
+    """Multiply two values.
+
+    Scale a matrix by a scalar.
+    """
+    ...
+
+@over
 def mul(a: Scalar, b: Transformation[Float]) -> Transformation[Float]:
     """Multiply two values.
 
@@ -6624,11 +5822,6 @@ def mul(a: Transformation[Float], b: Scalar) -> Transformation[Float]:
 
     The result has an unnormalized quaternion.
     """
-    ...
-
-@over
-def mul(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
-    """Element-wise multiplication of tiles."""
     ...
 
 @over
@@ -6654,8 +5847,8 @@ def mul(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
     ...
 
 @over
-def mod(a: Scalar, b: Scalar) -> Scalar:
-    """Modulo operation using truncated division."""
+def mul(a: Scalar, b: Scalar) -> Scalar:
+    """Multiply two values."""
     ...
 
 @over
@@ -6664,8 +5857,13 @@ def mod(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
     ...
 
 @over
-def div(a: Scalar, b: Scalar) -> Scalar:
-    """Divide two values."""
+def mod(a: Scalar, b: Scalar) -> Scalar:
+    """Modulo operation using truncated division."""
+    ...
+
+@over
+def div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
+    """Element-wise division of tiles."""
     ...
 
 @over
@@ -6721,11 +5919,6 @@ def div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]:
     ...
 
 @over
-def div(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
-    """Element-wise division of tiles."""
-    ...
-
-@over
 def div(a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, tuple[int, ...]]:
     """Divide tile elements by a constant.
 
@@ -6748,11 +5941,8 @@ def div(a: Any, b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[int, ...]]:
     ...
 
 @over
-def div_approx(a: Float, b: Float) -> Float:
-    """Divide two values using approximate GPU intrinsics.
-
-    Falls back to exact division on CPU.
-    """
+def div(a: Scalar, b: Scalar) -> Scalar:
+    """Divide two values."""
     ...
 
 @over
@@ -6807,13 +5997,16 @@ def div_approx(a: Float, b: Quaternion[Float]) -> Quaternion[Float]:
     """
     ...
 
-def floordiv(a: Scalar, b: Scalar) -> Scalar:
-    """Divide two scalars using floor division."""
+@over
+def div_approx(a: Float, b: Float) -> Float:
+    """Divide two values using approximate GPU intrinsics.
+
+    Falls back to exact division on CPU.
+    """
     ...
 
-@over
-def pos(x: Scalar) -> Scalar:
-    """Pass ``x`` unchanged."""
+def floordiv(a: Scalar, b: Scalar) -> Scalar:
+    """Divide two scalars using floor division."""
     ...
 
 @over
@@ -6832,8 +6025,8 @@ def pos(x: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]:
     ...
 
 @over
-def neg(x: Scalar) -> Scalar:
-    """Negate ``x``."""
+def pos(x: Scalar) -> Scalar:
+    """Pass ``x`` unchanged."""
     ...
 
 @over
@@ -6860,93 +6053,48 @@ def neg(x: Tile[Any, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]:
     ...
 
 @over
-def unot(a: bool) -> bool:
-    """Compute logical NOT of ``a``."""
+def neg(x: Scalar) -> Scalar:
+    """Negate ``x``."""
     ...
 
-@over
-def unot(a: int8) -> bool:
+def unot(a: bool | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64 | Array[Any]) -> bool:
     """Compute logical NOT of ``a``.
 
     Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: uint8) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: int16) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: uint16) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: int32) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: uint32) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: int64) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: uint64) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the integer is 0, ``False`` otherwise.
-    """
-    ...
-
-@over
-def unot(a: Array[Any]) -> bool:
-    """Compute logical NOT of ``a``.
-
-    Returns:
-        ``True`` if the array is empty or null, ``False`` otherwise.
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.
     """
     ...
 
 def tile_diag_add(a: Tile[Any, tuple[int, int]], d: Tile[Any, tuple[int]]) -> Tile[Any, tuple[int, int]]:
     """Add a square matrix and a diagonal matrix ``d`` represented as a 1D tile."""
+    ...
+
+@over
+def tile_matmul(
+    a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float
+) -> Tile[Float, tuple[int, int]]:
+    """Compute the matrix product ``a*b``.
+
+    Compute ``out = alpha * a*b``.
+
+    Supported datatypes are:
+        * fp16, fp32, fp64 (real)
+        * vec2h, vec2f, vec2d (complex)
+
+    Both input tiles must have the same datatype. Tile data will automatically be migrated
+    to shared memory if necessary and will use TensorCore operations when available.
+
+    Note that computing the adjoints of alpha is not yet supported.
+
+    Args:
+        a: A tile with ``shape=(M, K)``
+        b: A tile with ``shape=(K, N)``
+        alpha: Scaling factor (default 1.0)
+
+    Returns:
+        A tile with ``shape=(M, N)``
+
+    """
     ...
 
 @over
@@ -6976,34 +6124,6 @@ def tile_matmul(
         out: A tile with ``shape=(M, N)``
         alpha: Scaling factor (default 1.0)
         beta: Accumulator factor (default 1.0)
-
-    """
-    ...
-
-@over
-def tile_matmul(
-    a: Tile[Float, tuple[int, int]], b: Tile[Float, tuple[int, int]], alpha: Float
-) -> Tile[Float, tuple[int, int]]:
-    """Compute the matrix product ``a*b``.
-
-    Compute ``out = alpha * a*b``.
-
-    Supported datatypes are:
-        * fp16, fp32, fp64 (real)
-        * vec2h, vec2f, vec2d (complex)
-
-    Both input tiles must have the same datatype. Tile data will automatically be migrated
-    to shared memory if necessary and will use TensorCore operations when available.
-
-    Note that computing the adjoints of alpha is not yet supported.
-
-    Args:
-        a: A tile with ``shape=(M, K)``
-        b: A tile with ``shape=(K, N)``
-        alpha: Scaling factor (default 1.0)
-
-    Returns:
-        A tile with ``shape=(M, N)``
 
     """
     ...
@@ -7194,39 +6314,21 @@ def tile_upper_solve_inplace(U: Tile[Float, tuple[int, int]], z: Tile[Float, tup
     """
     ...
 
-@over
-def len(a: Vector[Scalar, Any]) -> int:
-    """Query the number of elements in a vector."""
-    ...
+def len(
+    a: Vector[Scalar, Any]
+    | Quaternion[Float]
+    | Matrix[Scalar, Any, Any]
+    | Transformation[Float]
+    | Array[Any]
+    | Tile[Any, tuple[int, ...]]
+    | tuple,
+) -> int:
+    """Query the length of ``a``.
 
-@over
-def len(a: Quaternion[Float]) -> int:
-    """Query the number of elements in a quaternion."""
-    ...
-
-@over
-def len(a: Matrix[Scalar, Any, Any]) -> int:
-    """Query the number of rows in a matrix."""
-    ...
-
-@over
-def len(a: Transformation[Float]) -> int:
-    """Query the number of elements in a transformation."""
-    ...
-
-@over
-def len(a: Array[Any]) -> int:
-    """Query the size of the first dimension in an array."""
-    ...
-
-@over
-def len(a: Tile[Any, tuple[int, ...]]) -> int:
-    """Query the number of rows in a tile."""
-    ...
-
-@over
-def len(a: tuple) -> int:
-    """Query the number of elements in a tuple."""
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.
+    """
     ...
 
 def cast(a: Any, dtype: Any) -> Any:
