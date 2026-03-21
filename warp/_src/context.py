@@ -3852,6 +3852,10 @@ class Device:
                 output_arch = min(self.arch, warp.config.ptx_target_arch)
             else:
                 output_arch = min(self.arch, runtime.default_ptx_arch)
+
+            # Ensure the chosen PTX arch is actually supported by NVRTC
+            if runtime.nvrtc_supported_archs and output_arch not in runtime.nvrtc_supported_archs:
+                output_arch = _resolve_supported_ptx_arch(output_arch, runtime.nvrtc_supported_archs)
         else:
             output_arch = self.arch
 
@@ -3927,6 +3931,26 @@ def _validate_cuda_arch_suffix(
         )
 
     return suffix
+
+
+def _resolve_supported_ptx_arch(target_arch: int, supported_archs: set[int]) -> int:
+    """Return *target_arch* if NVRTC supports it, otherwise the closest supported arch.
+
+    Preference is given to the lowest supported architecture that is >=
+    *target_arch* so that the resulting PTX is as broadly forward-compatible
+    as possible.  If no such architecture exists the highest supported value
+    is returned instead.
+
+    *supported_archs* must be non-empty; a ``ValueError`` is raised otherwise.
+    """
+    if not supported_archs:
+        raise ValueError("supported_archs must be non-empty")
+    if target_arch in supported_archs:
+        return target_arch
+    above = sorted(a for a in supported_archs if a >= target_arch)
+    resolved = above[0] if above else max(supported_archs)
+    print(f"Warning: PTX target arch sm_{target_arch} is not supported by NVRTC; using sm_{resolved} instead")
+    return resolved
 
 
 """ Meta-type for arguments that can be resolved to a concrete Device.
@@ -5181,11 +5205,16 @@ class Runtime:
                 )
             except ValueError:
                 pass  # no eligible NVRTC-supported arch ≥ default, retain existing
+
+            # Validate that the chosen PTX arch is actually supported by NVRTC
+            if self.nvrtc_supported_archs and self.default_ptx_arch not in self.nvrtc_supported_archs:
+                self.default_ptx_arch = _resolve_supported_ptx_arch(self.default_ptx_arch, self.nvrtc_supported_archs)
         else:
             self.set_default_device("cpu")
             if self.nvrtc_supported_archs:
                 # NVRTC available but no devices/driver — enable offline compilation
-                self.default_ptx_arch = warp.config.ptx_target_arch if warp.config.ptx_target_arch is not None else 75
+                target = warp.config.ptx_target_arch if warp.config.ptx_target_arch is not None else 75
+                self.default_ptx_arch = _resolve_supported_ptx_arch(target, self.nvrtc_supported_archs)
             else:
                 self.default_ptx_arch = None
 
