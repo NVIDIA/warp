@@ -1,5 +1,17 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from __future__ import annotations
 
@@ -223,6 +235,7 @@ add_builtin(
     doc="Compute the cosh of ``x``.",
     group="Scalar Math",
 )
+
 add_builtin(
     "tanh",
     input_types={"x": Float},
@@ -999,6 +1012,7 @@ add_builtin(
 
 # scalar type constructors between all storage / compute types
 scalar_types_all = [*scalar_types, bool, int, float]
+
 for t in scalar_types_all:
     for u in scalar_types_all:
         add_builtin(
@@ -9784,7 +9798,7 @@ add_builtin(
 
 
 def vector_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    vec = args["a"].type
+    vec = strip_reference(args["a"].type)
     idx = args["i"].type
     value_type = strip_reference(args["value"].type)
 
@@ -9862,7 +9876,7 @@ add_builtin(
 
 
 def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    vec_type = arg_types["a"]
+    vec_type = strip_reference(arg_types["a"])
     return vec_type
 
 
@@ -10081,7 +10095,7 @@ def matrix_vector_sametype(arg_types: Mapping[str, Any]):
 
 
 def matrix_assign_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    mat = args["a"].type
+    mat = strip_reference(args["a"].type)
     value_type = strip_reference(args["value"].type)
 
     idxs = tuple(args[x].type for x in "ij" if args.get(x, None) is not None)
@@ -10195,7 +10209,7 @@ add_builtin(
 
 
 def matrix_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    mat_type = arg_types["a"]
+    mat_type = strip_reference(arg_types["a"])
     return mat_type
 
 
