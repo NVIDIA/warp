@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime
 import glob
 import os
@@ -284,11 +285,15 @@ def main(argv: list[str] | None = None) -> int:
         default="release",
         help="Build configuration mode",
     )
+    try:
+        available_cpus = len(os.sched_getaffinity(0))
+    except AttributeError:
+        available_cpus = os.cpu_count() or 4
     parser.add_argument(
         "-j",
         "--jobs",
         type=int,
-        default=4,
+        default=min(available_cpus, 8),
         help="Number of concurrent build tasks",
     )
     parser.add_argument(
@@ -559,14 +564,46 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
         warp_dll_path = os.path.join(build_path, f"bin/{lib_name('warp')}")
-        build_dll.build_dll(args, dll_path=warp_dll_path, cpp_paths=warp_cpp_paths, cu_paths=warp_cu_paths)
 
-        # build warp-clang.dll
-        if args.standalone:
-            if args.build_llvm:
+        # Build warp.dll and warp-clang.dll in parallel (only when not building LLVM from source)
+        # Object files use unique names per target (derived from dll_path) to avoid conflicts
+        if args.standalone and not args.build_llvm:
+            import concurrent.futures  # noqa: PLC0415
+
+            # Set up PATH before spawning threads to avoid concurrent os.environ mutation
+            build_dll.add_llvm_bin_to_path(args)
+
+            # Halve jobs per sub-build to avoid oversubscribing CPUs
+            parallel_args = copy.copy(args)
+            parallel_args.jobs = max(1, args.jobs // 2)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                warp_future = executor.submit(
+                    build_dll.build_dll,
+                    parallel_args,
+                    dll_path=warp_dll_path,
+                    cpp_paths=warp_cpp_paths,
+                    cu_paths=warp_cu_paths,
+                )
+                clang_future = executor.submit(build_llvm.build_warp_clang, parallel_args, lib_name("warp-clang"))
+
+                # Wait for both and report all errors
+                errors = []
+                for future in concurrent.futures.as_completed([warp_future, clang_future]):
+                    try:
+                        future.result()
+                    except Exception as e:
+                        errors.append(e)
+                if errors:
+                    for e in errors:
+                        print(f"Build error: {e}")
+                    raise errors[0]
+        else:
+            build_dll.build_dll(args, dll_path=warp_dll_path, cpp_paths=warp_cpp_paths, cu_paths=warp_cu_paths)
+
+            if args.standalone:
                 build_llvm.build_llvm_clang_from_source(args)
-
-            build_llvm.build_warp_clang(args, lib_name("warp-clang"))
+                build_llvm.build_warp_clang(args, lib_name("warp-clang"))
 
     except Exception as e:
         print(f"Warp build error: {e}")
