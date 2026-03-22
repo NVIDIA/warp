@@ -285,11 +285,15 @@ def main(argv: list[str] | None = None) -> int:
         default="release",
         help="Build configuration mode",
     )
+    try:
+        available_cpus = len(os.sched_getaffinity(0))
+    except AttributeError:
+        available_cpus = os.cpu_count() or 4
     parser.add_argument(
         "-j",
         "--jobs",
         type=int,
-        default=4,
+        default=min(available_cpus, 8),
         help="Number of concurrent build tasks",
     )
     parser.add_argument(
