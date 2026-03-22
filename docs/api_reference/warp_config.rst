@@ -15,6 +15,7 @@ API
 
    cache_kernels
    compile_time_trace
+   cpu_compiler_flags
    cuda_arch_suffix
    cuda_output
    enable_backward

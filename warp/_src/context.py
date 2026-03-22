@@ -1871,6 +1871,16 @@ def get_module(name: str) -> Module:
         return user_modules[name]
 
 
+def _resolve_cpu_compiler_flags(module_flags, config_flags):
+    """Return the effective CPU compiler flags string (never None).
+
+    Resolves ``None`` at the module level to the config value, and ``None``
+    at the config level to ``"-march=native"`` (the default).
+    """
+    flags = module_flags if module_flags is not None else config_flags
+    return flags if flags is not None else "-march=native"
+
+
 # ModuleHasher computes the module hash based on all the kernels, module options,
 # and build configuration.  For each kernel, it computes a deep hash by recursively
 # hashing all referenced functions, structs, and constants, even those defined in
@@ -1935,6 +1945,10 @@ class ModuleHasher:
 
         # build config
         ch.update(bytes(warp.config.mode, "utf-8"))
+
+        # CPU compiler flags (resolved: never None, the default is "-march=native")
+        cpu_flags = _resolve_cpu_compiler_flags(module.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags)
+        ch.update(bytes(cpu_flags, "utf-8"))
 
         # save the module hash
         self.module_hash = ch.digest()
@@ -2430,6 +2444,7 @@ class Module:
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
             "optimization_level": None,
+            "cpu_compiler_flags": None,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
@@ -2814,6 +2829,9 @@ class Module:
                         fast_math=self.options["fast_math"],
                         verify_fp=warp.config.verify_fp,
                         fuse_fp=self.options["fuse_fp"],
+                        extra_flags=_resolve_cpu_compiler_flags(
+                            self.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags
+                        ),
                     )
 
             except Exception as e:
@@ -8073,6 +8091,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level, defaults to the value of ``warp.config.optimization_level`` when ``None``.
+    * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.

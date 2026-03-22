@@ -195,6 +195,25 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
 """
 
+cpu_compiler_flags: _Optional[str] = None
+"""Flags controlling CPU kernel compilation.
+
+Warp acts as a compiler driver for the embedded Clang frontend. The flag
+``-march=native`` is intercepted and triggers host CPU feature detection
+(equivalent to ``llvm::sys::getHostCPUName()`` + ``getHostCPUFeatures()``).
+All other flags are passed through to the Clang frontend as-is.
+
+The value controls both CPU target detection and extra compiler flags:
+
+- ``None`` (default): detect host CPU features (equivalent to ``"-march=native"``).
+- ``""``: disable host CPU detection; compile for a generic target.
+- ``"-march=native"``: explicitly detect host CPU features.
+- ``"-march=native -fno-vectorize"``: detect host CPU + pass ``-fno-vectorize``.
+- ``"-fno-vectorize"``: generic target + pass ``-fno-vectorize``.
+
+Changing this setting invalidates the kernel cache.
+"""
+
 llvm_cuda: bool = False
 """Use Clang/LLVM compiler instead of NVRTC for CUDA compilation."""
 

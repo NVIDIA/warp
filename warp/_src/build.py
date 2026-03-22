@@ -106,7 +106,7 @@ def load_cuda(input_path, device):
     return warp._src.context.runtime.core.wp_cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
-def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True):
+def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True, extra_flags=""):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
     cpp_path = cpp_path.encode("utf-8")
@@ -119,6 +119,9 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         # Default to True on aarch64 (Linux ARM), False otherwise
         enable_tiles_in_stack = platform.machine() == "aarch64"
 
+    flags_list = extra_flags.split()
+    flags_array = (ctypes.c_char_p * (len(flags_list) + 1))(*[f.encode("utf-8") for f in flags_list], None)
+
     err = warp._src.context.runtime.llvm.wp_compile_cpp(
         src,
         cpp_path,
@@ -128,6 +131,7 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         verify_fp,
         fuse_fp,
         enable_tiles_in_stack,
+        flags_array,
     )
     if err != 0:
         raise Exception(f"CPU kernel build failed with error code {err}")

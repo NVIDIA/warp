@@ -41,6 +41,11 @@
 #include <llvm/PassRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
+#if LLVM_VERSION_MAJOR >= 16
+#include <llvm/TargetParser/Host.h>
+#else
+#include <llvm/Support/Host.h>
+#endif
 
 #if defined(_WIN64)
 extern "C" void __chkstk();
@@ -83,6 +88,35 @@ static void initialize_llvm()
     llvm::InitializeAllAsmPrinters();
 }
 
+struct HostCpuInfo {
+    std::string name;  // e.g. "znver5", "apple-m2", or "generic"
+    std::string features;  // comma-separated, for TargetMachine: "+avx2,+fma,..."
+    std::vector<std::string> feature_list;  // individual flags, for -target-feature args
+};
+
+// Thread-safe: C++11 guarantees local static initialization is synchronized.
+static const HostCpuInfo& get_host_cpu_info()
+{
+    static HostCpuInfo info = []() {
+        HostCpuInfo result;
+        result.name = llvm::sys::getHostCPUName().str();
+
+        llvm::StringMap<bool> feature_map;
+        llvm::sys::getHostCPUFeatures(feature_map);
+
+        for (const auto& f : feature_map) {
+            std::string flag = (f.second ? "+" : "-") + f.first().str();
+            result.feature_list.push_back(flag);
+            if (!result.features.empty())
+                result.features += ",";
+            result.features += flag;
+        }
+
+        return result;
+    }();
+    return info;
+}
+
 static std::unique_ptr<llvm::Module> source_to_llvm(
     bool is_cuda,
     const std::string& input_file,
@@ -91,7 +125,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     bool debug,
     bool verify_fp,
     llvm::LLVMContext& context,
-    bool tiles_in_stack_memory
+    bool tiles_in_stack_memory,
+    const char** extra_flags = nullptr  // null-terminated array of flag strings, or nullptr for none
 )
 {
     // Compilation arguments
@@ -113,9 +148,32 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         args.push_back("-triple");
         args.push_back(target_triple);
 
+        // Append extra flags to args. Our "driver" expands -march=native inline
+        // into -target-cpu and -target-feature flags, preserving flag order.
+        // Other flags are passed through to the Clang frontend as-is.
+        if (extra_flags) {
+            for (const char** flag = extra_flags; *flag; ++flag) {
+                if (strcmp(*flag, "-march=native") == 0) {
+                    const auto& cpu = get_host_cpu_info();
+                    if (cpu.name != "generic") {
+                        args.push_back("-target-cpu");
+                        args.push_back(cpu.name.c_str());
+                    }
+                    for (const auto& feat : cpu.feature_list) {
+                        args.push_back("-target-feature");
+                        args.push_back(feat.c_str());
+                    }
+                } else {
+                    args.push_back(*flag);
+                }
+            }
+        }
+
 #if defined(__x86_64__) || defined(_M_X64)
+        // F16C is required for _Float16 conversions in builtin.h. Duplicate
+        // flags are harmless (last-wins semantics), so add unconditionally.
         args.push_back("-target-feature");
-        args.push_back("+f16c");  // Enables support for _Float16
+        args.push_back("+f16c");
 #endif
 
 #if defined(__aarch64__)
@@ -215,14 +273,16 @@ WP_API int wp_compile_cpp(
     bool debug,
     bool verify_fp,
     bool fuse_fp,
-    bool tiles_in_stack_memory
+    bool tiles_in_stack_memory,
+    const char** extra_flags
 )
 {
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module
-        = source_to_llvm(false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory);
+    std::unique_ptr<llvm::Module> module = source_to_llvm(
+        false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory, extra_flags
+    );
 
     if (!module) {
         return -1;
@@ -235,8 +295,24 @@ WP_API int wp_compile_cpp(
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
 #endif
 
+    // Check if -march=native was requested to set the backend target accordingly.
+    bool use_native = false;
+    if (extra_flags) {
+        for (const char** flag = extra_flags; *flag; ++flag) {
+            if (strcmp(*flag, "-march=native") == 0) {
+                use_native = true;
+                break;
+            }
+        }
+    }
+
     const char* CPU = "generic";
     const char* features = "";
+    if (use_native) {
+        const auto& cpu = get_host_cpu_info();
+        CPU = cpu.name.c_str();
+        features = cpu.features.c_str();
+    }
     llvm::TargetOptions target_options;
     if (fuse_fp)
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Standard;
