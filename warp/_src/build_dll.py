@@ -339,8 +339,8 @@ def _get_architectures_cu12(
     clang_arch_flags = []
 
     if quick_build:
-        gencode_opts = ["-gencode=arch=compute_52,code=compute_52", "-gencode=arch=compute_75,code=compute_75"]
-        clang_arch_flags = ["--cuda-gpu-arch=sm_52", "--cuda-gpu-arch=sm_75"]
+        gencode_opts = ["-gencode=arch=compute_75,code=compute_75"]
+        clang_arch_flags = ["--cuda-gpu-arch=sm_75"]
     else:
         if arch == "aarch64" and target_platform == "linux" and ctk_version == (12, 9):
             # Skip certain architectures for aarch64 with CUDA 12.9 due to CCCL bug
