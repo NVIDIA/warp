@@ -29,6 +29,11 @@ _wp_module_name_ = "warp.codegen"
 # of current compile options (block_dim) etc
 options = {}
 
+# Sentinel object used by emit_AugAssign / emit_Assign to distinguish
+# "attribute not present" from an explicit None value when passing a
+# pre-computed RHS through _wp_precomputed_rhs.
+_MISSING = object()
+
 
 def get_node_name_safe(node):
     """Safely get a string representation of an AST node for error messages.
@@ -3224,8 +3229,8 @@ class Adjoint:
             node.value.expects = len(lhs.elts)
 
         # evaluate rhs (or use pre-computed value from emit_AugAssign)
-        _precomputed = getattr(node, "_wp_precomputed_rhs", None)
-        if _precomputed is not None:
+        _precomputed = getattr(node, "_wp_precomputed_rhs", _MISSING)
+        if _precomputed is not _MISSING:
             rhs = _precomputed
         elif isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
             rhs = [adj.eval(v) for v in node.value.elts]
