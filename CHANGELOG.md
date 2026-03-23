@@ -63,6 +63,10 @@
 - Fix ``wp.tile_argmin()`` and ``wp.tile_argmax()`` crashing in debug mode when ``block_dim`` exceeds the tile
   element count, and fix related debug-mode crashes in ``tile_reduce_axis`` and shared-memory tile load/store
   for the same condition ([GH-1133](https://github.com/NVIDIA/warp/issues/1133)).
+- Fix augmented assignments double-evaluating sub-expressions for subscript and attribute
+  targets (e.g., ``s.field += expr``, ``arr[i] *= expr``), causing side effects in target
+  indices or the right-hand side to trigger multiple times
+  ([GH-1233](https://github.com/NVIDIA/warp/issues/1233)).
 
 ### Documentation
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ast
 import builtins
+import contextlib
 import ctypes
 import enum
 import functools
@@ -2357,11 +2358,12 @@ class Adjoint:
         # possibly holding differentiable values (for which gradients must be accumulated)
         return type_scalar_type(var_type) in float_types or isinstance(var_type, Struct)
 
-    def emit_Attribute(adj, node):
+    def emit_Attribute(adj, node, aggregate=None):
         if hasattr(node, "is_adjoint"):
             node.value.is_adjoint = True
 
-        aggregate = adj.eval(node.value)
+        if aggregate is None:
+            aggregate = adj.eval(node.value)
 
         try:
             if isinstance(aggregate, Var) and aggregate.constant is not None:
@@ -3275,67 +3277,9 @@ class Adjoint:
                 return
 
             target, indices = adj.eval_subscript(lhs)
-
             target_type = strip_reference(target.type)
             indices = adj.eval_indices(target_type, indices)
-
-            if is_array(target_type):
-                adj.add_builtin_call("array_store", [target, *indices, rhs])
-
-                if warp.config.verify_autograd_array_access:
-                    kernel_name = adj.fun_name
-                    filename = adj.filename
-                    lineno = adj.lineno + adj.fun_lineno
-
-                    target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
-
-            elif is_tile(target_type):
-                adj.add_builtin_call("assign", [target, *indices, rhs])
-
-            elif (
-                type_is_vector(target_type)
-                or type_is_quaternion(target_type)
-                or type_is_matrix(target_type)
-                or type_is_transformation(target_type)
-            ):
-                # recursively unwind AST, stopping at penultimate node
-                root = lhs
-                while hasattr(root.value, "value"):
-                    root = root.value
-                # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
-                if hasattr(root, "attr") and root.attr == "adjoint":
-                    attr = adj.add_builtin_call("index", [target, *indices])
-                    adj.add_builtin_call("store", [attr, rhs])
-                    return
-
-                # TODO: array vec component case
-                if is_reference(target.type):
-                    attr = adj.add_builtin_call("indexref", [target, *indices])
-                    adj.add_builtin_call("store", [attr, rhs])
-
-                    if warp.config.verbose and not adj.custom_reverse_mode:
-                        lineno = adj.lineno + adj.fun_lineno
-                        line = adj.source_lines[adj.lineno]
-                        node_source = adj.get_node_source(lhs.value)
-                        print(
-                            f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
-                        )
-                else:
-                    if warp.config.enable_vector_component_overwrites:
-                        out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
-
-                        # re-point target symbol to out var
-                        for id in adj.symbols:
-                            if adj.symbols[id] == target:
-                                adj.symbols[id] = out
-                                break
-                    else:
-                        adj.add_builtin_call("assign_inplace", [target, *indices, rhs])
-
-            else:
-                raise WarpCodegenError(
-                    f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, got {target_type}"
-                )
+            adj._store_subscript(lhs, target, indices, rhs)
 
         elif isinstance(lhs, ast.Name):
             # symbol name
@@ -3367,55 +3311,127 @@ class Adjoint:
             adj.symbols[name] = out
 
         elif isinstance(lhs, ast.Attribute):
-            aggregate = adj.eval(lhs.value)
-            aggregate_type = strip_reference(aggregate.type)
+            adj._store_attribute(lhs, adj.eval(lhs.value), rhs)
 
-            # assigning to a vector or quaternion component
-            if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
-                index = adj.vector_component_index(lhs.attr, aggregate_type)
+        else:
+            raise WarpCodegenError("Error, unsupported assignment statement.")
 
-                if is_reference(aggregate.type):
-                    attr = adj.add_builtin_call("indexref", [aggregate, index])
-                    adj.add_builtin_call("store", [attr, rhs])
-                else:
-                    if warp.config.enable_vector_component_overwrites:
-                        out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
+    def _store_subscript(adj, lhs, target, indices, rhs):
+        """Store ``rhs`` into a subscript target using pre-evaluated ``target`` and ``indices``.
 
-                        # re-point target symbol to out var
-                        for id in adj.symbols:
-                            if adj.symbols[id] == aggregate:
-                                adj.symbols[id] = out
-                                break
-                    else:
-                        adj.add_builtin_call("assign_inplace", [aggregate, index, rhs])
+        Shared by ``emit_Assign`` and ``emit_AugAssign`` to avoid duplicating
+        the store-dispatch logic for array, tile, and vector/matrix subscripts.
+        """
+        target_type = strip_reference(target.type)
 
-            elif type_is_transformation(aggregate_type):
-                component = adj.transform_component(lhs.attr)
+        if is_array(target_type):
+            adj.add_builtin_call("array_store", [target, *indices, rhs])
 
-                # TODO: x[i,j].p = rhs case
-                if is_reference(aggregate.type):
-                    raise WarpCodegenError(f"Error, assigning transform attribute {component} to an array element")
+            if warp.config.verify_autograd_array_access:
+                kernel_name = adj.fun_name
+                filename = adj.filename
+                lineno = adj.lineno + adj.fun_lineno
+                target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                if component == "p":
-                    return adj.add_builtin_call("transform_set_translation", [aggregate, rhs])
-                else:
-                    return adj.add_builtin_call("transform_set_rotation", [aggregate, rhs])
+        elif is_tile(target_type):
+            adj.add_builtin_call("assign", [target, *indices, rhs])
 
-            else:
-                attr = adj.emit_Attribute(lhs)
-                if is_reference(attr.type):
-                    adj.add_builtin_call("store", [attr, rhs])
-                else:
-                    adj.add_builtin_call("assign", [attr, rhs])
+        elif (
+            type_is_vector(target_type)
+            or type_is_quaternion(target_type)
+            or type_is_matrix(target_type)
+            or type_is_transformation(target_type)
+        ):
+            # recursively unwind AST, stopping at penultimate node
+            root = lhs
+            while hasattr(root.value, "value"):
+                root = root.value
+            # lhs is updating a variable adjoint (i.e. wp.adjoint[var])
+            if hasattr(root, "attr") and root.attr == "adjoint":
+                attr = adj.add_builtin_call("index", [target, *indices])
+                adj.add_builtin_call("store", [attr, rhs])
+                return
+
+            # TODO: array vec component case
+            if is_reference(target.type):
+                attr = adj.add_builtin_call("indexref", [target, *indices])
+                adj.add_builtin_call("store", [attr, rhs])
 
                 if warp.config.verbose and not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source_lines[adj.lineno]
-                    msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
-                    print(msg)
+                    node_source = adj.get_node_source(lhs.value)
+                    print(
+                        f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
+                    )
+            else:
+                if warp.config.enable_vector_component_overwrites:
+                    out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
+
+                    # re-point target symbol to out var
+                    for id in adj.symbols:
+                        if adj.symbols[id] == target:
+                            adj.symbols[id] = out
+                            break
+                else:
+                    adj.add_builtin_call("assign_inplace", [target, *indices, rhs])
 
         else:
-            raise WarpCodegenError("Error, unsupported assignment statement.")
+            raise WarpCodegenError(
+                f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, got {target_type}"
+            )
+
+    def _store_attribute(adj, lhs, aggregate, rhs):
+        """Store ``rhs`` into an attribute target using pre-evaluated ``aggregate``.
+
+        Shared by ``emit_Assign`` and ``emit_AugAssign`` to avoid duplicating
+        the store-dispatch logic for vector/quaternion/transform/struct attributes.
+        """
+        aggregate_type = strip_reference(aggregate.type)
+
+        # assigning to a vector or quaternion component
+        if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
+            index = adj.vector_component_index(lhs.attr, aggregate_type)
+
+            if is_reference(aggregate.type):
+                attr = adj.add_builtin_call("indexref", [aggregate, index])
+                adj.add_builtin_call("store", [attr, rhs])
+            else:
+                if warp.config.enable_vector_component_overwrites:
+                    out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
+
+                    # re-point target symbol to out var
+                    for id in adj.symbols:
+                        if adj.symbols[id] == aggregate:
+                            adj.symbols[id] = out
+                            break
+                else:
+                    adj.add_builtin_call("assign_inplace", [aggregate, index, rhs])
+
+        elif type_is_transformation(aggregate_type):
+            component = adj.transform_component(lhs.attr)
+
+            # TODO: x[i,j].p = rhs case
+            if is_reference(aggregate.type):
+                raise WarpCodegenError(f"Error, assigning transform attribute {component} to an array element")
+
+            if component == "p":
+                return adj.add_builtin_call("transform_set_translation", [aggregate, rhs])
+            else:
+                return adj.add_builtin_call("transform_set_rotation", [aggregate, rhs])
+
+        else:
+            attr = adj.emit_Attribute(lhs, aggregate=aggregate)
+            if is_reference(attr.type):
+                adj.add_builtin_call("store", [attr, rhs])
+            else:
+                adj.add_builtin_call("assign", [attr, rhs])
+
+            if warp.config.verbose and not adj.custom_reverse_mode:
+                lineno = adj.lineno + adj.fun_lineno
+                line = adj.source_lines[adj.lineno]
+                msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
+                print(msg)
 
     def emit_Return(adj, node):
         if node.value is None:
@@ -3445,6 +3461,25 @@ class Adjoint:
                 adj.return_var += (ret_var,)
 
         adj.add_return(adj.return_var)
+
+    @contextlib.contextmanager
+    def suppress_read_tracking(adj):
+        """Save and restore ``is_read`` states on function arguments.
+
+        Used by augmented assignment emission to prevent the LHS load from
+        registering as a read in the autograd verification system, since the
+        overall operation is a write, not a read.
+        """
+        if warp.config.verify_autograd_array_access:
+            is_read_states = [arg.is_read for arg in adj.args]
+        else:
+            is_read_states = None
+        try:
+            yield
+        finally:
+            if is_read_states is not None:
+                for i, arg in enumerate(adj.args):
+                    arg.is_read = is_read_states[i]
 
     def emit_AugAssign(adj, node):
         lhs = node.target
@@ -3498,18 +3533,57 @@ class Adjoint:
             adj.symbols[lhs.id] = result
             return
 
-        # replace augmented assignment with assignment statement + binary op (default behaviour)
-        def make_new_assign_statement():
-            new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
-            adj.eval(new_node)
-
+        # Evaluate RHS once for non-Name targets.
         rhs = adj.eval(node.value)
 
+        def apply_op(current):
+            """Compute ``current <op> rhs`` using user-defined overloads or builtins."""
+            op_name = builtin_operators[type(node.op)]
+            try:
+                user_func = adj.resolve_external_reference(op_name)
+                if isinstance(user_func, warp._src.context.Function):
+                    return adj.add_call(user_func, (current, rhs), {}, {})
+            except WarpCodegenError:
+                pass
+            return adj.add_builtin_call(op_name, [current, rhs])
+
+        def augassign_subscript(target, indices):
+            """Load current value via pre-evaluated target/indices, apply op, store back."""
+            target_type = strip_reference(target.type)
+
+            with adj.suppress_read_tracking():
+                if is_array(target_type):
+                    current = adj.add_builtin_call("address", [target, *indices])
+                elif is_tile(target_type):
+                    current = adj.add_builtin_call("tile_extract", [target, *indices])
+                else:
+                    current = adj.add_builtin_call("extract", [target, *indices])
+
+            result = apply_op(current)
+            adj._store_subscript(lhs, target, indices, result)
+
+        def augassign_attribute():
+            """Load current value of attribute target, apply op, store back."""
+            aggregate = adj.eval(lhs.value)
+
+            with adj.suppress_read_tracking():
+                current = adj.emit_Attribute(lhs, aggregate=aggregate)
+
+            result = apply_op(current)
+            adj._store_attribute(lhs, aggregate, result)
+
         if isinstance(lhs, ast.Subscript):
-            # wp.adjoint[var] appears in custom grad functions, and does not require
-            # special consideration in the AugAssign case
+            # wp.adjoint[var] appears in custom grad functions; handle the
+            # adjoint store inline rather than through augassign_subscript.
             if hasattr(lhs.value, "attr") and lhs.value.attr == "adjoint":
-                make_new_assign_statement()
+                with adj.suppress_read_tracking():
+                    current = adj.eval(lhs)
+
+                result = apply_op(current)
+                lhs.slice.is_adjoint = True
+                src_var = adj.eval(lhs.slice)
+                var = Var(f"adj_{src_var.label}", type=src_var.type, constant=None, prefix=False)
+                adj.add_forward(f"{var.emit()} = {result.emit()};")
                 return
 
             target, indices = adj.eval_subscript(lhs)
@@ -3520,7 +3594,7 @@ class Adjoint:
             if is_array(target_type):
                 # target_types int8, uint8, int16, uint16 are not suitable for atomic array accumulation
                 if target_type.dtype in warp._src.types.non_atomic_types:
-                    make_new_assign_statement()
+                    augassign_subscript(target, indices)
                     return
 
                 # the same holds true for vecs/mats/quats that are composed of these types
@@ -3532,7 +3606,7 @@ class Adjoint:
                 ):
                     dtype = getattr(target_type.dtype, "_wp_scalar_type_", None)
                     if dtype in warp._src.types.non_atomic_types:
-                        make_new_assign_statement()
+                        augassign_subscript(target, indices)
                         return
 
                 kernel_name = adj.fun_name
@@ -3571,7 +3645,7 @@ class Adjoint:
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
-                    make_new_assign_statement()
+                    augassign_subscript(target, indices)
                     return
 
             elif (
@@ -3593,7 +3667,7 @@ class Adjoint:
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
-                    make_new_assign_statement()
+                    augassign_subscript(target, indices)
                     return
 
             elif is_tile(target.type):
@@ -3610,20 +3684,18 @@ class Adjoint:
                 else:
                     if warp.config.verbose:
                         print(f"Warning: in-place op {node.op} is not differentiable")
-                    make_new_assign_statement()
+                    augassign_subscript(target, indices)
                     return
 
             else:
                 raise WarpCodegenError("Can only subscript in-place assign array, vector, quaternion, and matrix types")
 
-        # TODO
         elif isinstance(lhs, ast.Attribute):
-            make_new_assign_statement()
+            augassign_attribute()
             return
 
         else:
-            make_new_assign_statement()
-            return
+            raise WarpCodegenError("Error, unsupported target for augmented assignment.")
 
     def emit_Tuple(adj, node):
         elements = tuple(adj.eval(x) for x in node.elts)
