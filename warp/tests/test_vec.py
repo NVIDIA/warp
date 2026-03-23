@@ -1252,7 +1252,7 @@ def test_vec_assign_inplace_errors(test, device):
     @wp.kernel
     def kernel_1():
         v = wp.vec4(1.0, 2.0, 3.0, 4.0)
-        v[1:] = wp.vec3d(wp.float64(5.0), wp.float64(6.0), wp.float64(7.0))
+        v[1:] = wp.vec3d(5.0, 6.0, 7.0)
 
     with test.assertRaisesRegex(
         ValueError,

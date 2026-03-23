@@ -211,9 +211,9 @@ def test_vector_constructors_value_func():
 @wp.kernel
 def test_vector_constructors_explicit_precision():
     # construction for custom matrix types
-    ones = wp.types.vector(wp.float16(1.0), length=2)
+    ones = wp.types.vector(1.0, length=2, dtype=wp.float16)
     zeros = wp.types.vector(length=2, dtype=wp.float16)
-    custom = wp.types.vector(wp.float16(0.0), wp.float16(1.0))
+    custom = wp.types.vector(0.0, 1.0, dtype=wp.float16)
 
     for i in range(2):
         wp.expect_eq(ones[i], wp.float16(1.0))

@@ -542,6 +542,61 @@ add_builtin(
 )
 
 
+def _cast_scalar_constant(arg, target_dtype):
+    """Cast a scalar constant Var to ``target_dtype`` for typed constructors.
+
+    When a typed constructor like ``vec3d()`` receives float literal arguments,
+    the literals have already been canonicalized to ``float32`` by
+    ``Var.__init__``.  This function creates a new ``Var`` at the target
+    precision, preserving the original Python float/int value so the emitted
+    C++ declaration uses full precision (e.g. ``wp::float64`` instead of
+    ``wp::float32``).
+
+    Returns the original *arg* unchanged when no cast is needed.
+    """
+    if not isinstance(arg, Var):
+        return arg
+    if arg.type == target_dtype:
+        return arg
+    if arg.constant is None:
+        return arg
+    if arg.type not in scalar_types and arg.type not in (bool,):
+        return arg
+
+    raw = arg.constant
+    if type(raw) in scalar_types:
+        raw = raw.value
+
+    return Var(None, type=target_dtype, constant=target_dtype(raw))
+
+
+def _all_constant_scalars(arg_values):
+    """Return True if all scalar argument values are compile-time constants.
+
+    Used by typed constructor value_funcs to decide whether to relax the
+    ``scalars_equal`` check.  Literal arguments have concrete Python values
+    (``int``, ``float``, or Warp scalar instances) while runtime variables
+    are represented as ``Var`` objects without a constant.
+
+    Handles both variadic constructors (with an ``"args"`` key) and
+    named-parameter constructors (e.g. quaternion's ``x``, ``y``, ``z``, ``w``).
+    Only ``"dtype"``, ``"length"``, and ``"shape"`` are skipped — other
+    non-scalar keys (e.g. ``"p"``, ``"q"`` in transformation) are deliberately
+    checked so that compound Var arguments still trigger the type error.
+    """
+    skip_keys = {"dtype", "length", "shape"}
+    if "args" in arg_values:
+        values = arg_values["args"]
+    else:
+        values = tuple(v for k, v in arg_values.items() if k not in skip_keys)
+    if not values:
+        return False
+    for v in values:
+        if isinstance(v, Var):
+            return False
+    return True
+
+
 def scalar_infer_type(arg_types: Mapping[str, type] | tuple[type, ...] | None):
     if arg_types is None:
         return Scalar
@@ -1052,9 +1107,12 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             if dtype is None:
                 dtype = value_type
             elif not warp._src.types.scalars_equal(value_type, dtype):
-                raise RuntimeError(
-                    f"the value used to fill this vector is expected to be of the type `{dtype.__name__}`"
-                )
+                # Allow implicit scalar conversion for typed constructors
+                # when arguments are compile-time constants (e.g., wp.vec3d(1.0)).
+                if not _all_constant_scalars(arg_values):
+                    raise RuntimeError(
+                        f"the value used to fill this vector is expected to be of the type `{dtype.__name__}`"
+                    )
     else:
         # Initializing by value, e.g.: `wp.vec2(1, 2)`, `wp.vector(1, 2, length=2)`.
         if length is None:
@@ -1073,9 +1131,12 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`"
-            )
+            # Allow implicit scalar conversion for typed constructors
+            # when arguments are compile-time constants (e.g., wp.vec3d(1.0, 2.0, 3.0)).
+            if not _all_constant_scalars(arg_values):
+                raise RuntimeError(
+                    f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`"
+                )
 
     if length is None:
         raise RuntimeError("could not infer the `length` argument when calling the `wp.types.vector()` function")
@@ -1096,7 +1157,10 @@ def vector_dispatch_func(input_types: Mapping[str, type], return_type: Any, args
 
     variadic_args = args.get("args", ())
 
-    func_args = variadic_args
+    # Cast scalar constant args to the target dtype so that the emitted
+    # C++ declarations preserve full precision (e.g. wp::float64 instead of
+    # wp::float32 for vec3d literals).
+    func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     template_args = (length, dtype)
     return (func_args, template_args)
 
@@ -1158,9 +1222,10 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             if dtype is None:
                 dtype = value_type
             elif not warp._src.types.scalars_equal(value_type, dtype):
-                raise RuntimeError(
-                    f"the value used to fill this matrix is expected to be of the type `{dtype.__name__}`"
-                )
+                if not _all_constant_scalars(arg_values):
+                    raise RuntimeError(
+                        f"the value used to fill this matrix is expected to be of the type `{dtype.__name__}`"
+                    )
     else:
         # Initializing by value, e.g.: `wp.mat22(1, 2, 3, 4)`, `wp.matrix(1, 2, 3, 4, shape=(2, 2))`.
         if shape is None:
@@ -1184,9 +1249,10 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this matrix are expected to be of the type `{dtype.__name__}`"
-            )
+            if not _all_constant_scalars(arg_values):
+                raise RuntimeError(
+                    f"all values used to initialize this matrix are expected to be of the type `{dtype.__name__}`"
+                )
 
     if shape is None:
         raise RuntimeError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
@@ -1207,7 +1273,7 @@ def matrix_dispatch_func(input_types: Mapping[str, type], return_type: Any, args
 
     variadic_args = args.get("args", ())
 
-    func_args = variadic_args
+    func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     template_args = (*shape, dtype)
     return (func_args, template_args)
 
@@ -1597,9 +1663,10 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this quaternion are expected to be of the type `{dtype.__name__}`"
-            )
+            if not _all_constant_scalars(arg_values):
+                raise RuntimeError(
+                    f"all values used to initialize this quaternion are expected to be of the type `{dtype.__name__}`"
+                )
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
@@ -1616,7 +1683,7 @@ def quaternion_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
 
     variadic_args = tuple(v for k, v in args.items() if k != "dtype")
 
-    func_args = variadic_args
+    func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     template_args = (dtype,)
     return (func_args, template_args)
 
@@ -1842,9 +1909,10 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`"
-            )
+            if not _all_constant_scalars(arg_values):
+                raise RuntimeError(
+                    f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`"
+                )
     elif variadic_arg_count == 7:
         # Initializing by value, e.g.: `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
         try:
@@ -1855,9 +1923,10 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this transform are expected to be of the type `{dtype.__name__}`"
-            )
+            if not _all_constant_scalars(arg_values):
+                raise RuntimeError(
+                    f"all values used to initialize this transform are expected to be of the type `{dtype.__name__}`"
+                )
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
@@ -1880,9 +1949,10 @@ def transformation_pq_value_func(arg_types: Mapping[str, type], arg_values: Mapp
     if dtype is None:
         dtype = value_type
     elif not warp._src.types.scalars_equal(value_type, dtype):
-        raise RuntimeError(
-            f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
-        )
+        if not _all_constant_scalars(arg_values):
+            raise RuntimeError(
+                f"all values used to initialize this transformation matrix are expected to be of the type `{dtype.__name__}`"
+            )
 
     return transformation(dtype=dtype)
 
@@ -1898,7 +1968,7 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
     variadic_arg_count = len(variadic_args)
 
     if variadic_arg_count == 7:
-        func_args = variadic_args
+        func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     else:
         func_args = tuple(v for k, v in args.items() if k != "dtype")
         if "p" in args and "q" not in args:
