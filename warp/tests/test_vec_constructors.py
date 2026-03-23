@@ -81,14 +81,14 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
 
 def test_tpl_constructor_error_numeric_args_mismatch(test, device):
     @wp.kernel(module="unique")
-    def kernel():
-        wp.vec2(1.0, 2)
+    def kernel(x: wp.float64):
+        wp.vec2(x, x)
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"all values given when constructing a vector must have the same type$",
+        r"all values used to initialize this vector are expected to be of the type `float32`$",
     ):
-        wp.launch(kernel, dim=1, inputs=[], device=device)
+        wp.launch(kernel, dim=1, inputs=[wp.float64(1.0)], device=device)
 
 
 def test_casting_constructors(test, device, dtype, register_kernels=False):

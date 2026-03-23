@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for strongly typed aggregate construction (GH-1297).
+"""Tests for strongly typed construction.
 
 Typed constructors like ``wp.vec3d(1.0, 2.0, 3.0)`` should preserve
 double precision of the literal arguments (not truncate to float32).
@@ -141,7 +141,7 @@ def test_vec3_int_literals_kernel(result: wp.array[wp.float32]):
 @wp.kernel
 def test_int_literal_float64_constructor_kernel(result: wp.array[wp.float64]):
     """Test that int literals in float64 constructors preserve exact values."""
-    v = wp.vec3d(1, 2, 3)
+    v = wp.vec3d(16777217, 16777219, 16777221)
     result[0] = v[0]
     result[1] = v[1]
     result[2] = v[2]
@@ -171,6 +171,36 @@ def test_warp_constant_constructor_kernel(result: wp.array[wp.float64]):
     result[0] = v[0]
     result[1] = v[1]
     result[2] = v[2]
+
+
+# ---------------------------------------------------------------------------
+# Mixed literals and variables
+# ---------------------------------------------------------------------------
+
+
+@wp.kernel
+def test_vec3h_mixed_literal_variable_kernel(h: wp.float16, result: wp.array[wp.float16]):
+    """Test vec3h(literal, variable, literal) where variable matches dtype."""
+    v = wp.vec3h(1.0, h, 3.0)
+    result[0] = v[0]
+    result[1] = v[1]
+    result[2] = v[2]
+
+
+@wp.kernel
+def test_vec3d_mixed_literal_variable_kernel(d: wp.float64, result: wp.array[wp.float64]):
+    """Test vec3d(literal, variable, literal) where variable matches dtype."""
+    v = wp.vec3d(1.00000005, d, 3.00000005)
+    result[0] = v[0]
+    result[1] = v[1]
+    result[2] = v[2]
+
+
+@wp.kernel
+def test_quatd_mixed_literal_variable_kernel(d: wp.float64, result: wp.array[wp.float64]):
+    """Test quatd(literal, literal, literal, variable)."""
+    q = wp.quatd(0.0, 0.0, 0.0, d)
+    result[0] = q[3]
 
 
 # ---------------------------------------------------------------------------
@@ -292,9 +322,9 @@ def test_int_literal_float64_constructor(test, device):
     result = wp.zeros(3, dtype=wp.float64, device=device)
     wp.launch(test_int_literal_float64_constructor_kernel, dim=1, inputs=[result], device=device)
     vals = result.numpy()
-    test.assertEqual(float(vals[0]), 1.0)
-    test.assertEqual(float(vals[1]), 2.0)
-    test.assertEqual(float(vals[2]), 3.0)
+    test.assertEqual(float(vals[0]), 16777217.0)
+    test.assertEqual(float(vals[1]), 16777219.0)
+    test.assertEqual(float(vals[2]), 16777221.0)
 
 
 def test_vec3d_fill(test, device):
@@ -335,6 +365,30 @@ def test_vec3d_negative_literals(test, device):
     test.assertEqual(float(vals[2]), -1.414213562373095)
 
 
+def test_vec3h_mixed_literal_variable(test, device):
+    result = wp.zeros(3, dtype=wp.float16, device=device)
+    wp.launch(test_vec3h_mixed_literal_variable_kernel, dim=1, inputs=[wp.float16(2.0), result], device=device)
+    vals = result.numpy()
+    test.assertEqual(float(vals[0]), 1.0)
+    test.assertEqual(float(vals[1]), 2.0)
+    test.assertEqual(float(vals[2]), 3.0)
+
+
+def test_vec3d_mixed_literal_variable(test, device):
+    result = wp.zeros(3, dtype=wp.float64, device=device)
+    wp.launch(test_vec3d_mixed_literal_variable_kernel, dim=1, inputs=[wp.float64(2.00000005), result], device=device)
+    vals = result.numpy()
+    test.assertEqual(float(vals[0]), 1.00000005)
+    test.assertEqual(float(vals[1]), 2.00000005)
+    test.assertEqual(float(vals[2]), 3.00000005)
+
+
+def test_quatd_mixed_literal_variable(test, device):
+    result = wp.zeros(1, dtype=wp.float64, device=device)
+    wp.launch(test_quatd_mixed_literal_variable_kernel, dim=1, inputs=[wp.float64(1.0), result], device=device)
+    test.assertEqual(float(result.numpy()[0]), 1.0)
+
+
 def test_typed_constructor_rejects_mismatched_variable(test, device):
     """Passing a float64 variable to a float32 constructor errors."""
 
@@ -368,6 +422,17 @@ def test_matrix_fill_rejects_mismatched_variable(test, device):
 
     with test.assertRaisesRegex(RuntimeError, r"expected to be of the type"):
         wp.launch(kernel, dim=1, inputs=[wp.float64(1.0)], device=device)
+
+
+def test_mixed_literal_variable_rejects_wrong_type(test, device):
+    """vec3h(literal, float32_var, literal) errors — variable type doesn't match constructor dtype."""
+
+    @wp.kernel
+    def kernel(x: wp.float32):
+        v = wp.vec3h(1.0, x, 3.0)
+
+    with test.assertRaisesRegex(RuntimeError, r"expected to be of the type"):
+        wp.launch(kernel, dim=1, inputs=[wp.float32(2.0)], device=device)
 
 
 class TestConstantPrecision(unittest.TestCase):
@@ -408,6 +473,15 @@ add_function_test(
 )
 add_function_test(TestConstantPrecision, "test_vec3d_negative_literals", test_vec3d_negative_literals, devices=devices)
 add_function_test(
+    TestConstantPrecision, "test_vec3h_mixed_literal_variable", test_vec3h_mixed_literal_variable, devices=devices
+)
+add_function_test(
+    TestConstantPrecision, "test_vec3d_mixed_literal_variable", test_vec3d_mixed_literal_variable, devices=devices
+)
+add_function_test(
+    TestConstantPrecision, "test_quatd_mixed_literal_variable", test_quatd_mixed_literal_variable, devices=devices
+)
+add_function_test(
     TestConstantPrecision,
     "test_typed_constructor_rejects_mismatched_variable",
     test_typed_constructor_rejects_mismatched_variable,
@@ -423,6 +497,12 @@ add_function_test(
     TestConstantPrecision,
     "test_matrix_fill_rejects_mismatched_variable",
     test_matrix_fill_rejects_mismatched_variable,
+    devices=devices,
+)
+add_function_test(
+    TestConstantPrecision,
+    "test_mixed_literal_variable_rejects_wrong_type",
+    test_mixed_literal_variable_rejects_wrong_type,
     devices=devices,
 )
 
