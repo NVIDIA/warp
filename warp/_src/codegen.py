@@ -1,5 +1,17 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from __future__ import annotations
 
@@ -3140,7 +3152,7 @@ class Adjoint:
 
         return indices
 
-    def recurse_subscript(adj, node, indices):
+    def recurse_subscript(adj, node, indices, allow_partial=True):
         if isinstance(node, ast.Name):
             target = adj.eval(node)
             return target, indices
@@ -3162,10 +3174,10 @@ class Adjoint:
 
             indices = [ij, *indices]  # prepend
 
-            target, indices = adj.recurse_subscript(node.value, indices)
+            target, indices = adj.recurse_subscript(node.value, indices, allow_partial)
 
             target_type = strip_reference(target.type)
-            if is_array(target_type):
+            if is_array(target_type) and allow_partial:
                 flat_indices = [i for ij in indices for i in ij]
                 if len(flat_indices) > target_type.ndim:
                     target = adj.emit_indexing(target, flat_indices[: target_type.ndim])
@@ -3177,8 +3189,8 @@ class Adjoint:
         return target, indices
 
     # returns the object being indexed, and the list of indices
-    def eval_subscript(adj, node):
-        target, indices = adj.recurse_subscript(node, [])
+    def eval_subscript(adj, node, allow_partial=True):
+        target, indices = adj.recurse_subscript(node, [], allow_partial)
         flat_indices = [i for ij in indices for i in ij]
         return target, flat_indices
 
@@ -3212,7 +3224,7 @@ class Adjoint:
         # more generally in `adj.eval()`.
         if isinstance(node.value, ast.List):
             raise WarpCodegenError(
-                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small fixed-size collections, or `wp.zeros(shape=N, dtype=...)` for stack-allocated arrays."
+                "List constructs are not supported in kernels. Use vectors like `wp.vec3()` for small collections instead."
             )
 
         lhs = node.targets[0]
@@ -3274,22 +3286,45 @@ class Adjoint:
                 adj.add_forward(f"{var.emit()} = {rhs.emit()};")
                 return
 
-            target, indices = adj.eval_subscript(lhs)
+            target, indices = adj.eval_subscript(lhs, allow_partial=False)
 
             target_type = strip_reference(target.type)
-            indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
-                adj.add_builtin_call("array_store", [target, *indices, rhs])
+                if len(indices) > target_type.ndim:
+                    # Array vector/matrix component assignment
+                    array_indices = indices[: target_type.ndim]
+                    vec_indices = indices[target_type.ndim :]
 
-                if warp.config.verify_autograd_array_access:
-                    kernel_name = adj.fun_name
-                    filename = adj.filename
-                    lineno = adj.lineno + adj.fun_lineno
+                    array_indices = adj.eval_indices(target_type, array_indices)
 
-                    target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    vec_target = adj.emit_indexing(target, array_indices)
+                    vec_target_type = strip_reference(vec_target.type)
 
-            elif is_tile(target_type):
+                    vec_indices = adj.eval_indices(vec_target_type, vec_indices)
+
+                    new_vec = adj.add_builtin_call("assign_copy", [vec_target, *vec_indices, rhs])
+                    adj.add_builtin_call("array_store", [target, *array_indices, new_vec])
+
+                    if warp.config.verify_autograd_array_access:
+                        kernel_name = adj.fun_name
+                        filename = adj.filename
+                        lineno = adj.lineno + adj.fun_lineno
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    return
+                else:
+                    indices = adj.eval_indices(target_type, indices)
+                    adj.add_builtin_call("array_store", [target, *indices, rhs])
+
+                    if warp.config.verify_autograd_array_access:
+                        kernel_name = adj.fun_name
+                        filename = adj.filename
+                        lineno = adj.lineno + adj.fun_lineno
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    return
+
+            indices = adj.eval_indices(target_type, indices)
+            if is_tile(target_type):
                 adj.add_builtin_call("assign", [target, *indices, rhs])
 
             elif (
@@ -3308,7 +3343,6 @@ class Adjoint:
                     adj.add_builtin_call("store", [attr, rhs])
                     return
 
-                # TODO: array vec component case
                 if is_reference(target.type):
                     attr = adj.add_builtin_call("indexref", [target, *indices])
                     adj.add_builtin_call("store", [attr, rhs])
@@ -3503,8 +3537,6 @@ class Adjoint:
             new_node = ast.Assign(targets=[lhs], value=ast.BinOp(lhs, node.op, node.value))
             adj.eval(new_node)
 
-        rhs = adj.eval(node.value)
-
         if isinstance(lhs, ast.Subscript):
             # wp.adjoint[var] appears in custom grad functions, and does not require
             # special consideration in the AugAssign case
@@ -3513,8 +3545,34 @@ class Adjoint:
                 return
 
             target, indices = adj.eval_subscript(lhs)
-
             target_type = strip_reference(target.type)
+
+            if is_reference(target.type):
+                if is_array(target_type) and len(indices) > target_type.ndim:
+                    rhs = adj.eval(node.value)
+
+                    array_indices = indices[: target_type.ndim]
+                    vec_indices = indices[target_type.ndim :]
+
+                    array_indices = adj.eval_indices(target_type, array_indices)
+                    vec_target = adj.emit_indexing(target, array_indices)
+                    vec_target_type = strip_reference(vec_target.type)
+
+                    vec_indices = adj.eval_indices(vec_target_type, vec_indices)
+                    old_val = adj.emit_indexing(vec_target, vec_indices)
+
+                    op_name = builtin_operators[type(node.op)]
+                    new_val = adj.add_builtin_call(op_name, [old_val, rhs])
+
+                    new_vec = adj.add_builtin_call("assign_copy", [vec_target, *vec_indices, new_val])
+                    adj.add_builtin_call("array_store", [target, *array_indices, new_vec])
+                    return
+                else:
+                    make_new_assign_statement()
+                    return
+
+            rhs = adj.eval(node.value)
+
             indices = adj.eval_indices(target_type, indices)
 
             if is_array(target_type):
@@ -3660,6 +3718,9 @@ class Adjoint:
     }
 
     def eval(adj, node):
+        if isinstance(node, Var):
+            return node
+
         if hasattr(node, "lineno"):
             adj.set_lineno(node.lineno - 1)
 
