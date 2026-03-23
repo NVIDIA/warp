@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import atexit
 import collections
 import ctypes
 import enum
@@ -21,6 +22,7 @@ import platform
 import re
 import shutil
 import sys
+import tempfile
 import threading
 import types
 import weakref
@@ -2855,7 +2857,7 @@ class Module:
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
-                        pch_dir=build_dir,
+                        pch_dir=runtime.get_pch_dir() or build_dir,
                     )
 
             except Exception as e:
@@ -5227,6 +5229,9 @@ class Runtime:
         self.driver_version = None  # installed driver version
         self.min_driver_version = None  # minimum required driver version
 
+        self._pch_dirs: dict[int, str] = {}
+        self._pch_dirs_lock = threading.Lock()
+
         self.cuda_devices = []
         self.cuda_primary_devices = []
         self.nvrtc_supported_archs = set()
@@ -5237,6 +5242,8 @@ class Runtime:
             # get CUDA Toolkit and driver versions
             toolkit_version = self.core.wp_cuda_toolkit_version()
             self.toolkit_version = (toolkit_version // 1000, (toolkit_version % 1000) // 10)
+
+            atexit.register(self._cleanup_pch_dirs)
 
             if self.core.wp_cuda_driver_is_initialized():
                 # save versions as tuples, e.g., (12, 4)
@@ -5452,6 +5459,26 @@ class Runtime:
                 )
                 msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
                 warp._src.utils.warn("\n   ".join(msg))
+
+    def get_pch_dir(self) -> str | None:
+        """Return a per-thread temporary directory for NVRTC precompiled header files.
+
+        Returns ``None`` when CUDA is not enabled or the toolkit version is
+        13.0+ (CUDA 13 manages PCH directories internally).
+        """
+        if self.toolkit_version is None or self.toolkit_version >= (13, 0):
+            return None
+        tid = threading.get_ident()
+        with self._pch_dirs_lock:
+            if tid not in self._pch_dirs:
+                self._pch_dirs[tid] = tempfile.mkdtemp(prefix="wp_pch_")
+            return self._pch_dirs[tid]
+
+    def _cleanup_pch_dirs(self):
+        with self._pch_dirs_lock:
+            for d in self._pch_dirs.values():
+                shutil.rmtree(d, ignore_errors=True)
+            self._pch_dirs.clear()
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")

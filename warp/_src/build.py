@@ -66,8 +66,8 @@ def build_cuda(
             fatbins
         )
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-        # Must be a unique directory per compilation to avoid .pch races
-        # when multiple processes compile concurrently with a shared cache.
+        # Per-thread directory shared across module compilations for PCH reuse,
+        # isolated between threads and processes to avoid .pch races.
         pch_dir_bytes = pch_dir.encode("utf-8")
         arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
