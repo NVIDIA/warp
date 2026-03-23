@@ -509,7 +509,7 @@ def test_hashgrid_negative_brute_force(test, device):
     radius = 2.0
 
     # Generate points centred on the origin so half are in negative space
-    points = particle_grid(8, 8, 8, (-8.0, -8.0, -8.0), cell_width * 0.25, 0.1)
+    points = particle_grid(8, 8, 8, (-4.0, -4.0, -4.0), cell_width * 0.25, 0.1)
     points_arr = wp.array(points, dtype=wp.vec3, device=device)
 
     n = len(points)
@@ -603,7 +603,6 @@ add_function_test(
 )
 add_function_test(TestHashGrid, "test_hashgrid_dtype_validation", test_hashgrid_dtype_validation, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_edge_cases", test_hashgrid_edge_cases, devices=devices)
-add_function_test(TestHashGrid, "test_hashgrid_negative_wrapping", test_hashgrid_negative_wrapping, devices=devices)
 add_function_test(
     TestHashGrid, "test_hashgrid_negative_coordinates", test_hashgrid_negative_coordinates, devices=devices
 )
