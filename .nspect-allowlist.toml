@@ -1,0 +1,8 @@
+version = "1.0.0"
+
+[[pulse-trufflehog.files]]
+file = "tools/packman/config.packman.xml"
+
+[[pulse-trufflehog.files.secrets]]
+type = "packman_creds_url_d4i3qtqj3r0z5"
+values = [ "htt*******************************************************************************************toml" ]
