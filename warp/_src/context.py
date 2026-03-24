@@ -21,6 +21,7 @@ import platform
 import re
 import shutil
 import sys
+import tempfile
 import threading
 import types
 import weakref
@@ -2880,7 +2881,7 @@ class Module:
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
-                        pch_dir=build_dir,
+                        pch_dir=runtime.get_pch_dir() or build_dir,
                     )
 
             except Exception as e:
@@ -5129,6 +5130,9 @@ class Runtime:
         self.driver_version = None  # installed driver version
         self.min_driver_version = None  # minimum required driver version
 
+        self._pch_dirs: dict[int, tempfile.TemporaryDirectory] = {}
+        self._pch_dirs_lock = threading.Lock()
+
         self.cuda_devices = []
         self.cuda_primary_devices = []
         self.nvrtc_supported_archs = set()
@@ -5354,6 +5358,20 @@ class Runtime:
                 )
                 msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
                 warp._src.utils.warn("\n   ".join(msg))
+
+    def get_pch_dir(self) -> str | None:
+        """Return a per-thread temporary directory for NVRTC precompiled header files.
+
+        Returns ``None`` when CUDA is not enabled or the toolkit version is
+        13.0+ (CUDA 13 manages PCH directories internally).
+        """
+        if self.toolkit_version is None or self.toolkit_version >= (13, 0):
+            return None
+        tid = threading.get_ident()
+        with self._pch_dirs_lock:
+            if tid not in self._pch_dirs:
+                self._pch_dirs[tid] = tempfile.TemporaryDirectory(prefix="wp_pch_")
+            return self._pch_dirs[tid].name
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")
