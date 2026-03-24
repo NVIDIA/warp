@@ -12007,7 +12007,7 @@ def tile_matmul_lto_dispatch_func(
             num_threads,
             builder,
         )
-        if warp.config.enable_backward:
+        if options["enable_backward"]:
             # adjA += adjC * B^T - Transpose ~= flipped layout
             (fun_backward_A, lto_backward_A) = warp._src.build.build_lto_dot(
                 M,
@@ -12218,7 +12218,7 @@ def tile_fft_generic_lto_dispatch_func(
             arch, size, ept, direction, fwd_dir, precision, builder
         )
 
-        if warp.config.enable_backward:
+        if options["enable_backward"]:
             # generate the backward LTO (inverse direction for adjoint)
             # shared memory requirements are identical since tile sizes match
             lto_symbol_bwd, lto_code_data_bwd, _ = warp._src.build.build_lto_fft(
