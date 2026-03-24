@@ -67,6 +67,8 @@
   targets (e.g., ``s.field += expr``, ``arr[i] *= expr``), causing side effects in target
   indices or the right-hand side to trigger multiple times
   ([GH-1233](https://github.com/NVIDIA/warp/issues/1233)).
+- Fix `tile_map()` with `tile_store()` failing for custom vector and matrix types created via
+  `wp.types.vector()` or `wp.types.matrix()` ([GH-1311](https://github.com/NVIDIA/warp/issues/1311)).
 
 ### Documentation
 
