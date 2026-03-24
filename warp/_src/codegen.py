@@ -4750,9 +4750,41 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     forward_args = []
     reverse_args = []
 
+    # Tile parameters are emitted as C++ template parameters so that the
+    # same @wp.func can accept tiles with any storage type (register or
+    # shared) without requiring separate overloads.  The Python-level tile
+    # annotation (e.g. wp.tile(dtype=float, shape=(M, N))) defaults to
+    # register storage, but at the call site the tile may actually live in
+    # shared memory.  By generating ``template<typename tile_t>`` instead
+    # of the concrete ``tile_register_t<...>`` type, C++ template argument
+    # deduction resolves the correct storage type automatically.
+    #
+    # Tile parameters are passed by non-const reference (not by value)
+    # for two reasons: (1) owning shared tiles (tile_shared_t with
+    # Owner=true) cannot be copied (static_assert in copy constructor),
+    # and (2) adjoint built-ins like adj_tile_sum() expect non-const
+    # Tile& parameters.
+    #
+    # This is a semantic change for register tiles, which were previously
+    # passed by value.  The difference is observable for in-place tile
+    # operations (e.g., a += b where both are tiles), which mutate the
+    # parameter directly.  Simple rebinding (a = expr) creates a new C++
+    # variable: for register tiles this is a full value copy, for shared
+    # tiles a non-owning handle to the same shared memory (element-level
+    # writes through either variable affect the same data).
+    # The pass-by-reference behavior for in-place ops is intentional:
+    # it matches the Python semantics where augmented assignment on a
+    # mutable object modifies it in place.
+    template_params = []
+
     # forward args
     for i, arg in enumerate(adj.args):
-        s = f"{arg.ctype()} {arg.emit()}"
+        if is_tile(arg.type):
+            tname = f"tile_{arg.label}"
+            template_params.append(tname)
+            s = f"{tname}& {arg.emit()}"
+        else:
+            s = f"{arg.ctype()} {arg.emit()}"
         forward_args.append(s)
         if not adj.custom_reverse_mode or i < adj.custom_reverse_num_input_args:
             reverse_args.append(s)
@@ -4769,6 +4801,9 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
+        elif is_tile(arg.type):
+            tname = f"tile_{arg.label}"
+            reverse_args.append(f"{tname} & adj_{arg.label}")
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
     if has_multiple_outputs:
@@ -4779,7 +4814,16 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     # custom output reverse args (user-declared)
     if adj.custom_reverse_mode:
         for arg in adj.args[adj.custom_reverse_num_input_args :]:
-            reverse_args.append(f"{arg.ctype()} & {arg.emit()}")
+            if is_tile(arg.type):
+                tname = f"tile_{arg.label}"
+                reverse_args.append(f"{tname} & {arg.emit()}")
+            else:
+                reverse_args.append(f"{arg.ctype()} & {arg.emit()}")
+
+    # build template prefix for functions with tile parameters
+    template_prefix = ""
+    if template_params:
+        template_prefix = "template<" + ", ".join(f"typename {t}" for t in template_params) + ">\n"
 
     if device == "cpu":
         forward_template = cpu_forward_function_template
@@ -4795,7 +4839,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
 
     s = ""
     if not adj.skip_forward_codegen and not reverse_only:
-        s += forward_template.format(
+        s += template_prefix + forward_template.format(
             name=c_func_name,
             return_type=return_type,
             forward_args=indent(forward_args),
@@ -4822,7 +4866,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
                 reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
-        s += reverse_template.format(
+        s += template_prefix + reverse_template.format(
             name=c_func_name,
             return_type=return_type,
             reverse_args=indent(reverse_args),

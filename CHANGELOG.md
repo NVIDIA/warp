@@ -53,6 +53,9 @@
   ([GH-1233](https://github.com/NVIDIA/warp/issues/1233)).
 - Fix `tile_map()` with `tile_store()` failing for custom vector and matrix types created via
   `wp.types.vector()` or `wp.types.matrix()` ([GH-1311](https://github.com/NVIDIA/warp/issues/1311)).
+- Fix `@wp.func` with tile parameters failing to compile when called with shared-memory tiles. Tile parameters in
+  `@wp.func` are now passed by reference for both register and shared storage, matching Python's semantics for mutable
+  objects. Previously, register tiles were passed by value ([GH-1313](https://github.com/NVIDIA/warp/issues/1313)).
 
 ### Documentation
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
