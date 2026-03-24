@@ -5784,7 +5784,8 @@ def tile_unary_map_value_func(arg_types, arg_values):
         if overload.value_func is None:
             overload.build(None)
 
-        value_type = overload.value_func(None, None)
+        param_name = next(iter(overload.input_types))
+        value_type = overload.value_func({param_name: a.dtype}, None)
 
         if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -5890,7 +5891,9 @@ def tile_binary_map_value_func(arg_types, arg_values):
         if overload.value_func is None:
             overload.build(None)
 
-        value_type = overload.value_func(None, None)
+        param_names = iter(overload.input_types)
+        param_a_name, param_b_name = next(param_names), next(param_names)
+        value_type = overload.value_func({param_a_name: a.dtype, param_b_name: b_dtype}, None)
 
         if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -6026,7 +6029,11 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    value_type = overload.value_func(None, None)
+    arg_type_map = dict(zip(overload.input_types, dtypes))
+    assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
+        f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
+    )
+    value_type = overload.value_func(arg_type_map, None)
 
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
         raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
