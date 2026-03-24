@@ -352,7 +352,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         - tile.test_tile_cholesky: nvJitLink NVVM_ERROR_COMPILATION
         - tile.test_tile_load: CUDA error 701 (too many resources for launch)
         - tile.test_tile_mathdx: nvJitLink NVVM_ERROR_COMPILATION
-        - tile.test_tile_reduce: CUDA error 715 (illegal instruction)
         - tile.test_tile_matmul: nvJitLink NVVM_ERROR_COMPILATION
         - tile.test_tile_matmul_no_mathdx: nvJitLink NVVM_ERROR_COMPILATION
         - test_verify_fp: deliberately triggers assertions which fire in debug
@@ -388,6 +387,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_tape import TestTape
     from warp.tests.test_types import TestTypes
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
+    from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_sort import TestTileSort
     from warp.tests.tile.test_tile_view import TestTileView
 
@@ -421,6 +421,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTypes,
         # Tile (debug-safe)
         TestTileAtomicBitwise,
+        TestTileReduce,
         TestTileSort,
         TestTileView,
         # Geometry
