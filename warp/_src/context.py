@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import ast
-import atexit
 import collections
 import ctypes
 import enum
@@ -5229,7 +5228,7 @@ class Runtime:
         self.driver_version = None  # installed driver version
         self.min_driver_version = None  # minimum required driver version
 
-        self._pch_dirs: dict[int, str] = {}
+        self._pch_dirs: dict[int, tempfile.TemporaryDirectory] = {}
         self._pch_dirs_lock = threading.Lock()
 
         self.cuda_devices = []
@@ -5242,8 +5241,6 @@ class Runtime:
             # get CUDA Toolkit and driver versions
             toolkit_version = self.core.wp_cuda_toolkit_version()
             self.toolkit_version = (toolkit_version // 1000, (toolkit_version % 1000) // 10)
-
-            atexit.register(self._cleanup_pch_dirs)
 
             if self.core.wp_cuda_driver_is_initialized():
                 # save versions as tuples, e.g., (12, 4)
@@ -5471,14 +5468,8 @@ class Runtime:
         tid = threading.get_ident()
         with self._pch_dirs_lock:
             if tid not in self._pch_dirs:
-                self._pch_dirs[tid] = tempfile.mkdtemp(prefix="wp_pch_")
-            return self._pch_dirs[tid]
-
-    def _cleanup_pch_dirs(self):
-        with self._pch_dirs_lock:
-            for d in self._pch_dirs.values():
-                shutil.rmtree(d, ignore_errors=True)
-            self._pch_dirs.clear()
+                self._pch_dirs[tid] = tempfile.TemporaryDirectory(prefix="wp_pch_")
+            return self._pch_dirs[tid].name
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")
