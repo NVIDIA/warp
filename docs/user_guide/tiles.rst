@@ -654,8 +654,46 @@ Automatic Differentiation
 -------------------------
 
 Warp can automatically generate the backward version of tile-based programs.
-In general, tile programs must obey the same rules for auto-diff as regular Warp programs, e.g. avoiding in-place operations, etc.
+In general, tile programs must obey the same rules for auto-diff as regular Warp programs.
+In-place addition and subtraction (``+=``, ``-=``) on tiles are differentiable;
+in-place multiplication and division are not supported for tiles.
 Please see the :ref:`differentiability` section for more details.
+
+Tiles in ``@wp.func`` Functions
+-------------------------------
+
+Tile parameters in :func:`@wp.func <warp.func>` functions are **passed by reference**. This is
+a departure from other Warp types (scalars, vectors, matrices, etc.), which are passed by value.
+The difference is observable when a function modifies a tile in place:
+
+.. code:: python
+
+    @wp.func
+    def add_bias(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+        t += wp.tile_ones(dtype=float, shape=(TILE_M, TILE_N), storage="register") * 5.0
+
+    @wp.kernel(enable_backward=False)
+    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+        i = wp.tid()
+        t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
+        add_bias(t)          # modifies t in place — caller sees the change
+        wp.tile_store(out, t) # t now contains input + 5.0
+
+This behavior applies to **both** shared-memory and register tiles, and matches Python's
+semantics for mutable objects. The reasons for pass-by-reference are:
+
+- Shared-memory tiles are handles to a fixed region of shared memory and cannot be copied.
+  Passing by reference lets functions operate on shared tiles directly.
+- Register tiles use the same calling convention for consistency, so that
+  ``@wp.func`` code works identically regardless of the caller's storage choice.
+
+.. note::
+
+   Simple rebinding (``alias = t``) inside a ``@wp.func`` creates a new C++ variable.
+   For register tiles this is a full value copy; for shared tiles the new variable is a
+   non-owning handle to the same shared memory, so element-level writes through either
+   variable affect the same data. In-place assignments (``+=``, ``-=``, etc.) on the
+   original parameter mutate the tile through the reference regardless of storage type.
 
 .. _mathdx:
 
