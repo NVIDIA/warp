@@ -103,7 +103,10 @@ saxpy kernel: 0.017 ms/launch over 1M elements
 |--------|-------|
 | Kernel launch time | **0.017 ms** |
 | Elements processed | 1,000,000 |
-| Throughput | ~58.8 GB/s (estimated) |
+| Elements/sec | 5.97 × 10¹⁰ |
+| Effective memory bandwidth | 477.2 GB/s (read + write) |
+| L40 peak bandwidth (reference) | ~864 GB/s |
+| Bandwidth utilization | ~55% |
 
 ---
 
@@ -121,6 +124,9 @@ The single test failure is a non-critical optional dependency issue unrelated to
 
 ---
 
-## Full Test Output
+## Files
 
-See `warp-test-results.txt` (attached to this PR) for the complete test run output.
+- `report.md` — this report
+- `warp-test-results.txt` — full captured serial test output (837s run)
+- `saxpy_benchmark.py` — benchmark script used for timing
+- `test-output.txt` — additional parallel test output (4-worker run, partial)
