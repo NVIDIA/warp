@@ -5099,6 +5099,7 @@ class Runtime:
             ("wp_host_compiler_version", ctypes.c_char_p),
             ("wp_libmathdx_version", ctypes.c_char_p),
             ("wp_nvrtc_version", ctypes.c_int),
+            ("wp_is_cubql_enabled", ctypes.c_int),
             ("wp_is_verify_fp_enabled", ctypes.c_int),
             ("wp_is_fast_math_enabled", ctypes.c_int),
         ]:
@@ -5687,6 +5688,22 @@ def is_cuda_driver_initialized() -> bool:
     init()
 
     return runtime.core.wp_cuda_driver_is_initialized()
+
+
+def is_cubql_available() -> bool:
+    """Check whether the cuBQL BVH backend is available.
+
+    Returns:
+        ``True`` if the native library was compiled with cuBQL support, ``False`` otherwise.
+
+    See Also:
+        :func:`is_cuda_available`
+    """
+    init()
+
+    if hasattr(runtime.core, "wp_is_cubql_enabled"):
+        return bool(runtime.core.wp_is_cubql_enabled())
+    return False
 
 
 def get_cuda_supported_archs() -> list[int]:
@@ -9968,6 +9985,8 @@ def print_diagnostics() -> dict:
     libmathdx_ver = runtime.get_libmathdx_version()
     info["libmathdx"] = libmathdx_ver if libmathdx_ver else None
 
+    info["cubql_enabled"] = _build_flag("cubql")
+
     info["nanovdb"] = runtime.get_nanovdb_version()
     info["host_compiler"] = runtime.get_host_compiler_version()
 
@@ -10035,6 +10054,7 @@ def print_diagnostics() -> dict:
 
     _section("Libraries")
     _field("MathDx:", info["libmathdx"] if info["mathdx_enabled"] and info["libmathdx"] else "not available")
+    _field("cuBQL:", "enabled" if info["cubql_enabled"] else "not available")
     _field("NanoVDB:", info["nanovdb"])
 
     _section("Build")

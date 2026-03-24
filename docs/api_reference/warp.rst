@@ -257,6 +257,7 @@ Runtime
    clear_lto_cache
    init
    is_cpu_available
+   is_cubql_available
    is_cuda_available
    print_diagnostics
 
