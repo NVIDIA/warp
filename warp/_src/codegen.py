@@ -1451,7 +1451,7 @@ class Adjoint:
 
         # lineinfo is enabled by default in debug mode regardless of the builder option, don't want to unnecessarily
         # emit line directives in generated code if it's not being compiled with line information
-        build_mode = val if (val := adj.builder_options.get("mode")) is not None else warp.config.mode
+        build_mode = adj.builder_options.get("mode") or warp.config.mode
 
         lineinfo_enabled = adj.builder_options.get("lineinfo", False) or build_mode == "debug"
 

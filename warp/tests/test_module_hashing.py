@@ -230,6 +230,74 @@ def test_module_load(test, device):
     test.assertEqual(hash1, hash2)
 
 
+class TestOptionResolution(unittest.TestCase):
+    """Tests for centralized option resolution (GH-1307)."""
+
+    def test_none_vs_explicit_optimization_level(self):
+        """optimization_level=None and optimization_level=3 must hash identically."""
+        m1 = load_code_as_module(SIMPLE_MODULE, "opt_level_none")
+        m1.options["optimization_level"] = None
+
+        m2 = load_code_as_module(SIMPLE_MODULE, "opt_level_explicit")
+        m2.options["optimization_level"] = 3
+
+        # Ensure config also defaults to None -> 3
+        old = wp.config.optimization_level
+        try:
+            wp.config.optimization_level = None
+            self.assertEqual(m1.hash_module(), m2.hash_module())
+        finally:
+            wp.config.optimization_level = old
+
+    def test_none_vs_explicit_mode(self):
+        """mode=None and mode='release' must hash identically when config.mode is 'release'."""
+        m1 = load_code_as_module(SIMPLE_MODULE, "mode_none")
+        m1.options["mode"] = None
+
+        m2 = load_code_as_module(SIMPLE_MODULE, "mode_explicit")
+        m2.options["mode"] = "release"
+
+        old = wp.config.mode
+        try:
+            wp.config.mode = "release"
+            self.assertEqual(m1.hash_module(), m2.hash_module())
+        finally:
+            wp.config.mode = old
+
+    def test_config_change_propagates_to_hash(self):
+        """Changing config.mode must change the hash when module mode is None."""
+        m = load_code_as_module(SIMPLE_MODULE, "mode_propagation")
+        m.options["mode"] = None
+
+        old = wp.config.mode
+        try:
+            wp.config.mode = "release"
+            hash_release = m.hash_module()
+
+            wp.config.mode = "debug"
+            hash_debug = m.hash_module()
+
+            self.assertNotEqual(hash_release, hash_debug)
+        finally:
+            wp.config.mode = old
+
+    def test_verify_fp_affects_hash(self):
+        """verify_fp=True vs False must produce different hashes."""
+        m = load_code_as_module(SIMPLE_MODULE, "verify_fp_test")
+
+        old = wp.config.verify_fp
+        try:
+            wp.config.verify_fp = False
+            hash_false = m.hash_module()
+
+            wp.config.verify_fp = True
+            hash_true = m.hash_module()
+
+            self.assertNotEqual(hash_false, hash_true)
+        finally:
+            wp.config.verify_fp = old
+
+
 class TestModuleHashing(unittest.TestCase):
     pass
 

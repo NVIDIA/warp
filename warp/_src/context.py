@@ -1885,10 +1885,10 @@ def _resolve_cpu_compiler_flags(module_flags, config_flags):
 # and build configuration.  For each kernel, it computes a deep hash by recursively
 # hashing all referenced functions, structs, and constants, even those defined in
 # other modules.  The module hash is computed in the constructor and can be retrieved
-# using get_module_hash().  In addition, the ModuleHasher takes care of filtering out
+# using get_hash().  In addition, the ModuleHasher takes care of filtering out
 # duplicate kernels for codegen (see get_unique_kernels()).
 class ModuleHasher:
-    def __init__(self, module):
+    def __init__(self, kernels, options):
         # cache function hashes to avoid hashing multiple times
         self.function_hashes = {}  # (function: hash)
 
@@ -1903,7 +1903,7 @@ class ModuleHasher:
 
         # hash all kernels: non-generic kernels are hashed directly,
         # generic kernels are hashed via their instantiated overloads
-        for kernel in module._get_live_kernels():
+        for kernel in kernels:
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
@@ -1929,29 +1929,12 @@ class ModuleHasher:
             ch.update(kernel_hash)
 
         # configuration parameters
-        for opt in sorted(module.options.keys()):
-            s = f"{opt}:{module.options[opt]}"
+        for opt in sorted(options.keys()):
+            s = f"{opt}:{options[opt]}"
             ch.update(bytes(s, "utf-8"))
 
-        # ensure to trigger recompilation if flags affecting kernel compilation are changed
-        if warp.config.verify_fp:
-            ch.update(bytes("verify_fp", "utf-8"))
-
-        # line directives, e.g. for Nsight Compute
-        ch.update(bytes(ctypes.c_int(warp.config.line_directives)))
-
-        # whether to use `assign_copy` instead of `assign_inplace`
-        ch.update(bytes(ctypes.c_int(warp.config.enable_vector_component_overwrites)))
-
-        # build config
-        ch.update(bytes(warp.config.mode, "utf-8"))
-
-        # CPU compiler flags (resolved: never None, the default is "-march=native")
-        cpu_flags = _resolve_cpu_compiler_flags(module.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags)
-        ch.update(bytes(cpu_flags, "utf-8"))
-
         # save the module hash
-        self.module_hash = ch.digest()
+        self.hash = ch.digest()
 
     def hash_kernel(self, kernel: Kernel) -> bytes:
         # NOTE: We only hash non-generic kernels, so we don't traverse kernel overloads here.
@@ -2085,8 +2068,8 @@ class ModuleHasher:
         else:
             raise TypeError(f"Invalid constant type: {type(value)}")
 
-    def get_module_hash(self) -> bytes:
-        return self.module_hash
+    def get_hash(self) -> bytes:
+        return self.hash
 
     def get_unique_kernels(self):
         return self.unique_kernels.values()
@@ -2105,7 +2088,7 @@ class ModuleBuilder:
         self.shared_memory_bytes = {}  # map from lto symbol to shared memory requirements
 
         if hasher is None:
-            hasher = ModuleHasher(module)
+            hasher = ModuleHasher(module._get_live_kernels(), options)
 
         # build all unique kernels
         self.kernels = hasher.get_unique_kernels()
@@ -2423,6 +2406,7 @@ class Module:
 
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
         self.hashers = {}
+        self.resolved_options = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
         # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
@@ -2460,6 +2444,33 @@ class Module:
 
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
+
+    def resolve_options(self, config) -> dict:
+        """Return a fully-resolved copy of the module options.
+
+        Resolves ``None`` sentinels by falling back to ``config`` values and
+        hardcoded defaults. Also includes global config flags that affect
+        compilation, so downstream consumers never need to read config directly.
+        """
+        options = dict(self.options)
+
+        # Resolve None-means-inherit options
+        if options["mode"] is None:
+            options["mode"] = config.mode
+        if options["optimization_level"] is None:
+            options["optimization_level"] = config.optimization_level
+        if options["optimization_level"] is None:
+            options["optimization_level"] = 3
+        options["cpu_compiler_flags"] = _resolve_cpu_compiler_flags(
+            options["cpu_compiler_flags"], config.cpu_compiler_flags
+        )
+
+        # Fold in global config flags that affect compilation
+        options["verify_fp"] = config.verify_fp
+        options["line_directives"] = config.line_directives
+        options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+
+        return options
 
     def __getattr__(self, name):
         from warp._src.utils import get_deprecated_method  # noqa: PLC0415
@@ -2606,12 +2617,13 @@ class Module:
     def hash_module(self) -> bytes:
         """Get the hash of the module for the current block_dim.
 
-        This function always creates a new `ModuleHasher` instance and computes the hash.
+        This function always creates a new ``ModuleHasher`` and computes the hash.
         """
-        # compute latest hash
         block_dim = self.options["block_dim"]
-        self.hashers[block_dim] = ModuleHasher(self)
-        return self.hashers[block_dim].get_module_hash()
+        options = self.resolve_options(warp.config)
+        self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+        self.resolved_options[block_dim] = options
+        return self.hashers[block_dim].get_hash()
 
     def get_module_hash(self, block_dim: int | None = None) -> bytes:
         """Get the hash of the module for the current block_dim.
@@ -2622,21 +2634,17 @@ class Module:
             block_dim = self.options["block_dim"]
 
         if self.has_unresolved_static_expressions:
-            # The module hash currently does not account for unresolved static expressions
-            # (only static expressions evaluated at declaration time so far).
-            # We need to generate the code for the functions and kernels that have
-            # unresolved static expressions and then compute the module hash again.
-            builder_options = self.options | {"output_arch": None}
-            # build functions, kernels to resolve static expressions
+            options = self.resolve_options(warp.config)
+            builder_options = options | {"output_arch": None}
             _ = ModuleBuilder(self, builder_options)
-
             self.has_unresolved_static_expressions = False
 
-        # compute the hash if needed
         if block_dim not in self.hashers:
-            self.hashers[block_dim] = ModuleHasher(self)
+            options = self.resolve_options(warp.config)
+            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+            self.resolved_options[block_dim] = options
 
-        return self.hashers[block_dim].get_module_hash()
+        return self.hashers[block_dim].get_hash()
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -2722,6 +2730,7 @@ class Module:
         output_name: str | None = None,
         output_arch: int | None = None,
         use_ptx: bool | None = None,
+        options: dict | None = None,
     ) -> bool:
         """Compile this module for a specific device.
 
@@ -2735,13 +2744,20 @@ class Module:
             output_arch: The architecture to compile the module for.
             use_ptx: Whether to compile to PTX instead of CUBIN. If ``None``,
                 auto-determined from the device and architecture.
+            options: Resolved module options dict. If ``None``, resolved from
+                current config.
 
         Returns:
             ``True`` if compilation was performed, ``False`` if a cached
             binary already exists and compilation was skipped.
         """
+        if options is None:
+            options = self.resolve_options(warp.config)
+
         if output_arch is None:
             output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
+
+        options = options | {"output_arch": output_arch}
 
         # Resolve the arch suffix once for both the output filename and the build call
         if output_arch:
@@ -2777,11 +2793,10 @@ class Module:
             return False
 
         # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-        builder_options = self.options | {"output_arch": output_arch}
         builder = ModuleBuilder(
             self,
-            builder_options,
-            hasher=self.hashers.get(self.options["block_dim"], None),
+            options,
+            hasher=self.hashers.get(options["block_dim"], None),
         )
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
@@ -2791,15 +2806,8 @@ class Module:
         # dir may exist from previous attempts / runs / archs
         Path(build_dir).mkdir(parents=True, exist_ok=True)
 
-        mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
-        opt = (
-            self.options["optimization_level"]
-            if self.options["optimization_level"] is not None
-            else warp.config.optimization_level
-        )
-
-        if opt is None:
-            opt = 3  # default to full optimization (ignored for debug builds)
+        mode = options["mode"]
+        opt = options["optimization_level"]
 
         if opt != 3 and output_arch and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             warp._src.utils.warn(
@@ -2826,12 +2834,10 @@ class Module:
                         output_path,
                         source_code_path,
                         mode=mode,
-                        fast_math=self.options["fast_math"],
-                        verify_fp=warp.config.verify_fp,
-                        fuse_fp=self.options["fuse_fp"],
-                        extra_flags=_resolve_cpu_compiler_flags(
-                            self.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags
-                        ),
+                        fast_math=options["fast_math"],
+                        verify_fp=options["verify_fp"],
+                        fuse_fp=options["fuse_fp"],
+                        extra_flags=options["cpu_compiler_flags"],
                     )
 
             except Exception as e:
@@ -2857,20 +2863,20 @@ class Module:
 
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
-                    f"Compile CUDA (arch={builder_options['output_arch']}{arch_suffix}, mode={mode}, block_dim={self.options['block_dim']})",
+                    f"Compile CUDA (arch={options['output_arch']}{arch_suffix}, mode={mode}, block_dim={options['block_dim']})",
                     active=warp.config.verbose,
                 ):
                     warp._src.build.build_cuda(
                         source_code_path,
-                        builder_options["output_arch"],
+                        options["output_arch"],
                         output_path,
                         config=mode,
                         optimization_level=opt,
-                        verify_fp=warp.config.verify_fp,
-                        fast_math=self.options["fast_math"],
-                        fuse_fp=self.options["fuse_fp"],
-                        lineinfo=self.options["lineinfo"],
-                        compile_time_trace=self.options["compile_time_trace"],
+                        verify_fp=options["verify_fp"],
+                        fast_math=options["fast_math"],
+                        fuse_fp=options["fuse_fp"],
+                        lineinfo=options["lineinfo"],
+                        compile_time_trace=options["compile_time_trace"],
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
@@ -2974,6 +2980,7 @@ class Module:
             return None
 
         module_hash = self.get_module_hash(active_block_dim)
+        options = self.resolved_options[active_block_dim]
 
         # use a unique module path using the module short hash
         module_name_short = self.get_module_identifier(active_block_dim)
@@ -3015,7 +3022,7 @@ class Module:
                 binary_path = os.path.join(module_dir, output_name)
 
                 try:
-                    compiled = self._compile(device, module_dir, output_name, output_arch)
+                    compiled = self._compile(device, module_dir, output_name, output_arch, options=options)
                 except Exception as e:
                     module_load_timer.extra_msg = " (error)"
                     raise e
@@ -3060,6 +3067,7 @@ class Module:
     def mark_modified(self):
         # clear hash data
         self.hashers = {}
+        self.resolved_options = {}
 
         # clear build failures
         self.failed_builds = set()
