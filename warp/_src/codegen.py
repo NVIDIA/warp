@@ -4753,7 +4753,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     # Tile parameters are emitted as C++ template parameters so that the
     # same @wp.func can accept tiles with any storage type (register or
     # shared) without requiring separate overloads.  The Python-level tile
-    # annotation (e.g. wp.tile(dtype=float, shape=(M, N))) defaults to
+    # annotation (e.g. wp.tile[float, M, N]) defaults to
     # register storage, but at the call site the tile may actually live in
     # shared memory.  By generating ``template<typename tile_t>`` instead
     # of the concrete ``tile_register_t<...>`` type, C++ template argument

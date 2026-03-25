@@ -1196,7 +1196,7 @@ def grad(func: Callable) -> GradWrapper:
 
 
         @wp.kernel
-        def my_kernel(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+        def my_kernel(x: wp.array[float], grad_x: wp.array[float]):
             tid = wp.tid()
             # Compute d(x*x)/d(x) = 2*x
             grad_x[tid] = wp.grad(square)(x[tid])
@@ -1205,10 +1205,10 @@ def grad(func: Callable) -> GradWrapper:
         # For functions with multiple inputs:
         @wp.kernel
         def kernel2(
-            a: wp.array(dtype=float),
-            b: wp.array(dtype=float),
-            grad_a: wp.array(dtype=float),
-            grad_b: wp.array(dtype=float),
+            a: wp.array[float],
+            b: wp.array[float],
+            grad_a: wp.array[float],
+            grad_b: wp.array[float],
         ):
             tid = wp.tid()
             db, da = wp.grad(wp.atan2)(b[tid], a[tid])
@@ -1247,20 +1247,20 @@ def kernel(
     Example::
 
         @wp.kernel
-        def my_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel(a: wp.array[float], b: wp.array[float]):
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
 
         @wp.kernel(enable_backward=False)
-        def my_kernel_no_backward(a: wp.array(dtype=float, ndim=2), x: float):
+        def my_kernel_no_backward(a: wp.array2d[float], x: float):
             # the backward pass will not be generated
             i, j = wp.tid()
             a[i, j] = x
 
 
         @wp.kernel(module="unique")
-        def my_kernel_unique_module(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel_unique_module(a: wp.array[float], b: wp.array[float]):
             # the kernel will be registered in new unique module created just for this
             # kernel and its dependent functions and structs
             tid = wp.tid()
@@ -1268,7 +1268,7 @@ def kernel(
 
 
         @wp.kernel(launch_bounds=(256, 1))
-        def my_kernel_with_launch_bounds(a: wp.array(dtype=float)):
+        def my_kernel_with_launch_bounds(a: wp.array[float]):
             # CUDA __launch_bounds__ will be set to (256, 1)
             tid = wp.tid()
             a[tid] = a[tid] * 2.0

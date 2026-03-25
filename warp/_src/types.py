@@ -2864,7 +2864,7 @@ class array(Array[DType, NDim]):
         ``wp.empty()``, ``wp.zeros()``, or ``wp.full()`` instead to create new arrays.
 
         If none of the above arguments are specified, a simple type annotation is constructed.  This is used when annotating
-        kernel arguments or struct members (e.g.,``arr: wp.array(dtype=float)``).  In this case, only ``dtype`` and ``ndim``
+        kernel arguments or struct members (e.g., ``arr: wp.array[float]``).  In this case, only ``dtype`` and ``ndim``
         are taken into account and no memory is allocated for the array.
 
         Args:

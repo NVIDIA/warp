@@ -2572,7 +2572,7 @@ add_builtin(
             TILE_SIZE = 8
 
             @wp.kernel
-            def compute(output: wp.array(dtype=int)):
+            def compute(output: wp.array[int]):
                 i, j = wp.tid()
 
                 # Compute offset on the last thread
@@ -2699,7 +2699,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+            def rand_kernel(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
@@ -2764,7 +2764,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+            def rand_range_kernel(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
@@ -2882,7 +2882,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d(dtype=float)):
+            def rand_kernel(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
@@ -2947,7 +2947,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d(dtype=float)):
+            def rand_range_kernel(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
@@ -3294,7 +3294,7 @@ add_builtin(
             HALF_N = wp.constant(TILE_N // 2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
@@ -3528,7 +3528,7 @@ add_builtin(
             TWO_N = wp.constant(TILE_N * 2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
@@ -3774,7 +3774,7 @@ add_builtin(
             TILE_N = wp.constant(2)
 
             @wp.kernel
-            def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def tile_atomic_add_indexed(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
@@ -5464,7 +5464,7 @@ add_builtin(
             TILE_N = wp.constant(2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array[float]):
 
                 a = wp.tile_load(x, shape=(TILE_M, TILE_N))
                 b = wp.tile_reduce(wp.add, a, axis=1)
@@ -5674,7 +5674,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def scan_example(input: wp.array(dtype=int)):
+            def scan_example(input: wp.array[int]):
                 t = wp.tile_load(input, shape=(4,))
                 s = wp.tile_scan_max_inclusive(t)
                 print(s)
@@ -5742,7 +5742,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def scan_example(input: wp.array(dtype=int)):
+            def scan_example(input: wp.array[int]):
                 t = wp.tile_load(input, shape=(4,))
                 s = wp.tile_scan_min_inclusive(t)
                 print(s)
@@ -8720,7 +8720,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
             f"Trying to create an array view with {idx_count} indices, "
             f"but the array only has {arr_type.ndim} dimension(s). "
             f"Ensure that the argument type on the function or kernel specifies "
-            f"the expected number of dimensions, e.g.: def func(param: wp.array3d(dtype=float): ..."
+            f"the expected number of dimensions, e.g.: def func(param: wp.array3d[float]): ..."
         )
 
     has_slice = any(is_slice(x) for x in idx_types)

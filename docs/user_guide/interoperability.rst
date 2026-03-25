@@ -13,7 +13,7 @@ For example, we can use NumPy arrays directly when launching Warp kernels on the
     import warp as wp
 
     @wp.kernel
-    def saxpy(x: wp.array(dtype=float), y: wp.array(dtype=float), a: float):
+    def saxpy(x: wp.array[float], y: wp.array[float], a: float):
         i = wp.tid()
         y[i] = a * x[i] + y[i]
 
@@ -126,7 +126,7 @@ created prior to capture, as shown in the examples below.
     import warp as wp
 
     @wp.kernel
-    def scale(a: wp.array(dtype=float), s: float):
+    def scale(a: wp.array[float], s: float):
         tid = wp.tid()
         a[tid] = a[tid] * s
 
@@ -155,7 +155,7 @@ created prior to capture, as shown in the examples below.
     import warp as wp
 
     @wp.kernel
-    def scale(a: wp.array(dtype=float), s: float):
+    def scale(a: wp.array[float], s: float):
         tid = wp.tid()
         a[tid] = a[tid] * s
 
@@ -193,7 +193,7 @@ using :func:`warp.from_torch` is as follows:
 
 
     @wp.kernel()
-    def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
+    def loss(xs: wp.array2d[float], l: wp.array[float]):
         tid = wp.tid()
         wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
 
@@ -236,7 +236,7 @@ Here, we revisit the same example from above where now only a single conversion 
 
 
     @wp.kernel()
-    def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
+    def loss(xs: wp.array2d[float], l: wp.array[float]):
         tid = wp.tid()
         wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
 
@@ -281,9 +281,9 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
 
     @wp.kernel
     def eval_rosenbrock(
-        xs: wp.array(dtype=wp.vec2),
+        xs: wp.array[wp.vec2],
         # outputs
-        z: wp.array(dtype=float),
+        z: wp.array[float],
     ):
         i = wp.tid()
         x = xs[i]
@@ -376,9 +376,9 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
 
     @wp.kernel
     def eval_rosenbrock(
-        xy: wp.array(dtype=wp.vec2),
+        xy: wp.array[wp.vec2],
         # outputs
-        z: wp.array(dtype=float),
+        z: wp.array[float],
     ):
         i = wp.tid()
         v = xy[i]
@@ -581,9 +581,9 @@ Here's an example that demonstrates the problem:
 
     @wp.kernel(enable_backward=False)
     def forward_kernel(
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
-        output: wp.array(dtype=float)
+        a: wp.array[float],
+        b: wp.array[float],
+        output: wp.array[float]
     ):
         i = wp.tid()
         x = a[i]
@@ -593,11 +593,11 @@ Here's an example that demonstrates the problem:
 
     @wp.kernel(enable_backward=False)
     def backward_kernel(
-        grad_output: wp.array(dtype=float),
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
-        grad_a: wp.array(dtype=float),
-        grad_b: wp.array(dtype=float)
+        grad_output: wp.array[float],
+        a: wp.array[float],
+        b: wp.array[float],
+        grad_a: wp.array[float],
+        grad_b: wp.array[float]
     ):
         i = wp.tid()
         x = a[i]
@@ -984,7 +984,7 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
     from warp.jax_experimental import jax_kernel
 
     @wp.kernel
-    def triple_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
+    def triple_kernel(input: wp.array[float], output: wp.array[float]):
         tid = wp.tid()
         output[tid] = 3.0 * input[tid]
 
@@ -1017,9 +1017,9 @@ Here's a kernel with two inputs and one output::
     from warp.jax_experimental import jax_kernel
 
     @wp.kernel
-    def add_kernel(a: wp.array(dtype=int),
-                   b: wp.array(dtype=int),
-                   output: wp.array(dtype=int)):
+    def add_kernel(a: wp.array[int],
+                   b: wp.array[int],
+                   output: wp.array[int]):
         tid = wp.tid()
         output[tid] = a[tid] + b[tid]
 
@@ -1045,10 +1045,10 @@ One input and two outputs::
     from warp.jax_experimental import jax_kernel
 
     @wp.kernel
-    def sincos_kernel(angle: wp.array(dtype=float),
+    def sincos_kernel(angle: wp.array[float],
                       # outputs
-                      sin_out: wp.array(dtype=float),
-                      cos_out: wp.array(dtype=float)):
+                      sin_out: wp.array[float],
+                      cos_out: wp.array[float]):
         tid = wp.tid()
         sin_out[tid] = wp.sin(angle[tid])
         cos_out[tid] = wp.cos(angle[tid])
@@ -1068,7 +1068,7 @@ Here is a kernel with no inputs that initializes an array of 3x3 matrices with t
 With no inputs, specifying the launch dimensions is required to determine the shape of the output array::
 
     @wp.kernel
-    def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
+    def diagonal_kernel(output: wp.array[wp.mat33]):
         tid = wp.tid()
         output[tid] = wp.mat33(1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0)
 
@@ -1087,9 +1087,9 @@ Scalar Inputs
 Scalar input arguments are supported, although there are some limitations. Currently, scalars passed to Warp kernels must be constant or static values in JAX::
 
     @wp.kernel
-    def scale_kernel(a: wp.array(dtype=float),
+    def scale_kernel(a: wp.array[float],
                      s: float,  # scalar input
-                     output: wp.array(dtype=float)):
+                     output: wp.array[float]):
         tid = wp.tid()
         output[tid] = a[tid] * s
 
@@ -1137,9 +1137,9 @@ The launch dimensions and output shape must be (N, M), which is different than t
 
     @wp.kernel
     def matmul_kernel(
-        a: wp.array2d(dtype=float),  # NxK input
-        b: wp.array2d(dtype=float),  # KxM input
-        c: wp.array2d(dtype=float),  # NxM output
+        a: wp.array2d[float],  # NxK input
+        b: wp.array2d[float],  # KxM input
+        c: wp.array2d[float],  # NxM output
     ):
         # launch dimensions should be (N, M)
         i, j = wp.tid()
@@ -1182,10 +1182,10 @@ By default, output array shapes are determined from the launch dimensions, but i
 dimensions using the ``output_dims`` argument. Consider a kernel like this::
 
     @wp.kernel
-    def funky_kernel(a: wp.array(dtype=float),
+    def funky_kernel(a: wp.array[float],
                      # outputs
-                     b: wp.array(dtype=float),
-                     c: wp.array(dtype=float)):
+                     b: wp.array[float],
+                     c: wp.array[float]):
         ...
 
     jax_funky = jax_kernel(funky_kernel, num_outputs=2)
@@ -1215,13 +1215,13 @@ and a Warp array of :class:`wp.mat22 <warp.mat22>` will have a JAX array shape o
 .. code-block:: python
 
     @wp.kernel
-    def vecmat_kernel(a: wp.array(dtype=float),
-                      b: wp.array(dtype=wp.vec3),
-                      c: wp.array(dtype=wp.mat22),
+    def vecmat_kernel(a: wp.array[float],
+                      b: wp.array[wp.vec3],
+                      c: wp.array[wp.mat22],
                       # outputs
-                      d: wp.array(dtype=float),
-                      e: wp.array(dtype=wp.vec3),
-                      f: wp.array(dtype=wp.mat22)):
+                      d: wp.array[float],
+                      e: wp.array[wp.vec3],
+                      f: wp.array[wp.mat22]):
         ...
 
     jax_vecmat = jax_kernel(vecmat_kernel, num_outputs=3)
@@ -1293,7 +1293,7 @@ Basic VMAP Example
     import jax.numpy as jp
 
     @wp.kernel
-    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
+    def add_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
         tid = wp.tid()
         output[tid] = a[tid] + b[tid]
 
@@ -1315,7 +1315,7 @@ Consider the following Warp kernel that sums the rows of a matrix:
 .. code-block:: python
 
     @wp.kernel
-    def rowsum_kernel(matrix: wp.array2d(dtype=float), sums: wp.array1d(dtype=float)):
+    def rowsum_kernel(matrix: wp.array2d[float], sums: wp.array1d[float]):
         i, j = wp.tid()
         wp.atomic_add(sums, i, matrix[i, j])
 
@@ -1348,7 +1348,7 @@ Here is a kernel that looks up values in a table given the indices:
 .. code-block:: python
 
     @wp.kernel
-    def lookup_kernel(table: wp.array(dtype=float), indices: wp.array(dtype=int), output: wp.array(dtype=float)):
+    def lookup_kernel(table: wp.array[float], indices: wp.array[int], output: wp.array[float]):
         i = wp.tid()
         output[i] = table[indices[i]]
 
@@ -1397,10 +1397,10 @@ Basic example (one output)::
 
     @wp.kernel
     def scale_sum_square(
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
+        a: wp.array[float],
+        b: wp.array[float],
         s: float,
-        out: wp.array(dtype=float),
+        out: wp.array[float],
     ):
         tid = wp.tid()
         out[tid] = (a[tid] * s + b[tid]) ** 2.0
@@ -1433,11 +1433,11 @@ Multiple outputs::
 
     @wp.kernel
     def multi_output(
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
+        a: wp.array[float],
+        b: wp.array[float],
         s: float,
-        c: wp.array(dtype=float),
-        d: wp.array(dtype=float),
+        c: wp.array[float],
+        d: wp.array[float],
     ):
         tid = wp.tid()
         c[tid] = a[tid] ** 2.0
@@ -1468,7 +1468,7 @@ Vector and matrix arrays also work. Inner component dimensions are packed in the
     from warp.jax_experimental import jax_kernel
 
     @wp.kernel
-    def scale_vec2(a: wp.array(dtype=wp.vec2), s: float, out: wp.array(dtype=wp.vec2)):
+    def scale_vec2(a: wp.array[wp.vec2], s: float, out: wp.array[wp.vec2]):
         tid = wp.tid()
         out[tid] = a[tid] * s
 
@@ -1505,12 +1505,12 @@ To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental
     from warp.jax_experimental import jax_callable
 
     @wp.kernel
-    def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+    def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
         tid = wp.tid()
         output[tid] = a[tid] * s
 
     @wp.kernel
-    def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+    def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
         tid = wp.tid()
         output[tid] = a[tid] * s
 
@@ -1519,12 +1519,12 @@ To call this function from JAX, use :func:`jax_callable() <warp.jax_experimental
     # Note the argument type annotations, just like Warp kernels.
     def example_func(
         # inputs
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=wp.vec2),
+        a: wp.array[float],
+        b: wp.array[wp.vec2],
         s: float,
         # outputs
-        c: wp.array(dtype=float),
-        d: wp.array(dtype=wp.vec2),
+        c: wp.array[float],
+        d: wp.array[wp.vec2],
     ):
         # launch multiple kernels
         wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
@@ -1592,12 +1592,12 @@ Here is an example::
     from warp.jax_experimental import register_ffi_callback
 
     @wp.kernel
-    def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+    def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
         tid = wp.tid()
         output[tid] = a[tid] * s
 
     @wp.kernel
-    def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+    def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
         tid = wp.tid()
         output[tid] = a[tid] * s
 
@@ -1699,8 +1699,8 @@ Here's an example of how to use ``shard_map`` with a Warp kernel:
 
     @wp.kernel
     def multiply_by_two_kernel(
-        a_in: wp.array(dtype=wp.float32),
-        a_out: wp.array(dtype=wp.float32),
+        a_in: wp.array[float],
+        a_out: wp.array[float],
     ):
         index = wp.tid()
         a_out[index] = a_in[index] * 2.0
@@ -1862,7 +1862,7 @@ using :func:`warp.from_paddle` is as follows::
     import paddle
 
     @wp.kernel()
-    def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
+    def loss(xs: wp.array2d[float], l: wp.array[float]):
         tid = wp.tid()
         wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
 
@@ -1904,7 +1904,7 @@ Here, we revisit the same example from above where now only a single conversion 
     import paddle
 
     @wp.kernel()
-    def loss(xs: wp.array(dtype=float, ndim=2), l: wp.array(dtype=float)):
+    def loss(xs: wp.array2d[float], l: wp.array[float]):
         tid = wp.tid()
         wp.atomic_add(l, 0, xs[tid, 0] ** 2.0 + xs[tid, 1] ** 2.0)
 
