@@ -18,7 +18,7 @@ The following example shows a simple kernel that adds two arrays together::
     import warp as wp
 
     @wp.kernel
-    def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
+    def add_kernel(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
         tid = wp.tid()
         c[tid] = a[tid] + b[tid]
 
@@ -185,10 +185,10 @@ The following constructs a 2D array of size 1024 x 16::
     wp.zeros(shape=(1024, 16), dtype=float, device="cuda")
 
 When passing multi-dimensional arrays to kernels users must specify the expected array dimension inside the kernel signature,
-e.g. to pass a 2D array to a kernel the number of dims is specified using the ``ndim=2`` parameter::
+e.g. to pass a 2D array to a kernel, use the ``wp.array2d`` type hint::
 
     @wp.kernel
-    def test(input: wp.array(dtype=float, ndim=2)):
+    def test(input: wp.array2d[float]):
 
 Type-hint helpers are provided for common array sizes, e.g.: :func:`wp.array2d <warp.array2d>`, :func:`wp.array3d <warp.array3d>`, which are equivalent to calling ``array(..., ndim=2)``, etc.
 To index a multi-dimensional array, use the following kernel syntax::
@@ -434,8 +434,8 @@ Warp also supports creating arrays directly inside kernels. This capability is l
 
         @wp.kernel
         def sum_rows_kernel(
-            flat_arr: wp.array(dtype=int),
-            out: wp.array(dtype=int),
+            flat_arr: wp.array[int],
+            out: wp.array[int],
         ):
             tid = wp.tid()
 
@@ -467,8 +467,8 @@ Warp also supports creating arrays directly inside kernels. This capability is l
 
         @wp.kernel
         def find_cumsum_avg_crossing_kernel(
-            arr: wp.array2d(dtype=float),
-            out: wp.array(dtype=int),
+            arr: wp.array2d[float],
+            out: wp.array[int],
         ):
             tid = wp.tid()
 
@@ -854,7 +854,7 @@ Users can define custom structure types using the :func:`@wp.struct <warp.struct
 
         param1: int
         param2: float
-        param3: wp.array(dtype=wp.vec3)
+        param3: wp.array[wp.vec3]
 
 Struct attributes must be annotated with their respective type. They can be constructed in Python scope and then passed to kernels as arguments::
 
@@ -897,8 +897,8 @@ Example: Using a struct in gradient computation
     @wp.struct
     class TestStruct:
         x: wp.vec3
-        a: wp.array(dtype=wp.vec3)
-        b: wp.array(dtype=wp.vec3)
+        a: wp.array[wp.vec3]
+        b: wp.array[wp.vec3]
 
 
     @wp.kernel
@@ -909,7 +909,7 @@ Example: Using a struct in gradient computation
 
 
     @wp.kernel
-    def loss_kernel(s: TestStruct, loss: wp.array(dtype=float)):
+    def loss_kernel(s: TestStruct, loss: wp.array[float]):
         tid = wp.tid()
 
         v = s.b[tid]
@@ -1034,7 +1034,7 @@ Python's unpack operator (``*``) can be used in function calls inside kernels to
 
     @wp.kernel
     def compute(
-        arr: wp.array(dtype=float),
+        arr: wp.array[float],
     ):
         # Unpack a 1D array slice into a vector.
         v1 = wp.vec3(*arr[:3])
@@ -1115,7 +1115,7 @@ A Warp kernel can access Python variables defined outside of the kernel, which a
     TYPE_CAPSULE = wp.constant(2)
 
     @wp.kernel
-    def collide(geometry: wp.array(dtype=int)):
+    def collide(geometry: wp.array[int]):
 
         t = geometry[wp.tid()]
 
@@ -1166,7 +1166,7 @@ can be used with floating-point types in Warp using the :const:`wp.inf <warp.inf
 .. code-block:: python
 
     @wp.kernel
-    def test_infinity(outputs: wp.array(dtype=wp.float32)):
+    def test_infinity(outputs: wp.array[float]):
         outputs[0] = wp.float32(wp.inf)        # inf
         outputs[1] = wp.float32(-wp.inf)       # -inf
         outputs[2] = wp.float32(2.0 * wp.inf)  # inf
@@ -1489,7 +1489,7 @@ The ``while_body`` callback will be executed as long as the condition is non-zer
         print("Goodbye")
 
     @wp.kernel
-    def body_kernel(cond: wp.array(dtype=int)):
+    def body_kernel(cond: wp.array[int]):
         tid = wp.tid()
         print(cond[0])
         # decrement the condition counter
@@ -1567,9 +1567,9 @@ Once inside a kernel, you can perform geometric queries against the mesh such as
 
     @wp.kernel
     def raycast(mesh: wp.uint64,
-                ray_origin: wp.array(dtype=wp.vec3),
-                ray_dir: wp.array(dtype=wp.vec3),
-                ray_hit: wp.array(dtype=wp.vec3)):
+                ray_origin: wp.array[wp.vec3],
+                ray_dir: wp.array[wp.vec3],
+                ray_hit: wp.array[wp.vec3]):
 
         tid = wp.tid()
 
@@ -1618,8 +1618,8 @@ and :func:`wp.hash_grid_query_next() <warp._src.lang.hash_grid_query_next>` as f
 
     @wp.kernel
     def sum(grid : wp.uint64,
-            points: wp.array(dtype=wp.vec3),
-            output: wp.array(dtype=wp.vec3),
+            points: wp.array[wp.vec3],
+            output: wp.array[wp.vec3],
             radius: float):
 
         tid = wp.tid()
@@ -1693,8 +1693,8 @@ To sample the volume inside a kernel we pass a reference to it by ID, and use th
 
     @wp.kernel
     def sample_grid(volume: wp.uint64,
-                    points: wp.array(dtype=wp.vec3),
-                    samples: wp.array(dtype=float)):
+                    points: wp.array[wp.vec3],
+                    samples: wp.array[float]):
 
         tid = wp.tid()
 
@@ -1715,8 +1715,8 @@ to values in arbitrarily shaped arrays::
 
     @wp.kernel
     def sample_index_grid(volume: wp.uint64,
-                         points: wp.array(dtype=wp.vec3),
-                         voxel_values: wp.array(dtype=Any)):
+                         points: wp.array[wp.vec3],
+                         voxel_values: wp.array[Any]):
 
         tid = wp.tid()
 
@@ -1775,8 +1775,8 @@ Textures can be sampled inside kernels using the :func:`wp.texture_sample() <war
     @wp.kernel
     def sample_texture(
         tex: wp.Texture2D,
-        uvs: wp.array(dtype=wp.vec2f),
-        output: wp.array(dtype=float),
+        uvs: wp.array[wp.vec2f],
+        output: wp.array[float],
     ):
         tid = wp.tid()
         uv = uvs[tid]
@@ -1825,7 +1825,7 @@ An example of performing a ray traversal on the data structure is as follows:
         bvh_id: wp.uint64,
         start: wp.vec3,
         dir: wp.vec3,
-        bounds_intersected: wp.array(dtype=wp.bool),
+        bounds_intersected: wp.array[bool],
     ):
         query = wp.bvh_query_ray(bvh_id, start, dir)
         bounds_nr = wp.int32(0)
@@ -1866,7 +1866,7 @@ a specified bounding box.
         bvh_id: wp.uint64,
         lower: wp.vec3,
         upper: wp.vec3,
-        bounds_intersected: wp.array(dtype=wp.bool),
+        bounds_intersected: wp.array[bool],
     ):
         query = wp.bvh_query_aabb(bvh_id, lower, upper)
         bounds_nr = wp.int32(0)
@@ -2092,7 +2092,7 @@ built-ins. For example:
     import warp as wp
 
     @wp.kernel
-    def rand_kernel(seed: int, out_rand: wp.array(dtype=float)):
+    def rand_kernel(seed: int, out_rand: wp.array[float]):
         i = wp.tid()
         rng = wp.rand_init(seed, i)
         out_rand[i] = wp.randf(rng)
@@ -2122,7 +2122,7 @@ numbers, e.g.:
     import warp as wp
 
     @wp.kernel
-    def rand_kernel(seed: int, output: wp.array(dtype=float)):
+    def rand_kernel(seed: int, output: wp.array[float]):
         i = wp.tid()
         rng = wp.rand_init(seed, i)
         output[0] = wp.randf(rng)
@@ -2152,7 +2152,7 @@ To generate different sequences across launches, use a different seed for each l
         return seed + 1
 
     @wp.kernel
-    def rand_kernel(seed: int, out_rand: wp.array(dtype=float)):
+    def rand_kernel(seed: int, out_rand: wp.array[float]):
         i = wp.tid()
         rng = wp.rand_init(seed, i)
         out_rand[i] = wp.randf(rng)

@@ -35,7 +35,7 @@ In the following example, we launch a grid of threads where each block is respon
     TILE_THREADS = 64
 
     @wp.kernel
-    def compute(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
+    def compute(a: wp.array2d[float], b: wp.array2d[float]):
 
         # obtain our block index
         i = wp.tid()
@@ -141,7 +141,7 @@ Example: General Matrix Multiply (GEMM)
     TILE_THREADS = 64
 
     @wp.kernel
-    def tile_gemm(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+    def tile_gemm(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
         
         # output tile index
         i, j = wp.tid()
@@ -257,7 +257,7 @@ of the same shape and dtype:
 .. code:: python
 
     @wp.kernel
-    def add_sub_example(arr_a: wp.array(dtype=float), arr_b: wp.array(dtype=float)):
+    def add_sub_example(arr_a: wp.array[float], arr_b: wp.array[float]):
         a = wp.tile_load(arr_a, shape=TILE_SIZE)
         b = wp.tile_load(arr_b, shape=TILE_SIZE)
 
@@ -295,7 +295,7 @@ scalar types must match. For example:
 .. code:: python
 
     @wp.kernel
-    def mul_example(arr: wp.array(dtype=float)):
+    def mul_example(arr: wp.array[float]):
         a = wp.tile_load(arr, shape=TILE_SIZE)     # a tile of floats
 
         # tile * tile (element-wise)
@@ -340,7 +340,7 @@ a scalar, and the underlying scalar types must match. For example:
 .. code:: python
 
     @wp.kernel
-    def div_example(arr: wp.array(dtype=float), vec_arr: wp.array(dtype=wp.vec3)):
+    def div_example(arr: wp.array[float], vec_arr: wp.array[wp.vec3]):
         a = wp.tile_load(arr, shape=TILE_SIZE)     # a tile of floats
 
         # tile / tile (element-wise)
@@ -471,7 +471,7 @@ On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels 
     TILE_DIM = 4
 
     @wp.kernel
-    def tile_reduce_blockwise_simt_kernel(output: wp.array(dtype=int)):
+    def tile_reduce_blockwise_simt_kernel(output: wp.array[int]):
         i = wp.tid()
 
         t = wp.tile(i)
@@ -510,7 +510,7 @@ For instance, if we want a full array reduction that works consistently across d
     TILE_DIM = 4
 
     @wp.kernel
-    def tile_reduce_simt_kernel(output: wp.array(dtype=int)):
+    def tile_reduce_simt_kernel(output: wp.array[int]):
         i = wp.tid()
 
         t = wp.tile(i)
@@ -554,7 +554,7 @@ a matrix tile reduction:
     TILE_DIM = 32
 
     @wp.kernel
-    def matrix_reduction_kernel(y: wp.array(dtype=wp.mat33)):
+    def matrix_reduction_kernel(y: wp.array[wp.mat33]):
         i = wp.tid()
         I = wp.identity(3, dtype=wp.float32)
         m = wp.float32(i) * I
@@ -593,8 +593,8 @@ Consider the following sum-of-squares reduction on an array:
 
     @wp.kernel
     def reduce_array_simt(
-        a: wp.array2d(dtype=wp.float64),
-        result: wp.array(dtype=wp.float64),
+        a: wp.array2d[wp.float64],
+        result: wp.array[wp.float64],
     ):
         i, j = wp.tid()
 
@@ -623,8 +623,8 @@ tile into global memory using :func:`wp.tile_atomic_add() <warp._src.lang.tile_a
 
     @wp.kernel
     def reduce_array_tile(
-        a: wp.array2d(dtype=wp.float64),
-        result: wp.array(dtype=wp.float64),
+        a: wp.array2d[wp.float64],
+        result: wp.array[wp.float64],
     ):
         i, j = wp.tid()
 
@@ -669,11 +669,11 @@ The difference is observable when a function modifies a tile in place:
 .. code:: python
 
     @wp.func
-    def add_bias(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+    def add_bias(t: wp.tile[float, TILE_M, TILE_N]):
         t += wp.tile_ones(dtype=float, shape=(TILE_M, TILE_N), storage="register") * 5.0
 
     @wp.kernel(enable_backward=False)
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         add_bias(t)          # modifies t in place — caller sees the change
