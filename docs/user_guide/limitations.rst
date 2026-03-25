@@ -196,7 +196,7 @@ Modifying flags on arrays stored in structs may not trigger an update to the und
 
     @wp.struct
     class MyStruct:
-        arr: wp.array(dtype=float)
+        arr: wp.array[float]
 
     a = wp.zeros(10, dtype=float)
 
