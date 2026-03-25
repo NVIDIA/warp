@@ -18,7 +18,7 @@ from typing import Optional as _Optional
 
 _wp_module_name_ = "warp.config"
 
-version: str = "1.12.0"
+version: str = "1.12.1rc1"
 """Warp version string"""
 
 verify_fp: bool = False
