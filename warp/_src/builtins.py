@@ -7816,7 +7816,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
@@ -7863,7 +7863,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 # texture_sample for 2D textures with separate u, v coordinates
@@ -7893,7 +7893,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
@@ -7940,7 +7940,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 # texture_sample for 3D textures with separate u, v, w coordinates
@@ -7972,7 +7972,7 @@ add_builtin(
         The sampled value of the specified ``dtype``.
 
     Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.""",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
