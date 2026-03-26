@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 name: Build Warp Builder Images
 
@@ -51,15 +39,15 @@ jobs:
             manylinux: manylinux_2_34_aarch64
             manylinux_image: quay.io/pypa/manylinux_2_34_aarch64:latest
             targetarch: aarch64
-          # CUDA 13.1.0 builds
-          - cuda_version: '13.1.0'
+          # CUDA 13.2.0 builds
+          - cuda_version: '13.2.0'
             arch: x86_64
             runner: ubuntu-latest
             platform: linux/amd64
             manylinux: manylinux_2_28_x86_64
             manylinux_image: quay.io/pypa/manylinux_2_28_x86_64:latest
             targetarch: x86_64
-          - cuda_version: '13.1.0'
+          - cuda_version: '13.2.0'
             arch: aarch64
             runner: ubuntu-24.04-arm
             platform: linux/arm64
@@ -160,10 +148,10 @@ jobs:
           - cuda_version: '12.9.1'
             arch: aarch64
             runner: ubuntu-24.04-arm
-          - cuda_version: '13.1.0'
+          - cuda_version: '13.2.0'
             arch: x86_64
             runner: ubuntu-latest
-          - cuda_version: '13.1.0'
+          - cuda_version: '13.2.0'
             arch: aarch64
             runner: ubuntu-24.04-arm
     
@@ -257,7 +245,7 @@ jobs:
           IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           
           # Create manifests for both CUDA versions
-          for CUDA_VERSION in "12.9.1" "13.1.0"; do
+          for CUDA_VERSION in "12.9.1" "13.2.0"; do
             BASE_TAG="cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}"
             CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1)
             
@@ -282,8 +270,8 @@ jobs:
           # Create :latest pointing to CUDA 13
           echo "Creating :latest tag (points to CUDA 13)..."
           docker buildx imagetools create -t ${IMAGE_BASE}:latest \
-            ${IMAGE_BASE}:cuda13.1.0-llvm${LLVM_VERSION_MAJOR}-x86_64-latest \
-            ${IMAGE_BASE}:cuda13.1.0-llvm${LLVM_VERSION_MAJOR}-aarch64-latest
+            ${IMAGE_BASE}:cuda13.2.0-llvm${LLVM_VERSION_MAJOR}-x86_64-latest \
+            ${IMAGE_BASE}:cuda13.2.0-llvm${LLVM_VERSION_MAJOR}-aarch64-latest
           
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -298,7 +286,7 @@ jobs:
           IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           
           # Just verify they exist, don't clutter summary with inspect output
-          for CUDA_VERSION in "12.9.1" "13.1.0"; do
+          for CUDA_VERSION in "12.9.1" "13.2.0"; do
             CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1)
             docker buildx imagetools inspect ${IMAGE_BASE}:cuda${CUDA_MAJOR} > /dev/null
             echo "✅ Verified :cuda${CUDA_MAJOR} manifest"

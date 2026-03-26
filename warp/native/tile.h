@@ -1,19 +1,5 @@
-/*
- * SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -670,6 +656,9 @@ template <typename Shape_> struct tile_layout_register_t {
     }
 };
 
+// forward declaration (needed for converting constructor in tile_register_t)
+template <typename T, typename L, bool Owner> struct tile_shared_t;
+
 // represents a tile stored in registers across a block
 template <typename T, typename L> struct tile_register_t {
     using Type = T;
@@ -687,6 +676,19 @@ template <typename T, typename L> struct tile_register_t {
 
         for (int i = 0; i < Layout::NumRegs; ++i)
             data[i] = value;
+    }
+
+    // converting constructor from shared tile (enables implicit conversion
+    // in return statements when a templated function returns a shared tile
+    // but the declared return type is tile_register_t)
+    template <typename SharedLayout, bool Owner>
+    inline CUDA_CALLABLE tile_register_t(const tile_shared_t<T, SharedLayout, Owner>& t)
+    {
+        static_assert(
+            Layout::Size == tile_layout_register_t<typename SharedLayout::Shape>::Size,
+            "Tile sizes must match for shared-to-register conversion"
+        );
+        *this = t.copy_to_register();
     }
 
     template <bool BoundsCheck>
@@ -1599,7 +1601,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // N-D tiles: incremental coordinate iteration
                 using Iter = tile_coord_iter_t<Shape>;
                 Iter iter;
-                iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), dest.data.strides, dest.offset.indices);
+                // only initialize for threads that will enter the loop
+                // (coord_from_linear asserts linear < Size)
+                if (WP_TILE_THREAD_IDX < Layout::Size)
+                    iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), dest.data.strides, dest.offset.indices);
 
                 WP_PRAGMA_UNROLL
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
@@ -1728,7 +1733,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // N-D tiles: incremental coordinate iteration
                 using Iter = tile_coord_iter_t<Shape>;
                 Iter iter;
-                iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), src.data.strides, src.offset.indices);
+                // only initialize for threads that will enter the loop
+                // (coord_from_linear asserts linear < Size)
+                if (WP_TILE_THREAD_IDX < Layout::Size)
+                    iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), src.data.strides, src.offset.indices);
 
                 WP_PRAGMA_UNROLL
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {

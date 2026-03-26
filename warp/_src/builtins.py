@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
@@ -696,7 +684,7 @@ add_builtin(
     "sign",
     input_types={"x": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametypes_create_value_func(Scalar),
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="""Compute the sign of ``x``.
 
     Returns:
@@ -733,9 +721,11 @@ add_builtin(
 add_builtin(
     "skew",
     input_types={"vec": vector(length=3, dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(3, 3), dtype=Scalar)
-    if arg_types is None
-    else matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        matrix(shape=(3, 3), dtype=Scalar)
+        if arg_types is None
+        else matrix(shape=(3, 3), dtype=arg_types["vec"]._wp_scalar_type_)
+    ),
     group="Vector Math",
     doc="Compute the skew-symmetric 3x3 matrix for a 3D vector ``vec``.",
 )
@@ -801,9 +791,11 @@ add_builtin(
 add_builtin(
     "transpose",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
-    value_func=lambda arg_types, arg_values: matrix(shape=(Any, Any), dtype=Scalar)
-    if arg_types is None
-    else matrix(shape=(arg_types["a"]._shape_[1], arg_types["a"]._shape_[0]), dtype=arg_types["a"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        matrix(shape=(Any, Any), dtype=Scalar)
+        if arg_types is None
+        else matrix(shape=(arg_types["a"]._shape_[1], arg_types["a"]._shape_[0]), dtype=arg_types["a"]._wp_scalar_type_)
+    ),
     group="Vector Math",
     doc="Compute the transpose of matrix ``a``.",
 )
@@ -2230,18 +2222,22 @@ add_builtin(
 add_builtin(
     "spatial_top",
     input_types={"svec": vector(length=6, dtype=Float)},
-    value_func=lambda arg_types, arg_values: vector(length=3, dtype=Float)
-    if arg_types is None
-    else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        vector(length=3, dtype=Float)
+        if arg_types is None
+        else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
+    ),
     group="Spatial Math",
     doc="Extract the top (first) part of a 6D screw vector.",
 )
 add_builtin(
     "spatial_bottom",
     input_types={"svec": vector(length=6, dtype=Float)},
-    value_func=lambda arg_types, arg_values: vector(length=3, dtype=Float)
-    if arg_types is None
-    else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_),
+    value_func=lambda arg_types, arg_values: (
+        vector(length=3, dtype=Float)
+        if arg_types is None
+        else vector(length=3, dtype=arg_types["svec"]._wp_scalar_type_)
+    ),
     group="Spatial Math",
     doc="Extract the bottom (second) part of a 6D screw vector.",
 )
@@ -2576,7 +2572,7 @@ add_builtin(
             TILE_SIZE = 8
 
             @wp.kernel
-            def compute(output: wp.array(dtype=int)):
+            def compute(output: wp.array[int]):
                 i, j = wp.tid()
 
                 # Compute offset on the last thread
@@ -2703,7 +2699,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+            def rand_kernel(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
@@ -2768,7 +2764,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+            def rand_range_kernel(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
@@ -2886,7 +2882,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d(dtype=float)):
+            def rand_kernel(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
@@ -2951,7 +2947,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d(dtype=float)):
+            def rand_range_kernel(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
@@ -3298,7 +3294,7 @@ add_builtin(
             HALF_N = wp.constant(TILE_N // 2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
@@ -3532,7 +3528,7 @@ add_builtin(
             TWO_N = wp.constant(TILE_N * 2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
@@ -3778,7 +3774,7 @@ add_builtin(
             TILE_N = wp.constant(2)
 
             @wp.kernel
-            def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def tile_atomic_add_indexed(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
@@ -5468,7 +5464,7 @@ add_builtin(
             TILE_N = wp.constant(2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array[float]):
 
                 a = wp.tile_load(x, shape=(TILE_M, TILE_N))
                 b = wp.tile_reduce(wp.add, a, axis=1)
@@ -5678,7 +5674,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def scan_example(input: wp.array(dtype=int)):
+            def scan_example(input: wp.array[int]):
                 t = wp.tile_load(input, shape=(4,))
                 s = wp.tile_scan_max_inclusive(t)
                 print(s)
@@ -5746,7 +5742,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def scan_example(input: wp.array(dtype=int)):
+            def scan_example(input: wp.array[int]):
                 t = wp.tile_load(input, shape=(4,))
                 s = wp.tile_scan_min_inclusive(t)
                 print(s)
@@ -5788,7 +5784,8 @@ def tile_unary_map_value_func(arg_types, arg_values):
         if overload.value_func is None:
             overload.build(None)
 
-        value_type = overload.value_func(None, None)
+        param_name = next(iter(overload.input_types))
+        value_type = overload.value_func({param_name: a.dtype}, None)
 
         if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -5894,7 +5891,9 @@ def tile_binary_map_value_func(arg_types, arg_values):
         if overload.value_func is None:
             overload.build(None)
 
-        value_type = overload.value_func(None, None)
+        param_names = iter(overload.input_types)
+        param_a_name, param_b_name = next(param_names), next(param_names)
+        value_type = overload.value_func({param_a_name: a.dtype, param_b_name: b_dtype}, None)
 
         if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -6030,7 +6029,11 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    value_type = overload.value_func(None, None)
+    arg_type_map = dict(zip(overload.input_types, dtypes))
+    assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
+        f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
+    )
+    value_type = overload.value_func(arg_type_map, None)
 
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
         raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -7185,7 +7188,7 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
         input_types={"query": query_type, "index": int},
         value_type=builtins.bool,
         group="Geometry",
-        doc=f"""Move to the next point in the hash grid query{doc_suffix}.
+        doc="""Move to the next point in the hash grid query.
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
         export=False,
@@ -8502,11 +8505,11 @@ for t in int_types:
         value_func=select_value_func,
         doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-        .. versionremoved:: 1.10
-                Use :func:`where` instead, which has the more intuitive argument order:
-                ``where(cond, value_if_true, value_if_false)``.
+    .. versionremoved:: 1.10
+            Use :func:`where` instead, which has the more intuitive argument order:
+            ``where(cond, value_if_true, value_if_false)``.
 
-        .. deprecated:: 1.7""",
+    .. deprecated:: 1.7""",
         group="Utility",
     )
 add_builtin(
@@ -8717,7 +8720,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
             f"Trying to create an array view with {idx_count} indices, "
             f"but the array only has {arr_type.ndim} dimension(s). "
             f"Ensure that the argument type on the function or kernel specifies "
-            f"the expected number of dimensions, e.g.: def func(param: wp.array3d(dtype=float): ..."
+            f"the expected number of dimensions, e.g.: def func(param: wp.array3d[float]): ..."
         )
 
     has_slice = any(is_slice(x) for x in idx_types)
@@ -9832,6 +9835,17 @@ add_builtin(
     group="Utility",
 )
 
+# Bool vector assign_inplace (bool is not part of Scalar)
+add_builtin(
+    "assign_inplace",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
+    value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
@@ -9863,6 +9877,17 @@ def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Map
 add_builtin(
     "assign_copy",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# Bool vector assign_copy (bool is not part of Scalar)
+add_builtin(
+    "assign_copy",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
     value_func=vector_assign_copy_value_func,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -11318,7 +11343,10 @@ add_builtin(
     "unot",
     input_types={"a": builtins.bool},
     value_type=builtins.bool,
-    doc="""Compute logical NOT of ``a``.""",
+    doc="""Compute logical NOT of ``a``.
+
+    Returns:
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
     group="Operators",
     is_differentiable=False,
 )
@@ -11329,8 +11357,8 @@ for t in int_types:
         value_type=builtins.bool,
         doc="""Compute logical NOT of ``a``.
 
-        Returns:
-            ``True`` if the integer is 0, ``False`` otherwise.""",
+    Returns:
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
         group="Operators",
         is_differentiable=False,
     )
@@ -11343,7 +11371,7 @@ add_builtin(
     doc="""Compute logical NOT of ``a``.
 
     Returns:
-        ``True`` if the array is empty or null, ``False`` otherwise.""",
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
     group="Operators",
     is_differentiable=False,
 )
@@ -11979,7 +12007,7 @@ def tile_matmul_lto_dispatch_func(
             num_threads,
             builder,
         )
-        if warp.config.enable_backward:
+        if options["enable_backward"]:
             # adjA += adjC * B^T - Transpose ~= flipped layout
             (fun_backward_A, lto_backward_A) = warp._src.build.build_lto_dot(
                 M,
@@ -12190,7 +12218,7 @@ def tile_fft_generic_lto_dispatch_func(
             arch, size, ept, direction, fwd_dir, precision, builder
         )
 
-        if warp.config.enable_backward:
+        if options["enable_backward"]:
             # generate the backward LTO (inverse direction for adjoint)
             # shared memory requirements are identical since tile sizes match
             lto_symbol_bwd, lto_code_data_bwd, _ = warp._src.build.build_lto_fft(
@@ -13069,7 +13097,11 @@ add_builtin(
     "len",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a vector.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13079,7 +13111,11 @@ add_builtin(
     "len",
     input_types={"a": quaternion(dtype=Float)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a quaternion.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13089,7 +13125,11 @@ add_builtin(
     "len",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=static_len_value_func,
-    doc="Query the number of rows in a matrix.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13099,7 +13139,11 @@ add_builtin(
     "len",
     input_types={"a": transformation(dtype=Float)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a transformation.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13109,7 +13153,11 @@ add_builtin(
     "len",
     input_types={"a": array(dtype=Any)},
     value_type=int,
-    doc="Query the size of the first dimension in an array.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13119,7 +13167,11 @@ add_builtin(
     "len",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=static_len_value_func,
-    doc="Query the number of rows in a tile.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13250,7 +13302,11 @@ add_builtin(
     "len",
     input_types={"a": tuple},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a tuple.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,

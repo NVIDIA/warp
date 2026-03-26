@@ -88,15 +88,15 @@ docker run --rm -it \
 **Short aliases (recommended for most users):**
 
 - `latest` - Latest build with newest CUDA version
-- `cuda13` - Latest CUDA 13.x build (currently 13.1.0 with LLVM 21)
+- `cuda13` - Latest CUDA 13.x build (currently 13.2.0 with LLVM 21)
 - `cuda12` - Latest CUDA 12.x build (currently 12.9.1 with LLVM 21)
 
 **Full version tags (for reproducibility):**
 
-- `cuda13.1.0-llvm21-latest` - Multi-arch, always current
-- `cuda13.1.0-llvm21-20241129` - Multi-arch, date-pinned
-- `cuda13.1.0-llvm21-x86_64-latest` - Architecture-specific
-- `cuda13.1.0-llvm21-aarch64-latest` - Architecture-specific
+- `cuda13.2.0-llvm21-latest` - Multi-arch, always current
+- `cuda13.2.0-llvm21-20241129` - Multi-arch, date-pinned
+- `cuda13.2.0-llvm21-x86_64-latest` - Architecture-specific
+- `cuda13.2.0-llvm21-aarch64-latest` - Architecture-specific
 
 **Examples:**
 
@@ -160,13 +160,13 @@ If you cannot access published images, you can build them locally:
 ```bash
 cd docker/warp-builder
 docker buildx build --platform linux/amd64 -t warp-builder:cuda13 -f Dockerfile \
-  --build-arg CUDA_VERSION=13.1.0 --load .
+  --build-arg CUDA_VERSION=13.2.0 --load .
 ```
 
 ## Image Contents
 
 - **Base:** manylinux_2_28 (x86_64) / manylinux_2_34 (aarch64)
-- **CUDA:** Configurable (supports 12.x and 13.x, default 13.1.0)
+- **CUDA:** Configurable (supports 12.x and 13.x, default 13.2.0)
   - Installed using NVIDIA's [parse_redist.py](https://github.com/NVIDIA/build-system-archive-import-examples) script to pull only the minimal components needed for building Warp
 - **LLVM:** Compiled from source at `/opt/llvm` (default 21.1.0)
 - **Python:** Managed by uv
@@ -181,7 +181,7 @@ Images are automatically built by the workflow at `.github/workflows/build-warp-
 **Each workflow run builds:**
 
 - CUDA 12.9.1 (x86_64 + aarch64)
-- CUDA 13.1.0 (x86_64 + aarch64)
+- CUDA 13.2.0 (x86_64 + aarch64)
 - All 4 builds run in parallel (~60 minutes total)
 
 **To trigger a rebuild:**

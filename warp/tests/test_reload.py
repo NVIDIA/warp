@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import importlib
 import importlib as imp
@@ -100,7 +88,9 @@ def test_redefine_command(test, device):
     cmd1.launch()
 
 
-square_two = """import warp as wp
+square_two = """# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+import warp as wp
 
 
 @wp.func
@@ -118,7 +108,9 @@ def run(expect, device):
     wp.synchronize_device(device)
 """
 
-square_four = """import warp as wp
+square_four = """# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+import warp as wp
 
 
 @wp.func
@@ -170,7 +162,9 @@ def test_reload_class(test, device):
     test_func()
 
 
-template_ref = """# This file is used to test reloading module references.
+template_ref = """# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+# This file is used to test reloading module references.
 
 import warp as wp
 import warp.tests.aux_test_reference_reference as refref
@@ -181,7 +175,9 @@ def magic():
     return {} * refref.more_magic()
 """
 
-template_refref = """# This file is used to test reloading module references.
+template_refref = """# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+# This file is used to test reloading module references.
 
 import warp as wp
 

@@ -3,18 +3,6 @@
 
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """
 unittest-parallel command-line script main module
@@ -51,7 +39,7 @@ except ImportError:
 # The following variables are NVIDIA Modifications
 START_DIRECTORY = os.path.join(os.path.dirname(__file__), "..")  # The directory to start test discovery
 _SUITE_TIMEOUT = (
-    2400  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
+    3600  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
 )
 
 
@@ -105,7 +93,7 @@ def main(argv=None):
         "--suite",
         type=str,
         default="default",
-        choices=["autodetect", "default", "kit"],
+        choices=["autodetect", "default", "debug", "kit"],
         help="Name of the test suite to run (default is 'default').",
     )  # NVIDIA Modification
     group_parallel = parser.add_argument_group("parallelization options")
@@ -632,6 +620,14 @@ class ParallelTextTestResult(unittest.TextTestResult):
             self.stream.writeln(f"{self.getDescription(test)} ...")
             self.stream.flush()
         super(unittest.TextTestResult, self).startTest(test)
+
+    def stopTest(self, test):
+        super().stopTest(test)
+        # Force garbage collection of CPU-side allocations to reduce peak
+        # host RSS in parallel test runs.
+        import gc  # noqa: PLC0415
+
+        gc.collect()
 
     def _add_helper(self, test, dots_message, show_all_message):
         if self.showAll:

@@ -18,7 +18,7 @@ Generic kernel definition syntax is the same as regular kernels, but you can use
 
     # generic kernel definition using Any as a placeholder for concrete types
     @wp.kernel
-    def scale(x: wp.array(dtype=Any), s: Any):
+    def scale(x: wp.array[Any], s: Any):
         i = wp.tid()
         x[i] = s * x[i]
 
@@ -98,15 +98,15 @@ Warp allows explicitly declaring instances of generic kernels with different typ
 .. code:: python
 
     @wp.overload
-    def scale(x: wp.array(dtype=wp.float16), s: wp.float16):
+    def scale(x: wp.array[wp.float16], s: wp.float16):
         ...
 
     @wp.overload
-    def scale(x: wp.array(dtype=wp.float32), s: wp.float32):
+    def scale(x: wp.array[wp.float32], s: wp.float32):
         ...
 
     @wp.overload
-    def scale(x: wp.array(dtype=wp.float64), s: wp.float64):
+    def scale(x: wp.array[wp.float64], s: wp.float64):
         ...
 
     wp.launch(scale, dim=n, inputs=[x16, wp.float16(3)])
@@ -119,17 +119,17 @@ We can also use :func:`wp.overload() <overload>` as a function for a slightly mo
 
 .. code:: python
 
-    wp.overload(scale, [wp.array(dtype=wp.float16), wp.float16])
-    wp.overload(scale, [wp.array(dtype=wp.float32), wp.float32])
-    wp.overload(scale, [wp.array(dtype=wp.float64), wp.float64])
+    wp.overload(scale, [wp.array[wp.float16], wp.float16])
+    wp.overload(scale, [wp.array[wp.float32], wp.float32])
+    wp.overload(scale, [wp.array[wp.float64], wp.float64])
 
 Instead of an argument list, a dictionary can also be provided:
 
 .. code:: python
 
-    wp.overload(scale, {"x": wp.array(dtype=wp.float16), "s": wp.float16})
-    wp.overload(scale, {"x": wp.array(dtype=wp.float32), "s": wp.float32})
-    wp.overload(scale, {"x": wp.array(dtype=wp.float64), "s": wp.float64})
+    wp.overload(scale, {"x": wp.array[wp.float16], "s": wp.float16})
+    wp.overload(scale, {"x": wp.array[wp.float32], "s": wp.float32})
+    wp.overload(scale, {"x": wp.array[wp.float64], "s": wp.float64})
 
 A dictionary might be preferred for readability.  With dictionaries, only generic arguments need to be specified, which can be even more concise when overloading kernels where some of the arguments are not generic.
 
@@ -138,15 +138,15 @@ We can easily create overloads in a single loop, like this:
 .. code:: python
 
     for T in [wp.float16, wp.float32, wp.float64]:
-        wp.overload(scale, [wp.array(dtype=T), T])
+        wp.overload(scale, [wp.array[T], T])
 
 Finally, the :func:`wp.overload() <overload>` function returns the concrete kernel instance, which can be saved in a variable:
 
 .. code:: python
 
-    scale_f16 = wp.overload(scale, [wp.array(dtype=wp.float16), wp.float16])
-    scale_f32 = wp.overload(scale, [wp.array(dtype=wp.float32), wp.float32])
-    scale_f64 = wp.overload(scale, [wp.array(dtype=wp.float64), wp.float64])
+    scale_f16 = wp.overload(scale, [wp.array[wp.float16], wp.float16])
+    scale_f32 = wp.overload(scale, [wp.array[wp.float32], wp.float32])
+    scale_f64 = wp.overload(scale, [wp.array[wp.float64], wp.float64])
 
 These instances are treated as regular kernels, not generic.  This means that launches should be faster, because Warp doesn't need to infer data types from the arguments like it does when launching generic kernels.  The typing requirements for kernel arguments are also more relaxed than with generic kernels, because Warp can convert scalars, vectors, and matrices to the known required types.
 
@@ -174,13 +174,13 @@ Like Warp kernels, we can also define generic Warp functions:
 
     # use generic function in a regular kernel
     @wp.kernel
-    def square_float(a: wp.array(dtype=float)):
+    def square_float(a: wp.array[float]):
         i = wp.tid()
         a[i] = f(a[i])
 
     # use generic function in a generic kernel
     @wp.kernel
-    def square_any(a: wp.array(dtype=Any)):
+    def square_any(a: wp.array[Any]):
         i = wp.tid()
         a[i] = f(a[i])
 
@@ -237,7 +237,7 @@ The ``type()`` operator is useful for type conversions in Warp kernels and funct
 .. code:: python
 
     @wp.kernel
-    def arange(a: wp.array(dtype=Any)):
+    def arange(a: wp.array[Any]):
         i = wp.tid()
         a[i] = type(a[0])(i)
 
@@ -253,7 +253,7 @@ The ``type()`` operator is useful for type conversions in Warp kernels and funct
 .. code:: python
 
     @wp.kernel
-    def arange(a: wp.array(dtype=Any)):
+    def arange(a: wp.array[Any]):
         i = wp.tid()
         a[i] = a.dtype(i)
 

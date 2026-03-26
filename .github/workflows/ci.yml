@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 name: CI
 
@@ -26,6 +14,9 @@ on:
       - release-*
   schedule: # Schedule workflow only runs on the default branch
     - cron: "45 9 * * *"
+
+env:
+  PYTHONFAULTHANDLER: "1" # Dump tracebacks on fatal signals (SIGSEGV, SIGABRT, etc.)
 
 permissions:
   contents: read
@@ -64,7 +55,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.8.23"
+          version: "0.11.0"
       
       - name: Set up Python
         run: uv python install
@@ -135,7 +126,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.8.23"
+          version: "0.11.0"
       
       - name: Set up Python
         run: uv python install
@@ -148,6 +139,40 @@ jobs:
       
       - name: Run Tests
         run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
+      
+      - name: Test Summary
+        uses: test-summary/action@v2.3
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+
+  test-warp-debug:
+    runs-on: ubuntu-24.04
+    needs: build-warp
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
+        with:
+          version: "0.11.0"
+      
+      - name: Set up Python
+        run: uv python install
+      
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-x86_64
+          path: warp/bin/
+      
+      - name: Run Debug Mode Tests (CPU)
+        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
       
       - name: Test Summary
         uses: test-summary/action@v2.3
@@ -190,7 +215,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.8.23"
+          version: "0.11.0"
       
       - name: Set up Python
         run: uv python install
@@ -222,7 +247,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.8.23"
+          version: "0.11.0"
       - name: Set up Python
         run: uv python install
       - name: Download Warp binaries
@@ -276,7 +301,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.8.23"
+          version: "0.11.0"
       - name: Set up Python
         run: uv python install
       - name: Download native headers
@@ -333,8 +358,8 @@ jobs:
 
           echo "SUCCESS: All symbols are correctly namespaced."
 
-  # Validate that the type stub file (warp/__init__.pyi) passes pyright's type checking.
-  pyright-stubs:
+  # Validate that the type stub file (warp/__init__.pyi) passes static type checking.
+  type-check-stubs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -342,8 +367,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.8.23"
+          version: "0.11.0"
       - name: Set up Python
         run: uv python install
       - name: Run pyright on stub file
         run: uvx pyright warp/__init__.pyi
+      - name: Run mypy on stub file
+        run: uvx mypy warp/__init__.pyi --follow-imports=silent

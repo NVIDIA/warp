@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 # ==============================================================================
 # CI/CD Pipeline Configuration
@@ -167,7 +155,7 @@ pre-commit checks:
   script:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
-pyright stubs:
+type-check stubs:
   stage: quality
   image: $UV_TRIXIE_IMAGE
   needs: []
@@ -179,6 +167,7 @@ pyright stubs:
     - .ipp_lnx_x86_64_cpu_micro
   script:
     - uvx pyright warp/__init__.pyi
+    - uvx mypy warp/__init__.pyi --follow-imports=silent
 
 # This job tests code snippets in the documentation
 doctest:
@@ -385,6 +374,25 @@ linux-aarch64 test thor:
   tags:
     - gpu/thor
 
+linux-aarch64 test dgx spark:
+  needs: [linux-aarch64 build]
+  image: $UV_TRIXIE_SLIM_ARM_IMAGE
+  extends:
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - !reference [.snippets, section-start-install-deps]
+    - df -h
+    - !reference [.snippets, move-linux-aarch64-binaries]
+    - uv sync --extra dev
+    - !reference [.snippets, section-end-install-deps]
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+  tags:
+    - os/linux
+    - arch/arm
+    - gpu/GB10
+
 linux-x86_64 test:
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_IMAGE
@@ -420,11 +428,26 @@ linux-x86_64-blackwell test:
     - os/linux
     - platform/horde
 
+linux-x86_64 test debug mode:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: $UV_TRIXIE_SLIM_IMAGE
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  timeout: 45m
+  before_script:
+    - df -h
+    - !reference [.snippets, move-linux-x86_64-binaries]
+  script:
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
+
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
   stage: test
   needs: [windows-x86_64 build]
-  timeout: 45m
+  timeout: 75m
   extends:
     - .runner-test-windows-x86_64-gpu
     - .test_common_with_coverage
@@ -449,7 +472,7 @@ windows-x86_64 test mgpu:
   needs: [windows-x86_64 build]
   extends:
     - .save_test_report_artifact
-  timeout: 45m
+  timeout: 75m
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -663,7 +686,7 @@ linux-x86_64 cpp examples test:
 # Child Pipeline Triggers
 #
 # Triggers for specialized build/test configurations (debug builds, CUDA 13,
-# Kit extensions, Clang compilation). These run conditionally based on schedule,
+# Clang compilation). These run conditionally based on schedule,
 # tags, or manual trigger. Most developers don't need to worry about these.
 # ==============================================================================
 
@@ -720,38 +743,6 @@ cuda 13 build:
   needs: [trigger cuda 13 pipeline]
   trigger:
     include: /.gitlab/ci/cuda-13-build.yml
-  extends:
-    - .trigger_common
-
-trigger kit extensions pipeline:
-  stage: test
-  image: busybox
-  needs:
-    - linux-aarch64 build
-    - linux-x86_64 build
-    - windows-x86_64 build
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
-    - changes:
-        - deps/kit-deps.packman.xml
-        - exts/**/*
-    - when: manual # Can be triggered in all other scenarios
-      allow_failure: true
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - echo "Run this job to test the kit extensions."
-
-# Kit Extensions
-kit extensions:
-  stage: child pipelines
-  needs: [trigger kit extensions pipeline]
-  trigger:
-    include: /.gitlab/ci/kit-extensions.yml
   extends:
     - .trigger_common
 

@@ -41,8 +41,6 @@ outputs/
 
 # USD and extension files
 .usd_cache/
-exts/omni.warp/omni/warp/ogn/tests/usd
-exts/omni.warp/config/extension.gen.toml
 
 # External dependencies
 /external/llvm-project
@@ -56,3 +54,6 @@ asv/env
 asv/results
 asv/html
 asv/warp-lang
+
+# Core dumps
+core.[0-9]*

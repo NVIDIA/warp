@@ -104,7 +104,7 @@ is an array of ones, but we passed it a single-element array of zeros:
 
 
     @wp.kernel
-    def expect_ones(a: wp.array(dtype=int)):
+    def expect_ones(a: wp.array[int]):
         i = wp.tid()
 
         assert a[i] == 1, "Array element must be 1"

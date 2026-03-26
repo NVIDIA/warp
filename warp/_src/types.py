@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
@@ -54,6 +42,14 @@ Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
 DType = TypeVar("DType")
 Shape = TypeVar("Shape", bound=tuple[int, ...])
+
+# NDim has a default under TYPE_CHECKING so that static type checkers (mypy, pyright)
+# accept both array[dtype] and array[dtype, Literal[ndim]] subscript syntax (PEP 696).
+# At runtime Generic doesn't enforce TypeVar defaults, so a plain TypeVar suffices.
+if TYPE_CHECKING:
+    NDim = TypeVar("NDim", bound=int, default=int)
+else:
+    NDim = TypeVar("NDim", bound=int)
 
 
 # =============================================================================
@@ -489,7 +485,7 @@ class Transformation(Generic[Float]):
         return transformation(type_to_warp(params))
 
 
-class Array(Generic[DType]):
+class Array(Generic[DType, NDim]):
     # Type annotations are guarded to prevent Sphinx from documenting them
     # as inherited attributes, which would conflict with the docstring
     # attributes in the `array` subclass.
@@ -2808,7 +2804,7 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
     return array_ctype
 
 
-class array(Array):
+class array(Array[DType, NDim]):
     """A fixed-size multi-dimensional array containing values of the same type.
 
     Attributes:
@@ -2868,7 +2864,7 @@ class array(Array):
         ``wp.empty()``, ``wp.zeros()``, or ``wp.full()`` instead to create new arrays.
 
         If none of the above arguments are specified, a simple type annotation is constructed.  This is used when annotating
-        kernel arguments or struct members (e.g.,``arr: wp.array(dtype=float)``).  In this case, only ``dtype`` and ``ndim``
+        kernel arguments or struct members (e.g., ``arr: wp.array[float]``).  In this case, only ``dtype`` and ``ndim``
         are taken into account and no memory is allocated for the array.
 
         Args:
@@ -4191,7 +4187,7 @@ class array(Array):
 
 
 # aliases for arrays with small dimensions
-class array1d(Array):
+class array1d(Array[DType, NDim]):
     """Create or annotate a 1-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4206,7 +4202,7 @@ class array1d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=1)
 
 
-class array2d(Array):
+class array2d(Array[DType, NDim]):
     """Create or annotate a 2-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4221,7 +4217,7 @@ class array2d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=2)
 
 
-class array3d(Array):
+class array3d(Array[DType, NDim]):
     """Create or annotate a 3-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4236,7 +4232,7 @@ class array3d(Array):
         return _ArrayAnnotation(dtype=dtype, ndim=3)
 
 
-class array4d(Array):
+class array4d(Array[DType, NDim]):
     """Create or annotate a 4-dimensional :class:`warp.array`."""
 
     def __new__(cls, *args, **kwargs):
@@ -4257,7 +4253,6 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     .. deprecated::
         Use the :class:`array` constructor with a ``ptr`` argument instead.
 
-    For OmniGraph applications, use :func:`from_omni_graph_ptr`.
     To create an array from a C pointer, use the :class:`array` constructor
     with the ``ptr`` argument as a ``uint64`` representing the memory address.
 
@@ -4390,7 +4385,7 @@ class fixedarray(array):
 
 # A base class for non-contiguous arrays, providing the implementation of common methods like
 # contiguous(), to(), numpy(), list(), assign(), zero_(), and fill_().
-class noncontiguous_array_base(Array):
+class noncontiguous_array_base(Array[DType, NDim]):
     def __init__(self, array_type_id):
         self.type_id = array_type_id
         self.is_contiguous = False
@@ -4487,7 +4482,7 @@ def check_index_array(indices, expected_device):
         raise ValueError(f"Index array device ({indices.device} does not match data array device ({expected_device}))")
 
 
-class indexedarray(noncontiguous_array_base):
+class indexedarray(noncontiguous_array_base[DType, NDim]):
     """Array providing indexed access to a subset of elements in a source :class:`warp.array`."""
 
     # member attributes available during code-gen (e.g.: d = arr.shape[0])

@@ -1,19 +1,5 @@
-/*
- * SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -82,8 +68,12 @@ template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid
 
 template <typename Type> CUDA_CALLABLE inline int hash_grid_index(const HashGrid_t<Type>& grid, const vec_t<3, Type>& p)
 {
+    // Use floor() to round toward negative infinity, not int() which truncates toward zero.
+    // Without floor(), negative fractional coordinates map to the wrong cell
+    // (e.g., -0.3 with cell_width=1.0: int(-0.3)=0 instead of floor(-0.3)=-1).
     return hash_grid_index(
-        grid, int(p[0] * grid.cell_width_inv), int(p[1] * grid.cell_width_inv), int(p[2] * grid.cell_width_inv)
+        grid, int(floor(p[0] * grid.cell_width_inv)), int(floor(p[1] * grid.cell_width_inv)),
+        int(floor(p[2] * grid.cell_width_inv))
     );
 }
 
@@ -144,17 +134,17 @@ CUDA_CALLABLE inline hash_grid_query_t<Type> hash_grid_query(uint64_t id, vec_t<
 
     query.grid = *(const HashGrid_t<Type>*)(id);
 
-    // convert coordinate to grid cell indices
+    // Convert coordinate to grid cell indices using floor() (see hash_grid_index above)
     Type cell_width_inv = query.grid.cell_width_inv;
 
-    query.x_start = int((pos[0] - radius) * cell_width_inv);
-    query.y_start = int((pos[1] - radius) * cell_width_inv);
-    query.z_start = int((pos[2] - radius) * cell_width_inv);
+    query.x_start = int(floor((pos[0] - radius) * cell_width_inv));
+    query.y_start = int(floor((pos[1] - radius) * cell_width_inv));
+    query.z_start = int(floor((pos[2] - radius) * cell_width_inv));
 
     // do not want to visit any cells more than once, so limit large radius offset to one pass over each dimension
-    query.x_end = min(int((pos[0] + radius) * cell_width_inv), query.x_start + query.grid.dim_x - 1);
-    query.y_end = min(int((pos[1] + radius) * cell_width_inv), query.y_start + query.grid.dim_y - 1);
-    query.z_end = min(int((pos[2] + radius) * cell_width_inv), query.z_start + query.grid.dim_z - 1);
+    query.x_end = min(int(floor((pos[0] + radius) * cell_width_inv)), query.x_start + query.grid.dim_x - 1);
+    query.y_end = min(int(floor((pos[1] + radius) * cell_width_inv)), query.y_start + query.grid.dim_y - 1);
+    query.z_end = min(int(floor((pos[2] + radius) * cell_width_inv)), query.z_start + query.grid.dim_z - 1);
 
     query.x = query.x_start;
     query.y = query.y_start;

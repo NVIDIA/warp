@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """Texture classes for hardware-accelerated sampling on GPU and software sampling on CPU."""
 
@@ -252,8 +240,6 @@ class Texture:
         """
         import warp._src.context  # noqa: PLC0415
 
-        self.runtime = warp._src.context.runtime
-
         self._ndim = self._default_ndim if self._default_ndim is not None else ndim
         if self._ndim not in (1, 2, 3):
             raise ValueError(
@@ -265,7 +251,10 @@ class Texture:
         resolved_v = self._resolve_address_mode(address_mode, address_mode_v, 1) if self._ndim >= 2 else 1
         resolved_w = self._resolve_address_mode(address_mode, address_mode_w, 2) if self._ndim == 3 else 1
 
+        # Note: get_device() calls wp.init() if needed, so we must capture
+        # self.runtime *after* this call to ensure it is not None.
         self.device = data.device if is_array(data) and device is None else warp._src.context.get_device(device)
+        self.runtime = warp._src.context.runtime
 
         if data is None:
             self._width = width
