@@ -19,6 +19,7 @@ on:
 
 jobs:
   analyze:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 360
