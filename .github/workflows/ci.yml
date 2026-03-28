@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   build-warp:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -103,6 +104,7 @@ jobs:
             warp/native/version.h
 
   test-warp:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ${{ matrix.os }}
     needs: build-warp
     strategy:
@@ -148,6 +150,7 @@ jobs:
         if: always()
 
   test-warp-debug:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-24.04
     needs: build-warp
     timeout-minutes: 30
@@ -237,6 +240,7 @@ jobs:
         if: always()
 
   build-docs:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-latest
     needs: build-warp
     outputs:
@@ -269,6 +273,7 @@ jobs:
             docs/language_reference
 
   check-build-docs-output:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-latest
     needs: build-docs
     steps:
@@ -293,6 +298,7 @@ jobs:
           (echo "Please run build_docs.py (or download from $ARTIFACT_URL) and add warp/__init__.pyi to your pull request." && false)
 
   check-generated-files:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-latest
     needs: build-warp
     steps:
@@ -321,6 +327,7 @@ jobs:
           (echo "Please run build_lib.py and add warp/native/version.h to your pull request." && false)
 
   check-unnamespaced-symbols:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-latest
     needs: build-warp
     steps:
@@ -360,6 +367,7 @@ jobs:
 
   # Validate that the type stub file (warp/__init__.pyi) passes static type checking.
   type-check-stubs:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
