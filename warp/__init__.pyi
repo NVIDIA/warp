@@ -2054,28 +2054,16 @@ def frac(x: Float) -> Float:
     """
     ...
 
-def isfinite(a: Vector[Scalar, Any] | Quaternion[Float] | Matrix[Scalar, Any, Any] | Scalar) -> bool:
-    """Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
+def isfinite(a: Vector[Float, Any] | Quaternion[Float] | Matrix[Float, Any, Any] | Float) -> bool:
+    """Check if all elements of ``a`` are finite."""
     ...
 
-def isnan(a: Vector[Scalar, Any] | Quaternion[Float] | Matrix[Scalar, Any, Any] | Scalar) -> bool:
-    """Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
+def isnan(a: Vector[Float, Any] | Quaternion[Float] | Matrix[Float, Any, Any] | Float) -> bool:
+    """Check if any element of ``a`` is NaN."""
     ...
 
-def isinf(a: Vector[Scalar, Any] | Quaternion[Float] | Matrix[Scalar, Any, Any] | Scalar) -> bool:
-    """Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-
-    """
+def isinf(a: Vector[Float, Any] | Quaternion[Float] | Matrix[Float, Any, Any] | Float) -> bool:
+    """Check if any element of ``a`` is positive or negative infinity."""
     ...
 
 @over
