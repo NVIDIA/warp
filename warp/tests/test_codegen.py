@@ -242,6 +242,42 @@ def test_break_while():
     wp.expect_eq(a, 6)
 
 
+# while True with conditional break and observable side effects
+@wp.kernel
+def test_break_while_true():
+    a = int(0)
+    total = int(0)
+
+    while True:
+        total += a
+        a += 1
+        if a >= 5:
+            break
+
+    wp.expect_eq(a, 5)
+    wp.expect_eq(total, 10)  # 0+1+2+3+4
+
+
+# nested while True loops with conditional breaks
+@wp.kernel
+def test_break_while_true_nested():
+    total = int(0)
+    i = int(0)
+
+    while True:
+        j = int(0)
+        while True:
+            total += 1
+            j += 1
+            if j >= 3:
+                break
+        i += 1
+        if i >= 4:
+            break
+
+    wp.expect_eq(total, 12)  # 4 * 3
+
+
 @wp.kernel
 def test_break_multiple(n: int):
     a = int(0)
@@ -1375,6 +1411,10 @@ add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs
 add_kernel_test(TestCodeGen, name="test_break_early", kernel=test_break_early, dim=1, inputs=[10], devices=devices)
 add_kernel_test(TestCodeGen, name="test_break_unroll", kernel=test_break_unroll, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_break_while", kernel=test_break_while, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_break_while_true", kernel=test_break_while_true, dim=1, devices=devices)
+add_kernel_test(
+    TestCodeGen, name="test_break_while_true_nested", kernel=test_break_while_true_nested, dim=1, devices=devices
+)
 add_kernel_test(
     TestCodeGen, name="test_break_multiple", kernel=test_break_multiple, dim=1, inputs=[10], devices=devices
 )
