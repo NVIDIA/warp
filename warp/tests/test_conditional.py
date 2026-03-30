@@ -3,6 +3,8 @@
 
 import unittest
 
+import numpy as np
+
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -338,6 +340,80 @@ def test_short_circuit_or(test: unittest.TestCase, device):
     test.assertEqual(result.numpy().tolist(), [1, 1, 1])
 
 
+@wp.kernel
+def test_short_circuit_and_grad_kernel(
+    x: wp.array(dtype=float),
+    flag: wp.array(dtype=int),
+    out: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    # flag[tid] != 0 and tid < 2: only threads 0,1 with flag set take the branch.
+    # The backward pass must replay the same short-circuit guards so that
+    # gradients flow only through the operands that were actually evaluated.
+    if flag[tid] != 0 and tid < 2:
+        out[tid] = x[tid] * 3.0
+    else:
+        out[tid] = x[tid] * 1.0
+
+
+@wp.kernel
+def test_short_circuit_or_grad_kernel(
+    x: wp.array(dtype=float),
+    flag: wp.array(dtype=int),
+    out: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    # flag[tid] == 0 or tid >= 2: threads where flag is zero OR tid >= 2.
+    if flag[tid] == 0 or tid >= 2:
+        out[tid] = x[tid] * 1.0
+    else:
+        out[tid] = x[tid] * 3.0
+
+
+def test_short_circuit_and_grad(test: unittest.TestCase, device):
+    """Backward pass through chained `and` propagates correct gradients."""
+    n = 4
+    x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
+    flag = wp.array([1, 1, 0, 0], dtype=int, device=device)
+    out = wp.zeros(n, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_short_circuit_and_grad_kernel, dim=n, inputs=[x, flag, out], device=device)
+
+    # flag=1 and tid<2 → *3; else → *1
+    np.testing.assert_allclose(out.numpy(), [3.0, 3.0, 1.0, 1.0])
+
+    out.grad = wp.array(np.ones(n, dtype=np.float32), device=device)
+    tape.backward()
+
+    np.testing.assert_allclose(tape.gradients[x].numpy(), [3.0, 3.0, 1.0, 1.0])
+
+
+def test_short_circuit_or_grad(test: unittest.TestCase, device):
+    """Backward pass through chained `or` propagates correct gradients."""
+    n = 4
+    x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
+    flag = wp.array([0, 1, 1, 0], dtype=int, device=device)
+    out = wp.zeros(n, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_short_circuit_or_grad_kernel, dim=n, inputs=[x, flag, out], device=device)
+
+    # flag==0 or tid>=2 → *1; else → *3
+    # tid=0: flag=0→true (short-circuit) → *1
+    # tid=1: flag=1→false, tid>=2→false → *3
+    # tid=2: flag=1→false, tid>=2→true  → *1
+    # tid=3: flag=0→true (short-circuit) → *1
+    np.testing.assert_allclose(out.numpy(), [1.0, 3.0, 1.0, 1.0])
+
+    out.grad = wp.array(np.ones(n, dtype=np.float32), device=device)
+    tape.backward()
+
+    np.testing.assert_allclose(tape.gradients[x].numpy(), [1.0, 3.0, 1.0, 1.0])
+
+
 devices = get_test_devices()
 
 
@@ -368,6 +444,8 @@ add_function_test(TestConditional, "test_conditional_unequal_types", test_condit
 add_function_test(TestConditional, "test_ifexp_with_array_access", test_ifexp_with_array_access, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_and", test_short_circuit_and, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_or", test_short_circuit_or, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_and_grad", test_short_circuit_and_grad, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_or_grad", test_short_circuit_or_grad, devices=devices)
 
 
 if __name__ == "__main__":
