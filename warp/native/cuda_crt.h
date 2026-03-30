@@ -1259,7 +1259,7 @@ __device_forceinline__ unsigned int atomicAdd(unsigned int* const address, const
     return __uAtomicAdd(address, val);
 }
 
-__device_forceinline__ unsigned int atomicAdd(unsigned long long* const address, const unsigned long long val)
+__device_forceinline__ unsigned long long atomicAdd(unsigned long long* const address, const unsigned long long val)
 {
     return __ullAtomicAdd(address, val);
 }
