@@ -12,7 +12,7 @@ from typing import Any, Callable
 import warp._src.build
 import warp._src.context
 import warp._src.utils
-from warp._src.codegen import Reference, Var, get_arg_value, strip_reference
+from warp._src.codegen import Reference, Var, _warp_log_codegen, get_arg_value, strip_reference
 from warp._src.types import *
 
 from .context import add_builtin
@@ -8319,6 +8319,74 @@ add_builtin(
     doc="Print a variable to stdout.",
     export=False,
     group="Utility",
+)
+
+# ---------------------------------------------------------------------------
+# Kernel logging (wp.log)
+# ---------------------------------------------------------------------------
+
+
+_LOG_DOC = """Emit a structured log record from inside a kernel.
+
+    Records are buffered in a per-device ring buffer and drained to Python
+    when ``wp.synchronize()`` or ``wp.synchronize_device()`` is called.
+    Records are forwarded to ``logging.getLogger("warp.kernel")``.
+
+    Args:
+        level (int): Severity level.  Use one of the ``wp.LOG_*`` constants:
+            ``wp.LOG_DEBUG`` (10), ``wp.LOG_INFO`` (20), ``wp.LOG_WARN`` (30),
+            ``wp.LOG_ERROR`` (40).
+        msg (str): A **string literal** describing the event.  The message is
+            resolved at compile time and never written to the GPU buffer.
+
+    Note:
+        ``msg`` must be a string literal — runtime-formatted strings are not
+        supported.  All static metadata (level, message, source file, line)
+        is encoded as a single integer key at compile time.
+    """
+
+add_builtin(
+    "log",
+    input_types={"level": int, "msg": str},
+    value_type=None,
+    codegen_func=_warp_log_codegen,
+    is_differentiable=False,
+    export=False,
+    group="Utility",
+    doc=_LOG_DOC,
+)
+
+add_builtin(
+    "log",
+    input_types={"level": int, "msg": str, "value": int32},
+    value_type=None,
+    codegen_func=_warp_log_codegen,
+    is_differentiable=False,
+    export=False,
+    group="Utility",
+    doc="Overload of :func:`warp.log` that attaches an ``int32`` payload to the record.",
+)
+
+add_builtin(
+    "log",
+    input_types={"level": int, "msg": str, "value": int64},
+    value_type=None,
+    codegen_func=_warp_log_codegen,
+    is_differentiable=False,
+    export=False,
+    group="Utility",
+    doc="Overload of :func:`warp.log` that attaches an ``int64`` payload to the record.",
+)
+
+add_builtin(
+    "log",
+    input_types={"level": int, "msg": str, "value": float32},
+    value_type=None,
+    codegen_func=_warp_log_codegen,
+    is_differentiable=False,
+    export=False,
+    group="Utility",
+    doc="Overload of :func:`warp.log` that attaches a ``float32`` payload to the record.",
 )
 
 add_builtin(

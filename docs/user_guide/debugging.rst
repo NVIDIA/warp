@@ -41,6 +41,67 @@ In addition, formatted C-style printing for *scalar types* is available through 
 
         wp.printf("A float value %f, an int value: %d\n", x, i)
 
+Kernel Logging
+--------------
+
+:func:`wp.log() <warp.log>` is a structured alternative to ``printf`` that routes log
+records to Python's :mod:`logging` module after a synchronize call.  Unlike
+``printf``, all static metadata (log level, message text, source file, and line
+number) is resolved at compile time and **never written to the GPU buffer**; only a
+small integer key and an optional numeric payload travel through the ring buffer.
+
+**Kernel-side API**::
+
+    @wp.kernel
+    def bounds_check(data: wp.array(dtype=wp.int32), n: int):
+        i = wp.tid()
+        if i >= n:
+            wp.log(wp.LOG_WARN, "index out of range", i)
+
+Four level constants are available:
+
+* ``wp.LOG_DEBUG``  (10)
+* ``wp.LOG_INFO``   (20)
+* ``wp.LOG_WARN``   (30)
+* ``wp.LOG_ERROR``  (40)
+
+The ``msg`` argument **must be a string literal**; runtime-formatted strings are not
+supported (all string data is resolved at compile time).
+
+An optional numeric payload—``int32``, ``int64``, or ``float32``—can be attached::
+
+    wp.log(wp.LOG_INFO, "value", my_int32_var)   # int32 payload
+    wp.log(wp.LOG_WARN, "large index", big_idx)  # int64 payload
+    wp.log(wp.LOG_DEBUG, "ratio", ratio_f32)     # float32 payload
+
+**Drain trigger**
+
+Records accumulate in a per-device ring buffer and are drained automatically when
+``wp.synchronize()``, ``wp.synchronize_device()``, or ``wp.synchronize_stream()`` is called.
+
+**Python-side routing**
+
+By default, records are forwarded to ``logging.getLogger("warp.kernel")``, so any
+Python logging configuration that attaches to that logger will receive them::
+
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    # warp.kernel logger now prints to stderr
+
+**Overflow**
+
+If more records are written than the ring buffer can hold, the excess are silently
+dropped and counted.  After the next drain, a warning is emitted reporting the dropped
+count.  The buffer size (per device) is controlled by::
+
+    wp.config.kernel_log_capacity = 4096  # default
+
+Increase this value if many threads log per launch or if multiple launches occur
+between synchronizations.  Additional utilities:
+
+* :func:`wp.get_kernel_log_overflow_count` — number of records dropped since the last drain.
+* :func:`wp.reset_kernel_log` — clear the buffer and overflow counter without draining.
+
 Verbose Mode and Printing Launches
 ----------------------------------
 

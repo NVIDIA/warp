@@ -4,6 +4,13 @@
 
 ### Added
 
+- Add structured kernel logging via `wp.log()` ([GH-1194](https://github.com/NVIDIA/warp/issues/1194)).
+  Records are buffered in a per-device ring buffer and drained to Python's
+  `logging.getLogger("warp.kernel")` after `wp.synchronize()` or
+  `wp.synchronize_device()`.  All static metadata (log level, message text,
+  source file, line number) is resolved at compile time—only a small integer key
+  and an optional int32/int64/float32 payload travel through the ring buffer.
+  Buffer capacity is controlled by `wp.config.kernel_log_capacity` (default 4096).
 - Add external CUDA texture interoperability, e.g., `wp.Texture2D(cuda_array=handle)` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
 - Add OpenGL texture interoperability using `wp.GLTextureResource` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
 - Add `Texture.copy_from()` that can copy from host and device arrays as well as other textures.

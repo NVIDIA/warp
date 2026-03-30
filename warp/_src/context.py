@@ -9,17 +9,20 @@ import ctypes
 import enum
 import functools
 import hashlib
+import zlib
 import importlib
 import importlib.metadata
 import inspect
 import io
 import itertools
 import json
+import logging
 import operator
 import os
 import platform
 import re
 import shutil
+import struct as _struct_mod
 import sys
 import tempfile
 import threading
@@ -155,6 +158,7 @@ class Function:
         export_func: Callable[[dict[str, type]], dict[str, type]] | None = None,
         dispatch_func: Callable | None = None,
         lto_dispatch_func: Callable | None = None,
+        codegen_func: Callable | None = None,
         module: Module | None = None,
         variadic: bool = False,
         initializer_list_func: Callable[[dict[str, Any], type], bool] | None = None,
@@ -193,6 +197,7 @@ class Function:
         self.export_func = export_func
         self.dispatch_func = dispatch_func
         self.lto_dispatch_func = lto_dispatch_func
+        self.codegen_func = codegen_func
         self.input_types = {}
         self.export = export
         self.doc = doc
@@ -1561,6 +1566,7 @@ def add_builtin(
     export_func: Callable | None = None,
     dispatch_func: Callable | None = None,
     lto_dispatch_func: Callable | None = None,
+    codegen_func: Callable | None = None,
     doc: str = "",
     namespace: str = "wp::",
     variadic: bool = False,
@@ -1604,6 +1610,13 @@ def add_builtin(
         lto_dispatch_func: Same as dispatch_func, but takes an 'option' dict
             as extra argument (indicating tile_size and target architecture) and returns
             an LTO-IR buffer as extra return value
+        codegen_func: Callback ``(adj, bound_args) -> Var | None`` that
+            completely replaces the normal C++ emission for this builtin.
+            Receives the ``Adjoint`` object and the bound argument dict so it
+            can read source location, set adjoint flags, and call
+            ``adj.add_forward()`` directly.  Return the result ``Var``, or
+            ``None`` for void functions.  When set, ``dispatch_func`` is
+            ignored for this overload.
         doc: Used to generate the Python's docstring and the HTML documentation.
         namespace: Namespace for the underlying C++ function.
         variadic: Whether the function declares variadic arguments.
@@ -1761,6 +1774,7 @@ def add_builtin(
         export_func=export_func,
         dispatch_func=dispatch_func,
         lto_dispatch_func=lto_dispatch_func,
+        codegen_func=codegen_func,
         variadic=variadic,
         initializer_list_func=initializer_list_func,
         export=export,
@@ -2783,7 +2797,19 @@ class Module:
         else:
             output_dir = os.fspath(output_dir)
 
-        # Skip compilation if the binary and metadata are already cached
+        # Always build Python-level module metadata (sets adj.uses_logging, resolves
+        # static expressions, etc.) even when the binary is already cached.  This
+        # step is fast (Python-only AST traversal) and must run before any kernel
+        # launch so that flags such as ``uses_logging`` are correctly populated.
+        # Some of the tile codegen (cuFFTDx / cuBLASDx) also requires knowing the
+        # target arch, so we pass it in here.
+        builder = ModuleBuilder(
+            self,
+            options,
+            hasher=self.hashers.get(options["block_dim"], None),
+        )
+
+        # Skip C++ compilation if the binary and metadata are already cached
         # (forced rebuild when verifying autograd array access)
         if (
             warp.config.cache_kernels
@@ -2792,13 +2818,6 @@ class Module:
             and os.path.exists(os.path.join(output_dir, self._get_meta_name()))
         ):
             return False
-
-        # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-        builder = ModuleBuilder(
-            self,
-            options,
-            hasher=self.hashers.get(options["block_dim"], None),
-        )
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
 
@@ -3166,6 +3185,230 @@ class CudaMempoolAllocator:
 
     def free(self, ptr, size_in_bytes):
         runtime.core.wp_free_device_async(self.device.context, ptr)
+
+
+# ---------------------------------------------------------------------------
+# Kernel-side ring-buffer logging
+# ---------------------------------------------------------------------------
+
+# Log level constants (mirror of WP_LOG_* in log.h; match Python logging levels)
+LOG_DEBUG = 10
+LOG_INFO = 20
+LOG_WARN = 30
+LOG_ERROR = 40
+
+# Payload type tags (mirror of WP_LOG_PAYLOAD_* in log.h)
+_LOG_PAYLOAD_NONE = 0
+_LOG_PAYLOAD_I32 = 1
+_LOG_PAYLOAD_I64 = 2
+_LOG_PAYLOAD_F32 = 3
+
+# Buffer memory layout constants (must match log.h structs)
+_LOG_HEADER_BYTES = 16  # sizeof(WpLogBuffer) header (4 x uint32_t)
+_LOG_ENTRY_BYTES = 16  # sizeof(WpLogEntry)  (2 x uint32_t + 8-byte union)
+
+_kernel_logger = logging.getLogger("warp.kernel")
+
+
+def get_kernel_log_overflow_count(device=None):
+    """Return the number of kernel log records dropped since the last drain on *device*.
+
+    Records are dropped when the ring buffer is full.  The count is reset to
+    zero each time the buffer is drained (on :func:`warp.synchronize`).
+
+    Args:
+        device: The device to query.  Defaults to the default CUDA device or
+            the CPU device if no CUDA device is available.
+    """
+    device = runtime.get_device(device)
+    buf = device._kernel_log_buffer
+    if buf is None:
+        return 0
+    return buf.overflow_count
+
+
+def reset_kernel_log(device=None):
+    """Clear the kernel log buffer and reset the overflow counter on *device*.
+
+    Any undrained records are discarded.
+
+    For CUDA devices the hardware is synchronized first (without draining the
+    log) so that any in-flight kernel writes to the pinned buffer complete
+    before the write index is zeroed.  This prevents records from a previous
+    launch appearing after the reset.
+
+    Args:
+        device: The device to reset.  Defaults to the default CUDA device or
+            the CPU device if no CUDA device is available.
+    """
+    device = runtime.get_device(device)
+    if device.is_cuda:
+        # Wait for in-flight GPU writes to pinned memory to complete.
+        # We use the low-level CUDA sync deliberately — synchronize_device()
+        # would drain the log, which is not desired here.
+        runtime.core.wp_cuda_context_synchronize(device.context)
+    buf = device._kernel_log_buffer
+    if buf is not None:
+        buf.reset()
+
+
+def _register_log_call_site(level: int, msg: str, filename: str, lineno: int) -> int:
+    """Register a wp.log() call site and return its stable 32-bit hash key.
+
+    Called at codegen time (Python side only).  Returns a 32-bit integer
+    derived from a content hash of ``(level, msg, filename, lineno)`` so that
+    the key is **identical across Python sessions** — important because the
+    same binary may be loaded from the kernel cache without recompiling, yet
+    the call-site registry must still map each key to the correct metadata.
+
+    The hash is truncated to 32 bits (fits in ``uint32_t``) and stored in
+    ``runtime.log_call_sites``, a dict keyed by that integer.
+    """
+    raw = f"{level}|{msg}|{filename}|{lineno}"
+    key = zlib.crc32(raw.encode()) & 0xFFFFFFFF
+    runtime.log_call_sites[key] = (level, msg, filename, lineno)
+    return key
+
+
+def _drain_device_log(device):
+    """Drain the kernel log ring buffer for *device* and emit records."""
+    buf = device._kernel_log_buffer
+    if buf is None:
+        return
+    records, overflow = buf.drain()
+    for call_site_key, payload_type, payload in records:
+        entry = runtime.log_call_sites.get(call_site_key)
+        if entry is not None:
+            level, msg, filename, lineno = entry
+        else:
+            warp._src.utils.warn(
+                f"Kernel log record has unrecognised call_site_key={call_site_key:#010x}; "
+                "metadata lost.  This can happen if a kernel binary was loaded from cache "
+                "without the owning Python module being imported first.",
+                once=True,
+            )
+            level, msg, filename, lineno = LOG_WARN, "<unknown log call site>", "<unknown>", 0
+        _emit_kernel_log_record(level, msg, filename, lineno, payload_type, payload)
+    if overflow:
+        _emit_kernel_log_record(
+            LOG_WARN,
+            f"{overflow} kernel log record(s) were dropped (buffer full); increase wp.config.kernel_log_capacity",
+            "<warp>",
+            0,
+            _LOG_PAYLOAD_NONE,
+            None,
+        )
+
+
+def _emit_kernel_log_record(level, msg, filename, lineno, payload_type, payload):
+    """Forward a single kernel log record to the ``warp.kernel`` stdlib logger."""
+    extra = {"warp_filename": filename, "warp_lineno": lineno}
+    if payload_type != _LOG_PAYLOAD_NONE:
+        extra["warp_payload"] = payload
+        full_msg = f"{msg} [{payload}]"
+    else:
+        full_msg = msg
+    _kernel_logger.log(level, full_msg, stacklevel=1, extra=extra)
+
+
+class KernelLogBuffer:
+    """Pinned-memory ring buffer for collecting kernel log records.
+
+    Pinned (page-locked) host memory is directly writable by GPU kernels via
+    PCIe without requiring an explicit device-to-host copy.  CPU kernels write
+    to it directly.  After :func:`warp.synchronize` both paths are coherent and
+    the Python side can read the records.
+
+    The buffer layout (must match ``WpLogBuffer`` / ``WpLogEntry`` in log.h):
+
+    .. code-block:: text
+
+        Offset 0    : write_idx      (uint32) -atomic; total attempted writes
+        Offset 4    : capacity       (uint32) -number of entry slots
+        Offset 8    : overflow_count (uint32) -dropped records
+        Offset 12   : _pad           (uint32)
+        Offset 16+  : WpLogEntry[]   -call_site_key(u32), payload_type(i32),
+                                       payload(8 bytes, union i32/i64/f32)
+    """
+
+    def __init__(self, capacity: int):
+        total_bytes = _LOG_HEADER_BYTES + capacity * _LOG_ENTRY_BYTES
+        self._ptr = runtime.core.wp_alloc_pinned(total_bytes)
+        if not self._ptr:
+            raise RuntimeError(f"Failed to allocate kernel log buffer ({total_bytes} bytes)")
+        self._total_bytes = total_bytes
+        self._capacity = capacity
+
+        # Map header as a ctypes array so we can read/write fields directly
+        # Layout: [write_idx, capacity, overflow_count, _pad]
+        Header = ctypes.c_uint32 * 4
+        self._header = Header.from_address(self._ptr)
+
+        # Initialise header
+        self._header[0] = 0  # write_idx
+        self._header[1] = capacity  # capacity
+        self._header[2] = 0  # overflow_count
+        self._header[3] = 0  # _pad
+
+
+    def __del__(self):
+        if self._ptr:
+            try:
+                runtime.core.wp_free_pinned(self._ptr)
+            except Exception:
+                pass
+            self._ptr = None
+
+    @property
+    def overflow_count(self) -> int:
+        return int(self._header[2])
+
+    def reset(self):
+        """Clear the buffer without draining."""
+        self._header[0] = 0  # write_idx
+        self._header[2] = 0  # overflow_count
+
+    def drain(self):
+        """Read all committed records and reset the buffer.
+
+        Returns:
+            tuple: ``(records, overflow_count)`` where *records* is a list of
+            ``(call_site_key, payload_type, payload)`` tuples and *overflow_count*
+            is the number of records dropped since the last drain.
+        """
+        # Snapshot and reset atomically-ish on host.  After synchronize() the
+        # device is idle, so there is no concurrent writer.
+        count = min(int(self._header[0]), self._capacity)
+        overflow = int(self._header[2])
+
+        # Reset before reading so any new launches don't confuse old data
+        self._header[0] = 0
+        self._header[2] = 0
+
+        if count == 0:
+            return [], overflow
+
+        # Map the entry region as raw bytes then parse
+        entry_start = self._ptr + _LOG_HEADER_BYTES
+        RawEntries = ctypes.c_uint8 * (count * _LOG_ENTRY_BYTES)
+        raw = RawEntries.from_address(entry_start)
+        data = bytes(raw)
+
+        records = []
+        for i in range(count):
+            off = i * _LOG_ENTRY_BYTES
+            call_site_key, payload_type = _struct_mod.unpack_from("<Ii", data, off)
+            if payload_type == _LOG_PAYLOAD_I32:
+                payload = _struct_mod.unpack_from("<i", data, off + 8)[0]
+            elif payload_type == _LOG_PAYLOAD_I64:
+                payload = _struct_mod.unpack_from("<q", data, off + 8)[0]
+            elif payload_type == _LOG_PAYLOAD_F32:
+                payload = _struct_mod.unpack_from("<f", data, off + 8)[0]
+            else:
+                payload = None
+            records.append((call_site_key, payload_type, payload))
+
+        return records, overflow
 
 
 class ContextGuard:
@@ -3606,6 +3849,19 @@ class Device:
 
         else:
             raise RuntimeError(f"Invalid device ordinal ({ordinal})'")
+
+        # Lazily allocated kernel log buffer (created on first logging kernel launch)
+        self._kernel_log_buffer: KernelLogBuffer | None = None
+
+    def get_kernel_log_buffer(self) -> KernelLogBuffer:
+        """Return (and lazily create) the kernel log ring buffer for this device."""
+        if self._kernel_log_buffer is None:
+            self._kernel_log_buffer = KernelLogBuffer(warp.config.kernel_log_capacity)
+        return self._kernel_log_buffer
+
+    def _discard_kernel_log_buffer(self):
+        """Discard the current buffer so it is re-created (with the current config capacity) on next use."""
+        self._kernel_log_buffer = None
 
     def get_allocator(self, pinned: bool = False):
         """Get the memory allocator for this device.
@@ -4062,6 +4318,11 @@ class Runtime:
 
         # maps capture ids to graphs
         self.captures = {}
+
+        # Registry of wp.log() call sites populated at codegen time.
+        # Each entry is (level, msg, filename, lineno).  The list index is
+        # the integer key embedded as a compile-time constant in kernel code.
+        self.log_call_sites: dict = {}  # {call_site_key: (level, msg, filename, lineno)}
 
         # setup c-types for warp.dll
         try:
@@ -6990,62 +7251,92 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
     param_types = tuple(type(p) for p in params[1:])  # skip launch bounds
     cache_key = (param_types, adjoint)
 
+    # params layout (CPU):
+    #   params[0]              = launch bounds
+    #   params[1..N]           = forward user args   (N = num_user_args)
+    #   params[N+1..2N]        = adjoint user args   (adjoint path only)
+    #   params[-1]             = log buffer          (uses_logging only; always last)
+    #
+    # Both the forward struct (wp_args_*) and the adjoint struct (also wp_args_*)
+    # include a trailing warp_log_buffer field when uses_logging is True.
+
     cached = kernel._invoke_cache.get(cache_key)
     if cached is not None:
-        # Fast path: use cached struct types
+        # Fast path: use cached struct types and pre-computed offsets.
         if adjoint:
-            ArgsStruct, AdjArgsStruct, fields, adj_fields = cached
+            ArgsStruct, AdjArgsStruct, num_fwd_user, num_adj_user = cached
         else:
-            ArgsStruct, fields = cached
+            ArgsStruct, num_fwd_user = cached
 
         args = ArgsStruct()
-        for i, field in enumerate(fields):
-            setattr(args, field[0], params[1 + i])
+        fwd_fields = ArgsStruct._fields_
+        for i in range(num_fwd_user):
+            setattr(args, fwd_fields[i][0], params[1 + i])
+        if kernel.adj.uses_logging:
+            args.warp_log_buffer = params[-1]
 
         if not adjoint:
             hooks.forward(params[0], ctypes.byref(args))
         else:
             adj_args = AdjArgsStruct()
-            for i, field in enumerate(adj_fields):
-                setattr(adj_args, field[0], params[1 + len(fields) + i])
+            adj_fields = AdjArgsStruct._fields_
+            for i in range(num_adj_user):
+                setattr(adj_args, adj_fields[i][0], params[1 + num_fwd_user + i])
+            if kernel.adj.uses_logging:
+                adj_args.warp_log_buffer = params[-1]
             hooks.backward(params[0], ctypes.byref(args), ctypes.byref(adj_args))
         return
 
-    # Slow path: build struct types and cache them
+    # Slow path: build struct types and cache them.
+    # For kernels that use wp.log(), the log buffer pointer is appended as a
+    # hidden extra field called "warp_log_buffer" after the user args in both
+    # the forward and adjoint structs (both map to the C++ wp_args_<name> type).
+    num_user_args = len(kernel.adj.args)
+
     fields = []
-    for i in range(0, len(kernel.adj.args)):
+    for i in range(num_user_args):
         arg_name = kernel.adj.args[i].label
         field = (arg_name, type(params[1 + i]))  # skip the first argument, which is the launch bounds
         fields.append(field)
 
+    if kernel.adj.uses_logging:
+        # Log buffer is always the last element in params.
+        fields.append(("warp_log_buffer", type(params[-1])))
+
     ArgsStruct = type("ArgsStruct", (ctypes.Structure,), {"_fields_": fields})
 
     args = ArgsStruct()
-    for i, field in enumerate(fields):
-        name = field[0]
-        setattr(args, name, params[1 + i])
+    for i in range(num_user_args):
+        setattr(args, fields[i][0], params[1 + i])
+    if kernel.adj.uses_logging:
+        args.warp_log_buffer = params[-1]
 
     if not adjoint:
-        kernel._invoke_cache[cache_key] = (ArgsStruct, fields)
+        kernel._invoke_cache[cache_key] = (ArgsStruct, num_user_args)
         hooks.forward(params[0], ctypes.byref(args))
 
     # for adjoint kernels the adjoint arguments are passed through a second struct
     else:
         adj_fields = []
 
-        for i in range(0, len(kernel.adj.args)):
+        for i in range(num_user_args):
             arg_name = kernel.adj.args[i].label
-            field = (arg_name, type(params[1 + len(fields) + i]))  # skip the first argument, which is the launch bounds
+            # Adjoint user args start at params[1 + num_user_args]
+            field = (arg_name, type(params[1 + num_user_args + i]))
             adj_fields.append(field)
+
+        if kernel.adj.uses_logging:
+            adj_fields.append(("warp_log_buffer", type(params[-1])))
 
         AdjArgsStruct = type("AdjArgsStruct", (ctypes.Structure,), {"_fields_": adj_fields})
 
         adj_args = AdjArgsStruct()
-        for i, field in enumerate(adj_fields):
-            name = field[0]
-            setattr(adj_args, name, params[1 + len(fields) + i])
+        for i in range(num_user_args):
+            setattr(adj_args, adj_fields[i][0], params[1 + num_user_args + i])
+        if kernel.adj.uses_logging:
+            adj_args.warp_log_buffer = params[-1]
 
-        kernel._invoke_cache[cache_key] = (ArgsStruct, AdjArgsStruct, fields, adj_fields)
+        kernel._invoke_cache[cache_key] = (ArgsStruct, AdjArgsStruct, num_user_args, num_user_args)
         hooks.backward(params[0], ctypes.byref(args), ctypes.byref(adj_args))
 
 
@@ -7395,6 +7686,12 @@ def launch(
         pack_args(fwd_args, params, adjoint=False)
         pack_args(adj_args, params, adjoint=True)
 
+        # If the kernel uses wp.log(), append the per-device log buffer pointer
+        # as a hidden extra argument (not in kernel.adj.args).
+        if kernel.adj.uses_logging:
+            log_buf = device.get_kernel_log_buffer()
+            params.append(ctypes.c_void_p(log_buf._ptr))
+
         # run kernel
         if device.is_cpu:
             if adjoint:
@@ -7588,6 +7885,9 @@ def synchronize():
 
     This method allows the host application code to ensure that any kernel launches
     or memory copies have completed.
+
+    Kernel log records written via :func:`warp.log` are also drained and
+    forwarded to ``logging.getLogger("warp.kernel")``.
     """
 
     if is_cuda_driver_initialized():
@@ -7602,9 +7902,14 @@ def synchronize():
                     raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
                 runtime.core.wp_cuda_context_synchronize(device.context)
+                _drain_device_log(device)
 
         # restore the original context to avoid side effects
         runtime.core.wp_cuda_context_set_current(saved_context)
+
+    # Also drain CPU device log (CPU kernels run synchronously, so there is no
+    # separate sync step, but we drain here for consistency)
+    _drain_device_log(runtime.cpu_device)
 
 
 def synchronize_device(device: DeviceLike = None):
@@ -7612,6 +7917,9 @@ def synchronize_device(device: DeviceLike = None):
 
     This function allows the host application code to ensure that all kernel launches
     and memory copies have completed on the device.
+
+    Kernel log records written via :func:`warp.log` on *device* are also drained
+    and forwarded to ``logging.getLogger("warp.kernel")``.
 
     Args:
         device: Device to synchronize.
@@ -7624,12 +7932,17 @@ def synchronize_device(device: DeviceLike = None):
 
         runtime.core.wp_cuda_context_synchronize(device.context)
 
+    _drain_device_log(device)
+
 
 def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified stream.
 
     This function allows the host application code to ensure that all kernel launches
     and memory copies have completed on the stream.
+
+    Kernel log records written via :func:`warp.log` on the stream's device are also
+    drained and forwarded to ``logging.getLogger("warp.kernel")``.
 
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
@@ -7645,6 +7958,7 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
         runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+        _drain_device_log(stream.device)
 
 
 def synchronize_event(event: Event):

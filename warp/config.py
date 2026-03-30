@@ -260,6 +260,20 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
+kernel_log_capacity: int = 4096
+"""Number of ring-buffer slots pre-allocated per device for kernel logging.
+
+Controls how many :func:`warp.log` records can be buffered between successive
+calls to :func:`warp.synchronize` or :func:`warp.synchronize_device`.  Records
+written by kernel threads when the buffer is full are silently dropped and
+counted; the count is reported after the next drain.  Increase this value when
+many threads log per launch or when multiple launches occur between syncs.
+
+This setting is read once the first time a logging-enabled kernel is launched
+on a given device.  Changes after that point have no effect on already-allocated
+buffers.
+"""
+
 _git_commit_hash: _Optional[str] = None
 """Git commit hash associated with the Warp installation.
 

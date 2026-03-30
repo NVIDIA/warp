@@ -279,6 +279,13 @@ from warp._src.utils import TIMING_MEMSET as TIMING_MEMSET
 from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
 
+from warp._src.context import LOG_DEBUG as LOG_DEBUG
+from warp._src.context import LOG_INFO as LOG_INFO
+from warp._src.context import LOG_WARN as LOG_WARN
+from warp._src.context import LOG_ERROR as LOG_ERROR
+from warp._src.context import get_kernel_log_overflow_count as get_kernel_log_overflow_count
+from warp._src.context import reset_kernel_log as reset_kernel_log
+
 from warp._src.types import dtype_from_numpy as dtype_from_numpy
 from warp._src.types import dtype_to_numpy as dtype_to_numpy
 
@@ -5029,6 +5036,17 @@ def curlnoise(state: uint32, xyzt: vec4f, octaves: uint32, lacunarity: float32, 
     """Divergence-free vector field based on Perlin noise.
 
     Use the curl of three Perlin noise functions.
+    """
+    ...
+
+def log(level: int, msg: str, value: Any = ...) -> None:
+    """Emit a structured log record from inside a kernel.
+
+    Args:
+        level: Severity level; one of ``wp.LOG_DEBUG``, ``wp.LOG_INFO``,
+            ``wp.LOG_WARN``, or ``wp.LOG_ERROR``.
+        msg: A string literal message (resolved at compile time).
+        value: Optional numeric payload (``int32``, ``int64``, or ``float32``).
     """
     ...
 

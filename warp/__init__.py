@@ -353,6 +353,16 @@ from warp._src.types import from_ipc_handle as from_ipc_handle
 from warp._src.context import event_from_ipc_handle as event_from_ipc_handle
 
 
+# category: Kernel Logging
+
+from warp._src.context import LOG_DEBUG as LOG_DEBUG
+from warp._src.context import LOG_INFO as LOG_INFO
+from warp._src.context import LOG_WARN as LOG_WARN
+from warp._src.context import LOG_ERROR as LOG_ERROR
+from warp._src.context import get_kernel_log_overflow_count as get_kernel_log_overflow_count
+from warp._src.context import reset_kernel_log as reset_kernel_log
+
+
 # category: Profiling
 
 from warp._src.utils import ScopedTimer as ScopedTimer

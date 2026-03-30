@@ -1077,6 +1077,10 @@ class Adjoint:
         # for keeping track of line number in function code
         adj.lineno = None
 
+        # Set to True if this kernel/function contains wp.log() calls.
+        # When True, codegen injects a hidden WpLogBuffer* parameter.
+        adj.uses_logging = False
+
         # whether the forward code shall be used for the reverse pass and a custom
         # function signature is applied to the reverse version of the function
         adj.custom_reverse_mode = custom_reverse_mode
@@ -1638,6 +1642,11 @@ class Adjoint:
             apply_defaults(bound_args, default_vars)
 
         bound_args = bound_args.arguments
+
+        # If the builtin supplies a codegen_func it takes full control of
+        # emission (e.g. wp.log, which needs adj.lineno and adj.uses_logging).
+        if func.codegen_func is not None:
+            return func.codegen_func(adj, bound_args)
 
         # Constant precision preservation: when calling a 64-bit scalar type
         # constructor with a single compile-time constant argument, emit
@@ -4425,6 +4434,55 @@ WP_API void {name}_cpu_backward(
 """
 
 
+def _warp_log_codegen(adj, bound_args):
+    """codegen_func for wp.log(level, msg[, value]).
+
+    Validates static arguments, registers the call site, marks the adjoint
+    as uses_logging=True, and emits a direct C++ call to one of the
+    wp_log_write_* helpers defined in log.h.
+
+    Signature matches the codegen_func protocol: ``(adj, bound_args) -> None``.
+    """
+    import warp._src.context as _ctx  # noqa: PLC0415
+
+    level_var = bound_args["level"]
+    if level_var.constant is None:
+        raise WarpCodegenError("wp.log(): 'level' must be a compile-time constant (e.g. wp.LOG_WARN, wp.LOG_ERROR)")
+    level = int(level_var.constant)
+
+    msg_var = bound_args["msg"]
+    if msg_var.constant is None or not isinstance(msg_var.constant, str):
+        raise WarpCodegenError(
+            "wp.log(): 'msg' must be a string literal — runtime-formatted strings are not supported"
+        )
+    msg = msg_var.constant
+
+    abs_lineno = (adj.lineno or 0) + adj.fun_lineno
+    key = _ctx._register_log_call_site(level, msg, adj.filename, abs_lineno)
+    adj.uses_logging = True
+
+    value_var_raw = bound_args.get("value")
+    if value_var_raw is not None:
+        value_var = adj.load(value_var_raw)
+        vtype = strip_reference(value_var_raw.type)
+        vname = value_var.emit()
+
+        if vtype in (int32, int):
+            adj.add_forward(f"wp::wp_log_write_i32(var_warp_log_buffer, {key}u, (wp::int32){vname});")
+        elif vtype == int64:
+            adj.add_forward(f"wp::wp_log_write_i64(var_warp_log_buffer, {key}u, (wp::int64){vname});")
+        elif vtype in (float32, float):
+            adj.add_forward(f"wp::wp_log_write_f32(var_warp_log_buffer, {key}u, (wp::float32){vname});")
+        else:
+            raise WarpCodegenError(
+                f"wp.log(): unsupported payload type '{vtype.__name__}'; expected int32, int64, or float32"
+            )
+    else:
+        adj.add_forward(f"wp::wp_log_write_nop(var_warp_log_buffer, {key}u);")
+
+    return None  # void
+
+
 # converts a constant Python value to equivalent C-repr
 def constant_str(value):
     value_type = type(value)
@@ -4612,6 +4670,11 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
         for var in adj.args:
             lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
 
+        # If this kernel uses wp.log(), unpack the hidden log buffer pointer from
+        # the args struct so the variable name matches the CUDA kernel convention.
+        if adj.uses_logging:
+            lines += ["wp::WpLogBuffer* var_warp_log_buffer = _wp_args->warp_log_buffer;\n"]
+
     # primal vars
     lines += ["//---------\n"]
     lines += ["// primal vars\n"]
@@ -4666,6 +4729,9 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
         for var in adj.args:
             lines += [f"{var.ctype()} {var.emit_adj()} = _wp_adj_args->{var.label};\n"]
+
+        if adj.uses_logging:
+            lines += ["wp::WpLogBuffer* var_warp_log_buffer = _wp_args->warp_log_buffer;\n"]
 
     # primal vars
     lines += ["//---------\n"]
@@ -4966,6 +5032,9 @@ def codegen_kernel(kernel, device, options):
         args_struct = f"struct wp_args_{kernel.get_mangled_name()} {{\n"
         for i in adj.args:
             args_struct += f"    {i.ctype()} {i.label};\n"
+        # If the kernel uses wp.log(), append a hidden log buffer pointer field
+        if adj.uses_logging:
+            args_struct += "    wp::WpLogBuffer* warp_log_buffer;\n"
         args_struct += "};\n"
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
@@ -5012,6 +5081,10 @@ def codegen_kernel(kernel, device, options):
     else:
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
+        # If the kernel uses wp.log(), append the hidden log buffer parameter (CUDA only;
+        # for CPU it is part of the wp_args struct and unpacked in the kernel body)
+        if adj.uses_logging:
+            forward_args.append("wp::WpLogBuffer* var_warp_log_buffer")
 
     forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
     template_fmt_args.update(
@@ -5039,6 +5112,8 @@ def codegen_kernel(kernel, device, options):
                     reverse_args.append(_arg.ctype() + " adj_" + arg.label)
                 else:
                     reverse_args.append(arg.ctype() + " adj_" + arg.label)
+            if adj.uses_logging:
+                reverse_args.append("wp::WpLogBuffer* var_warp_log_buffer")
 
         reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
         template_fmt_args.update(

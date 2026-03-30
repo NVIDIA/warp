@@ -1870,6 +1870,8 @@ template <typename T> CUDA_CALLABLE inline void adj_atomic_and(T* buf, T* adj_bu
 template <typename T> CUDA_CALLABLE inline void adj_atomic_or(T* buf, T* adj_buf, T& value, T& adj_value) { }
 template <typename T> CUDA_CALLABLE inline void adj_atomic_xor(T* buf, T* adj_buf, T& value, T& adj_value) { }
 
+// Kernel-side ring-buffer logging (relies on atomic_add defined above)
+#include "log.h"
 
 }  // namespace wp
 
