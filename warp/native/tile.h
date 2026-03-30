@@ -14,11 +14,11 @@
 #endif  // __clang__
 
 // Check if the CUDA toolkit is available
-#if WP_ENABLE_CUDA || defined(__CUDACC_RTC__)
+#if WP_ENABLE_CUDA || defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
 
-// If NVRTC is being used, do not include extra headers (NVRTC has built-in float4)
-#ifdef __CUDACC_RTC__
-// NVRTC: Use built-in float4 (no need for extra definitions)
+// NVRTC has built-in float4; Clang CUDA JIT defines it in cuda_crt.h
+#if defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
+// float4 already available
 #else
 // NVCC: Include vector_types.h to get float4
 #include <cuda_runtime.h>
@@ -65,11 +65,11 @@ template <> struct wp_is_null_func<int> {
     static constexpr bool value = true;
 };
 
-#if defined(__CUDACC_RTC__)
+#if defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
 #define WP_TILE_THREAD_IDX threadIdx.x
 #else
 #define WP_TILE_THREAD_IDX 0
-#endif  //
+#endif
 
 
 /* Tile Expressions

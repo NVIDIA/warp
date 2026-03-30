@@ -80,6 +80,11 @@ static const char* target_triple = "x86_64-pc-windows-elf";
 static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
 #endif
 
+// Minimum CUDA compute capability that supports all of Warp's features.
+// Since we always emit PTX (forward-compatible), targeting the minimum
+// ensures the output runs on all supported GPUs.
+static const char* cuda_target_arch = "sm_75";
+
 static void initialize_llvm()
 {
     llvm::InitializeAllTargetInfos();
@@ -143,7 +148,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         args.push_back("nvptx64-nvidia-cuda");
 
         args.push_back("-target-cpu");
-        args.push_back("sm_70");
+        args.push_back(cuda_target_arch);
     } else {
         args.push_back("-triple");
         args.push_back(target_triple);
@@ -258,6 +263,10 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
+
+    // Ownership of the buffer was transferred to the SourceManager during
+    // ExecuteAction() (RetainRemappedFileBuffers defaults to false).
+    // Release the unique_ptr to avoid a double-free.
     (void)buffer.release();
 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
@@ -371,18 +380,17 @@ WP_API int wp_compile_cuda(
 #else
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget("nvptx64-nvidia-cuda", error);
 #endif
-
-    const char* CPU = "sm_70";
     const char* features = "+ptx75";  // Warp requires CUDA 11.5, which supports PTX ISA 7.5
     llvm::TargetOptions target_options;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;
 #if LLVM_VERSION_MAJOR >= 20
     llvm::TargetMachine* target_machine = target->createTargetMachine(
-        llvm::Triple("nvptx64-nvidia-cuda"), CPU, features, target_options, relocation_model
+        llvm::Triple("nvptx64-nvidia-cuda"), cuda_target_arch, features, target_options, relocation_model
     );
 #else
-    llvm::TargetMachine* target_machine
-        = target->createTargetMachine("nvptx64-nvidia-cuda", CPU, features, target_options, relocation_model);
+    llvm::TargetMachine* target_machine = target->createTargetMachine(
+        "nvptx64-nvidia-cuda", cuda_target_arch, features, target_options, relocation_model
+    );
 #endif
 
     module->setDataLayout(target_machine->createDataLayout());

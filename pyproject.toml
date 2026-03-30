@@ -194,6 +194,7 @@ commun = "commun"
 dout = "dout"
 iy = "iy"
 nd = "nd"
+setp = "setp"
 transformd = "transformd"
 
 [tool.typos.default.extend-identifiers]
