@@ -575,3 +575,42 @@ This technique can be more readable to some developers because it avoids the obf
 ``add_function_test(..., device=None)``.
 After all, ``add_function_test()`` is used to facilitate the execution of a single test function on different devices
 instead of having to define a separate function for each device.
+
+.. _benchmarks:
+
+Benchmarks
+----------
+
+Warp uses `airspeed velocity (ASV) <https://asv.readthedocs.io/>`__ for performance benchmarking.
+Benchmark scripts live in the ``asv/benchmarks/`` directory, and the ASV configuration is in
+``asv.conf.json``.
+
+Running Benchmarks
+^^^^^^^^^^^^^^^^^^
+
+To run all benchmarks against the current commit:
+
+.. code-block:: bash
+
+    uvx --python 3.12 asv run -e --launch-method spawn HEAD^!
+
+To run a specific benchmark against the current commit:
+
+.. code-block:: bash
+
+    uvx --python 3.12 asv run -e --launch-method spawn -b BenchmarkClassName HEAD^!
+
+To run benchmarks across a range of commits (from ``older_commit`` to
+``newer_commit``, inclusive):
+
+.. code-block:: bash
+
+    uvx --python 3.12 asv run -e --launch-method spawn -b BenchmarkClassName older_commit..newer_commit
+
+On Linux, ASV defaults to ``forkserver``, which isolates each benchmark run with
+``os.fork()`` and terminates the child via ``os._exit()``. Because ``os._exit()``
+bypasses Python's normal interpreter shutdown, ``TemporaryDirectory`` finalizers
+never run, and NVRTC precompiled-header directories (``/tmp/wp_pch_*``,
+``/tmp/__nvrtc_auto_pch_*``) accumulate in ``/tmp``. These are cleaned up on
+reboot, so this is mainly a concern on long-running systems. Pass
+``--launch-method spawn`` to avoid the issue.
