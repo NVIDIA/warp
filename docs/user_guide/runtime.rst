@@ -1182,10 +1182,9 @@ Boolean Operators
 |   not a      | True if a is False, otherwise False  |
 +--------------+--------------------------------------+
 
-.. note::
-    Expressions such as ``if (a and b):`` currently do not perform short-circuit evaluation.
-    In this case ``b`` will also be evaluated even when ``a`` is ``False``.
-    Users should take care to ensure that secondary conditions are safe to evaluate (e.g.: do not index out of bounds) in all cases.
+Warp supports short-circuit evaluation for chained ``and``/``or`` expressions, consistent with both
+Python and CUDA semantics. For example, in ``if arr and arr[i] > 0:`` the element access ``arr[i]``
+is only evaluated when ``arr`` is not ``None``.
 
 
 Comparison Operators

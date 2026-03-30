@@ -63,6 +63,9 @@
   truncated cell indices to incorrect physical buckets ([GH-1256](https://github.com/NVIDIA/warp/issues/1256)).
 - Fix ``wp.tile_matmul()`` and ``wp.tile_fft()`` ignoring when module-level ``enable_backward`` flag is ``False``
   ([GH-1320](https://github.com/NVIDIA/warp/issues/1320)).
+- Fix chained ``and``/``or`` operators in kernels not short-circuiting, which caused null pointer
+  dereferences when guarding array accesses with a nullable array check
+  ([GH-1329](https://github.com/NVIDIA/warp/issues/1329)).
 - Fix ``wp.array[dtype]`` subscript syntax not being recognized by mypy, which reported
   ``"array" expects no type arguments`` ([GH-1278](https://github.com/NVIDIA/warp/issues/1278)).
 - Fix struct field assignment unwrapping Warp scalar types (e.g., ``wp.float32``, ``wp.int32``) to their

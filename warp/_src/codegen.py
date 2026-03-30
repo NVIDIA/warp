@@ -121,15 +121,6 @@ builtin_operators[ast.Invert] = "invert"
 builtin_operators[ast.LShift] = "lshift"
 builtin_operators[ast.RShift] = "rshift"
 
-comparison_chain_strings = [
-    builtin_operators[ast.Gt],
-    builtin_operators[ast.Lt],
-    builtin_operators[ast.LtE],
-    builtin_operators[ast.GtE],
-    builtin_operators[ast.Eq],
-    builtin_operators[ast.NotEq],
-]
-
 
 def values_check_equal(a, b):
     if isinstance(a, Sequence) and isinstance(b, Sequence):
@@ -139,10 +130,6 @@ def values_check_equal(a, b):
         return all(x == y for x, y in zip(a, b))
 
     return a == b
-
-
-def op_str_is_chainable(op: str) -> builtins.bool:
-    return op in comparison_chain_strings
 
 
 def get_closure_cell_contents(obj):
@@ -1510,8 +1497,7 @@ class Adjoint:
         prev_comp_var = None
 
         for op, comp in zip(op_strings, comps):
-            comp_chainable = op_str_is_chainable(op)
-            if comp_chainable and prev_comp_var:
+            if prev_comp_var:
                 # We restrict chaining to operands of the same type
                 if prev_comp_var.type is comp.type:
                     prev_comp_var = adj.load(prev_comp_var)
@@ -1530,14 +1516,6 @@ class Adjoint:
         s = s.rstrip() + ";"
 
         adj.add_forward(s)
-
-        return output
-
-    def add_bool_op(adj, op_string, exprs):
-        exprs = [adj.load(expr) for expr in exprs]
-        output = adj.add_var(builtins.bool)
-        command = output.emit() + " = " + (" " + op_string + " ").join([expr.emit() for expr in exprs]) + ";"
-        adj.add_forward(command)
 
         return output
 
@@ -2280,13 +2258,42 @@ class Adjoint:
 
         op = node.op
         if isinstance(op, ast.And):
-            func = "&&"
+            is_and = True
         elif isinstance(op, ast.Or):
-            func = "||"
+            is_and = False
         else:
             raise WarpCodegenKeyError(f"Op {op} is not supported")
 
-        return adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
+        # Short-circuit evaluation: only evaluate subsequent operands
+        # if the result so far permits it (true for 'and', false for 'or').
+        output = adj.add_var(builtins.bool)
+        first = adj.eval(node.values[0])
+        first = adj.load(first)
+        adj.add_forward(f"{output.emit()} = {first.emit()};")
+
+        for expr in node.values[1:]:
+            # Guard: only evaluate next operand if short-circuit condition holds
+            if is_and:
+                adj.add_forward(f"if ({output.emit()}) {{")
+                adj.add_reverse("}")
+            else:
+                adj.add_forward(f"if (!{output.emit()}) {{")
+                adj.add_reverse("}")
+            adj.indent()
+
+            val = adj.eval(expr)
+            val = adj.load(val)
+            op_str = "&&" if is_and else "||"
+            adj.add_forward(f"{output.emit()} = {output.emit()} {op_str} {val.emit()};")
+
+            adj.dedent()
+            adj.add_forward("}")
+            if is_and:
+                adj.add_reverse(f"if ({output.emit()}) {{")
+            else:
+                adj.add_reverse(f"if (!{output.emit()}) {{")
+
+        return output
 
     def emit_Name(adj, node):
         # lookup symbol, if it has already been assigned to a variable then return the existing mapping
