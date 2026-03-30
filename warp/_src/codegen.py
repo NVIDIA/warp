@@ -121,15 +121,6 @@ builtin_operators[ast.Invert] = "invert"
 builtin_operators[ast.LShift] = "lshift"
 builtin_operators[ast.RShift] = "rshift"
 
-comparison_chain_strings = [
-    builtin_operators[ast.Gt],
-    builtin_operators[ast.Lt],
-    builtin_operators[ast.LtE],
-    builtin_operators[ast.GtE],
-    builtin_operators[ast.Eq],
-    builtin_operators[ast.NotEq],
-]
-
 
 def values_check_equal(a, b):
     if isinstance(a, Sequence) and isinstance(b, Sequence):
@@ -139,10 +130,6 @@ def values_check_equal(a, b):
         return all(x == y for x, y in zip(a, b))
 
     return a == b
-
-
-def op_str_is_chainable(op: str) -> builtins.bool:
-    return op in comparison_chain_strings
 
 
 def get_closure_cell_contents(obj):
@@ -1510,8 +1497,7 @@ class Adjoint:
         prev_comp_var = None
 
         for op, comp in zip(op_strings, comps):
-            comp_chainable = op_str_is_chainable(op)
-            if comp_chainable and prev_comp_var:
+            if prev_comp_var:
                 # We restrict chaining to operands of the same type
                 if prev_comp_var.type is comp.type:
                     prev_comp_var = adj.load(prev_comp_var)
