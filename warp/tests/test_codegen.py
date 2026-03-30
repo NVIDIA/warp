@@ -472,7 +472,7 @@ def test_error_unmatched_arguments(test, device):
         a = 1 * 1.0
 
     def kernel_2_fn():
-        x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(wp.float16(1.0), wp.float16(2.0)))
+        x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(1.0, 2.0))
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(RuntimeError, r"Input types must be the same, got \['int32', 'float32'\]"):

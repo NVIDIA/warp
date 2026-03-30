@@ -127,6 +127,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
     from warp.tests.test_copy import TestCopy
     from warp.tests.test_ctypes import TestCTypes
@@ -225,6 +226,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCodeGenInstancing,
         TestConditional,
         TestConstants,
+        TestConstantPrecision,
         TestContext,
         TestCopy,
         TestCTypes,
@@ -368,6 +370,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
@@ -400,6 +403,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestCodeGenInstancing,
         TestConditional,
         TestConstants,
+        TestConstantPrecision,
         TestFastMath,
         TestFunc,
         TestGenerics,

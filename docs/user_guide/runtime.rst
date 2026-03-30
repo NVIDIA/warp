@@ -620,11 +620,7 @@ Once declared, the new type can be used when allocating arrays or inside kernels
         ...
 
         # component-wise initialize a named vector type
-        v = vec5d(wp.float64(1.0),
-                  wp.float64(2.0),
-                  wp.float64(3.0),
-                  wp.float64(4.0),
-                  wp.float64(5.0))
+        v = vec5d(1.0, 2.0, 3.0, 4.0, 5.0)
       ...
 
 In addition, it's possible to directly create *anonymously* typed instances of these vectors without declaring their type in advance. In this case the type will be inferred by the constructor arguments. For example: ::
@@ -706,12 +702,12 @@ These can be used inside a kernel::
         ...
 
         # initialize a mat32h matrix
-        m = mat32h(wp.float16(1.0), wp.float16(2.0),
-                   wp.float16(3.0), wp.float16(4.0),
-                   wp.float16(5.0), wp.float16(6.0))
+        m = mat32h(1.0, 2.0,
+                   3.0, 4.0,
+                   5.0, 6.0)
 
         # declare a 2 component half precision vector
-        v2 = wp.vec2h(wp.float16(1.0), wp.float16(1.0))
+        v2 = wp.vec2h(1.0, 1.0)
 
         # multiply by the matrix, returning a 3 component vector:
         v3 = m * v2
@@ -772,7 +768,7 @@ As with vectors and matrices, you can declare quaternion types with an arbitrary
 
     quatd = wp.types.quaternion(dtype=wp.float64)
 
-You can also create identity quaternion and anonymously typed instances inside a kernel like so::
+You can also construct quaternions inside a kernel using named types (e.g. ``wp.quath``) or anonymous types (e.g. ``wp.quaternion``)::
 
     @wp.kernel
     def compute( ... ):
@@ -784,16 +780,14 @@ You can also create identity quaternion and anonymously typed instances inside a
         # precision defaults to wp.float32 so this creates a single precision identity quaternion:
         qf = wp.quat_identity()
 
-        # create a half precision quaternion from components, or a vector/scalar:
-        qh = wp.quaternion(wp.float16(0.0),
-                           wp.float16(0.0),
-                           wp.float16(0.0),
-                           wp.float16(1.0))
+        # create a half precision quaternion using a named type:
+        qh = wp.quath(0.0, 0.0, 0.0, 1.0)
 
+        # or using an anonymous type with explicitly typed arguments:
+        qh = wp.quaternion(wp.float16(0.0), wp.float16(0.0), wp.float16(0.0), wp.float16(1.0))
 
-        qh = wp.quaternion(
-            wp.vector(wp.float16(0.0),wp.float16(0.0),wp.float16(0.0)),
-            wp.float16(1.0))
+        # from a vector/scalar:
+        qh = wp.quath(wp.vec3h(0.0, 0.0, 0.0), 1.0)
 
 .. _transform:
 
@@ -834,7 +828,7 @@ As with vectors and matrices, you can declare transform types with an arbitrary 
 
     transformd = wp.types.transformation(dtype=wp.float64)
 
-You can also create identity transforms and anonymously typed instances inside a kernel like so::
+You can also create identity transforms inside a kernel like so::
 
     @wp.kernel
     def compute( ... ):
