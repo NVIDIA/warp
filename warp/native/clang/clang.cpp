@@ -263,6 +263,10 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
+
+    // Ownership of the buffer was transferred to the SourceManager during
+    // ExecuteAction() (RetainRemappedFileBuffers defaults to false).
+    // Release the unique_ptr to avoid a double-free.
     (void)buffer.release();
 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
