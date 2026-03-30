@@ -1533,14 +1533,6 @@ class Adjoint:
 
         return output
 
-    def add_bool_op(adj, op_string, exprs):
-        exprs = [adj.load(expr) for expr in exprs]
-        output = adj.add_var(builtins.bool)
-        command = output.emit() + " = " + (" " + op_string + " ").join([expr.emit() for expr in exprs]) + ";"
-        adj.add_forward(command)
-
-        return output
-
     def resolve_func(adj, func, arg_types, kwarg_types, min_outputs):
         if not func.is_builtin():
             # user-defined function
@@ -2280,13 +2272,42 @@ class Adjoint:
 
         op = node.op
         if isinstance(op, ast.And):
-            func = "&&"
+            is_and = True
         elif isinstance(op, ast.Or):
-            func = "||"
+            is_and = False
         else:
             raise WarpCodegenKeyError(f"Op {op} is not supported")
 
-        return adj.add_bool_op(func, [adj.eval(expr) for expr in node.values])
+        # Short-circuit evaluation: only evaluate subsequent operands
+        # if the result so far permits it (true for 'and', false for 'or').
+        output = adj.add_var(builtins.bool)
+        first = adj.eval(node.values[0])
+        first = adj.load(first)
+        adj.add_forward(f"{output.emit()} = {first.emit()};")
+
+        for expr in node.values[1:]:
+            # Guard: only evaluate next operand if short-circuit condition holds
+            if is_and:
+                adj.add_forward(f"if ({output.emit()}) {{")
+                adj.add_reverse("}")
+            else:
+                adj.add_forward(f"if (!{output.emit()}) {{")
+                adj.add_reverse("}")
+            adj.indent()
+
+            val = adj.eval(expr)
+            val = adj.load(val)
+            op_str = "&&" if is_and else "||"
+            adj.add_forward(f"{output.emit()} = {output.emit()} {op_str} {val.emit()};")
+
+            adj.dedent()
+            adj.add_forward("}")
+            if is_and:
+                adj.add_reverse(f"if ({output.emit()}) {{")
+            else:
+                adj.add_reverse(f"if (!{output.emit()}) {{")
+
+        return output
 
     def emit_Name(adj, node):
         # lookup symbol, if it has already been assigned to a variable then return the existing mapping

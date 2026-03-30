@@ -286,6 +286,58 @@ def test_ifexp_with_array_access(test: unittest.TestCase, device):
     test.assertEqual(result.numpy()[0].tolist(), [1.0, 2.0, 3.0])
 
 
+@wp.kernel
+def test_short_circuit_and_kernel(
+    arr: wp.array(dtype=int),
+    result: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    # arr[tid] must not be evaluated when arr is None (GH-1329)
+    if arr and tid >= 0 and arr[tid] == 0:
+        result[tid] = -1
+        return
+    result[tid] = 1
+
+
+@wp.kernel
+def test_short_circuit_or_kernel(
+    arr: wp.array(dtype=int),
+    result: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    # Second operand must not be evaluated when first is true
+    if not arr or tid < 0 or arr[tid] == 0:
+        result[tid] = -1
+        return
+    result[tid] = 1
+
+
+def test_short_circuit_and(test: unittest.TestCase, device):
+    """Chained `and` must short-circuit so null array is never dereferenced."""
+    result = wp.zeros(3, dtype=int, device=device)
+    # None array — should short-circuit, never access arr[tid]
+    wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[None, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [1, 1, 1])
+
+    # Real array — should evaluate fully
+    arr = wp.array([0, 1, 0], dtype=int, device=device)
+    wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[arr, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [-1, 1, -1])
+
+
+def test_short_circuit_or(test: unittest.TestCase, device):
+    """Chained `or` must short-circuit so null array is never dereferenced."""
+    result = wp.zeros(3, dtype=int, device=device)
+    # None array — `not arr` is true, should short-circuit
+    wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[None, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [-1, -1, -1])
+
+    # Real array with non-zero values — all conditions false, result = 1
+    arr = wp.array([5, 6, 7], dtype=int, device=device)
+    wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[arr, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [1, 1, 1])
+
+
 devices = get_test_devices()
 
 
@@ -314,6 +366,8 @@ add_kernel_test(TestConditional, kernel=test_conditional_chain_eqs, dim=1, devic
 add_kernel_test(TestConditional, kernel=test_conditional_chain_mixed, dim=1, devices=devices)
 add_function_test(TestConditional, "test_conditional_unequal_types", test_conditional_unequal_types, devices=devices)
 add_function_test(TestConditional, "test_ifexp_with_array_access", test_ifexp_with_array_access, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_and", test_short_circuit_and, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_or", test_short_circuit_or, devices=devices)
 
 
 if __name__ == "__main__":
