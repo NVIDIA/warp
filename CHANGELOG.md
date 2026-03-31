@@ -15,6 +15,11 @@
   hardcoded `"generic"` target. Use `warp.config.cpu_compiler_flags` to control
   CPU targeting (e.g. `"-march=native"` for host detection, `""` for generic)
   ([GH-1308](https://github.com/NVIDIA/warp/issues/1308)).
+- Add `fill_mode` parameter to `wp.tile_cholesky()`, `wp.tile_cholesky_inplace()`,
+  `wp.tile_cholesky_solve()`, and `wp.tile_cholesky_solve_inplace()` for upper Cholesky
+  factorization and solve, improving memory access patterns and eliminating shared memory
+  bank conflicts at power-of-2 tile sizes
+  ([GH-1318](https://github.com/NVIDIA/warp/issues/1318)).
 
 ### Removed
 

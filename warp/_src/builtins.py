@@ -12329,8 +12329,10 @@ def _tile_cholesky_generic_value_func(inplace: bool, arg_types, arg_values):
             return None
         return tile(dtype=Float, shape=tuple[int, int])
 
-    if len(arg_types) != 1:
-        raise TypeError("tile_cholesky() requires 1 positional args")
+    if len(arg_types) > 2:
+        raise TypeError(
+            f"tile_cholesky() takes 1 positional argument and 1 optional argument but {len(arg_types)} were given"
+        )
 
     a = arg_types["A"]
 
@@ -12356,6 +12358,20 @@ def tile_cholesky_inplace_generic_value_func(arg_types, arg_values):
     return _tile_cholesky_generic_value_func(True, arg_types, arg_values)
 
 
+def _tile_cholesky_extract_fill_mode(arg_values, func_name="tile_cholesky"):
+    """Extract fill_mode from arg_values, returning the upper bool."""
+    fill_mode_var = arg_values.get("fill_mode")
+    if fill_mode_var is not None:
+        if not hasattr(fill_mode_var, "constant") or fill_mode_var.constant is None:
+            raise ValueError(f"{func_name}() fill_mode must be a compile-time constant")
+        fill_mode_str = fill_mode_var.constant
+        if fill_mode_str not in ("lower", "upper"):
+            raise ValueError(f'{func_name}() fill_mode must be "lower" or "upper"')
+    else:
+        fill_mode_str = "lower"
+    return fill_mode_str == "upper"
+
+
 def _tile_cholesky_generic_lto_dispatch_func(
     inplace: bool,
     arg_types: Mapping[str, type],
@@ -12365,6 +12381,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
     options: Mapping[str, Any],
     builder: warp._src.context.ModuleBuilder,
 ):
+    upper = _tile_cholesky_extract_fill_mode(arg_values)
     a = arg_values["A"]
     # force source tile to shared memory
     a.type.storage = "shared"
@@ -12387,13 +12404,13 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, a) if inplace else (0, a, out), [], [], 0)
+        return ((0, a) if inplace else (0, a, out), [upper], [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
         side_enum = cusolver_side_map["-"]
         diag_enum = cusolver_diag_map["-"]
-        fill_mode = cusolver_fill_mode_map["lower"]
+        fill_mode = cusolver_fill_mode_map["upper" if upper else "lower"]
         dtype, precision_enum = cusolver_type_map[a.type.dtype]
         num_threads = options["block_dim"]
         parameter_list = f"({dtype}*, int*)"
@@ -12423,7 +12440,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
         )
 
         var = Var(lto_symbol, str, False, True, False)
-        return ((var, a) if inplace else (var, a, out), [], [lto_code_data], 0)
+        return ((var, a) if inplace else (var, a, out), [upper], [lto_code_data], 0)
 
 
 def tile_cholesky_generic_lto_dispatch_func(*args, **kwargs):
@@ -12436,16 +12453,17 @@ def tile_cholesky_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_cholesky",
-    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_generic_value_func,
     lto_dispatch_func=tile_cholesky_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Compute the Cholesky factorization ``L`` of a matrix ``A``.
+    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
 
-    ``L`` is lower triangular and satisfies ``LL^T = A``.
+    When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+    When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
 
-    Only the lower triangular portion of ``A`` is used for the decomposition;
-    the upper triangular part may be left unspecified.
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note that computing the adjoint is not yet supported.
 
@@ -12454,29 +12472,32 @@ add_builtin(
         * float64
 
     Args:
-        A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is needed; the upper part is ignored.
+        A: A square, symmetric positive-definite matrix.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A square, lower triangular matrix, such that ``LL^T = A``.""",
+        A triangular matrix ``L`` or ``U``.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
 
 add_builtin(
     "tile_cholesky_inplace",
-    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Compute the Cholesky factorization ``L`` of a matrix ``A``.
+    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
 
-    ``L`` is lower triangular and satisfies ``LL^T = A``.
+    When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+    such that ``LL^T = A``; the upper triangle is set to zero.
+    When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
+    such that ``U^T U = A``; the lower triangle is set to zero.
 
-    Only the lower triangular portion of ``A`` is used for the decomposition;
-    the upper triangular part may be left unspecified.
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
     but offers improved performance and uses half the shared memory compared to the standard version.
@@ -12486,10 +12507,10 @@ add_builtin(
         * float64
 
     Args:
-        A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is replaced by ``L``, such that ``LL^T = A``; the upper part is untouched.""",
+        A: A square, symmetric positive-definite matrix.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
@@ -12500,8 +12521,10 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
             return None
         return tile(dtype=Float, shape=tuple[int])
 
-    if len(arg_types) != 2:
-        raise TypeError("tile_cholesky_solve() requires exactly 2 positional args")
+    if len(arg_types) > 3:
+        raise TypeError(
+            f"tile_cholesky_solve() takes 2 positional arguments and 1 optional argument but {len(arg_types)} were given"
+        )
 
     l = arg_types["L"]
     y = arg_types["y"]
@@ -12524,7 +12547,7 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
     if y.shape[0] != l.shape[0]:
         raise ValueError(
             f"tile_cholesky_solve() 'y' argument must have the same number of elements as the number of rows in 'L', "
-            f"got {y.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
+            f"got {y.shape[0]} elements in 'y' and {l.shape[0]} rows in 'L'"
         )
 
     if inplace:
@@ -12549,6 +12572,7 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
     options: Mapping[str, Any],
     builder: warp._src.context.ModuleBuilder,
 ):
+    upper = _tile_cholesky_extract_fill_mode(arg_values, func_name="tile_cholesky_solve")
     L = arg_values["L"]
     y = arg_values["y"]
     # force the storage type of the input variables to shared memory
@@ -12585,14 +12609,14 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, L, y) if inplace else (0, L, y, x), [], [], 0)
+        return ((0, L, y) if inplace else (0, L, y, x), [upper], [], 0)
     else:
         NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
         solver = "potrs"
         solver_enum = cusolver_function_map[solver]
         side_enum = cusolver_side_map["-"]
         diag_enum = cusolver_diag_map["-"]
-        fill_mode = cusolver_fill_mode_map["lower"]
+        fill_mode = cusolver_fill_mode_map["upper" if upper else "lower"]
         dtype, precision_enum = cusolver_type_map[L.type.dtype]
         num_threads = options["block_dim"]
         parameter_list = f"({dtype}*, {dtype}*)"
@@ -12621,7 +12645,7 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
         )
 
         var = Var(lto_symbol, str, False, True, False)
-        return ((var, L, y) if inplace else (var, L, y, x), [], [lto_code_data], 0)
+        return ((var, L, y) if inplace else (var, L, y, x), [upper], [lto_code_data], 0)
 
 
 def tile_cholesky_solve_generic_lto_dispatch_func(*args, **kwargs):
@@ -12634,11 +12658,21 @@ def tile_cholesky_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_cholesky_solve",
-    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
+    input_types={
+        "L": tile(dtype=Float, shape=tuple[int, int]),
+        "y": tile(dtype=Float, shape=tuple[int]),
+        "fill_mode": str,
+    },
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_solve_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``x`` in ``Ax = y``.
+    doc="""Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
+
+    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note that computing the adjoint is not yet supported.
 
@@ -12647,25 +12681,35 @@ add_builtin(
         * float64
 
     Args:
-        L: A square, lower triangular, matrix, such that ``LL^T = A``.
+        L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M``.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A tile of the same shape as ``y`` such that ``LL^T x = y``.""",
+        A tile of the same shape as ``y`` such that ``Ax = y``.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
 
 add_builtin(
     "tile_cholesky_solve_inplace",
-    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
+    input_types={
+        "L": tile(dtype=Float, shape=tuple[int, int]),
+        "y": tile(dtype=Float, shape=tuple[int]),
+        "fill_mode": str,
+    },
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
     doc="""Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+
+    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
     but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
@@ -12675,11 +12719,11 @@ add_builtin(
         * float64
 
     Args:
-        L: A square, lower triangular, matrix, such that ``LL^T = A``.
-        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``LL^T x = y``.""",
+        L: A square triangular Cholesky factor of ``A``.
+        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 

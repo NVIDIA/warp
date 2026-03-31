@@ -6151,13 +6151,13 @@ def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, int]]) -> None:
     """
     ...
 
-def tile_cholesky(A: Tile[Float, tuple[int, int]]) -> Tile[Float, tuple[int, int]]:
-    """Compute the Cholesky factorization ``L`` of a matrix ``A``.
+def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str) -> Tile[Float, tuple[int, int]]:
+    """Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
 
-    ``L`` is lower triangular and satisfies ``LL^T = A``.
+    When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+    When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
 
-    Only the lower triangular portion of ``A`` is used for the decomposition;
-    the upper triangular part may be left unspecified.
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note that computing the adjoint is not yet supported.
 
@@ -6166,20 +6166,23 @@ def tile_cholesky(A: Tile[Float, tuple[int, int]]) -> Tile[Float, tuple[int, int
         * float64
 
     Args:
-        A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is needed; the upper part is ignored.
+        A: A square, symmetric positive-definite matrix.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A square, lower triangular matrix, such that ``LL^T = A``.
+        A triangular matrix ``L`` or ``U``.
     """
     ...
 
-def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]]) -> None:
-    """Compute the Cholesky factorization ``L`` of a matrix ``A``.
+def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str) -> None:
+    """Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
 
-    ``L`` is lower triangular and satisfies ``LL^T = A``.
+    When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+    such that ``LL^T = A``; the upper triangle is set to zero.
+    When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
+    such that ``U^T U = A``; the lower triangle is set to zero.
 
-    Only the lower triangular portion of ``A`` is used for the decomposition;
-    the upper triangular part may be left unspecified.
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
     but offers improved performance and uses half the shared memory compared to the standard version.
@@ -6189,12 +6192,20 @@ def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]]) -> None:
         * float64
 
     Args:
-        A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is replaced by ``L``, such that ``LL^T = A``; the upper part is untouched.
+        A: A square, symmetric positive-definite matrix.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
     """
     ...
 
-def tile_cholesky_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]:
-    """Solve for ``x`` in ``Ax = y``.
+def tile_cholesky_solve(
+    L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str
+) -> Tile[Float, tuple[int]]:
+    """Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
+
+    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note that computing the adjoint is not yet supported.
 
@@ -6203,16 +6214,22 @@ def tile_cholesky_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[in
         * float64
 
     Args:
-        L: A square, lower triangular, matrix, such that ``LL^T = A``.
+        L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M``.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A tile of the same shape as ``y`` such that ``LL^T x = y``.
+        A tile of the same shape as ``y`` such that ``Ax = y``.
     """
     ...
 
-def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> None:
+def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str) -> None:
     """Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+
+    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
     but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
@@ -6222,8 +6239,9 @@ def tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, 
         * float64
 
     Args:
-        L: A square, lower triangular, matrix, such that ``LL^T = A``.
-        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``LL^T x = y``.
+        L: A square triangular Cholesky factor of ``A``.
+        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
     """
     ...
 
