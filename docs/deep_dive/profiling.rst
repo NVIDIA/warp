@@ -11,7 +11,7 @@ Profiling
 .. code:: python
 
     @wp.kernel
-    def inc_loop(a: wp.array(dtype=float), num_iters: int):
+    def inc_loop(a: wp.array[float], num_iters: int):
         i = wp.tid()
         for j in range(num_iters):
             a[i] += 1.0

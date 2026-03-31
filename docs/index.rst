@@ -192,15 +192,15 @@ warp/examples/fem
       - streamlines
     * - .. image:: ./img/examples/fem_distortion_energy.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_distortion_energy.py
-      - .. image:: ./img/examples/fem_navier_stokes.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_navier_stokes.py
-      - .. image:: ./img/examples/fem_burgers.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_burgers.py
+      - .. image:: ./img/examples/fem_taylor_green.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_taylor_green.py
+      - .. image:: ./img/examples/fem_kelvin_helmholtz.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_kelvin_helmholtz.py
       - .. image:: ./img/examples/fem_magnetostatics.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_magnetostatics.py
     * - distortion energy
-      - navier stokes
-      - burgers
+      - taylor green
+      - kelvin helmholtz
       - magnetostatics
     * - .. image:: ./img/examples/fem_adaptive_grid.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_adaptive_grid.py
@@ -257,13 +257,10 @@ warp/examples/tile
 Omniverse
 ---------
 
-Omniverse extensions for Warp are available in the extension registry inside
-Omniverse Kit or USD Composer.
-The ``omni.warp.core`` extension installs Warp into the Omniverse Application's
-Python environment, which allows users to import the module in their scripts and nodes. 
-The ``omni.warp`` extension provides a collection of OmniGraph nodes and sample
-scenes demonstrating uses of Warp in OmniGraph.
-Enabling the ``omni.warp`` extension automatically enables the ``omni.warp.core`` extension.
+Omniverse extensions for Warp are available in the extension registry inside Omniverse Kit.
+
+The ``omni.warp.core`` extension installs Warp into Omniverse Kit's Python environment,
+which allows users to import the module in their scripts and nodes.
 
 Please see the
 `Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`_

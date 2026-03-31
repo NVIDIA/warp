@@ -159,32 +159,34 @@ namespace cuBQL {
       inline __device__ box_t make_box() const;
 
       inline __device__ scalar_t get_lower(int dim) const {
-        if (box_t::numDims>4) 
+        if constexpr (box_t::numDims>4) 
           return decode<scalar_t>(lower[dim]);
-        else if (box_t::numDims==4) {
+        else if constexpr (box_t::numDims==4) {
           return decode<scalar_t>(dim>1
                                   ?((dim>2)?lower[3]:lower[2])
                                   :((dim  )?lower[1]:lower[0]));
-        } else if (box_t::numDims==3) {
+        } else if constexpr (box_t::numDims==3) {
           return decode<scalar_t>(dim>1
                                   ?lower[2]
                                   :((dim  )?lower[1]:lower[0]));
-        } else
+        } else {
           return decode<scalar_t>(lower[dim]);
+        }
       }
       inline __device__ scalar_t get_upper(int dim) const {
-        if (box_t::numDims>4) 
+        if constexpr (box_t::numDims>4) 
           return decode<scalar_t>(upper[dim]);
-        else if (box_t::numDims==4) {
+        else if constexpr (box_t::numDims==4) {
           return decode<scalar_t>(dim>1
                                   ?((dim>2)?upper[3]:upper[2])
                                   :((dim  )?upper[1]:upper[0]));
-        } else if (box_t::numDims==3)
+        } else if constexpr (box_t::numDims==3) {
           return decode<scalar_t>(dim>1
                                   ?upper[2]
                                   :((dim  )?upper[1]:upper[0]));
-        else
+        } else {
           return decode<scalar_t>(upper[dim]);
+        }
       }
       
       typename int_type_of<scalar_t>::type lower[box_t::numDims];

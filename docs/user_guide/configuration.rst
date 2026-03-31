@@ -129,14 +129,14 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
 
     @wp.kernel(enable_backward=False)
     def scale_2(
-        x: wp.array(dtype=float),
-        y: wp.array(dtype=float),
+        x: wp.array[float],
+        y: wp.array[float],
     ):
         y[0] = x[0] ** 2.0
 
 
     @wp.kernel(module="unique")
-    def isolated_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    def isolated_kernel(a: wp.array[float], b: wp.array[float]):
         # This kernel will be registered in a new unique module created
         # just for this kernel and its dependent functions and structs
         tid = wp.tid()
@@ -144,7 +144,7 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
 
 
     @wp.kernel(launch_bounds=(256, 1))
-    def bounded_kernel(a: wp.array(dtype=float)):
+    def bounded_kernel(a: wp.array[float]):
         # CUDA __launch_bounds__ will be set to (256, 1)
         tid = wp.tid()
         a[tid] = a[tid] * 2.0

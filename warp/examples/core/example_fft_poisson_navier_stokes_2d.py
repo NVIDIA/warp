@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 
 ######################################################################################
@@ -298,7 +286,8 @@ class Example:
         # precompute 1/k^2 for spectral Poisson solver (avoid division by zero at k=0)
         k = np.fft.fftfreq(N_GRID, d=1.0 / N_GRID)
         kx, ky = np.meshgrid(k, k)
-        k2 = kx**2 + ky**2
+        # Modified wavenumbers for the Poisson equation to make it consistent with 2nd order FD
+        k2 = 2.0 * (1.0 - np.cos(kx * H)) / (H * H) + 2.0 * (1.0 - np.cos(ky * H)) / (H * H)
         inv_k_sq = np.zeros_like(k2)
         nonzero = k2 != 0
         inv_k_sq[nonzero] = 1.0 / k2[nonzero]

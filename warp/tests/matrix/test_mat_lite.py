@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 
@@ -27,10 +15,10 @@ def test_matrix_constructor_value_func():
     b = wp.matrix(a, shape=(2, 2))
     c = mat32d()
     d = mat32d(c, shape=(3, 2))
-    e = mat32d(wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0), wp.float64(1.0), wp.float64(2.0))
+    e = mat32d(1.0, 2.0, 1.0, 2.0, 1.0, 2.0)
     f = wp.matrix_from_rows(
-        wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
-        wp.vec3d(wp.float64(1.0), wp.float64(2.0), wp.float64(3.0)),
+        wp.vec3d(1.0, 2.0, 3.0),
+        wp.vec3d(1.0, 2.0, 3.0),
     )
     g = wp.types.matrix(1.0, shape=(3, 2))
 
@@ -45,7 +33,7 @@ def test_constructors_explicit_precision():
     # construction for custom matrix types
     eye = wp.identity(dtype=wp.float16, n=2)
     zeros = wp.types.matrix(shape=(2, 2), dtype=wp.float16)
-    custom = wp.types.matrix(wp.float16(0.0), wp.float16(1.0), wp.float16(2.0), wp.float16(3.0), shape=(2, 2))
+    custom = wp.types.matrix(0.0, 1.0, 2.0, 3.0, shape=(2, 2), dtype=wp.float16)
 
     for i in range(2):
         for j in range(2):

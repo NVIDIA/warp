@@ -434,7 +434,7 @@ Example: Function Pointers
     for op in op_handlers.keys():
 
         @wp.kernel
-        def operate(input: wp.array(dtype=inputs.dtype, ndim=2), output: wp.array(dtype=wp.float32)):
+        def operate(input: wp.array2d[inputs.dtype], output: wp.array[float]):
             tid = wp.tid()
             a, b = input[tid, 0], input[tid, 1]
             # retrieve the right function to use for the captured dtype variable
@@ -511,7 +511,7 @@ To start, let us first consider a naive approach to implement this, which involv
 
     # Kernel that applies the correct function to each element of the input array
     @wp.kernel
-    def apply_func_conditions_naive(x: wp.array(dtype=wp.float32), func_field: wp.array(dtype=wp.int8)):
+    def apply_func_conditions_naive(x: wp.array[float], func_field: wp.array[wp.int8]):
         tid = wp.tid()
         value = x[tid]
         result = value
@@ -586,7 +586,7 @@ To avoid the extra branching, we can use the static loop unrolling via ``wp.stat
     used_func_ids = (func_id_a, func_id_b)
 
     @wp.kernel
-    def apply_func_conditions(x: wp.array(dtype=wp.float32), func_field: wp.array(dtype=wp.int8)):
+    def apply_func_conditions(x: wp.array[float], func_field: wp.array[wp.int8]):
         tid = wp.tid()
         value = x[tid]
         result = value
@@ -636,7 +636,7 @@ Warp allows references to external constants in kernels:
 
     def create_kernel_with_constant(constant):
         @wp.kernel
-        def k(a: wp.array(dtype=float)):
+        def k(a: wp.array[float]):
             tid = wp.tid()
             a[tid] += constant
         return k
@@ -667,7 +667,7 @@ Warp data types can also be captured in a closure.  Here is an example of creati
 
     def create_kernel_with_dtype(vec_type):
         @wp.kernel
-        def k(a: wp.array(dtype=vec_type)):
+        def k(a: wp.array[vec_type]):
             tid = wp.tid()
             a[tid] += float(tid) * vec_type(1.0)
         return k
@@ -705,7 +705,7 @@ Here's a kernel generator that's parameterized using different functions:
 
     def create_kernel_with_function(f):
         @wp.kernel
-        def k(a: wp.array(dtype=float)):
+        def k(a: wp.array[float]):
             tid = wp.tid()
             a[tid] = f(a[tid])
         return k
@@ -754,7 +754,7 @@ Warp functions (:func:`@wp.func <warp.func>`) also support closures, just like k
     f2 = create_function_with_constant(3.0)
 
     @wp.kernel
-    def k(a: wp.array(dtype=float)):
+    def k(a: wp.array[float]):
         tid = wp.tid()
         x = float(tid)
         a[tid] = f1(x) + f2(x)
@@ -782,7 +782,7 @@ We can also create related function and kernel closures together like this:
             return a * x
 
         @wp.kernel    
-        def k(a: wp.array(dtype=float)):
+        def k(a: wp.array[float]):
             tid = wp.tid()
             a[tid] = f(a[tid]) + b
 
@@ -794,7 +794,7 @@ We can also create related function and kernel closures together like this:
 
     # use the functions separately in a new kernel
     @wp.kernel
-    def kk(a: wp.array(dtype=float)):
+    def kk(a: wp.array[float]):
         tid = wp.tid()
         a[tid] = f1(a[tid]) + f2(a[tid])
 
@@ -853,7 +853,7 @@ For example, we can create structs with different floating point precision:
 
     # create a generic kernel that works with the different types
     @wp.kernel
-    def k(s: Any, output: wp.array(dtype=Any)):
+    def k(s: Any, output: wp.array[Any]):
         tid = wp.tid()
         x = output.dtype(tid)
         output[tid] = x * s.a + s.b
@@ -910,7 +910,7 @@ Another useful application of dynamic structs is the ability to customize dimens
 
     # create a generic kernel that works with the different types
     @wp.kernel
-    def k(s: Any, output: wp.array(dtype=Any)):
+    def k(s: Any, output: wp.array[Any]):
         tid = wp.tid()
         x = float(tid)
         output[tid] = x * s.v * s.m
@@ -949,7 +949,7 @@ Frequent recompilation can add overhead to a program, especially if the program 
 
     def create_kernel_with_constant(constant):
         @wp.kernel
-        def k(a: wp.array(dtype=float)):
+        def k(a: wp.array[float]):
             tid = wp.tid()
             a[tid] += constant
         return k
@@ -985,7 +985,7 @@ To avoid reloading, all kernels should be created before launching them:
 
     def create_kernel_with_constant(constant):
         @wp.kernel
-        def k(a: wp.array(dtype=float)):
+        def k(a: wp.array[float]):
             tid = wp.tid()
             a[tid] += constant
         return k
@@ -1031,7 +1031,7 @@ Redefining identical kernels, functions, and structs should not cause module rel
 
     def create_kernel(dtype, S, f, C):
         @wp.kernel
-        def k(a: wp.array(dtype=dtype)):
+        def k(a: wp.array[dtype]):
             tid = wp.tid()
             s = S(a[tid], C)
             a[tid] = f(s)
@@ -1245,7 +1245,7 @@ module containing Warp kernels.
     
 
     @wp.kernel
-    def multiply_arrays(a: wp.array(dtype=float), b: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def multiply_arrays(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
         i = wp.tid()
         out[i] = a[i] * b[i]
 
@@ -1288,7 +1288,7 @@ Only use ``strip_hash=True`` when your module has a single version of each funct
     
 
     @wp.kernel
-    def multiply_arrays(a: wp.array(dtype=float), b: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def multiply_arrays(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
         i = wp.tid()
         out[i] = a[i] * b[i]
 
@@ -1320,7 +1320,7 @@ script, but contains an empty body.
 
 
     @wp.kernel
-    def multiply_arrays(a: wp.array(dtype=float), b: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def multiply_arrays(a: wp.array[float], b: wp.array[float], out: wp.array[float]):
         pass
 
 
@@ -1362,9 +1362,9 @@ by passing in a list of architectures returned by
 
     @wp.kernel
     def multiply_arrays(
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
-        out: wp.array(dtype=float),
+        a: wp.array[float],
+        b: wp.array[float],
+        out: wp.array[float],
     ):
         i = wp.tid()
         out[i] = a[i] * b[i]
@@ -1436,7 +1436,7 @@ to try it:
    import warp as wp
 
    @wp.kernel
-   def my_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+   def my_kernel(a: wp.array[float], b: wp.array[float]):
        i = wp.tid()
        b[i] = a[i] * 2.0
 

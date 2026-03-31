@@ -585,7 +585,7 @@ namespace cuBQL {
     {
       const int makeLeafThreshold
         = (buildConfig.makeLeafThreshold > 0)
-        ? min(buildConfig.makeLeafThreshold,buildConfig.maxAllowedLeafSize)
+        ? std::min(buildConfig.makeLeafThreshold,buildConfig.maxAllowedLeafSize)
         : 1;
 
       // ==================================================================

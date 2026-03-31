@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from typing import Any, Callable, Optional, Union
 
@@ -42,7 +30,7 @@ class Integrand:
         module (Any): Warp module where the integrand is registered.
         argspec (Any): Full argument specification for the integrand function.
         kernel_options (dict[str, Any]): Kernel options used during kernel generation.
-        operators (Optional[dict[str, set["Operator"]]]): Resolved operators for field arguments, populated on first integrate call.
+        operators (Optional[dict[str, set[Operator]]]): Resolved operators for field arguments, populated on first integrate call.
         cached_kernels (dict[Any, Any]): Cache of compiled kernels by specialization key.
         cached_funcs (dict[Any, Any]): Cache of specialized functions by specialization key.
     """
@@ -211,9 +199,11 @@ def element_coordinates(domain: Domain, element_index: ElementIndex, x: Any) -> 
 
 @operator(
     resolver=lambda x: x.domain_cell_arg if isinstance(x, Domain) else x.cell_field_eval_arg,
-    field_result=lambda x: (x.cell_domain(), Domain, x.cell_domain().DomainArg)
-    if isinstance(x, Domain)
-    else (x.cell_field, Field, x.cell_field.ElementEvalArg),
+    field_result=lambda x: (
+        (x.cell_domain(), Domain, x.cell_domain().DomainArg)
+        if isinstance(x, Domain)
+        else (x.cell_field, Field, x.cell_field.ElementEvalArg)
+    ),
 )
 def cells(domain_or_field: Union[Domain, Field]) -> Union[Domain, Field]:
     """Convert a side domain to a cell domain, or a traced field to its cell-level field.
@@ -277,7 +267,7 @@ def to_outer_cell(domain: Domain, s: Sample):
 def to_cell_side(domain: Domain, cell_s: Sample, side_index: ElementIndex):
     """Convert a :class:`Sample` defined on a cell to a sample defined on one of its side.
 
-    If the result does not lie on the side ``side_index``, the resulting coordinates will be set to :data:`OUTSIDE`.
+    If the result does not lie on the side ``side_index``, the resulting coordinates will be set to :data:`warp.fem.OUTSIDE`.
     """
     return make_free_sample(
         side_index,

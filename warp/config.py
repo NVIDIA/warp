@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """Global configuration settings for Warp.
 
@@ -205,6 +193,25 @@ the slow libmathdx LTO compilation at the cost of runtime performance.
 
 This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
+"""
+
+cpu_compiler_flags: _Optional[str] = None
+"""Flags controlling CPU kernel compilation.
+
+Warp acts as a compiler driver for the embedded Clang frontend. The flag
+``-march=native`` is intercepted and triggers host CPU feature detection
+(equivalent to ``llvm::sys::getHostCPUName()`` + ``getHostCPUFeatures()``).
+All other flags are passed through to the Clang frontend as-is.
+
+The value controls both CPU target detection and extra compiler flags:
+
+- ``None`` (default): detect host CPU features (equivalent to ``"-march=native"``).
+- ``""``: disable host CPU detection; compile for a generic target.
+- ``"-march=native"``: explicitly detect host CPU features.
+- ``"-march=native -fno-vectorize"``: detect host CPU + pass ``-fno-vectorize``.
+- ``"-fno-vectorize"``: generic target + pass ``-fno-vectorize``.
+
+Changing this setting invalidates the kernel cache.
 """
 
 llvm_cuda: bool = False

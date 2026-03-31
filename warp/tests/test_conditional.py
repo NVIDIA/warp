@@ -1,19 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
+
+import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -298,6 +288,132 @@ def test_ifexp_with_array_access(test: unittest.TestCase, device):
     test.assertEqual(result.numpy()[0].tolist(), [1.0, 2.0, 3.0])
 
 
+@wp.kernel
+def test_short_circuit_and_kernel(
+    arr: wp.array(dtype=int),
+    result: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    # arr[tid] must not be evaluated when arr is None (GH-1329)
+    if arr and tid >= 0 and arr[tid] == 0:
+        result[tid] = -1
+        return
+    result[tid] = 1
+
+
+@wp.kernel
+def test_short_circuit_or_kernel(
+    arr: wp.array(dtype=int),
+    result: wp.array(dtype=int),
+):
+    tid = wp.tid()
+    # Second operand must not be evaluated when first is true
+    if not arr or tid < 0 or arr[tid] == 0:
+        result[tid] = -1
+        return
+    result[tid] = 1
+
+
+def test_short_circuit_and(test: unittest.TestCase, device):
+    """Chained `and` must short-circuit so null array is never dereferenced."""
+    result = wp.zeros(3, dtype=int, device=device)
+    # None array — should short-circuit, never access arr[tid]
+    wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[None, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [1, 1, 1])
+
+    # Real array — should evaluate fully
+    arr = wp.array([0, 1, 0], dtype=int, device=device)
+    wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[arr, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [-1, 1, -1])
+
+
+def test_short_circuit_or(test: unittest.TestCase, device):
+    """Chained `or` must short-circuit so null array is never dereferenced."""
+    result = wp.zeros(3, dtype=int, device=device)
+    # None array — `not arr` is true, should short-circuit
+    wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[None, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [-1, -1, -1])
+
+    # Real array with non-zero values — all conditions false, result = 1
+    arr = wp.array([5, 6, 7], dtype=int, device=device)
+    wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[arr, result], device=device)
+    test.assertEqual(result.numpy().tolist(), [1, 1, 1])
+
+
+@wp.kernel
+def test_short_circuit_and_grad_kernel(
+    x: wp.array(dtype=float),
+    flag: wp.array(dtype=int),
+    out: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    # flag[tid] != 0 and tid < 2: only threads 0,1 with flag set take the branch.
+    # The backward pass must replay the same short-circuit guards so that
+    # gradients flow only through the operands that were actually evaluated.
+    if flag[tid] != 0 and tid < 2:
+        out[tid] = x[tid] * 3.0
+    else:
+        out[tid] = x[tid] * 1.0
+
+
+@wp.kernel
+def test_short_circuit_or_grad_kernel(
+    x: wp.array(dtype=float),
+    flag: wp.array(dtype=int),
+    out: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    # flag[tid] == 0 or tid >= 2: threads where flag is zero OR tid >= 2.
+    if flag[tid] == 0 or tid >= 2:
+        out[tid] = x[tid] * 1.0
+    else:
+        out[tid] = x[tid] * 3.0
+
+
+def test_short_circuit_and_grad(test: unittest.TestCase, device):
+    """Backward pass through chained `and` propagates correct gradients."""
+    n = 4
+    x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
+    flag = wp.array([1, 1, 0, 0], dtype=int, device=device)
+    out = wp.zeros(n, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_short_circuit_and_grad_kernel, dim=n, inputs=[x, flag, out], device=device)
+
+    # flag=1 and tid<2 → *3; else → *1
+    np.testing.assert_allclose(out.numpy(), [3.0, 3.0, 1.0, 1.0])
+
+    out.grad = wp.array(np.ones(n, dtype=np.float32), device=device)
+    tape.backward()
+
+    np.testing.assert_allclose(tape.gradients[x].numpy(), [3.0, 3.0, 1.0, 1.0])
+
+
+def test_short_circuit_or_grad(test: unittest.TestCase, device):
+    """Backward pass through chained `or` propagates correct gradients."""
+    n = 4
+    x = wp.array(np.ones(n, dtype=np.float32), device=device, requires_grad=True)
+    flag = wp.array([0, 1, 1, 0], dtype=int, device=device)
+    out = wp.zeros(n, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_short_circuit_or_grad_kernel, dim=n, inputs=[x, flag, out], device=device)
+
+    # flag==0 or tid>=2 → *1; else → *3
+    # tid=0: flag=0→true (short-circuit) → *1
+    # tid=1: flag=1→false, tid>=2→false → *3
+    # tid=2: flag=1→false, tid>=2→true  → *1
+    # tid=3: flag=0→true (short-circuit) → *1
+    np.testing.assert_allclose(out.numpy(), [1.0, 3.0, 1.0, 1.0])
+
+    out.grad = wp.array(np.ones(n, dtype=np.float32), device=device)
+    tape.backward()
+
+    np.testing.assert_allclose(tape.gradients[x].numpy(), [1.0, 3.0, 1.0, 1.0])
+
+
 devices = get_test_devices()
 
 
@@ -326,6 +442,10 @@ add_kernel_test(TestConditional, kernel=test_conditional_chain_eqs, dim=1, devic
 add_kernel_test(TestConditional, kernel=test_conditional_chain_mixed, dim=1, devices=devices)
 add_function_test(TestConditional, "test_conditional_unequal_types", test_conditional_unequal_types, devices=devices)
 add_function_test(TestConditional, "test_ifexp_with_array_access", test_ifexp_with_array_access, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_and", test_short_circuit_and, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_or", test_short_circuit_or, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_and_grad", test_short_circuit_and_grad, devices=devices)
+add_function_test(TestConditional, "test_short_circuit_or_grad", test_short_circuit_or_grad, devices=devices)
 
 
 if __name__ == "__main__":

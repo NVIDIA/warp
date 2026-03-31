@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import ast
 import bisect
@@ -116,7 +104,7 @@ def get_func(func, suffix: Any, code_transformers=None, allow_overloads=False):
 
 
 def dynamic_func(suffix: Any, code_transformers=None, allow_overloads=False):
-    """Return a decorator that caches a specialized :class:`wp.Function`.
+    """Return a decorator that caches a specialized :class:`warp.Function`.
 
     Args:
         suffix: Hashable key used to specialize and cache the function.
@@ -124,7 +112,7 @@ def dynamic_func(suffix: Any, code_transformers=None, allow_overloads=False):
         allow_overloads: Whether to include argument types in the cache key.
 
     Returns:
-        A decorator that registers and returns a cached :class:`wp.Function`.
+        A decorator that registers and returns a cached :class:`warp.Function`.
     """
 
     def wrap_func(func: Callable):
@@ -153,7 +141,7 @@ def get_kernel(
 
 
 def dynamic_kernel(suffix: Any, kernel_options: Optional[dict[str, Any]] = None, allow_overloads=False):
-    """Return a decorator that caches a specialized :class:`wp.Kernel`.
+    """Return a decorator that caches a specialized :class:`warp.Kernel`.
 
     Args:
         suffix: Hashable key used to specialize and cache the kernel.
@@ -161,7 +149,7 @@ def dynamic_kernel(suffix: Any, kernel_options: Optional[dict[str, Any]] = None,
         allow_overloads: Whether to include argument types in the cache key.
 
     Returns:
-        A decorator that registers and returns a cached :class:`wp.Kernel`.
+        A decorator that registers and returns a cached :class:`warp.Kernel`.
     """
     if kernel_options is None:
         kernel_options = {}
@@ -446,7 +434,7 @@ class TemporaryStore:
     """
     Shared pool of temporary arrays that will be persisted and reused across invocations of ``warp.fem`` functions.
 
-    A :class:`TemporaryStore` instance may either be passed explicitly to ``warp.fem`` functions that accept such an argument, for instance :func:`.integrate.integrate`,
+    A :class:`TemporaryStore` instance may either be passed explicitly to ``warp.fem`` functions that accept such an argument, for instance :func:`warp.fem.integrate`,
     or can be set globally as the default store using :func:`set_default_temporary_store`.
 
     By default, there is no default temporary store, so that temporary allocations are not persisted.

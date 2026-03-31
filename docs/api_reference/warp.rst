@@ -228,13 +228,23 @@ Spatial Acceleration
    MeshQueryAABBTiled
    MeshQueryPoint
    MeshQueryRay
+   Volume
+
+Textures
+--------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   GLTextureResource
    Texture
    Texture1D
    Texture2D
    Texture3D
    TextureAddressMode
    TextureFilterMode
-   Volume
+   TextureResourceFlags
 
 Runtime
 -------
@@ -247,6 +257,7 @@ Runtime
    clear_lto_cache
    init
    is_cpu_available
+   is_cubql_available
    is_cuda_available
    print_diagnostics
 

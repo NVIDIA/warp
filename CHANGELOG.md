@@ -4,12 +4,38 @@
 
 ### Added
 
+- Add external CUDA texture interoperability, e.g., `wp.Texture2D(cuda_array=handle)` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
+- Add OpenGL texture interoperability using `wp.GLTextureResource` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
+- Add `Texture.copy_from()` that can copy from host and device arrays as well as other textures.
+- Add `Texture.copy_to()` that can copy to host and device arrays as well as other textures.
+- **Experimental**: Add cuBQL BVH backend for `wp.Mesh`, selectable via `bvh_constructor="cubql"`.
+  Currently only supports `wp.mesh_query_ray()`. Point queries, AABB queries, grouped queries,
+  and winding number queries are not yet supported ([GH-1286](https://github.com/NVIDIA/warp/issues/1286)).
+- Detect host CPU features at runtime for CPU kernel compilation, replacing the
+  hardcoded `"generic"` target. Use `warp.config.cpu_compiler_flags` to control
+  CPU targeting (e.g. `"-march=native"` for host detection, `""` for generic)
+  ([GH-1308](https://github.com/NVIDIA/warp/issues/1308)).
+
 ### Removed
+
+- Remove the Kit extensions from this repository ([GH-1296](https://github.com/NVIDIA/warp/issues/1296)).
+- Remove integer type support from `wp.isfinite()`, `wp.isnan()`, and `wp.isinf()`. Only float types are
+  now accepted. Previously a deprecation warning was issued
+  ([GH-847](https://github.com/NVIDIA/warp/issues/847)).
 
 ### Deprecated
 
+- Deprecate `Texture.copy_from_array()`, use `Texture.copy_from()` instead.
+- Deprecate `Texture.copy_to_array()`, use `Texture.copy_to()` instead.
+
 ### Changed
 
+- Centralize module option resolution so the hasher and compiler always see identical values, fixing unnecessary
+  recompilations when toggling config options between ``None`` and their explicit defaults
+  ([GH-1307](https://github.com/NVIDIA/warp/issues/1307)).
+- Allow typed composite constructors (e.g. `wp.vec3d()`, `wp.mat22h()`, `wp.quatd()`) to accept
+  scalar literals directly, preserving precision without explicit casts
+  ([GH-1297](https://github.com/NVIDIA/warp/issues/1297)).
 - Allow `wp.Volume.load_from_numpy()` and `wp.Volume.allocate()` to accept a 3-element sequence for
   `voxel_size`, enabling volumes with anisotropic voxel spacing
   ([GH-1193](https://github.com/NVIDIA/warp/issues/1193)).
@@ -22,6 +48,9 @@
 - Fix compilation failures or crashes when multiple processes compile CUDA kernels concurrently with a shared kernel
   cache, caused by NVRTC precompiled header files racing in the shared `--pch-dir` directory; affects builds with
   CUDA Toolkit 12.8–12.9 ([GH-1284](https://github.com/NVIDIA/warp/issues/1284)).
+- Fix `@wp.func_native` return type resolution to support `wp.types.vector()`, `wp.types.matrix()`, and other
+  complex type annotations. Invalid return types are now rejected at codegen time with a clear error message
+  ([GH-1300](https://github.com/NVIDIA/warp/issues/1300)).
 - Fix kernel dispatch using incorrect `block_dim` when the same kernel is launched on different devices, which could
   cause out-of-bounds shared memory access and memory corruption in tile infrastructure
   ([GH-1254](https://github.com/NVIDIA/warp/issues/1254)).
@@ -32,13 +61,43 @@
   ([GH-1274](https://github.com/NVIDIA/warp/issues/1274)).
 - Fix `wp.HashGrid` neighbor queries missing results near negative cell boundaries when grid wrapping maps
   truncated cell indices to incorrect physical buckets ([GH-1256](https://github.com/NVIDIA/warp/issues/1256)).
+- Fix ``wp.tile_matmul()`` and ``wp.tile_fft()`` ignoring when module-level ``enable_backward`` flag is ``False``
+  ([GH-1320](https://github.com/NVIDIA/warp/issues/1320)).
+- Fix chained ``and``/``or`` operators in kernels not short-circuiting, which caused null pointer
+  dereferences when guarding array accesses with a nullable array check
+  ([GH-1329](https://github.com/NVIDIA/warp/issues/1329)).
+- Fix ``wp.array[dtype]`` subscript syntax not being recognized by mypy, which reported
+  ``"array" expects no type arguments`` ([GH-1278](https://github.com/NVIDIA/warp/issues/1278)).
+- Fix struct field assignment unwrapping Warp scalar types (e.g., ``wp.float32``, ``wp.int32``) to their
+  underlying Python types, causing subsequent reads to return plain ``float`` or ``int`` instead of the
+  original Warp type ([GH-1288](https://github.com/NVIDIA/warp/issues/1288)).
+- Fix element assignment for boolean vectors failing with a missing function overload
+  ([GH-1302](https://github.com/NVIDIA/warp/issues/1302)).
+- Fix `wp.sign()` vector overload returning incorrect type metadata for custom vector types.
+- Fix ``wp.tile_argmin()`` and ``wp.tile_argmax()`` crashing in debug mode when ``block_dim`` exceeds the tile
+  element count, and fix related debug-mode crashes in ``tile_reduce_axis`` and shared-memory tile load/store
+  for the same condition ([GH-1133](https://github.com/NVIDIA/warp/issues/1133)).
+- Fix augmented assignments double-evaluating sub-expressions for subscript and attribute
+  targets (e.g., ``s.field += expr``, ``arr[i] *= expr``), causing side effects in target
+  indices or the right-hand side to trigger multiple times
+  ([GH-1233](https://github.com/NVIDIA/warp/issues/1233)).
+- Fix `tile_map()` with `tile_store()` failing for custom vector and matrix types created via
+  `wp.types.vector()` or `wp.types.matrix()` ([GH-1311](https://github.com/NVIDIA/warp/issues/1311)).
+- Fix `@wp.func` with tile parameters failing to compile when called with shared-memory tiles. Tile parameters in
+  `@wp.func` are now passed by reference for both register and shared storage, matching Python's semantics for mutable
+  objects. Previously, register tiles were passed by value ([GH-1313](https://github.com/NVIDIA/warp/issues/1313)).
 
 ### Documentation
+
 - Fix internal module path `warp._src.lang` leaking into published documentation page titles, URLs, and search engine
   results for built-in functions ([GH-1275](https://github.com/NVIDIA/warp/issues/1275)).
 - Add differentiable 2-D Navier-Stokes example (`warp/examples/optim/example_navier_stokes_perturbation.py`)
   demonstrating an optimal initial perturbation problem. Differentiable counterpart to the solver
   in `warp/examples/core/example_fft_poisson_navier_stokes_2d.py`.
+- Add `warp.fem` examples for Taylor-Green vortex (`example_taylor_green.py`), Kelvin-Helmholtz instability
+  (`example_kelvin_helmholtz.py`), and shallow water equations (`example_shallow_water.py`).
+- Fix spectral Poisson solver in 2-D Navier-Stokes examples to use modified wavenumbers consistent with
+  the 2nd-order FD stencil used in the vorticity equation ([GH-1290](https://github.com/NVIDIA/warp/issues/1290)).
 
 ## [1.12.0] - 2026-03-06
 

@@ -1,19 +1,5 @@
-/*
- * SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #include "../native/crt.h"
 #include "../version.h"
@@ -55,6 +41,11 @@
 #include <llvm/PassRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
+#if LLVM_VERSION_MAJOR >= 16
+#include <llvm/TargetParser/Host.h>
+#else
+#include <llvm/Support/Host.h>
+#endif
 
 #if defined(_WIN64)
 extern "C" void __chkstk();
@@ -89,12 +80,46 @@ static const char* target_triple = "x86_64-pc-windows-elf";
 static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
 #endif
 
+// Minimum CUDA compute capability that supports all of Warp's features.
+// Since we always emit PTX (forward-compatible), targeting the minimum
+// ensures the output runs on all supported GPUs.
+static const char* cuda_target_arch = "sm_75";
+
 static void initialize_llvm()
 {
     llvm::InitializeAllTargetInfos();
     llvm::InitializeAllTargets();
     llvm::InitializeAllTargetMCs();
     llvm::InitializeAllAsmPrinters();
+}
+
+struct HostCpuInfo {
+    std::string name;  // e.g. "znver5", "apple-m2", or "generic"
+    std::string features;  // comma-separated, for TargetMachine: "+avx2,+fma,..."
+    std::vector<std::string> feature_list;  // individual flags, for -target-feature args
+};
+
+// Thread-safe: C++11 guarantees local static initialization is synchronized.
+static const HostCpuInfo& get_host_cpu_info()
+{
+    static HostCpuInfo info = []() {
+        HostCpuInfo result;
+        result.name = llvm::sys::getHostCPUName().str();
+
+        llvm::StringMap<bool> feature_map;
+        llvm::sys::getHostCPUFeatures(feature_map);
+
+        for (const auto& f : feature_map) {
+            std::string flag = (f.second ? "+" : "-") + f.first().str();
+            result.feature_list.push_back(flag);
+            if (!result.features.empty())
+                result.features += ",";
+            result.features += flag;
+        }
+
+        return result;
+    }();
+    return info;
 }
 
 static std::unique_ptr<llvm::Module> source_to_llvm(
@@ -105,7 +130,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     bool debug,
     bool verify_fp,
     llvm::LLVMContext& context,
-    bool tiles_in_stack_memory
+    bool tiles_in_stack_memory,
+    const char** extra_flags = nullptr  // null-terminated array of flag strings, or nullptr for none
 )
 {
     // Compilation arguments
@@ -122,14 +148,37 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         args.push_back("nvptx64-nvidia-cuda");
 
         args.push_back("-target-cpu");
-        args.push_back("sm_70");
+        args.push_back(cuda_target_arch);
     } else {
         args.push_back("-triple");
         args.push_back(target_triple);
 
+        // Append extra flags to args. Our "driver" expands -march=native inline
+        // into -target-cpu and -target-feature flags, preserving flag order.
+        // Other flags are passed through to the Clang frontend as-is.
+        if (extra_flags) {
+            for (const char** flag = extra_flags; *flag; ++flag) {
+                if (strcmp(*flag, "-march=native") == 0) {
+                    const auto& cpu = get_host_cpu_info();
+                    if (cpu.name != "generic") {
+                        args.push_back("-target-cpu");
+                        args.push_back(cpu.name.c_str());
+                    }
+                    for (const auto& feat : cpu.feature_list) {
+                        args.push_back("-target-feature");
+                        args.push_back(feat.c_str());
+                    }
+                } else {
+                    args.push_back(*flag);
+                }
+            }
+        }
+
 #if defined(__x86_64__) || defined(_M_X64)
+        // F16C is required for _Float16 conversions in builtin.h. Duplicate
+        // flags are harmless (last-wins semantics), so add unconditionally.
         args.push_back("-target-feature");
-        args.push_back("+f16c");  // Enables support for _Float16
+        args.push_back("+f16c");
 #endif
 
 #if defined(__aarch64__)
@@ -214,6 +263,10 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
+
+    // Ownership of the buffer was transferred to the SourceManager during
+    // ExecuteAction() (RetainRemappedFileBuffers defaults to false).
+    // Release the unique_ptr to avoid a double-free.
     (void)buffer.release();
 
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
@@ -229,14 +282,16 @@ WP_API int wp_compile_cpp(
     bool debug,
     bool verify_fp,
     bool fuse_fp,
-    bool tiles_in_stack_memory
+    bool tiles_in_stack_memory,
+    const char** extra_flags
 )
 {
     initialize_llvm();
 
     llvm::LLVMContext context;
-    std::unique_ptr<llvm::Module> module
-        = source_to_llvm(false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory);
+    std::unique_ptr<llvm::Module> module = source_to_llvm(
+        false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory, extra_flags
+    );
 
     if (!module) {
         return -1;
@@ -249,8 +304,24 @@ WP_API int wp_compile_cpp(
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
 #endif
 
+    // Check if -march=native was requested to set the backend target accordingly.
+    bool use_native = false;
+    if (extra_flags) {
+        for (const char** flag = extra_flags; *flag; ++flag) {
+            if (strcmp(*flag, "-march=native") == 0) {
+                use_native = true;
+                break;
+            }
+        }
+    }
+
     const char* CPU = "generic";
     const char* features = "";
+    if (use_native) {
+        const auto& cpu = get_host_cpu_info();
+        CPU = cpu.name.c_str();
+        features = cpu.features.c_str();
+    }
     llvm::TargetOptions target_options;
     if (fuse_fp)
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Standard;
@@ -309,18 +380,17 @@ WP_API int wp_compile_cuda(
 #else
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget("nvptx64-nvidia-cuda", error);
 #endif
-
-    const char* CPU = "sm_70";
     const char* features = "+ptx75";  // Warp requires CUDA 11.5, which supports PTX ISA 7.5
     llvm::TargetOptions target_options;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;
 #if LLVM_VERSION_MAJOR >= 20
     llvm::TargetMachine* target_machine = target->createTargetMachine(
-        llvm::Triple("nvptx64-nvidia-cuda"), CPU, features, target_options, relocation_model
+        llvm::Triple("nvptx64-nvidia-cuda"), cuda_target_arch, features, target_options, relocation_model
     );
 #else
-    llvm::TargetMachine* target_machine
-        = target->createTargetMachine("nvptx64-nvidia-cuda", CPU, features, target_options, relocation_model);
+    llvm::TargetMachine* target_machine = target->createTargetMachine(
+        "nvptx64-nvidia-cuda", cuda_target_arch, features, target_options, relocation_model
+    );
 #endif
 
     module->setDataLayout(target_machine->createDataLayout());

@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 
@@ -200,6 +188,36 @@ def test_bool_mat_typing(test, device):
     wp.launch(test_bool_mat_anonymous_typing, (1,), inputs=[], device=device)
 
 
+@wp.func
+def bool_vec_assign():
+    v = vec3bool_type(True, False, True)
+
+    v[0] = False
+    v[2] = False
+
+    wp.expect_eq(v[0], False)
+    wp.expect_eq(v[1], False)
+    wp.expect_eq(v[2], False)
+
+    v[-1] = True
+    v[-3] = True
+
+    wp.expect_eq(v[-1], True)
+    wp.expect_eq(v[-2], False)
+    wp.expect_eq(v[-3], True)
+
+
+@wp.kernel
+def run_bool_vec_assign():
+    bool_vec_assign()
+
+
+def test_bool_vec_assign(test, device):
+    wp.launch(run_bool_vec_assign, 1, device=device)
+    wp.synchronize_device(device)
+    bool_vec_assign()
+
+
 devices = get_test_devices()
 
 
@@ -213,6 +231,7 @@ add_function_test(TestBool, "test_bool_constant_vec", test_bool_constant_vec, de
 add_function_test(TestBool, "test_bool_constant_mat", test_bool_constant_mat, devices=devices)
 add_function_test(TestBool, "test_bool_vec_typing", test_bool_vec_typing, devices=devices)
 add_function_test(TestBool, "test_bool_mat_typing", test_bool_mat_typing, devices=devices)
+add_function_test(TestBool, "test_bool_vec_assign", test_bool_vec_assign, devices=devices)
 
 
 if __name__ == "__main__":

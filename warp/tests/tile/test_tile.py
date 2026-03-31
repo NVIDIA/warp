@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 from typing import Any
@@ -730,6 +718,145 @@ def test_tile_n_map_with_constant(test, device):
     # d/dx = 1, d/dy = weight = 0.5
     assert_np_equal(x.grad.numpy(), np.ones(TILE_M, dtype=np.float32))
     assert_np_equal(y.grad.numpy(), np.full(TILE_M, 0.5, dtype=np.float64))
+
+
+# --- tile_map with custom (non-pre-expanded) types (GH-1311) ---
+
+vec5 = wp.types.vector(5, dtype=wp.float32)
+mat5 = wp.types.matrix(shape=(5, 5), dtype=wp.float32)
+
+
+@wp.func
+def vec5_fma(a: vec5, b: vec5, c: vec5) -> vec5:
+    return a + b + c
+
+
+@wp.kernel
+def tile_map_custom_vec_unary_kernel(input: wp.array(dtype=vec5), output: wp.array(dtype=vec5)):
+    i = wp.tid()
+    a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
+    b = wp.tile_map(wp.abs, a)
+    wp.tile_store(output, b, offset=i * TILE_M)
+
+
+def test_tile_map_custom_vec_unary(test, device):
+    data = [vec5(-1.0, 2.0, -3.0, 4.0, -5.0)] * TILE_M
+    input_wp = wp.array(data, dtype=vec5, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=vec5, device=device)
+
+    wp.launch_tiled(
+        tile_map_custom_vec_unary_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+    )
+
+    expected = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]] * TILE_M, dtype=np.float32)
+    np.testing.assert_allclose(output_wp.numpy(), expected)
+
+
+@wp.kernel
+def tile_map_custom_vec_binary_kernel(
+    input_a: wp.array(dtype=vec5), input_b: wp.array(dtype=vec5), output: wp.array(dtype=vec5)
+):
+    i = wp.tid()
+    a = wp.tile_load(input_a, shape=TILE_M, offset=i * TILE_M)
+    b = wp.tile_load(input_b, shape=TILE_M, offset=i * TILE_M)
+    c = wp.tile_map(wp.add, a, b)
+    wp.tile_store(output, c, offset=i * TILE_M)
+
+
+def test_tile_map_custom_vec_binary(test, device):
+    ones = [vec5(1.0, 1.0, 1.0, 1.0, 1.0)] * TILE_M
+    twos = [vec5(2.0, 2.0, 2.0, 2.0, 2.0)] * TILE_M
+    a_wp = wp.array(ones, dtype=vec5, device=device)
+    b_wp = wp.array(twos, dtype=vec5, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=vec5, device=device)
+
+    wp.launch_tiled(
+        tile_map_custom_vec_binary_kernel, dim=[1], inputs=[a_wp, b_wp, output_wp], block_dim=TILE_DIM, device=device
+    )
+
+    expected = np.full((TILE_M, 5), 3.0, dtype=np.float32)
+    np.testing.assert_allclose(output_wp.numpy(), expected)
+
+
+@wp.kernel
+def tile_map_custom_vec_variadic_kernel(
+    input_a: wp.array(dtype=vec5),
+    input_b: wp.array(dtype=vec5),
+    input_c: wp.array(dtype=vec5),
+    output: wp.array(dtype=vec5),
+):
+    i = wp.tid()
+    a = wp.tile_load(input_a, shape=TILE_M, offset=i * TILE_M)
+    b = wp.tile_load(input_b, shape=TILE_M, offset=i * TILE_M)
+    c = wp.tile_load(input_c, shape=TILE_M, offset=i * TILE_M)
+    d = wp.tile_map(vec5_fma, a, b, c)
+    wp.tile_store(output, d, offset=i * TILE_M)
+
+
+def test_tile_map_custom_vec_variadic(test, device):
+    ones = [vec5(1.0, 1.0, 1.0, 1.0, 1.0)] * TILE_M
+    twos = [vec5(2.0, 2.0, 2.0, 2.0, 2.0)] * TILE_M
+    threes = [vec5(3.0, 3.0, 3.0, 3.0, 3.0)] * TILE_M
+    a_wp = wp.array(ones, dtype=vec5, device=device)
+    b_wp = wp.array(twos, dtype=vec5, device=device)
+    c_wp = wp.array(threes, dtype=vec5, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=vec5, device=device)
+
+    wp.launch_tiled(
+        tile_map_custom_vec_variadic_kernel,
+        dim=[1],
+        inputs=[a_wp, b_wp, c_wp, output_wp],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    expected = np.full((TILE_M, 5), 6.0, dtype=np.float32)
+    np.testing.assert_allclose(output_wp.numpy(), expected)
+
+
+@wp.kernel
+def tile_map_custom_mat_unary_kernel(input: wp.array(dtype=mat5), output: wp.array(dtype=mat5)):
+    i = wp.tid()
+    a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
+    b = wp.tile_map(wp.neg, a)
+    wp.tile_store(output, b, offset=i * TILE_M)
+
+
+def test_tile_map_custom_mat_unary(test, device):
+    m = mat5()
+    for r in range(5):
+        for c in range(5):
+            m[r, c] = float(r * 5 + c)
+    data = [m] * TILE_M
+    input_wp = wp.array(data, dtype=mat5, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=mat5, device=device)
+
+    wp.launch_tiled(
+        tile_map_custom_mat_unary_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+    )
+
+    np.testing.assert_allclose(output_wp.numpy(), -input_wp.numpy())
+
+
+@wp.kernel
+def tile_map_preexpanded_vec_unary_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+    a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
+    b = wp.tile_map(wp.abs, a)
+    wp.tile_store(output, b, offset=i * TILE_M)
+
+
+def test_tile_map_preexpanded_vec_unary(test, device):
+    data = [wp.vec3(-1.0, 2.0, -3.0)] * TILE_M
+    input_wp = wp.array(data, dtype=wp.vec3, device=device)
+    output_wp = wp.zeros(TILE_M, dtype=wp.vec3, device=device)
+
+    wp.launch_tiled(
+        tile_map_preexpanded_vec_unary_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=TILE_DIM, device=device
+    )
+
+    expected = np.array([[1.0, 2.0, 3.0]] * TILE_M, dtype=np.float32)
+    np.testing.assert_allclose(output_wp.numpy(), expected)
 
 
 @wp.kernel
@@ -3007,6 +3134,11 @@ add_function_test(TestTile, "test_tile_operators", test_tile_operators, devices=
 add_function_test(TestTile, "test_tile_const_mul", test_tile_const_mul, devices=devices)
 add_function_test(TestTile, "test_tile_map_with_constant", test_tile_map_with_constant, devices=devices)
 add_function_test(TestTile, "test_tile_n_map_with_constant", test_tile_n_map_with_constant, devices=devices)
+add_function_test(TestTile, "test_tile_map_custom_vec_unary", test_tile_map_custom_vec_unary, devices=devices)
+add_function_test(TestTile, "test_tile_map_custom_vec_binary", test_tile_map_custom_vec_binary, devices=devices)
+add_function_test(TestTile, "test_tile_map_custom_vec_variadic", test_tile_map_custom_vec_variadic, devices=devices)
+add_function_test(TestTile, "test_tile_map_custom_mat_unary", test_tile_map_custom_mat_unary, devices=devices)
+add_function_test(TestTile, "test_tile_map_preexpanded_vec_unary", test_tile_map_preexpanded_vec_unary, devices=devices)
 add_function_test(TestTile, "test_tile_tile", test_tile_tile, devices=get_cuda_test_devices())
 add_function_test(TestTile, "test_tile_untile", test_tile_untile, devices=devices)
 add_function_test(TestTile, "test_tile_sum", test_tile_sum, devices=devices, check_output=False)

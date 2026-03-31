@@ -153,7 +153,7 @@ also support the following forms:
 - ``wp.full(8, 1.23, dtype=float)``: initializes a new array of 8 float values set
   to ``1.23``.
 - ``arr.fill_(1.23)``: sets the content of an existing float array to ``1.23``.
-- ``arr[:4].fill(1.23)``: sets the four first values of an existing float array to ``1.23``.
+- ``arr[:4].fill_(1.23)``: sets the four first values of an existing float array to ``1.23``.
 
 How can I contact the Warp team directly?
 -----------------------------------------

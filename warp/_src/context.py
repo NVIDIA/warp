@@ -1,21 +1,10 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
 import ast
+import collections
 import ctypes
 import enum
 import functools
@@ -32,6 +21,7 @@ import platform
 import re
 import shutil
 import sys
+import tempfile
 import threading
 import types
 import weakref
@@ -72,6 +62,7 @@ import warp._src.build
 import warp._src.codegen
 import warp.config
 from warp._src.codegen import WarpCodegenTypeError, synchronized
+from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import Array, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
@@ -1206,7 +1197,7 @@ def grad(func: Callable) -> GradWrapper:
 
 
         @wp.kernel
-        def my_kernel(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+        def my_kernel(x: wp.array[float], grad_x: wp.array[float]):
             tid = wp.tid()
             # Compute d(x*x)/d(x) = 2*x
             grad_x[tid] = wp.grad(square)(x[tid])
@@ -1215,10 +1206,10 @@ def grad(func: Callable) -> GradWrapper:
         # For functions with multiple inputs:
         @wp.kernel
         def kernel2(
-            a: wp.array(dtype=float),
-            b: wp.array(dtype=float),
-            grad_a: wp.array(dtype=float),
-            grad_b: wp.array(dtype=float),
+            a: wp.array[float],
+            b: wp.array[float],
+            grad_a: wp.array[float],
+            grad_b: wp.array[float],
         ):
             tid = wp.tid()
             db, da = wp.grad(wp.atan2)(b[tid], a[tid])
@@ -1257,20 +1248,20 @@ def kernel(
     Example::
 
         @wp.kernel
-        def my_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel(a: wp.array[float], b: wp.array[float]):
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
 
         @wp.kernel(enable_backward=False)
-        def my_kernel_no_backward(a: wp.array(dtype=float, ndim=2), x: float):
+        def my_kernel_no_backward(a: wp.array2d[float], x: float):
             # the backward pass will not be generated
             i, j = wp.tid()
             a[i, j] = x
 
 
         @wp.kernel(module="unique")
-        def my_kernel_unique_module(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel_unique_module(a: wp.array[float], b: wp.array[float]):
             # the kernel will be registered in new unique module created just for this
             # kernel and its dependent functions and structs
             tid = wp.tid()
@@ -1278,7 +1269,7 @@ def kernel(
 
 
         @wp.kernel(launch_bounds=(256, 1))
-        def my_kernel_with_launch_bounds(a: wp.array(dtype=float)):
+        def my_kernel_with_launch_bounds(a: wp.array[float]):
             # CUDA __launch_bounds__ will be set to (256, 1)
             tid = wp.tid()
             a[tid] = a[tid] * 2.0
@@ -1881,14 +1872,24 @@ def get_module(name: str) -> Module:
         return user_modules[name]
 
 
+def _resolve_cpu_compiler_flags(module_flags, config_flags):
+    """Return the effective CPU compiler flags string (never None).
+
+    Resolves ``None`` at the module level to the config value, and ``None``
+    at the config level to ``"-march=native"`` (the default).
+    """
+    flags = module_flags if module_flags is not None else config_flags
+    return flags if flags is not None else "-march=native"
+
+
 # ModuleHasher computes the module hash based on all the kernels, module options,
 # and build configuration.  For each kernel, it computes a deep hash by recursively
 # hashing all referenced functions, structs, and constants, even those defined in
 # other modules.  The module hash is computed in the constructor and can be retrieved
-# using get_module_hash().  In addition, the ModuleHasher takes care of filtering out
+# using get_hash().  In addition, the ModuleHasher takes care of filtering out
 # duplicate kernels for codegen (see get_unique_kernels()).
 class ModuleHasher:
-    def __init__(self, module):
+    def __init__(self, kernels, options):
         # cache function hashes to avoid hashing multiple times
         self.function_hashes = {}  # (function: hash)
 
@@ -1903,7 +1904,7 @@ class ModuleHasher:
 
         # hash all kernels: non-generic kernels are hashed directly,
         # generic kernels are hashed via their instantiated overloads
-        for kernel in module._get_live_kernels():
+        for kernel in kernels:
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
@@ -1929,25 +1930,12 @@ class ModuleHasher:
             ch.update(kernel_hash)
 
         # configuration parameters
-        for opt in sorted(module.options.keys()):
-            s = f"{opt}:{module.options[opt]}"
+        for opt in sorted(options.keys()):
+            s = f"{opt}:{options[opt]}"
             ch.update(bytes(s, "utf-8"))
 
-        # ensure to trigger recompilation if flags affecting kernel compilation are changed
-        if warp.config.verify_fp:
-            ch.update(bytes("verify_fp", "utf-8"))
-
-        # line directives, e.g. for Nsight Compute
-        ch.update(bytes(ctypes.c_int(warp.config.line_directives)))
-
-        # whether to use `assign_copy` instead of `assign_inplace`
-        ch.update(bytes(ctypes.c_int(warp.config.enable_vector_component_overwrites)))
-
-        # build config
-        ch.update(bytes(warp.config.mode, "utf-8"))
-
         # save the module hash
-        self.module_hash = ch.digest()
+        self.hash = ch.digest()
 
     def hash_kernel(self, kernel: Kernel) -> bytes:
         # NOTE: We only hash non-generic kernels, so we don't traverse kernel overloads here.
@@ -2081,8 +2069,8 @@ class ModuleHasher:
         else:
             raise TypeError(f"Invalid constant type: {type(value)}")
 
-    def get_module_hash(self) -> bytes:
-        return self.module_hash
+    def get_hash(self) -> bytes:
+        return self.hash
 
     def get_unique_kernels(self):
         return self.unique_kernels.values()
@@ -2101,7 +2089,7 @@ class ModuleBuilder:
         self.shared_memory_bytes = {}  # map from lto symbol to shared memory requirements
 
         if hasher is None:
-            hasher = ModuleHasher(module)
+            hasher = ModuleHasher(module._get_live_kernels(), options)
 
         # build all unique kernels
         self.kernels = hasher.get_unique_kernels()
@@ -2419,6 +2407,7 @@ class Module:
 
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
         self.hashers = {}
+        self.resolved_options = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
         # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
@@ -2440,6 +2429,7 @@ class Module:
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
             "optimization_level": None,
+            "cpu_compiler_flags": None,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
@@ -2455,6 +2445,33 @@ class Module:
 
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
+
+    def resolve_options(self, config) -> dict:
+        """Return a fully-resolved copy of the module options.
+
+        Resolves ``None`` sentinels by falling back to ``config`` values and
+        hardcoded defaults. Also includes global config flags that affect
+        compilation, so downstream consumers never need to read config directly.
+        """
+        options = dict(self.options)
+
+        # Resolve None-means-inherit options
+        if options["mode"] is None:
+            options["mode"] = config.mode
+        if options["optimization_level"] is None:
+            options["optimization_level"] = config.optimization_level
+        if options["optimization_level"] is None:
+            options["optimization_level"] = 3
+        options["cpu_compiler_flags"] = _resolve_cpu_compiler_flags(
+            options["cpu_compiler_flags"], config.cpu_compiler_flags
+        )
+
+        # Fold in global config flags that affect compilation
+        options["verify_fp"] = config.verify_fp
+        options["line_directives"] = config.line_directives
+        options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+
+        return options
 
     def __getattr__(self, name):
         from warp._src.utils import get_deprecated_method  # noqa: PLC0415
@@ -2601,12 +2618,13 @@ class Module:
     def hash_module(self) -> bytes:
         """Get the hash of the module for the current block_dim.
 
-        This function always creates a new `ModuleHasher` instance and computes the hash.
+        This function always creates a new ``ModuleHasher`` and computes the hash.
         """
-        # compute latest hash
         block_dim = self.options["block_dim"]
-        self.hashers[block_dim] = ModuleHasher(self)
-        return self.hashers[block_dim].get_module_hash()
+        options = self.resolve_options(warp.config)
+        self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+        self.resolved_options[block_dim] = options
+        return self.hashers[block_dim].get_hash()
 
     def get_module_hash(self, block_dim: int | None = None) -> bytes:
         """Get the hash of the module for the current block_dim.
@@ -2617,21 +2635,17 @@ class Module:
             block_dim = self.options["block_dim"]
 
         if self.has_unresolved_static_expressions:
-            # The module hash currently does not account for unresolved static expressions
-            # (only static expressions evaluated at declaration time so far).
-            # We need to generate the code for the functions and kernels that have
-            # unresolved static expressions and then compute the module hash again.
-            builder_options = self.options | {"output_arch": None}
-            # build functions, kernels to resolve static expressions
+            options = self.resolve_options(warp.config)
+            builder_options = options | {"output_arch": None}
             _ = ModuleBuilder(self, builder_options)
-
             self.has_unresolved_static_expressions = False
 
-        # compute the hash if needed
         if block_dim not in self.hashers:
-            self.hashers[block_dim] = ModuleHasher(self)
+            options = self.resolve_options(warp.config)
+            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+            self.resolved_options[block_dim] = options
 
-        return self.hashers[block_dim].get_module_hash()
+        return self.hashers[block_dim].get_hash()
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -2717,6 +2731,7 @@ class Module:
         output_name: str | None = None,
         output_arch: int | None = None,
         use_ptx: bool | None = None,
+        options: dict | None = None,
     ) -> bool:
         """Compile this module for a specific device.
 
@@ -2730,13 +2745,20 @@ class Module:
             output_arch: The architecture to compile the module for.
             use_ptx: Whether to compile to PTX instead of CUBIN. If ``None``,
                 auto-determined from the device and architecture.
+            options: Resolved module options dict. If ``None``, resolved from
+                current config.
 
         Returns:
             ``True`` if compilation was performed, ``False`` if a cached
             binary already exists and compilation was skipped.
         """
+        if options is None:
+            options = self.resolve_options(warp.config)
+
         if output_arch is None:
             output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
+
+        options = options | {"output_arch": output_arch}
 
         # Resolve the arch suffix once for both the output filename and the build call
         if output_arch:
@@ -2772,11 +2794,10 @@ class Module:
             return False
 
         # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-        builder_options = self.options | {"output_arch": output_arch}
         builder = ModuleBuilder(
             self,
-            builder_options,
-            hasher=self.hashers.get(self.options["block_dim"], None),
+            options,
+            hasher=self.hashers.get(options["block_dim"], None),
         )
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
@@ -2786,15 +2807,8 @@ class Module:
         # dir may exist from previous attempts / runs / archs
         Path(build_dir).mkdir(parents=True, exist_ok=True)
 
-        mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
-        opt = (
-            self.options["optimization_level"]
-            if self.options["optimization_level"] is not None
-            else warp.config.optimization_level
-        )
-
-        if opt is None:
-            opt = 3  # default to full optimization (ignored for debug builds)
+        mode = options["mode"]
+        opt = options["optimization_level"]
 
         if opt != 3 and output_arch and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             warp._src.utils.warn(
@@ -2821,9 +2835,10 @@ class Module:
                         output_path,
                         source_code_path,
                         mode=mode,
-                        fast_math=self.options["fast_math"],
-                        verify_fp=warp.config.verify_fp,
-                        fuse_fp=self.options["fuse_fp"],
+                        fast_math=options["fast_math"],
+                        verify_fp=options["verify_fp"],
+                        fuse_fp=options["fuse_fp"],
+                        extra_flags=options["cpu_compiler_flags"],
                     )
 
             except Exception as e:
@@ -2849,24 +2864,24 @@ class Module:
 
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
-                    f"Compile CUDA (arch={builder_options['output_arch']}{arch_suffix}, mode={mode}, block_dim={self.options['block_dim']})",
+                    f"Compile CUDA (arch={options['output_arch']}{arch_suffix}, mode={mode}, block_dim={options['block_dim']})",
                     active=warp.config.verbose,
                 ):
                     warp._src.build.build_cuda(
                         source_code_path,
-                        builder_options["output_arch"],
+                        options["output_arch"],
                         output_path,
                         config=mode,
                         optimization_level=opt,
-                        verify_fp=warp.config.verify_fp,
-                        fast_math=self.options["fast_math"],
-                        fuse_fp=self.options["fuse_fp"],
-                        lineinfo=self.options["lineinfo"],
-                        compile_time_trace=self.options["compile_time_trace"],
+                        verify_fp=options["verify_fp"],
+                        fast_math=options["fast_math"],
+                        fuse_fp=options["fuse_fp"],
+                        lineinfo=options["lineinfo"],
+                        compile_time_trace=options["compile_time_trace"],
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
-                        pch_dir=build_dir,
+                        pch_dir=runtime.get_pch_dir() or build_dir,
                     )
 
             except Exception as e:
@@ -2966,6 +2981,7 @@ class Module:
             return None
 
         module_hash = self.get_module_hash(active_block_dim)
+        options = self.resolved_options[active_block_dim]
 
         # use a unique module path using the module short hash
         module_name_short = self.get_module_identifier(active_block_dim)
@@ -3007,7 +3023,7 @@ class Module:
                 binary_path = os.path.join(module_dir, output_name)
 
                 try:
-                    compiled = self._compile(device, module_dir, output_name, output_arch)
+                    compiled = self._compile(device, module_dir, output_name, output_arch, options=options)
                 except Exception as e:
                     module_load_timer.extra_msg = " (error)"
                     raise e
@@ -3052,6 +3068,7 @@ class Module:
     def mark_modified(self):
         # clear hash data
         self.hashers = {}
+        self.resolved_options = {}
 
         # clear build failures
         self.failed_builds = set()
@@ -3075,7 +3092,7 @@ class Module:
 class CpuDefaultAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_host(size_in_bytes)
@@ -3090,7 +3107,7 @@ class CpuDefaultAllocator:
 class CpuPinnedAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_pinned(size_in_bytes)
@@ -3106,7 +3123,7 @@ class CudaDefaultAllocator:
     def __init__(self, device):
         assert device.is_cuda
         self.device = device
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes)
@@ -3139,7 +3156,7 @@ class CudaMempoolAllocator:
         assert device.is_cuda
         assert device.is_mempool_supported
         self.device = device
-        self.deleter = lambda ptr, size: self.free(ptr, size)
+        self.deleter = self.free
 
     def alloc(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes)
@@ -3803,7 +3820,7 @@ class Device:
                 If ``None``, falls back to global config or automatic determination.
 
         Returns:
-            The output format to use: ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
+            ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
         """
 
         if self.is_cpu:
@@ -4010,6 +4027,15 @@ class Runtime:
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
+
+            self.llvm.wp_compile_cuda.argtypes = [
+                ctypes.c_char_p,  # cuda_src
+                ctypes.c_char_p,  # input_file
+                ctypes.c_char_p,  # include_dir
+                ctypes.c_char_p,  # output_file
+                ctypes.c_bool,  # debug
+            ]
+            self.llvm.wp_compile_cuda.restype = ctypes.c_int
 
             if hasattr(self.llvm, "wp_llvm_version"):
                 self.llvm.wp_llvm_version.argtypes = []
@@ -4515,215 +4541,76 @@ class Runtime:
             ]
             self.core.wp_volume_get_blind_data_info.restype = ctypes.c_char_p
 
-            # Texture functions (device - CUDA)
-            self.core.wp_texture1d_create_device.argtypes = [
+            self.core.wp_texture_create_device.argtypes = [
                 ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
+                ctypes.c_int,  # ndim
+                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_bool,  # use_normalized_coords
                 ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
             ]
-            self.core.wp_texture1d_create_device.restype = ctypes.c_bool
+            self.core.wp_texture_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture1d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture1d_destroy_device.restype = None
+            self.core.wp_texture_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_destroy_device.restype = None
 
-            self.core.wp_texture2d_create_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
-            ]
-            self.core.wp_texture2d_create_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture2d_destroy_device.restype = None
-
-            self.core.wp_texture3d_create_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # depth
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_int,  # address_mode_w
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_bool,  # surface_access
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-                ctypes.POINTER(ctypes.c_uint64),  # array_handle_out
-            ]
-            self.core.wp_texture3d_create_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_destroy_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # tex_handle
-                ctypes.c_uint64,  # array_handle
-            ]
-            self.core.wp_texture3d_destroy_device.restype = None
-
-            self.core.wp_texture1d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # width_bytes
-            ]
-            self.core.wp_texture1d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture1d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-            ]
-            self.core.wp_texture1d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # src_pitch
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-            ]
-            self.core.wp_texture2d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture2d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_size_t,  # dst_pitch
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-            ]
-            self.core.wp_texture2d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_copy_from_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_array_handle
-                ctypes.c_uint64,  # src_ptr
-                ctypes.c_size_t,  # src_pitch
-                ctypes.c_size_t,  # src_height
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-                ctypes.c_size_t,  # depth
-            ]
-            self.core.wp_texture3d_copy_from_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture3d_copy_to_array_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_void_p,  # stream
-                ctypes.c_uint64,  # dst_ptr
-                ctypes.c_size_t,  # dst_pitch
-                ctypes.c_size_t,  # dst_height
-                ctypes.c_uint64,  # src_array_handle
-                ctypes.c_size_t,  # width_bytes
-                ctypes.c_size_t,  # height
-                ctypes.c_size_t,  # depth
-            ]
-            self.core.wp_texture3d_copy_to_array_device.restype = ctypes.c_bool
-
-            self.core.wp_texture_array_create_surface_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # array_handle
-                ctypes.POINTER(ctypes.c_uint64),  # surface_handle_out
-            ]
-            self.core.wp_texture_array_create_surface_device.restype = ctypes.c_bool
-
-            self.core.wp_texture_array_destroy_surface_device.argtypes = [
-                ctypes.c_void_p,  # context
-                ctypes.c_uint64,  # surface_handle
-            ]
-            self.core.wp_texture_array_destroy_surface_device.restype = None
-
-            # Texture functions (host - CPU)
-            self.core.wp_texture1d_create_host.argtypes = [
-                ctypes.c_int,  # width
+            self.core.wp_texture_create_host.argtypes = [
+                ctypes.c_int,  # ndim
+                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
+                ctypes.c_int,  # filter mode
+                ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
+                ctypes.c_void_p,  # data_ptr_out
             ]
-            self.core.wp_texture1d_create_host.restype = ctypes.c_bool
+            self.core.wp_texture_create_host.restype = ctypes.c_uint64
 
-            self.core.wp_texture1d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
-            ]
-            self.core.wp_texture1d_destroy_host.restype = None
+            self.core.wp_texture_destroy_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_texture_destroy_host.restype = None
 
-            self.core.wp_texture2d_create_host.argtypes = [
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
+            self.core.wp_texture_object_create_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # array_handle
+                ctypes.c_int,  # ndim
                 ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
+                ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
             ]
-            self.core.wp_texture2d_create_host.restype = ctypes.c_bool
+            self.core.wp_texture_object_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture2d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
-            ]
-            self.core.wp_texture2d_destroy_host.restype = None
+            self.core.wp_texture_object_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_object_destroy_device.restype = None
 
-            self.core.wp_texture3d_create_host.argtypes = [
-                ctypes.c_int,  # width
-                ctypes.c_int,  # height
-                ctypes.c_int,  # depth
-                ctypes.c_int,  # num_channels
-                ctypes.c_int,  # dtype (0=uint8, 1=uint16, 2=float32)
-                ctypes.c_int,  # filter_mode
-                ctypes.c_int,  # address_mode_u
-                ctypes.c_int,  # address_mode_v
-                ctypes.c_int,  # address_mode_w
-                ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data
-                ctypes.POINTER(ctypes.c_uint64),  # tex_handle_out
-            ]
-            self.core.wp_texture3d_create_host.restype = ctypes.c_bool
+            self.core.wp_surface_object_create_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_surface_object_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture3d_destroy_host.argtypes = [
-                ctypes.c_uint64,  # tex_handle
+            self.core.wp_surface_object_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_surface_object_destroy_device.restype = None
+
+            self.core.wp_texture_copy_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint,  # width_bytes
+                ctypes.c_uint,  # height
+                ctypes.c_uint,  # depth
+                ctypes.c_int,  # dst_memory_type
+                ctypes.c_uint64,  # dst_handle
+                ctypes.c_uint,  # dst_pitch
+                ctypes.c_uint,  # dst_height
+                ctypes.c_int,  # src_memory_type
+                ctypes.c_uint64,  # src_handle
+                ctypes.c_uint,  # src_pitch
+                ctypes.c_uint,  # src_height
+                ctypes.c_void_p,  # stream
             ]
-            self.core.wp_texture3d_destroy_host.restype = None
+            self.core.wp_texture_copy_device.restype = ctypes.c_bool
+
+            self.core.wp_texture_descriptor_from_cuda_array.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_texture_descriptor_from_cuda_array.restype = ctypes.c_bool
 
             bsr_matrix_from_triplets_argtypes = [
                 ctypes.c_int,  # block_size
@@ -5153,7 +5040,7 @@ class Runtime:
             self.core.wp_cuda_launch_kernel.restype = ctypes.c_size_t
 
             self.core.wp_cuda_graphics_map.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.wp_cuda_graphics_map.restype = None
+            self.core.wp_cuda_graphics_map.restype = ctypes.c_bool
             self.core.wp_cuda_graphics_unmap.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_graphics_unmap.restype = None
             self.core.wp_cuda_graphics_device_ptr_and_size.argtypes = [
@@ -5165,6 +5052,20 @@ class Runtime:
             self.core.wp_cuda_graphics_device_ptr_and_size.restype = None
             self.core.wp_cuda_graphics_register_gl_buffer.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint]
             self.core.wp_cuda_graphics_register_gl_buffer.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_register_gl_image.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint,
+            ]
+            self.core.wp_cuda_graphics_register_gl_image.restype = ctypes.c_void_p
+            self.core.wp_cuda_graphics_sub_resource_get_mapped_array.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_uint,
+                ctypes.c_uint,
+            ]
+            self.core.wp_cuda_graphics_sub_resource_get_mapped_array.restype = ctypes.c_uint64
             self.core.wp_cuda_graphics_unregister_resource.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_graphics_unregister_resource.restype = None
 
@@ -5207,6 +5108,7 @@ class Runtime:
             ("wp_host_compiler_version", ctypes.c_char_p),
             ("wp_libmathdx_version", ctypes.c_char_p),
             ("wp_nvrtc_version", ctypes.c_int),
+            ("wp_is_cubql_enabled", ctypes.c_int),
             ("wp_is_verify_fp_enabled", ctypes.c_int),
             ("wp_is_fast_math_enabled", ctypes.c_int),
         ]:
@@ -5237,6 +5139,9 @@ class Runtime:
         self.toolkit_version = None  # CTK version used to build the core lib
         self.driver_version = None  # installed driver version
         self.min_driver_version = None  # minimum required driver version
+
+        self._pch_dirs: dict[int, tempfile.TemporaryDirectory] = {}
+        self._pch_dirs_lock = threading.Lock()
 
         self.cuda_devices = []
         self.cuda_primary_devices = []
@@ -5463,6 +5368,20 @@ class Runtime:
                 )
                 msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
                 warp._src.utils.warn("\n   ".join(msg))
+
+    def get_pch_dir(self) -> str | None:
+        """Return a per-thread temporary directory for NVRTC precompiled header files.
+
+        Returns ``None`` when CUDA is not enabled or the toolkit version is
+        13.0+ (CUDA 13 manages PCH directories internally).
+        """
+        if self.toolkit_version is None or self.toolkit_version >= (13, 0):
+            return None
+        tid = threading.get_ident()
+        with self._pch_dirs_lock:
+            if tid not in self._pch_dirs:
+                self._pch_dirs[tid] = tempfile.TemporaryDirectory(prefix="wp_pch_")
+            return self._pch_dirs[tid].name
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")
@@ -5778,6 +5697,22 @@ def is_cuda_driver_initialized() -> bool:
     init()
 
     return runtime.core.wp_cuda_driver_is_initialized()
+
+
+def is_cubql_available() -> bool:
+    """Check whether the cuBQL BVH backend is available.
+
+    Returns:
+        ``True`` if the native library was compiled with cuBQL support, ``False`` otherwise.
+
+    See Also:
+        :func:`is_cuda_available`
+    """
+    init()
+
+    if hasattr(runtime.core, "wp_is_cubql_enabled"):
+        return bool(runtime.core.wp_is_cubql_enabled())
+    return False
 
 
 def get_cuda_supported_archs() -> list[int]:
@@ -6930,36 +6865,36 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             return value.__ctype__()
 
     # Handle Texture1D, Texture2D and Texture3D types (when used as type annotations)
-    elif arg_type is warp._src.types.Texture1D:
+    elif arg_type is Texture1D:
         if value is None:
-            return warp._src.types.texture1d_t()
-        if isinstance(value, warp._src.types.Texture1D):
+            return texture1d_t()
+        if isinstance(value, Texture1D):
             return value.__ctype__()
-        if isinstance(value, warp._src.types.texture1d_t):
+        if isinstance(value, texture1d_t):
             return value
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture1D "
             f"but got {type(value).__name__}"
         )
 
-    elif arg_type is warp._src.types.Texture2D:
+    elif arg_type is Texture2D:
         if value is None:
-            return warp._src.types.texture2d_t()
-        if isinstance(value, warp._src.types.Texture2D):
+            return texture2d_t()
+        if isinstance(value, Texture2D):
             return value.__ctype__()
-        if isinstance(value, warp._src.types.texture2d_t):
+        if isinstance(value, texture2d_t):
             return value
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture2D "
             f"but got {type(value).__name__}"
         )
 
-    elif arg_type is warp._src.types.Texture3D:
+    elif arg_type is Texture3D:
         if value is None:
-            return warp._src.types.texture3d_t()
-        if isinstance(value, warp._src.types.Texture3D):
+            return texture3d_t()
+        if isinstance(value, Texture3D):
             return value.__ctype__()
-        if isinstance(value, warp._src.types.texture3d_t):
+        if isinstance(value, texture3d_t):
             return value
         raise RuntimeError(
             f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects Texture3D "
@@ -6998,7 +6933,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # Already the correct ctypes structure, pass directly
             return value
         # Check if value is a Texture object that needs conversion
-        if arg_type is warp._src.types.texture1d_t and isinstance(value, warp._src.types.Texture1D):
+        if arg_type is texture1d_t and isinstance(value, Texture1D):
             # check device
             if value.device != device:
                 raise RuntimeError(
@@ -7006,7 +6941,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"but input texture for argument '{arg_name}' is on device={value.device}."
                 )
             return value.__ctype__()
-        if arg_type is warp._src.types.texture2d_t and isinstance(value, warp._src.types.Texture2D):
+        if arg_type is texture2d_t and isinstance(value, Texture2D):
             # check device
             if value.device != device:
                 raise RuntimeError(
@@ -7014,7 +6949,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"but input texture for argument '{arg_name}' is on device={value.device}."
                 )
             return value.__ctype__()
-        if arg_type is warp._src.types.texture3d_t and isinstance(value, warp._src.types.Texture3D):
+        if arg_type is texture3d_t and isinstance(value, Texture3D):
             # check device
             if value.device != device:
                 raise RuntimeError(
@@ -8208,6 +8143,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level, defaults to the value of ``warp.config.optimization_level`` when ``None``.
+    * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
@@ -8474,7 +8410,7 @@ condition_host = None
 
 
 def capture_if(
-    condition: warp.array(dtype=int),
+    condition: warp.array[int],
     on_true: Callable | Graph | None = None,
     on_false: Callable | Graph | None = None,
     stream: Stream = None,
@@ -8621,9 +8557,7 @@ def capture_if(
     capture_resume(main_graph, stream=stream)
 
 
-def capture_while(
-    condition: warp.array(dtype=int), while_body: Callable | Graph, stream: Stream | None = None, **kwargs
-):
+def capture_while(condition: warp.array[int], while_body: Callable | Graph, stream: Stream | None = None, **kwargs):
     """Create a dynamic loop based on a condition.
 
     The condition value is retrieved from the first element of the ``condition`` array.
@@ -9359,18 +9293,6 @@ def export_stubs(file):  # pragma: no cover
     print(
         """# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """,
         file=file,
     )
@@ -9392,17 +9314,20 @@ def export_stubs(file):  # pragma: no cover
     print("import builtins as _builtins", file=file)
     print(file=file)
 
-    # Import type aliases needed for generic class definitions
+    # Import Int/Scalar/Float TypeVars from types.py. Their constraints are defined
+    # so that Int ⊂ Scalar and Float ⊂ Scalar, which lets mypy accept Vector[Int, Any]
+    # and Vector[Float, Any] when Vector is Generic[Scalar, Length].
     print("from warp._src.types import Int as Int", file=file)
-    print("from warp._src.types import Float as Float", file=file)
     print("from warp._src.types import Scalar as Scalar", file=file)
-    print(file=file)
+    print("from warp._src.types import Float as Float", file=file)
 
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
     print('Rows = TypeVar("Rows", bound=int)', file=file)
     print('Cols = TypeVar("Cols", bound=int)', file=file)
     print('DType = TypeVar("DType")', file=file)
+    # NDim uses PEP 696 default so type checkers accept both array[dtype] and array[dtype, ndim]
+    print('NDim = TypeVar("NDim", bound=int, default=int)', file=file)
     print('Shape = TypeVar("Shape")', file=file)
 
     # Generic type stubs - must be proper class definitions, not type alias assignments.
@@ -9411,9 +9336,9 @@ def export_stubs(file):  # pragma: no cover
     print("class Matrix(Generic[Scalar, Rows, Cols]): ...", file=file)
     print("class Quaternion(Generic[Float]): ...", file=file)
     print("class Transformation(Generic[Float]): ...", file=file)
-    print("class Array(Generic[DType]): ...", file=file)
-    print("class FabricArray(Generic[DType]): ...", file=file)
-    print("class IndexedFabricArray(Generic[DType]): ...", file=file)
+    print("class Array(Generic[DType, NDim]): ...", file=file)
+    print("class FabricArray(Generic[DType, NDim]): ...", file=file)
+    print("class IndexedFabricArray(Generic[DType, NDim]): ...", file=file)
     print("class Tile(Generic[DType, Shape]): ...", file=file)
 
     # =========================================================================
@@ -9468,11 +9393,17 @@ def export_stubs(file):  # pragma: no cover
                 pass  # Keep f.value_type as fallback
         return type_str(return_type)
 
-    def add_builtin_function_stub(f, use_overload=True):
+    def add_builtin_function_stub(f, use_overload=True, type_overrides=None):
         if f.hidden:  # or f.generic:
             return
 
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+        if type_overrides:
+            args = ", ".join(
+                f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(v)}"
+                for k, v in f.input_types.items()
+            )
+        else:
+            args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
         rt_str = get_return_type_str(f)
         return_str = f" -> {rt_str}"
 
@@ -9713,6 +9644,65 @@ def export_stubs(file):  # pragma: no cover
     # =========================================================================
     # Step 5: Generate stubs for non-conflicting builtins
     # =========================================================================
+
+    def _merge_overloads_by_union(overloads):
+        """Merge overloads that differ in only one parameter into a Union type.
+
+        When 3+ overloads share parameter names, return type, and all parameter
+        types except at one position, they are collapsed into a single overload
+        with a ``Union`` at that position.  This prevents mypy
+        ``overload-cannot-match`` errors when ``--follow-imports=silent`` causes
+        imported types to degenerate to ``Any``.
+
+        Returns ``[(function, type_overrides_or_None), ...]``.
+        """
+        if len(overloads) < 3:
+            return [(f, None) for f in overloads]
+
+        # Group overloads by (param_names, return_type)
+        groups = collections.defaultdict(list)
+        for f in overloads:
+            key = (tuple(f.input_types.keys()), get_return_type_str(f))
+            groups[key].append(f)
+
+        merged = set()  # ids of overloads consumed by a merge
+        result = []
+
+        for f in overloads:
+            if id(f) in merged:
+                continue
+
+            key = (tuple(f.input_types.keys()), get_return_type_str(f))
+            group = groups[key]
+
+            if len(group) >= 3:
+                # Find parameter positions where types differ
+                varying = [p for p in f.input_types if len({type_str(g.input_types[p]) for g in group}) > 1]
+                if len(varying) == 1:
+                    vp = varying[0]
+                    union = " | ".join(dict.fromkeys(type_str(g.input_types[vp]) for g in group))
+                    result.append((f, {vp: union}))
+                    merged.update(id(g) for g in group)
+                    continue
+
+            result.append((f, None))
+
+        return result
+
+    # Types considered "generic" for overload sorting — specific types (Vector,
+    # Matrix, etc.) must come before these so mypy doesn't flag them as
+    # unreachable.
+    _generic_types = {
+        warp._src.types.Scalar,
+        warp._src.types.Float,
+        warp._src.types.Int,
+        Any,
+        bool,
+        int,
+        float,
+        str,
+    }
+
     for g in builtin_functions.values():
         # Skip conflicts - already handled above
         if g.key in reexport_only:
@@ -9741,8 +9731,17 @@ def export_stubs(file):  # pragma: no cover
 
             # Otherwise emit separate @overload stubs as usual
             use_overload = len(non_hidden_overloads) > 1
-            for f in non_hidden_overloads:
-                add_builtin_function_stub(f, use_overload=use_overload)
+
+            # Sort specific overloads before generic ones for mypy
+            if use_overload:
+                non_hidden_overloads.sort(key=lambda f: sum(v in _generic_types for v in f.input_types.values()))
+
+            # Merge overloads that differ in only one parameter position
+            stubs = _merge_overloads_by_union(non_hidden_overloads)
+            use_overload = len(stubs) > 1
+
+            for f, type_overrides in stubs:
+                add_builtin_function_stub(f, use_overload=use_overload, type_overrides=type_overrides)
         elif isinstance(g, Function):
             # Single function without overloads - no @overload decorator needed
             add_builtin_function_stub(g, use_overload=False)
@@ -9995,6 +9994,8 @@ def print_diagnostics() -> dict:
     libmathdx_ver = runtime.get_libmathdx_version()
     info["libmathdx"] = libmathdx_ver if libmathdx_ver else None
 
+    info["cubql_enabled"] = _build_flag("cubql")
+
     info["nanovdb"] = runtime.get_nanovdb_version()
     info["host_compiler"] = runtime.get_host_compiler_version()
 
@@ -10062,6 +10063,7 @@ def print_diagnostics() -> dict:
 
     _section("Libraries")
     _field("MathDx:", info["libmathdx"] if info["mathdx_enabled"] and info["libmathdx"] else "not available")
+    _field("cuBQL:", "enabled" if info["cubql_enabled"] else "not available")
     _field("NanoVDB:", info["nanovdb"])
 
     _section("Build")

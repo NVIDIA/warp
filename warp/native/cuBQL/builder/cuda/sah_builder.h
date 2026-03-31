@@ -65,7 +65,7 @@ namespace cuBQL {
     {
       float bestCost = CUBQL_INF;
       
-      float rAreas[sah.numBins];
+      float rAreas[SAHBins<box_t>::numBins];
       for (int d=0;d<3;d++) {
         box_t box; box.set_empty();
         int   rCount = 0;
