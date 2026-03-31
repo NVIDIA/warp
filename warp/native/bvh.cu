@@ -18,10 +18,15 @@
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 #define REORDER_HOST_TREE
 
+// CUB must be included before cuBQL. cuBQL's math/common.h includes <stdexcept>,
+// which causes CCCL's _CCCL_HAS_EXCEPTIONS() to be true when typeid.h is later
+// pulled in by CUB. This makes __throw_out_of_range non-constexpr, breaking a
+// static_assert in typeid.h on GCC < 12 (which lacks P2448R2 relaxed constexpr).
+#include <cub/cub.cuh>
+
 #ifndef WP_DISABLE_CUBQL
 #include "cuBQL/bvh.h"
 #endif
-#include <cub/cub.cuh>
 
 extern CUcontext get_current_context();
 
