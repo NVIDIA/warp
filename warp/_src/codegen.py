@@ -1674,6 +1674,8 @@ class Adjoint:
                     adj.add_forward(f"var_{arg} = {constant_str(func.value_type(raw))};")
                     return arg
 
+        callee_uses_logging = False
+
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             # If the function called is a user function,
@@ -1697,7 +1699,8 @@ class Adjoint:
 
             # Propagate uses_logging upward: if a called @wp.func (transitively) uses
             # wp.log(), the caller also needs the hidden log-buffer parameter in scope.
-            if getattr(getattr(func, "adj", None), "uses_logging", False):
+            callee_uses_logging = getattr(getattr(func, "adj", None), "uses_logging", False)
+            if callee_uses_logging:
                 adj.uses_logging = True
 
         # Resolve the return value based on the types and values of the given arguments.
@@ -1778,7 +1781,7 @@ class Adjoint:
         # log buffer as the final hidden argument so it is in scope inside the callee.
         def _fmt_args(args):
             s = adj.format_forward_call_args(args, use_initializer_list)
-            if getattr(getattr(func, "adj", None), "uses_logging", False):
+            if callee_uses_logging:
                 s = (s + ", " if s else "") + "var_warp_log_buffer"
             return s
 
@@ -1824,7 +1827,7 @@ class Adjoint:
                 require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
-                if getattr(getattr(func, "adj", None), "uses_logging", False):
+                if callee_uses_logging:
                     arg_str = (arg_str + ", " if arg_str else "") + "var_warp_log_buffer"
                 reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                 adj.add_reverse(reverse_call)
@@ -4458,9 +4461,7 @@ def _warp_log_codegen(adj, bound_args):
 
     level_var = bound_args["level"]
     if level_var.constant is None:
-        raise WarpCodegenError(
-            "wp.log(): 'level' must be a compile-time constant (e.g. wp.LOG_WARNING, wp.LOG_ERROR)"
-        )
+        raise WarpCodegenError("wp.log(): 'level' must be a compile-time constant (e.g. wp.LOG_WARNING, wp.LOG_ERROR)")
     level = int(level_var.constant)
 
     msg_var = bound_args["msg"]
@@ -4469,12 +4470,22 @@ def _warp_log_codegen(adj, bound_args):
             "wp.log(): 'msg' must be a string literal.  Runtime-formatted strings are not supported "
             "because all message text is resolved at compile time to avoid GPU→host string copies.  "
             "Pass a fixed label and attach a numeric value as the optional payload instead: "
-            "wp.log(wp.LOG_INFO, \"my label\", my_value)"
+            'wp.log(wp.LOG_INFO, "my label", my_value)'
         )
     msg = msg_var.constant
 
     abs_lineno = (adj.lineno or 0) + adj.fun_lineno
-    key = _ctx._register_log_call_site(level, msg, adj.filename, abs_lineno)
+
+    # Derive the Python logger name from the module where the kernel is defined
+    # so that records from different subsystems route to separate logger nodes in
+    # Python's logging hierarchy (e.g. "warp.kernel.my_app.physics.kernels").
+    # adj.builder is a ModuleBuilder during normal compilation; None otherwise.
+    if adj.builder is not None:
+        logger_name = f"warp.kernel.{adj.builder.module.name}"
+    else:
+        logger_name = "warp.kernel"
+
+    key = _ctx._register_log_call_site(level, msg, adj.filename, abs_lineno, logger_name)
     adj.uses_logging = True
 
     value_var_raw = bound_args.get("value")
@@ -4485,22 +4496,18 @@ def _warp_log_codegen(adj, bound_args):
 
         if vtype in (int32, int):
             call = f"wp::wp_log_write_i32(var_warp_log_buffer, {key}u, (wp::int32){vname});"
-        elif vtype == int64:
-            call = f"wp::wp_log_write_i64(var_warp_log_buffer, {key}u, (wp::int64){vname});"
         elif vtype in (float32, float):
             call = f"wp::wp_log_write_f32(var_warp_log_buffer, {key}u, (wp::float32){vname});"
         else:
             raise WarpCodegenError(
-                f"wp.log(): unsupported payload type '{vtype.__name__}'; expected int32, int64, or float32"
+                f"wp.log(): unsupported payload type '{getattr(vtype, '__name__', repr(vtype))}'; expected int32 or float32"
             )
     else:
         call = f"wp::wp_log_write_nop(var_warp_log_buffer, {key}u);"
 
-    # replay="" suppresses re-execution in the backward pass — log writes have no
+    # replay=";" suppresses re-execution in the backward pass — log writes have no
     # gradient contribution and should not appear twice in differentiable programs.
     adj.add_forward(call, replay=";")
-
-    return None  # void
 
 
 # converts a constant Python value to equivalent C-repr

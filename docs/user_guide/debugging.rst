@@ -82,11 +82,10 @@ To log multiple values, issue multiple ``wp.log()`` calls with distinct labels::
     wp.log(wp.LOG_DEBUG, "index", i)
     wp.log(wp.LOG_DEBUG, "value at index", data[i])
 
-An optional numeric payload—``int32``, ``int64``, or ``float32``—can be attached::
+An optional numeric payload—``int32`` or ``float32``—can be attached::
 
-    wp.log(wp.LOG_INFO, "value", my_int32_var)      # int32 payload
-    wp.log(wp.LOG_WARNING, "large index", big_idx)  # int64 payload
-    wp.log(wp.LOG_DEBUG, "ratio", ratio_f32)        # float32 payload
+    wp.log(wp.LOG_INFO, "value", my_int32_var)   # int32 payload
+    wp.log(wp.LOG_DEBUG, "ratio", ratio_f32)     # float32 payload
 
 **Drain trigger**
 
@@ -109,7 +108,7 @@ so the built-in formatter directives work without any customisation::
     )
     # output: bounds_check.py:4 [WARNING] index out of range: 42
 
-The numeric payload (when present) is available as ``record.warp_payload`` for
+The numeric payload (when present) is available as ``record.args[0]`` for
 structured log handlers that need the raw value.
 
 **Overflow**
@@ -118,7 +117,7 @@ If more records are written than the ring buffer can hold, the excess are silent
 dropped and counted.  After the next drain, a warning is emitted reporting the dropped
 count.  The buffer size (per device) is controlled by::
 
-    wp.config.kernel_log_capacity = 4096  # default
+    wp.config.kernel_log_capacity = 1024  # default
 
 Increase this value if many threads log per launch or if multiple launches occur
 between synchronizations.  Additional utilities:

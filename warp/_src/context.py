@@ -9,7 +9,6 @@ import ctypes
 import enum
 import functools
 import hashlib
-import zlib
 import importlib
 import importlib.metadata
 import inspect
@@ -28,6 +27,7 @@ import tempfile
 import threading
 import types
 import weakref
+import zlib
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy as shallowcopy
@@ -3201,21 +3201,19 @@ LOG_ERROR = 40
 # Payload type tags (mirror of WP_LOG_PAYLOAD_* in log.h)
 _LOG_PAYLOAD_NONE = 0
 _LOG_PAYLOAD_I32 = 1
-_LOG_PAYLOAD_I64 = 2
-_LOG_PAYLOAD_F32 = 3
+_LOG_PAYLOAD_F32 = 2
 
 # Buffer memory layout constants (must match log.h structs)
 _LOG_HEADER_BYTES = 16  # sizeof(WpLogBuffer) header (4 x uint32_t)
-_LOG_ENTRY_BYTES = 16  # sizeof(WpLogEntry)  (2 x uint32_t + 8-byte union)
-
-_kernel_logger = logging.getLogger("warp.kernel")
+_LOG_ENTRY_BYTES = 12  # sizeof(WpLogEntry)  (2 x uint32_t + 4-byte union)
 
 
 def get_kernel_log_overflow_count(device=None):
     """Return the number of kernel log records dropped since the last drain on *device*.
 
     Records are dropped when the ring buffer is full.  The count is reset to
-    zero each time the buffer is drained (on :func:`warp.synchronize`).
+    zero each time the buffer is drained (on :func:`warp.synchronize_device` or
+    :func:`warp.synchronize_stream`).
 
     Args:
         device: The device to query.  Defaults to the default CUDA device or
@@ -3256,7 +3254,7 @@ def reset_kernel_log(device=None):
             device._kernel_log_buffer.reset()
 
 
-def _register_log_call_site(level: int, msg: str, filename: str, lineno: int) -> int:
+def _register_log_call_site(level: int, msg: str, filename: str, lineno: int, logger_name: str) -> int:
     """Register a wp.log() call site and return its stable 32-bit hash key.
 
     Called at codegen time (Python side only).  Returns a 32-bit integer
@@ -3270,7 +3268,7 @@ def _register_log_call_site(level: int, msg: str, filename: str, lineno: int) ->
     """
     raw = f"{level}|{msg}|{filename}|{lineno}"
     key = zlib.crc32(raw.encode()) & 0xFFFFFFFF
-    runtime.log_call_sites[key] = (level, msg, filename, lineno)
+    runtime.log_call_sites[key] = (level, msg, filename, lineno, logger_name)
     return key
 
 
@@ -3279,10 +3277,10 @@ def _drain_log(buf):
     if buf is None:
         return
     records, overflow = buf.drain()
-    for call_site_key, payload_type, payload in records:
+    for call_site_key, payload in records:
         entry = runtime.log_call_sites.get(call_site_key)
         if entry is not None:
-            level, msg, filename, lineno = entry
+            level, msg, filename, lineno, logger_name = entry
         else:
             warp._src.utils.warn(
                 f"Kernel log record has unrecognised call_site_key={call_site_key:#010x}; "
@@ -3290,39 +3288,45 @@ def _drain_log(buf):
                 "without the owning Python module being imported first.",
                 once=True,
             )
-            level, msg, filename, lineno = LOG_WARNING, "<unknown log call site>", "<unknown>", 0
-        _emit_kernel_log_record(level, msg, filename, lineno, payload_type, payload)
+            level, msg, filename, lineno, logger_name = (
+                LOG_WARNING,
+                "<unknown log call site>",
+                "<unknown>",
+                0,
+                "warp.kernel",
+            )
+        _emit_kernel_log_record(level, msg, filename, lineno, payload, logger_name)
     if overflow:
         _emit_kernel_log_record(
             LOG_WARNING,
             f"{overflow} kernel log record(s) were dropped (buffer full); increase wp.config.kernel_log_capacity",
             "<warp>",
             0,
-            _LOG_PAYLOAD_NONE,
             None,
+            "warp.kernel",
         )
 
 
-def _emit_kernel_log_record(level, msg, filename, lineno, payload_type, payload):
-    """Forward a single kernel log record to the ``warp.kernel`` stdlib logger.
+def _emit_kernel_log_record(level, msg, filename, lineno, payload, logger_name):
+    """Forward a single kernel log record to the appropriate stdlib logger.
+
+    The logger is determined by ``logger_name``, which is derived at codegen
+    time from the Python module where the kernel is defined — e.g.
+    ``"warp.kernel.my_app.physics.kernels"``.  This allows per-subsystem
+    routing via the standard Python logging hierarchy with no user setup.
 
     Uses ``makeRecord`` so that standard formatter directives (``%(filename)s``,
     ``%(lineno)d``) resolve to the kernel source location rather than to this
     drain function.  The numeric payload, when present, is passed as ``args`` so
-    that ``record.getMessage()`` returns ``"<msg>: <value>"`` while
-    ``record.args`` and ``record.warp_payload`` remain available for structured
-    processing.
+    that ``record.getMessage()`` returns ``"<msg>: <value>"`` and
+    ``record.args[0]`` holds the raw numeric value for structured processing.
     """
-    if payload_type != _LOG_PAYLOAD_NONE:
-        record = _kernel_logger.makeRecord(
-            _kernel_logger.name, level, filename, lineno, msg + ": %s", (payload,), None
-        )
-        record.warp_payload = payload
-    else:
-        record = _kernel_logger.makeRecord(
-            _kernel_logger.name, level, filename, lineno, msg, (), None
-        )
-    _kernel_logger.handle(record)
+    logger = logging.getLogger(logger_name)
+    if not logger.isEnabledFor(level):
+        return
+    args = (payload,) if payload is not None else ()
+    fmt = (msg.replace("%", "%%") + ": %s") if payload is not None else msg
+    logger.handle(logger.makeRecord(logger.name, level, filename, lineno, fmt, args, None))
 
 
 class KernelLogBuffer:
@@ -3341,29 +3345,29 @@ class KernelLogBuffer:
         Offset 4    : capacity       (uint32) -number of entry slots
         Offset 8    : overflow_count (uint32) -dropped records
         Offset 12   : _pad           (uint32)
-        Offset 16+  : WpLogEntry[]   -call_site_key(u32), payload_type(i32),
-                                       payload(8 bytes, union i32/i64/f32)
+        Offset 16+  : WpLogEntry[]   -call_site_key(u32), payload_type(u32),
+                                       payload(4 bytes, union i32/f32)
     """
+
+    _Header = ctypes.c_uint32 * 4  # [write_idx, capacity, overflow_count, _pad]
 
     def __init__(self, capacity: int):
         total_bytes = _LOG_HEADER_BYTES + capacity * _LOG_ENTRY_BYTES
         self._ptr = runtime.core.wp_alloc_pinned(total_bytes)
         if not self._ptr:
             raise RuntimeError(f"Failed to allocate kernel log buffer ({total_bytes} bytes)")
-        self._total_bytes = total_bytes
         self._capacity = capacity
 
-        # Map header as a ctypes array so we can read/write fields directly
-        # Layout: [write_idx, capacity, overflow_count, _pad]
-        Header = ctypes.c_uint32 * 4
-        self._header = Header.from_address(self._ptr)
+        self._header = KernelLogBuffer._Header.from_address(self._ptr)
+
+        # Map the full entry region once; drain() uses a slice up to count.
+        entry_start = self._ptr + _LOG_HEADER_BYTES
+        self._entries = (ctypes.c_uint8 * (capacity * _LOG_ENTRY_BYTES)).from_address(entry_start)
 
         # Initialise header
         self._header[0] = 0  # write_idx
         self._header[1] = capacity  # capacity
         self._header[2] = 0  # overflow_count
-        self._header[3] = 0  # _pad
-
 
     def __del__(self):
         if self._ptr:
@@ -3374,11 +3378,17 @@ class KernelLogBuffer:
             self._ptr = None
 
     @property
+    def ptr(self) -> int:
+        """Raw pointer to the pinned buffer, suitable for passing to ctypes."""
+        return self._ptr
+
+    @property
     def overflow_count(self) -> int:
+        """Number of records dropped since the last drain due to a full buffer."""
         return int(self._header[2])
 
     def reset(self):
-        """Clear the buffer without draining."""
+        """Discard all buffered records and reset the overflow counter without emitting them."""
         self._header[0] = 0  # write_idx
         self._header[2] = 0  # overflow_count
 
@@ -3387,40 +3397,42 @@ class KernelLogBuffer:
 
         Returns:
             tuple: ``(records, overflow_count)`` where *records* is a list of
-            ``(call_site_key, payload_type, payload)`` tuples and *overflow_count*
-            is the number of records dropped since the last drain.
+            ``(call_site_key, payload)`` tuples — *payload* is a Python ``int``,
+            ``float``, or ``None`` — and *overflow_count* is the number of records
+            dropped since the last drain.
         """
         # Snapshot and reset atomically-ish on host.  After synchronize() the
         # device is idle, so there is no concurrent writer.
         count = min(int(self._header[0]), self._capacity)
         overflow = int(self._header[2])
 
-        # Reset before reading so any new launches don't confuse old data
+        # Reset now so the buffer is ready for the next launch before we spend
+        # time in the parse loop below.  count/overflow are already snapshotted
+        # above, so this cannot affect what we parse.
         self._header[0] = 0
         self._header[2] = 0
 
         if count == 0:
             return [], overflow
 
-        # Map the entry region as raw bytes then parse
-        entry_start = self._ptr + _LOG_HEADER_BYTES
-        RawEntries = ctypes.c_uint8 * (count * _LOG_ENTRY_BYTES)
-        raw = RawEntries.from_address(entry_start)
-        data = bytes(raw)
-
         records = []
         for i in range(count):
             off = i * _LOG_ENTRY_BYTES
-            call_site_key, payload_type = _struct_mod.unpack_from("<Ii", data, off)
+            call_site_key, payload_type = _struct_mod.unpack_from("<II", self._entries, off)
             if payload_type == _LOG_PAYLOAD_I32:
-                payload = _struct_mod.unpack_from("<i", data, off + 8)[0]
-            elif payload_type == _LOG_PAYLOAD_I64:
-                payload = _struct_mod.unpack_from("<q", data, off + 8)[0]
+                payload = _struct_mod.unpack_from("<i", self._entries, off + 8)[0]
             elif payload_type == _LOG_PAYLOAD_F32:
-                payload = _struct_mod.unpack_from("<f", data, off + 8)[0]
-            else:
+                payload = _struct_mod.unpack_from("<f", self._entries, off + 8)[0]
+            elif payload_type == _LOG_PAYLOAD_NONE:
                 payload = None
-            records.append((call_site_key, payload_type, payload))
+            else:
+                warp._src.utils.warn(
+                    f"Kernel log entry has unknown payload_type={payload_type}; "
+                    "possible version mismatch between cached binary and current Warp.",
+                    once=True,
+                )
+                payload = None
+            records.append((call_site_key, payload))
 
         return records, overflow
 
@@ -4351,9 +4363,9 @@ class Runtime:
         self.captures = {}
 
         # Registry of wp.log() call sites populated at codegen time.
-        # Each entry is (level, msg, filename, lineno).  The list index is
-        # the integer key embedded as a compile-time constant in kernel code.
-        self.log_call_sites: dict = {}  # {call_site_key: (level, msg, filename, lineno)}
+        # Maps the stable CRC32 key (embedded as a compile-time constant in kernel
+        # code) to (level, msg, filename, lineno, logger_name).
+        self.log_call_sites: dict = {}  # {key: (level, msg, filename, lineno, logger_name)}
 
         # setup c-types for warp.dll
         try:
@@ -7727,7 +7739,7 @@ def launch(
                 log_buf = stream.get_log_buffer()
             else:
                 log_buf = device.get_kernel_log_buffer()
-            params.append(ctypes.c_void_p(log_buf._ptr))
+            params.append(ctypes.c_void_p(log_buf.ptr))
 
         # run kernel
         if device.is_cpu:
@@ -8611,6 +8623,13 @@ def capture_begin(
 
         if force_module_load:
             force_load(device)
+
+    # Pre-allocate the kernel log buffer before capture starts.
+    # cudaMallocHost is not permitted during CUDA stream capture (error 900), so lazy
+    # allocation inside wp.launch() would fail.  Allocating here ensures the buffer
+    # exists before any kernel that uses wp.log() is recorded into the graph.
+    if warp.config.kernel_log_capacity > 0:
+        stream.get_log_buffer()
 
     if not runtime.core.wp_cuda_graph_begin_capture(device.context, stream.cuda_stream, int(external)):
         raise RuntimeError(runtime.get_error_string())

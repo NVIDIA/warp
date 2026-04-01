@@ -260,7 +260,7 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
-kernel_log_capacity: int = 4096
+kernel_log_capacity: int = 1024
 """Number of ring-buffer slots pre-allocated per device for kernel logging.
 
 Controls how many :func:`warp.log` records can be buffered between successive

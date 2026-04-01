@@ -10,6 +10,7 @@ import unittest
 import warp as wp
 import warp._src.context as ctx
 import warp.config
+from warp._src.codegen import WarpCodegenError
 from warp.tests.unittest_utils import add_function_test, get_test_devices
 
 # ---------------------------------------------------------------------------
@@ -27,16 +28,22 @@ def _kernel_log_basic(out: wp.array(dtype=wp.int32)):
 @wp.kernel
 def _kernel_log_no_payload(out: wp.array(dtype=wp.int32)):
     i = wp.tid()
-    wp.log(wp.LOG_WARN, "no payload here")
+    wp.log(wp.LOG_WARNING, "no payload here")
     out[i] = i
 
 
 @wp.kernel
-def _kernel_log_int64(out: wp.array(dtype=wp.int64)):
+def _kernel_log_two_payloads(out: wp.array(dtype=wp.int32)):
     i = wp.tid()
-    v = wp.int64(i) * wp.int64(1000)
-    wp.log(wp.LOG_DEBUG, "int64 payload", v)
-    out[i] = v
+    wp.log(wp.LOG_INFO, "two values", i, i)  # two positional payloads — invalid
+    out[i] = i
+
+
+@wp.kernel
+def _kernel_log_percent_in_msg(out: wp.array(dtype=wp.int32)):
+    i = wp.tid()
+    wp.log(wp.LOG_INFO, "50% done", i)
+    out[i] = i
 
 
 @wp.kernel
@@ -142,27 +149,33 @@ class TestKernelLog(unittest.TestCase):
 
     def test_codegen_uses_logging_flag(self):
         """Kernels with wp.log() set uses_logging=True on the Adjoint."""
-        _kernel_log_basic.adj.build(_kernel_log_basic.module)
+        _kernel_log_basic.adj.build(builder=None)
         self.assertTrue(_kernel_log_basic.adj.uses_logging)
 
     def test_codegen_no_payload_kernel(self):
         """Kernels with no-payload wp.log() also set uses_logging=True."""
-        _kernel_log_no_payload.adj.build(_kernel_log_no_payload.module)
+        _kernel_log_no_payload.adj.build(builder=None)
         self.assertTrue(_kernel_log_no_payload.adj.uses_logging)
 
+    def test_codegen_two_payloads_error(self):
+        """wp.log() with two payload arguments raises a compile-time error."""
+        with self.assertRaises(WarpCodegenError):
+            _kernel_log_two_payloads.adj.build(builder=None)
+
     def test_codegen_call_site_registered(self):
-        """Each wp.log() call registers a (level, msg, file, line) entry."""
+        """Each wp.log() call registers a (level, msg, file, line, logger_name) entry."""
         original = dict(ctx.runtime.log_call_sites)
         ctx.runtime.log_call_sites.clear()
         try:
-            _kernel_log_basic.adj.build(_kernel_log_basic.module)
+            _kernel_log_basic.adj.build(builder=None)
             sites = ctx.runtime.log_call_sites
             self.assertGreater(len(sites), 0)
-            level, msg, filename, lineno = next(iter(sites.values()))
+            level, msg, filename, lineno, logger_name = next(iter(sites.values()))
             self.assertEqual(level, wp.LOG_INFO)
             self.assertEqual(msg, "basic test")
             self.assertIn("test_kernel_log", filename)
             self.assertIsInstance(lineno, int)
+            self.assertTrue(logger_name.startswith("warp.kernel"))
         finally:
             ctx.runtime.log_call_sites.clear()
             ctx.runtime.log_call_sites.update(original)
@@ -187,11 +200,11 @@ def test_log_basic(test, device):
     # Standard LogRecord fields point to the kernel source, not to context.py
     test.assertIn("test_kernel_log", r.filename)
     test.assertIsInstance(r.lineno, int)
-    test.assertIsInstance(r.warp_payload, int)
+    test.assertIsInstance(r.args[0], int)
 
 
 def test_log_no_payload(test, device):
-    """wp.log(level, msg) without a payload produces records without warp_payload."""
+    """wp.log(level, msg) without a payload produces records with empty args."""
     n = 2
     out = wp.zeros(n, dtype=wp.int32, device=device)
     with _capture_kernel_log() as records:
@@ -201,21 +214,7 @@ def test_log_no_payload(test, device):
     test.assertGreater(len(records), 0)
     r = records[0]
     test.assertIn("no payload here", r.getMessage())
-    test.assertFalse(hasattr(r, "warp_payload"))
-
-
-def test_log_payload_int64(test, device):
-    """wp.log with an int64 payload produces correct integer records."""
-    n = 3
-    out = wp.zeros(n, dtype=wp.int64, device=device)
-    with _capture_kernel_log() as records:
-        wp.launch(_kernel_log_int64, dim=n, inputs=[out], device=device)
-        wp.synchronize_device(device)
-
-    test.assertGreater(len(records), 0)
-    for r in records:
-        test.assertIn("int64 payload", r.getMessage())
-        test.assertIsInstance(r.warp_payload, int)
+    test.assertFalse(r.args)
 
 
 def test_log_payload_float32(test, device):
@@ -228,7 +227,7 @@ def test_log_payload_float32(test, device):
 
     test.assertGreater(len(records), 0)
     for r in records:
-        test.assertIsInstance(r.warp_payload, float)
+        test.assertIsInstance(r.args[0], float)
 
 
 def test_log_not_drained_before_sync(test, device):
@@ -254,7 +253,7 @@ def test_log_all_levels(test, device):
     levels = {r.levelno for r in records}
     test.assertIn(wp.LOG_DEBUG, levels)
     test.assertIn(wp.LOG_INFO, levels)
-    test.assertIn(wp.LOG_WARN, levels)
+    test.assertIn(wp.LOG_WARNING, levels)
     test.assertIn(wp.LOG_ERROR, levels)
 
 
@@ -355,6 +354,21 @@ def test_log_in_func(test, device):
     test.assertIn("test_kernel_log", r.filename)
 
 
+def test_log_percent_in_msg(test, device):
+    """wp.log() with '%' in the message and a payload must not raise ValueError."""
+    n = 2
+    out = wp.zeros(n, dtype=wp.int32, device=device)
+    with _capture_kernel_log() as records:
+        wp.launch(_kernel_log_percent_in_msg, dim=n, inputs=[out], device=device)
+        wp.synchronize_device(device)
+
+    test.assertGreater(len(records), 0)
+    for r in records:
+        msg = r.getMessage()
+        test.assertIn("50% done", msg)
+        test.assertIsInstance(r.args[0], int)
+
+
 def test_log_in_transitive_func(test, device):
     """wp.log() in a called @wp.func propagates through intermediate functions."""
     n = 3
@@ -375,7 +389,6 @@ devices = get_test_devices()
 
 add_function_test(TestKernelLog, "test_log_basic", test_log_basic, devices=devices)
 add_function_test(TestKernelLog, "test_log_no_payload", test_log_no_payload, devices=devices)
-add_function_test(TestKernelLog, "test_log_payload_int64", test_log_payload_int64, devices=devices)
 add_function_test(TestKernelLog, "test_log_payload_float32", test_log_payload_float32, devices=devices)
 add_function_test(TestKernelLog, "test_log_not_drained_before_sync", test_log_not_drained_before_sync, devices=devices)
 add_function_test(TestKernelLog, "test_log_all_levels", test_log_all_levels, devices=devices)
@@ -386,6 +399,7 @@ add_function_test(TestKernelLog, "test_get_overflow_count", test_get_overflow_co
 add_function_test(TestKernelLog, "test_log_synchronize_stream", test_log_synchronize_stream, devices=devices)
 add_function_test(TestKernelLog, "test_log_in_func", test_log_in_func, devices=devices)
 add_function_test(TestKernelLog, "test_log_in_transitive_func", test_log_in_transitive_func, devices=devices)
+add_function_test(TestKernelLog, "test_log_percent_in_msg", test_log_percent_in_msg, devices=devices)
 
 
 if __name__ == "__main__":

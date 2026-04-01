@@ -8344,7 +8344,7 @@ _LOG_DOC = """Emit a structured log record from inside a kernel.
             ``wp.LOG_DEBUG`` (10), ``wp.LOG_INFO`` (20), ``wp.LOG_WARNING`` (30),
             ``wp.LOG_ERROR`` (40).
         msg (str): A **string literal** describing the event.
-        value: Optional numeric payload (``int32``, ``int64``, or ``float32``).
+        value: Optional numeric payload (``int32`` or ``float32``).
             Only one value per call is supported; issue multiple ``wp.log()``
             calls to log several values.
     """
@@ -8371,16 +8371,6 @@ add_builtin(
     doc="Overload of :func:`warp.log` that attaches an ``int32`` payload to the record.",
 )
 
-add_builtin(
-    "log",
-    input_types={"level": int, "msg": str, "value": int64},
-    value_type=None,
-    codegen_func=_warp_log_codegen,
-    is_differentiable=False,
-    export=False,
-    group="Utility",
-    doc="Overload of :func:`warp.log` that attaches an ``int64`` payload to the record.",
-)
 
 add_builtin(
     "log",
