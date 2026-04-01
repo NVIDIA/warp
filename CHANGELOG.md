@@ -20,6 +20,8 @@
   factorization and solve, improving memory access patterns and eliminating shared memory
   bank conflicts at power-of-2 tile sizes
   ([GH-1318](https://github.com/NVIDIA/warp/issues/1318)).
+- Add support for `wp.indexedarray` fields in `@wp.struct` (assignment, device transfer, and NumPy structured values)
+  ([GH-1327](https://github.com/NVIDIA/warp/issues/1327)).
 
 ### Removed
 
