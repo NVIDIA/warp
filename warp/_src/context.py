@@ -7969,6 +7969,11 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     This function allows the host application code to ensure that all kernel launches
     and memory copies have completed on the stream.
 
+    Kernel log records written via :func:`warp.log` on this stream are also drained
+    and forwarded to ``logging.getLogger("warp.kernel")``.  Records on *other* streams
+    that this stream depends on via CUDA events are not drained; use
+    :func:`warp.synchronize_device` to drain all streams on a device.
+
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
     """
@@ -7983,6 +7988,7 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
         runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+        _drain_log(stream._log_buffer)
 
 
 def synchronize_event(event: Event):

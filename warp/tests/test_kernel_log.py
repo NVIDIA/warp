@@ -291,6 +291,21 @@ def test_get_overflow_count(test, device):
     test.assertEqual(count, 0)
 
 
+def test_log_synchronize_stream(test, device):
+    """synchronize_stream() drains the synchronized stream's own log buffer."""
+    if not wp.get_device(device).is_cuda:
+        return  # synchronize_stream is CUDA-only
+
+    n = 4
+    out = wp.zeros(n, dtype=wp.int32, device=device)
+    stream = wp.Stream(device)
+    with _capture_kernel_log() as records:
+        wp.launch(_kernel_log_basic, dim=n, inputs=[out], device=device, stream=stream)
+        test.assertEqual(len(records), 0, "No records before synchronize_stream")
+        wp.synchronize_stream(stream)
+        test.assertGreater(len(records), 0, "Records visible after synchronize_stream")
+
+
 # ---------------------------------------------------------------------------
 # Wire up multi-device tests
 # ---------------------------------------------------------------------------
@@ -307,6 +322,7 @@ add_function_test(TestKernelLog, "test_log_overflow", test_log_overflow, devices
 add_function_test(TestKernelLog, "test_log_stdlib_logger", test_log_stdlib_logger, devices=devices)
 add_function_test(TestKernelLog, "test_reset_kernel_log", test_reset_kernel_log, devices=devices)
 add_function_test(TestKernelLog, "test_get_overflow_count", test_get_overflow_count, devices=devices)
+add_function_test(TestKernelLog, "test_log_synchronize_stream", test_log_synchronize_stream, devices=devices)
 
 
 if __name__ == "__main__":

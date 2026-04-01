@@ -78,6 +78,9 @@ An optional numeric payload—``int32``, ``int64``, or ``float32``—can be atta
 
 Records accumulate in a per-stream ring buffer and are drained automatically when
 ``wp.synchronize()``, ``wp.synchronize_device()``, or ``wp.synchronize_stream()`` is called.
+When using ``wp.synchronize_stream(s)``, only the records on stream ``s`` are drained;
+records on other streams that ``s`` depends on via CUDA events are not drained.
+Use ``wp.synchronize_device()`` to drain all streams on a device.
 
 **Python-side routing**
 
