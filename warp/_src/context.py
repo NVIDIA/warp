@@ -3220,6 +3220,8 @@ def get_kernel_log_overflow_count(device=None):
         device: The device to query.  Defaults to the default CUDA device or
             the CPU device if no CUDA device is available.
     """
+    if runtime is None:
+        return 0
     device = runtime.get_device(device)
     buf = device._kernel_log_buffer
     if buf is None:
@@ -3241,6 +3243,8 @@ def reset_kernel_log(device=None):
         device: The device to reset.  Defaults to the default CUDA device or
             the CPU device if no CUDA device is available.
     """
+    if runtime is None:
+        return
     device = runtime.get_device(device)
     if device.is_cuda:
         # Wait for in-flight GPU writes to pinned memory to complete.
@@ -3266,7 +3270,16 @@ def _register_log_call_site(level: int, msg: str, filename: str, lineno: int) ->
     """
     raw = f"{level}|{msg}|{filename}|{lineno}"
     key = zlib.crc32(raw.encode()) & 0xFFFFFFFF
-    runtime.log_call_sites[key] = (level, msg, filename, lineno)
+    existing = runtime.log_call_sites.get(key)
+    if existing is not None and existing != (level, msg, filename, lineno):
+        warp._src.utils.warn(
+            f"wp.log() call-site key collision (CRC32={key:#010x}): "
+            f"metadata for '{msg}' at {filename}:{lineno} conflicts with an existing entry. "
+            "Some log records may be misattributed.",
+            once=True,
+        )
+    else:
+        runtime.log_call_sites[key] = (level, msg, filename, lineno)
     return key
 
 
@@ -3852,11 +3865,14 @@ class Device:
 
         # Lazily allocated kernel log buffer (created on first logging kernel launch)
         self._kernel_log_buffer: KernelLogBuffer | None = None
+        self._kernel_log_buffer_lock = threading.Lock()
 
     def get_kernel_log_buffer(self) -> KernelLogBuffer:
         """Return (and lazily create) the kernel log ring buffer for this device."""
         if self._kernel_log_buffer is None:
-            self._kernel_log_buffer = KernelLogBuffer(warp.config.kernel_log_capacity)
+            with self._kernel_log_buffer_lock:
+                if self._kernel_log_buffer is None:
+                    self._kernel_log_buffer = KernelLogBuffer(warp.config.kernel_log_capacity)
         return self._kernel_log_buffer
 
     def _discard_kernel_log_buffer(self):
@@ -7941,9 +7957,6 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
     This function allows the host application code to ensure that all kernel launches
     and memory copies have completed on the stream.
 
-    Kernel log records written via :func:`warp.log` on the stream's device are also
-    drained and forwarded to ``logging.getLogger("warp.kernel")``.
-
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
     """
@@ -7958,7 +7971,6 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
         runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
-        _drain_device_log(stream.device)
 
 
 def synchronize_event(event: Event):

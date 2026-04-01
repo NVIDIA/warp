@@ -4648,6 +4648,12 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
 
 def codegen_func_forward(adj, func_type="kernel", device="cpu"):
+    if func_type == "function" and adj.uses_logging:
+        raise WarpCodegenError(
+            f"wp.log() is not supported inside @wp.func '{adj.fun_name}'. "
+            "Use wp.log() directly inside a @wp.kernel instead."
+        )
+
     if device == "cpu":
         indent = 4
     elif device == "cuda":

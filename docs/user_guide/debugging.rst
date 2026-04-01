@@ -77,7 +77,7 @@ An optional numeric payload—``int32``, ``int64``, or ``float32``—can be atta
 **Drain trigger**
 
 Records accumulate in a per-device ring buffer and are drained automatically when
-``wp.synchronize()``, ``wp.synchronize_device()``, or ``wp.synchronize_stream()`` is called.
+``wp.synchronize()`` or ``wp.synchronize_device()`` is called.
 
 **Python-side routing**
 
