@@ -317,6 +317,11 @@ class StructInstance:
             if matches_array_class(var.type, array):
                 # array_t
                 setattr(dst, name, value.to(device))
+            elif matches_array_class(var.type, indexedarray):
+                # indexedarray_t
+                # `.to` returns an array if on different device, force to identity indexedarray
+                cloned = value.to(device)
+                setattr(dst, name, cloned if isinstance(cloned, indexedarray) else indexedarray(cloned))
             elif isinstance(var.type, Struct):
                 # nested struct
                 new_struct = var.type()
@@ -343,6 +348,9 @@ class StructInstance:
 
             if matches_array_class(var.type, array):
                 # array_t
+                npvalue.append(value.numpy_value())
+            elif matches_array_class(var.type, indexedarray):
+                # indexedarray_t
                 npvalue.append(value.numpy_value())
             elif isinstance(var.type, Struct):
                 # nested struct
@@ -379,6 +387,8 @@ def _make_struct_field_constructor(field: str, var_type: type):
         return lambda ctype: var_type.instance_type(ctype=getattr(ctype, field))
     elif matches_array_class(var_type, warp._src.types.array):
         return lambda ctype: None
+    elif matches_array_class(var_type, warp._src.types.indexedarray):
+        return lambda ctype: None
     elif _is_texture_type(var_type):
         return lambda ctype: None
     elif issubclass(var_type, ctypes.Array):
@@ -406,6 +416,19 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             # would be collected while the struct ctype still holds a reference to it
             if value.requires_grad:
                 cls.__setattr__(inst, "_" + field + "_grad", value.grad)
+
+        cls.__setattr__(inst, field, value)
+
+    def set_indexedarray_value(inst, value):
+        if value is None:
+            # create indexedarray with null pointers
+            setattr(inst._ctype, field, var_type.__ctype__())
+        else:
+            assert isinstance(value, indexedarray)
+            assert types_equal(value.dtype, var_type.dtype), (
+                f"assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, got type {type_repr(value.dtype)}"
+            )
+            setattr(inst._ctype, field, value.__ctype__())
 
         cls.__setattr__(inst, field, value)
 
@@ -468,6 +491,8 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
 
     if matches_array_class(var_type, array):
         return set_array_value
+    elif matches_array_class(var_type, indexedarray):
+        return set_indexedarray_value
     elif isinstance(var_type, Struct):
         return set_struct_value
     elif _is_texture_type(var_type):
@@ -498,6 +523,8 @@ class Struct:
         for label, var in self.vars.items():
             if matches_array_class(var.type, array):
                 fields.append((label, array_t))
+            elif matches_array_class(var.type, indexedarray):
+                fields.append((label, indexedarray_t))
             elif isinstance(var.type, Struct):
                 fields.append((label, var.type.ctype))
             elif issubclass(var.type, ctypes.Array):
@@ -613,6 +640,9 @@ class Struct:
             if matches_array_class(var.type, array):
                 # array_t
                 formats.append(array_t.numpy_dtype())
+            elif matches_array_class(var.type, indexedarray):
+                # indexedarray_t
+                formats.append(indexedarray_t.numpy_dtype())
             elif isinstance(var.type, Struct):
                 # nested struct
                 formats.append(var.type.numpy_dtype())
@@ -646,6 +676,9 @@ class Struct:
                 # no easy way to make a backref.
                 # Instead, we just create a stub annotation, which is not a fully usable array object.
                 setattr(instance, name, array(dtype=var.type.dtype, ndim=var.type.ndim))
+            elif matches_array_class(var.type, indexedarray):
+                # Same as regular arrays: return an annotation stub only.
+                setattr(instance, name, indexedarray(dtype=var.type.dtype, ndim=var.type.ndim))
             elif isinstance(var.type, Struct):
                 # nested struct
                 value = var.type.from_ptr(ptr + offset)
