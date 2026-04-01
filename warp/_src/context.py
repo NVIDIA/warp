@@ -3221,10 +3221,10 @@ def get_kernel_log_overflow_count(device=None):
             the CPU device if no CUDA device is available.
     """
     device = runtime.get_device(device)
+    if device.is_cuda:
+        return sum(s._log_buffer.overflow_count for s in device._streams if s._log_buffer is not None)
     buf = device._kernel_log_buffer
-    if buf is None:
-        return 0
-    return buf.overflow_count
+    return buf.overflow_count if buf is not None else 0
 
 
 def reset_kernel_log(device=None):
@@ -3247,9 +3247,12 @@ def reset_kernel_log(device=None):
         # We use the low-level CUDA sync deliberately — synchronize_device()
         # would drain the log, which is not desired here.
         runtime.core.wp_cuda_context_synchronize(device.context)
-    buf = device._kernel_log_buffer
-    if buf is not None:
-        buf.reset()
+        for s in list(device._streams):
+            if s._log_buffer is not None:
+                s._log_buffer.reset()
+    else:
+        if device._kernel_log_buffer is not None:
+            device._kernel_log_buffer.reset()
 
 
 def _register_log_call_site(level: int, msg: str, filename: str, lineno: int) -> int:
@@ -3270,9 +3273,8 @@ def _register_log_call_site(level: int, msg: str, filename: str, lineno: int) ->
     return key
 
 
-def _drain_device_log(device):
-    """Drain the kernel log ring buffer for *device* and emit records."""
-    buf = device._kernel_log_buffer
+def _drain_log(buf):
+    """Drain a single ``KernelLogBuffer`` and emit its records. No-op if *buf* is ``None``."""
     if buf is None:
         return
     records, overflow = buf.drain()
@@ -3598,6 +3600,7 @@ class Stream:
             raise RuntimeError(f"Device {device} is not a CUDA device")
 
         self.device = device
+        self._log_buffer: KernelLogBuffer | None = None
 
         # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
         if "cuda_stream" in kwargs:
@@ -3613,6 +3616,12 @@ class Stream:
                 raise RuntimeError(f"Failed to create stream on device {device}")
             self.owner = True
 
+        # Register with the device so synchronize_device() can drain all live streams.
+        # The null stream (cuda_stream=None) is excluded — it's a special CUDA construct
+        # that synchronises with all streams and is not used for kernel launches.
+        if self.cuda_stream is not None:
+            device._streams.add(self)
+
     def __del__(self):
         if not self.cuda_stream:
             return
@@ -3625,6 +3634,12 @@ class Stream:
         except (TypeError, AttributeError):
             # Suppress TypeError and AttributeError when callables become None during shutdown
             pass
+
+    def get_log_buffer(self) -> KernelLogBuffer:
+        """Return (and lazily create) the kernel log ring buffer for this stream."""
+        if self._log_buffer is None:
+            self._log_buffer = KernelLogBuffer(warp.config.kernel_log_capacity)
+        return self._log_buffer
 
     @property
     def cached_event(self) -> Event:
@@ -3763,6 +3778,8 @@ class Device:
         # streams will be created when context is acquired
         self._stream = None
         self.null_stream = None
+        # all live Stream objects for this device; used to drain logs on full sync
+        self._streams: weakref.WeakSet = weakref.WeakSet()
 
         # maps streams to started graph captures
         self.captures = {}
@@ -3860,8 +3877,10 @@ class Device:
         return self._kernel_log_buffer
 
     def _discard_kernel_log_buffer(self):
-        """Discard the current buffer so it is re-created (with the current config capacity) on next use."""
+        """Discard all log buffers so they are re-created (with the current config capacity) on next use."""
         self._kernel_log_buffer = None
+        for s in list(self._streams):
+            s._log_buffer = None
 
     def get_allocator(self, pinned: bool = False):
         """Get the memory allocator for this device.
@@ -7686,10 +7705,16 @@ def launch(
         pack_args(fwd_args, params, adjoint=False)
         pack_args(adj_args, params, adjoint=True)
 
-        # If the kernel uses wp.log(), append the per-device log buffer pointer
-        # as a hidden extra argument (not in kernel.adj.args).
+        # If the kernel uses wp.log(), append the log buffer pointer as a hidden
+        # extra argument. For CUDA, use the stream-scoped buffer (one per stream,
+        # safe to drain after synchronize_stream); for CPU, use the device buffer.
         if kernel.adj.uses_logging:
-            log_buf = device.get_kernel_log_buffer()
+            if device.is_cuda:
+                if stream is None:
+                    stream = device.stream
+                log_buf = stream.get_log_buffer()
+            else:
+                log_buf = device.get_kernel_log_buffer()
             params.append(ctypes.c_void_p(log_buf._ptr))
 
         # run kernel
@@ -7902,14 +7927,15 @@ def synchronize():
                     raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
                 runtime.core.wp_cuda_context_synchronize(device.context)
-                _drain_device_log(device)
+                for s in list(device._streams):
+                    _drain_log(s._log_buffer)
 
         # restore the original context to avoid side effects
         runtime.core.wp_cuda_context_set_current(saved_context)
 
     # Also drain CPU device log (CPU kernels run synchronously, so there is no
     # separate sync step, but we drain here for consistency)
-    _drain_device_log(runtime.cpu_device)
+    _drain_log(runtime.cpu_device._kernel_log_buffer)
 
 
 def synchronize_device(device: DeviceLike = None):
@@ -7931,8 +7957,10 @@ def synchronize_device(device: DeviceLike = None):
             raise RuntimeError(f"Cannot synchronize device {device} while graph capture is active")
 
         runtime.core.wp_cuda_context_synchronize(device.context)
-
-    _drain_device_log(device)
+        for s in list(device._streams):
+            _drain_log(s._log_buffer)
+    else:
+        _drain_log(device._kernel_log_buffer)
 
 
 def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
@@ -7940,6 +7968,9 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
 
     This function allows the host application code to ensure that all kernel launches
     and memory copies have completed on the stream.
+
+    Kernel log records written via :func:`warp.log` on the stream are also drained
+    and forwarded to ``logging.getLogger("warp.kernel")``.
 
     Args:
         stream_or_device: `wp.Stream` or a device.  If the argument is a device, synchronize the device's current stream.
@@ -7955,6 +7986,7 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
         runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+        _drain_log(stream._log_buffer)
 
 
 def synchronize_event(event: Event):
