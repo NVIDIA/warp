@@ -50,7 +50,7 @@ def _kernel_log_float32(out: wp.array(dtype=wp.float32)):
 @wp.kernel
 def _kernel_log_overflow(n: int, count: wp.array(dtype=wp.int32)):
     i = wp.tid()
-    wp.log(wp.LOG_WARN, "overflow test", i)
+    wp.log(wp.LOG_WARNING, "overflow test", i)
     count[i] = i
 
 
@@ -59,8 +59,36 @@ def _kernel_log_all_levels(out: wp.array(dtype=wp.int32)):
     i = wp.tid()
     wp.log(wp.LOG_DEBUG, "debug msg", i)
     wp.log(wp.LOG_INFO, "info msg", i)
-    wp.log(wp.LOG_WARN, "warn msg", i)
+    wp.log(wp.LOG_WARNING, "warn msg", i)
     wp.log(wp.LOG_ERROR, "error msg", i)
+    out[i] = i
+
+
+# @wp.func logging — direct and transitive
+
+
+@wp.func
+def _func_log_direct(i: int):
+    wp.log(wp.LOG_INFO, "from func", i)
+
+
+@wp.func
+def _func_log_transitive(i: int):
+    # Does not itself call wp.log() — but calls a func that does.
+    _func_log_direct(i)
+
+
+@wp.kernel
+def _kernel_via_func(out: wp.array(dtype=wp.int32)):
+    i = wp.tid()
+    _func_log_direct(i)
+    out[i] = i
+
+
+@wp.kernel
+def _kernel_via_transitive_func(out: wp.array(dtype=wp.int32)):
+    i = wp.tid()
+    _func_log_transitive(i)
     out[i] = i
 
 
@@ -312,6 +340,33 @@ def test_log_synchronize_stream(test, device):
         test.assertGreater(len(records), 0, "Records visible after synchronize_stream")
 
 
+def test_log_in_func(test, device):
+    """wp.log() inside a @wp.func produces records identical to a direct kernel call."""
+    n = 4
+    out = wp.zeros(n, dtype=wp.int32, device=device)
+    with _capture_kernel_log() as records:
+        wp.launch(_kernel_via_func, dim=n, inputs=[out], device=device)
+        wp.synchronize_device(device)
+
+    test.assertGreater(len(records), 0, "No log records from @wp.func")
+    r = records[0]
+    test.assertEqual(r.levelno, wp.LOG_INFO)
+    test.assertIn("from func", r.getMessage())
+    test.assertIn("test_kernel_log", r.filename)
+
+
+def test_log_in_transitive_func(test, device):
+    """wp.log() in a called @wp.func propagates through intermediate functions."""
+    n = 3
+    out = wp.zeros(n, dtype=wp.int32, device=device)
+    with _capture_kernel_log() as records:
+        wp.launch(_kernel_via_transitive_func, dim=n, inputs=[out], device=device)
+        wp.synchronize_device(device)
+
+    test.assertGreater(len(records), 0, "No log records from transitive @wp.func")
+    test.assertIn("from func", records[0].getMessage())
+
+
 # ---------------------------------------------------------------------------
 # Wire up multi-device tests
 # ---------------------------------------------------------------------------
@@ -329,6 +384,8 @@ add_function_test(TestKernelLog, "test_log_stdlib_logger", test_log_stdlib_logge
 add_function_test(TestKernelLog, "test_reset_kernel_log", test_reset_kernel_log, devices=devices)
 add_function_test(TestKernelLog, "test_get_overflow_count", test_get_overflow_count, devices=devices)
 add_function_test(TestKernelLog, "test_log_synchronize_stream", test_log_synchronize_stream, devices=devices)
+add_function_test(TestKernelLog, "test_log_in_func", test_log_in_func, devices=devices)
+add_function_test(TestKernelLog, "test_log_in_transitive_func", test_log_in_transitive_func, devices=devices)
 
 
 if __name__ == "__main__":

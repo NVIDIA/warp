@@ -1695,6 +1695,11 @@ class Adjoint:
                 if func.custom_replay_func:
                     adj.builder.deferred_functions.append(func.custom_replay_func)
 
+            # Propagate uses_logging upward: if a called @wp.func (transitively) uses
+            # wp.log(), the caller also needs the hidden log-buffer parameter in scope.
+            if getattr(getattr(func, "adj", None), "uses_logging", False):
+                adj.uses_logging = True
+
         # Resolve the return value based on the types and values of the given arguments.
         bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
         bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
@@ -1769,27 +1774,31 @@ class Adjoint:
 
             fwd_args.append(strip_reference(func_arg_var))
 
+        # If the callee is a @wp.func that (transitively) uses wp.log(), pass the
+        # log buffer as the final hidden argument so it is in scope inside the callee.
+        def _fmt_args(args):
+            s = adj.format_forward_call_args(args, use_initializer_list)
+            if getattr(getattr(func, "adj", None), "uses_logging", False):
+                s = (s + ", " if s else "") + "var_warp_log_buffer"
+            return s
+
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
-            forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
-            )
+            forward_call = f"{func.namespace}{func_name}({_fmt_args(fwd_args)});"
             replay_call = forward_call
             if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+                replay_call = f"{func.namespace}replay_{func_name}({_fmt_args(fwd_args)});"
 
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({_fmt_args(fwd_args)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({_fmt_args(fwd_args)});"
 
         else:
             # handle multiple value functions
-            forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + output, use_initializer_list)});"
-            )
+            forward_call = f"{func.namespace}{func_name}({_fmt_args(fwd_args + output)});"
             replay_call = forward_call
 
         if func.skip_replay:
@@ -1815,6 +1824,8 @@ class Adjoint:
                 require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
+                if getattr(getattr(func, "adj", None), "uses_logging", False):
+                    arg_str = (arg_str + ", " if arg_str else "") + "var_warp_log_buffer"
                 reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
                 adj.add_reverse(reverse_call)
 
@@ -4473,17 +4484,21 @@ def _warp_log_codegen(adj, bound_args):
         vname = value_var.emit()
 
         if vtype in (int32, int):
-            adj.add_forward(f"wp::wp_log_write_i32(var_warp_log_buffer, {key}u, (wp::int32){vname});")
+            call = f"wp::wp_log_write_i32(var_warp_log_buffer, {key}u, (wp::int32){vname});"
         elif vtype == int64:
-            adj.add_forward(f"wp::wp_log_write_i64(var_warp_log_buffer, {key}u, (wp::int64){vname});")
+            call = f"wp::wp_log_write_i64(var_warp_log_buffer, {key}u, (wp::int64){vname});"
         elif vtype in (float32, float):
-            adj.add_forward(f"wp::wp_log_write_f32(var_warp_log_buffer, {key}u, (wp::float32){vname});")
+            call = f"wp::wp_log_write_f32(var_warp_log_buffer, {key}u, (wp::float32){vname});"
         else:
             raise WarpCodegenError(
                 f"wp.log(): unsupported payload type '{vtype.__name__}'; expected int32, int64, or float32"
             )
     else:
-        adj.add_forward(f"wp::wp_log_write_nop(var_warp_log_buffer, {key}u);")
+        call = f"wp::wp_log_write_nop(var_warp_log_buffer, {key}u);"
+
+    # replay="" suppresses re-execution in the backward pass — log writes have no
+    # gradient contribution and should not appear twice in differentiable programs.
+    adj.add_forward(call, replay=";")
 
     return None  # void
 
@@ -4653,12 +4668,6 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
 
 def codegen_func_forward(adj, func_type="kernel", device="cpu"):
-    if func_type == "function" and adj.uses_logging:
-        raise WarpCodegenError(
-            f"wp.log() is not supported inside @wp.func '{adj.fun_name}'. "
-            "Use wp.log() directly inside a @wp.kernel instead."
-        )
-
     if device == "cpu":
         indent = 4
     elif device == "cuda":
@@ -4870,6 +4879,11 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             forward_args.append(arg.ctype() + " & ret_" + str(i))
             reverse_args.append(arg.ctype() + " & ret_" + str(i))
 
+    # If this @wp.func (transitively) uses wp.log(), add the hidden log buffer
+    # parameter to the forward signature.
+    if adj.uses_logging:
+        forward_args.append("wp::WpLogBuffer* var_warp_log_buffer")
+
     # reverse args
     for i, arg in enumerate(adj.args):
         if adj.custom_reverse_mode and i >= adj.custom_reverse_num_input_args:
@@ -4896,6 +4910,12 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
                 reverse_args.append(f"{tname} & {arg.emit()}")
             else:
                 reverse_args.append(f"{arg.ctype()} & {arg.emit()}")
+
+    # Add the log buffer at the end of the reverse signature too, so that the
+    # forward-replay section (which may call other logging @wp.func helpers) has
+    # it in scope and the calling convention matches.
+    if adj.uses_logging:
+        reverse_args.append("wp::WpLogBuffer* var_warp_log_buffer")
 
     # build template prefix for functions with tile parameters
     template_prefix = ""
