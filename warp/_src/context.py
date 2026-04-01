@@ -3194,7 +3194,8 @@ class CudaMempoolAllocator:
 # Log level constants (mirror of WP_LOG_* in log.h; match Python logging levels)
 LOG_DEBUG = 10
 LOG_INFO = 20
-LOG_WARN = 30
+LOG_WARNING = 30
+LOG_WARN = LOG_WARNING  # deprecated alias; use LOG_WARNING
 LOG_ERROR = 40
 
 # Payload type tags (mirror of WP_LOG_PAYLOAD_* in log.h)
@@ -3289,11 +3290,11 @@ def _drain_log(buf):
                 "without the owning Python module being imported first.",
                 once=True,
             )
-            level, msg, filename, lineno = LOG_WARN, "<unknown log call site>", "<unknown>", 0
+            level, msg, filename, lineno = LOG_WARNING, "<unknown log call site>", "<unknown>", 0
         _emit_kernel_log_record(level, msg, filename, lineno, payload_type, payload)
     if overflow:
         _emit_kernel_log_record(
-            LOG_WARN,
+            LOG_WARNING,
             f"{overflow} kernel log record(s) were dropped (buffer full); increase wp.config.kernel_log_capacity",
             "<warp>",
             0,
@@ -3303,14 +3304,25 @@ def _drain_log(buf):
 
 
 def _emit_kernel_log_record(level, msg, filename, lineno, payload_type, payload):
-    """Forward a single kernel log record to the ``warp.kernel`` stdlib logger."""
-    extra = {"warp_filename": filename, "warp_lineno": lineno}
+    """Forward a single kernel log record to the ``warp.kernel`` stdlib logger.
+
+    Uses ``makeRecord`` so that standard formatter directives (``%(filename)s``,
+    ``%(lineno)d``) resolve to the kernel source location rather than to this
+    drain function.  The numeric payload, when present, is passed as ``args`` so
+    that ``record.getMessage()`` returns ``"<msg>: <value>"`` while
+    ``record.args`` and ``record.warp_payload`` remain available for structured
+    processing.
+    """
     if payload_type != _LOG_PAYLOAD_NONE:
-        extra["warp_payload"] = payload
-        full_msg = f"{msg} [{payload}]"
+        record = _kernel_logger.makeRecord(
+            _kernel_logger.name, level, filename, lineno, msg + ": %s", (payload,), None
+        )
+        record.warp_payload = payload
     else:
-        full_msg = msg
-    _kernel_logger.log(level, full_msg, stacklevel=1, extra=extra)
+        record = _kernel_logger.makeRecord(
+            _kernel_logger.name, level, filename, lineno, msg, (), None
+        )
+    _kernel_logger.handle(record)
 
 
 class KernelLogBuffer:

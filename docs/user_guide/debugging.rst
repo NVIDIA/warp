@@ -56,23 +56,37 @@ small integer key and an optional numeric payload travel through the ring buffer
     def bounds_check(data: wp.array(dtype=wp.int32), n: int):
         i = wp.tid()
         if i >= n:
-            wp.log(wp.LOG_WARN, "index out of range", i)
+            wp.log(wp.LOG_WARNING, "index out of range", i)
 
 Four level constants are available:
 
-* ``wp.LOG_DEBUG``  (10)
-* ``wp.LOG_INFO``   (20)
-* ``wp.LOG_WARN``   (30)
-* ``wp.LOG_ERROR``  (40)
+* ``wp.LOG_DEBUG``    (10)
+* ``wp.LOG_INFO``     (20)
+* ``wp.LOG_WARNING``  (30)
+* ``wp.LOG_ERROR``    (40)
 
-The ``msg`` argument **must be a string literal**; runtime-formatted strings are not
-supported (all string data is resolved at compile time).
+These match the corresponding ``logging.DEBUG`` / ``logging.WARNING`` / … values from
+Python's standard :mod:`logging` module.
+
+**String literal requirement**
+
+The ``msg`` argument **must be a string literal**.  Runtime-formatted strings (e.g.
+``f"index {i} out of range"``) are not supported because all message text is resolved
+at compile time to avoid GPU→host string copies.  Attach a single numeric value as the
+optional ``value`` payload to carry runtime data::
+
+    wp.log(wp.LOG_WARNING, "index out of range", i)  # i is the runtime payload
+
+To log multiple values, issue multiple ``wp.log()`` calls with distinct labels::
+
+    wp.log(wp.LOG_DEBUG, "index", i)
+    wp.log(wp.LOG_DEBUG, "value at index", data[i])
 
 An optional numeric payload—``int32``, ``int64``, or ``float32``—can be attached::
 
-    wp.log(wp.LOG_INFO, "value", my_int32_var)   # int32 payload
-    wp.log(wp.LOG_WARN, "large index", big_idx)  # int64 payload
-    wp.log(wp.LOG_DEBUG, "ratio", ratio_f32)     # float32 payload
+    wp.log(wp.LOG_INFO, "value", my_int32_var)      # int32 payload
+    wp.log(wp.LOG_WARNING, "large index", big_idx)  # int64 payload
+    wp.log(wp.LOG_DEBUG, "ratio", ratio_f32)        # float32 payload
 
 **Drain trigger**
 
@@ -84,12 +98,19 @@ Use ``wp.synchronize_device()`` to drain all streams on a device.
 
 **Python-side routing**
 
-By default, records are forwarded to ``logging.getLogger("warp.kernel")``, so any
-Python logging configuration that attaches to that logger will receive them::
+Records are forwarded to ``logging.getLogger("warp.kernel")``.  Each ``LogRecord``
+has its standard ``filename`` and ``lineno`` fields set to the kernel source location,
+so the built-in formatter directives work without any customisation::
 
     import logging
-    logging.basicConfig(level=logging.DEBUG)
-    # warp.kernel logger now prints to stderr
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(filename)s:%(lineno)d [%(levelname)s] %(message)s",
+    )
+    # output: bounds_check.py:4 [WARNING] index out of range: 42
+
+The numeric payload (when present) is available as ``record.warp_payload`` for
+structured log handlers that need the raw value.
 
 **Overflow**
 

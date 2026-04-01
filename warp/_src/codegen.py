@@ -4447,13 +4447,18 @@ def _warp_log_codegen(adj, bound_args):
 
     level_var = bound_args["level"]
     if level_var.constant is None:
-        raise WarpCodegenError("wp.log(): 'level' must be a compile-time constant (e.g. wp.LOG_WARN, wp.LOG_ERROR)")
+        raise WarpCodegenError(
+            "wp.log(): 'level' must be a compile-time constant (e.g. wp.LOG_WARNING, wp.LOG_ERROR)"
+        )
     level = int(level_var.constant)
 
     msg_var = bound_args["msg"]
     if msg_var.constant is None or not isinstance(msg_var.constant, str):
         raise WarpCodegenError(
-            "wp.log(): 'msg' must be a string literal — runtime-formatted strings are not supported"
+            "wp.log(): 'msg' must be a string literal.  Runtime-formatted strings are not supported "
+            "because all message text is resolved at compile time to avoid GPU→host string copies.  "
+            "Pass a fixed label and attach a numeric value as the optional payload instead: "
+            "wp.log(wp.LOG_INFO, \"my label\", my_value)"
         )
     msg = msg_var.constant
 

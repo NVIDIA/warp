@@ -104,7 +104,8 @@ class TestKernelLog(unittest.TestCase):
         """LOG_* constants have the expected Python logging level values."""
         self.assertEqual(wp.LOG_DEBUG, logging.DEBUG)  # 10
         self.assertEqual(wp.LOG_INFO, logging.INFO)  # 20
-        self.assertEqual(wp.LOG_WARN, logging.WARNING)  # 30
+        self.assertEqual(wp.LOG_WARNING, logging.WARNING)  # 30
+        self.assertEqual(wp.LOG_WARN, logging.WARNING)  # deprecated alias — same value
         self.assertEqual(wp.LOG_ERROR, logging.ERROR)  # 40
 
     # ------------------------------------------------------------------
@@ -155,7 +156,9 @@ def test_log_basic(test, device):
     r = records[0]
     test.assertEqual(r.levelno, wp.LOG_INFO)
     test.assertIn("basic test", r.getMessage())
-    test.assertIn("test_kernel_log", r.warp_filename)
+    # Standard LogRecord fields point to the kernel source, not to context.py
+    test.assertIn("test_kernel_log", r.filename)
+    test.assertIsInstance(r.lineno, int)
     test.assertIsInstance(r.warp_payload, int)
 
 
@@ -250,7 +253,7 @@ def test_log_overflow(test, device):
 
 
 def test_log_stdlib_logger(test, device):
-    """Records route to logging.getLogger("warp.kernel") with warp_* attributes."""
+    """Records route to logging.getLogger("warp.kernel") with standard filename/lineno fields."""
     n = 2
     out = wp.zeros(n, dtype=wp.int32, device=device)
     with _capture_kernel_log() as records:
@@ -259,8 +262,11 @@ def test_log_stdlib_logger(test, device):
 
     test.assertGreater(len(records), 0, "Expected log records on warp.kernel logger")
     r = records[0]
-    test.assertTrue(hasattr(r, "warp_filename"))
-    test.assertTrue(hasattr(r, "warp_lineno"))
+    # Standard LogRecord fields must point to the kernel source so that
+    # %(filename)s and %(lineno)d in formatter strings work without customisation.
+    test.assertIn("test_kernel_log", r.filename)
+    test.assertIsInstance(r.lineno, int)
+    test.assertGreater(r.lineno, 0)
 
 
 def test_reset_kernel_log(test, device):

@@ -8328,21 +8328,25 @@ add_builtin(
 
 _LOG_DOC = """Emit a structured log record from inside a kernel.
 
-    Records are buffered in a per-device ring buffer and drained to Python
-    when ``wp.synchronize()`` or ``wp.synchronize_device()`` is called.
+    Records are buffered in a per-stream ring buffer and drained to Python
+    when ``wp.synchronize()``, ``wp.synchronize_device()``, or
+    ``wp.synchronize_stream()`` is called.
     Records are forwarded to ``logging.getLogger("warp.kernel")``.
+
+    The ``msg`` argument **must be a string literal** — runtime-formatted
+    strings are not supported because all message text is resolved at compile
+    time to avoid GPU→host string copies.  Attach a single numeric value as
+    the optional ``value`` payload to carry runtime data:
+    ``wp.log(wp.LOG_INFO, "my label", my_value)``.
 
     Args:
         level (int): Severity level.  Use one of the ``wp.LOG_*`` constants:
-            ``wp.LOG_DEBUG`` (10), ``wp.LOG_INFO`` (20), ``wp.LOG_WARN`` (30),
+            ``wp.LOG_DEBUG`` (10), ``wp.LOG_INFO`` (20), ``wp.LOG_WARNING`` (30),
             ``wp.LOG_ERROR`` (40).
-        msg (str): A **string literal** describing the event.  The message is
-            resolved at compile time and never written to the GPU buffer.
-
-    Note:
-        ``msg`` must be a string literal — runtime-formatted strings are not
-        supported.  All static metadata (level, message, source file, line)
-        is encoded as a single integer key at compile time.
+        msg (str): A **string literal** describing the event.
+        value: Optional numeric payload (``int32``, ``int64``, or ``float32``).
+            Only one value per call is supported; issue multiple ``wp.log()``
+            calls to log several values.
     """
 
 add_builtin(
