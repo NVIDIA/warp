@@ -31,6 +31,8 @@
 - Add `module_options` dict parameter to `@wp.kernel` for inline module-level compilation options
   on `"unique"` modules ([GH-1250](https://github.com/NVIDIA/warp/issues/1250)).
 - Add adjoint (backward pass) for out-of-place `tile_cholesky` factorization ([GH-1316](https://github.com/NVIDIA/warp/issues/1316)).
+- Add support for `wp.indexedarray` fields in `@wp.struct` (assignment, device transfer, and NumPy structured values)
+  ([GH-1327](https://github.com/NVIDIA/warp/issues/1327)).
 
 ### Removed
 
