@@ -1275,6 +1275,10 @@ CUDA_CALLABLE inline void adj_where(
 // atomic add the whole struct onto an array (e.g.: during backwards pass)
 template <typename T> CUDA_CALLABLE inline void atomic_add(array_t<T>*, array_t<T>) { }
 
+// stub for the case where we have an indexed array inside a struct and
+// atomic add the whole struct onto an array (e.g.: during backwards pass)
+template <typename T> CUDA_CALLABLE inline void atomic_add(indexedarray_t<T>*, indexedarray_t<T>) { }
+
 // for float and vector types this is just an alias for an atomic add
 template <typename T> CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
 

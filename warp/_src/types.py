@@ -2184,7 +2184,8 @@ class indexedarray_t(ctypes.Structure):
 
     def __init__(self, data, indices, shape):
         if data is None:
-            self.data = array().__ctype__()
+            ndim = len(shape)
+            self.data = array_t(data=0, grad=0, ndim=ndim, shape=(0,) * ndim, strides=(0,) * ndim)
             for i in range(ARRAY_MAX_DIMS):
                 self.indices[i] = ctypes.c_void_p(None)
                 self.shape[i] = 0
@@ -2196,6 +2197,38 @@ class indexedarray_t(ctypes.Structure):
                 else:
                     self.indices[i] = ctypes.c_void_p(None)
                 self.shape[i] = shape[i]
+
+    # structured type description used when indexedarray_t is packed in a struct and shared via numpy structured array.
+    @classmethod
+    def numpy_dtype(cls):
+        return cls._numpy_dtype_
+
+    # structured value used when indexedarray_t is packed in a struct and shared via a numpy structured array
+    def numpy_value(self):
+        # pointers are represented as unsigned 64-bit integers
+        indices = []
+        for i in range(ARRAY_MAX_DIMS):
+            v = self.indices[i]
+            # v may be a ctypes.c_void_p instance
+            if isinstance(v, ctypes.c_void_p):
+                indices.append(0 if v.value is None else int(v.value))
+            else:
+                indices.append(0 if v is None else int(v))
+
+        return (self.data.numpy_value(), indices, list(self.shape))
+
+
+# NOTE: must match indexedarray_t._fields_
+indexedarray_t._numpy_dtype_ = {
+    "names": ["data", "indices", "shape"],
+    "formats": [array_t.numpy_dtype(), f"{ARRAY_MAX_DIMS}u8", f"{ARRAY_MAX_DIMS}i4"],
+    "offsets": [
+        indexedarray_t.data.offset,
+        indexedarray_t.indices.offset,
+        indexedarray_t.shape.offset,
+    ],
+    "itemsize": ctypes.sizeof(indexedarray_t),
+}
 
 
 class tuple_t:
