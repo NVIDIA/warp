@@ -5027,6 +5027,15 @@ class Runtime:
             self.core.wp_cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
 
+            self.core.wp_cuda_get_suggested_block_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_int),
+                ctypes.POINTER(ctypes.c_int),
+            ]
+            self.core.wp_cuda_get_suggested_block_size.restype = ctypes.c_bool
+
             self.core.wp_cuda_launch_kernel.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -7590,6 +7599,93 @@ def launch_tiled(*args, **kwargs):
 
     # forward to original launch method
     return launch(*args, **kwargs)
+
+
+def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, int]:
+    """Suggest a CUDA block size that maximizes occupancy for a kernel.
+
+    Queries the CUDA driver's occupancy API
+    (``cuOccupancyMaxPotentialBlockSize``) to find the block size that
+    maximizes per-SM occupancy and the minimum number of blocks needed to
+    fully utilize all SMs on the device. The kernel's shared memory
+    requirements are accounted for automatically.
+
+    Because this optimizes per-SM occupancy, the suggested ``block_size``
+    tends to be large. For small launch dimensions, a smaller block size
+    may perform better because it distributes more blocks across SMs.
+    Compare your grid size (``ceil(N / block_size)``) against
+    ``min_grid_size`` to check whether the launch is large enough to
+    benefit from the suggestion.
+
+    For background on CUDA occupancy, see
+    https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html
+
+    Example:
+        Querying and using the launch configuration for a SAXPY kernel::
+
+            @wp.kernel
+            def saxpy(alpha: float, x: wp.array[float], y: wp.array[float]):
+                i = wp.tid()
+                y[i] = alpha * x[i] + y[i]
+
+
+            n = 1000000
+            x = wp.ones(n, dtype=float)
+            y = wp.zeros(n, dtype=float)
+
+            block_size, min_grid_size = wp.get_suggested_block_size(saxpy)
+            wp.launch(saxpy, dim=n, inputs=[2.0, x, y], block_dim=block_size)
+
+    Args:
+        kernel: A :class:`warp.Kernel` object, created with ``@wp.kernel`` or
+            the :class:`warp.Kernel` constructor.
+        device: The target device. If ``None``, uses the current CUDA device.
+            For CPU devices, returns ``(1, 1)``.
+
+    Returns:
+        A tuple ``(block_size, min_grid_size)`` where ``block_size`` is the
+        number of threads per block that maximizes occupancy and
+        ``min_grid_size`` is the minimum number of blocks needed to fully
+        utilize all SMs on the device.
+
+    Raises:
+        TypeError: If ``kernel`` is not a Warp kernel.
+        RuntimeError: If the CUDA occupancy query fails.
+    """
+    init()
+
+    if not isinstance(kernel, Kernel):
+        raise TypeError(f"get_suggested_block_size() expected a wp.Kernel, got {type(kernel)}")
+
+    device = runtime.get_device(device)
+
+    if not device.is_cuda:
+        return (1, 1)
+
+    module = kernel.module
+    module_exec = module.load(device)
+
+    if module_exec is None:
+        raise RuntimeError(f"Failed to load module for kernel '{kernel.key}' on device '{device}'")
+
+    hooks = module_exec.get_kernel_hooks(kernel)
+    if hooks is None or hooks.forward is None:
+        raise RuntimeError(f"Failed to load kernel '{kernel.key}' on device '{device}'")
+
+    block_size = ctypes.c_int(0)
+    min_grid_size = ctypes.c_int(0)
+    success = runtime.core.wp_cuda_get_suggested_block_size(
+        device.context,
+        hooks.forward,
+        hooks.forward_smem_bytes,
+        ctypes.byref(block_size),
+        ctypes.byref(min_grid_size),
+    )
+    if not success:
+        err = runtime.get_error_string()
+        raise RuntimeError(f"CUDA occupancy query failed for kernel '{kernel.key}' on device '{device}': {err}")
+
+    return (block_size.value, min_grid_size.value)
 
 
 def synchronize():

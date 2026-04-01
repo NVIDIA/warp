@@ -138,6 +138,14 @@ CUresult cuLaunchKernel_f(
     void** kernelParams,
     void** extra
 );
+CUresult cuOccupancyMaxPotentialBlockSize_f(
+    int* minGridSize,
+    int* blockSize,
+    CUfunction func,
+    CUoccupancyB2DSize blockSizeToDynamicSMemSize,
+    size_t dynamicSMemSize,
+    int blockSizeLimit
+);
 CUresult cuMemcpyPeerAsync_f(
     CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream
 );

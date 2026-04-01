@@ -242,6 +242,7 @@ from warp._src.context import Module as Module
 
 from warp._src.context import launch as launch
 from warp._src.context import launch_tiled as launch_tiled
+from warp._src.context import get_suggested_block_size as get_suggested_block_size
 from warp._src.context import synchronize as synchronize
 
 
