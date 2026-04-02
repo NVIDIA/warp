@@ -10,6 +10,8 @@ modules. These tests verify correct behavior of kernel and module object reuse w
 same unique kernel is defined multiple times.
 """
 
+import contextlib
+import io
 import unittest
 from typing import Any
 
@@ -37,6 +39,12 @@ def _unique_writer_a(value: int, writer_data: _UniqueWriterAData, output_index: 
 @wp.func
 def _unique_writer_b(value: int, writer_data: _UniqueWriterBData, output_index: int):
     writer_data.out[output_index] = value + 2
+
+
+@wp.kernel(module_options={"fast_math": True}, module="unique")
+def _kernel_fast_math(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    tid = wp.tid()
+    b[tid] = a[tid] + 1.0
 
 
 def _make_unique_writer_kernel(writer_func: Any):
@@ -133,6 +141,114 @@ class TestUniqueModule(unittest.TestCase):
 
         # Verify overloads were added to the same kernel object
         self.assertEqual(len(generic_unique_kernel.overloads), 2, "Should have 2 overloads (float32 and float64)")
+
+    def test_module_options_routing(self):
+        """Verify that module_options are applied and affect module identity."""
+        self.assertTrue(_kernel_fast_math.module.options["fast_math"])
+
+        # Define an identical kernel without fast_math to prove the option
+        # changes the module hash (not just the dict value).
+        @wp.kernel(module_options={"fast_math": False}, module="unique")
+        def _kernel_no_fast_math(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+            tid = wp.tid()
+            b[tid] = a[tid] + 1.0
+
+        self.assertFalse(_kernel_no_fast_math.module.options["fast_math"])
+        self.assertNotEqual(
+            _kernel_fast_math.module.name,
+            _kernel_no_fast_math.module.name,
+            "Different module_options must produce different module names",
+        )
+
+        # Launch to verify the kernel compiles and runs end-to-end.
+        a = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+        b = wp.zeros(3, dtype=float, device="cpu")
+        wp.launch(_kernel_fast_math, dim=3, inputs=[a, b], device="cpu")
+        np.testing.assert_allclose(b.numpy(), [2.0, 3.0, 4.0])
+
+    def test_module_options_error_without_unique(self):
+        """ValueError raised when module_options are used without ``module="unique"``."""
+        with self.assertRaises(ValueError) as cm:
+
+            @wp.kernel(module_options={"fast_math": True})
+            def _bad_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertIn("module_options", str(cm.exception))
+        self.assertIn('module="unique"', str(cm.exception))
+
+    def test_module_options_empty_dict(self):
+        """``module_options={}`` with ``module="unique"`` behaves the same as ``module_options=None``."""
+        with contextlib.redirect_stdout(io.StringIO()) as f:
+
+            @wp.kernel(module="unique", module_options={})
+            def _empty_opts_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertEqual(f.getvalue(), "")
+
+    def test_module_options_empty_dict_non_unique_raises(self):
+        """``module_options={}`` without ``module="unique"`` raises ``ValueError``."""
+        with self.assertRaises(ValueError) as cm:
+
+            @wp.kernel(module_options={})
+            def _bad_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertIn('module="unique"', str(cm.exception))
+
+    def test_module_options_no_warning_unique(self):
+        """No warning when module_options are used with ``module="unique"``."""
+        with contextlib.redirect_stdout(io.StringIO()) as f:
+
+            @wp.kernel(module_options={"fast_math": True}, module="unique")
+            def _no_warn_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertEqual(f.getvalue(), "")
+
+    def test_module_options_multiple_keys(self):
+        """Multiple module_options are applied to unique modules."""
+
+        @wp.kernel(module_options={"fast_math": True, "mode": "release"}, module="unique")
+        def _multi_opts_kernel(a: wp.array(dtype=float)):
+            pass
+
+        self.assertTrue(_multi_opts_kernel.module.options["fast_math"])
+        self.assertEqual(_multi_opts_kernel.module.options["mode"], "release")
+
+    def test_module_options_unknown_key(self):
+        """ValueError raised for unrecognized module_options keys."""
+        with self.assertRaises(ValueError) as cm:
+
+            @wp.kernel(module_options={"fast_mth": True}, module="unique")
+            def _typo_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertIn("fast_mth", str(cm.exception))
+        self.assertIn("Valid options", str(cm.exception))
+
+    def test_module_options_invalid_type(self):
+        """TypeError raised when module_options is not a dict."""
+        with self.assertRaises(TypeError) as cm:
+
+            @wp.kernel(module_options="fast_math", module="unique")
+            def _bad_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertIn("must be a dict", str(cm.exception))
+        self.assertIn("str", str(cm.exception))
+
+    def test_module_options_error_with_named_module(self):
+        """ValueError raised when module_options are used with a named (non-unique) module."""
+        with self.assertRaises(ValueError) as cm:
+
+            @wp.kernel(module_options={"fast_math": True}, module="some_shared_module")
+            def _named_mod_kernel(a: wp.array(dtype=float)):
+                pass
+
+        self.assertIn("module_options", str(cm.exception))
+        self.assertIn('module="unique"', str(cm.exception))
 
     def test_unique_module_generic_multiple_overloads(self):
         """Test that multiple overloads of a generic unique kernel work correctly.

@@ -124,6 +124,14 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
        ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to
        CUDA kernels. The ``block_dim`` parameter in :func:`warp.launch` must
        not exceed the ``maxThreadsPerBlock`` value specified here.
+   * - ``module_options``
+     - dict
+     - ``None``
+     - A dict of module-level compilation options to apply to the kernel's
+       module. Requires ``module="unique"``; raises ``ValueError`` otherwise.
+       Keys are validated against the module's known options (see
+       `Module Settings`_ above). For shared modules, use
+       :func:`wp.set_module_options() <warp.set_module_options>` instead.
 
 .. code-block:: python
 
@@ -148,3 +156,10 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
         # CUDA __launch_bounds__ will be set to (256, 1)
         tid = wp.tid()
         a[tid] = a[tid] * 2.0
+
+
+    @wp.kernel(module_options={"fast_math": True}, module="unique")
+    def fast_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        # fast_math is applied to this kernel's unique module
+        tid = wp.tid()
+        b[tid] = a[tid] + 1.0

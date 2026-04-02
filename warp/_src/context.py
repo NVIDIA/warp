@@ -1237,8 +1237,9 @@ def kernel(
     f: Callable | None = None,
     *,
     enable_backward: bool | None = None,
-    module: Module | Literal["unique"] | str | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
+    module: Module | Literal["unique"] | str | None = None,
+    module_options: dict[str, Any] | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -1274,31 +1275,56 @@ def kernel(
             tid = wp.tid()
             a[tid] = a[tid] * 2.0
 
+
+        @wp.kernel(module_options={"fast_math": True}, module="unique")
+        def my_kernel_fast(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+            # fast_math is a module-level option, so module="unique" is required
+            tid = wp.tid()
+            b[tid] = a[tid] + 1.0
+
     Args:
         f: The function to be registered as a kernel.
-        enable_backward: If False, the backward pass will not be generated.
-        module: The :class:`warp._src.context.Module` to which the kernel belongs. Alternatively, if a string `"unique"` is provided, the kernel is assigned to a new module named after the kernel name and hash. If None, the module is inferred from the function's module.
-        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`warp.launch` must not exceed the ``maxThreadsPerBlock`` value specified here.
+        enable_backward: If False, the backward pass will not be
+            generated.
+        launch_bounds: CUDA ``__launch_bounds__`` attribute for the
+            kernel. Can be an int (``maxThreadsPerBlock``) or a tuple
+            of 1-2 ints ``(maxThreadsPerBlock,
+            minBlocksPerMultiprocessor)``. Only applies to CUDA
+            kernels. Note: The ``block_dim`` parameter in
+            :func:`warp.launch` must not exceed the
+            ``maxThreadsPerBlock`` value specified here.
+        module: The :class:`warp._src.context.Module` to which the
+            kernel belongs. Alternatively, if a string ``"unique"`` is
+            provided, the kernel is assigned to a new module named
+            after the kernel name and hash. If ``None``, the module is
+            inferred from the function's module.
+        module_options: A dict of module-level compilation options
+            (e.g. ``fast_math``, ``mode``, ``max_unroll``) that are
+            applied to the kernel's module. Requires
+            ``module="unique"``; raises ``ValueError`` otherwise.
+            For shared modules, use :func:`warp.set_module_options`
+            instead. See :func:`warp.set_module_options` for the full
+            list of supported options.
 
     Returns:
         The registered kernel.
     """
 
     def wrapper(f, *args, **kwargs):
-        options = {}
+        kernel_options = {}
 
         if enable_backward is not None:
-            options["enable_backward"] = enable_backward
+            kernel_options["enable_backward"] = enable_backward
 
         if launch_bounds is not None:
-            options["launch_bounds"] = launch_bounds
+            kernel_options["launch_bounds"] = launch_bounds
 
         # Resolve the module for this kernel
         if module is None:
             # Default: infer module from the function's Python module
             m = get_module(f.__module__)
         elif module == "unique":
-            # Create a new temporary module that will be renamed based on hash
+            # Create a new temporary module that will be renamed based on hash.
             m = Module(f.__name__, None)
         elif isinstance(module, str):
             # Look up module by name
@@ -1307,12 +1333,34 @@ def kernel(
             # Use the provided Module object directly
             m = module
 
+        # Apply module_options to the unique module's options dict
+        if module_options is not None:
+            if not isinstance(module_options, dict):
+                raise TypeError(
+                    f"@wp.kernel for '{f.__name__}': module_options must be a dict, "
+                    f"got {type(module_options).__name__}."
+                )
+            if module != "unique":
+                raise ValueError(
+                    f"@wp.kernel for '{f.__name__}': module_options requires module=\"unique\". "
+                    "Use wp.set_module_options() to set module-level options for a shared module."
+                )
+            if module_options:
+                unknown = sorted(set(module_options) - set(m.options))
+                if unknown:
+                    raise ValueError(
+                        f"@wp.kernel for '{f.__name__}': unknown module_options: "
+                        f"{', '.join(repr(k) for k in unknown)}. "
+                        f"Valid options are: {', '.join(repr(k) for k in sorted(m.options))}."
+                    )
+                m.options.update(module_options)
+
         # Create the kernel object and register it with the module
         k = Kernel(
             func=f,
             key=warp._src.codegen.make_full_qualified_name(f),
             module=m,
-            options=options,
+            options=kernel_options,
         )
 
         # Handle unique module case: one module per kernel with hash-based naming.
