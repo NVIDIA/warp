@@ -6,8 +6,8 @@ from __future__ import annotations
 import builtins
 import functools
 import math
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 import warp._src.build
 import warp._src.context
@@ -26,7 +26,7 @@ def seq_check_equal(seq_1, seq_2):
     if len(seq_1) != len(seq_2):
         return False
 
-    return all(x == y for x, y in zip(seq_1, seq_2))
+    return all(x == y for x, y in zip(seq_1, seq_2, strict=False))
 
 
 def sametypes(arg_types: Mapping[str, Any]):
@@ -529,7 +529,7 @@ def _check_vars_match_dtype(arg_values, arg_types, dtype, msg):
     else:
         values = tuple(v for k, v in arg_values.items() if k not in skip_keys)
 
-    for t, v in zip(arg_types, values):
+    for t, v in zip(arg_types, values, strict=False):
         if not isinstance(v, Var):
             continue  # compile-time constant — will be cast in dispatch
         # Extract the scalar type from compound types (vec, mat, quat).
@@ -6044,7 +6044,7 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    arg_type_map = dict(zip(overload.input_types, dtypes))
+    arg_type_map = dict(zip(overload.input_types, dtypes, strict=False))
     assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
         f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
     )

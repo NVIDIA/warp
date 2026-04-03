@@ -29,7 +29,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from typing import Any, Optional
+from typing import Any
 
 import warp as wp
 import warp.tests.unittest_utils
@@ -61,10 +61,10 @@ def _build_command_line_options(test_options: dict[str, Any]) -> list:
 def add_example_test(
     cls: type,
     name: str,
-    devices: Optional[list] = None,
-    test_options: Optional[dict[str, Any]] = None,
-    test_options_cpu: Optional[dict[str, Any]] = None,
-    test_options_cuda: Optional[dict[str, Any]] = None,
+    devices: list | None = None,
+    test_options: dict[str, Any] | None = None,
+    test_options_cpu: dict[str, Any] | None = None,
+    test_options_cuda: dict[str, Any] | None = None,
 ):
     """Registers a Warp example to run on ``devices`` as a TestCase."""
 

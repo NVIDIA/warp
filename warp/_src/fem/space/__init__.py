@@ -4,8 +4,6 @@
 # isort: skip_file
 
 from enum import Enum
-from typing import Optional
-
 from warp._src.utils import warn
 import warp._src.fem.domain as _domain
 import warp._src.fem.geometry as _geometry
@@ -41,12 +39,12 @@ from .dof_mapper import DofMapper, IdentityMapper, SymmetricTensorMapper, SkewSy
 
 
 def make_space_restriction(
-    space: Optional[FunctionSpace] = None,
-    space_partition: Optional[SpacePartition] = None,
-    domain: Optional[_domain.GeometryDomain] = None,
-    space_topology: Optional[SpaceTopology] = None,
+    space: FunctionSpace | None = None,
+    space_partition: SpacePartition | None = None,
+    domain: _domain.GeometryDomain | None = None,
+    space_topology: SpaceTopology | None = None,
     device=None,
-    temporary_store: "Optional[warp.fem.TemporaryStore]" = None,  # noqa: F821
+    temporary_store: "warp.fem.TemporaryStore | None" = None,  # noqa: F821
 ) -> SpaceRestriction:
     """
     Restricts a function space partition to a Domain, i.e. a subset of its elements.
@@ -91,9 +89,9 @@ def make_space_restriction(
 def make_polynomial_basis_space(
     geo: _geometry.Geometry,
     degree: int = 1,
-    element_basis: Optional[ElementBasis] = None,
+    element_basis: ElementBasis | None = None,
     discontinuous: bool = False,
-    family: Optional[_polynomial.Polynomial] = None,
+    family: _polynomial.Polynomial | None = None,
 ) -> BasisSpace:
     """
     Equips a geometry with a polynomial basis.
@@ -167,7 +165,7 @@ def make_element_based_space_topology(
 
 
 def make_collocated_function_space(
-    basis_space: BasisSpace, dtype: Optional[type] = None, dof_mapper: Optional[DofMapper] = None
+    basis_space: BasisSpace, dtype: type | None = None, dof_mapper: DofMapper | None = None
 ) -> CollocatedFunctionSpace:
     """
     Constructs a function space from a scalar-valued basis space and a value type, such that all degrees of freedom of the value type are stored at each of the basis nodes.
@@ -213,12 +211,12 @@ def make_contravariant_function_space(
 
 def make_polynomial_space(
     geo: _geometry.Geometry,
-    dtype: Optional[type] = None,
-    dof_mapper: Optional[DofMapper] = None,
+    dtype: type | None = None,
+    dof_mapper: DofMapper | None = None,
     degree: int = 1,
-    element_basis: Optional[ElementBasis] = None,
+    element_basis: ElementBasis | None = None,
     discontinuous: bool = False,
-    family: Optional[_polynomial.Polynomial] = None,
+    family: _polynomial.Polynomial | None = None,
 ) -> CollocatedFunctionSpace:
     """
     Equips a geometry with a collocated, polynomial function space.

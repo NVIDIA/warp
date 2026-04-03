@@ -30,7 +30,7 @@ import subprocess
 import sys
 from bisect import bisect
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import IntEnum
 from importlib.abc import Loader, MetaPathFinder
@@ -38,7 +38,7 @@ from importlib.machinery import ModuleSpec
 from pathlib import Path
 from string import digits
 from types import ModuleType
-from typing import Callable, TypeVar, get_origin
+from typing import TypeVar, get_origin
 
 import warp as wp
 

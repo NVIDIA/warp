@@ -3,7 +3,6 @@
 
 import functools
 from enum import Enum
-from typing import Optional
 
 import warp as wp
 from warp._src.fem.geometry import Element
@@ -65,9 +64,9 @@ class ElementBasis(Enum):
 def make_element_shape_function(
     element: Element,
     degree: int,
-    element_basis: Optional[ElementBasis] = None,
-    family: Optional[Polynomial] = None,
-    scalar_type: Optional[type] = None,
+    element_basis: ElementBasis | None = None,
+    family: Polynomial | None = None,
+    scalar_type: type | None = None,
 ) -> ShapeFunction:
     """Equip a reference element with a shape function basis.
 

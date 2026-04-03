@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
@@ -35,7 +36,7 @@ class Integrand:
         cached_funcs (dict[Any, Any]): Cache of specialized functions by specialization key.
     """
 
-    def __init__(self, func: Callable, kernel_options: Optional[dict[str, Any]] = None):
+    def __init__(self, func: Callable, kernel_options: dict[str, Any] | None = None):
         self.func = func
         self.name = make_full_qualified_name(self.func)
         self.module = wp.get_module(self.func.__module__)
@@ -43,7 +44,7 @@ class Integrand:
         self.kernel_options = {} if kernel_options is None else kernel_options
 
         # Operators for each field argument. This will be populated at first integrate call
-        self.operators: Optional[dict[str, set[Operator]]] = None
+        self.operators: dict[str, set[Operator]] | None = None
 
         # Cached kernels for each integrand call
         self.cached_kernels = {}
@@ -65,8 +66,8 @@ class Operator:
         self,
         func: Callable,
         resolver: Callable,
-        field_result: Optional[Callable] = None,
-        attr: Optional[str] = None,
+        field_result: Callable | None = None,
+        attr: str | None = None,
     ):
         self.func = func
         self.name = func.__name__
@@ -75,7 +76,7 @@ class Operator:
         self.field_result = field_result
 
 
-def integrand(func: Optional[Callable] = None, kernel_options: Optional[dict[str, Any]] = None):
+def integrand(func: Callable | None = None, kernel_options: dict[str, Any] | None = None):
     """Decorator for functions to be integrated (or interpolated) using ``warp.fem``.
 
     Args:
@@ -205,7 +206,7 @@ def element_coordinates(domain: Domain, element_index: ElementIndex, x: Any) -> 
         else (x.cell_field, Field, x.cell_field.ElementEvalArg)
     ),
 )
-def cells(domain_or_field: Union[Domain, Field]) -> Union[Domain, Field]:
+def cells(domain_or_field: Domain | Field) -> Domain | Field:
     """Convert a side domain to a cell domain, or a traced field to its cell-level field.
 
     When applied to a :class:`Domain` defined on sides, returns the corresponding cell domain.
@@ -295,7 +296,7 @@ def element_partition_index(domain: Domain, cell_index: ElementIndex):
 
 
 @operator(resolver=lambda f: f.eval_inner)
-def inner(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def inner(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Evaluate the field at a sample point ``s``. On oriented sides, uses the inner element.
 
     If ``f`` is a :class:`DiscreteField` and ``node_index_in_elt`` is provided, ignore all other nodes.
@@ -304,7 +305,7 @@ def inner(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.eval_grad_inner)
-def grad(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def grad(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Evaluate the field gradient at a sample point ``s``. On oriented sides, uses the inner element.
 
     If ``f`` is a :class:`DiscreteField` and ``node_index_in_elt`` is provided, ignore all other nodes.
@@ -313,7 +314,7 @@ def grad(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.eval_div_inner)
-def div(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def div(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Evaluate the field divergence at a sample point ``s``. On oriented sides, uses the inner element.
 
     If ``f`` is a :class:`DiscreteField` and ``node_index_in_elt`` is provided, ignore all other nodes.
@@ -322,7 +323,7 @@ def div(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.eval_outer)
-def outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def outer(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Evaluate the field at a sample point ``s``. On oriented sides, uses the outer element.
 
     On interior points and on domain boundaries, this is equivalent to :func:`inner`.
@@ -333,7 +334,7 @@ def outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.eval_grad_outer)
-def grad_outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def grad_outer(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Evaluate the field gradient at a sample point ``s``.
 
     On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`grad`.
@@ -344,7 +345,7 @@ def grad_outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.eval_div_outer)
-def div_outer(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def div_outer(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Evaluate the field divergence at a sample point ``s``.
 
     On oriented sides, uses the outer element. On interior points and on domain boundaries, this is equivalent to :func:`div`.
@@ -367,7 +368,7 @@ def node_count(f: Field, s: Sample):
 
 
 @operator(resolver=lambda f: f.at_node)
-def at_node(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def at_node(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Return a copy of the :class:`Sample` ``s`` moved to the coordinates of a local node of the field ``f``.
 
     If ``f`` is a :class:`DiscreteField`, ``node_index_in_elt`` is required and indicates the element-local index of the node to consider.
@@ -378,7 +379,7 @@ def at_node(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.node_index)
-def node_index(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def node_index(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Return the index in the function space of a local node of the field ``f``.
 
     If ``f`` is a :class:`DiscreteField`, ``node_index_in_elt`` is required and indicates the element-local index of the node to consider.
@@ -389,7 +390,7 @@ def node_index(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
 
 
 @operator(resolver=lambda f: f.node_inner_weight)
-def node_inner_weight(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def node_inner_weight(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Return the inner element weight associated to a local node of the field ``f`` at the sample point ``s``.
 
     If ``f`` is a :class:`DiscreteField`, ``node_index_in_elt`` is required and indicates the element-local index of the node to consider.
@@ -400,7 +401,7 @@ def node_inner_weight(f: Field, s: Sample, node_index_in_elt: Optional[int] = No
 
 
 @operator(resolver=lambda f: f.node_outer_weight)
-def node_outer_weight(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def node_outer_weight(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Return the outer element weight associated to a local node of the field ``f`` at the sample point ``s``.
 
     If ``f`` is a :class:`DiscreteField`, ``node_index_in_elt`` is required and indicates the element-local index of the node to consider.
@@ -411,7 +412,7 @@ def node_outer_weight(f: Field, s: Sample, node_index_in_elt: Optional[int] = No
 
 
 @operator(resolver=lambda f: f.node_inner_weight_gradient)
-def node_inner_weight_gradient(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def node_inner_weight_gradient(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Return the gradient (w.r.t world coordinates) of the inner element weight associated to a local node of the field ``f`` at the sample point ``s``.
 
     If ``f`` is a :class:`DiscreteField`, ``node_index_in_elt`` is required and indicates the element-local index of the node to consider.
@@ -422,7 +423,7 @@ def node_inner_weight_gradient(f: Field, s: Sample, node_index_in_elt: Optional[
 
 
 @operator(resolver=lambda f: f.node_outer_weight_gradient)
-def node_outer_weight_gradient(f: Field, s: Sample, node_index_in_elt: Optional[int] = None):
+def node_outer_weight_gradient(f: Field, s: Sample, node_index_in_elt: int | None = None):
     """Return the gradient (w.r.t world coordinates) of the outer element weight associated to a local node of the field ``f`` at the sample point ``s``.
 
     If ``f`` is a :class:`DiscreteField`, ``node_index_in_elt`` is required and indicates the element-local index of the node to consider.
@@ -486,7 +487,7 @@ def grad_average(f: Field, s: Sample):
 
 
 @operator(resolver=lambda arg: arg.geometry.scalar_type)
-def scalar_type(domain_or_field: Union[Domain, Field]):
+def scalar_type(domain_or_field: Domain | Field):
     """Return the scalar type (``wp.float32`` or ``wp.float64``) for the current geometry.
 
     Resolved at integrand transformation time to a type constructor, so it

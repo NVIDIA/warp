@@ -3,7 +3,7 @@
 
 import weakref
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -85,7 +85,7 @@ class BasisSpace:
 
     # Helpers for generating node positions
 
-    def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
+    def node_positions(self, out: wp.array | None = None) -> wp.array:
         """Return a temporary array containing the world position for each node."""
 
         pos_type = cache.cached_vec_type(length=self.geometry.dimension, dtype=self.geometry.scalar_type)

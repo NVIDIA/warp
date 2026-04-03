@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache, utils
@@ -386,7 +386,7 @@ class AdaptiveNanogrid(NanogridBase):
 
     # -- Topology building --
 
-    def _build_face_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
+    def _build_face_grid(self, temporary_store: cache.TemporaryStore | None = None):
         device = self._cell_grid.device
 
         cell_face_grid = _build_cell_face_grid(self._cell_ijk, self._cell_level, self._cell_grid, temporary_store)

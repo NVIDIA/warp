@@ -670,11 +670,11 @@ def test_normalize(test, device, dtype, register_kernels=False):
             device=device,
         )
 
-    for ncmp, ncmpalt in zip(outputs0, outputs1):
+    for ncmp, ncmpalt in zip(outputs0, outputs1, strict=False):
         assert_np_equal(ncmp.numpy()[0], ncmpalt.numpy()[0], tol=10 * tol)
 
     invecs = [v2, v2, v3, v3, v3, v4, v4, v4, v4, v5, v5, v5, v5, v5]
-    for ncmp, ncmpalt, v in zip(outputs0, outputs1, invecs):
+    for ncmp, ncmpalt, v in zip(outputs0, outputs1, invecs, strict=False):
         tape0.backward(loss=ncmp)
         tape1.backward(loss=ncmpalt)
         assert_np_equal(tape0.gradients[v].numpy()[0], tape1.gradients[v].numpy()[0], tol=10 * tol)

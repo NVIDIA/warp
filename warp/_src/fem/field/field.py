@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.codegen import Struct
@@ -309,9 +309,9 @@ class ImplicitField(GeometryField):
         self,
         domain: GeometryDomain,
         func: wp.Function,
-        values: Optional[dict[str, Any]] = None,
-        grad_func: Optional[wp.Function] = None,
-        div_func: Optional[wp.Function] = None,
+        values: dict[str, Any] | None = None,
+        grad_func: wp.Function | None = None,
+        div_func: wp.Function | None = None,
         degree=0,
     ):
         self.domain = domain

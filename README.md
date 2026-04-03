@@ -24,7 +24,7 @@ are differentiable and can be used as part of machine-learning pipelines with fr
 
 ## Installing
 
-Python version 3.9 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux, and on Apple Silicon (ARMv8) on macOS.
+Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux, and on Apple Silicon (ARMv8) on macOS.
 GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):

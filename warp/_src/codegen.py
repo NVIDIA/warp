@@ -14,12 +14,11 @@ import inspect
 import itertools
 import math
 import re
-import sys
 import textwrap
 import threading
 import types
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable, ClassVar, get_args, get_origin
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, ClassVar, get_args, get_origin
 
 import warp.config
 from warp._src.types import *
@@ -127,7 +126,7 @@ def values_check_equal(a, b):
         if len(a) != len(b):
             return False
 
-        return all(x == y for x, y in zip(a, b))
+        return all(x == y for x, y in zip(a, b, strict=False))
 
     return a == b
 
@@ -142,100 +141,21 @@ def get_closure_cell_contents(obj):
     return None
 
 
-def eval_annotations(annotations: Mapping[str, Any], obj: Any) -> Mapping[str, Any]:
-    """Un-stringize annotations caused by `from __future__ import annotations` of PEP 563."""
-    # Implementation backported from `inspect.get_annotations()` for Python 3.9 and older.
-    if not annotations:
-        return {}
-
-    if not any(isinstance(x, str) for x in annotations.values()):
-        # No annotation to un-stringize.
-        return annotations
-
-    if isinstance(obj, type):
-        # class
-        globals = {}
-        module_name = getattr(obj, "__module__", None)
-        if module_name:
-            module = sys.modules.get(module_name, None)
-            if module:
-                globals = getattr(module, "__dict__", {})
-        locals = dict(vars(obj))
-        unwrap = obj
-    elif isinstance(obj, types.ModuleType):
-        # module
-        globals = obj.__dict__
-        locals = {}
-        unwrap = None
-    elif callable(obj):
-        # function
-        globals = getattr(obj, "__globals__", {})
-        # Capture the variables from the surrounding scope.
-        closure_vars = zip(
-            obj.__code__.co_freevars, tuple(get_closure_cell_contents(x) for x in (obj.__closure__ or ()))
-        )
-        locals = {k: v for k, v in closure_vars if v is not None}
-        unwrap = obj
-    else:
-        raise TypeError(f"{obj!r} is not a module, class, or callable.")
-
-    if unwrap is not None:
-        while True:
-            if hasattr(unwrap, "__wrapped__"):
-                unwrap = unwrap.__wrapped__
-                continue
-            if isinstance(unwrap, functools.partial):
-                unwrap = unwrap.func
-                continue
-            break
-        if hasattr(unwrap, "__globals__"):
-            globals = unwrap.__globals__
-
-    # "Inject" type parameters into the local namespace
-    # (unless they are shadowed by assignments *in* the local namespace),
-    # as a way of emulating annotation scopes when calling `eval()`
-    type_params = getattr(obj, "__type_params__", ())
-    if type_params:
-        locals = {param.__name__: param for param in type_params} | locals
-
-    return {k: v if not isinstance(v, str) else eval(v, globals, locals) for k, v in annotations.items()}
-
-
 def get_annotations(obj: Any) -> Mapping[str, Any]:
     """Same as `inspect.get_annotations()` but always returning un-stringized annotations."""
-    # Python 3.10+: Use the built-in inspect.get_annotations() which handles
-    # PEP 649 (deferred annotation evaluation) in Python 3.14+
-    if hasattr(inspect, "get_annotations"):
-        # eval_str=True ensures stringized annotations from PEP 563 are evaluated
-        return inspect.get_annotations(obj, eval_str=True)
-    else:
-        # Python 3.9 and older: Manual backport of inspect.get_annotations()
-        # See https://docs.python.org/3/howto/annotations.html#accessing-the-annotations-dict-of-an-object-in-python-3-9-and-older
-        if isinstance(obj, type):
-            annotations = obj.__dict__.get("__annotations__", {})
-        else:
-            annotations = getattr(obj, "__annotations__", {})
-
-        return eval_annotations(annotations, obj)
+    return inspect.get_annotations(obj, eval_str=True)
 
 
 def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     """Same as `inspect.getfullargspec()` but always returning un-stringized annotations."""
     spec = inspect.getfullargspec(func)
-
-    # Python 3.10+: Use inspect.get_annotations()
-    if hasattr(inspect, "get_annotations"):
-        # Capture closure variables to handle cases like `foo.Data` where `foo` is a closure variable
-        closure_vars = dict(
-            zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())))
-        )
-        # Filter out None values from empty cells
-        closure_vars = {k: v for k, v in closure_vars.items() if v is not None}
-        return spec._replace(annotations=inspect.get_annotations(func, eval_str=True, locals=closure_vars))
-    else:
-        # Python 3.9 and older: Manually un-stringize annotations
-        # See https://docs.python.org/3/howto/annotations.html#manually-un-stringizing-stringized-annotations
-        return spec._replace(annotations=eval_annotations(spec.annotations, func))
+    # Capture closure variables to handle cases like `foo.Data` where `foo` is a closure variable
+    closure_vars = dict(
+        zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())), strict=False)
+    )
+    # Filter out None values from empty cells
+    closure_vars = {k: v for k, v in closure_vars.items() if v is not None}
+    return spec._replace(annotations=inspect.get_annotations(func, eval_str=True, locals=closure_vars))
 
 
 def struct_instance_repr_recursive(inst: StructInstance, depth: int, use_repr: bool) -> str:
@@ -895,7 +815,7 @@ def func_match_args(func, arg_types, kwarg_types):
     bound_arg_types = tuple(bound_arg_types.arguments.values())
 
     # Check the given argument types against the ones defined on the function.
-    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values()):
+    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=False):
         # Let the `value_func` callback infer the type.
         if bound_arg_type is None:
             continue
@@ -1496,7 +1416,7 @@ class Adjoint:
 
         prev_comp_var = None
 
-        for op, comp in zip(op_strings, comps):
+        for op, comp in zip(op_strings, comps, strict=False):
             if prev_comp_var:
                 # We restrict chaining to operands of the same type
                 if prev_comp_var.type is comp.type:
@@ -2626,7 +2546,7 @@ class Adjoint:
         # It is important to do that in one pass, so that if evaluating these arguments have side effects
         # the code does not get generated more than once
         range_args = [adj.eval_num(arg) for arg in loop.iter.args]
-        arg_is_numeric, arg_values = zip(*range_args)
+        arg_is_numeric, arg_values = zip(*range_args, strict=False)
 
         if all(arg_is_numeric):
             # All argument are numeric constants
@@ -3160,12 +3080,6 @@ class Adjoint:
 
             if isinstance(node.slice, ast.Tuple):
                 ij = node.slice.elts
-            elif isinstance(node.slice, ast.Index) and isinstance(node.slice.value, ast.Tuple):
-                # The node `ast.Index` is deprecated in Python 3.9.
-                ij = node.slice.value.elts
-            elif isinstance(node.slice, ast.ExtSlice):
-                # The node `ast.ExtSlice` is deprecated in Python 3.9.
-                ij = node.slice.dims
             else:
                 ij = [node.slice]
 
@@ -3264,7 +3178,7 @@ class Adjoint:
                 )
 
             out = rhs
-            for name, rhs in zip(names, out):
+            for name, rhs in zip(names, out, strict=False):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
                         raise WarpCodegenTypeError(
@@ -3792,6 +3706,7 @@ class Adjoint:
             zip(
                 adj.func.__code__.co_freevars,
                 [c.cell_contents for c in (adj.func.__closure__ or [])],
+                strict=False,
             )
         )
 

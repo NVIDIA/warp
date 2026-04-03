@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -80,7 +80,7 @@ class Quadmesh(Geometry):
         quad_vertex_indices: wp.array,
         positions: wp.array,
         build_bvh: bool = False,
-        temporary_store: Optional[TemporaryStore] = None,
+        temporary_store: TemporaryStore | None = None,
     ):
         """Construct a D-dimensional quadrilateral mesh.
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -106,7 +106,7 @@ class SpaceTopology:
         """Return the number of nodes for both the inner and outer cells of a given sides."""
         raise NotImplementedError
 
-    def element_node_indices(self, out: Optional[wp.array] = None) -> wp.array:
+    def element_node_indices(self, out: wp.array | None = None) -> wp.array:
         """Return a temporary array containing the global index for each node of each element."""
 
         @cache.dynamic_kernel(suffix=self.name)

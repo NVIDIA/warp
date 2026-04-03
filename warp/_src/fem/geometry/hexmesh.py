@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -171,7 +171,7 @@ class Hexmesh(Geometry):
         positions: wp.array,
         assume_parallelepiped_cells=False,
         build_bvh: bool = False,
-        temporary_store: Optional[TemporaryStore] = None,
+        temporary_store: TemporaryStore | None = None,
     ):
         """Construct a hexahedral mesh.
 
@@ -694,7 +694,7 @@ class Hexmesh(Geometry):
         boundary_face_indices, _ = masked_indices(boundary_mask)
         self._boundary_face_indices = boundary_face_indices.detach()
 
-    def _compute_hex_edges(self, temporary_store: Optional[TemporaryStore] = None):
+    def _compute_hex_edges(self, temporary_store: TemporaryStore | None = None):
         device = self.hex_vertex_indices.device
 
         vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())

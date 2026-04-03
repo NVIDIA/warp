@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 import warp._src.fem.operator as operator
@@ -688,7 +688,7 @@ def make_linear_dispatch_kernel(
     quadrature: Quadrature,
     accumulate_dtype: type,
     tile_size: int = 1,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction
@@ -889,7 +889,7 @@ def make_bilinear_dispatch_kernel(
     quadrature: Quadrature,
     accumulate_dtype: type,
     tile_size: int = 1,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction

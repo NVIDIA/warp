@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 
 import numpy as np
 
@@ -18,7 +17,7 @@ _wp_module_name_ = "warp.fem.adaptivity"
 
 
 def adaptive_nanogrid_from_hierarchy(
-    grids: list[wp.Volume], grading: Optional[str] = None, temporary_store: Optional[cache.TemporaryStore] = None
+    grids: list[wp.Volume], grading: str | None = None, temporary_store: cache.TemporaryStore | None = None
 ) -> AdaptiveNanogrid:
     """
     Constructs a :class:`warp.fem.AdaptiveNanogrid` from a non-overlapping grid hierarchy.
@@ -93,8 +92,8 @@ def adaptive_nanogrid_from_field(
     level_count: int,
     refinement_field: GeometryField,
     samples_per_voxel: int = 64,
-    grading: Optional[str] = None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
+    grading: str | None = None,
+    temporary_store: cache.TemporaryStore | None = None,
 ) -> AdaptiveNanogrid:
     """
     Constructs a :class:`warp.fem.AdaptiveNanogrid` from a coarse grid and a refinement field.
@@ -207,8 +206,8 @@ def enforce_nanogrid_grading(
     cell_grid: wp.Volume,
     cell_level: wp.array,
     level_count: int,
-    grading: Optional[str] = None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
+    grading: str | None = None,
+    temporary_store: cache.TemporaryStore | None = None,
 ) -> tuple[wp.Volume, wp.array]:
     """
     Refines an adaptive grid such that if satisfies a grading condition.

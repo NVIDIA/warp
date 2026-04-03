@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union
 
 import warp as wp
 from warp._src.fem import cache
@@ -31,7 +30,7 @@ class NanogridSpaceTopology(SpaceTopology):
 
     def __init__(
         self,
-        grid: Union[Nanogrid, AdaptiveNanogrid],
+        grid: Nanogrid | AdaptiveNanogrid,
         shape: CubeShapeFunction,
     ):
         self._shape = shape
@@ -248,7 +247,7 @@ def _pad_voxels(voxel_ijk: wp.array(dtype=wp.vec3i), padded_ijk: wp.array4d(dtyp
     padded_ijk[pid, i, j, k] = voxel_ijk[pid] + wp.vec3i(i - 1, j - 1, k - 1)
 
 
-def make_nanogrid_space_topology(grid: Union[Nanogrid, AdaptiveNanogrid], shape: CubeShapeFunction):
+def make_nanogrid_space_topology(grid: Nanogrid | AdaptiveNanogrid, shape: CubeShapeFunction):
     if isinstance(shape, CubeBSplineShapeFunctions):
         if isinstance(grid.base, AdaptiveNanogrid):
             raise ValueError(f"Adaptive Nanogrid does not support {shape.name}")

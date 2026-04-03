@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -307,7 +307,7 @@ class Nanogrid(NanogridBase):
     def __init__(
         self,
         grid: wp.Volume,
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        temporary_store: cache.TemporaryStore | None = None,
         scalar_type: type = wp.float32,
     ):
         """Construct a sparse grid geometry from an in-memory NanoVDB volume.
@@ -562,7 +562,7 @@ class Nanogrid(NanogridBase):
 
         return proj_coords, wp.length_sq(wp.volume_index_to_world_dir(args.cell_arg.cell_grid, cell_coord_offset))
 
-    def _build_face_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
+    def _build_face_grid(self, temporary_store: cache.TemporaryStore | None = None):
         device = self._cell_grid.device
         self._face_grid = _build_face_grid(self._cell_ijk, self._cell_grid, temporary_store)
         face_count = self._face_grid.get_voxel_count()
@@ -582,7 +582,7 @@ class Nanogrid(NanogridBase):
         boundary_face_mask.release()
         self._boundary_face_indices = boundary_face_indices.detach()
 
-    def _build_edge_grid(self, temporary_store: Optional[cache.TemporaryStore] = None):
+    def _build_edge_grid(self, temporary_store: cache.TemporaryStore | None = None):
         self._edge_grid = _build_edge_grid(self._cell_ijk, self._cell_grid, temporary_store)
         self._edge_count = self._edge_grid.get_voxel_count()
 

@@ -35,6 +35,7 @@
 
 ### Removed
 
+- Remove Python 3.9 support. Python 3.10 or newer is now required.
 - Remove the Kit extensions from this repository ([GH-1296](https://github.com/NVIDIA/warp/issues/1296)).
 - Remove integer type support from `wp.isfinite()`, `wp.isnan()`, and `wp.isinf()`. Only float types are
   now accepted. Previously a deprecation warning was issued

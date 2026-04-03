@@ -12,7 +12,6 @@ import tempfile
 import time
 import unittest
 import xml.etree.ElementTree as ET
-from typing import Optional
 
 import numpy as np
 
@@ -42,7 +41,7 @@ except OSError:
     LIBC = None
 
 
-def get_selected_cuda_test_devices(mode: Optional[str] = None):
+def get_selected_cuda_test_devices(mode: str | None = None):
     """Returns a list of CUDA devices according the selected ``mode`` behavior.
 
     If ``mode`` is ``None``, the ``global test_mode`` value will be used and
@@ -84,7 +83,7 @@ def get_selected_cuda_test_devices(mode: Optional[str] = None):
     return selected_cuda_devices
 
 
-def get_test_devices(mode: Optional[str] = None):
+def get_test_devices(mode: str | None = None):
     """Returns a list of devices based on the mode selected.
 
     Args:
@@ -382,7 +381,7 @@ def write_junit_results(
     tree = ET.ElementTree(root)
 
     if hasattr(ET, "indent"):
-        ET.indent(root)  # Pretty-printed XML output, Python 3.9 required
+        ET.indent(root)  # Pretty-printed XML output
 
     tree.write(outfile, encoding="utf-8", xml_declaration=True)
 

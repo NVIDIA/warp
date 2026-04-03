@@ -25,18 +25,16 @@ import tempfile
 import threading
 import types
 import weakref
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy as shallowcopy
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Literal,
     NamedTuple,
     TypeVar,
-    Union,
     get_args,
     get_origin,
 )
@@ -453,7 +451,7 @@ class Function:
                 # instantiate this function with the specified argument types
 
                 arg_names = f.input_types.keys()
-                overload_annotations = dict(zip(arg_names, arg_types))
+                overload_annotations = dict(zip(arg_names, arg_types, strict=False))
                 # add defaults
                 for k, d in f.defaults.items():
                     if k not in overload_annotations:
@@ -697,7 +695,7 @@ def call_builtin_from_desc(
     # Try gathering the parameters that the function expects and pack them
     # into their corresponding C types.
     c_params = []
-    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds)):
+    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=False)):
         param = params[i]
 
         if param_kind == BuiltinParamKind.BUILTIN_GENERIC:
@@ -736,7 +734,7 @@ def call_builtin_from_desc(
         return None
 
     value_ctype = tuple(warp._src.types.type_ctype(x) for x in value_type)
-    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret))
+    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=False))
     if len(return_value) == 1:
         return_value = return_value[0]
 
@@ -850,7 +848,7 @@ class Kernel:
                         f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {type_repr(template_types[i])}, got {type_repr(arg_types[i])}"
                     )
 
-        overload_annotations = dict(zip(arg_names, arg_types))
+        overload_annotations = dict(zip(arg_names, arg_types, strict=False))
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
@@ -1048,7 +1046,9 @@ def func_grad(forward_fn):
                 expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
             if len(grad_args) != len(expected_args):
                 return False
-            if any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
+            if any(
+                not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args, strict=False)
+            ):
                 return False
             return True
 
@@ -1758,7 +1758,7 @@ def add_builtin(
                 typelists.append(l)
 
             for arg_types in itertools.product(*typelists):
-                concrete_arg_types = dict(zip(input_types.keys(), arg_types))
+                concrete_arg_types = dict(zip(input_types.keys(), arg_types, strict=False))
 
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
@@ -4014,7 +4014,7 @@ def _validate_cuda_arch_suffix(
 
 """ Meta-type for arguments that can be resolved to a concrete Device.
 """
-DeviceLike = Union[Device, str, None]
+DeviceLike = Device | str | None
 
 
 class Graph:
@@ -4051,13 +4051,6 @@ class Runtime:
                 "Warp no longer supports Intel-based macOS (x86_64). "
                 "Please use Warp 1.9.x or earlier for Intel Mac support, "
                 "or upgrade to Apple Silicon hardware (ARM64)."
-            )
-
-        if sys.version_info < (3, 10):
-            warp._src.utils.warn(
-                f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
-                "will be removed in Warp 1.13. Please upgrade to Python 3.10 or newer.",
-                DeprecationWarning,
             )
 
         bin_path = os.path.join(warp_home, "bin")
@@ -9467,9 +9460,8 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
-    print("from collections.abc import Sequence", file=file)
+    print("from collections.abc import Callable, Sequence", file=file)
     print("from typing import Any", file=file)
-    print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
     print("from typing import Literal", file=file)

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -447,10 +447,10 @@ class NodalQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     def __init__(
         self,
-        domain: Optional[GeometryDomain],
-        space: Optional[FunctionSpace] = None,
-        basis_space: Optional[BasisSpace] = None,
-        space_partition: Optional[SpacePartition] = None,
+        domain: GeometryDomain | None,
+        space: FunctionSpace | None = None,
+        basis_space: BasisSpace | None = None,
+        space_partition: SpacePartition | None = None,
     ):
         if basis_space is None:
             if space is None:

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -153,9 +153,9 @@ class PointBasisSpace(BasisSpace):
     def __init__(
         self,
         quadrature: Quadrature,
-        kernel_func: Optional[wp.Function] = None,
-        kernel_grad_func: Optional[wp.Function] = None,
-        kernel_values: Optional[dict[str, Any]] = None,
+        kernel_func: wp.Function | None = None,
+        kernel_grad_func: wp.Function | None = None,
+        kernel_values: dict[str, Any] | None = None,
         distance_space: str = "reference",
         max_nodes_per_element: int = -1,
         use_evaluation_point_index: bool = False,

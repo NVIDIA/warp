@@ -4,7 +4,8 @@
 import ast
 import inspect
 import textwrap
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 import warp as wp
 import warp._src.fem.operator as operator
@@ -112,7 +113,7 @@ class IntegrandVisitor(ast.NodeTransformer):
 
     @staticmethod
     def _build_field_info(integrand: Integrand, field_args: dict[str, FieldLike]):
-        def get_concrete_type(field: Union[FieldLike, Domain]):
+        def get_concrete_type(field: FieldLike | Domain):
             if isinstance(field, FieldLike):
                 return field.ElementEvalArg
             elif isinstance(field, GeometryDomain):
@@ -243,7 +244,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
         self._operator_callback = callback
 
     def _process_operator_call(
-        self, call: ast.Call, callee: Union[str, Operator], operator: Operator, field_info: IntegrandVisitor.FieldInfo
+        self, call: ast.Call, callee: str | Operator, operator: Operator, field_info: IntegrandVisitor.FieldInfo
     ):
         self._operator_callback(field_info, operator)
 
@@ -261,7 +262,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
 
     @staticmethod
     def apply(
-        integrand: Integrand, field_args: dict[str, FieldLike], operator_callback: Optional[Callable] = None
+        integrand: Integrand, field_args: dict[str, FieldLike], operator_callback: Callable | None = None
     ) -> wp.Function:
         field_info = IntegrandVisitor._build_field_info(integrand, field_args)
         IntegrandOperatorParser(integrand, field_info, callback=operator_callback)._apply()
@@ -269,7 +270,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
 
 class IntegrandTransformer(IntegrandVisitor):
     def _process_operator_call(
-        self, call: ast.Call, callee: Union[str, Operator], operator: Operator, field_info: IntegrandVisitor.FieldInfo
+        self, call: ast.Call, callee: str | Operator, operator: Operator, field_info: IntegrandVisitor.FieldInfo
     ):
         field = field_info.field
 
@@ -359,7 +360,7 @@ class IntegrandTransformer(IntegrandVisitor):
 
 
 class IntegrandArguments(NamedTuple):
-    field_args: dict[str, Union[FieldLike, GeometryDomain]]
+    field_args: dict[str, FieldLike | GeometryDomain]
     value_args: dict[str, Any]
     domain_name: str
     sample_name: str
@@ -1117,11 +1118,11 @@ def _generate_integrate_kernel(
     domain: GeometryDomain,
     quadrature: Quadrature,
     arguments: IntegrandArguments,
-    test: Optional[TestField],
-    trial: Optional[TrialField],
+    test: TestField | None,
+    trial: TrialField | None,
     output_dtype: type,
     accumulate_dtype: type,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ) -> wp.Kernel:
     output_dtype = type_scalar_type(output_dtype)
 
@@ -1247,11 +1248,11 @@ def _generate_integrate_kernel(
 
 def _generate_auxiliary_kernels(
     quadrature: Quadrature,
-    test: Optional[TestField],
-    trial: Optional[TrialField],
+    test: TestField | None,
+    trial: TrialField | None,
     accumulate_dtype: type,
     device,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ) -> list[tuple[wp.Kernel, int]]:
     if test is None or not isinstance(test, LocalTestField):
         return ()
@@ -1301,16 +1302,16 @@ def _launch_integrate_kernel(
     value_struct_values: StructInstance,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    test: Optional[TestField],
-    trial: Optional[TrialField],
+    test: TestField | None,
+    trial: TrialField | None,
     fields: dict[str, FieldLike],
     values: dict[str, Any],
     accumulate_dtype: type,
-    temporary_store: Optional[cache.TemporaryStore],
+    temporary_store: cache.TemporaryStore | None,
     output_dtype: type,
-    output: Optional[Union[wp.array, BsrMatrix]],
+    output: wp.array | BsrMatrix | None,
     add_to_output: bool,
-    bsr_options: Optional[dict[str, Any]],
+    bsr_options: dict[str, Any] | None,
     device,
 ):
     # Set-up launch arguments
@@ -1700,9 +1701,7 @@ _NODE_OPERATORS = {
 }
 
 
-def _pick_assembly_strategy(
-    assembly: Optional[str], operators: dict[str, set[Operator]], arguments: IntegrandArguments
-):
+def _pick_assembly_strategy(assembly: str | None, operators: dict[str, set[Operator]], arguments: IntegrandArguments):
     if assembly is not None:
         if assembly not in ("generic", "nodal", "dispatch"):
             raise ValueError(f"Invalid assembly strategy'{assembly}'")
@@ -1718,19 +1717,19 @@ def _pick_assembly_strategy(
 
 def integrate(
     integrand: Integrand,
-    domain: Optional[GeometryDomain] = None,
-    quadrature: Optional[Quadrature] = None,
-    fields: Optional[dict[str, FieldLike]] = None,
-    values: Optional[dict[str, Any]] = None,
+    domain: GeometryDomain | None = None,
+    quadrature: Quadrature | None = None,
+    fields: dict[str, FieldLike] | None = None,
+    values: dict[str, Any] | None = None,
     accumulate_dtype: type = wp.float64,
-    output_dtype: Optional[type] = None,
-    output: Optional[Union[BsrMatrix, wp.array]] = None,
+    output_dtype: type | None = None,
+    output: BsrMatrix | wp.array | None = None,
     device=None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
-    kernel_options: Optional[dict[str, Any]] = None,
-    assembly: Optional[str] = None,
+    temporary_store: cache.TemporaryStore | None = None,
+    kernel_options: dict[str, Any] | None = None,
+    assembly: str | None = None,
     add: bool = False,
-    bsr_options: Optional[dict[str, Any]] = None,
+    bsr_options: dict[str, Any] | None = None,
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
@@ -1892,7 +1891,7 @@ def get_interpolate_at_nodes_function(
     ValueStruct: Struct,
     space_restriction: SpaceRestriction,
     dest_basis: FunctionSpace,
-    dest_dtype: Optional[type],
+    dest_dtype: type | None,
     reduction: str,
 ):
     SampleType = domain.geometry.sample_type
@@ -2028,7 +2027,7 @@ def get_interpolate_at_nodes_kernel(
     ValueStruct: Struct,
     space_restriction: SpaceRestriction,
     dest_space: FunctionSpace,
-    dest: Union[DiscreteField, wp.array, None],
+    dest: DiscreteField | wp.array | None,
 ):
     if isinstance(dest, DiscreteField):
         dest_arg_type = dest.EvalArg
@@ -2294,7 +2293,7 @@ def get_interpolate_at_quadrature_kernel(
     quadrature: Quadrature,
     FieldStruct: Struct,
     ValueStruct: Struct,
-    value_type: Optional[type],
+    value_type: type | None,
 ):
     SampleType = domain.geometry.sample_type
 
@@ -2458,13 +2457,13 @@ def get_interpolate_free_kernel(
 def _generate_interpolate_kernel(
     integrand: Integrand,
     domain: GeometryDomain,
-    dest: Union[DiscreteField, wp.array, BsrMatrix, None],
-    dest_space: Optional[FunctionSpace],
-    space_restriction: Optional[SpaceRestriction],
-    quadrature: Optional[Quadrature],
+    dest: DiscreteField | wp.array | BsrMatrix | None,
+    dest_space: FunctionSpace | None,
+    space_restriction: SpaceRestriction | None,
+    quadrature: Quadrature | None,
     reduction: str,
     arguments: IntegrandArguments,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ) -> wp.Kernel:
     _notify_operator_usage(integrand, arguments.field_args)
 
@@ -2618,7 +2617,7 @@ def _allocate_interpolate_jacobian_triplets(
     point_index_count: int,
     trial: TrialField,
     dest: BsrMatrix,
-    temporary_store: Optional[cache.TemporaryStore],
+    temporary_store: cache.TemporaryStore | None,
 ):
     nnz = evaluation_point_count * trial.space.topology.MAX_NODES_PER_ELEMENT
 
@@ -2648,17 +2647,17 @@ def _launch_interpolate_kernel(
     field_arg_values: StructInstance,
     value_struct_values: StructInstance,
     domain: GeometryDomain,
-    dest: Optional[Union[DiscreteField, wp.array, BsrMatrix]],
-    dest_space: Optional[FunctionSpace],
-    space_restriction: Optional[SpaceRestriction],
-    quadrature: Optional[Quadrature],
+    dest: DiscreteField | wp.array | BsrMatrix | None,
+    dest_space: FunctionSpace | None,
+    space_restriction: SpaceRestriction | None,
+    quadrature: Quadrature | None,
     reduction: str,
     dim: int,
-    trial: Optional[TrialField],
+    trial: TrialField | None,
     fields: dict[str, FieldLike],
     values: dict[str, Any],
-    temporary_store: Optional[cache.TemporaryStore],
-    bsr_options: Optional[dict[str, Any]],
+    temporary_store: cache.TemporaryStore | None,
+    bsr_options: dict[str, Any] | None,
     device,
 ) -> wp.Kernel:
     # Set-up launch arguments
@@ -2816,20 +2815,20 @@ def _identity_field(field: Field, s: Sample):
 
 
 def interpolate(
-    integrand: Union[Integrand, FieldLike],
-    dest: Union[DiscreteField, FieldRestriction, wp.array, BsrMatrix, None] = None,
-    at: Union[Quadrature, SpaceRestriction, GeometryDomain, None] = None,
-    dest_space: Optional[FunctionSpace] = None,
-    quadrature: Optional[Quadrature] = None,
-    dim: Optional[int] = None,
-    domain: Optional[GeometryDomain] = None,
-    fields: Optional[dict[str, FieldLike]] = None,
-    values: Optional[dict[str, Any]] = None,
+    integrand: Integrand | FieldLike,
+    dest: DiscreteField | FieldRestriction | wp.array | BsrMatrix | None = None,
+    at: Quadrature | SpaceRestriction | GeometryDomain | None = None,
+    dest_space: FunctionSpace | None = None,
+    quadrature: Quadrature | None = None,
+    dim: int | None = None,
+    domain: GeometryDomain | None = None,
+    fields: dict[str, FieldLike] | None = None,
+    values: dict[str, Any] | None = None,
     reduction: str = "weighted_average",
     device=None,
-    kernel_options: Optional[dict[str, Any]] = None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
-    bsr_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
+    temporary_store: cache.TemporaryStore | None = None,
+    bsr_options: dict[str, Any] | None = None,
 ):
     """
     Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field, raw warp array, or sparse matrix.

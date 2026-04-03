@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -24,7 +24,7 @@ class CollocatedFunctionSpace(FunctionSpace):
 
     LocalValueMap = float
 
-    def __init__(self, basis: BasisSpace, dtype: Optional[type] = None, dof_mapper: DofMapper = None):
+    def __init__(self, basis: BasisSpace, dtype: type | None = None, dof_mapper: DofMapper = None):
         if dtype is None:
             dtype = basis.geometry.scalar_type
         self.dof_mapper = IdentityMapper(dtype) if dof_mapper is None else dof_mapper
@@ -59,13 +59,13 @@ class CollocatedFunctionSpace(FunctionSpace):
         """Unique name of the function space."""
         return f"{self._basis.name}_{self.dof_mapper}".replace(".", "_")
 
-    def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
+    def node_positions(self, out: wp.array | None = None) -> wp.array:
         """Return node positions for this space."""
         return self.basis.node_positions(out=out)
 
     def make_field(
         self,
-        space_partition: Optional[SpacePartition] = None,
+        space_partition: SpacePartition | None = None,
     ) -> "wp._src.fem.NodalField":
         """Create a discrete field over this function space.
 
@@ -216,13 +216,13 @@ class VectorValuedFunctionSpace(FunctionSpace):
         """Unique name of the function space."""
         return self.basis.name
 
-    def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
+    def node_positions(self, out: wp.array | None = None) -> wp.array:
         """Return node positions for this space."""
         return self.basis.node_positions(out=out)
 
     def make_field(
         self,
-        space_partition: Optional[SpacePartition] = None,
+        space_partition: SpacePartition | None = None,
     ) -> "wp._src.fem.NodalField":
         """Create a discrete field over this function space.
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -53,8 +53,8 @@ class Grid2D(Geometry):
     def __init__(
         self,
         res: wp.vec2i,
-        bounds_lo: Optional[wp.vec2] = None,
-        bounds_hi: Optional[wp.vec2] = None,
+        bounds_lo: wp.vec2 | None = None,
+        bounds_hi: wp.vec2 | None = None,
         scalar_type: type = wp.float32,
     ):
         """Construct a dense 2D grid.

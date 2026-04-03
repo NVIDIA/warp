@@ -13,11 +13,10 @@ import struct
 import sys
 import types
 import zlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Generic,
     Literal,
@@ -711,7 +710,7 @@ def _binary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (a, x)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x, strict=False)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
@@ -739,7 +738,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (x, a)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x, strict=False)))
 
 
 @functools.cache
@@ -874,7 +873,7 @@ def vector(length, dtype):
                     if indices is None:
                         indices = range(*key.indices(self._length_))
 
-                    for idx, x in zip(indices, value):
+                    for idx, x in zip(indices, value, strict=False):
                         try:
                             super().__setitem__(idx, self._type_(x))
                         except TypeError:
@@ -2373,7 +2372,7 @@ def type_repr(t) -> str:
     if is_tuple(t):
         return f"tuple({', '.join(type_repr(x) for x in t.types)})"
     if get_origin(t) is tuple:
-        # Handle Python 3.9+ native tuple[...] syntax
+        # Handle native tuple[...] syntax
         args = get_args(t)
         if args:
             return f"tuple({', '.join(type_repr(x) for x in args)})"
@@ -2666,7 +2665,7 @@ def types_equal_generic(a, b, match_generic=True):
                 return seq_match_ellipsis(b, a)
 
             return len(a) == len(b) and all(
-                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b)
+                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b, strict=False)
             )
         elif a_is_seq or b_is_seq:
             # A sequence can only match to another sequence.
@@ -2691,7 +2690,7 @@ def types_equal_generic(a, b, match_generic=True):
         if not isinstance(a, type) or not isinstance(b, type):
             return False
 
-        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
             if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
@@ -6617,7 +6616,7 @@ def type_generic_equal(a, b):
     if getattr(a, "_wp_generic_type_hint_", "a") is not getattr(b, "_wp_generic_type_hint_", "b"):
         return False
 
-    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
         if not scalars_equal(p1, p2):
             return False
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, Optional, Union
+from typing import Any
 
 import warp as wp
 import warp._src.fem.cache as cache
@@ -20,7 +20,7 @@ from warp._src.fem.types import NULL_ELEMENT_INDEX, Domain, ElementKind
 
 _wp_module_name_ = "warp.fem.domain"
 
-GeometryOrPartition = Union[Geometry, GeometryPartition]
+GeometryOrPartition = Geometry | GeometryPartition
 
 
 class GeometryDomain(Domain):
@@ -489,9 +489,9 @@ class Subdomain(GeometryDomain):
     def __init__(
         self,
         domain: GeometryDomain,
-        element_mask: Optional[wp.array] = None,
-        element_indices: Optional[wp.array] = None,
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        element_mask: wp.array | None = None,
+        element_indices: wp.array | None = None,
+        temporary_store: cache.TemporaryStore | None = None,
     ):
         """
         Create a subdomain from a subset of elements.

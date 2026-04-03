@@ -51,7 +51,6 @@ variables:
       - "3.12"
       - "3.11"
       - "3.10"
-      - "3.9"
     description: "The default UV Python version used in the main testing jobs."
 
 stages:
@@ -300,7 +299,7 @@ cppcheck:
 #
 # Comprehensive test suite across multiple platforms (Linux x86_64/aarch64,
 # Windows, specialized hardware like Orin/Thor/Blackwell), Python versions
-# (3.9-3.14), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
+# (3.10-3.14), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
 # compute code coverage, others focus on compatibility and performance (ASV).
 # ==============================================================================
 
@@ -613,7 +612,6 @@ linux-x86_64 python matrix test:
     - .basic_test_changes_rules
   parallel:
     matrix:
-      - UV_PYTHON: "3.9"
       - UV_PYTHON: "3.10"
       - UV_PYTHON: "3.13"
       - UV_PYTHON: "3.14"

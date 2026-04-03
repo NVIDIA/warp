@@ -7,7 +7,6 @@ import ctypes
 import sys
 import time
 from collections import defaultdict
-from typing import Union
 
 import numpy as np
 
@@ -17,7 +16,7 @@ from .utils import tab10_color_map
 
 _wp_module_name_ = "warp.render.render_opengl"
 
-Mat44 = Union[list[float], list[list[float]], np.ndarray]
+Mat44 = list[float] | list[list[float]] | np.ndarray
 
 
 wp.set_module_options({"enable_backward": False})
@@ -819,7 +818,7 @@ class ShapeInstancer:
             )
         else:
             self.instance_transforms = wp.array(
-                [(*pos, *rot) for pos, rot in zip(positions, rotations)],
+                [(*pos, *rot) for pos, rot in zip(positions, rotations, strict=False)],
                 dtype=wp.transform,
                 device=self.device,
             )
@@ -1605,7 +1604,7 @@ class OpenGLRenderer:
             if all(tile_sizes[i][1] == tile_sizes[0][1] for i in range(n)):
                 # tiles all have the same height
                 self._tile_height = tile_sizes[0][1]
-            self._tile_viewports = [(x, y, w, h) for (x, y), (w, h) in zip(tile_positions, tile_sizes)]
+            self._tile_viewports = [(x, y, w, h) for (x, y), (w, h) in zip(tile_positions, tile_sizes, strict=False)]
 
         if projection_matrices is None:
             projection_matrices = [None] * n
