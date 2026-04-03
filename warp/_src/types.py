@@ -4645,9 +4645,22 @@ class _ArrayAnnotationBase:
         self.ndim = ndim
 
     def __repr__(self):
-        dtype_str = "Any" if self.dtype is Any else self.dtype
-        ndim_str = "Any" if self.ndim is Any else self.ndim
-        return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
+        if self.dtype is Any:
+            dtype_str = "Any"
+        else:
+            dtype_str = f"wp.{getattr(self.dtype, '__name__', None) or type_repr(self.dtype)}"
+        cls_name = self._concrete_cls.__name__
+        ndim = self.ndim
+        # Use the eval-able subscript form (e.g. wp.array4d[wp.float32])
+        if cls_name == "array" and ndim is not Any:
+            if ndim >= 2:
+                return f"wp.array{ndim}d[{dtype_str}]"
+            return f"wp.array[{dtype_str}]"
+        if ndim is not Any and ndim == 1:
+            return f"wp.{cls_name}[{dtype_str}]"
+        if ndim is not Any:
+            return f"wp.{cls_name}[{dtype_str}, Literal[{ndim}]]"
+        return f"wp.{cls_name}(dtype={dtype_str}, ndim=Any)"
 
     def __eq__(self, other):
         if isinstance(other, _ArrayAnnotationBase):

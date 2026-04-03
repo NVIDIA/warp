@@ -502,6 +502,38 @@ class TestSubscriptTypes(unittest.TestCase):
         ia = wp.indexedarray[float]
         self.assertNotEqual(a1, ia)
 
+    def test_annotation_repr(self):
+        """repr() produces eval-able subscript forms (e.g. wp.array4d[wp.uint32])."""
+        # Regular array annotations use arrayNd shorthand
+        self.assertEqual(repr(wp.array[wp.float32]), "wp.array[wp.float32]")
+        self.assertEqual(repr(wp.array4d[wp.uint32]), "wp.array4d[wp.uint32]")
+        self.assertEqual(repr(wp.array3d[wp.vec3f]), "wp.array3d[wp.vec3f]")
+        self.assertEqual(repr(wp.array2d[wp.float32]), "wp.array2d[wp.float32]")
+        self.assertEqual(repr(wp.array[wp.transformf]), "wp.array[wp.transformf]")
+
+        # indexedarray uses its own class name with subscript syntax
+        self.assertEqual(repr(wp.indexedarray[wp.float32]), "wp.indexedarray[wp.float32]")
+        self.assertEqual(
+            repr(wp.indexedarray[wp.float32, Literal[3]]),
+            "wp.indexedarray[wp.float32, Literal[3]]",
+        )
+
+        # Any dtype/ndim falls back to non-subscript form
+        ann = _ArrayAnnotation(dtype=Any, ndim=2)
+        self.assertEqual(repr(ann), "wp.array2d[Any]")
+        ann = _ArrayAnnotation(dtype=wp.float32, ndim=Any)
+        self.assertEqual(repr(ann), "wp.array(dtype=wp.float32, ndim=Any)")
+
+        # Roundtrip: eval(repr(x)) == x
+        for annotation in [
+            wp.array[wp.float32],
+            wp.array4d[wp.uint32],
+            wp.array3d[wp.vec3f],
+            wp.indexedarray[wp.float32],
+            wp.indexedarray[wp.float32, Literal[3]],
+        ]:
+            self.assertEqual(eval(repr(annotation)), annotation)
+
     def test_typevar_delegation(self):
         """Verify that TypeVar parameters delegate to Generic (preserves static typing)."""
         T = TypeVar("T")  # dtype
