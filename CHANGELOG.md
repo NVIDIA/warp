@@ -38,6 +38,9 @@
 
 ### Changed
 
+- Pass `warp.config.optimization_level` through to both the Clang frontend and the LLVM backend `TargetMachine`,
+  so the setting now controls the full CPU compilation pipeline. The default CPU optimization level remains `-O2`;
+  CUDA kernels default to `-O3` ([GH-1310](https://github.com/NVIDIA/warp/issues/1310)).
 - Centralize module option resolution so the hasher and compiler always see identical values, fixing unnecessary
   recompilations when toggling config options between ``None`` and their explicit defaults
   ([GH-1307](https://github.com/NVIDIA/warp/issues/1307)).

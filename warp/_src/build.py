@@ -106,7 +106,16 @@ def load_cuda(input_path, device):
     return warp._src.context.runtime.core.wp_cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
-def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True, extra_flags=""):
+def build_cpu(
+    obj_path,
+    cpp_path,
+    mode="release",
+    verify_fp=False,
+    fast_math=False,
+    fuse_fp=True,
+    extra_flags="",
+    optimization_level=2,
+):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
     cpp_path = cpp_path.encode("utf-8")
@@ -132,6 +141,7 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         fuse_fp,
         enable_tiles_in_stack,
         flags_array,
+        optimization_level,
     )
     if err != 0:
         raise Exception(f"CPU kernel build failed with error code {err}")

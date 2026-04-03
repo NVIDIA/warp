@@ -2508,8 +2508,9 @@ class Module:
             options["mode"] = config.mode
         if options["optimization_level"] is None:
             options["optimization_level"] = config.optimization_level
-        if options["optimization_level"] is None:
-            options["optimization_level"] = 3
+        # None means "use target-specific default": O2 for CPU, O3 for CUDA.
+        # Resolved at compile time in _compile() so the hash distinguishes
+        # explicit levels from the default.
         options["cpu_compiler_flags"] = _resolve_cpu_compiler_flags(
             options["cpu_compiler_flags"], config.cpu_compiler_flags
         )
@@ -2806,10 +2807,13 @@ class Module:
         if output_arch is None:
             output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
 
+        # output_arch is None for CPU targets, set to a SM architecture for CUDA
+        is_cpu = output_arch is None
+
         options = options | {"output_arch": output_arch}
 
         # Resolve the arch suffix once for both the output filename and the build call
-        if output_arch:
+        if not is_cpu:
             init()
             arch_suffix = _validate_cuda_arch_suffix(
                 output_arch,
@@ -2857,14 +2861,17 @@ class Module:
 
         mode = options["mode"]
         opt = options["optimization_level"]
+        if opt is None:
+            # Default to O2 for CPU, O3 for CUDA
+            opt = 2 if is_cpu else 3
 
-        if opt != 3 and output_arch and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
+        if opt != 3 and not is_cpu and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             warp._src.utils.warn(
                 "Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True
             )
 
         # build CPU
-        if output_arch is None:
+        if is_cpu:
             # build
             try:
                 source_code_path = os.path.join(build_dir, f"{module_name_short}.cpp")
@@ -2887,6 +2894,7 @@ class Module:
                         verify_fp=options["verify_fp"],
                         fuse_fp=options["fuse_fp"],
                         extra_flags=options["cpu_compiler_flags"],
+                        optimization_level=opt,
                     )
 
             except Exception as e:
@@ -4075,6 +4083,20 @@ class Runtime:
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
+
+            self.llvm.wp_compile_cpp.argtypes = [
+                ctypes.c_char_p,  # cpp_src
+                ctypes.c_char_p,  # input_file
+                ctypes.c_char_p,  # include_dir
+                ctypes.c_char_p,  # output_file
+                ctypes.c_bool,  # debug
+                ctypes.c_bool,  # verify_fp
+                ctypes.c_bool,  # fuse_fp
+                ctypes.c_bool,  # tiles_in_stack_memory
+                ctypes.POINTER(ctypes.c_char_p),  # extra_flags
+                ctypes.c_int,  # optimization_level
+            ]
+            self.llvm.wp_compile_cpp.restype = ctypes.c_int
 
             self.llvm.wp_compile_cuda.argtypes = [
                 ctypes.c_char_p,  # cuda_src
@@ -8286,7 +8308,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
-    * **optimization_level**: Compiler optimization level, defaults to the value of ``warp.config.optimization_level`` when ``None``.
+    * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.

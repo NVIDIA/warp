@@ -234,18 +234,29 @@ class TestOptionResolution(unittest.TestCase):
     """Tests for centralized option resolution (GH-1307)."""
 
     def test_none_vs_explicit_optimization_level(self):
-        """optimization_level=None and optimization_level=3 must hash identically."""
+        """optimization_level=None must hash differently from any explicit level.
+
+        None is a sentinel meaning "use target-specific default" (O2 for CPU,
+        O3 for CUDA), so the hash must distinguish it from explicit values.
+        """
         m1 = load_code_as_module(SIMPLE_MODULE, "opt_level_none")
         m1.options["optimization_level"] = None
 
-        m2 = load_code_as_module(SIMPLE_MODULE, "opt_level_explicit")
-        m2.options["optimization_level"] = 3
+        m2 = load_code_as_module(SIMPLE_MODULE, "opt_level_explicit_2")
+        m2.options["optimization_level"] = 2
 
-        # Ensure config also defaults to None -> 3
+        m3 = load_code_as_module(SIMPLE_MODULE, "opt_level_explicit_3")
+        m3.options["optimization_level"] = 3
+
         old = wp.config.optimization_level
         try:
             wp.config.optimization_level = None
-            self.assertEqual(m1.hash_module(), m2.hash_module())
+            hash_none = m1.hash_module()
+            hash_o2 = m2.hash_module()
+            hash_o3 = m3.hash_module()
+            self.assertNotEqual(hash_none, hash_o2)
+            self.assertNotEqual(hash_none, hash_o3)
+            self.assertNotEqual(hash_o2, hash_o3)
         finally:
             wp.config.optimization_level = old
 
