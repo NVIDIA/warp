@@ -6142,13 +6142,15 @@ def tile_matmul(
     """
     ...
 
-def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, int]]) -> None:
-    """Compute the forward FFT along the second dimension of a 2D tile of data.
+def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
+    """Compute the forward FFT along the last dimension of an N-D tile of data.
 
-    This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+    This function cooperatively computes the forward FFT on a tile of data inplace.
+    All leading dimensions are treated as independent batch dimensions.
+    The tile must have at least two dimensions.
 
     The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    will scale the data by N, where N is the FFT size (the last dimension of the tile).
     Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
@@ -6159,13 +6161,15 @@ def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, int]]) -> None:
     """
     ...
 
-def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, int]]) -> None:
-    """Compute the inverse FFT along the second dimension of a 2D tile of data.
+def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
+    """Compute the inverse FFT along the last dimension of an N-D tile of data.
 
-    This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
+    This function cooperatively computes the inverse FFT on a tile of data inplace.
+    All leading dimensions are treated as independent batch dimensions.
+    The tile must have at least two dimensions.
 
     The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    will scale the data by N, where N is the FFT size (the last dimension of the tile).
     Normalization is left to the user to perform as needed.
 
     Supported datatypes are:

@@ -4,6 +4,8 @@
 
 ### Added
 
+- Allow `wp.tile_fft()` and `wp.tile_ifft()` to operate on N-D tiles (N >= 2), computing the FFT along the
+  last dimension with all leading dimensions treated as independent batches ([GH-1317](https://github.com/NVIDIA/warp/issues/1317)).
 - Add external CUDA texture interoperability, e.g., `wp.Texture2D(cuda_array=handle)` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
 - Add OpenGL texture interoperability using `wp.GLTextureResource` ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
 - Add `Texture.copy_from()` that can copy from host and device arrays as well as other textures.

@@ -12203,6 +12203,9 @@ def tile_fft_generic_value_func(arg_types, arg_values, func_name="tile_fft"):
             f"{func_name}() argument must be a tile of vec2f or vec2d (interpreted as complex) entries, got {inout.dtype!r}"
         )
 
+    if len(inout.shape) < 2:
+        raise ValueError(f"{func_name}() argument must be a tile with at least 2 dimensions, got {len(inout.shape)}D")
+
     return None
 
 
@@ -12239,8 +12242,8 @@ def tile_fft_generic_lto_dispatch_func(
     else:
         raise TypeError(f"Unsupported data type, got {dtype!r}")
 
-    # M FFTs of size N each
-    batch, size = inout.type.shape[0], inout.type.shape[1]
+    # batch = product of all leading dims, size = last (FFT) dim
+    batch, size = math.prod(inout.type.shape[:-1]), inout.type.shape[-1]
     num_threads = options["block_dim"]
     arch = options["output_arch"]
     ept = size // num_threads
@@ -12292,16 +12295,18 @@ def tile_fft_generic_lto_dispatch_func(
 
 add_builtin(
     "tile_fft",
-    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
+    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, ...])},
     value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_fft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
-    doc="""Compute the forward FFT along the second dimension of a 2D tile of data.
+    doc="""Compute the forward FFT along the last dimension of an N-D tile of data.
 
-    This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+    This function cooperatively computes the forward FFT on a tile of data inplace.
+    All leading dimensions are treated as independent batch dimensions.
+    The tile must have at least two dimensions.
 
     The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    will scale the data by N, where N is the FFT size (the last dimension of the tile).
     Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
@@ -12316,16 +12321,18 @@ add_builtin(
 
 add_builtin(
     "tile_ifft",
-    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
+    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, ...])},
     value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_ifft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
-    doc="""Compute the inverse FFT along the second dimension of a 2D tile of data.
+    doc="""Compute the inverse FFT along the last dimension of an N-D tile of data.
 
-    This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
+    This function cooperatively computes the inverse FFT on a tile of data inplace.
+    All leading dimensions are treated as independent batch dimensions.
+    The tile must have at least two dimensions.
 
     The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    will scale the data by N, where N is the FFT size (the last dimension of the tile).
     Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
