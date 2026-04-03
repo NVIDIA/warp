@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Optional
 import warp as wp
 from warp._src.fem import cache, utils
 from warp._src.fem.cache import cached_vec_type
-from warp._src.fem.types import OUTSIDE, ElementIndex, make_free_sample
+from warp._src.fem.types import OUTSIDE, ElementIndex, make_coords, make_free_sample
 
 from .geometry import Geometry
 from .nanogrid import NanogridBase
@@ -370,17 +370,15 @@ class AdaptiveNanogrid(NanogridBase):
     @wp.func
     def side_closest_point(args: Any, side_index: int, pos: Any):
         coords = AdaptiveNanogrid.side_coordinates(args, side_index, pos)
-        proj_coords = type(coords)(
-            wp.clamp(coords[0], coords.dtype(0.0), coords.dtype(1.0)),
-            wp.clamp(coords[1], coords.dtype(0.0), coords.dtype(1.0)),
-            coords.dtype(0.0),
-        )
+        z = pos.dtype(0.0)
+        o = pos.dtype(1.0)
+        proj_coords = make_coords(wp.clamp(coords[0], z, o), wp.clamp(coords[1], z, o))
 
         flags = args.face_flags[side_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
         side_level = _get_face_level(flags)
-        cell_coord_offset = NanogridBase._side_to_cell_coords(axis, flip, 0, coords - proj_coords) * coords.dtype(
+        cell_coord_offset = NanogridBase._side_to_cell_coords(axis, flip, z, coords - proj_coords) * coords.dtype(
             1 << side_level
         )
 

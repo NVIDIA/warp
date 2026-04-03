@@ -8,7 +8,7 @@ import numpy as np
 import warp as wp
 from warp._src.fem import cache, utils
 from warp._src.fem.cache import cached_vec_type
-from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, make_free_sample
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, make_coords, make_free_sample
 
 from .element import Element
 from .geometry import Geometry
@@ -551,16 +551,14 @@ class Nanogrid(NanogridBase):
     @wp.func
     def side_closest_point(args: Any, side_index: int, pos: Any):
         coords = Nanogrid.side_coordinates(args, side_index, pos)
-        proj_coords = type(coords)(
-            wp.clamp(coords[0], coords.dtype(0.0), coords.dtype(1.0)),
-            wp.clamp(coords[1], coords.dtype(0.0), coords.dtype(1.0)),
-            coords.dtype(0.0),
-        )
+        z = pos.dtype(0.0)
+        o = pos.dtype(1.0)
+        proj_coords = make_coords(wp.clamp(coords[0], z, o), wp.clamp(coords[1], z, o))
 
         flags = args.face_flags[side_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
-        cell_coord_offset = NanogridBase._side_to_cell_coords(axis, flip, 0, coords - proj_coords)
+        cell_coord_offset = NanogridBase._side_to_cell_coords(axis, flip, z, coords - proj_coords)
 
         return proj_coords, wp.length_sq(wp.volume_index_to_world_dir(args.cell_arg.cell_grid, cell_coord_offset))
 

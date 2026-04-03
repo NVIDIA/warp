@@ -24,11 +24,11 @@
 - Add `module_options` dict parameter to `@wp.kernel` for inline module-level compilation options on
   `"unique"` modules ([GH-1250](https://github.com/NVIDIA/warp/issues/1250)).
 - Add fp64 (double-precision) support to `warp.fem`. Precision is driven by
-  the geometry: pass ``scalar_type=wp.float64`` to grid constructors, or use
-  ``wp.vec3d`` position arrays for meshes. All downstream objects (function
+  the geometry: pass `scalar_type=wp.float64` to grid constructors, or use
+  `wp.vec3d` position arrays for meshes. All downstream objects (function
   spaces, quadrature, fields, integration kernels) inherit the precision
-  automatically. New public types ``fem.Coords_f64``, ``fem.Sample_f64``, and
-  the ``fem.scalar_type()`` integrand operator are provided for writing
+  automatically. New public types `fem.Coords_f64`, `fem.Sample_f64`, and
+  the `fem.scalar_type()` integrand operator are provided for writing
   precision-generic integrands ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
 
 ### Removed
@@ -60,8 +60,8 @@
 - Include the Warp version in kernel cache paths when `WARP_CACHE_PATH` is set or a path is passed to
   `init_kernel_cache()`, matching the default cache-path behavior. This prevents stale artifacts from a previous Warp
   version from interfering after an upgrade ([GH-1260](https://github.com/NVIDIA/warp/issues/1260)).
-- `warp.fem.integrate()` now defaults ``output_dtype`` to the geometry's scalar type
-  (``wp.float32`` or ``wp.float64``) instead of `accumulate_dtype` (which itself defaults to `wp.float64`). Pass ``output_dtype=wp.float64`` explicitly to restore the previous behavior
+- `warp.fem.integrate()` now defaults `output_dtype` to the geometry's scalar type
+  (`wp.float32` or `wp.float64`) instead of `accumulate_dtype` (which itself defaults to `wp.float64`). Pass `output_dtype=wp.float64` explicitly to restore the previous behavior
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
 
 ### Fixed

@@ -1967,19 +1967,19 @@ def get_interpolate_at_nodes_function(
                         val_sum += vol * val
                     elif wp.static(reduction == "mean"):
                         val_sum += val
-                        weight_sum += 1.0
+                        weight_sum += local_scalar_type(1.0)
                     elif wp.static(reduction == "sum"):
                         val_sum += val
-                        weight_sum = 1.0
+                        weight_sum = local_scalar_type(1.0)
                     elif wp.static(reduction == "max"):
-                        val_sum = wp.where(weight_sum > 0.0, wp.max(val_sum, val), val)
-                        weight_sum = 1.0
+                        val_sum = wp.where(weight_sum > local_scalar_type(0.0), wp.max(val_sum, val), val)
+                        weight_sum = local_scalar_type(1.0)
                     elif wp.static(reduction == "min"):
-                        val_sum = wp.where(weight_sum > 0.0, wp.min(val_sum, val), val)
-                        weight_sum = 1.0
+                        val_sum = wp.where(weight_sum > local_scalar_type(0.0), wp.min(val_sum, val), val)
+                        weight_sum = local_scalar_type(1.0)
                     elif wp.static(reduction == "first"):
                         val_sum = val
-                        weight_sum = 1.0
+                        weight_sum = local_scalar_type(1.0)
                         break
                     else:
                         raise ValueError("Unsupported reduction method")  # codegen error
@@ -2030,7 +2030,6 @@ def get_interpolate_at_nodes_kernel(
     dest_space: FunctionSpace,
     dest: Union[DiscreteField, wp.array, None],
 ):
-
     if isinstance(dest, DiscreteField):
         dest_arg_type = dest.EvalArg
     elif dest is None:
@@ -2168,7 +2167,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
                     vol = domain.element_measure(domain_arg, sample)
                     vol_sum += vol
                 elif wp.static(reduction == "mean"):
-                    vol_sum += 1.0
+                    vol_sum += local_scalar_type(1.0)
 
         return vol_sum
 

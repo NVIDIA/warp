@@ -648,7 +648,7 @@ class Tetmesh(Geometry):
         face_normal = wp.cross(v1 - v0, v2 - v0)
 
         # if face normal points toward first tet centroid, flip indices
-        if wp.dot(tet_centroid - face_center, face_normal) > 0.0:
+        if wp.dot(tet_centroid - face_center, face_normal) > face_normal.dtype(0.0):
             face_vertex_indices[e] = wp.vec3i(face_vidx[0], face_vidx[2], face_vidx[1])
 
     @wp.kernel

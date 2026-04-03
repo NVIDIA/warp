@@ -9,7 +9,7 @@ from warp._src.fem import cache
 from warp._src.fem.cache import cached_arg_value, cached_vec_type, dynamic_func
 from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, make_coords, make_free_sample
 
-from .closest_point import project_on_box_at_origin
+from .closest_point import project_on_box_at_origin, project_on_box_at_origin_2d
 from .element import Element
 from .geometry import Geometry
 
@@ -474,7 +474,7 @@ class Grid3D(Geometry):
 
         loc_cell_size = Grid3D._world_to_local(side.axis, cell_arg.cell_size)
         long_lat_sizes = wp.vector(loc_cell_size[1], loc_cell_size[2], dtype=pos.dtype)
-        dist, proj_coord = project_on_box_at_origin(wp.vector(coord[0], coord[1], dtype=pos.dtype), long_lat_sizes)
+        dist, proj_coord = project_on_box_at_origin_2d(wp.vector(coord[0], coord[1], dtype=pos.dtype), long_lat_sizes)
         return proj_coord, dist
 
     def make_filtered_cell_lookup(self, filter_func: wp.Function = None):
