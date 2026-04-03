@@ -257,7 +257,7 @@ class Cells(GeometryDomain):
     @cached_property
     def element_partition_lookup(self) -> wp.Function:
         """Device function for partition-restricted element lookup."""
-        pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=self.geometry.scalar_type)
 
         @cache.dynamic_func(suffix=self.geometry_partition.name)
         def is_in_partition(args: self.ElementIndexArg, cell_index: int):
@@ -267,7 +267,6 @@ class Cells(GeometryDomain):
 
         # overloads
         filter_target = True
-        pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_partition_lookup(args: self.DomainArg, pos: pos_type, max_dist: float):

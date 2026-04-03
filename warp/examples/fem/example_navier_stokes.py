@@ -110,17 +110,20 @@ class Example:
             viscosity_and_inertia_form,
             fields={"u": u_trial, "v": u_test},
             values={"nu": viscosity, "dt": self.sim_dt},
+            output_dtype=wp.float64,
         )
 
         # Pressure-velocity coupling
         p_test = fem.make_test(space=p_space, domain=domain)
-        div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test})
+        div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test}, output_dtype=wp.float64)
 
         # Enforcing the Dirichlet boundary condition the hard way;
         # build projector for velocity left- and right-hand-sides
         u_bd_test = fem.make_test(space=u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=u_space, domain=boundary)
-        u_bd_projector = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal")
+        u_bd_projector = fem.integrate(
+            mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal", output_dtype=wp.float64
+        )
 
         # Define an implicit field for our boundary condition value and integrate
         u_bd_field = fem.ImplicitField(

@@ -7772,6 +7772,36 @@ add_builtin(
     doc="""Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.""",
 )
 
+# fp64 overloads for volume transform functions
+add_builtin(
+    "volume_index_to_world",
+    input_types={"id": uint64, "uvw": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a point ``uvw`` defined in volume index space to world space, using double precision.""",
+)
+add_builtin(
+    "volume_world_to_index",
+    input_types={"id": uint64, "xyz": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a point ``xyz`` defined in volume world space to index space, using double precision.""",
+)
+add_builtin(
+    "volume_index_to_world_dir",
+    input_types={"id": uint64, "uvw": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a direction ``uvw`` defined in volume index space to world space, using double precision.""",
+)
+add_builtin(
+    "volume_world_to_index_dir",
+    input_types={"id": uint64, "xyz": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a direction ``xyz`` defined in volume world space to index space, using double precision.""",
+)
+
 
 # ---------------------------------
 # Textures

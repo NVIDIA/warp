@@ -74,29 +74,18 @@ class NanogridSpaceTopology(SpaceTopology):
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
-            geo_arg: Nanogrid.CellArg,
+            geo_arg: self._grid.CellArg,
             topo_arg: NanogridTopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
             ijk = geo_arg.cell_ijk[element_index]
-            return element_node_index_generic(topo_arg, element_index, node_index_in_elt, ijk, 0)
-
-        if isinstance(self._grid, Nanogrid):
-            return element_node_index
-
-        @cache.dynamic_func(suffix=self.name)
-        def element_node_index_adaptive(
-            geo_arg: AdaptiveNanogrid.CellArg,
-            topo_arg: NanogridTopologyArg,
-            element_index: ElementIndex,
-            node_index_in_elt: int,
-        ):
-            ijk = geo_arg.cell_ijk[element_index]
-            level = int(geo_arg.cell_level[element_index])
+            level = int(0)
+            if wp.static(isinstance(self._grid, AdaptiveNanogrid)):
+                level = int(geo_arg.cell_level[element_index])
             return element_node_index_generic(topo_arg, element_index, node_index_in_elt, ijk, level)
 
-        return element_node_index_adaptive
+        return element_node_index
 
     def node_count(self) -> int:
         return (
@@ -217,7 +206,7 @@ class NanogridBSplineSpaceTopology(SpaceTopology):
     def _make_element_node_index(self):
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
-            geo_arg: Nanogrid.CellArg,
+            geo_arg: self._grid.CellArg,
             topo_arg: NanogridBSplineSpaceTopology.TopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,

@@ -18,6 +18,8 @@
 # to a cylindrical domain
 ###########################################################################
 
+from typing import Any
+
 import numpy as np
 
 import warp as wp
@@ -38,6 +40,13 @@ def cube_to_cylinder(x: wp.vec3):
 
 
 @wp.func
+def cube_to_cylinder(x: wp.vec3d):
+    z = wp.float64(0.0)
+    pos_xz = wp.vec3d(x[0], z, x[2])
+    return wp.max(wp.abs(pos_xz)) * wp.normalize(pos_xz) + wp.vec3d(z, x[1], z)
+
+
+@wp.func
 def cube_to_cylinder_grad(x: wp.vec3):
     # gradient of mapping from unit square to unit disk
     pos_xz = wp.vec3(x[0], 0.0, x[2])
@@ -49,7 +58,7 @@ def cube_to_cylinder_grad(x: wp.vec3):
 
         abs_xz = wp.abs(pos_xz)
         xinf_grad = wp.where(
-            abs_xz[0] > abs_xz[2], wp.types.vector(wp.sign(pos_xz[0]), 0.0, 0.0), wp.vec3(0.0, 0.0, wp.sign(pos_xz[2]))
+            abs_xz[0] > abs_xz[2], wp.vec3(wp.sign(pos_xz[0]), 0.0, 0.0), wp.vec3(0.0, 0.0, wp.sign(pos_xz[2]))
         )
         grad = dir_grad * wp.max(abs_xz) + wp.outer(dir_xz, xinf_grad)
 
@@ -58,8 +67,28 @@ def cube_to_cylinder_grad(x: wp.vec3):
 
 
 @wp.func
+def cube_to_cylinder_grad(x: wp.vec3d):
+    z = wp.float64(0.0)
+    pos_xz = wp.vec3d(x[0], z, x[2])
+    if pos_xz == wp.vec3d(z):
+        grad = wp.mat33d(z)
+    else:
+        dir_xz = wp.normalize(pos_xz)
+        dir_grad = (wp.identity(n=3, dtype=wp.float64) - wp.outer(dir_xz, dir_xz)) / wp.length(pos_xz)
+
+        abs_xz = wp.abs(pos_xz)
+        xinf_grad = wp.where(
+            abs_xz[0] > abs_xz[2], wp.vec3d(wp.sign(pos_xz[0]), z, z), wp.vec3d(z, z, wp.sign(pos_xz[2]))
+        )
+        grad = dir_grad * wp.max(abs_xz) + wp.outer(dir_xz, xinf_grad)
+
+    grad[1, 1] = wp.float64(1.0)
+    return grad
+
+
+@wp.func
 def permeability_field(
-    pos: wp.vec3,
+    pos: Any,
     core_radius: float,
     core_height: float,
     coil_internal_radius: float,
@@ -72,18 +101,22 @@ def permeability_field(
 
     r = wp.sqrt(x * x + z * z)
 
+    mu_i = type(x)(MU_i)
+    mu_c = type(x)(MU_c)
+    mu_0 = type(x)(MU_0)
+
     if r <= core_radius:
-        return wp.where(y < core_height, MU_i, MU_0)
+        return wp.where(y < core_height, mu_i, mu_0)
 
     if r >= coil_internal_radius and r <= coil_external_radius:
-        return wp.where(y < coil_height, MU_c, MU_0)
+        return wp.where(y < coil_height, mu_c, mu_0)
 
-    return MU_0
+    return type(x)(MU_0)
 
 
 @wp.func
 def current_field(
-    pos: wp.vec3,
+    pos: Any,
     current: float,
     coil_internal_radius: float,
     coil_external_radius: float,
@@ -95,10 +128,15 @@ def current_field(
 
     r = wp.sqrt(x * x + z * z)
 
+    ch = type(x)(coil_height)
+    ir = type(x)(coil_internal_radius)
+    er = type(x)(coil_external_radius)
+    j = type(x)(current)
+
     return wp.where(
-        y < coil_height and r >= coil_internal_radius and r <= coil_external_radius,
-        wp.vec3(z, 0.0, -x) * current / r,
-        wp.vec3(0.0),
+        y < ch and r >= ir and r <= er,
+        type(pos)(z, pos.dtype(0.0), -x) * j / r,
+        type(pos)(pos.dtype(0.0)),
     )
 
 
@@ -118,36 +156,42 @@ def curl_expr(s: fem.Sample, u: fem.Field):
 
 
 class Example:
-    def __init__(self, quiet=False, mesh: str = "grid", resolution=32, domain_radius=2.0, current=1.0e6):
+    def __init__(self, quiet=False, mesh: str = "grid", resolution=32, domain_radius=2.0, current=1.0e6, fp64=False):
         # We mesh the unit disk by first meshing the unit square, then building a deformed geometry
         # from an implicit mapping field
 
+        r = domain_radius
         if mesh == "hex":
             positions, hex_vidx = fem_example_utils.gen_hexmesh(
-                bounds_lo=wp.vec3(-domain_radius, -domain_radius, -domain_radius),
-                bounds_hi=wp.vec3(domain_radius, domain_radius, domain_radius),
+                bounds_lo=wp.vec3(-r, -r, -r),
+                bounds_hi=wp.vec3(r, r, r),
                 res=wp.vec3i(resolution, resolution, resolution),
             )
+            if fp64:
+                positions = wp.array(positions.numpy(), dtype=wp.types.vector(3, wp.float64))
             cube_geo = fem.Hexmesh(hex_vertex_indices=hex_vidx, positions=positions)
         elif mesh == "tet":
             positions, tet_vidx = fem_example_utils.gen_tetmesh(
-                bounds_lo=wp.vec3(-domain_radius, -domain_radius, -domain_radius),
-                bounds_hi=wp.vec3(domain_radius, domain_radius, domain_radius),
+                bounds_lo=wp.vec3(-r, -r, -r),
+                bounds_hi=wp.vec3(r, r, r),
                 res=wp.vec3i(resolution, resolution, resolution),
             )
+            if fp64:
+                positions = wp.array(positions.numpy(), dtype=wp.types.vector(3, wp.float64))
             cube_geo = fem.Tetmesh(tet_vertex_indices=tet_vidx, positions=positions)
         elif mesh == "nano":
             vol = fem_example_utils.gen_volume(
-                bounds_lo=wp.vec3(-domain_radius, -domain_radius, -domain_radius),
-                bounds_hi=wp.vec3(domain_radius, domain_radius, domain_radius),
+                bounds_lo=wp.vec3(-r, -r, -r),
+                bounds_hi=wp.vec3(r, r, r),
                 res=wp.vec3i(resolution, resolution, resolution),
             )
-            cube_geo = fem.Nanogrid(grid=vol)
+            cube_geo = fem.Nanogrid(grid=vol, scalar_type=wp.float64 if fp64 else wp.float32)
         else:
             cube_geo = fem.Grid3D(
-                bounds_lo=wp.vec3(-domain_radius, -domain_radius, -domain_radius),
-                bounds_hi=wp.vec3(domain_radius, domain_radius, domain_radius),
+                bounds_lo=wp.vec3(-r, -r, -r),
+                bounds_hi=wp.vec3(r, r, r),
                 res=wp.vec3i(resolution, resolution, resolution),
+                scalar_type=wp.float64 if fp64 else wp.float32,
             )
 
         def_field = fem.ImplicitField(
@@ -164,12 +208,13 @@ class Example:
         )
         self._current_field = fem.ImplicitField(domain, func=current_field, values=dict(current=current, **coil_config))
 
+        vec3_type = wp.vec3d if fp64 else wp.vec3
         A_space = fem.make_polynomial_space(
-            sim_geo, degree=1, element_basis=fem.ElementBasis.NEDELEC_FIRST_KIND, dtype=wp.vec3
+            sim_geo, degree=1, element_basis=fem.ElementBasis.NEDELEC_FIRST_KIND, dtype=vec3_type
         )
         self.A_field = A_space.make_field()
 
-        B_space = fem.make_polynomial_space(sim_geo, degree=1, element_basis=fem.ElementBasis.LAGRANGE, dtype=wp.vec3)
+        B_space = fem.make_polynomial_space(sim_geo, degree=1, element_basis=fem.ElementBasis.LAGRANGE, dtype=vec3_type)
         self.B_field = B_space.make_field()
 
         self.renderer = fem_example_utils.Plot()
@@ -180,15 +225,18 @@ class Example:
 
         u = fem.make_trial(space=A_space)
         v = fem.make_test(space=A_space)
-        lhs = fem.integrate(curl_curl_form, fields={"u": u, "v": v, "mu": self._permeability_field}, output_dtype=float)
-        rhs = fem.integrate(mass_form, fields={"v": v, "u": self._current_field}, output_dtype=float)
+        scalar_type = sim_geo.scalar_type
+        lhs = fem.integrate(
+            curl_curl_form, fields={"u": u, "v": v, "mu": self._permeability_field}, output_dtype=scalar_type
+        )
+        rhs = fem.integrate(mass_form, fields={"v": v, "u": self._current_field}, output_dtype=scalar_type)
 
         # Dirichlet BC
         boundary = fem.BoundarySides(sim_geo)
         u_bd = fem.make_trial(space=A_space, domain=boundary)
         v_bd = fem.make_test(space=A_space, domain=boundary)
         dirichlet_bd_proj = fem.integrate(
-            mass_form, fields={"u": u_bd, "v": v_bd}, assembly="nodal", output_dtype=float
+            mass_form, fields={"u": u_bd, "v": v_bd}, assembly="nodal", output_dtype=scalar_type
         )
         fem.project_linear_system(lhs, rhs, dirichlet_bd_proj)
 
@@ -218,11 +266,14 @@ if __name__ == "__main__":
         help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
+    parser.add_argument("--fp64", action="store_true", default=False, help="Use double precision (fp64) throughout.")
 
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(quiet=args.quiet, mesh=args.mesh, resolution=args.resolution, domain_radius=args.radius)
+        example = Example(
+            quiet=args.quiet, mesh=args.mesh, resolution=args.resolution, domain_radius=args.radius, fp64=args.fp64
+        )
         example.step()
         example.render()
 

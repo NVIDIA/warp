@@ -1058,4 +1058,116 @@ adj_volume_world_to_index_dir(uint64_t id, vec3 xyz, uint64_t& adj_id, vec3& adj
     adj_volume_world_to_index(id, xyz, adj_id, adj_xyz, adj_ret);
 }
 
+// fp64 overloads for volume transform functions
+
+// Transform position from index space to world space (fp64)
+CUDA_CALLABLE inline vec3d volume_index_to_world(uint64_t id, vec3d uvw)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_map_handle_t map = pnanovdb_grid_get_map(buf, grid);
+    const double sx = uvw[0], sy = uvw[1], sz = uvw[2];
+    return { sx * pnanovdb_map_get_matd(buf, map, 0) + sy * pnanovdb_map_get_matd(buf, map, 1)
+                 + sz * pnanovdb_map_get_matd(buf, map, 2) + pnanovdb_map_get_vecd(buf, map, 0),
+             sx * pnanovdb_map_get_matd(buf, map, 3) + sy * pnanovdb_map_get_matd(buf, map, 4)
+                 + sz * pnanovdb_map_get_matd(buf, map, 5) + pnanovdb_map_get_vecd(buf, map, 1),
+             sx * pnanovdb_map_get_matd(buf, map, 6) + sy * pnanovdb_map_get_matd(buf, map, 7)
+                 + sz * pnanovdb_map_get_matd(buf, map, 8) + pnanovdb_map_get_vecd(buf, map, 2) };
+}
+
+// Transform position from world space to index space (fp64)
+CUDA_CALLABLE inline vec3d volume_world_to_index(uint64_t id, vec3d xyz)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_map_handle_t map = pnanovdb_grid_get_map(buf, grid);
+    const double sx = xyz[0] - pnanovdb_map_get_vecd(buf, map, 0);
+    const double sy = xyz[1] - pnanovdb_map_get_vecd(buf, map, 1);
+    const double sz = xyz[2] - pnanovdb_map_get_vecd(buf, map, 2);
+    return { sx * pnanovdb_map_get_invmatd(buf, map, 0) + sy * pnanovdb_map_get_invmatd(buf, map, 1)
+                 + sz * pnanovdb_map_get_invmatd(buf, map, 2),
+             sx * pnanovdb_map_get_invmatd(buf, map, 3) + sy * pnanovdb_map_get_invmatd(buf, map, 4)
+                 + sz * pnanovdb_map_get_invmatd(buf, map, 5),
+             sx * pnanovdb_map_get_invmatd(buf, map, 6) + sy * pnanovdb_map_get_invmatd(buf, map, 7)
+                 + sz * pnanovdb_map_get_invmatd(buf, map, 8) };
+}
+
+CUDA_CALLABLE inline void
+adj_volume_index_to_world(uint64_t id, vec3d uvw, uint64_t& adj_id, vec3d& adj_uvw, const vec3d& adj_ret)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_map_handle_t map = pnanovdb_grid_get_map(buf, grid);
+    const double sx = adj_ret[0], sy = adj_ret[1], sz = adj_ret[2];
+    adj_uvw = add(
+        adj_uvw,
+        vec3d { sx * pnanovdb_map_get_matd(buf, map, 0) + sy * pnanovdb_map_get_matd(buf, map, 3)
+                    + sz * pnanovdb_map_get_matd(buf, map, 6),
+                sx * pnanovdb_map_get_matd(buf, map, 1) + sy * pnanovdb_map_get_matd(buf, map, 4)
+                    + sz * pnanovdb_map_get_matd(buf, map, 7),
+                sx * pnanovdb_map_get_matd(buf, map, 2) + sy * pnanovdb_map_get_matd(buf, map, 5)
+                    + sz * pnanovdb_map_get_matd(buf, map, 8) }
+    );
+}
+
+CUDA_CALLABLE inline void
+adj_volume_world_to_index(uint64_t id, vec3d xyz, uint64_t& adj_id, vec3d& adj_xyz, const vec3d& adj_ret)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_map_handle_t map = pnanovdb_grid_get_map(buf, grid);
+    const double sx = adj_ret[0], sy = adj_ret[1], sz = adj_ret[2];
+    adj_xyz = add(
+        adj_xyz,
+        vec3d { sx * pnanovdb_map_get_invmatd(buf, map, 0) + sy * pnanovdb_map_get_invmatd(buf, map, 3)
+                    + sz * pnanovdb_map_get_invmatd(buf, map, 6),
+                sx * pnanovdb_map_get_invmatd(buf, map, 1) + sy * pnanovdb_map_get_invmatd(buf, map, 4)
+                    + sz * pnanovdb_map_get_invmatd(buf, map, 7),
+                sx * pnanovdb_map_get_invmatd(buf, map, 2) + sy * pnanovdb_map_get_invmatd(buf, map, 5)
+                    + sz * pnanovdb_map_get_invmatd(buf, map, 8) }
+    );
+}
+
+// Transform direction from index space to world space (fp64)
+CUDA_CALLABLE inline vec3d volume_index_to_world_dir(uint64_t id, vec3d uvw)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_map_handle_t map = pnanovdb_grid_get_map(buf, grid);
+    const double sx = uvw[0], sy = uvw[1], sz = uvw[2];
+    return { sx * pnanovdb_map_get_matd(buf, map, 0) + sy * pnanovdb_map_get_matd(buf, map, 1)
+                 + sz * pnanovdb_map_get_matd(buf, map, 2),
+             sx * pnanovdb_map_get_matd(buf, map, 3) + sy * pnanovdb_map_get_matd(buf, map, 4)
+                 + sz * pnanovdb_map_get_matd(buf, map, 5),
+             sx * pnanovdb_map_get_matd(buf, map, 6) + sy * pnanovdb_map_get_matd(buf, map, 7)
+                 + sz * pnanovdb_map_get_matd(buf, map, 8) };
+}
+
+// Transform direction from world space to index space (fp64)
+CUDA_CALLABLE inline vec3d volume_world_to_index_dir(uint64_t id, vec3d xyz)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_grid_handle_t grid = { 0u };
+    const pnanovdb_map_handle_t map = pnanovdb_grid_get_map(buf, grid);
+    const double sx = xyz[0], sy = xyz[1], sz = xyz[2];
+    return { sx * pnanovdb_map_get_invmatd(buf, map, 0) + sy * pnanovdb_map_get_invmatd(buf, map, 1)
+                 + sz * pnanovdb_map_get_invmatd(buf, map, 2),
+             sx * pnanovdb_map_get_invmatd(buf, map, 3) + sy * pnanovdb_map_get_invmatd(buf, map, 4)
+                 + sz * pnanovdb_map_get_invmatd(buf, map, 5),
+             sx * pnanovdb_map_get_invmatd(buf, map, 6) + sy * pnanovdb_map_get_invmatd(buf, map, 7)
+                 + sz * pnanovdb_map_get_invmatd(buf, map, 8) };
+}
+
+CUDA_CALLABLE inline void
+adj_volume_index_to_world_dir(uint64_t id, vec3d uvw, uint64_t& adj_id, vec3d& adj_uvw, const vec3d& adj_ret)
+{
+    adj_volume_index_to_world(id, uvw, adj_id, adj_uvw, adj_ret);
+}
+
+CUDA_CALLABLE inline void
+adj_volume_world_to_index_dir(uint64_t id, vec3d xyz, uint64_t& adj_id, vec3d& adj_xyz, const vec3d& adj_ret)
+{
+    adj_volume_world_to_index(id, xyz, adj_id, adj_xyz, adj_ret);
+}
+
 }  // namespace wp

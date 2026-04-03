@@ -43,6 +43,7 @@ API
    CellBasedGeometryPartition
    Cells
    Coords
+   Coords_f64
    DiscreteField
    DofMapper
    Domain
@@ -80,6 +81,7 @@ API
    QuadraturePointIndex
    RegularQuadrature
    Sample
+   Sample_f64
    ShapeBasisSpace
    ShapeFunction
    Sides
@@ -153,6 +155,7 @@ API
    project_linear_system
    project_system_matrix
    project_system_rhs
+   scalar_type
    set_default_temporary_store
    to_cell_side
    to_inner_cell

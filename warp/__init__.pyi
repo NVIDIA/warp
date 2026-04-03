@@ -4679,20 +4679,44 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
     """
     ...
 
+@over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
     """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...
 
+@over
+def volume_index_to_world(id: uint64, uvw: vec3d) -> vec3d:
+    """Transform a point ``uvw`` defined in volume index space to world space, using double precision."""
+    ...
+
+@over
 def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
     """Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
     ...
 
+@over
+def volume_world_to_index(id: uint64, xyz: vec3d) -> vec3d:
+    """Transform a point ``xyz`` defined in volume world space to index space, using double precision."""
+    ...
+
+@over
 def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
     """Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
     ...
 
+@over
+def volume_index_to_world_dir(id: uint64, uvw: vec3d) -> vec3d:
+    """Transform a direction ``uvw`` defined in volume index space to world space, using double precision."""
+    ...
+
+@over
 def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
     """Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
+    ...
+
+@over
+def volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d:
+    """Transform a direction ``xyz`` defined in volume world space to index space, using double precision."""
     ...
 
 @over

@@ -5,6 +5,7 @@ import functools
 from enum import Enum
 from typing import Optional
 
+import warp as wp
 from warp._src.fem.geometry import Element
 from warp._src.fem.polynomial import Polynomial
 
@@ -66,6 +67,7 @@ def make_element_shape_function(
     degree: int,
     element_basis: Optional[ElementBasis] = None,
     family: Optional[Polynomial] = None,
+    scalar_type: Optional[type] = None,
 ) -> ShapeFunction:
     """Equip a reference element with a shape function basis.
 
@@ -82,6 +84,9 @@ def make_element_shape_function(
         NotImplementedError: If the shape function is not implemented for the given element type
     """
 
+    if scalar_type is None:
+        scalar_type = wp.float32
+
     if element_basis is None:
         element_basis = ElementBasis.LAGRANGE
     elif element_basis == ElementBasis.SERENDIPITY and degree == 1:
@@ -89,59 +94,59 @@ def make_element_shape_function(
         element_basis = ElementBasis.LAGRANGE
 
     if degree == 0:
-        return ConstantShapeFunction(element)
+        return ConstantShapeFunction(element, scalar_type=scalar_type)
 
     if family is None:
         family = Polynomial.LOBATTO_GAUSS_LEGENDRE
 
     if element == Element.SQUARE:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
-            return SquareNedelecFirstKindShapeFunctions(degree=degree)
+            return SquareNedelecFirstKindShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.RAVIART_THOMAS:
-            return SquareRaviartThomasShapeFunctions(degree=degree)
+            return SquareRaviartThomasShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return SquareNonConformingPolynomialShapeFunctions(degree=degree)
+            return SquareNonConformingPolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.SERENDIPITY and degree > 1:
-            return SquareSerendipityShapeFunctions(degree=degree, family=family)
+            return SquareSerendipityShapeFunctions(degree=degree, family=family, scalar_type=scalar_type)
         if element_basis == ElementBasis.BSPLINE:
-            return SquareBSplineShapeFunctions(degree=degree)
+            return SquareBSplineShapeFunctions(degree=degree, scalar_type=scalar_type)
 
-        return SquareBipolynomialShapeFunctions(degree=degree, family=family)
+        return SquareBipolynomialShapeFunctions(degree=degree, family=family, scalar_type=scalar_type)
     if element == Element.TRIANGLE:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
-            return TriangleNedelecFirstKindShapeFunctions(degree=degree)
+            return TriangleNedelecFirstKindShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.RAVIART_THOMAS:
-            return TriangleRaviartThomasShapeFunctions(degree=degree)
+            return TriangleRaviartThomasShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return TriangleNonConformingPolynomialShapeFunctions(degree=degree)
+            return TriangleNonConformingPolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.SERENDIPITY and degree > 2:
             raise NotImplementedError("Serendipity variant not implemented yet for Triangle elements")
 
-        return TrianglePolynomialShapeFunctions(degree=degree)
+        return TrianglePolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
 
     if element == Element.CUBE:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
-            return CubeNedelecFirstKindShapeFunctions(degree=degree)
+            return CubeNedelecFirstKindShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.RAVIART_THOMAS:
-            return CubeRaviartThomasShapeFunctions(degree=degree)
+            return CubeRaviartThomasShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return CubeNonConformingPolynomialShapeFunctions(degree=degree)
+            return CubeNonConformingPolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.SERENDIPITY and degree > 1:
-            return CubeSerendipityShapeFunctions(degree=degree, family=family)
+            return CubeSerendipityShapeFunctions(degree=degree, family=family, scalar_type=scalar_type)
         if element_basis == ElementBasis.BSPLINE:
-            return CubeBSplineShapeFunctions(degree=degree)
+            return CubeBSplineShapeFunctions(degree=degree, scalar_type=scalar_type)
 
-        return CubeTripolynomialShapeFunctions(degree=degree, family=family)
+        return CubeTripolynomialShapeFunctions(degree=degree, family=family, scalar_type=scalar_type)
     if element == Element.TETRAHEDRON:
         if element_basis == ElementBasis.NEDELEC_FIRST_KIND:
-            return TetrahedronNedelecFirstKindShapeFunctions(degree=degree)
+            return TetrahedronNedelecFirstKindShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.RAVIART_THOMAS:
-            return TetrahedronRaviartThomasShapeFunctions(degree=degree)
+            return TetrahedronRaviartThomasShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL:
-            return TetrahedronNonConformingPolynomialShapeFunctions(degree=degree)
+            return TetrahedronNonConformingPolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
         if element_basis == ElementBasis.SERENDIPITY and degree > 2:
             raise NotImplementedError("Serendipity variant not implemented yet for Tet elements")
 
-        return TetrahedronPolynomialShapeFunctions(degree=degree)
+        return TetrahedronPolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
 
     raise NotImplementedError(f"Unrecognized element type {element}")

@@ -155,7 +155,7 @@ class TetmeshSpaceTopology(SpaceTopology):
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
-            geo_arg: Tetmesh.CellArg,
+            geo_arg: self._mesh.CellArg,
             topo_arg: TetmeshTopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,

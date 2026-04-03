@@ -7,18 +7,31 @@ from typing import Any, ClassVar
 import warp as wp
 from warp._src.codegen import Struct
 from warp._src.fem import cache
-from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, Coords, ElementIndex, ElementKind, Sample, make_free_sample
+from warp._src.fem.types import (
+    NULL_ELEMENT_INDEX,
+    OUTSIDE,
+    Coords,
+    ElementIndex,
+    ElementKind,
+    Sample,
+    cached_coords_type,
+    cached_sample_type,
+    make_free_sample,
+)
 
 from .element import Element
 
 _wp_module_name_ = "warp.fem.geometry.geometry"
 
 _mat32 = wp.types.matrix(shape=(3, 2), dtype=float)
+_mat32_f64 = wp.types.matrix(shape=(3, 2), dtype=wp.float64)
 
 _NULL_BVH_ID = wp.uint64(0)
 _COORD_LOOKUP_ITERATIONS = 24
+_COORD_LOOKUP_ITERATIONS_F64 = 48
 _COORD_LOOKUP_STEP = 1.0
 _COORD_LOOKUP_EPS = float(2**-20)
+_COORD_LOOKUP_EPS_F64 = float(2**-44)
 _BVH_MIN_PADDING = float(2**-16)
 _BVH_MAX_PADDING = float(2**16)
 
@@ -31,8 +44,24 @@ class Geometry:
     """
 
     dimension: int = 0
+    """Dimension of the embedding space."""
 
     _bvhs = None
+
+    @property
+    def scalar_type(self):
+        """Scalar type (``wp.float32`` or ``wp.float64``) for this geometry's coordinate and weight computations."""
+        return wp.float32
+
+    @cached_property
+    def coords_type(self):
+        """Warp vector type for element coordinates matching this geometry's scalar precision."""
+        return cached_coords_type(self.scalar_type)
+
+    @cached_property
+    def sample_type(self):
+        """Warp struct type for samples matching this geometry's scalar precision."""
+        return cached_sample_type(self.scalar_type)
 
     def cell_count(self):
         """Number of cells in the geometry"""
@@ -66,8 +95,11 @@ class Geometry:
 
     @property
     def name(self) -> str:
-        """Name of the geometry."""
-        return self.__class__.__name__
+        """Name of the geometry, including scalar type suffix for non-default precision."""
+        base = self.__class__.__name__
+        if self.scalar_type != wp.float32:
+            return f"{base}_f64"
+        return base
 
     def __str__(self) -> str:
         return self.name
@@ -120,6 +152,10 @@ class Geometry:
     def cell_measure_ratio(args: Any, s: Sample):
         """Device function returning the ratio between cell and neighbor measures."""
         return 1.0
+
+    @wp.func
+    def cell_measure_ratio(args: Any, s: cached_sample_type(wp.float64)):
+        return wp.float64(1.0)
 
     @staticmethod
     def cell_normal(args: "Geometry.CellArg", s: "Sample"):
@@ -274,6 +310,29 @@ class Geometry:
     def _element_measure(F: wp.mat22):
         return wp.abs(wp.determinant(F))
 
+    # fp64 overloads
+    @wp.func
+    def _element_measure(F: wp.vec2d):
+        return wp.length(F)
+
+    @wp.func
+    def _element_measure(F: wp.vec3d):
+        return wp.length(F)
+
+    @wp.func
+    def _element_measure(F: _mat32_f64):
+        Ft = wp.transpose(F)
+        Fcross = wp.cross(Ft[0], Ft[1])
+        return wp.length(Fcross)
+
+    @wp.func
+    def _element_measure(F: wp.mat33d):
+        return wp.abs(wp.determinant(F))
+
+    @wp.func
+    def _element_measure(F: wp.mat22d):
+        return wp.abs(wp.determinant(F))
+
     @wp.func
     def _element_normal(F: wp.vec2):
         return wp.normalize(wp.vec2(F[1], -F[0]))
@@ -284,11 +343,23 @@ class Geometry:
         Fcross = wp.cross(Ft[0], Ft[1])
         return wp.normalize(Fcross)
 
+    # fp64 overloads
+    @wp.func
+    def _element_normal(F: wp.vec2d):
+        return wp.normalize(wp.vec2d(F[1], -F[0]))
+
+    @wp.func
+    def _element_normal(F: _mat32_f64):
+        Ft = wp.transpose(F)
+        Fcross = wp.cross(Ft[0], Ft[1])
+        return wp.normalize(Fcross)
+
     def _make_cell_measure(self):
-        REF_MEASURE = wp.constant(self.reference_cell().prototype.measure())
+        REF_MEASURE = wp.constant(self.scalar_type(self.reference_cell().prototype.measure()))
+        SampleType = self.sample_type
 
         @cache.dynamic_func(suffix=self.name)
-        def cell_measure(args: self.CellArg, s: Sample):
+        def cell_measure(args: self.CellArg, s: SampleType):
             F = self.cell_deformation_gradient(args, s)
             return Geometry._element_measure(F) * REF_MEASURE
 
@@ -297,14 +368,15 @@ class Geometry:
     def _make_cell_normal(self):
         cell_dim = self.reference_cell().prototype.dimension
         geo_dim = self.dimension
-        normal_vec = wp.types.vector(length=geo_dim, dtype=float)
+        normal_vec = wp.types.vector(length=geo_dim, dtype=self.scalar_type)
+        SampleType = self.sample_type
 
         @cache.dynamic_func(suffix=self.name)
-        def zero_normal(args: self.CellArg, s: Sample):
-            return normal_vec(0.0)
+        def zero_normal(args: self.CellArg, s: SampleType):
+            return normal_vec(self.scalar_type(0.0))
 
         @cache.dynamic_func(suffix=self.name)
-        def cell_hyperplane_normal(args: self.CellArg, s: Sample):
+        def cell_hyperplane_normal(args: self.CellArg, s: SampleType):
             F = self.cell_deformation_gradient(args, s)
             return Geometry._element_normal(F)
 
@@ -318,13 +390,14 @@ class Geometry:
     def _make_cell_inverse_deformation_gradient(self):
         cell_dim = self.reference_cell().prototype.dimension
         geo_dim = self.dimension
+        SampleType = self.sample_type
 
         @cache.dynamic_func(suffix=self.name)
-        def cell_inverse_deformation_gradient(cell_arg: self.CellArg, s: Sample):
+        def cell_inverse_deformation_gradient(cell_arg: self.CellArg, s: SampleType):
             return wp.inverse(self.cell_deformation_gradient(cell_arg, s))
 
         @cache.dynamic_func(suffix=self.name)
-        def cell_pseudoinverse_deformation_gradient(cell_arg: self.CellArg, s: Sample):
+        def cell_pseudoinverse_deformation_gradient(cell_arg: self.CellArg, s: SampleType):
             F = self.cell_deformation_gradient(cell_arg, s)
             Ft = wp.transpose(F)
             return wp.inverse(Ft * F) * Ft
@@ -334,11 +407,12 @@ class Geometry:
     def _make_side_inverse_deformation_gradient(self):
         side_dim = self.reference_side().prototype.dimension
         geo_dim = self.dimension
+        SampleType = self.sample_type
 
         if side_dim == geo_dim:
 
             @cache.dynamic_func(suffix=self.name)
-            def side_inverse_deformation_gradient(side_arg: self.SideArg, s: Sample):
+            def side_inverse_deformation_gradient(side_arg: self.SideArg, s: SampleType):
                 return wp.inverse(self.side_deformation_gradient(side_arg, s))
 
             return side_inverse_deformation_gradient
@@ -346,14 +420,14 @@ class Geometry:
         if side_dim == 1:
 
             @cache.dynamic_func(suffix=self.name)
-            def edge_pseudoinverse_deformation_gradient(side_arg: self.SideArg, s: Sample):
+            def edge_pseudoinverse_deformation_gradient(side_arg: self.SideArg, s: SampleType):
                 F = self.side_deformation_gradient(side_arg, s)
                 return wp.matrix_from_rows(F / wp.dot(F, F))
 
             return edge_pseudoinverse_deformation_gradient
 
         @cache.dynamic_func(suffix=self.name)
-        def side_pseudoinverse_deformation_gradient(side_arg: self.SideArg, s: Sample):
+        def side_pseudoinverse_deformation_gradient(side_arg: self.SideArg, s: SampleType):
             F = self.side_deformation_gradient(side_arg, s)
             Ft = wp.transpose(F)
             return wp.inverse(Ft * F) * Ft
@@ -361,18 +435,21 @@ class Geometry:
         return side_pseudoinverse_deformation_gradient
 
     def _make_side_measure(self):
-        REF_MEASURE = wp.constant(self.reference_side().prototype.measure())
+        REF_MEASURE = wp.constant(self.scalar_type(self.reference_side().prototype.measure()))
+        SampleType = self.sample_type
 
         @cache.dynamic_func(suffix=self.name)
-        def side_measure(args: self.SideArg, s: Sample):
+        def side_measure(args: self.SideArg, s: SampleType):
             F = self.side_deformation_gradient(args, s)
             return Geometry._element_measure(F) * REF_MEASURE
 
         return side_measure
 
     def _make_side_measure_ratio(self):
+        SampleType = self.sample_type
+
         @cache.dynamic_func(suffix=self.name)
-        def side_measure_ratio(args: self.SideArg, s: Sample):
+        def side_measure_ratio(args: self.SideArg, s: SampleType):
             inner = self.side_inner_cell_index(args, s.element_index)
             outer = self.side_outer_cell_index(args, s.element_index)
             inner_coords = self.side_inner_cell_coords(args, s.element_index, s.element_coords)
@@ -388,9 +465,10 @@ class Geometry:
     def _make_side_normal(self):
         side_dim = self.reference_side().prototype.dimension
         geo_dim = self.dimension
+        SampleType = self.sample_type
 
         @cache.dynamic_func(suffix=self.name)
-        def hyperplane_normal(args: self.SideArg, s: Sample):
+        def hyperplane_normal(args: self.SideArg, s: SampleType):
             F = self.side_deformation_gradient(args, s)
             return Geometry._element_normal(F)
 
@@ -400,8 +478,10 @@ class Geometry:
         return None
 
     def _make_side_inner_inverse_deformation_gradient(self):
+        SampleType = self.sample_type
+
         @cache.dynamic_func(suffix=self.name)
-        def side_inner_inverse_deformation_gradient(args: self.SideArg, s: Sample):
+        def side_inner_inverse_deformation_gradient(args: self.SideArg, s: SampleType):
             cell_index = self.side_inner_cell_index(args, s.element_index)
             cell_coords = self.side_inner_cell_coords(args, s.element_index, s.element_coords)
             cell_arg = self.side_to_cell_arg(args)
@@ -410,8 +490,10 @@ class Geometry:
         return side_inner_inverse_deformation_gradient
 
     def _make_side_outer_inverse_deformation_gradient(self):
+        SampleType = self.sample_type
+
         @cache.dynamic_func(suffix=self.name)
-        def side_outer_inverse_deformation_gradient(args: self.SideArg, s: Sample):
+        def side_outer_inverse_deformation_gradient(args: self.SideArg, s: SampleType):
             cell_index = self.side_outer_cell_index(args, s.element_index)
             cell_coords = self.side_outer_cell_coords(args, s.element_index, s.element_coords)
             cell_arg = self.side_to_cell_arg(args)
@@ -420,7 +502,8 @@ class Geometry:
         return side_outer_inverse_deformation_gradient
 
     def _make_element_coordinates(self, element_kind: ElementKind, assume_linear: bool = False):
-        pos_type = cache.cached_vec_type(self.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
+        CoordsType = self.coords_type
 
         if element_kind == ElementKind.CELL:
             ref_elt = self.reference_cell().prototype
@@ -433,7 +516,7 @@ class Geometry:
             elt_pos = self.side_position
             elt_inv_grad = self.side_inverse_deformation_gradient
 
-        elt_center = Coords(ref_elt.center())
+        elt_center = CoordsType(ref_elt.center())
 
         if assume_linear:
 
@@ -450,16 +533,19 @@ class Geometry:
 
             return element_coordinates_linear
 
+        lookup_iterations = _COORD_LOOKUP_ITERATIONS_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_ITERATIONS
+        lookup_eps = _COORD_LOOKUP_EPS_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_EPS
+
         @cache.dynamic_func(suffix=(self.name, element_kind))
         def element_coordinates(args: arg_type, element_index: ElementIndex, pos: pos_type):
             coords = elt_center
 
             # Newton loop
-            for _k in range(_COORD_LOOKUP_ITERATIONS):
+            for _k in range(lookup_iterations):
                 s = make_free_sample(element_index, coords)
                 x = elt_pos(args, s)
                 dc = elt_inv_grad(args, s) * (pos - x)
-                if wp.length_sq(dc) < _COORD_LOOKUP_EPS:
+                if wp.length_sq(dc) < lookup_eps:
                     break
                 coords = coords + ref_elt.coord_delta(_COORD_LOOKUP_STEP * dc)
 
@@ -474,7 +560,7 @@ class Geometry:
         return self._make_element_coordinates(element_kind=ElementKind.SIDE, assume_linear=assume_linear)
 
     def _make_element_closest_point(self, element_kind: ElementKind, assume_linear: bool = False):
-        pos_type = cache.cached_vec_type(self.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
 
         element_coordinates = self._make_element_coordinates(element_kind=element_kind, assume_linear=assume_linear)
 
@@ -489,6 +575,9 @@ class Geometry:
             elt_pos = self.side_position
             elt_def_grad = self.side_deformation_gradient
 
+        lookup_iterations = _COORD_LOOKUP_ITERATIONS_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_ITERATIONS
+        lookup_eps = _COORD_LOOKUP_EPS_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_EPS
+
         @cache.dynamic_func(suffix=f"{self.name}{element_kind}{assume_linear}")
         def cell_closest_point(args: arg_type, cell_index: ElementIndex, pos: pos_type):
             # First get unconstrained coordinates, may use newton for this
@@ -496,7 +585,7 @@ class Geometry:
 
             # Now do projected gradient
             # For interior points should exit at first iteration
-            for _k in range(_COORD_LOOKUP_ITERATIONS):
+            for _k in range(lookup_iterations):
                 cur_coords = coords
                 s = make_free_sample(cell_index, cur_coords)
                 x = elt_pos(args, s)
@@ -507,7 +596,7 @@ class Geometry:
                 dc = (pos - x) @ F  # gradient step
                 coords = ref_elt.project(cur_coords + ref_elt.coord_delta(dc / F_scale))
 
-                if wp.length_sq(coords - cur_coords) < _COORD_LOOKUP_EPS:
+                if wp.length_sq(coords - cur_coords) < lookup_eps:
                     break
 
             return cur_coords, wp.length_sq(pos - x)
@@ -527,12 +616,14 @@ class Geometry:
             filter_func: Optional device predicate to filter candidate cells.
         """
         suffix = f"{self.name}{filter_func.key if filter_func is not None else ''}"
-        pos_type = cache.cached_vec_type(self.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
+        CoordsType = self.coords_type
+        scalar = self.scalar_type
 
         @cache.dynamic_func(suffix=suffix)
         def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, filter_data: Any, filter_target: Any):
             closest_cell = int(NULL_ELEMENT_INDEX)
-            closest_coords = Coords(OUTSIDE)
+            closest_coords = CoordsType(scalar(OUTSIDE))
 
             bvh_id = self.cell_bvh_id(args)
             if bvh_id != _NULL_BVH_ID:
@@ -573,14 +664,15 @@ class Geometry:
         null_filter_data = 0
         null_filter_target = 0
 
-        pos_type = cache.cached_vec_type(self.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
+        SampleType = self.sample_type
 
         @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
             return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
 
         @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_lookup(args: self.CellArg, pos: pos_type, guess: Sample):
+        def cell_lookup(args: self.CellArg, pos: pos_type, guess: SampleType):
             guess_pos = self.cell_position(args, guess)
             max_dist = wp.length(guess_pos - pos)
             return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
@@ -592,7 +684,7 @@ class Geometry:
 
         # array filtering variants
         filtered_cell_lookup = self.make_filtered_cell_lookup(filter_func=_array_load)
-        pos_type = cache.cached_vec_type(self.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
 
         @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_lookup(
@@ -665,6 +757,13 @@ class Geometry:
 
         If building a BVH is not supported for this geometry, a :class:`TypeError` is raised.
 
+        .. note::
+
+            Warp's BVH API operates in fp32. For fp64 geometries, positions are truncated
+            to fp32 for the spatial query; the subsequent Newton iteration then refines
+            coordinates at full fp64 precision. This may cause lookup failures for features
+            separated by less than ~1e-7 in world space.
+
         See also: :meth:`.Geometry.update_bvh`.
         """
 
@@ -714,6 +813,16 @@ def _bvh_vec(v: wp.vec3):
 @wp.func
 def _bvh_vec(v: wp.vec2):
     return wp.vec3(v[0], v[1], 0.0)
+
+
+@wp.func
+def _bvh_vec(v: wp.vec3d):
+    return wp.vec3(wp.float32(v[0]), wp.float32(v[1]), wp.float32(v[2]))
+
+
+@wp.func
+def _bvh_vec(v: wp.vec2d):
+    return wp.vec3(wp.float32(v[0]), wp.float32(v[1]), 0.0)
 
 
 @wp.func

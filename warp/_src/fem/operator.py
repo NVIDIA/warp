@@ -467,7 +467,7 @@ def jump(f: Field, s: Sample):
 @integrand
 def average(f: Field, s: Sample):
     """Average between inner and outer element values."""
-    return 0.5 * (inner(f, s) + outer(f, s))
+    return s.element_coords.dtype(0.5) * (inner(f, s) + outer(f, s))
 
 
 @integrand
@@ -482,7 +482,24 @@ def grad_jump(f: Field, s: Sample):
 @integrand
 def grad_average(f: Field, s: Sample):
     """Average between inner and outer element gradients."""
-    return 0.5 * (grad(f, s) + grad_outer(f, s))
+    return s.element_coords.dtype(0.5) * (grad(f, s) + grad_outer(f, s))
+
+
+@operator(resolver=lambda arg: arg.geometry.scalar_type)
+def scalar_type(domain_or_field: Union[Domain, Field]):
+    """Return the scalar type (``wp.float32`` or ``wp.float64``) for the current geometry.
+
+    Resolved at integrand transformation time to a type constructor, so it
+    can be used to create precision-correct scalar literals.
+    Accepts either a :class:`Domain` or a :class:`Field` argument::
+
+        @fem.integrand
+        def my_form(s: fem.Sample, domain: fem.Domain, u: fem.Field):
+            half = fem.scalar_type(domain)(0.5)
+            # or equivalently:
+            half = fem.scalar_type(u)(0.5)
+    """
+    pass
 
 
 # Set default call operators for argument types, so that field(s) = inner(field, s) and domain(s) = position(domain, s)

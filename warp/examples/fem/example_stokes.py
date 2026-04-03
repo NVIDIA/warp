@@ -113,17 +113,18 @@ class Example:
             viscosity_form,
             fields={"u": u_trial, "v": u_test},
             values={"nu": self.viscosity},
+            output_dtype=wp.float64,
         )
 
         # Weak velocity boundary conditions
         u_bd_test = fem.make_test(space=u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=u_space, domain=boundary)
         u_rhs = fem.integrate(top_mass_form, fields={"u": self._bd_field, "v": u_bd_test}, output_dtype=wp.vec2d)
-        u_bd_matrix = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test})
+        u_bd_matrix = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, output_dtype=wp.float64)
 
         # Pressure-velocity coupling
         p_test = fem.make_test(space=p_space, domain=domain)
-        div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test})
+        div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test}, output_dtype=wp.float64)
 
         # Define and solve the saddle-point system
         u_matrix = u_visc_matrix

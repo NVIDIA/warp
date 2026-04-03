@@ -428,13 +428,14 @@ class Example:
             viscosity_and_inertia_form_bdf2,
             fields={"u": u_trial, "v": u_test},
             values={"nu": viscosity, "dt": self.sim_dt},
+            output_dtype=wp.float64,
         )
 
         # Divergence matrix B (pressure-velocity coupling).
         # Passing a velocity trial and a pressure test gives the rectangular
         # matrix B such that B @ u approximates -∫ q div(u) dx.
         p_test = fem.make_test(space=p_space, domain=domain)
-        div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test})
+        div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test}, output_dtype=wp.float64)
 
         # -----------------------------------------------------------------
         # 4. Dirichlet boundary conditions (projection method)
@@ -460,7 +461,9 @@ class Example:
 
         u_bd_test = fem.make_test(space=u_space, domain=boundary)
         u_bd_trial = fem.make_trial(space=u_space, domain=boundary)
-        u_bd_projector = fem.integrate(mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal")
+        u_bd_projector = fem.integrate(
+            mass_form, fields={"u": u_bd_trial, "v": u_bd_test}, assembly="nodal", output_dtype=wp.float64
+        )
 
         u_bd_value_init = fem.integrate(
             velocity_boundary_integrand,

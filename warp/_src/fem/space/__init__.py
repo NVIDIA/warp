@@ -109,7 +109,9 @@ def make_polynomial_basis_space(
         the constructed basis space
     """
 
-    shape = make_element_shape_function(geo.reference_cell(), degree=degree, element_basis=element_basis, family=family)
+    shape = make_element_shape_function(
+        geo.reference_cell(), degree=degree, element_basis=element_basis, family=family, scalar_type=geo.scalar_type
+    )
 
     discontinuous = discontinuous or element_basis == ElementBasis.NONCONFORMING_POLYNOMIAL
     topology = make_element_based_space_topology(geo, shape, discontinuous)
@@ -165,7 +167,7 @@ def make_element_based_space_topology(
 
 
 def make_collocated_function_space(
-    basis_space: BasisSpace, dtype: type = float, dof_mapper: Optional[DofMapper] = None
+    basis_space: BasisSpace, dtype: Optional[type] = None, dof_mapper: Optional[DofMapper] = None
 ) -> CollocatedFunctionSpace:
     """
     Constructs a function space from a scalar-valued basis space and a value type, such that all degrees of freedom of the value type are stored at each of the basis nodes.
@@ -211,7 +213,7 @@ def make_contravariant_function_space(
 
 def make_polynomial_space(
     geo: _geometry.Geometry,
-    dtype: type = float,
+    dtype: Optional[type] = None,
     dof_mapper: Optional[DofMapper] = None,
     degree: int = 1,
     element_basis: Optional[ElementBasis] = None,

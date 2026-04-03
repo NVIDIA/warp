@@ -73,7 +73,7 @@ class SpaceTopology:
     @cached_property
     def name(self):
         """Unique name of the topology."""
-        return f"{self.__class__.__name__}_{self.MAX_NODES_PER_ELEMENT}"
+        return f"{self.__class__.__name__}_{self.geometry.name}_{self.MAX_NODES_PER_ELEMENT}"
 
     def __str__(self):
         return self.name

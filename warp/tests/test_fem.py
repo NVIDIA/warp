@@ -1642,6 +1642,7 @@ def test_point_basis(test, device):
             0.125 * (1.0 + _rbf_kernel_func(neighbour_points_squared_dist, 0, rbf_radius)),
             0.25,
         ],
+        rtol=2.0e-7,
     )
 
     other_int = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})

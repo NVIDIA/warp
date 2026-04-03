@@ -9,7 +9,6 @@ from warp._src.fem.operator import integrand
 from warp._src.fem.quadrature import Quadrature
 from warp._src.fem.types import (
     NULL_ELEMENT_INDEX,
-    Coords,
     ElementIndex,
     ElementKind,
     QuadraturePointIndex,
@@ -232,10 +231,11 @@ class PointBasisSpace(BasisSpace):
             first_arg_type = type_to_warp(arg_types.pop(argspec.args[0]))
             second_arg_type = type_to_warp(arg_types.pop(argspec.args[1]))
 
-            assert first_arg_type == wp.float32 and second_arg_type == wp.int32
+            scalar = self.geometry.scalar_type
+            assert (first_arg_type == wp.float32 or first_arg_type == scalar) and second_arg_type == wp.int32
         except Exception as err:
             raise ValueError(
-                f"First argument of radial kernel '{self.kernel_func.func.__name__}' must be a float (squared distance to kernel center), and second argument must be a int (quadrature point index)"
+                f"First argument of radial kernel '{self.kernel_func.func.__name__}' must be a float or the geometry's scalar type (squared distance to kernel center), and second argument must be an int (quadrature point index)"
             ) from err
 
         return cache.get_argument_struct(arg_types)
@@ -299,8 +299,8 @@ class PointBasisSpace(BasisSpace):
             def squared_distance_reference(
                 elt_arg: self._quadrature.domain.ElementArg,
                 element_index: ElementIndex,
-                coords: Coords,
-                point_coords: Coords,
+                coords: self.geometry.coords_type,
+                point_coords: self.geometry.coords_type,
             ):
                 return wp.length_sq(ref_delta(coords - point_coords))
 
@@ -310,8 +310,8 @@ class PointBasisSpace(BasisSpace):
         def squared_distance_world(
             elt_arg: self._quadrature.domain.ElementArg,
             element_index: ElementIndex,
-            coords: Coords,
-            point_coords: Coords,
+            coords: Any,
+            point_coords: Any,
         ):
             sample_x = self._quadrature.domain.element_position(elt_arg, make_free_sample(element_index, coords))
             point_x = self._quadrature.domain.element_position(elt_arg, make_free_sample(element_index, point_coords))
@@ -327,8 +327,8 @@ class PointBasisSpace(BasisSpace):
             def squared_distance_gradient_reference(
                 elt_arg: self._quadrature.domain.ElementArg,
                 element_index: ElementIndex,
-                coords: Coords,
-                point_coords: Coords,
+                coords: Any,
+                point_coords: Any,
             ):
                 return 2.0 * ref_delta(coords - point_coords)
 
@@ -338,8 +338,8 @@ class PointBasisSpace(BasisSpace):
         def squared_distance_gradient_world(
             elt_arg: self._quadrature.domain.ElementArg,
             element_index: ElementIndex,
-            coords: Coords,
-            point_coords: Coords,
+            coords: Any,
+            point_coords: Any,
         ):
             sample_x = self._quadrature.domain.element_position(elt_arg, make_free_sample(element_index, coords))
             sample_F = self._quadrature.domain.element_deformation_gradient(
@@ -362,7 +362,7 @@ class PointBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: self.geometry.coords_type,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
@@ -381,7 +381,7 @@ class PointBasisSpace(BasisSpace):
     def make_element_inner_weight_gradient(self):
         """Create a device function returning gradients of inner element weights."""
         if wp.static(self.kernel_grad_func is None):
-            gradient_vec = cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=float)
+            gradient_vec = cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=self.geometry.scalar_type)
 
             @cache.dynamic_func(suffix=self.name)
             def element_inner_weight_null_gradient(
@@ -389,11 +389,11 @@ class PointBasisSpace(BasisSpace):
                 topo_arg: self.topology.TopologyArg,
                 basis_arg: self.BasisArg,
                 element_index: ElementIndex,
-                coords: Coords,
+                coords: self.geometry.coords_type,
                 node_index_in_elt: int,
                 qp_index: QuadraturePointIndex,
             ):
-                return gradient_vec(0.0)
+                return gradient_vec(self.geometry.scalar_type(0.0))
 
             return element_inner_weight_null_gradient
 
@@ -406,7 +406,7 @@ class PointBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: self.geometry.coords_type,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
@@ -436,6 +436,7 @@ class PointBasisSpace(BasisSpace):
 
     def make_trace_node_quadrature_weight(self, trace_basis):
         """Create a device function returning trace node quadrature weights."""
+        scalar = self.geometry.scalar_type
 
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(
@@ -445,7 +446,7 @@ class PointBasisSpace(BasisSpace):
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
-            return 0.0
+            return scalar(0.0)
 
         return trace_node_quadrature_weight
 

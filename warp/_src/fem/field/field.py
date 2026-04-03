@@ -329,7 +329,10 @@ class ImplicitField(GeometryField):
 
         try:
             first_arg_type = arg_types.pop(argspec.args[0])
-            if types_equal_generic(first_arg_type, wp.types.vector(length=domain.geometry.dimension, dtype=float)):
+            dim = domain.geometry.dimension
+            if types_equal_generic(first_arg_type, wp.types.vector(length=dim, dtype=float)) or types_equal_generic(
+                first_arg_type, wp.types.vector(length=dim, dtype=domain.geometry.scalar_type)
+            ):
                 self._qp_based = False
             elif type_to_warp(first_arg_type) == wp.int32:
                 self._qp_based = True
@@ -398,11 +401,13 @@ class ImplicitField(GeometryField):
         if func is None:
             return None
 
+        SampleType = self.domain.geometry.sample_type
+
         @cache.dynamic_func(
             suffix=(self.name, func.key),
             code_transformers=[cache.ExpandStarredArgumentStruct({"args.eval_arg": self.EvalArg})],
         )
-        def eval_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_inner(args: self.ElementEvalArg, s: SampleType):
             if wp.static(self._qp_based):
                 qp_index = s.qp_index
                 return func(qp_index, *args.eval_arg)
@@ -416,8 +421,10 @@ class ImplicitField(GeometryField):
         if self.eval_grad_inner is None:
             return None
 
+        SampleType = self.domain.geometry.sample_type
+
         @cache.dynamic_func(suffix=f"{self.eval_grad_inner.key}")
-        def eval_reference_grad_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_reference_grad_inner(args: self.ElementEvalArg, s: SampleType):
             return self.eval_grad_inner(args, s) * self.domain.element_deformation_gradient(args.elt_arg, s)
 
         return eval_reference_grad_inner
@@ -536,8 +543,10 @@ class UniformField(GeometryField):
         return f"Uniform{self.domain.name}_{cache.pod_type_key(self.dtype)}"
 
     def _make_eval_inner(self):
+        SampleType = self.domain.geometry.sample_type
+
         @cache.dynamic_func(suffix=self.name)
-        def eval_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_inner(args: self.ElementEvalArg, s: SampleType):
             return args.eval_arg.value
 
         return eval_inner
@@ -546,10 +555,11 @@ class UniformField(GeometryField):
         if dtype is None:
             return None
 
+        SampleType = self.domain.geometry.sample_type
         zero_element = type_zero_element(dtype)
 
         @cache.dynamic_func(suffix=f"{self.name}_{cache.pod_type_key(dtype)}")
-        def eval_zero(args: self.ElementEvalArg, s: Sample):
+        def eval_zero(args: self.ElementEvalArg, s: SampleType):
             return zero_element()
 
         return eval_zero
@@ -676,8 +686,10 @@ class NonconformingField(GeometryField):
 
         cell_lookup = self.field.geometry.cell_lookup
 
+        SampleType = self.domain.geometry.sample_type
+
         @cache.dynamic_func(suffix=f"{eval_func_name}_{self.name}")
-        def eval_nc(args: self.ElementEvalArg, s: Sample):
+        def eval_nc(args: self.ElementEvalArg, s: SampleType):
             pos = self.domain.element_position(args.elt_arg, s)
             cell_arg = args.eval_arg.field_cell_eval_arg.elt_arg
             nonconforming_s = cell_lookup(cell_arg, pos, NonconformingField._LOOKUP_EPS)
@@ -698,8 +710,10 @@ class NonconformingField(GeometryField):
         if self.eval_grad_inner is None:
             return None
 
+        SampleType = self.domain.geometry.sample_type
+
         @cache.dynamic_func(suffix=f"{self.eval_grad_inner.key}")
-        def eval_reference_grad_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_reference_grad_inner(args: self.ElementEvalArg, s: SampleType):
             return self.eval_grad_inner(args, s) * self.domain.element_deformation_gradient(args.elt_arg, s)
 
         return eval_reference_grad_inner
