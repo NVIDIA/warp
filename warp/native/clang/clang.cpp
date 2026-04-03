@@ -131,7 +131,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     bool verify_fp,
     llvm::LLVMContext& context,
     bool tiles_in_stack_memory,
-    const char** extra_flags = nullptr  // null-terminated array of flag strings, or nullptr for none
+    const char** extra_flags = nullptr,  // null-terminated array of flag strings, or nullptr for none
+    int optimization_level = 3
 )
 {
     // Compilation arguments
@@ -141,7 +142,24 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     args.push_back("-I");
     args.push_back(include_dir);
 
-    args.push_back(debug ? "-O0" : "-O2");
+    if (debug) {
+        args.push_back("-O0");
+    } else {
+        switch (optimization_level) {
+        case 0:
+            args.push_back("-O0");
+            break;
+        case 1:
+            args.push_back("-O1");
+            break;
+        case 2:
+            args.push_back("-O2");
+            break;
+        default:
+            args.push_back("-O3");
+            break;
+        }
+    }
 
     if (is_cuda) {
         args.push_back("-triple");
@@ -283,14 +301,16 @@ WP_API int wp_compile_cpp(
     bool verify_fp,
     bool fuse_fp,
     bool tiles_in_stack_memory,
-    const char** extra_flags
+    const char** extra_flags,
+    int optimization_level
 )
 {
     initialize_llvm();
 
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module = source_to_llvm(
-        false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory, extra_flags
+        false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory, extra_flags,
+        optimization_level
     );
 
     if (!module) {
@@ -329,13 +349,40 @@ WP_API int wp_compile_cpp(
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Strict;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // Position Independent Code
     llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
+
+#if LLVM_VERSION_MAJOR >= 18
+    llvm::CodeGenOptLevel codegen_opt;
+#else
+    llvm::CodeGenOpt::Level codegen_opt;
+#define CodeGenOptLevel CodeGenOpt
+#endif
+    if (debug) {
+        codegen_opt = llvm::CodeGenOptLevel::None;
+    } else {
+        switch (optimization_level) {
+        case 0:
+            codegen_opt = llvm::CodeGenOptLevel::None;
+            break;
+        case 1:
+            codegen_opt = llvm::CodeGenOptLevel::Less;
+            break;
+        case 2:
+            codegen_opt = llvm::CodeGenOptLevel::Default;
+            break;
+        default:
+            codegen_opt = llvm::CodeGenOptLevel::Aggressive;
+            break;
+        }
+    }
+
 #if LLVM_VERSION_MAJOR >= 20
     llvm::TargetMachine* target_machine = target->createTargetMachine(
-        llvm::Triple(target_triple), CPU, features, target_options, relocation_model, code_model
+        llvm::Triple(target_triple), CPU, features, target_options, relocation_model, code_model, codegen_opt
     );
 #else
-    llvm::TargetMachine* target_machine
-        = target->createTargetMachine(target_triple, CPU, features, target_options, relocation_model, code_model);
+    llvm::TargetMachine* target_machine = target->createTargetMachine(
+        target_triple, CPU, features, target_options, relocation_model, code_model, codegen_opt
+    );
 #endif
 
     module->setDataLayout(target_machine->createDataLayout());

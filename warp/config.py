@@ -64,11 +64,10 @@ optimization_level: _Optional[int] = None
 """Optimization level for Warp kernels.
 
 Args:
-    optimization_level: An integer representing the optimization level (0-3), or ``None`` for default behavior.
+    optimization_level: An integer representing the optimization level (0-3), or ``None`` for
+        target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
 
 Note: Higher optimization levels increase compilation time but may improve run-time performance.
-
-Currently only affects GPU modules.
 
 This setting can be overridden at the module level by setting the ``"optimization_level"`` module option.
 """
