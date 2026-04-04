@@ -50,6 +50,23 @@
 - Fix `wp.sign()` returning the wrong type for custom vector types.
 - Fix `wp.array[dtype]` subscript syntax not being recognized by mypy, which reported
   `"array" expects no type arguments` ([GH-1278](https://github.com/NVIDIA/warp/issues/1278)).
+- Fix `wp.sign()` vector overload returning incorrect type metadata for custom vector types.
+- Fix ``wp.tile_argmin()`` and ``wp.tile_argmax()`` crashing in debug mode when ``block_dim`` exceeds the tile
+  element count, and fix related debug-mode crashes in ``tile_reduce_axis`` and shared-memory tile load/store
+  for the same condition ([GH-1133](https://github.com/NVIDIA/warp/issues/1133)).
+- Fix augmented assignments double-evaluating sub-expressions for subscript and attribute
+  targets (e.g., ``s.field += expr``, ``arr[i] *= expr``), causing side effects in target
+  indices or the right-hand side to trigger multiple times
+  ([GH-1233](https://github.com/NVIDIA/warp/issues/1233)).
+- Fix `tile_map()` with `tile_store()` failing for custom vector and matrix types created via
+  `wp.types.vector()` or `wp.types.matrix()` ([GH-1311](https://github.com/NVIDIA/warp/issues/1311)).
+- Fix `@wp.func` with tile parameters failing to compile when called with shared-memory tiles. Tile parameters in
+  `@wp.func` are now passed by reference for both register and shared storage, matching Python's semantics for mutable
+  objects. Previously, register tiles were passed by value ([GH-1313](https://github.com/NVIDIA/warp/issues/1313)).
+- Fix array annotation ``repr()`` displaying raw internal class paths for ``dtype``
+  (e.g., ``wp.array(dtype=<class 'warp._src.types.uint32'>, ndim=4)``) instead of
+  clean type names (e.g., ``wp.array(dtype=wp.uint32, ndim=4)``)
+  ([GH-1341](https://github.com/NVIDIA/warp/issues/1341)).
 
 ### Documentation
 
