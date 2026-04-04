@@ -2094,6 +2094,29 @@ def test_transform_getter_setter(test, device):
     test.assertEqual(d, b)
 
 
+def test_transform_identity_type(test, device):
+    """``wp.transform_identity()``/``wp.quat_identity()`` must return concrete named types (GH-1336)."""
+    # transform_identity returns transformf, not the internal transform_t base class
+    t = wp.transform_identity()
+    test.assertIs(type(t), wp.transformf)
+
+    # Mutating builtins must modify the original, not a temporary copy
+    pos = wp.vec3f(1.0, 2.0, 3.0)
+    wp.transform_set_translation(t, pos)
+    test.assertEqual(t[0], 1.0)
+    test.assertEqual(t[1], 2.0)
+    test.assertEqual(t[2], 3.0)
+
+    rot = wp.quatf(0.0, 0.0, 0.0, 1.0)
+    wp.transform_set_rotation(t, rot)
+    test.assertEqual(t[3], 0.0)
+    test.assertEqual(t[6], 1.0)
+
+    # quat_identity returns quatf, not the internal quat_t base class
+    q = wp.quat_identity()
+    test.assertIs(type(q), wp.quatf)
+
+
 @wp.kernel
 def transform_extract_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=float)):
     tid = wp.tid()
@@ -2825,6 +2848,9 @@ for dtype in np_float_types:
 
 add_function_test(
     TestSpatial, "test_transform_getter_setter", test_transform_getter_setter, devices=wp.get_device("cpu")
+)
+add_function_test(
+    TestSpatial, "test_transform_identity_type", test_transform_identity_type, devices=wp.get_device("cpu")
 )
 add_function_test(TestSpatial, "test_transform_extract", test_transform_extract, devices=devices)
 add_function_test(TestSpatial, "test_transform_assign", test_transform_assign, devices=devices)
