@@ -2398,7 +2398,7 @@ def type_repr(t) -> str:
         return f"vector(length={t._shape_[0]}, dtype={type_repr(t._wp_scalar_type_)})"
     if type_is_matrix(t):
         if sn is not None and t._shape_[0] <= 4 and t._shape_[1] <= 4:
-            return f"mat{t._shape_[0]}{t._shape_[1]}({sn})"
+            return f"mat{t._shape_[0]}{t._shape_[1]}{sn}"
         return f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={type_repr(t._wp_scalar_type_)})"
     if t in scalar_types:
         return t.__name__
@@ -4644,7 +4644,22 @@ class _ArrayAnnotationBase:
         self.ndim = ndim
 
     def __repr__(self):
-        dtype_str = "Any" if self.dtype is Any else self.dtype
+        if self.dtype is Any:
+            dtype_str = "Any"
+        elif hasattr(self.dtype, "key"):
+            # Struct instances use .key instead of __name__
+            dtype_str = self.dtype.key
+        else:
+            name = getattr(self.dtype, "__name__", None)
+            if name and getattr(warp, name, None) is self.dtype:
+                dtype_str = f"wp.{name}"
+            else:
+                # Custom vector/matrix/quaternion/transformation types
+                repr_name = type_repr(self.dtype)
+                if getattr(warp, repr_name, None) is not None:
+                    dtype_str = f"wp.{repr_name}"
+                else:
+                    dtype_str = repr_name
         ndim_str = "Any" if self.ndim is Any else self.ndim
         return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
 

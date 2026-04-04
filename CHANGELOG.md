@@ -110,6 +110,10 @@
 - Fix `@wp.func` with tile parameters failing to compile when called with shared-memory tiles. Tile parameters in
   `@wp.func` are now passed by reference for both register and shared storage, matching Python's semantics for mutable
   objects. Previously, register tiles were passed by value ([GH-1313](https://github.com/NVIDIA/warp/issues/1313)).
+- Fix array annotation ``repr()`` displaying raw internal class paths for ``dtype``
+  (e.g., ``wp.array(dtype=<class 'warp._src.types.uint32'>, ndim=4)``) instead of
+  clean type names (e.g., ``wp.array(dtype=wp.uint32, ndim=4)``)
+  ([GH-1341](https://github.com/NVIDIA/warp/issues/1341)).
 
 ### Documentation
 
