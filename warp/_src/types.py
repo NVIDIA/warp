@@ -4644,7 +4644,13 @@ class _ArrayAnnotationBase:
         self.ndim = ndim
 
     def __repr__(self):
-        dtype_str = "Any" if self.dtype is Any else self.dtype
+        if self.dtype is Any:
+            dtype_str = "Any"
+        elif hasattr(self.dtype, "__name__"):
+            dtype_str = f"wp.{self.dtype.__name__}"
+        else:
+            # Struct instances use .key instead of __name__
+            dtype_str = self.dtype.key
         ndim_str = "Any" if self.ndim is Any else self.ndim
         return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
 
