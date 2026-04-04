@@ -502,6 +502,47 @@ class TestSubscriptTypes(unittest.TestCase):
         ia = wp.indexedarray[float]
         self.assertNotEqual(a1, ia)
 
+    def test_annotation_repr(self):
+        """repr() produces readable dtype names instead of raw class paths."""
+        # Built-in scalar dtypes
+        self.assertEqual(repr(wp.array[wp.float32]), "wp.array(dtype=wp.float32, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.uint32]), "wp.array(dtype=wp.uint32, ndim=1)")
+
+        # Higher-dimensional arrays
+        self.assertEqual(repr(wp.array4d[wp.uint32]), "wp.array(dtype=wp.uint32, ndim=4)")
+        self.assertEqual(repr(wp.array3d[wp.vec3f]), "wp.array(dtype=wp.vec3f, ndim=3)")
+        self.assertEqual(repr(wp.array2d[wp.float32]), "wp.array(dtype=wp.float32, ndim=2)")
+
+        # Other array variants
+        self.assertEqual(repr(wp.indexedarray[wp.float32]), "wp.indexedarray(dtype=wp.float32, ndim=1)")
+        self.assertEqual(
+            repr(wp.indexedarray[wp.float32, Literal[3]]),
+            "wp.indexedarray(dtype=wp.float32, ndim=3)",
+        )
+
+        # Custom vector/matrix dtypes — no wp. prefix for user-defined types
+        my_vec5 = wp.types.vector(length=5, dtype=wp.float32)
+        r = repr(wp.array[my_vec5])
+        self.assertIn("vector(length=5", r)
+        self.assertNotIn("wp.vector", r)
+        self.assertNotIn("<class", r)
+
+        # Any dtype / ndim
+        ann = _ArrayAnnotation(dtype=Any, ndim=4)
+        self.assertEqual(repr(ann), "wp.array(dtype=Any, ndim=4)")
+        ann = _ArrayAnnotation(dtype=wp.float32, ndim=Any)
+        self.assertEqual(repr(ann), "wp.array(dtype=wp.float32, ndim=Any)")
+
+        # Struct dtype — no wp. prefix, no crash
+        @wp.struct
+        class ReprTestStruct:
+            x: wp.float32
+
+        r = repr(wp.array[ReprTestStruct])
+        self.assertIn("ReprTestStruct", r)
+        self.assertNotIn("wp.ReprTestStruct", r)
+        self.assertNotIn("<class", r)
+
     def test_typevar_delegation(self):
         """Verify that TypeVar parameters delegate to Generic (preserves static typing)."""
         T = TypeVar("T")  # dtype

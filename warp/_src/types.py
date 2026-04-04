@@ -4646,11 +4646,16 @@ class _ArrayAnnotationBase:
     def __repr__(self):
         if self.dtype is Any:
             dtype_str = "Any"
-        elif hasattr(self.dtype, "__name__"):
-            dtype_str = f"wp.{self.dtype.__name__}"
-        else:
+        elif hasattr(self.dtype, "key"):
             # Struct instances use .key instead of __name__
             dtype_str = self.dtype.key
+        else:
+            name = getattr(self.dtype, "__name__", None)
+            if name and hasattr(warp, name):
+                dtype_str = f"wp.{name}"
+            else:
+                # Custom vector/matrix/quaternion/transformation types
+                dtype_str = type_repr(self.dtype)
         ndim_str = "Any" if self.ndim is Any else self.ndim
         return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
 
