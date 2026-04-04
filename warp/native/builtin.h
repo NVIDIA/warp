@@ -92,6 +92,46 @@ typedef uint64_t uint64;
 typedef const char* str;
 
 
+// Float-to-unsigned conversions: cast through int64 to avoid C++ UB
+// (C++ 7.3.11: float -> unsigned is UB when truncated value is negative)
+template <typename F> CUDA_CALLABLE inline int64 safe_float_to_int64(F x)
+{
+    if (!(x == x))
+        return 0;
+    constexpr F min_int64 = static_cast<F>(-9223372036854775808.0);  // -2^63
+    constexpr F max_overflow = static_cast<F>(9223372036854775808.0);  // 2^63
+    if (x < min_int64)
+        return -9223372036854775807LL - 1LL;
+    if (x >= max_overflow)
+        return 9223372036854775807LL;
+    return static_cast<int64>(x);
+}
+
+template <typename F> CUDA_CALLABLE inline uint64 safe_float_to_uint64(F x)
+{
+    if (!(x == x))
+        return 0;
+    if (x <= 0.0)
+        return static_cast<uint64>(safe_float_to_int64(x));
+    constexpr F pow2_63 = static_cast<F>(9223372036854775808.0);  // 2^63
+    constexpr F overflow_uint64 = static_cast<F>(18446744073709551616.0);  // 2^64
+    if (x >= overflow_uint64)
+        return 18446744073709551615ULL;
+    if (x >= pow2_63)
+        return static_cast<uint64>(safe_float_to_int64(x - pow2_63)) + 9223372036854775808ULL;
+    return static_cast<uint64>(safe_float_to_int64(x));
+}
+
+CUDA_CALLABLE inline uint8 float32_to_uint8(float32 x) { return static_cast<uint8>(safe_float_to_int64(x)); }
+CUDA_CALLABLE inline uint8 float64_to_uint8(float64 x) { return static_cast<uint8>(safe_float_to_int64(x)); }
+CUDA_CALLABLE inline uint16 float32_to_uint16(float32 x) { return static_cast<uint16>(safe_float_to_int64(x)); }
+CUDA_CALLABLE inline uint16 float64_to_uint16(float64 x) { return static_cast<uint16>(safe_float_to_int64(x)); }
+CUDA_CALLABLE inline uint32 float32_to_uint32(float32 x) { return static_cast<uint32>(safe_float_to_int64(x)); }
+CUDA_CALLABLE inline uint32 float64_to_uint32(float64 x) { return static_cast<uint32>(safe_float_to_int64(x)); }
+CUDA_CALLABLE inline uint64 float32_to_uint64(float32 x) { return safe_float_to_uint64(x); }
+CUDA_CALLABLE inline uint64 float64_to_uint64(float64 x) { return safe_float_to_uint64(x); }
+
+
 struct half;
 
 CUDA_CALLABLE half float_to_half(float x);
@@ -168,6 +208,12 @@ struct half {
 static_assert(sizeof(half) == 2, "Size of half / float16 type must be 2-bytes");
 
 typedef half float16;
+
+// Handle float16 source
+CUDA_CALLABLE inline uint8 float16_to_uint8(float16 x) { return float32_to_uint8(float32(x)); }
+CUDA_CALLABLE inline uint16 float16_to_uint16(float16 x) { return float32_to_uint16(float32(x)); }
+CUDA_CALLABLE inline uint32 float16_to_uint32(float16 x) { return float32_to_uint32(float32(x)); }
+CUDA_CALLABLE inline uint64 float16_to_uint64(float16 x) { return float32_to_uint64(float32(x)); }
 
 // Approximate division/reciprocal intrinsics
 #if defined(__CUDA_ARCH__)
@@ -324,6 +370,19 @@ template <typename T> CUDA_CALLABLE inline void adj_float16(T x, T& adj_x, float
 template <typename T> CUDA_CALLABLE inline void adj_float32(T x, T& adj_x, float32 adj_ret) { adj_x += T(adj_ret); }
 template <typename T> CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x += T(adj_ret); }
 
+// Adjoint stubs for safe float-to-unsigned casts (no-op since they are cast functions)
+template <typename T> CUDA_CALLABLE inline void adj_float32_to_uint8(T, T&, uint8) { }
+template <typename T> CUDA_CALLABLE inline void adj_float64_to_uint8(T, T&, uint8) { }
+template <typename T> CUDA_CALLABLE inline void adj_float16_to_uint8(T, T&, uint8) { }
+template <typename T> CUDA_CALLABLE inline void adj_float32_to_uint16(T, T&, uint16) { }
+template <typename T> CUDA_CALLABLE inline void adj_float64_to_uint16(T, T&, uint16) { }
+template <typename T> CUDA_CALLABLE inline void adj_float16_to_uint16(T, T&, uint16) { }
+template <typename T> CUDA_CALLABLE inline void adj_float32_to_uint32(T, T&, uint32) { }
+template <typename T> CUDA_CALLABLE inline void adj_float64_to_uint32(T, T&, uint32) { }
+template <typename T> CUDA_CALLABLE inline void adj_float16_to_uint32(T, T&, uint32) { }
+template <typename T> CUDA_CALLABLE inline void adj_float32_to_uint64(T, T&, uint64) { }
+template <typename T> CUDA_CALLABLE inline void adj_float64_to_uint64(T, T&, uint64) { }
+template <typename T> CUDA_CALLABLE inline void adj_float16_to_uint64(T, T&, uint64) { }
 
 #define kEps 0.0f
 
