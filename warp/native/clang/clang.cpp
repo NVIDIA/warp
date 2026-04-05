@@ -106,8 +106,7 @@ static const HostCpuInfo& get_host_cpu_info()
         HostCpuInfo result;
         result.name = llvm::sys::getHostCPUName().str();
 
-        llvm::StringMap<bool> feature_map;
-        llvm::sys::getHostCPUFeatures(feature_map);
+        llvm::StringMap<bool> feature_map = llvm::sys::getHostCPUFeatures();
 
         for (const auto& f : feature_map) {
             std::string flag = (f.second ? "+" : "-") + f.first().str();
