@@ -2895,6 +2895,10 @@ class Module:
                         fuse_fp=options["fuse_fp"],
                         extra_flags=options["cpu_compiler_flags"],
                         optimization_level=opt,
+                        verbose=warp.config.verbose,
+                        use_precompiled_headers=warp.config.use_precompiled_headers,
+                        pch_dir=runtime.get_clang_pch_dir() if warp.config.use_precompiled_headers else None,
+                        block_dim=options["block_dim"],
                     )
 
             except Exception as e:
@@ -2937,7 +2941,7 @@ class Module:
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
-                        pch_dir=runtime.get_pch_dir() or build_dir,
+                        pch_dir=runtime.get_nvrtc_pch_dir(),
                     )
 
             except Exception as e:
@@ -4088,6 +4092,10 @@ class Runtime:
                 ctypes.c_bool,  # tiles_in_stack_memory
                 ctypes.POINTER(ctypes.c_char_p),  # extra_flags
                 ctypes.c_int,  # optimization_level
+                ctypes.c_bool,  # verbose
+                ctypes.c_bool,  # use_precompiled_headers
+                ctypes.c_char_p,  # pch_dir
+                ctypes.c_int,  # block_dim
             ]
             self.llvm.wp_compile_cpp.restype = ctypes.c_int
 
@@ -5441,7 +5449,20 @@ class Runtime:
                 msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
                 warp._src.utils.warn("\n   ".join(msg))
 
-    def get_pch_dir(self) -> str | None:
+    def _get_or_create_pch_dir(self) -> str:
+        """Return a per-thread temporary directory for precompiled header files.
+
+        Both NVRTC (CUDA) and Clang (CPU) precompiled headers share the same
+        directory. Callers are responsible for checking preconditions before
+        calling this method.
+        """
+        tid = threading.get_ident()
+        with self._pch_dirs_lock:
+            if tid not in self._pch_dirs:
+                self._pch_dirs[tid] = tempfile.TemporaryDirectory(prefix="wp_pch_")
+            return self._pch_dirs[tid].name
+
+    def get_nvrtc_pch_dir(self) -> str | None:
         """Return a per-thread temporary directory for NVRTC precompiled header files.
 
         Returns ``None`` when CUDA is not enabled or the toolkit version is
@@ -5449,11 +5470,16 @@ class Runtime:
         """
         if self.toolkit_version is None or self.toolkit_version >= (13, 0):
             return None
-        tid = threading.get_ident()
-        with self._pch_dirs_lock:
-            if tid not in self._pch_dirs:
-                self._pch_dirs[tid] = tempfile.TemporaryDirectory(prefix="wp_pch_")
-            return self._pch_dirs[tid].name
+        return self._get_or_create_pch_dir()
+
+    def get_clang_pch_dir(self) -> str | None:
+        """Return a per-thread temporary directory for Clang precompiled header files.
+
+        Returns ``None`` when ``warp-clang`` is not loaded.
+        """
+        if self.llvm is None:
+            return None
+        return self._get_or_create_pch_dir()
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")

@@ -22,6 +22,7 @@
 
 #include <clang/Basic/TargetInfo.h>
 #include <clang/CodeGen/CodeGenAction.h>
+#include <clang/Frontend/FrontendActions.h>
 #include <clang/Lex/PreprocessorOptions.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/JITEventListener.h>
@@ -122,19 +123,18 @@ static const HostCpuInfo& get_host_cpu_info()
     return info;
 }
 
-static std::unique_ptr<llvm::Module> source_to_llvm(
-    bool is_cuda,
+static std::unique_ptr<clang::CompilerInstance> create_compiler(
     const std::string& input_file,
-    const char* cpp_src,
     const char* include_dir,
+    bool is_cuda,
     bool debug,
     bool verify_fp,
-    llvm::LLVMContext& context,
     bool tiles_in_stack_memory,
     const char** extra_flags = nullptr,  // null-terminated array of flag strings, or nullptr for none
     int optimization_level = 3
 )
 {
+    auto compiler_instance = std::make_unique<clang::CompilerInstance>();
     // Compilation arguments
     std::vector<const char*> args;
     args.push_back(input_file.c_str());
@@ -228,9 +228,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     );
 #endif
 
-    clang::CompilerInstance compiler_instance;
-
-    auto& compiler_invocation = compiler_instance.getInvocation();
+    auto& compiler_invocation = compiler_instance->getInvocation();
     clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine);
 
     if (debug) {
@@ -241,12 +239,8 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
 #endif
     }
 
-    // Map code to a MemoryBuffer
-    std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
-    compiler_invocation.getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
-
     if (!debug) {
-        compiler_instance.getPreprocessorOpts().addMacroDef("NDEBUG");
+        compiler_instance->getPreprocessorOpts().addMacroDef("NDEBUG");
     }
 
     if (is_cuda) {
@@ -254,33 +248,123 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
         // CUDA compilation." But this normally happens in the __clang_cuda_runtime_wrapper.h header, which we don't
         // include. The __CUDA__ and __CUDA_ARCH__ macros are internally defined by
         // llvm-project/clang/lib/Frontend/InitPreprocessor.cpp
-        compiler_instance.getPreprocessorOpts().addMacroDef("__CUDACC__");
+        compiler_instance->getPreprocessorOpts().addMacroDef("__CUDACC__");
 
-        compiler_instance.getLangOpts().CUDA = 1;
-        compiler_instance.getLangOpts().CUDAIsDevice = 1;
+        compiler_instance->getLangOpts().CUDA = 1;
+        compiler_instance->getLangOpts().CUDAIsDevice = 1;
     } else {
         if (verify_fp) {
-            compiler_instance.getPreprocessorOpts().addMacroDef("WP_VERIFY_FP");
+            compiler_instance->getPreprocessorOpts().addMacroDef("WP_VERIFY_FP");
         }
 
         if (tiles_in_stack_memory) {
-            compiler_instance.getPreprocessorOpts().addMacroDef("WP_ENABLE_TILES_IN_STACK_MEMORY");
+            compiler_instance->getPreprocessorOpts().addMacroDef("WP_ENABLE_TILES_IN_STACK_MEMORY");
         }
 
-        compiler_instance.getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
-        compiler_instance.getLangOpts().DeclSpecKeyword = 1;  // __declspec
+        compiler_instance->getLangOpts().MicrosoftExt = 1;  // __forceinline / __int64
+        compiler_instance->getLangOpts().DeclSpecKeyword = 1;  // __declspec
     }
 
+    // For LLVM >= 21, transfer ownership of the DiagnosticConsumer to the
+    // CompilerInstance so it outlives create_compiler's scope. First release
+    // the DiagnosticsEngine's ownership to avoid a double-free.
+    // For LLVM < 21, passing nullptr makes createDiagnostics create its own
+    // internal printer (text_diagnostic_printer was already released into
+    // diagnostic_engine above).
+#if LLVM_VERSION_MAJOR >= 21
+    diagnostic_engine->setClient(diagnostic_engine->getClient(), /*ShouldOwnClient=*/false);
+#endif
 #if LLVM_VERSION_MAJOR >= 22
-    compiler_instance.createDiagnostics(diagnostic_engine->getClient(), false);
+    compiler_instance->createDiagnostics(diagnostic_engine->getClient(), true);
 #elif LLVM_VERSION_MAJOR == 21
-    compiler_instance.createDiagnostics(*llvm::vfs::getRealFileSystem(), diagnostic_engine->getClient(), false);
+    compiler_instance->createDiagnostics(*llvm::vfs::getRealFileSystem(), diagnostic_engine->getClient(), true);
 #else
-    compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+    compiler_instance->createDiagnostics(text_diagnostic_printer.get(), false);
 #endif
 
+    return compiler_instance;
+}
+
+static bool generate_pch(
+    const char* include_dir,
+    const std::string& pch_path,
+    bool debug,
+    bool verify_fp,
+    bool tiles_in_stack_memory,
+    const char** extra_flags,
+    bool verbose,
+    int block_dim
+)
+{
+    if (verbose) {
+        std::cout << "Warp: Generating precompiled header: " << pch_path << std::endl;
+    }
+
+    std::string input_file = "pch_gen.cpp";
+
+    auto compiler
+        = create_compiler(input_file, include_dir, false, debug, verify_fp, tiles_in_stack_memory, extra_flags);
+
+    // Create a source buffer that includes the main header.
+    // WP_NO_CRT skips system headers (assert.h, math.h, etc.) which aren't
+    // available in our embedded Clang — matching codegen.py's module headers.
+    // WP_TILE_BLOCK_DIM must match the value used by the module to avoid
+    // template instantiation mismatches in tile.h.
+    std::string pch_src = "#define WP_TILE_BLOCK_DIM " + std::to_string(block_dim)
+        + "\n"
+          "#define WP_NO_CRT\n"
+          "#include \"builtin.h\"\n";
+    std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(pch_src);
+    compiler->getInvocation().getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
+
+    compiler->getFrontendOpts().OutputFile = pch_path;
+
+    clang::GeneratePCHAction generate_pch_action;
+    bool success = compiler->ExecuteAction(generate_pch_action);
+    (void)buffer.release();
+
+    if (success && verbose) {
+        std::cout << "Warp: Precompiled header generated successfully" << std::endl;
+    }
+
+    return success;
+}
+
+static std::unique_ptr<llvm::Module> source_to_llvm(
+    bool is_cuda,
+    const std::string& input_file,
+    const char* cpp_src,
+    const char* include_dir,
+    bool debug,
+    bool verify_fp,
+    llvm::LLVMContext& context,
+    bool tiles_in_stack_memory,
+    const char** extra_flags = nullptr,  // null-terminated array of flag strings, or nullptr for none
+    int optimization_level = 3,
+    const char* pch_path = nullptr
+)
+{
+    auto compiler = create_compiler(
+        input_file, include_dir, is_cuda, debug, verify_fp, tiles_in_stack_memory, extra_flags, optimization_level
+    );
+
+    // Map code to a MemoryBuffer
+    std::unique_ptr<llvm::MemoryBuffer> buffer = llvm::MemoryBuffer::getMemBufferCopy(cpp_src);
+    compiler->getInvocation().getPreprocessorOpts().addRemappedFile(input_file.c_str(), buffer.get());
+
+    // Use precompiled header if available (CPU path only)
+    if (pch_path && !is_cuda) {
+        compiler->getPreprocessorOpts().ImplicitPCHInclude = pch_path;
+        // Suppress macro redefinition warnings — both the PCH and the module
+        // source define macros like WP_TILE_BLOCK_DIM to the same value
+        // (matching block_dim), and Clang warns on any redefinition.
+        compiler->getDiagnostics().setSeverityForGroup(
+            clang::diag::Flavor::WarningOrError, "macro-redefined", clang::diag::Severity::Ignored
+        );
+    }
+
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
-    bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);
+    bool success = compiler->ExecuteAction(emit_llvm_only_action);
 
     // Ownership of the buffer was transferred to the SourceManager during
     // ExecuteAction() (RetainRemappedFileBuffers defaults to false).
@@ -302,16 +386,75 @@ WP_API int wp_compile_cpp(
     bool fuse_fp,
     bool tiles_in_stack_memory,
     const char** extra_flags,
-    int optimization_level
+    int optimization_level,
+    bool verbose,
+    bool use_precompiled_headers,
+    const char* pch_dir,
+    int block_dim
 )
 {
     initialize_llvm();
 
-    llvm::LLVMContext context;
+    // Determine PCH path if requested.
+    // Each block_dim value gets its own PCH file because tile.h templates
+    // are instantiated with WP_TILE_BLOCK_DIM baked into the PCH.
+    std::string pch_path_str;
+    const char* pch_path = nullptr;
+    if (use_precompiled_headers && pch_dir) {
+        // Encode preprocessor-affecting flags into the filename so that
+        // modules with different settings get separate PCH files.
+        // Note: extra_flags are not encoded — they are assumed constant
+        // within a session. If they differ, Clang rejects the PCH and
+        // the fallback path handles it.
+        pch_path_str = std::string(pch_dir) + "/builtin_bd" + std::to_string(block_dim) + (verify_fp ? "_vfp" : "")
+            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + ".pch";
+
+        // Check if the PCH file already exists
+        FILE* f = fopen(pch_path_str.c_str(), "rb");
+        if (f) {
+            fclose(f);
+            if (verbose) {
+                std::cout << "Warp: Using existing precompiled header: " << pch_path_str << std::endl;
+            }
+        } else {
+            // Generate the PCH file
+            if (!generate_pch(
+                    include_dir, pch_path_str, debug, verify_fp, tiles_in_stack_memory, extra_flags, verbose, block_dim
+                )) {
+                std::cerr << "Warp: PCH generation failed, compiling without precompiled headers" << std::endl;
+                remove(pch_path_str.c_str());
+                pch_path_str.clear();
+            }
+        }
+
+        if (!pch_path_str.empty()) {
+            pch_path = pch_path_str.c_str();
+        }
+    }
+
+    // Use a unique_ptr so we can replace the context on fallback retry.
+    // The LLVMContext must outlive the module through codegen.
+    auto llvm_context = std::make_unique<llvm::LLVMContext>();
     std::unique_ptr<llvm::Module> module = source_to_llvm(
-        false, input_file, cpp_src, include_dir, debug, verify_fp, context, tiles_in_stack_memory, extra_flags,
-        optimization_level
+        false, input_file, cpp_src, include_dir, debug, verify_fp, *llvm_context, tiles_in_stack_memory, extra_flags,
+        optimization_level, pch_path
     );
+
+    // Fallback: if compilation failed with PCH, retry without it
+    if (!module && pch_path) {
+        std::cerr << "Warp: Compilation with PCH failed, retrying without precompiled headers" << std::endl;
+        // Delete the stale PCH so subsequent calls don't hit it again
+        if (remove(pch_path_str.c_str()) != 0) {
+            std::cerr << "Warp: Failed to remove stale PCH file: " << pch_path_str << std::endl;
+        }
+
+        // Need a fresh LLVMContext for the retry
+        llvm_context = std::make_unique<llvm::LLVMContext>();
+        module = source_to_llvm(
+            false, input_file, cpp_src, include_dir, debug, verify_fp, *llvm_context, tiles_in_stack_memory,
+            extra_flags, optimization_level, nullptr
+        );
+    }
 
     if (!module) {
         return -1;

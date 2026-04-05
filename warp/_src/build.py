@@ -68,7 +68,7 @@ def build_cuda(
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
         # Per-thread directory shared across module compilations for PCH reuse,
         # isolated between threads and processes to avoid .pch races.
-        pch_dir_bytes = pch_dir.encode("utf-8")
+        pch_dir_bytes = pch_dir.encode("utf-8") if pch_dir else None
         arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
@@ -115,6 +115,10 @@ def build_cpu(
     fuse_fp=True,
     extra_flags="",
     optimization_level=2,
+    verbose=False,
+    use_precompiled_headers=False,
+    pch_dir=None,
+    block_dim=256,
 ):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
@@ -131,6 +135,8 @@ def build_cpu(
     flags_list = extra_flags.split()
     flags_array = (ctypes.c_char_p * (len(flags_list) + 1))(*[f.encode("utf-8") for f in flags_list], None)
 
+    pch_dir_bytes = pch_dir.encode("utf-8") if pch_dir else None
+
     err = warp._src.context.runtime.llvm.wp_compile_cpp(
         src,
         cpp_path,
@@ -142,6 +148,10 @@ def build_cpu(
         enable_tiles_in_stack,
         flags_array,
         optimization_level,
+        verbose,
+        use_precompiled_headers,
+        pch_dir_bytes,
+        block_dim,
     )
     if err != 0:
         raise Exception(f"CPU kernel build failed with error code {err}")
