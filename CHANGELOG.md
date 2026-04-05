@@ -38,34 +38,21 @@
 - Fix `@wp.func_native` return type resolution for `wp.types.vector()`, `wp.types.matrix()`, and other
   complex type annotations ([GH-1300](https://github.com/NVIDIA/warp/issues/1300)).
 - Fix `set_module_options()`, `get_module_options()`, and `load_module()` crashing with `AttributeError` when
-  called from code executed via `runpy.run_module()` (e.g. `python -m package.module`)
+  called from code executed via `runpy.run_module()` (e.g., `python -m package.module`)
   ([GH-1274](https://github.com/NVIDIA/warp/issues/1274)).
 - Fix `Texture` creation crashing with `AttributeError` when `wp.init()` has not been called
   ([GH-1272](https://github.com/NVIDIA/warp/issues/1272)).
 - Fix struct field assignment unwrapping Warp scalar types (e.g., `wp.float32`, `wp.int32`) to their
   underlying Python types, causing subsequent reads to return plain `float` or `int` instead of the
   original Warp type ([GH-1288](https://github.com/NVIDIA/warp/issues/1288)).
-- Fix element assignment for boolean vectors (e.g., `v[i] = True`)
+- Fix element assignment for boolean vectors (e.g., `v[i] = True`) raising an error
   ([GH-1302](https://github.com/NVIDIA/warp/issues/1302)).
 - Fix `wp.sign()` returning the wrong type for custom vector types.
 - Fix `wp.array[dtype]` subscript syntax not being recognized by mypy, which reported
   `"array" expects no type arguments` ([GH-1278](https://github.com/NVIDIA/warp/issues/1278)).
-- Fix `wp.sign()` vector overload returning incorrect type metadata for custom vector types.
-- Fix ``wp.tile_argmin()`` and ``wp.tile_argmax()`` crashing in debug mode when ``block_dim`` exceeds the tile
-  element count, and fix related debug-mode crashes in ``tile_reduce_axis`` and shared-memory tile load/store
-  for the same condition ([GH-1133](https://github.com/NVIDIA/warp/issues/1133)).
-- Fix augmented assignments double-evaluating sub-expressions for subscript and attribute
-  targets (e.g., ``s.field += expr``, ``arr[i] *= expr``), causing side effects in target
-  indices or the right-hand side to trigger multiple times
-  ([GH-1233](https://github.com/NVIDIA/warp/issues/1233)).
-- Fix `tile_map()` with `tile_store()` failing for custom vector and matrix types created via
-  `wp.types.vector()` or `wp.types.matrix()` ([GH-1311](https://github.com/NVIDIA/warp/issues/1311)).
-- Fix `@wp.func` with tile parameters failing to compile when called with shared-memory tiles. Tile parameters in
-  `@wp.func` are now passed by reference for both register and shared storage, matching Python's semantics for mutable
-  objects. Previously, register tiles were passed by value ([GH-1313](https://github.com/NVIDIA/warp/issues/1313)).
-- Fix array annotation ``repr()`` displaying raw internal class paths for ``dtype``
-  (e.g., ``wp.array(dtype=<class 'warp._src.types.uint32'>, ndim=4)``) instead of
-  clean type names (e.g., ``wp.array(dtype=wp.uint32, ndim=4)``)
+- Fix array annotation `repr()` displaying raw internal class paths for `dtype`
+  (e.g., `wp.array(dtype=<class 'warp._src.types.uint32'>, ndim=4)`) instead of
+  clean type names (e.g., `wp.array(dtype=wp.uint32, ndim=4)`)
   ([GH-1341](https://github.com/NVIDIA/warp/issues/1341)).
 
 ### Documentation
