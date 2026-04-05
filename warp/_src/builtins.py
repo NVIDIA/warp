@@ -1694,11 +1694,14 @@ add_builtin(
 
 def quat_identity_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
-        # return quaternion(dtype=Float)
         return quatf
 
     dtype = arg_types.get("dtype", float32)
-    return quaternion(dtype=dtype)
+    if dtype == float16:
+        return quath
+    elif dtype == float64:
+        return quatd
+    return quatf
 
 
 def quat_identity_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
@@ -1962,11 +1965,14 @@ add_builtin(
 
 def transform_identity_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
-        # return transformation(dtype=Float)
         return transformf
 
     dtype = arg_types.get("dtype", float32)
-    return transformation(dtype=dtype)
+    if dtype == float16:
+        return transformh
+    elif dtype == float64:
+        return transformd
+    return transformf
 
 
 def transform_identity_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):

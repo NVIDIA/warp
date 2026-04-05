@@ -69,6 +69,11 @@
 
 ### Fixed
 
+- Fix ``wp.transform_identity()`` and ``wp.quat_identity()`` returning internal base types instead of
+  the concrete named types (``transformf``, ``quatf``, etc.) when called from Python, which caused
+  ``wp.transform_set_translation()`` and similar mutating builtins to silently operate on a temporary
+  copy instead of modifying the original. Kernel-scope usage was unaffected
+  ([GH-1336](https://github.com/NVIDIA/warp/issues/1336)).
 - Fix compilation failures or crashes when multiple processes compile CUDA kernels concurrently with a shared kernel
   cache, caused by NVRTC precompiled header files racing in the shared `--pch-dir` directory; affects builds with
   CUDA Toolkit 12.8–12.9 ([GH-1284](https://github.com/NVIDIA/warp/issues/1284)).
