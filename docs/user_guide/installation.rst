@@ -40,11 +40,21 @@ Conda Installation
 ------------------
 
 Conda packages for Warp are also available on the `conda-forge <https://anaconda.org/conda-forge/warp-lang>`__ channel.
+By default, the CUDA variant with the latest toolkit version is installed:
 
 .. code-block:: sh
 
-    # Install warp-lang specifically built against CUDA Toolkit 12.6
-    $ conda install conda-forge::warp-lang=*=*cuda126*
+    $ conda install conda-forge::warp-lang
+
+To install a specific variant, use a build string filter:
+
+.. code-block:: sh
+
+    # CPU-only (no CUDA dependencies)
+    $ conda install conda-forge::warp-lang=*=*cpu*
+
+    # CUDA 12.9
+    $ conda install conda-forge::warp-lang=*=*cuda129*
 
 For more information, see the community-maintained feedstock for Warp
 `here <https://github.com/conda-forge/warp-lang-feedstock>`__.
@@ -366,3 +376,15 @@ environments, and building the wheel file.
 After building the image with ``docker build -t warp-prod:example .``, we can use ``docker image ls`` to compare the
 image sizes.
 ``warp-prod:example`` is about 3.18 GB, while ``warp-github-clone:example`` is 9.03 GB!
+
+Using Warp in Omniverse
+-----------------------
+
+Omniverse extensions for Warp are available in the extension registry inside Omniverse Kit.
+
+The ``omni.warp.core`` extension installs Warp into Omniverse Kit's Python environment,
+which allows users to import the module in their scripts and nodes.
+
+Please see the
+`Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`_
+for more details on how to use Warp in Omniverse.
