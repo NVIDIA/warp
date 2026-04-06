@@ -1644,7 +1644,7 @@ add_builtin(
     doc="""Construct a quaternion.
 
     Zero-initialize the quaternion. Quaternions are laid out as
-    ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part.""",
+    ``[ix, iy, is, r]``, where ``ix``, ``iy``, ``is`` are the imaginary part, and ``r`` the real part.""",
     export=False,
 )
 add_builtin(

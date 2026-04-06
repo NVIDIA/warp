@@ -62,23 +62,23 @@ inline CUDA_CALLABLE vec2 random_gradient_2d(uint32 state, int ix, int iy)
     return normalize(sample_unit_square(idx));
 }
 
-inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int iz)
+inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int is)
 {
     const uint32 p1 = 73856093;
     const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
-    uint32 idx = ix * p1 ^ iy * p2 ^ iz * p3 + state;
+    uint32 idx = ix * p1 ^ iy * p2 ^ is * p3 + state;
 
     return normalize(sample_unit_cube(idx));
 }
 
-inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int iz, int it)
+inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int is, int it)
 {
     const uint32 p1 = 73856093;
     const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
     const uint32 p4 = 10000019;
-    uint32 idx = ix * p1 ^ iy * p2 ^ iz * p3 ^ it * p4 + state;
+    uint32 idx = ix * p1 ^ iy * p2 ^ is * p3 ^ it * p4 + state;
 
     return normalize(sample_unit_hypercube(idx));
 }
@@ -95,16 +95,16 @@ inline CUDA_CALLABLE float dot_grid_gradient_2d(uint32 state, int ix, int iy, fl
     return (dx * gradient[0] + dy * gradient[1]);
 }
 
-inline CUDA_CALLABLE float dot_grid_gradient_3d(uint32 state, int ix, int iy, int iz, float dx, float dy, float dz)
+inline CUDA_CALLABLE float dot_grid_gradient_3d(uint32 state, int ix, int iy, int is, float dx, float dy, float dz)
 {
-    vec3 gradient = random_gradient_3d(state, ix, iy, iz);
+    vec3 gradient = random_gradient_3d(state, ix, iy, is);
     return (dx * gradient[0] + dy * gradient[1] + dz * gradient[2]);
 }
 
 inline CUDA_CALLABLE float
-dot_grid_gradient_4d(uint32 state, int ix, int iy, int iz, int it, float dx, float dy, float dz, float dt)
+dot_grid_gradient_4d(uint32 state, int ix, int iy, int is, int it, float dx, float dy, float dz, float dt)
 {
-    vec4 gradient = random_gradient_4d(state, ix, iy, iz, it);
+    vec4 gradient = random_gradient_4d(state, ix, iy, is, it);
     return (dx * gradient[0] + dy * gradient[1] + dz * gradient[2] + dt * gradient[3]);
 }
 
