@@ -416,9 +416,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
     except Exception as e:
         # output build error
         print(f"Warp Clang/LLVM build error: {e}")
-
-        # report error
-        sys.exit(1)
+        raise
 
 
 def build_warp_clang(args, lib_name: str) -> None:

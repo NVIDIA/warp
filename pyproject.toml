@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warp-lang"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "NVIDIA Corporation", email = "warp-python@nvidia.com" }]
 description = "A Python framework for high-performance simulation and graphics programming"
 license = { text = "Apache-2.0" }
@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
-    "Programming Language :: Python :: 3.9",       # EOL since 2025-10
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -40,7 +39,7 @@ Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 docs = [
-    'nvidia-sphinx-theme; python_version >= "3.9"',
+    "nvidia-sphinx-theme",
     "sphinx-copybutton",
     "pre-commit",
     "myst_parser",
@@ -60,7 +59,7 @@ examples = [
 ]
 torch-cu12 = [
     "warp-lang[examples]",
-    'torch>=2.7.0; python_version >= "3.9"',
+    "torch>=2.7.0",
 ]
 dev = [
     "warp-lang[examples]",
@@ -194,6 +193,7 @@ commun = "commun"
 dout = "dout"
 iy = "iy"
 nd = "nd"
+setp = "setp"
 transformd = "transformd"
 
 [tool.typos.default.extend-identifiers]

@@ -5,7 +5,6 @@
 # https://dmlc.github.io/dlpack/latest/python_spec.html
 
 import ctypes
-from typing import Union
 
 import warp
 from warp._src.thirdparty.dlpack import (
@@ -398,7 +397,7 @@ def _unpack_texture(dlt: DLTensor, TextureClass: type):
     return TextureClass(cuda_array=dlt.data, device=device)
 
 
-def _from_dlpack(capsule, dtype=None, hint=None) -> Union[warp.array, warp.Texture]:
+def _from_dlpack(capsule, dtype=None, hint=None) -> warp.array | warp.Texture:
     """Convert a DLPack capsule into a Warp array without copying.
 
     Args:
@@ -438,7 +437,7 @@ def _from_dlpack(capsule, dtype=None, hint=None) -> Union[warp.array, warp.Textu
     return obj
 
 
-def from_dlpack(source, dtype=None, hint=None) -> Union[warp.array, warp.Texture]:
+def from_dlpack(source, dtype=None, hint=None) -> warp.array | warp.Texture:
     """Convert a source array or DLPack capsule into a Warp array without copying.
 
     Args:

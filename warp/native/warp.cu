@@ -4575,6 +4575,26 @@ size_t wp_cuda_launch_kernel(
     return res;
 }
 
+bool wp_cuda_get_suggested_block_size(
+    void* context, void* kernel, int shared_memory_bytes, int* block_size_out, int* min_grid_size_out
+)
+{
+    ContextGuard guard(context);
+
+    int min_grid_size = 0;
+    int block_size = 0;
+    CUresult res = cuOccupancyMaxPotentialBlockSize_f(
+        &min_grid_size, &block_size, (CUfunction)kernel, NULL, shared_memory_bytes, 0
+    );
+
+    if (!check_cu(res))
+        return false;
+
+    *block_size_out = block_size;
+    *min_grid_size_out = min_grid_size;
+    return true;
+}
+
 bool wp_cuda_graphics_map(void* context, void* resource)
 {
     ContextGuard guard(context);

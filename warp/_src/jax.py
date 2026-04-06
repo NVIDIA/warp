@@ -167,7 +167,7 @@ def from_jax(jax_array, dtype=None) -> warp.array:
 
     Args:
         jax_array (jax.Array): The Jax array to convert.
-        dtype (optional): The target data type of the resulting Warp array. Defaults to the Jax array's data type mapped to a Warp data type.
+        dtype: The target data type of the resulting Warp array. Defaults to the Jax array's data type mapped to a Warp data type.
 
     Returns:
         warp.array: The converted Warp array.

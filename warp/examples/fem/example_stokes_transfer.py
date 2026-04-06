@@ -69,11 +69,6 @@ def cell_activity(s: fem.Sample, domain: fem.Domain, c1: wp.vec2, c2: wp.vec2, r
     return 1.0
 
 
-@wp.kernel
-def inverse_array_kernel(m: wp.array[wp.float64]):
-    m[wp.tid()] = wp.float64(1.0) / m[wp.tid()]
-
-
 class Example:
     def __init__(self, quiet=False, resolution=50):
         self._quiet = quiet
@@ -143,7 +138,7 @@ class Example:
             quadrature=self._pic_quadrature,
             fields={"v": u_test},
             values={"particle_vel": self._particle_velocities},
-            output_dtype=wp.vec2d,
+            output_dtype=wp.vec2,
         )
         u_bd_matrix = fem.integrate(mass_form, quadrature=self._pic_quadrature, fields={"u": u_trial, "v": u_test})
 
@@ -160,12 +155,7 @@ class Example:
 
         div_matrix = fem.integrate(div_form, fields={"u": u_trial, "q": p_test})
         inv_p_mass_matrix = fem.integrate(scalar_mass_form, fields={"p": p_trial, "q": p_test})
-        wp.launch(
-            kernel=inverse_array_kernel,
-            dim=inv_p_mass_matrix.values.shape,
-            device=inv_p_mass_matrix.values.device,
-            inputs=[inv_p_mass_matrix.values],
-        )
+        inv_p_mass_matrix.values.assign(1.0 / inv_p_mass_matrix.values)
 
         # Assemble linear system
         u_matrix = u_visc_matrix

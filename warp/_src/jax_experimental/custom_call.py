@@ -170,9 +170,9 @@ def _create_jax_warp_primitive():
         # Figure out the number of outputs.
         wp_kernel = _registered_kernels[params["kernel"]]
         output_count = len(wp_kernel.adj.args) - len(args)
-        shape, dim = next((a.shape, d) for a, d in zip(args, dims) if d is not None)
+        shape, dim = next((a.shape, d) for a, d in zip(args, dims, strict=False) if d is not None)
         size = shape[dim]
-        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims)]
+        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims, strict=False)]
         # Create the batched primitive.
         return _jax_warp_p.bind(*args, **params), [dims[0]] * output_count
 
@@ -324,7 +324,7 @@ def _create_jax_warp_primitive():
         # Figure out the types and shapes of the input arrays.
         arg_strings = []
         operand_layouts = []
-        for actual, warg in zip(args, wp_kernel.adj.args):
+        for actual, warg in zip(args, wp_kernel.adj.args, strict=False):
             wtype = warg.type
             rtt = ir.RankedTensorType(actual.type)
 

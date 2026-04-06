@@ -32,7 +32,7 @@ class SpaceRestriction:
         space_partition: SpacePartition,
         domain: GeometryDomain,
         device=None,
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        temporary_store: cache.TemporaryStore | None = None,
     ):
         space_topology = space_partition.space_topology
 
@@ -61,7 +61,7 @@ class SpaceRestriction:
 
         self.rebuild(device=device, temporary_store=temporary_store)
 
-    def rebuild(self, device: Optional["wp.DeviceLike"] = None, temporary_store: Optional[cache.TemporaryStore] = None):
+    def rebuild(self, device: Optional["wp.DeviceLike"] = None, temporary_store: cache.TemporaryStore | None = None):
         """Rebuild internal indices for the space restriction."""
         max_nodes_per_element = self.space_topology.MAX_NODES_PER_ELEMENT
 

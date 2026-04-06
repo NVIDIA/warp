@@ -12,8 +12,9 @@ import sys
 import threading
 import time
 import warnings
+from collections.abc import Callable
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -191,8 +192,8 @@ def segmented_sort_pairs(
     keys,
     values,
     count: int,
-    segment_start_indices: wp.array(dtype=wp.int32),
-    segment_end_indices: wp.array(dtype=wp.int32) = None,
+    segment_start_indices: wp.array[wp.int32],
+    segment_end_indices: wp.array[wp.int32] = None,
 ):
     """Sort key-value pairs within segments.
 
@@ -459,8 +460,8 @@ def array_sum(
 
     stride = values.strides[axis]
     for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides))
-        val_offset = sum(i * s for i, s in zip(idx, values.strides))
+        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=False))
+        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=False))
 
         native_func(
             values.ptr + val_offset,
@@ -572,9 +573,9 @@ def array_inner(
     stride_b = b.strides[axis]
 
     for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides))
-        a_offset = sum(i * s for i, s in zip(idx, a.strides))
-        b_offset = sum(i * s for i, s in zip(idx, b.strides))
+        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=False))
+        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=False))
+        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=False))
 
         native_func(
             a.ptr + a_offset,
@@ -1058,7 +1059,7 @@ def map(
 
         load_args = []
         kernel_args = []
-        for arg_name, inp in zip(arg_names, inputs):
+        for arg_name, inp in zip(arg_names, inputs, strict=False):
             if is_array(inp):
                 arr_name = f"{arg_name}_array"
                 array_type_name = type(inp).__name__

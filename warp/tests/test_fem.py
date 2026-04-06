@@ -1091,7 +1091,7 @@ def test_regular_quadrature(test, device):
         # test integrating monomials
         for degree in range(8):
             coords, weights = LinearEdge().instantiate_quadrature(degree, family=family)
-            res = sum(w * pow(c[0], degree) for w, c in zip(weights, coords))
+            res = sum(w * pow(c[0], degree) for w, c in zip(weights, coords, strict=False))
             ref = 1.0 / (degree + 1)
 
             test.assertAlmostEqual(ref, res, places=4)
@@ -1100,7 +1100,9 @@ def test_regular_quadrature(test, device):
         for x_degree in range(4):
             for y_degree in range(4):
                 coords, weights = Triangle().instantiate_quadrature(x_degree + y_degree, family=family)
-                res = 0.5 * sum(w * pow(1.0 - c[1], x_degree) * pow(c[2], y_degree) for w, c in zip(weights, coords))
+                res = 0.5 * sum(
+                    w * pow(1.0 - c[1], x_degree) * pow(c[2], y_degree) for w, c in zip(weights, coords, strict=False)
+                )
 
                 ref = 1.0 / ((x_degree + y_degree + 2) * (y_degree + 1))
                 # print(x_degree, y_degree, family, len(coords), res, ref)
@@ -1110,7 +1112,9 @@ def test_regular_quadrature(test, device):
     for x_degree in range(5):
         for y_degree in range(5):
             coords, weights = Triangle().instantiate_quadrature(x_degree + y_degree, family=None)
-            res = 0.5 * sum(w * pow(1.0 - c[1], x_degree) * pow(c[2], y_degree) for w, c in zip(weights, coords))
+            res = 0.5 * sum(
+                w * pow(1.0 - c[1], x_degree) * pow(c[2], y_degree) for w, c in zip(weights, coords, strict=False)
+            )
 
             ref = 1.0 / ((x_degree + y_degree + 2) * (y_degree + 1))
             test.assertAlmostEqual(ref, res, places=4)
@@ -1642,6 +1646,7 @@ def test_point_basis(test, device):
             0.125 * (1.0 + _rbf_kernel_func(neighbour_points_squared_dist, 0, rbf_radius)),
             0.25,
         ],
+        rtol=2.0e-7,
     )
 
     other_int = fem.integrate(linear_form, quadrature=other_quadrature, fields={"u": point_test})

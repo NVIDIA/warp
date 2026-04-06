@@ -86,9 +86,11 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     Intended to be modified to create additional test suites
     """
     from warp.tests.cuda.test_async import TestAsync
+    from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_multigpu import TestMultiGPU
+    from warp.tests.cuda.test_occupancy import TestOccupancy
     from warp.tests.cuda.test_peer import TestPeer
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
@@ -127,8 +129,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
     from warp.tests.test_copy import TestCopy
+    from warp.tests.test_cpu_precompiled_headers import TestCpuPrecompiledHeaders
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_dense import TestDense
     from warp.tests.test_devices import TestDevices
@@ -197,6 +201,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile import TestTile
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
     from warp.tests.tile.test_tile_cholesky import TestTileCholesky
+    from warp.tests.tile.test_tile_fft import TestTileFFT
+    from warp.tests.tile.test_tile_func_arg import TestTileFuncArg
     from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
@@ -219,13 +225,16 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestBool,
         TestBuiltinsResolution,
         TestBvh,
+        TestClangCUDA,
         TestClosestPointEdgeEdgeMethods,
         TestCodeGen,
         TestCodeGenInstancing,
         TestConditional,
         TestConstants,
+        TestConstantPrecision,
         TestContext,
         TestCopy,
+        TestCpuPrecompiledHeaders,
         TestCTypes,
         TestCudaArchSuffix,
         TestDense,
@@ -278,6 +287,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestModuleParallelLoad,
         TestMultiGPU,
         TestNoise,
+        TestOccupancy,
         TestOperators,
         TestOptions,
         TestOverwrite,
@@ -305,6 +315,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTile,
         TestTileAtomicBitwise,
         TestTileCholesky,
+        TestTileFFT,
+        TestTileFuncArg,
         TestTileLoad,
         TestTileMathDx,
         TestTileMatmul,
@@ -352,7 +364,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         - tile.test_tile_cholesky: nvJitLink NVVM_ERROR_COMPILATION
         - tile.test_tile_load: CUDA error 701 (too many resources for launch)
         - tile.test_tile_mathdx: nvJitLink NVVM_ERROR_COMPILATION
-        - tile.test_tile_reduce: CUDA error 715 (illegal instruction)
         - tile.test_tile_matmul: nvJitLink NVVM_ERROR_COMPILATION
         - tile.test_tile_matmul_no_mathdx: nvJitLink NVVM_ERROR_COMPILATION
         - test_verify_fp: deliberately triggers assertions which fire in debug
@@ -367,6 +378,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
@@ -388,6 +400,8 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_tape import TestTape
     from warp.tests.test_types import TestTypes
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
+    from warp.tests.tile.test_tile_fft import TestTileFFT
+    from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_sort import TestTileSort
     from warp.tests.tile.test_tile_view import TestTileView
 
@@ -398,6 +412,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestCodeGenInstancing,
         TestConditional,
         TestConstants,
+        TestConstantPrecision,
         TestFastMath,
         TestFunc,
         TestGenerics,
@@ -421,6 +436,8 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTypes,
         # Tile (debug-safe)
         TestTileAtomicBitwise,
+        TestTileFFT,
+        TestTileReduce,
         TestTileSort,
         TestTileView,
         # Geometry
@@ -432,120 +449,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestLaunch,
         TestSparse,
         TestSpatial,
-    ]
-
-    return _create_suite_from_test_classes(test_loader, test_classes)
-
-
-def kit_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
-    """Tries to mimic the test suite used for testing omni.warp.core in Kit
-
-    Requires manual updates with test_ext.py for now.
-    """
-    from warp.tests.aot.test_module_aot import TestModuleAOT
-    from warp.tests.cuda.test_mempool import TestMempool
-    from warp.tests.cuda.test_peer import TestPeer
-    from warp.tests.cuda.test_pinned import TestPinned
-    from warp.tests.cuda.test_streams import TestStreams
-    from warp.tests.geometry.test_bvh import TestBvh
-    from warp.tests.geometry.test_hash_grid import TestHashGrid
-    from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
-    from warp.tests.geometry.test_mesh import TestMesh
-    from warp.tests.geometry.test_mesh_query_aabb import TestMeshQueryAABBMethods
-    from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
-    from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
-    from warp.tests.geometry.test_volume import TestVolume
-    from warp.tests.geometry.test_volume_write import TestVolumeWrite
-    from warp.tests.interop.test_dlpack import TestDLPack
-    from warp.tests.matrix.test_mat_lite import TestMatLite
-    from warp.tests.test_array_reduce import TestArrayReduce
-    from warp.tests.test_bool import TestBool
-    from warp.tests.test_builtins_resolution import TestBuiltinsResolution
-    from warp.tests.test_codegen import TestCodeGen
-    from warp.tests.test_coloring import TestColoring
-    from warp.tests.test_compile_consts import TestConstants
-    from warp.tests.test_conditional import TestConditional
-    from warp.tests.test_copy import TestCopy
-    from warp.tests.test_ctypes import TestCTypes
-    from warp.tests.test_devices import TestDevices
-    from warp.tests.test_fp16 import TestFp16
-    from warp.tests.test_func import TestFunc
-    from warp.tests.test_generics import TestGenerics
-    from warp.tests.test_grad_customs import TestGradCustoms
-    from warp.tests.test_grad_debug import TestGradDebug
-    from warp.tests.test_indexedarray import TestIndexedArray
-    from warp.tests.test_launch import TestLaunch
-    from warp.tests.test_lvalue import TestLValue
-    from warp.tests.test_math import TestMath
-    from warp.tests.test_module_hashing import TestModuleHashing
-    from warp.tests.test_modules_lite import TestModuleLite
-    from warp.tests.test_noise import TestNoise
-    from warp.tests.test_operators import TestOperators
-    from warp.tests.test_rand import TestRand
-    from warp.tests.test_rounding import TestRounding
-    from warp.tests.test_runlength_encode import TestRunlengthEncode
-    from warp.tests.test_scalar_ops import TestScalarOps
-    from warp.tests.test_snippet import TestSnippets
-    from warp.tests.test_static import TestStatic
-    from warp.tests.test_tape import TestTape
-    from warp.tests.test_transient_module import TestTransientModule
-    from warp.tests.test_types import TestTypes
-    from warp.tests.test_utils import TestUtils
-    from warp.tests.test_vec_lite import TestVecLite
-    from warp.tests.tile.test_tile_reduce import TestTileReduce
-
-    test_classes = [
-        TestArrayReduce,
-        TestBool,
-        TestBuiltinsResolution,
-        TestBvh,
-        TestCodeGen,
-        TestColoring,
-        TestConstants,
-        TestConditional,
-        TestCopy,
-        TestCTypes,
-        TestDevices,
-        TestDLPack,
-        TestFp16,
-        TestFunc,
-        TestGenerics,
-        TestGradCustoms,
-        TestGradDebug,
-        TestHashGrid,
-        TestIndexedArray,
-        TestLaunch,
-        TestLValue,
-        TestMarchingCubes,
-        TestMatLite,
-        TestMath,
-        TestMempool,
-        TestMesh,
-        TestMeshQueryAABBMethods,
-        TestMeshQueryPoint,
-        TestMeshQueryRay,
-        TestModuleAOT,
-        TestModuleHashing,
-        TestModuleLite,
-        TestNoise,
-        TestOperators,
-        TestPeer,
-        TestPinned,
-        TestRand,
-        TestRounding,
-        TestRunlengthEncode,
-        TestScalarOps,
-        TestSnippets,
-        TestStatic,
-        TestStreams,
-        TestTape,
-        TestTileReduce,
-        TestTransientModule,
-        TestTypes,
-        TestUtils,
-        TestVecLite,
-        TestVolume,
-        TestVolumeWrite,
     ]
 
     return _create_suite_from_test_classes(test_loader, test_classes)

@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional, Union
-
 from warp._src.fem.domain import Cells, GeometryDomain
 from warp._src.fem.space import (
     FunctionSpace,
@@ -20,8 +18,8 @@ from .virtual import LocalTestField, LocalTrialField, TestField, TrialField
 
 def make_restriction(
     field: DiscreteField,
-    space_restriction: Optional[SpaceRestriction] = None,
-    domain: Optional[GeometryDomain] = None,
+    space_restriction: SpaceRestriction | None = None,
+    domain: GeometryDomain | None = None,
     device=None,
 ) -> FieldRestriction:
     """
@@ -45,9 +43,9 @@ def make_restriction(
 
 def make_test(
     space: FunctionSpace,
-    space_restriction: Optional[SpaceRestriction] = None,
-    space_partition: Optional[SpacePartition] = None,
-    domain: Optional[GeometryDomain] = None,
+    space_restriction: SpaceRestriction | None = None,
+    space_partition: SpacePartition | None = None,
+    domain: GeometryDomain | None = None,
     device=None,
 ) -> TestField:
     """
@@ -74,9 +72,9 @@ def make_test(
 
 def make_trial(
     space: FunctionSpace,
-    space_restriction: Optional[SpaceRestriction] = None,
-    space_partition: Optional[SpacePartition] = None,
-    domain: Optional[GeometryDomain] = None,
+    space_restriction: SpaceRestriction | None = None,
+    space_partition: SpacePartition | None = None,
+    domain: GeometryDomain | None = None,
 ) -> TrialField:
     """
     Constructs a trial field over a function space or partition
@@ -110,7 +108,7 @@ def make_trial(
 
 def make_discrete_field(
     space: FunctionSpace,
-    space_partition: Optional[SpacePartition] = None,
+    space_partition: SpacePartition | None = None,
 ) -> DiscreteField:
     """Constructs  a zero-initialized discrete field over a function space or partition
 

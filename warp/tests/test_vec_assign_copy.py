@@ -112,6 +112,30 @@ def test_vec_slicing_assign_backward(test, device):
     assert_np_equal(x.grad.numpy(), np.array(((1.0, 1.0),), dtype=float))
 
 
+vec3bool = wp.types.vector(length=3, dtype=bool)
+
+
+def test_bool_vec_assign_copy(test, device):
+    @wp.kernel(module="unique")
+    def bool_vec_assign_copy_kernel():
+        a = vec3bool(True, True, True)
+        b = a
+        b[1] = False
+
+        # a should be unchanged (copy semantics)
+        wp.expect_eq(a[0], True)
+        wp.expect_eq(a[1], True)
+        wp.expect_eq(a[2], True)
+
+        # b should reflect the mutation
+        wp.expect_eq(b[0], True)
+        wp.expect_eq(b[1], False)
+        wp.expect_eq(b[2], True)
+
+    wp.launch(bool_vec_assign_copy_kernel, 1, device=device)
+    wp.synchronize_device(device)
+
+
 devices = get_test_devices()
 
 
@@ -121,6 +145,7 @@ class TestVecAssignCopy(unittest.TestCase):
 
 add_function_test(TestVecAssignCopy, "test_vec_assign", test_vec_assign, devices=devices)
 add_function_test(TestVecAssignCopy, "test_vec_assign_copy", test_vec_assign_copy, devices=devices)
+add_function_test(TestVecAssignCopy, "test_bool_vec_assign_copy", test_bool_vec_assign_copy, devices=devices)
 add_function_test(
     TestVecAssignCopy, "test_vec_slicing_assign_backward", test_vec_slicing_assign_backward, devices=devices
 )

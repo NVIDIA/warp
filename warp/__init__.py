@@ -202,6 +202,7 @@ from warp._src.texture import TextureAddressMode as TextureAddressMode
 from warp._src.context import init as init
 
 from warp._src.context import is_cpu_available as is_cpu_available
+from warp._src.context import is_cubql_available as is_cubql_available
 from warp._src.context import is_cuda_available as is_cuda_available
 
 from warp._src.build import clear_kernel_cache as clear_kernel_cache
@@ -241,6 +242,7 @@ from warp._src.context import Module as Module
 
 from warp._src.context import launch as launch
 from warp._src.context import launch_tiled as launch_tiled
+from warp._src.context import get_suggested_block_size as get_suggested_block_size
 from warp._src.context import synchronize as synchronize
 
 

@@ -242,6 +242,42 @@ def test_break_while():
     wp.expect_eq(a, 6)
 
 
+# while True with conditional break and observable side effects
+@wp.kernel
+def test_break_while_true():
+    a = int(0)
+    total = int(0)
+
+    while True:
+        total += a
+        a += 1
+        if a >= 5:
+            break
+
+    wp.expect_eq(a, 5)
+    wp.expect_eq(total, 10)  # 0+1+2+3+4
+
+
+# nested while True loops with conditional breaks
+@wp.kernel
+def test_break_while_true_nested():
+    total = int(0)
+    i = int(0)
+
+    while True:
+        j = int(0)
+        while True:
+            total += 1
+            j += 1
+            if j >= 3:
+                break
+        i += 1
+        if i >= 4:
+            break
+
+    wp.expect_eq(total, 12)  # 4 * 3
+
+
 @wp.kernel
 def test_break_multiple(n: int):
     a = int(0)
@@ -472,7 +508,7 @@ def test_error_unmatched_arguments(test, device):
         a = 1 * 1.0
 
     def kernel_2_fn():
-        x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(wp.float16(1.0), wp.float16(2.0)))
+        x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(1.0, 2.0))
 
     kernel = wp.Kernel(func=kernel_1_fn)
     with test.assertRaisesRegex(RuntimeError, r"Input types must be the same, got \['int32', 'float32'\]"):
@@ -961,6 +997,319 @@ def test_augassign_no_double_eval(test, device):
     test.assertAlmostEqual(result.numpy()[0], 20.0)
 
 
+@wp.struct
+class AugAssignTestStruct:
+    value: float
+
+
+@wp.func
+def side_effect_inc_int16(counter: wp.array(dtype=int), val: wp.int16) -> wp.int16:
+    wp.atomic_add(counter, 0, 1)
+    return val
+
+
+@wp.func
+def side_effect_vec3s(counter: wp.array(dtype=int), val: wp.vec3s) -> wp.vec3s:
+    wp.atomic_add(counter, 0, 1)
+    return val
+
+
+@wp.func
+def side_effect_return_float(counter: wp.array(dtype=int), val: float) -> float:
+    wp.atomic_add(counter, 0, 1)
+    return val
+
+
+@wp.func
+def side_effect_index(counter: wp.array(dtype=int), idx: int) -> int:
+    wp.atomic_add(counter, 0, 1)
+    return idx
+
+
+# Attribute target (s.value += expr)
+@wp.kernel
+def test_augassign_no_double_eval_attribute_kernel(
+    counter: wp.array(dtype=int),
+    result: wp.array(dtype=float),
+):
+    s = AugAssignTestStruct()
+    s.value = 1.0
+    s.value += side_effect_add(counter, 2.0, 3.0)
+    result[0] = s.value
+
+
+def test_augassign_no_double_eval_attribute(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    result = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_attribute_kernel,
+        dim=1,
+        inputs=[counter, result],
+        device=device,
+    )
+
+    test.assertEqual(counter.numpy()[0], 1, "RHS of augmented assignment on attribute was evaluated more than once")
+    test.assertAlmostEqual(result.numpy()[0], 6.0)
+
+
+# Non-atomic subscript (arr_int16[i] += expr)
+@wp.kernel
+def test_augassign_no_double_eval_nonatomic_subscript_kernel(
+    counter: wp.array(dtype=int),
+    data: wp.array(dtype=wp.int16),
+):
+    i = wp.tid()
+    data[i] += side_effect_inc_int16(counter, wp.int16(10))
+
+
+def test_augassign_no_double_eval_nonatomic_subscript(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.array([wp.int16(5)], dtype=wp.int16, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_nonatomic_subscript_kernel,
+        dim=1,
+        inputs=[counter, data],
+        device=device,
+    )
+
+    test.assertEqual(
+        counter.numpy()[0], 1, "RHS of augmented assignment on non-atomic subscript was evaluated more than once"
+    )
+    test.assertEqual(data.numpy()[0], 15)
+
+
+# Composite non-atomic subscript (arr_vec3s[i] += expr)
+@wp.kernel
+def test_augassign_no_double_eval_composite_nonatomic_kernel(
+    counter: wp.array(dtype=int),
+    data: wp.array(dtype=wp.vec3s),
+):
+    i = wp.tid()
+    data[i] += side_effect_vec3s(counter, wp.vec3s(wp.int16(1), wp.int16(2), wp.int16(3)))
+
+
+def test_augassign_no_double_eval_composite_nonatomic(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.array([wp.vec3s(wp.int16(10), wp.int16(20), wp.int16(30))], dtype=wp.vec3s, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_composite_nonatomic_kernel,
+        dim=1,
+        inputs=[counter, data],
+        device=device,
+    )
+
+    test.assertEqual(
+        counter.numpy()[0],
+        1,
+        "RHS of augmented assignment on composite non-atomic subscript was evaluated more than once",
+    )
+    result = data.numpy()[0]
+    test.assertEqual(result[0], 11)
+    test.assertEqual(result[1], 22)
+    test.assertEqual(result[2], 33)
+
+
+# Mul on array subscript (arr[i] *= expr)
+@wp.kernel
+def test_augassign_no_double_eval_mul_subscript_kernel(
+    counter: wp.array(dtype=int),
+    data: wp.array(dtype=float),
+):
+    i = wp.tid()
+    data[i] *= side_effect_return_float(counter, 3.0)
+
+
+def test_augassign_no_double_eval_mul_subscript(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.array([5.0], dtype=float, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_mul_subscript_kernel,
+        dim=1,
+        inputs=[counter, data],
+        device=device,
+    )
+
+    test.assertEqual(
+        counter.numpy()[0], 1, "RHS of augmented assignment with *= on subscript was evaluated more than once"
+    )
+    test.assertAlmostEqual(data.numpy()[0], 15.0)
+
+
+# Pow on array subscript (arr[i] **= expr)
+@wp.kernel
+def test_augassign_no_double_eval_pow_subscript_kernel(
+    counter: wp.array(dtype=int),
+    data: wp.array(dtype=float),
+):
+    i = wp.tid()
+    data[i] **= side_effect_return_float(counter, 2.0)
+
+
+def test_augassign_no_double_eval_pow_subscript(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.array([5.0], dtype=float, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_pow_subscript_kernel,
+        dim=1,
+        inputs=[counter, data],
+        device=device,
+    )
+
+    test.assertEqual(
+        counter.numpy()[0], 1, "RHS of augmented assignment with **= on subscript was evaluated more than once"
+    )
+    test.assertAlmostEqual(data.numpy()[0], 25.0)
+
+
+# Mul on vec component (v[0] *= expr)
+@wp.kernel
+def test_augassign_no_double_eval_mul_vec_component_kernel(
+    counter: wp.array(dtype=int),
+    data: wp.array(dtype=wp.vec3),
+    result: wp.array(dtype=float),
+):
+    i = wp.tid()
+    v = data[i]
+    v[0] *= side_effect_return_float(counter, 2.0)
+    data[i] = v
+    result[0] = v[0]
+
+
+def test_augassign_no_double_eval_mul_vec_component(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.array([wp.vec3(3.0, 4.0, 5.0)], dtype=wp.vec3, device=device)
+    result = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_mul_vec_component_kernel,
+        dim=1,
+        inputs=[counter, data, result],
+        device=device,
+    )
+
+    test.assertEqual(
+        counter.numpy()[0], 1, "RHS of augmented assignment with *= on vec component was evaluated more than once"
+    )
+    test.assertAlmostEqual(result.numpy()[0], 6.0)
+
+
+# Adjoint (wp.adjoint[x] += expr)
+@wp.func
+def augassign_custom_scale(counter: wp.array(dtype=int), x: float, s: float) -> float:
+    return x * s
+
+
+@wp.func_grad(augassign_custom_scale)
+def adj_augassign_custom_scale(counter: wp.array(dtype=int), x: float, s: float, adj_ret: float):
+    wp.adjoint[x] += side_effect_return_float(counter, adj_ret * s)
+    wp.adjoint[s] += adj_ret * x
+
+
+@wp.kernel
+def test_augassign_no_double_eval_adjoint_kernel(
+    counter: wp.array(dtype=int),
+    input_val: wp.array(dtype=float),
+    scale_val: wp.array(dtype=float),
+    output_val: wp.array(dtype=float),
+):
+    tid = wp.tid()
+    output_val[tid] = augassign_custom_scale(counter, input_val[tid], scale_val[tid])
+
+
+def test_augassign_no_double_eval_adjoint(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    input_val = wp.array([3.0], dtype=float, device=device, requires_grad=True)
+    scale_val = wp.array([2.0], dtype=float, device=device, requires_grad=True)
+    output_val = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            test_augassign_no_double_eval_adjoint_kernel,
+            dim=1,
+            inputs=[counter, input_val, scale_val, output_val],
+            device=device,
+        )
+
+    tape.backward(grads={output_val: wp.array([1.0], dtype=float, device=device)})
+
+    # wp.adjoint[x] += side_effect_return_float(counter, adj_ret * s)
+    # should call side_effect_return_float exactly once during backward
+    test.assertEqual(counter.numpy()[0], 1, "RHS of wp.adjoint augmented assignment was evaluated more than once")
+    # d(x*s)/dx = s = 2.0
+    test.assertAlmostEqual(input_val.grad.numpy()[0], 2.0)
+
+
+# Aggregate double-eval: data[side_effect_index(counter, i)].value += expr
+@wp.kernel
+def test_augassign_no_double_eval_subscript_attribute_kernel(
+    counter: wp.array(dtype=int),
+    data: wp.array(dtype=AugAssignTestStruct),
+):
+    i = wp.tid()
+    data[side_effect_index(counter, i)].value += 5.0
+
+
+def test_augassign_no_double_eval_subscript_attribute(test, device):
+    counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.zeros(1, dtype=AugAssignTestStruct, device=device)
+    # Initialize the struct's value field to 10.0
+    data_np = data.numpy()
+    data_np[0][0] = 10.0
+    data = wp.array(data_np, dtype=AugAssignTestStruct, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_subscript_attribute_kernel,
+        dim=1,
+        inputs=[counter, data],
+        device=device,
+    )
+
+    test.assertEqual(
+        counter.numpy()[0],
+        1,
+        "Aggregate index in augmented assignment on struct attribute was evaluated more than once",
+    )
+    test.assertAlmostEqual(data.numpy()[0][0], 15.0)
+
+
+# Both aggregate and RHS double-eval:
+# data[side_effect_index(idx_ctr, i)].value += side_effect_return_float(rhs_ctr, v)
+@wp.kernel
+def test_augassign_no_double_eval_both_kernel(
+    idx_counter: wp.array(dtype=int),
+    rhs_counter: wp.array(dtype=int),
+    data: wp.array(dtype=AugAssignTestStruct),
+):
+    i = wp.tid()
+    data[side_effect_index(idx_counter, i)].value += side_effect_return_float(rhs_counter, 5.0)
+
+
+def test_augassign_no_double_eval_both(test, device):
+    idx_counter = wp.zeros(1, dtype=int, device=device)
+    rhs_counter = wp.zeros(1, dtype=int, device=device)
+    data = wp.zeros(1, dtype=AugAssignTestStruct, device=device)
+    data_np = data.numpy()
+    data_np[0][0] = 10.0
+    data = wp.array(data_np, dtype=AugAssignTestStruct, device=device)
+
+    wp.launch(
+        test_augassign_no_double_eval_both_kernel,
+        dim=1,
+        inputs=[idx_counter, rhs_counter, data],
+        device=device,
+    )
+
+    test.assertEqual(idx_counter.numpy()[0], 1, "Aggregate index was evaluated more than once")
+    test.assertEqual(rhs_counter.numpy()[0], 1, "RHS was evaluated more than once")
+    test.assertAlmostEqual(data.numpy()[0][0], 15.0)
+
+
 class TestCodeGen(unittest.TestCase):
     pass
 
@@ -1062,6 +1411,10 @@ add_kernel_test(TestCodeGen, name="test_break", kernel=test_break, dim=1, inputs
 add_kernel_test(TestCodeGen, name="test_break_early", kernel=test_break_early, dim=1, inputs=[10], devices=devices)
 add_kernel_test(TestCodeGen, name="test_break_unroll", kernel=test_break_unroll, dim=1, devices=devices)
 add_kernel_test(TestCodeGen, name="test_break_while", kernel=test_break_while, dim=1, devices=devices)
+add_kernel_test(TestCodeGen, name="test_break_while_true", kernel=test_break_while_true, dim=1, devices=devices)
+add_kernel_test(
+    TestCodeGen, name="test_break_while_true_nested", kernel=test_break_while_true_nested, dim=1, devices=devices
+)
 add_kernel_test(
     TestCodeGen, name="test_break_multiple", kernel=test_break_multiple, dim=1, inputs=[10], devices=devices
 )
@@ -1112,6 +1465,54 @@ add_function_test(
 add_kernel_test(TestCodeGen, name="test_cast", kernel=test_cast, dim=1, devices=devices)
 add_function_test(TestCodeGen, "test_reference_params", test_reference_params, devices=devices)
 add_function_test(TestCodeGen, "test_augassign_no_double_eval", test_augassign_no_double_eval, devices=devices)
+add_function_test(
+    TestCodeGen, "test_augassign_no_double_eval_attribute", test_augassign_no_double_eval_attribute, devices=devices
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_nonatomic_subscript",
+    test_augassign_no_double_eval_nonatomic_subscript,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_composite_nonatomic",
+    test_augassign_no_double_eval_composite_nonatomic,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_mul_subscript",
+    test_augassign_no_double_eval_mul_subscript,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_pow_subscript",
+    test_augassign_no_double_eval_pow_subscript,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_mul_vec_component",
+    test_augassign_no_double_eval_mul_vec_component,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen, "test_augassign_no_double_eval_adjoint", test_augassign_no_double_eval_adjoint, devices=devices
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_subscript_attribute",
+    test_augassign_no_double_eval_subscript_attribute,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_augassign_no_double_eval_both",
+    test_augassign_no_double_eval_both,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,8 @@ WP_API int wp_is_cuda_enabled();
 WP_API int wp_is_cuda_compatibility_enabled();
 // whether Warp was compiled with MathDx support
 WP_API int wp_is_mathdx_enabled();
+// whether Warp was compiled with cuBQL support
+WP_API int wp_is_cubql_enabled();
 // whether Warp was compiled with debug support
 WP_API int wp_is_debug_enabled();
 
@@ -590,6 +592,9 @@ WP_API size_t wp_cuda_launch_kernel(
 );
 WP_API int wp_cuda_get_max_shared_memory(void* context);
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
+WP_API bool wp_cuda_get_suggested_block_size(
+    void* context, void* kernel, int shared_memory_bytes, int* block_size_out, int* min_grid_size_out
+);
 
 WP_API void wp_cuda_set_context_restore_policy(bool always_restore);
 WP_API int wp_cuda_get_context_restore_policy();

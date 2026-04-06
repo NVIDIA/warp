@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 import warp as wp
 import warp._src.fem.operator as operator
@@ -17,7 +17,6 @@ from warp._src.fem.types import (
     DofIndex,
     ElementIndex,
     NodeElementIndex,
-    Sample,
     get_node_coord,
     get_node_index_in_element,
 )
@@ -56,6 +55,7 @@ class AdjointField(SpaceField):
         self.node_dof_count = self.space.NODE_DOF_COUNT
         self.value_dof_count = self.space.VALUE_DOF_COUNT
         self.domain = domain
+        self.SampleType = domain.geometry.sample_type
 
         cache.setup_dynamic_attributes(self)
 
@@ -106,7 +106,7 @@ class AdjointField(SpaceField):
 
     def _make_eval_inner(self):
         @cache.dynamic_func(suffix=self.name)
-        def eval_test_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_test_inner(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_weight = self.space.basis.element_inner_weight(
                 args.elt_arg,
@@ -128,7 +128,7 @@ class AdjointField(SpaceField):
             return None
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_grad_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_grad_inner(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             nabla_weight = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
@@ -151,7 +151,7 @@ class AdjointField(SpaceField):
             return None
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_div_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_div_inner(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             nabla_weight = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
@@ -171,7 +171,7 @@ class AdjointField(SpaceField):
 
     def _make_eval_outer(self):
         @cache.dynamic_func(suffix=self.name)
-        def eval_test_outer(args: self.ElementEvalArg, s: Sample):
+        def eval_test_outer(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_weight = self.space.basis.element_outer_weight(
                 args.elt_arg,
@@ -193,7 +193,7 @@ class AdjointField(SpaceField):
             return None
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_grad_outer(args: self.ElementEvalArg, s: Sample):
+        def eval_grad_outer(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             nabla_weight = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
@@ -216,7 +216,7 @@ class AdjointField(SpaceField):
             return None
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_div_outer(args: self.ElementEvalArg, s: Sample):
+        def eval_div_outer(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             nabla_weight = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
@@ -236,7 +236,7 @@ class AdjointField(SpaceField):
 
     def _make_at_node(self):
         @cache.dynamic_func(suffix=self.name)
-        def at_node(args: self.ElementEvalArg, s: Sample):
+        def at_node(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_coords = self.space.basis.node_coords_in_element(
                 args.elt_arg,
@@ -245,13 +245,13 @@ class AdjointField(SpaceField):
                 s.element_index,
                 get_node_index_in_element(dof),
             )
-            return Sample(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
+            return self.SampleType(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
 
         return at_node
 
     def _make_node_index(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_index(args: self.ElementEvalArg, s: Sample):
+        def node_index(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             topo_arg = args.eval_arg.topo_arg
             node_idx = self.space.topology.element_node_index(
@@ -263,7 +263,7 @@ class AdjointField(SpaceField):
 
     def _make_node_count(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_count(args: self.ElementEvalArg, s: Sample):
+        def node_count(args: self.ElementEvalArg, s: self.SampleType):
             topo_arg = args.eval_arg.topo_arg
             return self.space.topology.element_node_count(args.elt_arg, topo_arg, s.element_index)
 
@@ -271,7 +271,7 @@ class AdjointField(SpaceField):
 
     def _make_node_inner_weight(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_inner_weight(args: self.ElementEvalArg, s: Sample):
+        def node_inner_weight(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_weight = self.space.basis.element_inner_weight(
                 args.elt_arg,
@@ -288,7 +288,7 @@ class AdjointField(SpaceField):
 
     def _make_node_outer_weight(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_outer_weight(args: self.ElementEvalArg, s: Sample):
+        def node_outer_weight(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_weight = self.space.basis.element_outer_weight(
                 args.elt_arg,
@@ -305,7 +305,7 @@ class AdjointField(SpaceField):
 
     def _make_node_inner_weight_gradient(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_inner_weight_gradient(args: self.ElementEvalArg, s: Sample):
+        def node_inner_weight_gradient(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_weight_gradient = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
@@ -323,7 +323,7 @@ class AdjointField(SpaceField):
 
     def _make_node_outer_weight_gradient(self):
         @cache.dynamic_func(suffix=self.name)
-        def node_outer_weight_gradient(args: self.ElementEvalArg, s: Sample):
+        def node_outer_weight_gradient(args: self.ElementEvalArg, s: self.SampleType):
             dof = self._get_dof(s)
             node_weight_gradient = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
@@ -373,7 +373,7 @@ class TestField(AdjointField):
         self.space_restriction = space_restriction
 
     @wp.func
-    def _get_dof(s: Sample):
+    def _get_dof(s: Any):
         return s.test_dof
 
 
@@ -402,7 +402,7 @@ class TrialField(AdjointField):
         return self.space_partition.node_count()
 
     @wp.func
-    def _get_dof(s: Sample):
+    def _get_dof(s: Any):
         return s.trial_dof
 
 
@@ -462,6 +462,7 @@ class LocalAdjointField(SpaceField):
         self.global_field = field
 
         self.domain = self.global_field.domain
+        self.SampleType = self.domain.geometry.sample_type
         self.node_dof_count = self.space.NODE_DOF_COUNT
         self.value_dof_count = self.space.VALUE_DOF_COUNT
 
@@ -539,7 +540,7 @@ class LocalAdjointField(SpaceField):
         zero_element = type_zero_element(self.dtype)
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_test_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_test_inner(args: self.ElementEvalArg, s: self.SampleType):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             local_value_map = self.space.local_value_map_inner(args.elt_arg, s.element_index, s.element_coords)
@@ -557,7 +558,7 @@ class LocalAdjointField(SpaceField):
         zero_element = type_zero_element(self.gradient_dtype)
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_nabla_test_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_nabla_test_inner(args: self.ElementEvalArg, s: self.SampleType):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
@@ -579,7 +580,7 @@ class LocalAdjointField(SpaceField):
         zero_element = type_zero_element(self.divergence_dtype)
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_div_test_inner(args: self.ElementEvalArg, s: Sample):
+        def eval_div_test_inner(args: self.ElementEvalArg, s: self.SampleType):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
@@ -600,7 +601,7 @@ class LocalAdjointField(SpaceField):
         zero_element = type_zero_element(self.dtype)
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_test_outer(args: self.ElementEvalArg, s: Sample):
+        def eval_test_outer(args: self.ElementEvalArg, s: self.SampleType):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             local_value_map = self.space.local_value_map_outer(args.elt_arg, s.element_index, s.element_coords)
@@ -618,7 +619,7 @@ class LocalAdjointField(SpaceField):
         zero_element = type_zero_element(self.gradient_dtype)
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_nabla_test_outer(args: self.ElementEvalArg, s: Sample):
+        def eval_nabla_test_outer(args: self.ElementEvalArg, s: self.SampleType):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
@@ -640,7 +641,7 @@ class LocalAdjointField(SpaceField):
         zero_element = type_zero_element(self.divergence_dtype)
 
         @cache.dynamic_func(suffix=self.name)
-        def eval_div_test_outer(args: self.ElementEvalArg, s: Sample):
+        def eval_div_test_outer(args: self.ElementEvalArg, s: self.SampleType):
             value_dof, taylor_dof = self._split_dof(self._get_dof(s), DOF_BEGIN)
 
             if taylor_dof < 0 or taylor_dof >= DOF_COUNT:
@@ -669,7 +670,7 @@ class LocalTestField(LocalAdjointField):
         self.space_restriction = test_field.space_restriction
 
     @wp.func
-    def _get_dof(s: Sample):
+    def _get_dof(s: Any):
         return s.test_dof
 
 
@@ -678,7 +679,7 @@ class LocalTrialField(LocalAdjointField):
         super().__init__(trial_field)
 
     @wp.func
-    def _get_dof(s: Sample):
+    def _get_dof(s: Any):
         return s.trial_dof
 
 
@@ -687,7 +688,7 @@ def make_linear_dispatch_kernel(
     quadrature: Quadrature,
     accumulate_dtype: type,
     tile_size: int = 1,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction
@@ -706,8 +707,9 @@ def make_linear_dispatch_kernel(
     TEST_NODE_DOF_DIM = test.value_dof_count // test.node_dof_count
     TEST_NODE_DOF_COUNT = test.node_dof_count
 
+    local_scalar_type = domain.geometry.scalar_type
     res_vec = cache.cached_vec_type(length=test.node_dof_count, dtype=accumulate_dtype)
-    qp_vec = cache.cached_vec_type(length=test.node_dof_count, dtype=float)
+    qp_vec = cache.cached_vec_type(length=test.node_dof_count, dtype=local_scalar_type)
 
     @cache.dynamic_func(f"{test.name}_{quadrature.name}")
     def next_qp(
@@ -887,7 +889,7 @@ def make_bilinear_dispatch_kernel(
     quadrature: Quadrature,
     accumulate_dtype: type,
     tile_size: int = 1,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ):
     global_test: TestField = test.global_field
     space_restriction = global_test.space_restriction
@@ -922,8 +924,9 @@ def make_bilinear_dispatch_kernel(
     TEST_TAYLOR_DOF_COUNT = test.TAYLOR_DOF_COUNT
     TRIAL_TAYLOR_DOF_COUNT = trial.TAYLOR_DOF_COUNT
 
-    trial_dof_vec = cache.cached_vec_type(length=trial.TAYLOR_DOF_COUNT, dtype=float)
-    test_dof_vec = cache.cached_vec_type(length=test.TAYLOR_DOF_COUNT, dtype=float)
+    local_scalar_type = domain.geometry.scalar_type
+    trial_dof_vec = cache.cached_vec_type(length=trial.TAYLOR_DOF_COUNT, dtype=local_scalar_type)
+    test_dof_vec = cache.cached_vec_type(length=test.TAYLOR_DOF_COUNT, dtype=local_scalar_type)
 
     val_t = cache.cached_mat_type(shape=(test.node_dof_count, trial.node_dof_count), dtype=accumulate_dtype)
 
@@ -942,7 +945,7 @@ def make_bilinear_dispatch_kernel(
         trial_basis_arg: trial.space.basis.BasisArg,
         trial_topo_arg: trial.space.topology.TopologyArg,
         max_nodes_per_element: int,
-        local_result: wp.array4d(dtype=float),
+        local_result: wp.array4d(dtype=local_scalar_type),
         triplet_rows: wp.array(dtype=int),
         triplet_cols: wp.array(dtype=int),
         triplet_values: wp.array3d(dtype=Any),
@@ -1065,11 +1068,11 @@ def make_bilinear_dispatch_kernel(
             for test_node_dof in range(TEST_NODE_DOF_COUNT):
                 test_dof = test_node_dof * TEST_NODE_DOF_DIM + test_val_dof
                 for trial_node_dof in range(TRIAL_NODE_DOF_COUNT):
-                    dof_res = float(0.0)
+                    dof_res = local_scalar_type(0.0)
                     trial_dof = trial_node_dof * TRIAL_NODE_DOF_DIM + trial_val_dof
 
                     for test_taylor_dof in range(TEST_TAYLOR_DOF_COUNT):
-                        test_res = float(0.0)
+                        test_res = local_scalar_type(0.0)
                         for trial_taylor_dof in range(TRIAL_TAYLOR_DOF_COUNT):
                             taylor_dof = test_taylor_dof * TRIAL_TAYLOR_DOF_COUNT + trial_taylor_dof
                             test_res += (

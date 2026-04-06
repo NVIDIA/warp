@@ -78,6 +78,19 @@ extern const __device__ __blockIdx_t blockIdx;
 extern const __device__ __blockDim_t blockDim;
 extern const __device__ __gridDim_t gridDim;
 
+// CUDA vector types
+struct alignas(8) float2 {
+    float x, y;
+};
+
+struct alignas(16) float4 {
+    float x, y, z, w;
+};
+
+// Simplified read-only data cache load (__ldg).
+// A full implementation would use the ld.global.nc PTX instruction.
+template <typename T> __device_forceinline__ T __ldg(const T* ptr) { return *ptr; }
+
 // Forward declarations of libdevice functions
 extern "C" {
 
@@ -431,6 +444,14 @@ __device__ float __nv_ynf(int a, float b);
 __device__ double __nv_yn(int a, double b);
 
 }  // extern "C"
+
+// isfinite / isnan / isinf for float and double (must come after libdevice forward declarations)
+__device_forceinline__ bool isfinite(float x) { return __nv_finitef(x); }
+__device_forceinline__ bool isfinite(double x) { return __nv_isfinited(x); }
+__device_forceinline__ bool isnan(float x) { return __nv_isnanf(x); }
+__device_forceinline__ bool isnan(double x) { return __nv_isnand(x); }
+__device_forceinline__ bool isinf(float x) { return __nv_isinff(x); }
+__device_forceinline__ bool isinf(double x) { return __nv_isinfd(x); }
 
 // Implementation of CUDA intrinsics
 __device_forceinline__ int __all(int a) { return __nvvm_vote_all(a); }
@@ -1196,8 +1217,6 @@ __device_forceinline__ __half __hadd(const __half a, const __half b)
 }
 
 // Implementation of a subset of <cuda_runtime.h> functionality
-__device_forceinline__ bool isfinite(double x) { return __nv_isfinited(x); }
-__device_forceinline__ bool isfinite(float x) { return __nv_finitef(x); }
 
 __device_forceinline__ unsigned short atomicCAS(unsigned short* address, unsigned short compare, unsigned short val)
 {
@@ -1209,6 +1228,11 @@ __device_forceinline__ unsigned short atomicCAS(unsigned short* address, unsigne
 }
 
 __device_forceinline__ int atomicCAS(int* address, int compare, int val) { return __iAtomicCAS(address, compare, val); }
+
+__device_forceinline__ unsigned int atomicCAS(unsigned int* address, unsigned int compare, unsigned int val)
+{
+    return __uAtomicCAS(address, compare, val);
+}
 
 __device_forceinline__ __half atomicAdd(__half* const address, const __half val)
 {
@@ -1235,11 +1259,133 @@ __device_forceinline__ unsigned int atomicAdd(unsigned int* const address, const
     return __uAtomicAdd(address, val);
 }
 
-__device_forceinline__ unsigned int atomicAdd(unsigned long long* const address, const unsigned long long val)
+__device_forceinline__ unsigned long long atomicAdd(unsigned long long* const address, const unsigned long long val)
 {
     return __ullAtomicAdd(address, val);
+}
+
+__device_forceinline__ unsigned long long
+atomicCAS(unsigned long long* address, unsigned long long compare, unsigned long long val)
+{
+    return __ullAtomicCAS(address, compare, val);
+}
+
+__device_forceinline__ int atomicExch(int* address, int val) { return __iAtomicExch(address, val); }
+
+__device_forceinline__ float atomicExch(float* address, float val) { return __fAtomicExch(address, val); }
+
+__device_forceinline__ unsigned long long atomicExch(unsigned long long* address, unsigned long long val)
+{
+    return __ullAtomicExch(address, val);
+}
+
+__device_forceinline__ unsigned int atomicExch(unsigned int* address, unsigned int val)
+{
+    return __uAtomicExch(address, val);
 }
 
 __device_forceinline__ int atomicMin(int* const address, const int val) { return __iAtomicMin(address, val); }
 
 __device_forceinline__ int atomicMax(int* const address, const int val) { return __iAtomicMax(address, val); }
+
+// Warp-synchronous intrinsics (using PTX inline assembly for _sync variants)
+__device_forceinline__ void __syncwarp(unsigned int mask = 0xFFFFFFFF)
+{
+    asm volatile("bar.warp.sync %0;" : : "r"(mask) : "memory");
+}
+
+__device_forceinline__ unsigned int __activemask()
+{
+    unsigned int mask;
+    asm volatile("activemask.b32 %0;" : "=r"(mask));
+    return mask;
+}
+
+__device_forceinline__ unsigned int __ballot_sync(unsigned int mask, int pred)
+{
+    unsigned int result;
+    asm volatile("{\n\t"
+                 ".reg .pred p;\n\t"
+                 "setp.ne.u32 p, %2, 0;\n\t"
+                 "vote.sync.ballot.b32 %0, p, %1;\n\t"
+                 "}"
+                 : "=r"(result)
+                 : "r"(mask), "r"(pred));
+    return result;
+}
+
+__device_forceinline__ int __shfl_sync(unsigned int mask, int val, int srcLane, int width = 32)
+{
+    int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.idx.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(val), "r"(srcLane), "r"(c), "r"(mask));
+    return result;
+}
+
+__device_forceinline__ unsigned int __shfl_sync(unsigned int mask, unsigned int val, int srcLane, int width = 32)
+{
+    unsigned int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.idx.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(val), "r"(srcLane), "r"(c), "r"(mask));
+    return result;
+}
+
+__device_forceinline__ float __shfl_sync(unsigned int mask, float val, int srcLane, int width = 32)
+{
+    int ival = __nv_float_as_int(val);
+    int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.idx.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(ival), "r"(srcLane), "r"(c), "r"(mask));
+    return __nv_int_as_float(result);
+}
+
+__device_forceinline__ int __shfl_down_sync(unsigned int mask, int val, unsigned int delta, int width = 32)
+{
+    int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.down.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(val), "r"(delta), "r"(c), "r"(mask));
+    return result;
+}
+
+__device_forceinline__ unsigned int
+__shfl_down_sync(unsigned int mask, unsigned int val, unsigned int delta, int width = 32)
+{
+    unsigned int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.down.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(val), "r"(delta), "r"(c), "r"(mask));
+    return result;
+}
+
+__device_forceinline__ float __shfl_down_sync(unsigned int mask, float val, unsigned int delta, int width = 32)
+{
+    int ival = __nv_float_as_int(val);
+    int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.down.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(ival), "r"(delta), "r"(c), "r"(mask));
+    return __nv_int_as_float(result);
+}
+
+__device_forceinline__ int __shfl_xor_sync(unsigned int mask, int val, int laneMask, int width = 32)
+{
+    int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.bfly.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(val), "r"(laneMask), "r"(c), "r"(mask));
+    return result;
+}
+
+__device_forceinline__ unsigned int __shfl_xor_sync(unsigned int mask, unsigned int val, int laneMask, int width = 32)
+{
+    unsigned int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.bfly.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(val), "r"(laneMask), "r"(c), "r"(mask));
+    return result;
+}
+
+__device_forceinline__ float __shfl_xor_sync(unsigned int mask, float val, int laneMask, int width = 32)
+{
+    int ival = __nv_float_as_int(val);
+    int result;
+    int c = ((32 - width) << 8) | 0x1f;
+    asm volatile("shfl.sync.bfly.b32 %0, %1, %2, %3, %4;" : "=r"(result) : "r"(ival), "r"(laneMask), "r"(c), "r"(mask));
+    return __nv_int_as_float(result);
+}

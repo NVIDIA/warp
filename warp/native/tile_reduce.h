@@ -312,9 +312,12 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
                     val = t.data(in_coord);
                 }
 
-                // warp reduce this chunk (only valid lanes participate)
+                // warp reduce this chunk (only valid lanes may call warp_reduce,
+                // because __shfl_down_sync requires all executing threads to be in the mask)
                 unsigned int mask = __ballot_sync(0xFFFFFFFF, valid);
-                T chunk_result = warp_reduce(val, f, mask);
+                T chunk_result;
+                if (valid)
+                    chunk_result = warp_reduce(val, f, mask);
 
                 // lane 0 accumulates the chunk result
                 if (lane_index == 0) {
@@ -425,6 +428,7 @@ CUDA_CALLABLE_DEVICE auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
 
     int champion_index = Layout::NumRegs > 0 ? Layout::linear_from_register(0) : -1;
     T thread_sum = input.data[0];
+    bool thread_has_data = Layout::valid(Layout::linear_from_register(0));
 
     // thread reduction
     WP_PRAGMA_UNROLL
@@ -437,12 +441,15 @@ CUDA_CALLABLE_DEVICE auto tile_arg_reduce_impl(Op f, OpTrack track, Tile& t)
         thread_sum = f(thread_sum, input.data[i]);
     }
 
-    // ensure that only threads with at least one valid item participate in the reduction
-    unsigned int mask = __ballot_sync(__activemask(), Layout::valid(Layout::linear_from_register(0)));
+    // determine which threads have valid data
+    unsigned int mask = __ballot_sync(0xFFFFFFFF, thread_has_data);
     bool warp_is_active = mask != 0;
 
-    // warp reduction
-    ValueAndIndex<T> warp_sum = warp_reduce_tracked(thread_sum, champion_index, f, track, mask);
+    // warp reduction (only threads with valid data may participate,
+    // because __shfl_down_sync requires all executing threads to be in the mask)
+    ValueAndIndex<T> warp_sum;
+    if (thread_has_data)
+        warp_sum = warp_reduce_tracked(thread_sum, champion_index, f, track, mask);
 
     // fixed size scratch pad for partial results in shared memory
     __shared__ T partials[warp_count];

@@ -703,11 +703,11 @@ class TestTypes(unittest.TestCase):
         result = wp._src.types.get_type_code(tuple_multi_warp)
         self.assertEqual(result, "tpl3v3f4m33f4qf4", "tuple[vec3f, mat33f, quatf] should generate 'tpl3v3f4m33f4qf4'")
 
-        # Verify the fix works on Python 3.9-3.10 specifically
+        # Verify the fix works on Python 3.10 specifically
         if sys.version_info < (3, 11) and hasattr(types, "GenericAlias"):
-            # On Python 3.9-3.10, tuple[...] creates types.GenericAlias
+            # On Python 3.10, tuple[...] creates types.GenericAlias
             self.assertIsInstance(
-                tuple_mixed, types.GenericAlias, "On Python 3.9-3.10, tuple[...] should create types.GenericAlias"
+                tuple_mixed, types.GenericAlias, "On Python 3.10, tuple[...] should create types.GenericAlias"
             )
             self.assertIs(tuple_mixed.__origin__, tuple, "GenericAlias origin should be tuple")
 

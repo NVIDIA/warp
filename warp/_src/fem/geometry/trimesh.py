@@ -1,21 +1,23 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any, ClassVar
 
 import warp as wp
+from warp._src.fem import cache
 from warp._src.fem.cache import (
     TemporaryStore,
     borrow_temporary,
     borrow_temporary_like,
+    cached_vec_type,
 )
 from warp._src.fem.types import (
     OUTSIDE,
-    Coords,
     ElementIndex,
-    Sample,
+    make_coords,
 )
 from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.types import type_scalar_type
 from warp._src.utils import array_scan
 
 from .closest_point import project_on_seg_at_origin, project_on_tri_at_origin
@@ -25,34 +27,60 @@ from .geometry import Geometry
 _wp_module_name_ = "warp.fem.geometry.trimesh"
 
 
+# Topology-only Arg structs (no position data, shared across precisions)
 @wp.struct
 class TrimeshCellArg:
-    """Arguments for cell-related device functions."""
+    """Arguments for cell topology device functions."""
 
     tri_vertex_indices: wp.array2d(dtype=int)
-
-    # for global cell lookup
     tri_bvh: wp.uint64
 
 
 @wp.struct
 class TrimeshSideArg:
-    """Arguments for side-related device functions."""
+    """Arguments for side topology device functions."""
 
     cell_arg: TrimeshCellArg
     edge_vertex_indices: wp.array(dtype=wp.vec2i)
     edge_tri_indices: wp.array(dtype=wp.vec2i)
 
 
+def _make_trimesh_cell_arg(topo_type, pos_vec_type):
+    """Generate a CellArg struct for the given position vector type."""
+
+    @cache.dynamic_struct(suffix=(type_scalar_type(pos_vec_type), pos_vec_type._length_))
+    class _CellArg:
+        topology: topo_type
+        positions: wp.array(dtype=pos_vec_type)
+
+    return _CellArg
+
+
+def _make_trimesh_side_arg(topo_type, pos_vec_type):
+    """Generate a SideArg struct for the given position vector type."""
+
+    @cache.dynamic_struct(suffix=(type_scalar_type(pos_vec_type), pos_vec_type._length_))
+    class _SideArg:
+        topology: topo_type
+        positions: wp.array(dtype=pos_vec_type)
+
+    return _SideArg
+
+
 class Trimesh(Geometry):
     """Triangular mesh geometry."""
+
+    _dynamic_attribute_constructors: ClassVar = {
+        "side_to_cell_arg": lambda obj: obj._make_tri_side_to_cell_arg(),
+        **Geometry._dynamic_attribute_constructors,
+    }
 
     def __init__(
         self,
         tri_vertex_indices: wp.array,
         positions: wp.array,
         build_bvh: bool = False,
-        temporary_store: Optional[TemporaryStore] = None,
+        temporary_store: TemporaryStore | None = None,
     ):
         """Construct a D-dimensional triangular mesh.
 
@@ -66,24 +94,42 @@ class Trimesh(Geometry):
         self.tri_vertex_indices = tri_vertex_indices
         self.positions = positions
 
+        # Infer scalar type and dimension from position array
+        self._scalar_type = type_scalar_type(positions.dtype)
+        self.dimension = positions.dtype._length_
+
+        # Generate precision-appropriate Arg structs
+        pos_vec = cached_vec_type(self.dimension, self._scalar_type)
+        self.CellArg = _make_trimesh_cell_arg(TrimeshCellArg, pos_vec)
+        self.SideArg = _make_trimesh_side_arg(TrimeshSideArg, pos_vec)
+
         self._edge_vertex_indices: wp.array = None
         self._edge_tri_indices: wp.array = None
         self._build_topology(temporary_store)
 
         # Flip edges so that normals point away from inner cell
+        if self.dimension == 2:
+            orient_kernel = Trimesh._orient_edges_2d
+        else:
+            orient_kernel = Trimesh._orient_edges_3d
         wp.launch(
-            kernel=self._orient_edges,
+            kernel=orient_kernel,
             device=positions.device,
             dim=self.side_count(),
             inputs=[self._edge_vertex_indices, self._edge_tri_indices, self.tri_vertex_indices, self.positions],
         )
 
-        self._make_default_dependent_implementations()
+        # Process all dynamic attributes (Trimesh primitives + Geometry dependents)
+        cache.setup_dynamic_attributes(self)
         self.cell_coordinates = self._make_cell_coordinates(assume_linear=True)
         self.side_coordinates = self._make_side_coordinates(assume_linear=True)
 
         if build_bvh:
             self.build_bvh(self.positions.device)
+
+    @property
+    def scalar_type(self):
+        return self._scalar_type
 
     def cell_count(self):
         """Number of cells in the mesh."""
@@ -134,12 +180,12 @@ class Trimesh(Geometry):
         args.edge_vertex_indices = self._edge_vertex_indices.to(device)
         args.edge_tri_indices = self._edge_tri_indices.to(device)
 
-    def fill_cell_arg(self, args: TrimeshCellArg, device):
+    def fill_cell_arg(self, args, device):
         """Fill the arguments to be passed to cell-related device functions."""
         self._fill_cell_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
 
-    def fill_side_arg(self, args: TrimeshSideArg, device):
+    def fill_side_arg(self, args, device):
         """Fill the arguments to be passed to side-related device functions."""
         self._fill_side_topo_arg(args.topology, device)
         args.positions = self.positions.to(device)
@@ -155,25 +201,23 @@ class Trimesh(Geometry):
         return args.boundary_edge_indices[boundary_side_index]
 
     @wp.func
-    def _edge_to_tri_coords(
-        args: TrimeshSideArg, side_index: ElementIndex, tri_index: ElementIndex, side_coords: Coords
-    ):
+    def _edge_to_tri_coords(args: Any, side_index: ElementIndex, tri_index: ElementIndex, side_coords: Any):
         edge_vidx = args.edge_vertex_indices[side_index]
         tri_vidx = args.cell_arg.tri_vertex_indices[tri_index]
 
         v0 = tri_vidx[0]
         v1 = tri_vidx[1]
 
-        cx = float(0.0)
-        cy = float(0.0)
-        cz = float(0.0)
+        cx = side_coords.dtype(0.0)
+        cy = side_coords.dtype(0.0)
+        cz = side_coords.dtype(0.0)
 
         if edge_vidx[0] == v0:
-            cx = 1.0 - side_coords[0]
+            cx = side_coords.dtype(1.0) - side_coords[0]
         elif edge_vidx[0] == v1:
-            cy = 1.0 - side_coords[0]
+            cy = side_coords.dtype(1.0) - side_coords[0]
         else:
-            cz = 1.0 - side_coords[0]
+            cz = side_coords.dtype(1.0) - side_coords[0]
 
         if edge_vidx[1] == v0:
             cx = side_coords[0]
@@ -182,15 +226,10 @@ class Trimesh(Geometry):
         else:
             cz = side_coords[0]
 
-        return Coords(cx, cy, cz)
+        return type(side_coords)(cx, cy, cz)
 
     @wp.func
-    def _tri_to_edge_coords(
-        args: TrimeshSideArg,
-        side_index: ElementIndex,
-        tri_index: ElementIndex,
-        tri_coords: Coords,
-    ):
+    def _tri_to_edge_coords(args: Any, side_index: ElementIndex, tri_index: ElementIndex, tri_coords: Any):
         edge_vidx = args.edge_vertex_indices[side_index]
         tri_vidx = args.cell_arg.tri_vertex_indices[tri_index]
 
@@ -204,7 +243,22 @@ class Trimesh(Geometry):
             elif edge_vidx[0] == v:
                 start = k
 
-        return wp.where(tri_coords[start] + tri_coords[end] > 0.999, Coords(tri_coords[end], 0.0, 0.0), Coords(OUTSIDE))
+        return wp.where(
+            tri_coords[start] + tri_coords[end] > tri_coords.dtype(0.999),
+            type(tri_coords)(tri_coords[end], tri_coords.dtype(0.0), tri_coords.dtype(0.0)),
+            type(tri_coords)(tri_coords.dtype(OUTSIDE)),
+        )
+
+    def _make_tri_side_to_cell_arg(self):
+        CellArgType = self.CellArg
+
+        @cache.dynamic_func(suffix=self.name)
+        def side_to_cell_arg(side_arg: self.SideArg):
+            return CellArgType(side_arg.topology.cell_arg, side_arg.positions)
+
+        return side_to_cell_arg
+
+    # -- Topology building (precision-independent, uses integer indices) --
 
     def _build_topology(self, temporary_store: TemporaryStore):
         device = self.tri_vertex_indices.device
@@ -222,7 +276,6 @@ class Trimesh(Geometry):
         vertex_edge_ends = borrow_temporary(temporary_store, dtype=int, device=device, shape=(3 * self.cell_count()))
         vertex_edge_tris = borrow_temporary(temporary_store, dtype=int, device=device, shape=(3 * self.cell_count(), 2))
 
-        # Count face edges starting at each vertex
         wp.launch(
             kernel=Trimesh._count_starting_edges_kernel,
             device=device,
@@ -232,7 +285,6 @@ class Trimesh(Geometry):
 
         array_scan(in_array=vertex_start_edge_count, out_array=vertex_start_edge_offsets, inclusive=False)
 
-        # Count number of unique edges (deduplicate across faces)
         vertex_unique_edge_count = vertex_start_edge_count
         wp.launch(
             kernel=Trimesh._count_unique_starting_edges_kernel,
@@ -252,7 +304,6 @@ class Trimesh(Geometry):
         vertex_unique_edge_offsets = borrow_temporary_like(vertex_start_edge_offsets, temporary_store=temporary_store)
         array_scan(in_array=vertex_start_edge_count, out_array=vertex_unique_edge_offsets, inclusive=False)
 
-        # Get back edge count to host
         edge_count = int(
             host_read_at_index(vertex_unique_edge_offsets, self.vertex_count() - 1, temporary_store=temporary_store)
         )
@@ -262,7 +313,6 @@ class Trimesh(Geometry):
 
         boundary_mask = borrow_temporary(temporary_store=temporary_store, shape=(edge_count,), dtype=int, device=device)
 
-        # Compress edge data
         wp.launch(
             kernel=Trimesh._compress_edges_kernel,
             device=device,
@@ -289,6 +339,8 @@ class Trimesh(Geometry):
         self._boundary_edge_indices = boundary_edge_indices.detach()
 
         boundary_mask.release()
+
+    # -- Topology kernels (precision-independent) --
 
     @wp.kernel
     def _count_starting_edges_kernel(
@@ -346,7 +398,6 @@ class Trimesh(Geometry):
                 if v == wp.min(v0, v1):
                     other_v = wp.max(v0, v1)
 
-                    # Check if other_v has been seen
                     seen_idx = Trimesh._find(other_v, edge_ends, edge_beg, edge_cur)
 
                     if seen_idx == -1:
@@ -390,23 +441,77 @@ class Trimesh(Geometry):
             else:
                 boundary_mask[edge_index] = 0
 
+    # Edge orientation kernels — separate for 2D and 3D to avoid static branching issues
+    @wp.kernel
+    def _orient_edges_2d(
+        edge_vertex_indices: wp.array(dtype=wp.vec2i),
+        edge_tri_indices: wp.array(dtype=wp.vec2i),
+        tri_vertex_indices: wp.array2d(dtype=int),
+        positions: wp.array(dtype=Any),
+    ):
+        e = wp.tid()
+
+        tri = edge_tri_indices[e][0]
+        tri_vidx = tri_vertex_indices[tri]
+        edge_vidx = edge_vertex_indices[e]
+
+        t0 = positions[tri_vidx[0]]
+        t1 = positions[tri_vidx[1]]
+        t2 = positions[tri_vidx[2]]
+        tri_centroid = (t0 + t1 + t2) / t0.dtype(3.0)
+
+        v0 = positions[edge_vidx[0]]
+        v1 = positions[edge_vidx[1]]
+        edge_center = (v1 + v0) / v0.dtype(2.0)
+        edge_vec = v1 - v0
+        edge_normal = Geometry._element_normal(edge_vec)
+
+        if wp.dot(tri_centroid - edge_center, edge_normal) > 0.0:
+            edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
+
+    @wp.kernel
+    def _orient_edges_3d(
+        edge_vertex_indices: wp.array(dtype=wp.vec2i),
+        edge_tri_indices: wp.array(dtype=wp.vec2i),
+        tri_vertex_indices: wp.array2d(dtype=int),
+        positions: wp.array(dtype=Any),
+    ):
+        e = wp.tid()
+
+        tri = edge_tri_indices[e][0]
+        tri_vidx = tri_vertex_indices[tri]
+        edge_vidx = edge_vertex_indices[e]
+
+        t0 = positions[tri_vidx[0]]
+        t1 = positions[tri_vidx[1]]
+        t2 = positions[tri_vidx[2]]
+        tri_centroid = (t0 + t1 + t2) / t0.dtype(3.0)
+        tri_normal = wp.cross(t1 - t0, t2 - t0)
+
+        v0 = positions[edge_vidx[0]]
+        v1 = positions[edge_vidx[1]]
+        edge_center = (v1 + v0) / v0.dtype(2.0)
+        edge_vec = v1 - v0
+        edge_normal = wp.cross(edge_vec, tri_normal)
+
+        if wp.dot(tri_centroid - edge_center, edge_normal) > 0.0:
+            edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
+
+    # -- Device functions --
+
     @wp.func
     def cell_bvh_id(cell_arg: Any):
-        """Return the BVH identifier for the mesh cells."""
         return cell_arg.topology.tri_bvh
 
     @wp.func
     def cell_bounds(cell_arg: Any, cell_index: ElementIndex):
-        """Return the axis-aligned bounds of a cell."""
         p0 = cell_arg.positions[cell_arg.topology.tri_vertex_indices[cell_index, 0]]
         p1 = cell_arg.positions[cell_arg.topology.tri_vertex_indices[cell_index, 1]]
         p2 = cell_arg.positions[cell_arg.topology.tri_vertex_indices[cell_index, 2]]
-
         return wp.min(wp.min(p0, p1), p2), wp.max(wp.max(p0, p1), p2)
 
     @wp.func
-    def cell_position(args: Any, s: Sample):
-        """Return the world position of a cell sample point."""
+    def cell_position(args: Any, s: Any):
         tri_idx = args.topology.tri_vertex_indices[s.element_index]
         return (
             s.element_coords[0] * args.positions[tri_idx[0]]
@@ -415,8 +520,7 @@ class Trimesh(Geometry):
         )
 
     @wp.func
-    def cell_deformation_gradient(args: Any, s: Sample):
-        """Return the deformation gradient for a cell sample."""
+    def cell_deformation_gradient(args: Any, s: Any):
         tri_idx = args.topology.tri_vertex_indices[s.element_index]
         p0 = args.positions[tri_idx[0]]
         p1 = args.positions[tri_idx[1]]
@@ -425,7 +529,6 @@ class Trimesh(Geometry):
 
     @wp.func
     def cell_closest_point(args: Any, tri_index: ElementIndex, pos: Any):
-        """Return the closest point on a cell to a world position."""
         vidx = args.topology.tri_vertex_indices[tri_index]
         p0 = args.positions[vidx[0]]
 
@@ -437,16 +540,14 @@ class Trimesh(Geometry):
         return coords, dist
 
     @wp.func
-    def side_position(args: Any, s: Sample):
-        """Return the world position of a side sample point."""
+    def side_position(args: Any, s: Any):
         edge_idx = args.topology.edge_vertex_indices[s.element_index]
-        return (1.0 - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[0] * args.positions[
-            edge_idx[1]
-        ]
+        return (s.element_coords.dtype(1.0) - s.element_coords[0]) * args.positions[edge_idx[0]] + s.element_coords[
+            0
+        ] * args.positions[edge_idx[1]]
 
     @wp.func
-    def side_deformation_gradient(args: Any, s: Sample):
-        """Return the deformation gradient for a side sample."""
+    def side_deformation_gradient(args: Any, s: Any):
         edge_idx = args.topology.edge_vertex_indices[s.element_index]
         v0 = args.positions[edge_idx[0]]
         v1 = args.positions[edge_idx[1]]
@@ -454,7 +555,6 @@ class Trimesh(Geometry):
 
     @wp.func
     def side_closest_point(args: Any, side_index: ElementIndex, pos: Any):
-        """Return the closest point on a side to a world position."""
         edge_idx = args.topology.edge_vertex_indices[side_index]
         p0 = args.positions[edge_idx[0]]
 
@@ -462,153 +562,39 @@ class Trimesh(Geometry):
         e = args.positions[edge_idx[1]] - p0
 
         dist, t = project_on_seg_at_origin(q, e, wp.length_sq(e))
-        return Coords(t, 0.0, 0.0), dist
+        return make_coords(t), dist
 
     @wp.func
     def side_inner_cell_index(arg: Any, side_index: ElementIndex):
-        """Return the inner cell index for a side."""
         return arg.topology.edge_tri_indices[side_index][0]
 
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
-        """Return the outer cell index for a side."""
         return arg.topology.edge_tri_indices[side_index][1]
 
     @wp.func
-    def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Coords):
-        """Return inner-cell coordinates corresponding to side coordinates."""
+    def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Any):
         inner_cell_index = Trimesh.side_inner_cell_index(args, side_index)
         return Trimesh._edge_to_tri_coords(args.topology, side_index, inner_cell_index, side_coords)
 
     @wp.func
-    def side_outer_cell_coords(args: Any, side_index: ElementIndex, side_coords: Coords):
-        """Return outer-cell coordinates corresponding to side coordinates."""
+    def side_outer_cell_coords(args: Any, side_index: ElementIndex, side_coords: Any):
         outer_cell_index = Trimesh.side_outer_cell_index(args, side_index)
         return Trimesh._edge_to_tri_coords(args.topology, side_index, outer_cell_index, side_coords)
 
     @wp.func
-    def side_from_cell_coords(
-        args: Any,
-        side_index: ElementIndex,
-        tri_index: ElementIndex,
-        tri_coords: Coords,
-    ):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+    def side_from_cell_coords(args: Any, side_index: ElementIndex, tri_index: ElementIndex, tri_coords: Any):
         return Trimesh._tri_to_edge_coords(args.topology, side_index, tri_index, tri_coords)
 
 
-@wp.struct
-class Trimesh2DCellArg:
-    """Arguments for cell-related device functions."""
-
-    topology: TrimeshCellArg
-    positions: wp.array(dtype=wp.vec2)
-
-
-@wp.struct
-class Trimesh2DSideArg:
-    """Arguments for side-related device functions."""
-
-    topology: TrimeshSideArg
-    positions: wp.array(dtype=wp.vec2)
-
-
+# Backward-compat aliases for Trimesh2D/Trimesh3D
 class Trimesh2D(Trimesh):
     """2D Triangular mesh geometry"""
 
-    dimension = 2
-    CellArg = Trimesh2DCellArg
-    SideArg = Trimesh2DSideArg
-
-    @wp.func
-    def side_to_cell_arg(side_arg: SideArg):
-        """Return the cell argument associated with a side argument."""
-        return Trimesh2DCellArg(side_arg.topology.cell_arg, side_arg.positions)
-
-    @wp.kernel
-    def _orient_edges(
-        edge_vertex_indices: wp.array(dtype=wp.vec2i),
-        edge_tri_indices: wp.array(dtype=wp.vec2i),
-        tri_vertex_indices: wp.array2d(dtype=int),
-        positions: wp.array(dtype=wp.vec2),
-    ):
-        e = wp.tid()
-
-        tri = edge_tri_indices[e][0]
-
-        tri_vidx = tri_vertex_indices[tri]
-        edge_vidx = edge_vertex_indices[e]
-
-        tri_centroid = (positions[tri_vidx[0]] + positions[tri_vidx[1]] + positions[tri_vidx[2]]) / 3.0
-
-        v0 = positions[edge_vidx[0]]
-        v1 = positions[edge_vidx[1]]
-
-        edge_center = 0.5 * (v1 + v0)
-        edge_vec = v1 - v0
-        edge_normal = Geometry._element_normal(edge_vec)
-
-        # if edge normal points toward first triangle centroid, flip indices
-        if wp.dot(tri_centroid - edge_center, edge_normal) > 0.0:
-            edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
-
-
-@wp.struct
-class Trimesh3DCellArg:
-    """Arguments for cell-related device functions."""
-
-    topology: TrimeshCellArg
-    positions: wp.array(dtype=wp.vec3)
-
-
-@wp.struct
-class Trimesh3DSideArg:
-    """Arguments for side-related device functions."""
-
-    topology: TrimeshSideArg
-    positions: wp.array(dtype=wp.vec3)
+    pass
 
 
 class Trimesh3D(Trimesh):
     """3D Triangular mesh geometry"""
 
-    dimension = 3
-    CellArg = Trimesh3DCellArg
-    SideArg = Trimesh3DSideArg
-
-    @wp.func
-    def side_to_cell_arg(side_arg: SideArg):
-        """Return the cell argument associated with a side argument."""
-        return Trimesh3DCellArg(side_arg.topology.cell_arg, side_arg.positions)
-
-    @wp.kernel
-    def _orient_edges(
-        edge_vertex_indices: wp.array(dtype=wp.vec2i),
-        edge_tri_indices: wp.array(dtype=wp.vec2i),
-        tri_vertex_indices: wp.array2d(dtype=int),
-        positions: wp.array(dtype=wp.vec3),
-    ):
-        e = wp.tid()
-
-        tri = edge_tri_indices[e][0]
-
-        tri_vidx = tri_vertex_indices[tri]
-        edge_vidx = edge_vertex_indices[e]
-
-        t0 = positions[tri_vidx[0]]
-        t1 = positions[tri_vidx[1]]
-        t2 = positions[tri_vidx[2]]
-
-        tri_centroid = (t0 + t1 + t2) / 3.0
-        tri_normal = wp.cross(t1 - t0, t2 - t0)
-
-        v0 = positions[edge_vidx[0]]
-        v1 = positions[edge_vidx[1]]
-
-        edge_center = 0.5 * (v1 + v0)
-        edge_vec = v1 - v0
-        edge_normal = wp.cross(edge_vec, tri_normal)
-
-        # if edge normal points toward first triangle centroid, flip indices
-        if wp.dot(tri_centroid - edge_center, edge_normal) > 0.0:
-            edge_vertex_indices[e] = wp.vec2i(edge_vidx[1], edge_vidx[0])
+    pass

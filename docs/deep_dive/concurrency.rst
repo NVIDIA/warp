@@ -387,7 +387,7 @@ These attributes are useful for running operations on the CPU while waiting for 
 .. code:: python
 
     @wp.kernel
-    def test_kernel(sum: wp.array(dtype=wp.uint64)):
+    def test_kernel(sum: wp.array[wp.uint64]):
         wp.atomic_add(sum, 0, wp.uint64(1))
 
 

@@ -221,7 +221,7 @@ class Tape:
         """Return the adjoint container for a kernel argument.
 
         For :class:`warp.array` inputs with gradients enabled, this returns
-        :attr:`warp.array.grad` and tracks it in :attr:`warp.Tape.gradients` so it can
+        :attr:`warp.array.grad` and tracks it in ``gradients`` so it can
         be zeroed later. For instances created with :func:`warp.struct`, a mirrored
         struct is created with adjoints for array fields, and nested structs are
         handled recursively. Non-differentiable values are passed through unchanged.

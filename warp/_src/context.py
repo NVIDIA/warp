@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import collections
 import ctypes
 import enum
 import functools
@@ -20,21 +21,20 @@ import platform
 import re
 import shutil
 import sys
+import tempfile
 import threading
 import types
 import weakref
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy as shallowcopy
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Literal,
     NamedTuple,
     TypeVar,
-    Union,
     get_args,
     get_origin,
 )
@@ -451,7 +451,7 @@ class Function:
                 # instantiate this function with the specified argument types
 
                 arg_names = f.input_types.keys()
-                overload_annotations = dict(zip(arg_names, arg_types))
+                overload_annotations = dict(zip(arg_names, arg_types, strict=False))
                 # add defaults
                 for k, d in f.defaults.items():
                     if k not in overload_annotations:
@@ -695,7 +695,7 @@ def call_builtin_from_desc(
     # Try gathering the parameters that the function expects and pack them
     # into their corresponding C types.
     c_params = []
-    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds)):
+    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=False)):
         param = params[i]
 
         if param_kind == BuiltinParamKind.BUILTIN_GENERIC:
@@ -734,7 +734,7 @@ def call_builtin_from_desc(
         return None
 
     value_ctype = tuple(warp._src.types.type_ctype(x) for x in value_type)
-    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret))
+    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=False))
     if len(return_value) == 1:
         return_value = return_value[0]
 
@@ -848,7 +848,7 @@ class Kernel:
                         f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {type_repr(template_types[i])}, got {type_repr(arg_types[i])}"
                     )
 
-        overload_annotations = dict(zip(arg_names, arg_types))
+        overload_annotations = dict(zip(arg_names, arg_types, strict=False))
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
@@ -1046,7 +1046,9 @@ def func_grad(forward_fn):
                 expected_args += [(f"adj_ret_{var.label}", var.type) for var in f.adj.return_var]
             if len(grad_args) != len(expected_args):
                 return False
-            if any(not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args)):
+            if any(
+                not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args, strict=False)
+            ):
                 return False
             return True
 
@@ -1195,7 +1197,7 @@ def grad(func: Callable) -> GradWrapper:
 
 
         @wp.kernel
-        def my_kernel(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+        def my_kernel(x: wp.array[float], grad_x: wp.array[float]):
             tid = wp.tid()
             # Compute d(x*x)/d(x) = 2*x
             grad_x[tid] = wp.grad(square)(x[tid])
@@ -1204,10 +1206,10 @@ def grad(func: Callable) -> GradWrapper:
         # For functions with multiple inputs:
         @wp.kernel
         def kernel2(
-            a: wp.array(dtype=float),
-            b: wp.array(dtype=float),
-            grad_a: wp.array(dtype=float),
-            grad_b: wp.array(dtype=float),
+            a: wp.array[float],
+            b: wp.array[float],
+            grad_a: wp.array[float],
+            grad_b: wp.array[float],
         ):
             tid = wp.tid()
             db, da = wp.grad(wp.atan2)(b[tid], a[tid])
@@ -1235,8 +1237,9 @@ def kernel(
     f: Callable | None = None,
     *,
     enable_backward: bool | None = None,
-    module: Module | Literal["unique"] | str | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
+    module: Module | Literal["unique"] | str | None = None,
+    module_options: dict[str, Any] | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -1246,20 +1249,20 @@ def kernel(
     Example::
 
         @wp.kernel
-        def my_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel(a: wp.array[float], b: wp.array[float]):
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
 
         @wp.kernel(enable_backward=False)
-        def my_kernel_no_backward(a: wp.array(dtype=float, ndim=2), x: float):
+        def my_kernel_no_backward(a: wp.array2d[float], x: float):
             # the backward pass will not be generated
             i, j = wp.tid()
             a[i, j] = x
 
 
         @wp.kernel(module="unique")
-        def my_kernel_unique_module(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel_unique_module(a: wp.array[float], b: wp.array[float]):
             # the kernel will be registered in new unique module created just for this
             # kernel and its dependent functions and structs
             tid = wp.tid()
@@ -1267,36 +1270,61 @@ def kernel(
 
 
         @wp.kernel(launch_bounds=(256, 1))
-        def my_kernel_with_launch_bounds(a: wp.array(dtype=float)):
+        def my_kernel_with_launch_bounds(a: wp.array[float]):
             # CUDA __launch_bounds__ will be set to (256, 1)
             tid = wp.tid()
             a[tid] = a[tid] * 2.0
 
+
+        @wp.kernel(module_options={"fast_math": True}, module="unique")
+        def my_kernel_fast(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+            # fast_math is a module-level option, so module="unique" is required
+            tid = wp.tid()
+            b[tid] = a[tid] + 1.0
+
     Args:
         f: The function to be registered as a kernel.
-        enable_backward: If False, the backward pass will not be generated.
-        module: The :class:`warp._src.context.Module` to which the kernel belongs. Alternatively, if a string `"unique"` is provided, the kernel is assigned to a new module named after the kernel name and hash. If None, the module is inferred from the function's module.
-        launch_bounds: CUDA ``__launch_bounds__`` attribute for the kernel. Can be an int (``maxThreadsPerBlock``) or a tuple of 1-2 ints ``(maxThreadsPerBlock, minBlocksPerMultiprocessor)``. Only applies to CUDA kernels. Note: The ``block_dim`` parameter in :func:`warp.launch` must not exceed the ``maxThreadsPerBlock`` value specified here.
+        enable_backward: If False, the backward pass will not be
+            generated.
+        launch_bounds: CUDA ``__launch_bounds__`` attribute for the
+            kernel. Can be an int (``maxThreadsPerBlock``) or a tuple
+            of 1-2 ints ``(maxThreadsPerBlock,
+            minBlocksPerMultiprocessor)``. Only applies to CUDA
+            kernels. Note: The ``block_dim`` parameter in
+            :func:`warp.launch` must not exceed the
+            ``maxThreadsPerBlock`` value specified here.
+        module: The :class:`warp._src.context.Module` to which the
+            kernel belongs. Alternatively, if a string ``"unique"`` is
+            provided, the kernel is assigned to a new module named
+            after the kernel name and hash. If ``None``, the module is
+            inferred from the function's module.
+        module_options: A dict of module-level compilation options
+            (e.g. ``fast_math``, ``mode``, ``max_unroll``) that are
+            applied to the kernel's module. Requires
+            ``module="unique"``; raises ``ValueError`` otherwise.
+            For shared modules, use :func:`warp.set_module_options`
+            instead. See :func:`warp.set_module_options` for the full
+            list of supported options.
 
     Returns:
         The registered kernel.
     """
 
     def wrapper(f, *args, **kwargs):
-        options = {}
+        kernel_options = {}
 
         if enable_backward is not None:
-            options["enable_backward"] = enable_backward
+            kernel_options["enable_backward"] = enable_backward
 
         if launch_bounds is not None:
-            options["launch_bounds"] = launch_bounds
+            kernel_options["launch_bounds"] = launch_bounds
 
         # Resolve the module for this kernel
         if module is None:
             # Default: infer module from the function's Python module
             m = get_module(f.__module__)
         elif module == "unique":
-            # Create a new temporary module that will be renamed based on hash
+            # Create a new temporary module that will be renamed based on hash.
             m = Module(f.__name__, None)
         elif isinstance(module, str):
             # Look up module by name
@@ -1305,12 +1333,34 @@ def kernel(
             # Use the provided Module object directly
             m = module
 
+        # Apply module_options to the unique module's options dict
+        if module_options is not None:
+            if not isinstance(module_options, dict):
+                raise TypeError(
+                    f"@wp.kernel for '{f.__name__}': module_options must be a dict, "
+                    f"got {type(module_options).__name__}."
+                )
+            if module != "unique":
+                raise ValueError(
+                    f"@wp.kernel for '{f.__name__}': module_options requires module=\"unique\". "
+                    "Use wp.set_module_options() to set module-level options for a shared module."
+                )
+            if module_options:
+                unknown = sorted(set(module_options) - set(m.options))
+                if unknown:
+                    raise ValueError(
+                        f"@wp.kernel for '{f.__name__}': unknown module_options: "
+                        f"{', '.join(repr(k) for k in unknown)}. "
+                        f"Valid options are: {', '.join(repr(k) for k in sorted(m.options))}."
+                    )
+                m.options.update(module_options)
+
         # Create the kernel object and register it with the module
         k = Kernel(
             func=f,
             key=warp._src.codegen.make_full_qualified_name(f),
             module=m,
-            options=options,
+            options=kernel_options,
         )
 
         # Handle unique module case: one module per kernel with hash-based naming.
@@ -1708,7 +1758,7 @@ def add_builtin(
                 typelists.append(l)
 
             for arg_types in itertools.product(*typelists):
-                concrete_arg_types = dict(zip(input_types.keys(), arg_types))
+                concrete_arg_types = dict(zip(input_types.keys(), arg_types, strict=False))
 
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
@@ -1870,14 +1920,24 @@ def get_module(name: str) -> Module:
         return user_modules[name]
 
 
+def _resolve_cpu_compiler_flags(module_flags, config_flags):
+    """Return the effective CPU compiler flags string (never None).
+
+    Resolves ``None`` at the module level to the config value, and ``None``
+    at the config level to ``"-march=native"`` (the default).
+    """
+    flags = module_flags if module_flags is not None else config_flags
+    return flags if flags is not None else "-march=native"
+
+
 # ModuleHasher computes the module hash based on all the kernels, module options,
 # and build configuration.  For each kernel, it computes a deep hash by recursively
 # hashing all referenced functions, structs, and constants, even those defined in
 # other modules.  The module hash is computed in the constructor and can be retrieved
-# using get_module_hash().  In addition, the ModuleHasher takes care of filtering out
+# using get_hash().  In addition, the ModuleHasher takes care of filtering out
 # duplicate kernels for codegen (see get_unique_kernels()).
 class ModuleHasher:
-    def __init__(self, module):
+    def __init__(self, kernels, options):
         # cache function hashes to avoid hashing multiple times
         self.function_hashes = {}  # (function: hash)
 
@@ -1892,7 +1952,7 @@ class ModuleHasher:
 
         # hash all kernels: non-generic kernels are hashed directly,
         # generic kernels are hashed via their instantiated overloads
-        for kernel in module._get_live_kernels():
+        for kernel in kernels:
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
@@ -1918,25 +1978,12 @@ class ModuleHasher:
             ch.update(kernel_hash)
 
         # configuration parameters
-        for opt in sorted(module.options.keys()):
-            s = f"{opt}:{module.options[opt]}"
+        for opt in sorted(options.keys()):
+            s = f"{opt}:{options[opt]}"
             ch.update(bytes(s, "utf-8"))
 
-        # ensure to trigger recompilation if flags affecting kernel compilation are changed
-        if warp.config.verify_fp:
-            ch.update(bytes("verify_fp", "utf-8"))
-
-        # line directives, e.g. for Nsight Compute
-        ch.update(bytes(ctypes.c_int(warp.config.line_directives)))
-
-        # whether to use `assign_copy` instead of `assign_inplace`
-        ch.update(bytes(ctypes.c_int(warp.config.enable_vector_component_overwrites)))
-
-        # build config
-        ch.update(bytes(warp.config.mode, "utf-8"))
-
         # save the module hash
-        self.module_hash = ch.digest()
+        self.hash = ch.digest()
 
     def hash_kernel(self, kernel: Kernel) -> bytes:
         # NOTE: We only hash non-generic kernels, so we don't traverse kernel overloads here.
@@ -2070,8 +2117,8 @@ class ModuleHasher:
         else:
             raise TypeError(f"Invalid constant type: {type(value)}")
 
-    def get_module_hash(self) -> bytes:
-        return self.module_hash
+    def get_hash(self) -> bytes:
+        return self.hash
 
     def get_unique_kernels(self):
         return self.unique_kernels.values()
@@ -2090,7 +2137,7 @@ class ModuleBuilder:
         self.shared_memory_bytes = {}  # map from lto symbol to shared memory requirements
 
         if hasher is None:
-            hasher = ModuleHasher(module)
+            hasher = ModuleHasher(module._get_live_kernels(), options)
 
         # build all unique kernels
         self.kernels = hasher.get_unique_kernels()
@@ -2408,6 +2455,7 @@ class Module:
 
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
         self.hashers = {}
+        self.resolved_options = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
         # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
@@ -2429,6 +2477,7 @@ class Module:
             "cuda_output": None,  # supported values: "ptx", "cubin", or None (automatic)
             "mode": None,
             "optimization_level": None,
+            "cpu_compiler_flags": None,
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
@@ -2444,6 +2493,34 @@ class Module:
 
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
+
+    def resolve_options(self, config) -> dict:
+        """Return a fully-resolved copy of the module options.
+
+        Resolves ``None`` sentinels by falling back to ``config`` values and
+        hardcoded defaults. Also includes global config flags that affect
+        compilation, so downstream consumers never need to read config directly.
+        """
+        options = dict(self.options)
+
+        # Resolve None-means-inherit options
+        if options["mode"] is None:
+            options["mode"] = config.mode
+        if options["optimization_level"] is None:
+            options["optimization_level"] = config.optimization_level
+        # None means "use target-specific default": O2 for CPU, O3 for CUDA.
+        # Resolved at compile time in _compile() so the hash distinguishes
+        # explicit levels from the default.
+        options["cpu_compiler_flags"] = _resolve_cpu_compiler_flags(
+            options["cpu_compiler_flags"], config.cpu_compiler_flags
+        )
+
+        # Fold in global config flags that affect compilation
+        options["verify_fp"] = config.verify_fp
+        options["line_directives"] = config.line_directives
+        options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+
+        return options
 
     def __getattr__(self, name):
         from warp._src.utils import get_deprecated_method  # noqa: PLC0415
@@ -2590,12 +2667,13 @@ class Module:
     def hash_module(self) -> bytes:
         """Get the hash of the module for the current block_dim.
 
-        This function always creates a new `ModuleHasher` instance and computes the hash.
+        This function always creates a new ``ModuleHasher`` and computes the hash.
         """
-        # compute latest hash
         block_dim = self.options["block_dim"]
-        self.hashers[block_dim] = ModuleHasher(self)
-        return self.hashers[block_dim].get_module_hash()
+        options = self.resolve_options(warp.config)
+        self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+        self.resolved_options[block_dim] = options
+        return self.hashers[block_dim].get_hash()
 
     def get_module_hash(self, block_dim: int | None = None) -> bytes:
         """Get the hash of the module for the current block_dim.
@@ -2606,21 +2684,17 @@ class Module:
             block_dim = self.options["block_dim"]
 
         if self.has_unresolved_static_expressions:
-            # The module hash currently does not account for unresolved static expressions
-            # (only static expressions evaluated at declaration time so far).
-            # We need to generate the code for the functions and kernels that have
-            # unresolved static expressions and then compute the module hash again.
-            builder_options = self.options | {"output_arch": None}
-            # build functions, kernels to resolve static expressions
+            options = self.resolve_options(warp.config)
+            builder_options = options | {"output_arch": None}
             _ = ModuleBuilder(self, builder_options)
-
             self.has_unresolved_static_expressions = False
 
-        # compute the hash if needed
         if block_dim not in self.hashers:
-            self.hashers[block_dim] = ModuleHasher(self)
+            options = self.resolve_options(warp.config)
+            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+            self.resolved_options[block_dim] = options
 
-        return self.hashers[block_dim].get_module_hash()
+        return self.hashers[block_dim].get_hash()
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -2706,6 +2780,7 @@ class Module:
         output_name: str | None = None,
         output_arch: int | None = None,
         use_ptx: bool | None = None,
+        options: dict | None = None,
     ) -> bool:
         """Compile this module for a specific device.
 
@@ -2719,16 +2794,26 @@ class Module:
             output_arch: The architecture to compile the module for.
             use_ptx: Whether to compile to PTX instead of CUBIN. If ``None``,
                 auto-determined from the device and architecture.
+            options: Resolved module options dict. If ``None``, resolved from
+                current config.
 
         Returns:
             ``True`` if compilation was performed, ``False`` if a cached
             binary already exists and compilation was skipped.
         """
+        if options is None:
+            options = self.resolve_options(warp.config)
+
         if output_arch is None:
             output_arch = self._get_compile_arch(device)  # Will remain at None if device is CPU
 
+        # output_arch is None for CPU targets, set to a SM architecture for CUDA
+        is_cpu = output_arch is None
+
+        options = options | {"output_arch": output_arch}
+
         # Resolve the arch suffix once for both the output filename and the build call
-        if output_arch:
+        if not is_cpu:
             init()
             arch_suffix = _validate_cuda_arch_suffix(
                 output_arch,
@@ -2761,11 +2846,10 @@ class Module:
             return False
 
         # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-        builder_options = self.options | {"output_arch": output_arch}
         builder = ModuleBuilder(
             self,
-            builder_options,
-            hasher=self.hashers.get(self.options["block_dim"], None),
+            options,
+            hasher=self.hashers.get(options["block_dim"], None),
         )
 
         meta_path = os.path.join(output_dir, self._get_meta_name())
@@ -2775,23 +2859,19 @@ class Module:
         # dir may exist from previous attempts / runs / archs
         Path(build_dir).mkdir(parents=True, exist_ok=True)
 
-        mode = self.options["mode"] if self.options["mode"] is not None else warp.config.mode
-        opt = (
-            self.options["optimization_level"]
-            if self.options["optimization_level"] is not None
-            else warp.config.optimization_level
-        )
-
+        mode = options["mode"]
+        opt = options["optimization_level"]
         if opt is None:
-            opt = 3  # default to full optimization (ignored for debug builds)
+            # Default to O2 for CPU, O3 for CUDA
+            opt = 2 if is_cpu else 3
 
-        if opt != 3 and output_arch and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
+        if opt != 3 and not is_cpu and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             warp._src.utils.warn(
                 "Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True
             )
 
         # build CPU
-        if output_arch is None:
+        if is_cpu:
             # build
             try:
                 source_code_path = os.path.join(build_dir, f"{module_name_short}.cpp")
@@ -2810,9 +2890,15 @@ class Module:
                         output_path,
                         source_code_path,
                         mode=mode,
-                        fast_math=self.options["fast_math"],
-                        verify_fp=warp.config.verify_fp,
-                        fuse_fp=self.options["fuse_fp"],
+                        fast_math=options["fast_math"],
+                        verify_fp=options["verify_fp"],
+                        fuse_fp=options["fuse_fp"],
+                        extra_flags=options["cpu_compiler_flags"],
+                        optimization_level=opt,
+                        verbose=warp.config.verbose,
+                        use_precompiled_headers=warp.config.use_precompiled_headers,
+                        pch_dir=runtime.get_clang_pch_dir() if warp.config.use_precompiled_headers else None,
+                        block_dim=options["block_dim"],
                     )
 
             except Exception as e:
@@ -2838,24 +2924,24 @@ class Module:
 
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
-                    f"Compile CUDA (arch={builder_options['output_arch']}{arch_suffix}, mode={mode}, block_dim={self.options['block_dim']})",
+                    f"Compile CUDA (arch={options['output_arch']}{arch_suffix}, mode={mode}, block_dim={options['block_dim']})",
                     active=warp.config.verbose,
                 ):
                     warp._src.build.build_cuda(
                         source_code_path,
-                        builder_options["output_arch"],
+                        options["output_arch"],
                         output_path,
                         config=mode,
                         optimization_level=opt,
-                        verify_fp=warp.config.verify_fp,
-                        fast_math=self.options["fast_math"],
-                        fuse_fp=self.options["fuse_fp"],
-                        lineinfo=self.options["lineinfo"],
-                        compile_time_trace=self.options["compile_time_trace"],
+                        verify_fp=options["verify_fp"],
+                        fast_math=options["fast_math"],
+                        fuse_fp=options["fuse_fp"],
+                        lineinfo=options["lineinfo"],
+                        compile_time_trace=options["compile_time_trace"],
                         ltoirs=builder.ltoirs.values(),
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
-                        pch_dir=build_dir,
+                        pch_dir=runtime.get_nvrtc_pch_dir(),
                     )
 
             except Exception as e:
@@ -2955,6 +3041,7 @@ class Module:
             return None
 
         module_hash = self.get_module_hash(active_block_dim)
+        options = self.resolved_options[active_block_dim]
 
         # use a unique module path using the module short hash
         module_name_short = self.get_module_identifier(active_block_dim)
@@ -2996,7 +3083,7 @@ class Module:
                 binary_path = os.path.join(module_dir, output_name)
 
                 try:
-                    compiled = self._compile(device, module_dir, output_name, output_arch)
+                    compiled = self._compile(device, module_dir, output_name, output_arch, options=options)
                 except Exception as e:
                     module_load_timer.extra_msg = " (error)"
                     raise e
@@ -3041,6 +3128,7 @@ class Module:
     def mark_modified(self):
         # clear hash data
         self.hashers = {}
+        self.resolved_options = {}
 
         # clear build failures
         self.failed_builds = set()
@@ -3792,7 +3880,7 @@ class Device:
                 If ``None``, falls back to global config or automatic determination.
 
         Returns:
-            The output format to use: ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
+            ``"ptx"``, ``"cubin"``, or ``None`` for CPU devices.
         """
 
         if self.is_cpu:
@@ -3930,7 +4018,7 @@ def _validate_cuda_arch_suffix(
 
 """ Meta-type for arguments that can be resolved to a concrete Device.
 """
-DeviceLike = Union[Device, str, None]
+DeviceLike = Device | str | None
 
 
 class Graph:
@@ -3969,13 +4057,6 @@ class Runtime:
                 "or upgrade to Apple Silicon hardware (ARM64)."
             )
 
-        if sys.version_info < (3, 10):
-            warp._src.utils.warn(
-                f"Support for Python {sys.version_info.major}.{sys.version_info.minor} is deprecated and "
-                "will be removed in Warp 1.13. Please upgrade to Python 3.10 or newer.",
-                DeprecationWarning,
-            )
-
         bin_path = os.path.join(warp_home, "bin")
 
         if os.name == "nt":
@@ -3999,6 +4080,33 @@ class Runtime:
             self.llvm = self.load_dll(llvm_lib)
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
+
+            self.llvm.wp_compile_cpp.argtypes = [
+                ctypes.c_char_p,  # cpp_src
+                ctypes.c_char_p,  # input_file
+                ctypes.c_char_p,  # include_dir
+                ctypes.c_char_p,  # output_file
+                ctypes.c_bool,  # debug
+                ctypes.c_bool,  # verify_fp
+                ctypes.c_bool,  # fuse_fp
+                ctypes.c_bool,  # tiles_in_stack_memory
+                ctypes.POINTER(ctypes.c_char_p),  # extra_flags
+                ctypes.c_int,  # optimization_level
+                ctypes.c_bool,  # verbose
+                ctypes.c_bool,  # use_precompiled_headers
+                ctypes.c_char_p,  # pch_dir
+                ctypes.c_int,  # block_dim
+            ]
+            self.llvm.wp_compile_cpp.restype = ctypes.c_int
+
+            self.llvm.wp_compile_cuda.argtypes = [
+                ctypes.c_char_p,  # cuda_src
+                ctypes.c_char_p,  # input_file
+                ctypes.c_char_p,  # include_dir
+                ctypes.c_char_p,  # output_file
+                ctypes.c_bool,  # debug
+            ]
+            self.llvm.wp_compile_cuda.restype = ctypes.c_int
 
             if hasattr(self.llvm, "wp_llvm_version"):
                 self.llvm.wp_llvm_version.argtypes = []
@@ -4990,6 +5098,15 @@ class Runtime:
             self.core.wp_cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
 
+            self.core.wp_cuda_get_suggested_block_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_int),
+                ctypes.POINTER(ctypes.c_int),
+            ]
+            self.core.wp_cuda_get_suggested_block_size.restype = ctypes.c_bool
+
             self.core.wp_cuda_launch_kernel.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -5071,6 +5188,7 @@ class Runtime:
             ("wp_host_compiler_version", ctypes.c_char_p),
             ("wp_libmathdx_version", ctypes.c_char_p),
             ("wp_nvrtc_version", ctypes.c_int),
+            ("wp_is_cubql_enabled", ctypes.c_int),
             ("wp_is_verify_fp_enabled", ctypes.c_int),
             ("wp_is_fast_math_enabled", ctypes.c_int),
         ]:
@@ -5101,6 +5219,9 @@ class Runtime:
         self.toolkit_version = None  # CTK version used to build the core lib
         self.driver_version = None  # installed driver version
         self.min_driver_version = None  # minimum required driver version
+
+        self._pch_dirs: dict[int, tempfile.TemporaryDirectory] = {}
+        self._pch_dirs_lock = threading.Lock()
 
         self.cuda_devices = []
         self.cuda_primary_devices = []
@@ -5327,6 +5448,38 @@ class Runtime:
                 )
                 msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
                 warp._src.utils.warn("\n   ".join(msg))
+
+    def _get_or_create_pch_dir(self) -> str:
+        """Return a per-thread temporary directory for precompiled header files.
+
+        Both NVRTC (CUDA) and Clang (CPU) precompiled headers share the same
+        directory. Callers are responsible for checking preconditions before
+        calling this method.
+        """
+        tid = threading.get_ident()
+        with self._pch_dirs_lock:
+            if tid not in self._pch_dirs:
+                self._pch_dirs[tid] = tempfile.TemporaryDirectory(prefix="wp_pch_")
+            return self._pch_dirs[tid].name
+
+    def get_nvrtc_pch_dir(self) -> str | None:
+        """Return a per-thread temporary directory for NVRTC precompiled header files.
+
+        Returns ``None`` when CUDA is not enabled or the toolkit version is
+        13.0+ (CUDA 13 manages PCH directories internally).
+        """
+        if self.toolkit_version is None or self.toolkit_version >= (13, 0):
+            return None
+        return self._get_or_create_pch_dir()
+
+    def get_clang_pch_dir(self) -> str | None:
+        """Return a per-thread temporary directory for Clang precompiled header files.
+
+        Returns ``None`` when ``warp-clang`` is not loaded.
+        """
+        if self.llvm is None:
+            return None
+        return self._get_or_create_pch_dir()
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")
@@ -5642,6 +5795,22 @@ def is_cuda_driver_initialized() -> bool:
     init()
 
     return runtime.core.wp_cuda_driver_is_initialized()
+
+
+def is_cubql_available() -> bool:
+    """Check whether the cuBQL BVH backend is available.
+
+    Returns:
+        ``True`` if the native library was compiled with cuBQL support, ``False`` otherwise.
+
+    See Also:
+        :func:`is_cuda_available`
+    """
+    init()
+
+    if hasattr(runtime.core, "wp_is_cubql_enabled"):
+        return bool(runtime.core.wp_is_cubql_enabled())
+    return False
 
 
 def get_cuda_supported_archs() -> list[int]:
@@ -7521,6 +7690,93 @@ def launch_tiled(*args, **kwargs):
     return launch(*args, **kwargs)
 
 
+def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, int]:
+    """Suggest a CUDA block size that maximizes occupancy for a kernel.
+
+    Queries the CUDA driver's occupancy API
+    (``cuOccupancyMaxPotentialBlockSize``) to find the block size that
+    maximizes per-SM occupancy and the minimum number of blocks needed to
+    fully utilize all SMs on the device. The kernel's shared memory
+    requirements are accounted for automatically.
+
+    Because this optimizes per-SM occupancy, the suggested ``block_size``
+    tends to be large. For small launch dimensions, a smaller block size
+    may perform better because it distributes more blocks across SMs.
+    Compare your grid size (``ceil(N / block_size)``) against
+    ``min_grid_size`` to check whether the launch is large enough to
+    benefit from the suggestion.
+
+    For background on CUDA occupancy, see
+    https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html
+
+    Example:
+        Querying and using the launch configuration for a SAXPY kernel::
+
+            @wp.kernel
+            def saxpy(alpha: float, x: wp.array[float], y: wp.array[float]):
+                i = wp.tid()
+                y[i] = alpha * x[i] + y[i]
+
+
+            n = 1000000
+            x = wp.ones(n, dtype=float)
+            y = wp.zeros(n, dtype=float)
+
+            block_size, min_grid_size = wp.get_suggested_block_size(saxpy)
+            wp.launch(saxpy, dim=n, inputs=[2.0, x, y], block_dim=block_size)
+
+    Args:
+        kernel: A :class:`warp.Kernel` object, created with ``@wp.kernel`` or
+            the :class:`warp.Kernel` constructor.
+        device: The target device. If ``None``, uses the current CUDA device.
+            For CPU devices, returns ``(1, 1)``.
+
+    Returns:
+        A tuple ``(block_size, min_grid_size)`` where ``block_size`` is the
+        number of threads per block that maximizes occupancy and
+        ``min_grid_size`` is the minimum number of blocks needed to fully
+        utilize all SMs on the device.
+
+    Raises:
+        TypeError: If ``kernel`` is not a Warp kernel.
+        RuntimeError: If the CUDA occupancy query fails.
+    """
+    init()
+
+    if not isinstance(kernel, Kernel):
+        raise TypeError(f"get_suggested_block_size() expected a wp.Kernel, got {type(kernel)}")
+
+    device = runtime.get_device(device)
+
+    if not device.is_cuda:
+        return (1, 1)
+
+    module = kernel.module
+    module_exec = module.load(device)
+
+    if module_exec is None:
+        raise RuntimeError(f"Failed to load module for kernel '{kernel.key}' on device '{device}'")
+
+    hooks = module_exec.get_kernel_hooks(kernel)
+    if hooks is None or hooks.forward is None:
+        raise RuntimeError(f"Failed to load kernel '{kernel.key}' on device '{device}'")
+
+    block_size = ctypes.c_int(0)
+    min_grid_size = ctypes.c_int(0)
+    success = runtime.core.wp_cuda_get_suggested_block_size(
+        device.context,
+        hooks.forward,
+        hooks.forward_smem_bytes,
+        ctypes.byref(block_size),
+        ctypes.byref(min_grid_size),
+    )
+    if not success:
+        err = runtime.get_error_string()
+        raise RuntimeError(f"CUDA occupancy query failed for kernel '{kernel.key}' on device '{device}': {err}")
+
+    return (block_size.value, min_grid_size.value)
+
+
 def synchronize():
     """Manually synchronize the calling CPU thread with any outstanding CUDA work on all devices
 
@@ -8071,7 +8327,8 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
-    * **optimization_level**: Compiler optimization level, defaults to the value of ``warp.config.optimization_level`` when ``None``.
+    * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
+    * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
@@ -8338,7 +8595,7 @@ condition_host = None
 
 
 def capture_if(
-    condition: warp.array(dtype=int),
+    condition: warp.array[int],
     on_true: Callable | Graph | None = None,
     on_false: Callable | Graph | None = None,
     stream: Stream = None,
@@ -8485,9 +8742,7 @@ def capture_if(
     capture_resume(main_graph, stream=stream)
 
 
-def capture_while(
-    condition: warp.array(dtype=int), while_body: Callable | Graph, stream: Stream | None = None, **kwargs
-):
+def capture_while(condition: warp.array[int], while_body: Callable | Graph, stream: Stream | None = None, **kwargs):
     """Create a dynamic loop based on a condition.
 
     The condition value is retrieved from the first element of the ``condition`` array.
@@ -9231,9 +9486,8 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
-    print("from collections.abc import Sequence", file=file)
+    print("from collections.abc import Callable, Sequence", file=file)
     print("from typing import Any", file=file)
-    print("from typing import Callable", file=file)
     print("from typing import TypeVar", file=file)
     print("from typing import Generic", file=file)
     print("from typing import Literal", file=file)
@@ -9244,11 +9498,12 @@ def export_stubs(file):  # pragma: no cover
     print("import builtins as _builtins", file=file)
     print(file=file)
 
-    # Import type aliases needed for generic class definitions
+    # Import Int/Scalar/Float TypeVars from types.py. Their constraints are defined
+    # so that Int ⊂ Scalar and Float ⊂ Scalar, which lets mypy accept Vector[Int, Any]
+    # and Vector[Float, Any] when Vector is Generic[Scalar, Length].
     print("from warp._src.types import Int as Int", file=file)
-    print("from warp._src.types import Float as Float", file=file)
     print("from warp._src.types import Scalar as Scalar", file=file)
-    print(file=file)
+    print("from warp._src.types import Float as Float", file=file)
 
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
@@ -9322,11 +9577,17 @@ def export_stubs(file):  # pragma: no cover
                 pass  # Keep f.value_type as fallback
         return type_str(return_type)
 
-    def add_builtin_function_stub(f, use_overload=True):
+    def add_builtin_function_stub(f, use_overload=True, type_overrides=None):
         if f.hidden:  # or f.generic:
             return
 
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+        if type_overrides:
+            args = ", ".join(
+                f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(v)}"
+                for k, v in f.input_types.items()
+            )
+        else:
+            args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
         rt_str = get_return_type_str(f)
         return_str = f" -> {rt_str}"
 
@@ -9567,6 +9828,65 @@ def export_stubs(file):  # pragma: no cover
     # =========================================================================
     # Step 5: Generate stubs for non-conflicting builtins
     # =========================================================================
+
+    def _merge_overloads_by_union(overloads):
+        """Merge overloads that differ in only one parameter into a Union type.
+
+        When 3+ overloads share parameter names, return type, and all parameter
+        types except at one position, they are collapsed into a single overload
+        with a ``Union`` at that position.  This prevents mypy
+        ``overload-cannot-match`` errors when ``--follow-imports=silent`` causes
+        imported types to degenerate to ``Any``.
+
+        Returns ``[(function, type_overrides_or_None), ...]``.
+        """
+        if len(overloads) < 3:
+            return [(f, None) for f in overloads]
+
+        # Group overloads by (param_names, return_type)
+        groups = collections.defaultdict(list)
+        for f in overloads:
+            key = (tuple(f.input_types.keys()), get_return_type_str(f))
+            groups[key].append(f)
+
+        merged = set()  # ids of overloads consumed by a merge
+        result = []
+
+        for f in overloads:
+            if id(f) in merged:
+                continue
+
+            key = (tuple(f.input_types.keys()), get_return_type_str(f))
+            group = groups[key]
+
+            if len(group) >= 3:
+                # Find parameter positions where types differ
+                varying = [p for p in f.input_types if len({type_str(g.input_types[p]) for g in group}) > 1]
+                if len(varying) == 1:
+                    vp = varying[0]
+                    union = " | ".join(dict.fromkeys(type_str(g.input_types[vp]) for g in group))
+                    result.append((f, {vp: union}))
+                    merged.update(id(g) for g in group)
+                    continue
+
+            result.append((f, None))
+
+        return result
+
+    # Types considered "generic" for overload sorting — specific types (Vector,
+    # Matrix, etc.) must come before these so mypy doesn't flag them as
+    # unreachable.
+    _generic_types = {
+        warp._src.types.Scalar,
+        warp._src.types.Float,
+        warp._src.types.Int,
+        Any,
+        bool,
+        int,
+        float,
+        str,
+    }
+
     for g in builtin_functions.values():
         # Skip conflicts - already handled above
         if g.key in reexport_only:
@@ -9595,8 +9915,17 @@ def export_stubs(file):  # pragma: no cover
 
             # Otherwise emit separate @overload stubs as usual
             use_overload = len(non_hidden_overloads) > 1
-            for f in non_hidden_overloads:
-                add_builtin_function_stub(f, use_overload=use_overload)
+
+            # Sort specific overloads before generic ones for mypy
+            if use_overload:
+                non_hidden_overloads.sort(key=lambda f: sum(v in _generic_types for v in f.input_types.values()))
+
+            # Merge overloads that differ in only one parameter position
+            stubs = _merge_overloads_by_union(non_hidden_overloads)
+            use_overload = len(stubs) > 1
+
+            for f, type_overrides in stubs:
+                add_builtin_function_stub(f, use_overload=use_overload, type_overrides=type_overrides)
         elif isinstance(g, Function):
             # Single function without overloads - no @overload decorator needed
             add_builtin_function_stub(g, use_overload=False)
@@ -9849,6 +10178,8 @@ def print_diagnostics() -> dict:
     libmathdx_ver = runtime.get_libmathdx_version()
     info["libmathdx"] = libmathdx_ver if libmathdx_ver else None
 
+    info["cubql_enabled"] = _build_flag("cubql")
+
     info["nanovdb"] = runtime.get_nanovdb_version()
     info["host_compiler"] = runtime.get_host_compiler_version()
 
@@ -9916,6 +10247,7 @@ def print_diagnostics() -> dict:
 
     _section("Libraries")
     _field("MathDx:", info["libmathdx"] if info["mathdx_enabled"] and info["libmathdx"] else "not available")
+    _field("cuBQL:", "enabled" if info["cubql_enabled"] else "not available")
     _field("NanoVDB:", info["nanovdb"])
 
     _section("Build")

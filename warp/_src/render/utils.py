@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union
 
 import numpy as np
 
@@ -126,7 +125,7 @@ def solidify_mesh_kernel(
     out_indices[oid + 7, 2] = k1
 
 
-def solidify_mesh(faces: np.ndarray, vertices: np.ndarray, thickness: Union[list, float]):
+def solidify_mesh(faces: np.ndarray, vertices: np.ndarray, thickness: list | float):
     """
     Triangulate mesh around given surface with given thickness.
 

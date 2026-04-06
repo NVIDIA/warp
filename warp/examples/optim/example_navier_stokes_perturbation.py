@@ -321,7 +321,8 @@ class Example:
         # Precompute 1/||k||^2 for spectral Poisson solver
         k = np.fft.fftfreq(N_GRID, d=1.0 / N_GRID)
         kx, ky = np.meshgrid(k, k)
-        k2 = kx**2 + ky**2
+        # Modified wavenumbers for the Poisson equation to make it consistent with 2nd order FD
+        k2 = 2.0 * (1.0 - np.cos(kx * H)) / (H * H) + 2.0 * (1.0 - np.cos(ky * H)) / (H * H)
         inv_k_sq = np.zeros_like(k2)
         nonzero = k2 != 0
         inv_k_sq[nonzero] = 1.0 / k2[nonzero]

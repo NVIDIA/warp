@@ -197,7 +197,6 @@ def test_loop_variadic_ellipsis():
 
 
 # Test for Python 3.10 tuple type compatibility issue
-# Only define these functions on Python 3.9+ where lowercase tuple is supported
 @wp.func
 def complex_tuple_function(scale: float, offset: wp.vec3) -> tuple[float, wp.vec3f, wp.vec3f]:
     """

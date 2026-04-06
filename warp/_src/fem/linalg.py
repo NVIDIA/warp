@@ -167,34 +167,34 @@ def basis_coefficient(val: wp.types.matrix((Any, Any), wp.Scalar), i: int, j: in
 @wp.func
 def symmetric_part(x: Any):
     """Symmetric part of a square tensor."""
-    return 0.5 * (x + wp.transpose(x))
+    return x.dtype(0.5) * (x + wp.transpose(x))
 
 
 @wp.func
-def spherical_part(x: wp.mat22):
+def spherical_part(x: wp.types.matrix((2, 2), wp.Scalar)):
     """Spherical part of a square tensor."""
-    return 0.5 * wp.trace(x) * wp.identity(n=2, dtype=float)
+    return x.dtype(0.5) * wp.trace(x) * wp.identity(n=2, dtype=x.dtype)
 
 
 @wp.func
-def spherical_part(x: wp.mat33):
+def spherical_part(x: wp.types.matrix((3, 3), wp.Scalar)):
     """Spherical part of a square tensor."""
-    return (wp.trace(x) / 3.0) * wp.identity(n=3, dtype=float)
+    return (wp.trace(x) / x.dtype(3.0)) * wp.identity(n=3, dtype=x.dtype)
 
 
 @wp.func
-def skew_part(x: wp.mat22):
+def skew_part(x: wp.types.matrix((2, 2), wp.Scalar)):
     """Skew part of a 2x2 tensor as corresponding rotation angle."""
-    return 0.5 * (x[1, 0] - x[0, 1])
+    return x.dtype(0.5) * (x[1, 0] - x[0, 1])
 
 
 @wp.func
-def skew_part(x: wp.mat33):
+def skew_part(x: wp.types.matrix((3, 3), wp.Scalar)):
     """Skew part of a 3x3 tensor as the corresponding rotation vector."""
-    a = 0.5 * (x[2, 1] - x[1, 2])
-    b = 0.5 * (x[0, 2] - x[2, 0])
-    c = 0.5 * (x[1, 0] - x[0, 1])
-    return wp.vec3(a, b, c)
+    a = x.dtype(0.5) * (x[2, 1] - x[1, 2])
+    b = x.dtype(0.5) * (x[0, 2] - x[2, 0])
+    c = x.dtype(0.5) * (x[1, 0] - x[0, 1])
+    return type(x[0])(a, b, c)
 
 
 @wp.func

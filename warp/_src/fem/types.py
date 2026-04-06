@@ -13,7 +13,41 @@ vec3i = wp.vec3i
 vec4i = wp.vec4i
 
 Coords = wp.vec3
-"""Type representing coordinates within elements."""
+"""Type representing element coordinates at fp32 precision. See also :data:`Coords_f64`."""
+
+Coords_f64 = wp.vec3d
+"""Type representing element coordinates at fp64 precision."""
+
+
+@wp.func
+def make_coords(a: float, b: float, c: float):
+    return Coords(a, b, c)
+
+
+@wp.func
+def make_coords(a: wp.float64, b: wp.float64, c: wp.float64):
+    return Coords_f64(a, b, c)
+
+
+@wp.func
+def make_coords(a: float, b: float):
+    return Coords(a, b, 0.0)
+
+
+@wp.func
+def make_coords(a: wp.float64, b: wp.float64):
+    return Coords_f64(a, b, wp.float64(0.0))
+
+
+@wp.func
+def make_coords(a: float):
+    return Coords(a, 0.0, 0.0)
+
+
+@wp.func
+def make_coords(a: wp.float64):
+    return Coords_f64(a, wp.float64(0.0), wp.float64(0.0))
+
 
 OUTSIDE = -1.0e8
 """Constant indicating an invalid element coordinate."""
@@ -68,6 +102,22 @@ class NodeElementIndex:
     node_index_in_element: int
 
 
+# -- Precision-parameterized Coords and Sample types --
+
+_COORDS_TYPES = {wp.float32: Coords, wp.float64: Coords_f64}
+_SAMPLE_TYPES = {}  # populated after struct definitions below
+
+
+def cached_coords_type(scalar_type):
+    """Return the Coords type for the given scalar precision (``wp.float32`` or ``wp.float64``)."""
+    return _COORDS_TYPES[scalar_type]
+
+
+def cached_sample_type(scalar_type):
+    """Return the Sample struct for the given scalar precision (``wp.float32`` or ``wp.float64``)."""
+    return _SAMPLE_TYPES[scalar_type]
+
+
 @wp.struct
 class Sample:
     """Per-sample point context for evaluating fields and related operators in integrands."""
@@ -86,10 +136,33 @@ class Sample:
     """For bilinear form assembly, index of the trial degree-of-freedom currently being considered."""
 
 
+@wp.struct
+class Sample_f64:
+    """Per-sample point context at fp64 precision. See :class:`Sample`."""
+
+    element_index: ElementIndex
+    element_coords: Coords_f64
+    qp_index: QuadraturePointIndex = NULL_QP_INDEX
+    qp_weight: wp.float64 = 0.0
+    test_dof: DofIndex = NULL_DOF_INDEX
+    trial_dof: DofIndex = NULL_DOF_INDEX
+
+
 @wp.func
 def make_free_sample(element_index: ElementIndex, element_coords: Coords):
     """Return a :class:`Sample` that is not associated to any quadrature point or dof."""
     return Sample(element_index, element_coords, NULL_QP_INDEX, 0.0, NULL_DOF_INDEX, NULL_DOF_INDEX)
+
+
+@wp.func
+def make_free_sample(element_index: ElementIndex, element_coords: Coords_f64):
+    """Return a :class:`Sample_f64` that is not associated to any quadrature point or dof."""
+    return Sample_f64(element_index, element_coords, NULL_QP_INDEX, wp.float64(0.0), NULL_DOF_INDEX, NULL_DOF_INDEX)
+
+
+# Populate lookup tables now that struct definitions exist.
+_SAMPLE_TYPES[wp.float32] = Sample
+_SAMPLE_TYPES[wp.float64] = Sample_f64
 
 
 class Field:

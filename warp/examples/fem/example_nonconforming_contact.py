@@ -17,6 +17,8 @@
 # but more robust methods could be considered (e.g. Augmented Lagrangian)
 ###########################################################################
 
+from typing import Any
+
 import numpy as np
 
 import warp as wp
@@ -25,16 +27,23 @@ import warp.fem as fem
 
 
 @wp.func
-def compute_stress(tau: wp.mat22, E: wp.mat33):
+def compute_stress(tau: Any, E: Any):
     """Strain to stress computation (using Voigt notation to drop tensor order)"""
-    tau_sym = wp.vec3(tau[0, 0], tau[1, 1], tau[0, 1] + tau[1, 0])
+    tau_sym = wp.vector(tau[0, 0], tau[1, 1], tau[0, 1] + tau[1, 0], dtype=tau.dtype)
     sig_sym = E * tau_sym
-    return wp.mat22(sig_sym[0], 0.5 * sig_sym[2], 0.5 * sig_sym[2], sig_sym[1])
+    h = tau.dtype(0.5)
+    return type(tau)(sig_sym[0], h * sig_sym[2], h * sig_sym[2], sig_sym[1])
 
 
 @fem.integrand
 def stress_form(s: fem.Sample, u: fem.Field, tau: fem.Field, E: wp.mat33):
     """Stress inside body:  (E : D(u)) : tau"""
+    return wp.ddot(tau(s), compute_stress(fem.D(u, s), E))
+
+
+@fem.integrand
+def stress_form_fp64(s: fem.Sample, u: fem.Field, tau: fem.Field, E: wp.mat33d):
+    """Stress inside body (fp64):  (E : D(u)) : tau"""
     return wp.ddot(tau(s), compute_stress(fem.D(u, s), E))
 
 
@@ -62,10 +71,11 @@ def symmetric_grad_form(
 @fem.integrand
 def gravity_form(
     s: fem.Sample,
+    domain: fem.Domain,
     v: fem.Field,
     gravity: float,
 ):
-    return -gravity * v(s)[1]
+    return -fem.scalar_type(domain)(gravity) * v(s)[1]
 
 
 @fem.integrand
@@ -77,7 +87,7 @@ def bottom_boundary_projector_form(
 ):
     # non zero on bottom boundary only
     nor = fem.normal(domain, s)
-    return wp.dot(u(s), v(s)) * wp.max(0.0, -nor[1])
+    return wp.dot(u(s), v(s)) * wp.max(fem.scalar_type(domain)(0.0), -nor[1])
 
 
 @fem.integrand
@@ -97,14 +107,25 @@ class Example:
         young_modulus=1.0,
         poisson_ratio=0.5,
         nonconforming_stresses=False,
+        fp64=False,
     ):
-        self._geo1 = fem.Grid2D(bounds_hi=wp.vec2(1.0, 0.5), res=wp.vec2i(resolution))
-        self._geo2 = fem.Grid2D(bounds_lo=(0.33, 0.5), bounds_hi=(0.67, 0.5 + 0.33), res=wp.vec2i(resolution))
+        scalar_type = wp.float64 if fp64 else wp.float32
+        vec2_type = wp.vec2d if fp64 else wp.vec2
+        mat22_type = wp.mat22d if fp64 else wp.mat22
+        mat33_type = wp.mat33d if fp64 else wp.mat33
+
+        self._geo1 = fem.Grid2D(bounds_hi=vec2_type(1.0, 0.5), res=wp.vec2i(resolution), scalar_type=scalar_type)
+        self._geo2 = fem.Grid2D(
+            bounds_lo=vec2_type(0.33, 0.5),
+            bounds_hi=vec2_type(0.67, 0.5 + 0.33),
+            res=wp.vec2i(resolution),
+            scalar_type=scalar_type,
+        )
 
         # Strain-stress matrix
         young = young_modulus
         poisson = poisson_ratio
-        self._elasticity_mat = wp.mat33(
+        self._elasticity_mat = mat33_type(
             young
             / (1.0 - poisson * poisson)
             * np.array(
@@ -118,10 +139,10 @@ class Example:
 
         # Displacement spaces and fields -- S_k
         self._u1_space = fem.make_polynomial_space(
-            self._geo1, degree=degree, dtype=wp.vec2, element_basis=fem.ElementBasis.SERENDIPITY
+            self._geo1, degree=degree, dtype=vec2_type, element_basis=fem.ElementBasis.SERENDIPITY
         )
         self._u2_space = fem.make_polynomial_space(
-            self._geo2, degree=degree, dtype=wp.vec2, element_basis=fem.ElementBasis.SERENDIPITY
+            self._geo2, degree=degree, dtype=vec2_type, element_basis=fem.ElementBasis.SERENDIPITY
         )
         self._u1_field = self._u1_space.make_field()
         self._u2_field = self._u2_space.make_field()
@@ -133,14 +154,14 @@ class Example:
             degree=degree,
             discontinuous=True,
             element_basis=fem.ElementBasis.LAGRANGE,
-            dof_mapper=fem.SymmetricTensorMapper(wp.mat22),
+            dof_mapper=fem.SymmetricTensorMapper(mat22_type),
         )
         self._tau2_space = fem.make_polynomial_space(
             self._geo2,
             degree=degree,
             discontinuous=True,
             element_basis=fem.ElementBasis.LAGRANGE,
-            dof_mapper=fem.SymmetricTensorMapper(wp.mat22),
+            dof_mapper=fem.SymmetricTensorMapper(mat22_type),
         )
 
         self._sig1_field = self._tau1_space.make_field()
@@ -177,6 +198,7 @@ class Example:
         u_space = u_field.space
         stress_space = stress_field.space
         geo = u_field.space.geometry
+        vec2_type = wp.vec2d if geo.scalar_type == wp.float64 else wp.vec2
 
         domain = fem.Cells(geometry=geo)
         boundary = fem.BoundarySides(geometry=geo)
@@ -198,13 +220,15 @@ class Example:
         )
         fem_example_utils.invert_diagonal_bsr_matrix(tau_inv_mass_matrix)
 
+        _stress_form = stress_form_fp64 if geo.scalar_type == wp.float64 else stress_form
+        E = self._elasticity_mat * geo.scalar_type(stiffness)
         stress_matrix = tau_inv_mass_matrix @ fem.integrate(
-            stress_form, fields={"u": u_trial, "tau": tau_test}, values={"E": self._elasticity_mat * stiffness}
+            _stress_form, fields={"u": u_trial, "tau": tau_test}, values={"E": E}
         )
         stiffness_matrix = sym_grad_matrix.transpose() @ stress_matrix
 
         # Right-hand-side
-        u_rhs = fem.integrate(gravity_form, fields={"v": u_test}, values={"gravity": gravity}, output_dtype=wp.vec2d)
+        u_rhs = fem.integrate(gravity_form, fields={"v": u_test}, values={"gravity": gravity}, output_dtype=vec2_type)
 
         # Add boundary stress from other solid field
         other_stress_field = fem.NonconformingField(boundary, other_stress_field)
@@ -257,6 +281,7 @@ if __name__ == "__main__":
     parser.add_argument("--young-modulus", type=float, default=10.0)
     parser.add_argument("--poisson-ratio", type=float, default=0.9)
     parser.add_argument("--num-steps", type=int, default=50)
+    parser.add_argument("--fp64", action="store_true", help="Use fp64 precision.")
     parser.add_argument(
         "--headless",
         action="store_true",
@@ -271,6 +296,7 @@ if __name__ == "__main__":
             resolution=args.resolution,
             young_modulus=args.young_modulus,
             poisson_ratio=args.poisson_ratio,
+            fp64=args.fp64,
         )
 
         for i in range(args.num_steps):

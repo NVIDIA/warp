@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
 import warp as wp
 from warp._src.fem.linalg import array_axpy, symmetric_eigenvalues_qr
@@ -11,7 +11,7 @@ from warp.sparse import BsrMatrix, bsr_assign, bsr_axpy, bsr_block_index, bsr_co
 _wp_module_name_ = "warp.fem.dirichlet"
 
 
-def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None):
+def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: wp.array | None = None):
     """
     Scale projector so that it becomes idempotent, and apply the same scaling to fixed_value if provided
     """
@@ -63,7 +63,7 @@ def normalize_dirichlet_projector(projector_matrix: BsrMatrix, fixed_value: Opti
 
 
 def project_system_rhs(
-    system_matrix: BsrMatrix, system_rhs: wp.array, projector_matrix: BsrMatrix, fixed_value: Optional[wp.array] = None
+    system_matrix: BsrMatrix, system_rhs: wp.array, projector_matrix: BsrMatrix, fixed_value: wp.array | None = None
 ):
     """Projects the right-hand-side of a linear system to enforce Dirichlet boundary conditions
 
@@ -104,7 +104,7 @@ def project_linear_system(
     system_matrix: BsrMatrix,
     system_rhs: wp.array,
     projector_matrix: BsrMatrix,
-    fixed_value: Optional[wp.array] = None,
+    fixed_value: wp.array | None = None,
     normalize_projector=True,
 ):
     """

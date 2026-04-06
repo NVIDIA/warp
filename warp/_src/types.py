@@ -13,11 +13,10 @@ import struct
 import sys
 import types
 import zlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ClassVar,
     Generic,
     Literal,
@@ -711,7 +710,7 @@ def _binary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (a, x)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x, strict=False)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
@@ -739,7 +738,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (x, a)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x, strict=False)))
 
 
 @functools.cache
@@ -874,7 +873,7 @@ def vector(length, dtype):
                     if indices is None:
                         indices = range(*key.indices(self._length_))
 
-                    for idx, x in zip(indices, value):
+                    for idx, x in zip(indices, value, strict=False):
                         try:
                             super().__setitem__(idx, self._type_(x))
                         except TypeError:
@@ -2373,7 +2372,7 @@ def type_repr(t) -> str:
     if is_tuple(t):
         return f"tuple({', '.join(type_repr(x) for x in t.types)})"
     if get_origin(t) is tuple:
-        # Handle Python 3.9+ native tuple[...] syntax
+        # Handle native tuple[...] syntax
         args = get_args(t)
         if args:
             return f"tuple({', '.join(type_repr(x) for x in args)})"
@@ -2399,7 +2398,7 @@ def type_repr(t) -> str:
         return f"vector(length={t._shape_[0]}, dtype={type_repr(t._wp_scalar_type_)})"
     if type_is_matrix(t):
         if sn is not None and t._shape_[0] <= 4 and t._shape_[1] <= 4:
-            return f"mat{t._shape_[0]}{t._shape_[1]}({sn})"
+            return f"mat{t._shape_[0]}{t._shape_[1]}{sn}"
         return f"matrix(shape=({t._shape_[0]}, {t._shape_[1]}), dtype={type_repr(t._wp_scalar_type_)})"
     if t in scalar_types:
         return t.__name__
@@ -2666,7 +2665,7 @@ def types_equal_generic(a, b, match_generic=True):
                 return seq_match_ellipsis(b, a)
 
             return len(a) == len(b) and all(
-                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b)
+                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b, strict=False)
             )
         elif a_is_seq or b_is_seq:
             # A sequence can only match to another sequence.
@@ -2691,7 +2690,7 @@ def types_equal_generic(a, b, match_generic=True):
         if not isinstance(a, type) or not isinstance(b, type):
             return False
 
-        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
             if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
@@ -2864,7 +2863,7 @@ class array(Array[DType, NDim]):
         ``wp.empty()``, ``wp.zeros()``, or ``wp.full()`` instead to create new arrays.
 
         If none of the above arguments are specified, a simple type annotation is constructed.  This is used when annotating
-        kernel arguments or struct members (e.g.,``arr: wp.array(dtype=float)``).  In this case, only ``dtype`` and ``ndim``
+        kernel arguments or struct members (e.g., ``arr: wp.array[float]``).  In this case, only ``dtype`` and ``ndim``
         are taken into account and no memory is allocated for the array.
 
         Args:
@@ -4098,7 +4097,7 @@ class array(Array[DType, NDim]):
         Note: The transpose operation will return an array with a non-contiguous access pattern.
 
         Args:
-            axes (optional): Specifies the how the axes are permuted. If not specified, the axes order will be reversed.
+            axes: Specifies how the axes are permuted. If not specified, the axes order will be reversed.
         """
         # noop if 1d array
         if self.ndim == 1:
@@ -4253,7 +4252,6 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     .. deprecated::
         Use the :class:`array` constructor with a ``ptr`` argument instead.
 
-    For OmniGraph applications, use :func:`from_omni_graph_ptr`.
     To create an array from a C pointer, use the :class:`array` constructor
     with the ``ptr`` argument as a ``uint64`` representing the memory address.
 
@@ -4646,7 +4644,22 @@ class _ArrayAnnotationBase:
         self.ndim = ndim
 
     def __repr__(self):
-        dtype_str = "Any" if self.dtype is Any else self.dtype
+        if self.dtype is Any:
+            dtype_str = "Any"
+        elif hasattr(self.dtype, "key"):
+            # Struct instances use .key instead of __name__
+            dtype_str = self.dtype.key
+        else:
+            name = getattr(self.dtype, "__name__", None)
+            if name and getattr(warp, name, None) is self.dtype:
+                dtype_str = f"wp.{name}"
+            else:
+                # Custom vector/matrix/quaternion/transformation types
+                repr_name = type_repr(self.dtype)
+                if getattr(warp, repr_name, None) is not None:
+                    dtype_str = f"wp.{repr_name}"
+                else:
+                    dtype_str = repr_name
         ndim_str = "Any" if self.ndim is Any else self.ndim
         return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
 
@@ -6025,7 +6038,7 @@ class Volume:
 
         Args:
             min_world: The 3D coordinate of the lower corner of the volume.
-            voxel_size (float or array-like): The size of each voxel in spatial
+            voxel_size: The size of each voxel in spatial
                 coordinates. Can be a scalar for isotropic voxels or a 3-element
                 sequence ``(sx, sy, sz)`` for anisotropic voxels.
             bg_value: Background value
@@ -6126,13 +6139,13 @@ class Volume:
         the resulting tiles will be available in the new volume.
 
         Args:
-            min (array-like): Lower 3D coordinates of the bounding box in index space or world space, inclusive.
-            max (array-like): Upper 3D coordinates of the bounding box in index space or world space, inclusive.
-            voxel_size (float or array-like): Voxel size(s) of the new volume. Can be a scalar for isotropic
+            min: Lower 3D coordinates of the bounding box in index space or world space, inclusive.
+            max: Upper 3D coordinates of the bounding box in index space or world space, inclusive.
+            voxel_size: Voxel size(s) of the new volume. Can be a scalar for isotropic
                 voxels or a 3-element sequence ``(sx, sy, sz)`` for anisotropic voxels.
-            bg_value (float or array-like): Value of unallocated voxels of the volume, also defines the volume's type,
+            bg_value: Value of unallocated voxels of the volume, also defines the volume's type,
               a :class:`warp.vec3` volume is created if this is `array-like`, otherwise a float volume is created
-            translation (array-like): Translation between the index and world spaces.
+            translation: Translation between the index and world spaces.
             device: The CUDA device to create the volume on, e.g.: ``"cuda"`` or ``"cuda:0"``.
         """
         voxel_size = cls._normalize_voxel_size(voxel_size)
@@ -6240,12 +6253,12 @@ class Volume:
               The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
               or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of :class:`warp.vec3f` values), indicating world space positions.
               Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if ``transform`` is given.
-            bg_value (array-like, scalar or None): Value of unallocated voxels of the volume, also defines the volume's type.
+            voxel_size: Voxel size(s) of the new volume. Ignored if ``transform`` is given.
+            bg_value: Value of unallocated voxels of the volume, also defines the volume's type.
               An index volume will be created if ``bg_value`` is ``None``.
               Other supported grid types are ``int``, ``float``, ``vec3f``, and ``vec4f``.
-            translation (array-like): Translation between the index and world spaces.
-            transform (array-like): Linear transform between the index and world spaces.
+            translation: Translation between the index and world spaces.
+            transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
             device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
@@ -6346,9 +6359,9 @@ class Volume:
                 The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
                 or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of :class:`warp.vec3f` values), indicating world space positions.
                 Repeated points per tile are allowed and will be efficiently deduplicated.
-            voxel_size (float or array-like): Voxel size(s) of the new volume. Ignored if ``transform`` is given.
-            translation (array-like): Translation between the index and world spaces.
-            transform (array-like): Linear transform between the index and world spaces.
+            voxel_size: Voxel size(s) of the new volume. Ignored if ``transform`` is given.
+            translation: Translation between the index and world spaces.
+            transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
             device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
@@ -6451,7 +6464,7 @@ class MeshQueryRay:
         normal (vec3f): Face normal.
 
     See Also:
-        :func:`mesh_query_ray`.
+        :func:`mesh_query_ray() <warp._src.lang.mesh_query_ray>`.
     """
 
     from warp._src.codegen import Var as _Var  # noqa: PLC0415
@@ -6618,7 +6631,7 @@ def type_generic_equal(a, b):
     if getattr(a, "_wp_generic_type_hint_", "a") is not getattr(b, "_wp_generic_type_hint_", "b"):
         return False
 
-    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_):
+    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
         if not scalars_equal(p1, p2):
             return False
 

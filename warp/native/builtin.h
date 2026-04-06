@@ -63,8 +63,9 @@
 __device__ inline void __debugbreak() { __brkpt(); }
 #endif
 
-#if defined(__clang__) && defined(__CUDA__)
-// clang compiling CUDA code, host and device (NOTE: Used when building core library with Clang)
+#if defined(__clang__) && defined(__CUDA__) && !defined(WP_NO_CRT)
+// clang compiling CUDA code, host and device (NOTE: Used when building core library with Clang).
+// Excluded for JIT-compiled kernels (WP_NO_CRT) where cuda_crt.h provides __half.
 #include <cuda_fp16.h>
 #endif
 
@@ -345,9 +346,6 @@ inline CUDA_CALLABLE T bit_xor(T a, T b) { return a^b; } \
 inline CUDA_CALLABLE T lshift(T a, T b) { return a<<b; } \
 inline CUDA_CALLABLE T rshift(T a, T b) { return a>>b; } \
 inline CUDA_CALLABLE T invert(T x) { return ~x; } \
-inline CUDA_CALLABLE bool isfinite(T x) { return ::isfinite(double(x)); } \
-inline CUDA_CALLABLE bool isnan(T x) { return ::isnan(double(x)); } \
-inline CUDA_CALLABLE bool isinf(T x) { return ::isinf(double(x)); } \
 inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
@@ -367,10 +365,7 @@ inline CUDA_CALLABLE void adj_bit_or(T a, T b, T& adj_a, T& adj_b, T adj_ret) { 
 inline CUDA_CALLABLE void adj_bit_xor(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_lshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_rshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_invert(T x, T adj_x, T& adj_ret) { } \
-inline CUDA_CALLABLE void adj_isnan(const T&, T&, bool) { } \
-inline CUDA_CALLABLE void adj_isinf(const T&, T&, bool) { } \
-inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
+inline CUDA_CALLABLE void adj_invert(T x, T adj_x, T& adj_ret) { }
 
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
@@ -1877,7 +1872,13 @@ template <typename T> CUDA_CALLABLE inline void adj_atomic_xor(T* buf, T* adj_bu
 // bool and printf are defined outside of the wp namespace in crt.h, hence
 // their adjoint counterparts are also defined in the global namespace.
 template <typename T> CUDA_CALLABLE inline void adj_bool(T, T&, bool) { }
+// Variadic functions are not supported in CUDA device code when compiled with Clang.
+// Since adj_printf is a no-op, we use a template overload to accept and ignore any arguments.
+#if defined(__clang__) && defined(__CUDA__)
+template <typename... Args> inline CUDA_CALLABLE void adj_printf(const char* fmt, Args...) { }
+#else
 inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) { }
+#endif
 
 // clang-format off
 // These includes must remain in this order due to dependencies

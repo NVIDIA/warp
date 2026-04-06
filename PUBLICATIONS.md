@@ -8,6 +8,11 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 ## 2026
 
 - **Discovering neural cohesive zone laws from displacement fields**. *G. Barkoulis Gavris, W. Sun*. April 2026. [DOI:10.1016/j.cma.2026.118733](https://doi.org/10.1016/j.cma.2026.118733)
+- **CReF: Cross-modal and Recurrent Fusion for Depth-conditioned Humanoid Locomotion**. *Y. Hao, R. Yu, S. Luo, G. Zhang, J. Wu, Q. Zhu*. March 2026. [arXiv:2603.29452](https://arxiv.org/abs/2603.29452)
+- **PhySkin: Physics-based Bone-driven Neural Garment Simulation**. *A. Srivastava, H. Chen, R. Goldade, P. Herholz, Z. Jiang, G. W. Lin, L. Yang, N. Sarafianos, T. Stuyck, E. Larionov*. March 2026. [arXiv:2603.27013](https://arxiv.org/abs/2603.27013)
+- **Kamino: GPU-based Massively Parallel Simulation of Multi-Body Systems with Challenging Topologies**. *V. Tsounis, G. Maloisel, C. Schumacher, R. Grandia, A. Serifi, D. Müller, C. Amevor, T. Widmer, M. Bächer*. March 2026. [arXiv:2603.16536](https://arxiv.org/abs/2603.16536)
+- **Physically Accurate Rigid-Body Dynamics in Particle-Based Simulation**. *A. Abderezaei, N. Nechyporenko, J. Miceli, G. Briscoe-Martinez, A. Roncone*. March 2026. [arXiv:2603.14634](https://arxiv.org/abs/2603.14634)
+- **ComFree-Sim: A GPU-Parallelized Analytical Contact Physics Engine for Scalable Contact-Rich Robotics Simulation and Control**. *C. Borse, Z. Xie, W. Huang, W. Jin*. March 2026. [arXiv:2603.12185](https://arxiv.org/abs/2603.12185)
 - **cuRoboV2: Dynamics-Aware Motion Generation with Depth-Fused Distance Fields for High-DoF Robots**. *B. Sundaralingam, A. Murali, S. Birchfield*. March 2026. [arXiv:2603.05493](https://arxiv.org/abs/2603.05493)
 - **GaussTwin: Unified Simulation and Correction with Gaussian Splatting for Robotic Digital Twins**. *Y. Cai, P. Jansonnie, C. de Farias, O. Arenz, J. Peters*. March 2026. [arXiv:2603.05108](https://arxiv.org/abs/2603.05108)
 - **X-Loco: Towards Generalist Humanoid Locomotion Control via Synergetic Policy Distillation**. *D. Wang, X. Wang, C. Zhang, J. Shi, Y. Zhao, C. Bai, X. Li*. March 2026. [arXiv:2603.03733](https://arxiv.org/abs/2603.03733)

@@ -121,6 +121,76 @@ def test_options_opt_level(test, device):
     wp.set_module_options({"optimization_level": None})
 
 
+def test_options_cpu_compiler_flags_generic(test, device):
+    """Compiling with cpu_compiler_flags="" (generic target) should not crash."""
+    if device.is_cuda:
+        return
+
+    old_flags = wp.config.cpu_compiler_flags
+    try:
+        wp.set_module_options({"cpu_compiler_flags": ""})
+
+        x = wp.array([3.0], dtype=float, device=device)
+        y = wp.zeros_like(x)
+        wp.launch(scale, dim=1, inputs=[x, y], device=device)
+        assert y.numpy()[0] == 9.0
+    finally:
+        wp.config.cpu_compiler_flags = old_flags
+        wp.set_module_options({"cpu_compiler_flags": None})
+
+
+def test_options_cpu_compiler_flags_native(test, device):
+    """Compiling with cpu_compiler_flags="-march=native" should not crash."""
+    if device.is_cuda:
+        return
+
+    old_flags = wp.config.cpu_compiler_flags
+    try:
+        wp.set_module_options({"cpu_compiler_flags": "-march=native"})
+
+        x = wp.array([4.0], dtype=float, device=device)
+        y = wp.zeros_like(x)
+        wp.launch(scale, dim=1, inputs=[x, y], device=device)
+        assert y.numpy()[0] == 16.0
+    finally:
+        wp.config.cpu_compiler_flags = old_flags
+        wp.set_module_options({"cpu_compiler_flags": None})
+
+
+def test_options_opt_level_hash(test, device):
+    """Changing warp.config.optimization_level must change the module hash."""
+    module = wp.get_module(__name__)
+
+    # Ensure module option is None so the config value is used
+    old_opt = module.options["optimization_level"]
+    module.options["optimization_level"] = None
+    module.hashers.clear()
+
+    old_config = wp.config.optimization_level
+    try:
+        wp.config.optimization_level = None
+        module.hashers.clear()
+        hash_default = module.get_module_hash()
+
+        wp.config.optimization_level = 2
+        module.hashers.clear()
+        hash_o2 = module.get_module_hash()
+
+        wp.config.optimization_level = 3
+        module.hashers.clear()
+        hash_o3 = module.get_module_hash()
+
+        # None is a distinct sentinel meaning "use target-specific default"
+        # (O2 for CPU, O3 for CUDA), so it must differ from both explicit values.
+        test.assertNotEqual(hash_default, hash_o2, "Hash must differ between None and explicit 2")
+        test.assertNotEqual(hash_default, hash_o3, "Hash must differ between None and explicit 3")
+        test.assertNotEqual(hash_o2, hash_o3, "Hash must differ between optimization levels 2 and 3")
+    finally:
+        wp.config.optimization_level = old_config
+        module.options["optimization_level"] = old_opt
+        module.hashers.clear()
+
+
 devices = get_test_devices()
 
 
@@ -184,6 +254,13 @@ add_function_test(TestOptions, "test_options_backward_2", test_options_backward_
 add_function_test(TestOptions, "test_options_backward_3", test_options_backward_3, devices=devices)
 add_function_test(TestOptions, "test_options_backward_4", test_options_backward_4, devices=devices)
 add_function_test(TestOptions, "test_options_opt_level", test_options_opt_level, devices=devices, check_output=False)
+add_function_test(
+    TestOptions, "test_options_cpu_compiler_flags_generic", test_options_cpu_compiler_flags_generic, devices=devices
+)
+add_function_test(
+    TestOptions, "test_options_cpu_compiler_flags_native", test_options_cpu_compiler_flags_native, devices=devices
+)
+add_function_test(TestOptions, "test_options_opt_level_hash", test_options_opt_level_hash, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

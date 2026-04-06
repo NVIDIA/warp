@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
+
+import numpy as np
 
 import warp as wp
 from warp._src.context import capture_pause, capture_resume
@@ -11,7 +13,7 @@ from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.geometry import Element
 from warp._src.fem.space.function_space import BasisSpace, FunctionSpace
 from warp._src.fem.space.partition import SpacePartition, WholeSpacePartition
-from warp._src.fem.types import NULL_ELEMENT_INDEX, Coords, ElementIndex, QuadraturePointIndex
+from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementIndex, QuadraturePointIndex, cached_coords_type
 
 from ..polynomial import Polynomial
 
@@ -262,26 +264,25 @@ class _QuadratureWithRegularEvaluationPoints(Quadrature):
 class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
     """Regular quadrature formula, using a constant set of quadrature points per element."""
 
-    @wp.struct
-    class Arg:
-        """Structure containing arguments to be passed to device functions."""
-
-        # Quadrature points and weights used to be passed as Warp constants,
-        # but this tended to incur register spilling for high point counts
-        points: wp.array(dtype=Coords)
-        weights: wp.array(dtype=float)
-
     # Cache common formulas so we do dot have to do h2d transfer for each call
     class CachedFormula:
         _cache: ClassVar = {}
 
-        def __init__(self, element: Element, order: int, family: Polynomial):
-            self.points, self.weights = element.prototype.instantiate_quadrature(order, family)
-            self.count = wp.constant(len(self.points))
+        def __init__(self, element: Element, order: int, family: Polynomial, scalar_type: type):
+            raw_points, raw_weights = element.prototype.instantiate_quadrature(order, family)
+
+            self._scalar_type = scalar_type
+            self._coords_type = cached_coords_type(scalar_type)
+
+            self.ArgType = self._make_arg()
+
+            self.points = np.array([self._coords_type(*p) for p in raw_points])
+            self.weights = np.array([self._scalar_type(w) for w in raw_weights])
+            self.count = wp.constant(len(raw_points))
 
         @cache.cached_arg_value
         def arg_value(self, device):
-            arg = RegularQuadrature.Arg()
+            arg = self.ArgType()
 
             # pause graph capture while we copy from host
             # we want the cached result to be available outside of the graph
@@ -290,25 +291,37 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
             else:
                 graph = None
 
-            arg.points = wp.array(self.points, device=device, dtype=Coords)
-            arg.weights = wp.array(self.weights, device=device, dtype=float)
+            arg.points = wp.array(self.points, device=device, dtype=self._coords_type)
+            arg.weights = wp.array(self.weights, device=device, dtype=self._scalar_type)
 
             if graph is not None:
                 capture_resume(graph)
             return arg
 
-        def fill_arg(self, arg: "RegularQuadrature.Arg", device):
+        def fill_arg(self, arg, device):
             arg.assign(self.arg_value(device))
 
         @staticmethod
-        def get(element: Element, order: int, family: Polynomial):
-            key = (element.value, order, family)
+        def get(element: Element, order: int, family: Polynomial, scalar_type: type):
+            key = (element.value, order, family, scalar_type)
             try:
                 return RegularQuadrature.CachedFormula._cache[key]
             except KeyError:
-                quadrature = RegularQuadrature.CachedFormula(element, order, family)
+                quadrature = RegularQuadrature.CachedFormula(element, order, family, scalar_type)
                 RegularQuadrature.CachedFormula._cache[key] = quadrature
                 return quadrature
+
+        def _make_arg(self):
+            @cache.dynamic_struct(suffix=self._scalar_type)
+            class Arg:
+                """Structure containing arguments to be passed to device functions."""
+
+                # Quadrature points and weights used to be passed as Warp constants,
+                # but this tended to incur register spilling for high point counts
+                points: wp.array(dtype=self._coords_type)
+                weights: wp.array(dtype=self._scalar_type)
+
+            return Arg
 
     _dynamic_attribute_constructors: ClassVar = {
         "point_count": lambda obj: obj._make_point_count(),
@@ -323,9 +336,13 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
         order: int,
         family: Polynomial = None,
     ):
-        self._formula = RegularQuadrature.CachedFormula.get(domain.reference_element(), order, family)
+        scalar_type = domain.geometry.scalar_type
+        self._formula = RegularQuadrature.CachedFormula.get(domain.reference_element(), order, family, scalar_type)
         self.family = family
         self.order = order
+
+        self.Arg = self._formula.ArgType
+        self._scalar_type = scalar_type
 
         super().__init__(domain, self._formula.count)
 
@@ -354,7 +371,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
         """Quadrature weights for the reference element."""
         return self._formula.weights
 
-    def fill_arg(self, arg: "RegularQuadrature.Arg", device):
+    def fill_arg(self, arg, device):
         """Fill the quadrature argument structure for device functions."""
         self._formula.fill_arg(arg, device)
 
@@ -430,10 +447,10 @@ class NodalQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     def __init__(
         self,
-        domain: Optional[GeometryDomain],
-        space: Optional[FunctionSpace] = None,
-        basis_space: Optional[BasisSpace] = None,
-        space_partition: Optional[SpacePartition] = None,
+        domain: GeometryDomain | None,
+        space: FunctionSpace | None = None,
+        basis_space: BasisSpace | None = None,
+        space_partition: SpacePartition | None = None,
     ):
         if basis_space is None:
             if space is None:
@@ -553,30 +570,39 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     """
 
     @wp.struct
-    class Arg:
-        """Structure containing arguments to be passed to device functions."""
+    class _Arg_f32:
+        points: wp.array2d(dtype=wp.vec3)
+        weights: wp.array2d(dtype=wp.float32)
 
-        points_per_cell: int
-        points: wp.array2d(dtype=Coords)
-        weights: wp.array2d(dtype=float)
+    @wp.struct
+    class _Arg_f64:
+        points: wp.array2d(dtype=wp.vec3d)
+        weights: wp.array2d(dtype=wp.float64)
 
     def __init__(
         self,
         domain: GeometryDomain,
-        points: "wp.array2d(dtype=Coords)",
-        weights: "wp.array2d(dtype=float)",
+        points: "wp.array2d",
+        weights: "wp.array2d",
     ):
         if points.shape != weights.shape:
             raise ValueError("Points and weights arrays must have the same shape")
+
+        # Generate precision-appropriate Arg struct based on the domain's geometry
+        scalar_type = domain.geometry.scalar_type
+        self._scalar_type = scalar_type
+        self.Arg = ExplicitQuadrature._Arg_f32 if scalar_type == wp.float32 else ExplicitQuadrature._Arg_f64
 
         if points.shape[0] == domain.geometry_element_count():
             self.point_index = ExplicitQuadrature._point_index_geo
             self.point_coords = ExplicitQuadrature._point_coords_geo
             self.point_weight = ExplicitQuadrature._point_weight_geo
+            self._whole_geo = True
         elif points.shape[0] == domain.element_count():
             self.point_index = ExplicitQuadrature._point_index_domain
             self.point_coords = ExplicitQuadrature._point_coords_domain
             self.point_weight = ExplicitQuadrature._point_weight_domain
+            self._whole_geo = False
         else:
             raise NotImplementedError(
                 "The number of rows of points and weights must match the element count of either the domain or the geometry"
@@ -584,16 +610,15 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
 
         self._points_per_cell = points.shape[1]
 
-        self._whole_geo = points.shape[0] == domain.geometry_element_count()
-
         super().__init__(domain, self._points_per_cell)
+
         self._points = points
         self._weights = weights
 
     @cached_property
     def name(self):
         """Unique name of the quadrature rule."""
-        return f"{self.__class__.__name__}_{self._whole_geo}_{self._points_per_cell}"
+        return f"{self.__class__.__name__}_{self._scalar_type.__name__}_{self._whole_geo}_{self._EVALUATION_POINTS_PER_ELEMENT}"
 
     def total_point_count(self):
         """Total number of quadrature points."""
@@ -605,14 +630,13 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
 
     def fill_arg(self, arg: "ExplicitQuadrature.Arg", device):
         """Fill the quadrature argument structure for device functions."""
-        arg.points_per_cell = self._points_per_cell
         arg.points = self._points.to(device)
         arg.weights = self._weights.to(device)
 
     @wp.func
     def point_count(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
     ):
@@ -622,7 +646,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     @wp.func
     def _point_coords_domain(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
         qp_index: int,
@@ -633,7 +657,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     @wp.func
     def _point_weight_domain(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
         qp_index: int,
@@ -644,18 +668,18 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     @wp.func
     def _point_index_domain(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
         qp_index: int,
     ):
         """Return quadrature point indices for a domain element."""
-        return qp_arg.points_per_cell * domain_element_index + qp_index
+        return qp_arg.points.shape[1] * domain_element_index + qp_index
 
     @wp.func
     def _point_coords_geo(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
         qp_index: int,
@@ -666,7 +690,7 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     @wp.func
     def _point_weight_geo(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
         qp_index: int,
@@ -677,10 +701,10 @@ class ExplicitQuadrature(_QuadratureWithRegularEvaluationPoints):
     @wp.func
     def _point_index_geo(
         elt_arg: Any,
-        qp_arg: Arg,
+        qp_arg: Any,
         domain_element_index: ElementIndex,
         element_index: ElementIndex,
         qp_index: int,
     ):
         """Return quadrature point indices for a geometry element."""
-        return qp_arg.points_per_cell * element_index + qp_index
+        return qp_arg.points.shape[1] * element_index + qp_index

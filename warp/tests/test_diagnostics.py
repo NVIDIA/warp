@@ -38,6 +38,7 @@ class TestDiagnostics(unittest.TestCase):
             "cuda_compatibility",
             "mathdx_enabled",
             "libmathdx",
+            "cubql_enabled",
             "nanovdb",
             "host_compiler",
             "debug",
@@ -63,6 +64,10 @@ class TestDiagnostics(unittest.TestCase):
         self.assertIsInstance(info["debug"], bool)
         self.assertIsInstance(info["verify_fp"], bool)
         self.assertIsInstance(info["fast_math"], bool)
+
+    def test_print_diagnostics_cubql_enabled(self):
+        info = wp.print_diagnostics()
+        self.assertIsInstance(info["cubql_enabled"], bool)
 
     def test_print_diagnostics_devices(self):
         info = wp.print_diagnostics()

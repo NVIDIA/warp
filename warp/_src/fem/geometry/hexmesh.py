@@ -1,16 +1,23 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
+from typing import Any, ClassVar
 
 import warp as wp
+from warp._src.fem import cache
 from warp._src.fem.cache import (
     TemporaryStore,
     borrow_temporary,
     borrow_temporary_like,
+    cached_vec_type,
 )
-from warp._src.fem.types import OUTSIDE, Coords, ElementIndex, Sample
+from warp._src.fem.types import (
+    OUTSIDE,
+    Coords,
+    ElementIndex,
+)
 from warp._src.fem.utils import compress_node_indices, host_read_at_index, masked_indices
+from warp._src.types import type_scalar_type
 from warp._src.utils import array_scan
 
 from .element import Element
@@ -19,10 +26,12 @@ from .geometry import Geometry
 _wp_module_name_ = "warp.fem.geometry.hexmesh"
 
 
+# Topology-only Arg structs (no position data, shared across precisions)
 @wp.struct
 class HexmeshCellArg:
+    """Arguments for cell topology device functions."""
+
     hex_vertex_indices: wp.array2d(dtype=int)
-    positions: wp.array(dtype=wp.vec3)
 
     # for global cell lookup
     hex_bvh: wp.uint64
@@ -30,10 +39,34 @@ class HexmeshCellArg:
 
 @wp.struct
 class HexmeshSideArg:
+    """Arguments for side topology device functions."""
+
     cell_arg: HexmeshCellArg
     face_vertex_indices: wp.array(dtype=wp.vec4i)
     face_hex_indices: wp.array(dtype=wp.vec2i)
     face_hex_face_orientation: wp.array(dtype=wp.vec4i)
+
+
+def _make_hexmesh_cell_arg(topo_type, pos_vec_type):
+    """Generate a CellArg struct for the given position vector type."""
+
+    @cache.dynamic_struct(suffix=type_scalar_type(pos_vec_type))
+    class _CellArg:
+        topology: topo_type
+        positions: wp.array(dtype=pos_vec_type)
+
+    return _CellArg
+
+
+def _make_hexmesh_side_arg(topo_type, pos_vec_type):
+    """Generate a SideArg struct for the given position vector type."""
+
+    @cache.dynamic_struct(suffix=type_scalar_type(pos_vec_type))
+    class _SideArg:
+        topology: topo_type
+        positions: wp.array(dtype=pos_vec_type)
+
+    return _SideArg
 
 
 FACE_VERTEX_INDICES = wp.constant(
@@ -120,13 +153,25 @@ class Hexmesh(Geometry):
 
     dimension = 3
 
+    # Class-level defaults (overridden per-instance in __init__)
+    CellArg = HexmeshCellArg
+    SideArg = HexmeshSideArg
+
+    _dynamic_attribute_constructors: ClassVar = {
+        # Hexmesh-specific functions that require closures (instance branching or struct construction)
+        "cell_position": lambda obj: obj._make_hex_cell_position(),
+        "cell_deformation_gradient": lambda obj: obj._make_hex_cell_deformation_gradient(),
+        "side_to_cell_arg": lambda obj: obj._make_hex_side_to_cell_arg(),
+        **Geometry._dynamic_attribute_constructors,
+    }
+
     def __init__(
         self,
         hex_vertex_indices: wp.array,
         positions: wp.array,
         assume_parallelepiped_cells=False,
         build_bvh: bool = False,
-        temporary_store: Optional[TemporaryStore] = None,
+        temporary_store: TemporaryStore | None = None,
     ):
         """Construct a hexahedral mesh.
 
@@ -135,13 +180,21 @@ class Hexmesh(Geometry):
                 following standard ordering (bottom face vertices in counter-clockwise order, then similarly for upper face)
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
             assume_parallelepiped: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
-            build_bvh: Whether to also build the hex BVH, which is necessary for the global `fem.lookup` operator
+            build_bvh: Whether to also build the hex BVH, which is necessary for the global ``fem.lookup`` operator
             temporary_store: shared pool from which to allocate temporary arrays
         """
 
         self.hex_vertex_indices = hex_vertex_indices
         self.positions = positions
         self.parallelepiped_cells = assume_parallelepiped_cells
+
+        # Infer scalar type from position array dtype
+        self._scalar_type = type_scalar_type(positions.dtype)
+
+        # Generate precision-appropriate Arg structs
+        pos_vec = cached_vec_type(3, self._scalar_type)
+        self.CellArg = _make_hexmesh_cell_arg(HexmeshCellArg, pos_vec)
+        self.SideArg = _make_hexmesh_side_arg(HexmeshSideArg, pos_vec)
 
         self._face_vertex_indices: wp.array = None
         self._face_hex_indices: wp.array = None
@@ -152,18 +205,8 @@ class Hexmesh(Geometry):
         self._edge_count = 0
         self._build_topology(temporary_store)
 
-        # Use cheaper variants if we know that cells are parallelepipeds (i.e. linearly transformed)
-        # (Cells only, not as much difference for sides)
-        self.cell_position = (
-            self._cell_position_parallelepiped if assume_parallelepiped_cells else self._cell_position_generic
-        )
-        self.cell_deformation_gradient = (
-            self._cell_deformation_gradient_parallelepiped
-            if assume_parallelepiped_cells
-            else self._cell_deformation_gradient_generic
-        )
-
-        self._make_default_dependent_implementations()
+        # Process all dynamic attributes (Hexmesh primitives + Geometry dependents)
+        cache.setup_dynamic_attributes(self)
         self.cell_coordinates = self._make_cell_coordinates(assume_linear=assume_parallelepiped_cells)
         self.side_coordinates = self._make_side_coordinates(assume_linear=assume_parallelepiped_cells)
         self.cell_closest_point = self._make_cell_closest_point(assume_linear=assume_parallelepiped_cells)
@@ -171,6 +214,10 @@ class Hexmesh(Geometry):
 
         if build_bvh:
             self.build_bvh(self.positions.device)
+
+    @property
+    def scalar_type(self):
+        return self._scalar_type
 
     def cell_count(self):
         """Number of cells in the mesh."""
@@ -219,89 +266,33 @@ class Hexmesh(Geometry):
         """Vertex indices for each face."""
         return self._face_vertex_indices
 
-    CellArg = HexmeshCellArg
-    SideArg = HexmeshSideArg
-
     @wp.struct
     class SideIndexArg:
         """Arguments for side-index device functions."""
 
         boundary_face_indices: wp.array(dtype=int)
 
-    # Geometry device interface
+    # Geometry device interface — topology fill helpers
 
-    def fill_cell_arg(self, args: CellArg, device):
-        """Fill the arguments to be passed to cell-related device functions."""
+    def _fill_cell_topo_arg(self, args: HexmeshCellArg, device):
         args.hex_vertex_indices = self.hex_vertex_indices.to(device)
-        args.positions = self.positions.to(device)
         args.hex_bvh = self.bvh_id(device)
 
-    @wp.func
-    def _cell_position_generic(args: CellArg, s: Sample):
-        hex_idx = args.hex_vertex_indices[s.element_index]
+    def _fill_side_topo_arg(self, args: HexmeshSideArg, device):
+        self._fill_cell_topo_arg(args.cell_arg, device)
+        args.face_vertex_indices = self._face_vertex_indices.to(device)
+        args.face_hex_indices = self._face_hex_indices.to(device)
+        args.face_hex_face_orientation = self._face_hex_face_orientation.to(device)
 
-        w_p = s.element_coords
-        w_m = Coords(1.0) - s.element_coords
+    def fill_cell_arg(self, args, device):
+        """Fill the arguments to be passed to cell-related device functions."""
+        self._fill_cell_topo_arg(args.topology, device)
+        args.positions = self.positions.to(device)
 
-        # 0 : m m m
-        # 1 : p m m
-        # 2 : p p m
-        # 3 : m p m
-        # 4 : m m p
-        # 5 : p m p
-        # 6 : p p p
-        # 7 : m p p
-
-        return (
-            w_m[0] * w_m[1] * w_m[2] * args.positions[hex_idx[0]]
-            + w_p[0] * w_m[1] * w_m[2] * args.positions[hex_idx[1]]
-            + w_p[0] * w_p[1] * w_m[2] * args.positions[hex_idx[2]]
-            + w_m[0] * w_p[1] * w_m[2] * args.positions[hex_idx[3]]
-            + w_m[0] * w_m[1] * w_p[2] * args.positions[hex_idx[4]]
-            + w_p[0] * w_m[1] * w_p[2] * args.positions[hex_idx[5]]
-            + w_p[0] * w_p[1] * w_p[2] * args.positions[hex_idx[6]]
-            + w_m[0] * w_p[1] * w_p[2] * args.positions[hex_idx[7]]
-        )
-
-    @wp.func
-    def _cell_position_parallelepiped(args: CellArg, s: Sample):
-        hex_idx = args.hex_vertex_indices[s.element_index]
-        w = s.element_coords
-        p0 = args.positions[hex_idx[0]]
-        p1 = args.positions[hex_idx[1]]
-        p2 = args.positions[hex_idx[3]]
-        p3 = args.positions[hex_idx[4]]
-        return w[0] * p1 + w[1] * p2 + w[2] * p3 + (1.0 - w[0] - w[1] - w[2]) * p0
-
-    @wp.func
-    def _cell_deformation_gradient_generic(cell_arg: CellArg, s: Sample):
-        """Deformation gradient at `coords`"""
-        hex_idx = cell_arg.hex_vertex_indices[s.element_index]
-
-        w_p = s.element_coords
-        w_m = Coords(1.0) - s.element_coords
-
-        return (
-            wp.outer(cell_arg.positions[hex_idx[0]], wp.vec3(-w_m[1] * w_m[2], -w_m[0] * w_m[2], -w_m[0] * w_m[1]))
-            + wp.outer(cell_arg.positions[hex_idx[1]], wp.vec3(w_m[1] * w_m[2], -w_p[0] * w_m[2], -w_p[0] * w_m[1]))
-            + wp.outer(cell_arg.positions[hex_idx[2]], wp.vec3(w_p[1] * w_m[2], w_p[0] * w_m[2], -w_p[0] * w_p[1]))
-            + wp.outer(cell_arg.positions[hex_idx[3]], wp.vec3(-w_p[1] * w_m[2], w_m[0] * w_m[2], -w_m[0] * w_p[1]))
-            + wp.outer(cell_arg.positions[hex_idx[4]], wp.vec3(-w_m[1] * w_p[2], -w_m[0] * w_p[2], w_m[0] * w_m[1]))
-            + wp.outer(cell_arg.positions[hex_idx[5]], wp.vec3(w_m[1] * w_p[2], -w_p[0] * w_p[2], w_p[0] * w_m[1]))
-            + wp.outer(cell_arg.positions[hex_idx[6]], wp.vec3(w_p[1] * w_p[2], w_p[0] * w_p[2], w_p[0] * w_p[1]))
-            + wp.outer(cell_arg.positions[hex_idx[7]], wp.vec3(-w_p[1] * w_p[2], w_m[0] * w_p[2], w_m[0] * w_p[1]))
-        )
-
-    @wp.func
-    def _cell_deformation_gradient_parallelepiped(cell_arg: CellArg, s: Sample):
-        """Deformation gradient at `coords`"""
-        hex_idx = cell_arg.hex_vertex_indices[s.element_index]
-
-        p0 = cell_arg.positions[hex_idx[0]]
-        p1 = cell_arg.positions[hex_idx[1]]
-        p2 = cell_arg.positions[hex_idx[3]]
-        p3 = cell_arg.positions[hex_idx[4]]
-        return wp.matrix_from_cols(p1 - p0, p2 - p0, p3 - p0)
+    def fill_side_arg(self, args, device):
+        """Fill the arguments to be passed to side-related device functions."""
+        self._fill_side_topo_arg(args.topology, device)
+        args.positions = self.positions.to(device)
 
     def fill_side_index_arg(self, args: SideIndexArg, device):
         """Fill the arguments to be passed to side-index device functions."""
@@ -313,83 +304,192 @@ class Hexmesh(Geometry):
 
         return args.boundary_face_indices[boundary_side_index]
 
-    def fill_side_arg(self, args: SideArg, device):
-        """Fill the arguments to be passed to side-related device functions."""
-        self.fill_cell_arg(args.cell_arg, device)
-        args.face_vertex_indices = self._face_vertex_indices.to(device)
-        args.face_hex_indices = self._face_hex_indices.to(device)
-        args.face_hex_face_orientation = self._face_hex_face_orientation.to(device)
+    # -- Dynamic device function constructors --
+
+    def _make_hex_cell_position(self):
+        SampleType = self.sample_type
+        CoordsType = self.coords_type
+
+        if self.parallelepiped_cells:
+
+            @cache.dynamic_func(suffix=self.name)
+            def cell_position(args: self.CellArg, s: SampleType):
+                hex_idx = args.topology.hex_vertex_indices[s.element_index]
+                w = s.element_coords
+                p0 = args.positions[hex_idx[0]]
+                p1 = args.positions[hex_idx[1]]
+                p2 = args.positions[hex_idx[3]]
+                p3 = args.positions[hex_idx[4]]
+                return w[0] * p1 + w[1] * p2 + w[2] * p3 + (s.element_coords.dtype(1.0) - w[0] - w[1] - w[2]) * p0
+
+        else:
+
+            @cache.dynamic_func(suffix=self.name)
+            def cell_position(args: self.CellArg, s: SampleType):
+                hex_idx = args.topology.hex_vertex_indices[s.element_index]
+
+                w_p = s.element_coords
+                w_m = CoordsType(s.element_coords.dtype(1.0)) - s.element_coords
+
+                # 0 : m m m
+                # 1 : p m m
+                # 2 : p p m
+                # 3 : m p m
+                # 4 : m m p
+                # 5 : p m p
+                # 6 : p p p
+                # 7 : m p p
+
+                return (
+                    w_m[0] * w_m[1] * w_m[2] * args.positions[hex_idx[0]]
+                    + w_p[0] * w_m[1] * w_m[2] * args.positions[hex_idx[1]]
+                    + w_p[0] * w_p[1] * w_m[2] * args.positions[hex_idx[2]]
+                    + w_m[0] * w_p[1] * w_m[2] * args.positions[hex_idx[3]]
+                    + w_m[0] * w_m[1] * w_p[2] * args.positions[hex_idx[4]]
+                    + w_p[0] * w_m[1] * w_p[2] * args.positions[hex_idx[5]]
+                    + w_p[0] * w_p[1] * w_p[2] * args.positions[hex_idx[6]]
+                    + w_m[0] * w_p[1] * w_p[2] * args.positions[hex_idx[7]]
+                )
+
+        return cell_position
+
+    def _make_hex_cell_deformation_gradient(self):
+        SampleType = self.sample_type
+        CoordsType = self.coords_type
+        vec3_type = cached_vec_type(3, self._scalar_type)
+
+        if self.parallelepiped_cells:
+
+            @cache.dynamic_func(suffix=self.name)
+            def cell_deformation_gradient(cell_arg: self.CellArg, s: SampleType):
+                """Deformation gradient at ``coords``"""
+                hex_idx = cell_arg.topology.hex_vertex_indices[s.element_index]
+
+                p0 = cell_arg.positions[hex_idx[0]]
+                p1 = cell_arg.positions[hex_idx[1]]
+                p2 = cell_arg.positions[hex_idx[3]]
+                p3 = cell_arg.positions[hex_idx[4]]
+                return wp.matrix_from_cols(p1 - p0, p2 - p0, p3 - p0)
+
+        else:
+
+            @cache.dynamic_func(suffix=self.name)
+            def cell_deformation_gradient(cell_arg: self.CellArg, s: SampleType):
+                """Deformation gradient at ``coords``"""
+                hex_idx = cell_arg.topology.hex_vertex_indices[s.element_index]
+
+                w_p = s.element_coords
+                w_m = CoordsType(s.element_coords.dtype(1.0)) - s.element_coords
+
+                return (
+                    wp.outer(
+                        cell_arg.positions[hex_idx[0]],
+                        vec3_type(-w_m[1] * w_m[2], -w_m[0] * w_m[2], -w_m[0] * w_m[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[1]],
+                        vec3_type(w_m[1] * w_m[2], -w_p[0] * w_m[2], -w_p[0] * w_m[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[2]],
+                        vec3_type(w_p[1] * w_m[2], w_p[0] * w_m[2], -w_p[0] * w_p[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[3]],
+                        vec3_type(-w_p[1] * w_m[2], w_m[0] * w_m[2], -w_m[0] * w_p[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[4]],
+                        vec3_type(-w_m[1] * w_p[2], -w_m[0] * w_p[2], w_m[0] * w_m[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[5]],
+                        vec3_type(w_m[1] * w_p[2], -w_p[0] * w_p[2], w_p[0] * w_m[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[6]],
+                        vec3_type(w_p[1] * w_p[2], w_p[0] * w_p[2], w_p[0] * w_p[1]),
+                    )
+                    + wp.outer(
+                        cell_arg.positions[hex_idx[7]],
+                        vec3_type(-w_p[1] * w_p[2], w_m[0] * w_p[2], w_m[0] * w_p[1]),
+                    )
+                )
+
+        return cell_deformation_gradient
 
     @wp.func
-    def side_position(args: SideArg, s: Sample):
-        """Return the world position of a side sample point."""
-        face_idx = args.face_vertex_indices[s.element_index]
+    def side_position(args: Any, s: Any):
+        face_idx = args.topology.face_vertex_indices[s.element_index]
 
         w_p = s.element_coords
-        w_m = Coords(1.0) - s.element_coords
+        w_m = type(s.element_coords)(s.element_coords.dtype(1.0)) - s.element_coords
 
         return (
-            w_m[0] * w_m[1] * args.cell_arg.positions[face_idx[0]]
-            + w_p[0] * w_m[1] * args.cell_arg.positions[face_idx[1]]
-            + w_p[0] * w_p[1] * args.cell_arg.positions[face_idx[2]]
-            + w_m[0] * w_p[1] * args.cell_arg.positions[face_idx[3]]
+            w_m[0] * w_m[1] * args.positions[face_idx[0]]
+            + w_p[0] * w_m[1] * args.positions[face_idx[1]]
+            + w_p[0] * w_p[1] * args.positions[face_idx[2]]
+            + w_m[0] * w_p[1] * args.positions[face_idx[3]]
         )
 
     @wp.func
-    def _side_deformation_vecs(args: SideArg, side_index: ElementIndex, coords: Coords):
-        face_idx = args.face_vertex_indices[side_index]
+    def _side_deformation_vecs(args: Any, side_index: ElementIndex, coords: Any):
+        face_idx = args.topology.face_vertex_indices[side_index]
 
-        p0 = args.cell_arg.positions[face_idx[0]]
-        p1 = args.cell_arg.positions[face_idx[1]]
-        p2 = args.cell_arg.positions[face_idx[2]]
-        p3 = args.cell_arg.positions[face_idx[3]]
+        p0 = args.positions[face_idx[0]]
+        p1 = args.positions[face_idx[1]]
+        p2 = args.positions[face_idx[2]]
+        p3 = args.positions[face_idx[3]]
 
         w_p = coords
-        w_m = Coords(1.0) - coords
+        w_m = type(coords)(coords.dtype(1.0)) - coords
 
         v1 = w_m[1] * (p1 - p0) + w_p[1] * (p2 - p3)
         v2 = w_p[0] * (p2 - p1) + w_m[0] * (p3 - p0)
         return v1, v2
 
     @wp.func
-    def side_deformation_gradient(args: SideArg, s: Sample):
-        """Transposed side deformation gradient at `coords`"""
+    def side_deformation_gradient(args: Any, s: Any):
         v1, v2 = Hexmesh._side_deformation_vecs(args, s.element_index, s.element_coords)
         return wp.matrix_from_cols(v1, v2)
 
     @wp.func
-    def side_inner_cell_index(arg: SideArg, side_index: ElementIndex):
-        """Return the inner cell index for a side."""
-        return arg.face_hex_indices[side_index][0]
+    def side_inner_cell_index(arg: Any, side_index: ElementIndex):
+        return arg.topology.face_hex_indices[side_index][0]
 
     @wp.func
-    def side_outer_cell_index(arg: SideArg, side_index: ElementIndex):
-        """Return the outer cell index for a side."""
-        return arg.face_hex_indices[side_index][1]
+    def side_outer_cell_index(arg: Any, side_index: ElementIndex):
+        return arg.topology.face_hex_indices[side_index][1]
 
     @wp.func
     def _hex_local_face_coords(hex_coords: Coords, face_index: int):
-        # Coordinates in local face coordinates system
-        # Sign of last coordinate (out of face)
-
         face_coords = wp.vec2(
             hex_coords[_FACE_COORD_INDICES[face_index, 0]], hex_coords[_FACE_COORD_INDICES[face_index, 1]]
         )
-
         normal_coord = hex_coords[_FACE_COORD_INDICES[face_index, 2]]
         normal_coord = wp.where(_FACE_COORD_INDICES[face_index, 3] == 0, -normal_coord, normal_coord - 1.0)
-
         return face_coords, normal_coord
 
     @wp.func
-    def _local_face_hex_coords(face_coords: wp.vec2, face_index: int):
-        # Coordinates in hex from local face coordinates system
+    def _hex_local_face_coords(hex_coords: wp.vec3d, face_index: int):
+        face_coords = wp.vec2d(
+            hex_coords[_FACE_COORD_INDICES[face_index, 0]], hex_coords[_FACE_COORD_INDICES[face_index, 1]]
+        )
+        normal_coord = hex_coords[_FACE_COORD_INDICES[face_index, 2]]
+        normal_coord = wp.where(_FACE_COORD_INDICES[face_index, 3] == 0, -normal_coord, normal_coord - wp.float64(1.0))
+        return face_coords, normal_coord
 
-        hex_coords = Coords()
+    @wp.func
+    def _local_face_hex_coords(face_coords: Any, face_index: int):
+        zero = face_coords.dtype(0.0)
+        hex_coords = wp.vector(zero, zero, zero, dtype=face_coords.dtype)
         hex_coords[_FACE_COORD_INDICES[face_index, 0]] = face_coords[0]
         hex_coords[_FACE_COORD_INDICES[face_index, 1]] = face_coords[1]
-        hex_coords[_FACE_COORD_INDICES[face_index, 2]] = wp.where(_FACE_COORD_INDICES[face_index, 3] == 0, 0.0, 1.0)
-
+        hex_coords[_FACE_COORD_INDICES[face_index, 2]] = wp.where(
+            _FACE_COORD_INDICES[face_index, 3] == 0,
+            zero,
+            face_coords.dtype(1.0),
+        )
         return hex_coords
 
     @wp.func
@@ -400,55 +500,91 @@ class Hexmesh(Geometry):
         ) * _FACE_ORIENTATION_F[2 * ori + 1]
 
     @wp.func
-    def _local_to_oriented_face_coords(ori: int, coords: wp.vec2):
+    def _local_from_oriented_face_coords(ori: int, oriented_coords: wp.vec3d):
         fv = ori // 2
-        return Coords(
-            wp.dot(_FACE_ORIENTATION_F[2 * ori], coords) + _FACE_TRANSLATION_F[fv, 0],
-            wp.dot(_FACE_ORIENTATION_F[2 * ori + 1], coords) + _FACE_TRANSLATION_F[fv, 1],
-            0.0,
+        c0 = wp.float64(oriented_coords[0]) - wp.float64(_FACE_TRANSLATION_F[fv, 0])
+        c1 = wp.float64(oriented_coords[1]) - wp.float64(_FACE_TRANSLATION_F[fv, 1])
+        o0 = _FACE_ORIENTATION_F[2 * ori]
+        o1 = _FACE_ORIENTATION_F[2 * ori + 1]
+        return wp.vec2d(
+            c0 * wp.float64(o0[0]) + c1 * wp.float64(o1[0]), c0 * wp.float64(o0[1]) + c1 * wp.float64(o1[1])
         )
 
     @wp.func
-    def face_to_hex_coords(local_face_index: int, face_orientation: int, side_coords: Coords):
-        """Convert face coordinates to hex coordinates."""
+    def _local_to_oriented_face_coords(ori: int, coords: Any):
+        fv = ori // 2
+        return wp.vector(
+            wp.dot(type(coords)(_FACE_ORIENTATION_F[2 * ori]), coords) + coords.dtype(_FACE_TRANSLATION_F[fv, 0]),
+            wp.dot(type(coords)(_FACE_ORIENTATION_F[2 * ori + 1]), coords) + coords.dtype(_FACE_TRANSLATION_F[fv, 1]),
+            coords.dtype(0.0),
+            dtype=coords.dtype,
+        )
+
+    @wp.func
+    def face_to_hex_coords(local_face_index: int, face_orientation: int, side_coords: Any):
         local_coords = Hexmesh._local_from_oriented_face_coords(face_orientation, side_coords)
         return Hexmesh._local_face_hex_coords(local_coords, local_face_index)
 
     @wp.func
-    def side_inner_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
-        """Return inner-cell coordinates corresponding to side coordinates."""
-        local_face_index = args.face_hex_face_orientation[side_index][0]
-        face_orientation = args.face_hex_face_orientation[side_index][1]
-
+    def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Any):
+        local_face_index = args.topology.face_hex_face_orientation[side_index][0]
+        face_orientation = args.topology.face_hex_face_orientation[side_index][1]
         return Hexmesh.face_to_hex_coords(local_face_index, face_orientation, side_coords)
 
     @wp.func
-    def side_outer_cell_coords(args: SideArg, side_index: ElementIndex, side_coords: Coords):
-        """Return outer-cell coordinates corresponding to side coordinates."""
-        local_face_index = args.face_hex_face_orientation[side_index][2]
-        face_orientation = args.face_hex_face_orientation[side_index][3]
-
+    def side_outer_cell_coords(args: Any, side_index: ElementIndex, side_coords: Any):
+        local_face_index = args.topology.face_hex_face_orientation[side_index][2]
+        face_orientation = args.topology.face_hex_face_orientation[side_index][3]
         return Hexmesh.face_to_hex_coords(local_face_index, face_orientation, side_coords)
 
     @wp.func
-    def side_from_cell_coords(args: SideArg, side_index: ElementIndex, hex_index: ElementIndex, hex_coords: Coords):
-        """Convert cell coordinates to side coordinates, or :data:`OUTSIDE`."""
+    def side_from_cell_coords(args: Any, side_index: ElementIndex, hex_index: ElementIndex, hex_coords: Any):
         if Hexmesh.side_inner_cell_index(args, side_index) == hex_index:
-            local_face_index = args.face_hex_face_orientation[side_index][0]
-            face_orientation = args.face_hex_face_orientation[side_index][1]
+            local_face_index = args.topology.face_hex_face_orientation[side_index][0]
+            face_orientation = args.topology.face_hex_face_orientation[side_index][1]
         else:
-            local_face_index = args.face_hex_face_orientation[side_index][2]
-            face_orientation = args.face_hex_face_orientation[side_index][3]
+            local_face_index = args.topology.face_hex_face_orientation[side_index][2]
+            face_orientation = args.topology.face_hex_face_orientation[side_index][3]
 
         face_coords, normal_coord = Hexmesh._hex_local_face_coords(hex_coords, local_face_index)
         return wp.where(
-            normal_coord == 0.0, Hexmesh._local_to_oriented_face_coords(face_orientation, face_coords), Coords(OUTSIDE)
+            normal_coord == hex_coords.dtype(0.0),
+            Hexmesh._local_to_oriented_face_coords(face_orientation, face_coords),
+            type(hex_coords)(hex_coords.dtype(OUTSIDE)),
         )
 
+    def _make_hex_side_to_cell_arg(self):
+        CellArgType = self.CellArg
+
+        @cache.dynamic_func(suffix=self.name)
+        def side_to_cell_arg(side_arg: self.SideArg):
+            """Return the cell argument associated with a side argument."""
+            return CellArgType(side_arg.topology.cell_arg, side_arg.positions)
+
+        return side_to_cell_arg
+
     @wp.func
-    def side_to_cell_arg(side_arg: SideArg):
-        """Return the cell argument associated with a side argument."""
-        return side_arg.cell_arg
+    def cell_bvh_id(cell_arg: Any):
+        return cell_arg.topology.hex_bvh
+
+    @wp.func
+    def cell_bounds(cell_arg: Any, cell_index: ElementIndex):
+        vidx = cell_arg.topology.hex_vertex_indices[cell_index]
+        p0 = cell_arg.positions[vidx[0]]
+        p1 = cell_arg.positions[vidx[1]]
+        p2 = cell_arg.positions[vidx[2]]
+        p3 = cell_arg.positions[vidx[3]]
+        lo0, up0 = wp.min(wp.min(p0, p1), wp.min(p2, p3)), wp.max(wp.max(p0, p1), wp.max(p2, p3))
+
+        p4 = cell_arg.positions[vidx[4]]
+        p5 = cell_arg.positions[vidx[5]]
+        p6 = cell_arg.positions[vidx[6]]
+        p7 = cell_arg.positions[vidx[7]]
+        lo1, up1 = wp.min(wp.min(p4, p5), wp.min(p6, p7)), wp.max(wp.max(p4, p5), wp.max(p6, p7))
+
+        return wp.min(lo0, lo1), wp.max(up0, up1)
+
+    # -- Topology building (precision-independent) --
 
     def _build_topology(self, temporary_store: TemporaryStore):
         device = self.hex_vertex_indices.device
@@ -558,7 +694,7 @@ class Hexmesh(Geometry):
         boundary_face_indices, _ = masked_indices(boundary_mask)
         self._boundary_face_indices = boundary_face_indices.detach()
 
-    def _compute_hex_edges(self, temporary_store: Optional[TemporaryStore] = None):
+    def _compute_hex_edges(self, temporary_store: TemporaryStore | None = None):
         device = self.hex_vertex_indices.device
 
         vertex_start_edge_count = borrow_temporary(temporary_store, dtype=int, device=device, shape=self.vertex_count())
@@ -626,6 +762,8 @@ class Hexmesh(Geometry):
         vertex_unique_edge_offsets.release()
         vertex_unique_edge_count.release()
         vertex_edge_ends.release()
+
+    # -- Topology kernels (precision-independent) --
 
     @wp.kernel
     def _count_starting_faces_kernel(
@@ -756,7 +894,7 @@ class Hexmesh(Geometry):
         face_vertex_indices: wp.array(dtype=wp.vec4i),
         face_hex_indices: wp.array(dtype=wp.vec2i),
         hex_vertex_indices: wp.array2d(dtype=int),
-        positions: wp.array(dtype=wp.vec3),
+        positions: wp.array(dtype=Any),
     ):
         f = wp.tid()
 
@@ -774,17 +912,17 @@ class Hexmesh(Geometry):
             + positions[hex_vidx[5]]
             + positions[hex_vidx[6]]
             + positions[hex_vidx[7]]
-        ) / 8.0
+        ) / positions[hex_vidx[0]].dtype(8.0)
 
         v0 = positions[face_vidx[0]]
         v1 = positions[face_vidx[1]]
         v2 = positions[face_vidx[2]]
         v3 = positions[face_vidx[3]]
 
-        face_center = (v1 + v0 + v2 + v3) / 4.0
+        face_center = (v1 + v0 + v2 + v3) / v0.dtype(4.0)
         face_normal = wp.cross(v2 - v0, v3 - v1)
 
-        # if face normal points toward first tet centroid, flip indices
+        # if face normal points toward first hex centroid, flip indices
         if wp.dot(hex_centroid - face_center, face_normal) > 0.0:
             face_vertex_indices[f] = wp.vec4i(face_vidx[0], face_vidx[3], face_vidx[2], face_vidx[1])
 
@@ -939,26 +1077,3 @@ class Hexmesh(Geometry):
                         + unique_beg
                     )
                     hex_edge_indices[t][k] = edge_id
-
-    @wp.func
-    def cell_bvh_id(cell_arg: HexmeshCellArg):
-        """Return the BVH identifier for the mesh cells."""
-        return cell_arg.hex_bvh
-
-    @wp.func
-    def cell_bounds(cell_arg: HexmeshCellArg, cell_index: ElementIndex):
-        """Return the axis-aligned bounds of a cell."""
-        vidx = cell_arg.hex_vertex_indices[cell_index]
-        p0 = cell_arg.positions[vidx[0]]
-        p1 = cell_arg.positions[vidx[1]]
-        p2 = cell_arg.positions[vidx[2]]
-        p3 = cell_arg.positions[vidx[3]]
-        lo0, up0 = wp.min(wp.min(p0, p1), wp.min(p2, p3)), wp.max(wp.max(p0, p1), wp.max(p2, p3))
-
-        p4 = cell_arg.positions[vidx[4]]
-        p5 = cell_arg.positions[vidx[5]]
-        p6 = cell_arg.positions[vidx[6]]
-        p7 = cell_arg.positions[vidx[7]]
-        lo1, up1 = wp.min(wp.min(p4, p5), wp.min(p6, p7)), wp.max(wp.max(p4, p5), wp.max(p6, p7))
-
-        return wp.min(lo0, lo1), wp.max(up0, up1)

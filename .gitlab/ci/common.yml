@@ -55,7 +55,7 @@
 # 1. Add them to the .snippets section below
 # 2. Update this documentation with the snippet name and purpose
 # 3. Consider if the snippet should be in this file (global) or a specific
-#    child pipeline file (kit-extensions.yml has its own .kit-snippets)
+#    child pipeline file
 # ==============================================================================
 
 include:

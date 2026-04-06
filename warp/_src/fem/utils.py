@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional, Union
 
 import numpy as np
 
@@ -75,9 +74,9 @@ def compress_node_indices(
     unique_node_count: wp.array(dtype=int) = None,
     unique_node_indices: wp.array(dtype=int) = None,
     temporary_store: cache.TemporaryStore = None,
-) -> Union[
-    tuple[cache.Temporary, cache.Temporary], tuple[cache.Temporary, cache.Temporary, cache.Temporary, cache.Temporary]
-]:
+) -> (
+    tuple[cache.Temporary, cache.Temporary] | tuple[cache.Temporary, cache.Temporary, cache.Temporary, cache.Temporary]
+):
     """Compress an unsorted list of node indices into:
      - the ``node_offsets`` array, giving for each node the start offset of corresponding indices in ``sorted_array_indices``
      - the ``sorted_array_indices`` array, listing the indices in the input array corresponding to each node
@@ -167,8 +166,8 @@ def masked_indices(
     mask: wp.array,
     missing_index: int = -1,
     max_index_count: int = -1,
-    local_to_global: Optional[wp.array] = None,
-    global_to_local: Optional[wp.array] = None,
+    local_to_global: wp.array | None = None,
+    global_to_local: wp.array | None = None,
     temporary_store: cache.TemporaryStore = None,
 ) -> tuple[wp.array, wp.array]:
     """

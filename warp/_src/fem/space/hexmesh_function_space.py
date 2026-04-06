@@ -150,7 +150,7 @@ class HexmeshSpaceTopology(SpaceTopology):
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
-            geo_arg: Hexmesh.CellArg,
+            geo_arg: self._mesh.CellArg,
             topo_arg: HexmeshTopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
@@ -160,7 +160,7 @@ class HexmeshSpaceTopology(SpaceTopology):
             if wp.static(VERTEX_NODE_COUNT > 0):
                 if node_type == CubeShapeFunction.VERTEX:
                     return (
-                        geo_arg.hex_vertex_indices[element_index, _CUBE_TO_HEX_VERTEX[type_instance]]
+                        geo_arg.topology.hex_vertex_indices[element_index, _CUBE_TO_HEX_VERTEX[type_instance]]
                         * VERTEX_NODE_COUNT
                         + type_index
                     )
@@ -172,8 +172,8 @@ class HexmeshSpaceTopology(SpaceTopology):
                     hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
                     edge_index = topo_arg.hex_edge_indices[element_index, hex_edge]
 
-                    v0 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
-                    v1 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
+                    v0 = geo_arg.topology.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
+                    v1 = geo_arg.topology.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
 
                     if v0 > v1:
                         type_index = EDGE_NODE_COUNT - 1 - type_index
@@ -211,7 +211,7 @@ class HexmeshSpaceTopology(SpaceTopology):
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_sign(
-            geo_arg: self.geometry.CellArg,
+            geo_arg: self._mesh.CellArg,
             topo_arg: HexmeshTopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
@@ -221,8 +221,8 @@ class HexmeshSpaceTopology(SpaceTopology):
             if wp.static(EDGE_NODE_COUNT > 0):
                 if node_type == CubeShapeFunction.EDGE:
                     hex_edge = _CUBE_TO_HEX_EDGE[type_instance]
-                    v0 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
-                    v1 = geo_arg.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
+                    v0 = geo_arg.topology.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 0]]
+                    v1 = geo_arg.topology.hex_vertex_indices[element_index, EDGE_VERTEX_INDICES[hex_edge, 1]]
                     return wp.where(v0 > v1, -1.0, 1.0)
 
             if wp.static(FACE_NODE_COUNT > 0):

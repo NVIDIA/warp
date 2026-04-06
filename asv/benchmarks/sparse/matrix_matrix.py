@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 
 import numpy as np
 
@@ -35,7 +34,7 @@ class BsrMMFemMatrix:
         self._use_graph = use_graph
 
     def build_system(
-        self, space: fem.FunctionSpace, quadrature: Optional[int] = None, block_shape: Optional[tuple[int, int]] = None
+        self, space: fem.FunctionSpace, quadrature: int | None = None, block_shape: tuple[int, int] | None = None
     ):
         u = fem.make_trial(space)
 

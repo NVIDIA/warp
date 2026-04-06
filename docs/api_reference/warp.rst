@@ -257,6 +257,7 @@ Runtime
    clear_lto_cache
    init
    is_cpu_available
+   is_cubql_available
    is_cuda_available
    print_diagnostics
 
@@ -295,6 +296,7 @@ Kernel Execution
    Kernel
    Launch
    Module
+   get_suggested_block_size
    launch
    launch_tiled
    synchronize

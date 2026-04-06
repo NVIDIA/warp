@@ -6,12 +6,11 @@ from __future__ import annotations
 import builtins
 import functools
 import math
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 import warp._src.build
 import warp._src.context
-import warp._src.utils
 from warp._src.codegen import Reference, Var, get_arg_value, strip_reference
 from warp._src.types import *
 
@@ -27,7 +26,7 @@ def seq_check_equal(seq_1, seq_2):
     if len(seq_1) != len(seq_2):
         return False
 
-    return all(x == y for x, y in zip(seq_1, seq_2))
+    return all(x == y for x, y in zip(seq_1, seq_2, strict=False))
 
 
 def sametypes(arg_types: Mapping[str, Any]):
@@ -322,7 +321,7 @@ add_builtin(
 
     This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like
     :func:`~warp._src.lang.rint`.
-    Differs from :func:`numpy.round`, which behaves the same way as :func:`numpy.rint`.""",
+    Differs from :func:`numpy.round`, which behaves the same way as :obj:`numpy.rint`.""",
     is_differentiable=False,
 )
 
@@ -334,7 +333,7 @@ add_builtin(
     doc="""Compute the nearest integer value to ``x``, rounding halfway cases to nearest even integer.
 
     It is generally faster than :func:`~warp._src.lang.round`.
-    Equivalent to :func:`numpy.rint`.""",
+    Equivalent to :obj:`numpy.rint`.""",
     is_differentiable=False,
 )
 
@@ -347,7 +346,7 @@ add_builtin(
 
     In other words, it discards the fractional part of ``x``.
     It is similar to casting ``float(int(a))``, but preserves the negative sign when ``x`` is in the range [-0.0, -1.0).
-    Equivalent to :func:`numpy.trunc` and :func:`numpy.fix`.""",
+    Equivalent to :obj:`numpy.trunc` and :func:`numpy.fix`.""",
     is_differentiable=False,
 )
 
@@ -381,165 +380,162 @@ add_builtin(
 )
 
 
-def special_float_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
-    if input_types["a"] in int_types:
-        warp._src.utils.warn(
-            "isfinite(), isnan(), and isinf() will no longer support integer types as input. Please use float types instead.",
-            DeprecationWarning,
-        )
-
-    func_args = tuple(args.values())
-    template_args = ()
-
-    return (func_args, template_args)
-
-
 add_builtin(
     "isfinite",
-    input_types={"a": Scalar},
+    input_types={"a": Float},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Scalar Math",
-    doc="""Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if ``a`` is finite.",
     is_differentiable=False,
 )
 add_builtin(
     "isfinite",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"a": vector(length=Any, dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if all elements of ``a`` are finite.",
     is_differentiable=False,
 )
 add_builtin(
     "isfinite",
     input_types={"a": quaternion(dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if all elements of ``a`` are finite.",
     is_differentiable=False,
 )
 add_builtin(
     "isfinite",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if all elements of ``a`` are finite.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if all elements of ``a`` are finite.",
     is_differentiable=False,
 )
 
 add_builtin(
     "isnan",
-    input_types={"a": Scalar},
+    input_types={"a": Float},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
-    doc="""Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
     group="Scalar Math",
+    doc="Check if ``a`` is NaN.",
     is_differentiable=False,
 )
 add_builtin(
     "isnan",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"a": vector(length=Any, dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if any element of ``a`` is NaN.",
     is_differentiable=False,
 )
 add_builtin(
     "isnan",
     input_types={"a": quaternion(dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if any element of ``a`` is NaN.",
     is_differentiable=False,
 )
 add_builtin(
     "isnan",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if any element of ``a`` is NaN.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if any element of ``a`` is NaN.",
     is_differentiable=False,
 )
 
 add_builtin(
     "isinf",
-    input_types={"a": Scalar},
+    input_types={"a": Float},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Scalar Math",
-    doc="""Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if ``a`` is positive or negative infinity.",
     is_differentiable=False,
 )
 add_builtin(
     "isinf",
-    input_types={"a": vector(length=Any, dtype=Scalar)},
+    input_types={"a": vector(length=Any, dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if any element of ``a`` is positive or negative infinity.",
     is_differentiable=False,
 )
 add_builtin(
     "isinf",
     input_types={"a": quaternion(dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if any element of ``a`` is positive or negative infinity.",
     is_differentiable=False,
 )
 add_builtin(
     "isinf",
-    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
+    input_types={"a": matrix(shape=(Any, Any), dtype=Float)},
     value_type=builtins.bool,
-    dispatch_func=special_float_dispatch_func,
     group="Vector Math",
-    doc="""Check if any element of ``a`` is positive or negative infinity.
-
-    .. attention:: This function will no longer support integer types as input. Please use float types instead.
-    """,
+    doc="Check if any element of ``a`` is positive or negative infinity.",
     is_differentiable=False,
 )
+
+
+def _cast_scalar_constant(arg, target_dtype):
+    """Cast a scalar constant Var to ``target_dtype`` for typed constructors.
+
+    When a typed constructor like ``vec3d()`` receives float literal arguments,
+    the literals have already been canonicalized to ``float32`` by
+    ``Var.__init__``.  This function creates a new ``Var`` at the target
+    precision, preserving the original Python float/int value so the emitted
+    C++ declaration uses full precision (e.g. ``wp::float64`` instead of
+    ``wp::float32``).
+
+    Returns the original *arg* unchanged when no cast is needed.
+    """
+    if not isinstance(arg, Var):
+        return arg
+    if arg.type == target_dtype:
+        return arg
+    if arg.constant is None:
+        return arg
+    if arg.type not in scalar_types and arg.type not in (bool,):
+        return arg
+
+    raw = arg.constant
+    if type(raw) in scalar_types:
+        raw = raw.value
+
+    return Var(None, type=target_dtype, constant=target_dtype(raw))
+
+
+def _check_vars_match_dtype(arg_values, arg_types, dtype, msg):
+    """Validate that runtime variables in constructor args match *dtype*.
+
+    Compile-time constants (non-``Var`` values) are accepted regardless of
+    their inferred type — ``_cast_scalar_constant`` in the dispatch function
+    will cast them to *dtype*.  Runtime variables must already have a type
+    that satisfies ``scalars_equal(arg_type, dtype)``.
+
+    Handles both variadic constructors (with an ``"args"`` key) and
+    named-parameter constructors (e.g. quaternion's ``x``, ``y``, ``z``,
+    ``w``).  Only ``"dtype"``, ``"length"``, and ``"shape"`` are skipped —
+    other non-scalar keys (e.g. ``"p"``, ``"q"`` in transformation) are
+    deliberately included so that compound ``Var`` arguments still trigger
+    the type error.
+    """
+    skip_keys = {"dtype", "length", "shape"}
+    if "args" in arg_values:
+        values = arg_values["args"]
+    else:
+        values = tuple(v for k, v in arg_values.items() if k not in skip_keys)
+
+    for t, v in zip(arg_types, values, strict=False):
+        if not isinstance(v, Var):
+            continue  # compile-time constant — will be cast in dispatch
+        # Extract the scalar type from compound types (vec, mat, quat).
+        scalar_t = getattr(t, "_wp_scalar_type_", t)
+        if not warp._src.types.scalars_equal(scalar_t, dtype):
+            raise RuntimeError(msg)
 
 
 def scalar_infer_type(arg_types: Mapping[str, type] | tuple[type, ...] | None):
@@ -684,7 +680,7 @@ add_builtin(
     "sign",
     input_types={"x": vector(length=Any, dtype=Scalar)},
     constraint=sametypes,
-    value_func=sametypes_create_value_func(Scalar),
+    value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="""Compute the sign of ``x``.
 
     Returns:
@@ -1052,8 +1048,11 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             if dtype is None:
                 dtype = value_type
             elif not warp._src.types.scalars_equal(value_type, dtype):
-                raise RuntimeError(
-                    f"the value used to fill this vector is expected to be of the type `{dtype.__name__}`"
+                _check_vars_match_dtype(
+                    arg_values,
+                    variadic_arg_types,
+                    dtype,
+                    f"the value used to fill this vector is expected to be of the type `{dtype.__name__}`",
                 )
     else:
         # Initializing by value, e.g.: `wp.vec2(1, 2)`, `wp.vector(1, 2, length=2)`.
@@ -1065,17 +1064,20 @@ def vector_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
                 f"when constructing a vector of length {length}"
             )
 
-        try:
-            value_type = scalar_infer_type(variadic_arg_types)
-        except RuntimeError:
-            raise RuntimeError("all values given when constructing a vector must have the same type") from None
-
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`"
+        if dtype is not None:
+            # dtype is known from a typed constructor (e.g. vec3d).
+            # Constants will be cast in dispatch; just validate variables.
+            _check_vars_match_dtype(
+                arg_values,
+                variadic_arg_types,
+                dtype,
+                f"all values used to initialize this vector are expected to be of the type `{dtype.__name__}`",
             )
+        else:
+            try:
+                dtype = scalar_infer_type(variadic_arg_types)
+            except RuntimeError:
+                raise RuntimeError("all values given when constructing a vector must have the same type") from None
 
     if length is None:
         raise RuntimeError("could not infer the `length` argument when calling the `wp.types.vector()` function")
@@ -1096,7 +1098,10 @@ def vector_dispatch_func(input_types: Mapping[str, type], return_type: Any, args
 
     variadic_args = args.get("args", ())
 
-    func_args = variadic_args
+    # Cast scalar constant args to the target dtype so that the emitted
+    # C++ declarations preserve full precision (e.g. wp::float64 instead of
+    # wp::float32 for vec3d literals).
+    func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     template_args = (length, dtype)
     return (func_args, template_args)
 
@@ -1158,8 +1163,11 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
             if dtype is None:
                 dtype = value_type
             elif not warp._src.types.scalars_equal(value_type, dtype):
-                raise RuntimeError(
-                    f"the value used to fill this matrix is expected to be of the type `{dtype.__name__}`"
+                _check_vars_match_dtype(
+                    arg_values,
+                    variadic_arg_types,
+                    dtype,
+                    f"the value used to fill this matrix is expected to be of the type `{dtype.__name__}`",
                 )
     else:
         # Initializing by value, e.g.: `wp.mat22(1, 2, 3, 4)`, `wp.matrix(1, 2, 3, 4, shape=(2, 2))`.
@@ -1176,17 +1184,18 @@ def matrix_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, An
                 f"when constructing a matrix of shape {tuple(shape)}"
             )
 
-        try:
-            value_type = scalar_infer_type(variadic_arg_types)
-        except RuntimeError:
-            raise RuntimeError("all values given when constructing a matrix must have the same type") from None
-
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this matrix are expected to be of the type `{dtype.__name__}`"
+        if dtype is not None:
+            _check_vars_match_dtype(
+                arg_values,
+                variadic_arg_types,
+                dtype,
+                f"all values used to initialize this matrix are expected to be of the type `{dtype.__name__}`",
             )
+        else:
+            try:
+                dtype = scalar_infer_type(variadic_arg_types)
+            except RuntimeError:
+                raise RuntimeError("all values given when constructing a matrix must have the same type") from None
 
     if shape is None:
         raise RuntimeError("could not infer the `shape` argument when calling the `wp.types.matrix()` function")
@@ -1207,7 +1216,7 @@ def matrix_dispatch_func(input_types: Mapping[str, type], return_type: Any, args
 
     variadic_args = args.get("args", ())
 
-    func_args = variadic_args
+    func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     template_args = (*shape, dtype)
     return (func_args, template_args)
 
@@ -1589,17 +1598,19 @@ def quaternion_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str
             if dtype is None:
                 dtype = in_quat._wp_scalar_type_
     else:
-        try:
-            value_type = scalar_infer_type(variadic_arg_types)
-        except RuntimeError:
-            raise RuntimeError("all values given when constructing a quaternion must have the same type") from None
-
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this quaternion are expected to be of the type `{dtype.__name__}`"
+        if dtype is not None:
+            _check_vars_match_dtype(
+                arg_values,
+                variadic_arg_types,
+                dtype,
+                f"all values used to initialize this quaternion are expected to be of the type `{dtype.__name__}`",
             )
+        else:
+            try:
+                value_type = scalar_infer_type(variadic_arg_types)
+            except RuntimeError:
+                raise RuntimeError("all values given when constructing a quaternion must have the same type") from None
+            dtype = value_type
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.types.quaternion()` function")
@@ -1616,7 +1627,7 @@ def quaternion_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
 
     variadic_args = tuple(v for k, v in args.items() if k != "dtype")
 
-    func_args = variadic_args
+    func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     template_args = (dtype,)
     return (func_args, template_args)
 
@@ -1842,22 +1853,26 @@ def transformation_value_func(arg_types: Mapping[str, type], arg_values: Mapping
         if dtype is None:
             dtype = value_type
         elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`"
+            _check_vars_match_dtype(
+                arg_values,
+                variadic_arg_types,
+                dtype,
+                f"the value used to fill this transform is expected to be of the type `{dtype.__name__}`",
             )
     elif variadic_arg_count == 7:
         # Initializing by value, e.g.: `wp.transform(1, 2, 3, 4, 5, 6, 7)`.
-        try:
-            value_type = scalar_infer_type(variadic_arg_types)
-        except RuntimeError:
-            raise RuntimeError("all values given when constructing a transform must have the same type") from None
-
-        if dtype is None:
-            dtype = value_type
-        elif not warp._src.types.scalars_equal(value_type, dtype):
-            raise RuntimeError(
-                f"all values used to initialize this transform are expected to be of the type `{dtype.__name__}`"
+        if dtype is not None:
+            _check_vars_match_dtype(
+                arg_values,
+                variadic_arg_types,
+                dtype,
+                f"all values used to initialize this transform are expected to be of the type `{dtype.__name__}`",
             )
+        else:
+            try:
+                dtype = scalar_infer_type(variadic_arg_types)
+            except RuntimeError:
+                raise RuntimeError("all values given when constructing a transform must have the same type") from None
 
     if dtype is None:
         raise RuntimeError("could not infer the `dtype` argument when calling the `wp.transform()` function")
@@ -1898,7 +1913,7 @@ def transformation_dispatch_func(input_types: Mapping[str, type], return_type: A
     variadic_arg_count = len(variadic_args)
 
     if variadic_arg_count == 7:
-        func_args = variadic_args
+        func_args = tuple(_cast_scalar_constant(a, dtype) for a in variadic_args)
     else:
         func_args = tuple(v for k, v in args.items() if k != "dtype")
         if "p" in args and "q" not in args:
@@ -2572,7 +2587,7 @@ add_builtin(
             TILE_SIZE = 8
 
             @wp.kernel
-            def compute(output: wp.array(dtype=int)):
+            def compute(output: wp.array[int]):
                 i, j = wp.tid()
 
                 # Compute offset on the last thread
@@ -2699,7 +2714,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+            def rand_kernel(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
@@ -2764,7 +2779,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+            def rand_range_kernel(seed: int, x: wp.array2d[int]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
@@ -2882,7 +2897,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_kernel(seed: int, x: wp.array2d(dtype=float)):
+            def rand_kernel(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng)
@@ -2947,7 +2962,7 @@ add_builtin(
             seed = 42
 
             @wp.kernel
-            def rand_range_kernel(seed: int, x: wp.array2d(dtype=float)):
+            def rand_range_kernel(seed: int, x: wp.array2d[float]):
                 i, j = wp.tid()
                 rng = wp.rand_init(seed, i * TILE_M + j)
                 t = wp.tile_randf(shape=(TILE_M, TILE_N), rng=rng, min=-5.0, max=5.0)
@@ -3294,7 +3309,7 @@ add_builtin(
             HALF_N = wp.constant(TILE_N // 2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 evens = wp.tile_arange(HALF_M, dtype=int, storage="shared") * 2
@@ -3528,7 +3543,7 @@ add_builtin(
             TWO_N = wp.constant(TILE_N * 2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
@@ -3774,7 +3789,7 @@ add_builtin(
             TILE_N = wp.constant(2)
 
             @wp.kernel
-            def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+            def tile_atomic_add_indexed(x: wp.array2d[float], y: wp.array2d[float]):
                 i, j = wp.tid()
 
                 t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
@@ -5106,7 +5121,7 @@ add_builtin(
     doc="""Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 
     Args:
-        keys: Keys to sort by. Supported key types: :class:`float32`, :class:`int32`, :class:`uint32`, :class:`int64`, :class:`uint64`. Must be in shared memory.
+        keys: Keys to sort by. Supported key types: :class:`warp.float32`, :class:`warp.int32`, :class:`warp.uint32`, :class:`warp.int64`, :class:`warp.uint64`. Must be in shared memory.
         values: Values to sort along with keys. No type restrictions. Must be in shared memory.
 
     Returns:
@@ -5464,7 +5479,7 @@ add_builtin(
             TILE_N = wp.constant(2)
 
             @wp.kernel
-            def compute(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+            def compute(x: wp.array2d[float], y: wp.array[float]):
 
                 a = wp.tile_load(x, shape=(TILE_M, TILE_N))
                 b = wp.tile_reduce(wp.add, a, axis=1)
@@ -5674,7 +5689,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def scan_example(input: wp.array(dtype=int)):
+            def scan_example(input: wp.array[int]):
                 t = wp.tile_load(input, shape=(4,))
                 s = wp.tile_scan_max_inclusive(t)
                 print(s)
@@ -5742,7 +5757,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def scan_example(input: wp.array(dtype=int)):
+            def scan_example(input: wp.array[int]):
                 t = wp.tile_load(input, shape=(4,))
                 s = wp.tile_scan_min_inclusive(t)
                 print(s)
@@ -5784,7 +5799,8 @@ def tile_unary_map_value_func(arg_types, arg_values):
         if overload.value_func is None:
             overload.build(None)
 
-        value_type = overload.value_func(None, None)
+        param_name = next(iter(overload.input_types))
+        value_type = overload.value_func({param_name: a.dtype}, None)
 
         if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -5890,7 +5906,9 @@ def tile_binary_map_value_func(arg_types, arg_values):
         if overload.value_func is None:
             overload.build(None)
 
-        value_type = overload.value_func(None, None)
+        param_names = iter(overload.input_types)
+        param_a_name, param_b_name = next(param_names), next(param_names)
+        value_type = overload.value_func({param_a_name: a.dtype, param_b_name: b_dtype}, None)
 
         if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -6026,7 +6044,11 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    value_type = overload.value_func(None, None)
+    arg_type_map = dict(zip(overload.input_types, dtypes, strict=False))
+    assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
+        f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
+    )
+    value_type = overload.value_func(arg_type_map, None)
 
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
         raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
@@ -7181,7 +7203,7 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
         input_types={"query": query_type, "index": int},
         value_type=builtins.bool,
         group="Geometry",
-        doc=f"""Move to the next point in the hash grid query{doc_suffix}.
+        doc="""Move to the next point in the hash grid query.
 
     The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
         export=False,
@@ -7616,7 +7638,7 @@ add_builtin(
     input_types={"id": uint64, "uvw": vec3},
     value_type=int,
     group="Volumes",
-    doc="""Sample the :class:`int32` volume given by ``id`` at the volume local-space point ``uvw``.""",
+    doc="""Sample the :class:`warp.int32` volume given by ``id`` at the volume local-space point ``uvw``.""",
 )
 
 add_builtin(
@@ -7624,7 +7646,7 @@ add_builtin(
     input_types={"id": uint64, "i": int, "j": int, "k": int},
     value_type=int,
     group="Volumes",
-    doc="""Query the :class:`int32` value of voxel with coordinates ``i``, ``j``, ``k``.
+    doc="""Query the :class:`warp.int32` value of voxel with coordinates ``i``, ``j``, ``k``.
 
     If the voxel at this index does not exist, this function returns the background value.""",
     is_differentiable=False,
@@ -7748,6 +7770,36 @@ add_builtin(
     value_type=vec3,
     group="Volumes",
     doc="""Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.""",
+)
+
+# fp64 overloads for volume transform functions
+add_builtin(
+    "volume_index_to_world",
+    input_types={"id": uint64, "uvw": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a point ``uvw`` defined in volume index space to world space, using double precision.""",
+)
+add_builtin(
+    "volume_world_to_index",
+    input_types={"id": uint64, "xyz": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a point ``xyz`` defined in volume world space to index space, using double precision.""",
+)
+add_builtin(
+    "volume_index_to_world_dir",
+    input_types={"id": uint64, "uvw": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a direction ``uvw`` defined in volume index space to world space, using double precision.""",
+)
+add_builtin(
+    "volume_world_to_index_dir",
+    input_types={"id": uint64, "xyz": vec3d},
+    value_type=vec3d,
+    group="Volumes",
+    doc="""Transform a direction ``xyz`` defined in volume world space to index space, using double precision.""",
 )
 
 
@@ -8498,11 +8550,11 @@ for t in int_types:
         value_func=select_value_func,
         doc="""Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
 
-        .. versionremoved:: 1.10
-                Use :func:`where` instead, which has the more intuitive argument order:
-                ``where(cond, value_if_true, value_if_false)``.
+    .. versionremoved:: 1.10
+            Use :func:`where` instead, which has the more intuitive argument order:
+            ``where(cond, value_if_true, value_if_false)``.
 
-        .. deprecated:: 1.7""",
+    .. deprecated:: 1.7""",
         group="Utility",
     )
 add_builtin(
@@ -8713,7 +8765,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
             f"Trying to create an array view with {idx_count} indices, "
             f"but the array only has {arr_type.ndim} dimension(s). "
             f"Ensure that the argument type on the function or kernel specifies "
-            f"the expected number of dimensions, e.g.: def func(param: wp.array3d(dtype=float): ..."
+            f"the expected number of dimensions, e.g.: def func(param: wp.array3d[float]): ..."
         )
 
     has_slice = any(is_slice(x) for x in idx_types)
@@ -9828,6 +9880,17 @@ add_builtin(
     group="Utility",
 )
 
+# Bool vector assign_inplace (bool is not part of Scalar)
+add_builtin(
+    "assign_inplace",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
+    value_type=None,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
 # implements quaternion[index] = value
 add_builtin(
     "assign_inplace",
@@ -9859,6 +9922,17 @@ def vector_assign_copy_value_func(arg_types: Mapping[str, type], arg_values: Map
 add_builtin(
     "assign_copy",
     input_types={"a": vector(length=Any, dtype=Scalar), "i": Any, "value": Any},
+    value_func=vector_assign_copy_value_func,
+    dispatch_func=vector_assign_dispatch_func,
+    hidden=True,
+    export=False,
+    group="Utility",
+)
+
+# Bool vector assign_copy (bool is not part of Scalar)
+add_builtin(
+    "assign_copy",
+    input_types={"a": vector(length=Any, dtype=bool), "i": Any, "value": Any},
     value_func=vector_assign_copy_value_func,
     dispatch_func=vector_assign_dispatch_func,
     hidden=True,
@@ -11314,7 +11388,10 @@ add_builtin(
     "unot",
     input_types={"a": builtins.bool},
     value_type=builtins.bool,
-    doc="""Compute logical NOT of ``a``.""",
+    doc="""Compute logical NOT of ``a``.
+
+    Returns:
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
     group="Operators",
     is_differentiable=False,
 )
@@ -11325,8 +11402,8 @@ for t in int_types:
         value_type=builtins.bool,
         doc="""Compute logical NOT of ``a``.
 
-        Returns:
-            ``True`` if the integer is 0, ``False`` otherwise.""",
+    Returns:
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
         group="Operators",
         is_differentiable=False,
     )
@@ -11339,7 +11416,7 @@ add_builtin(
     doc="""Compute logical NOT of ``a``.
 
     Returns:
-        ``True`` if the array is empty or null, ``False`` otherwise.""",
+        ``True`` if ``a`` is falsy (``False``, zero, or an empty/null array), ``False`` otherwise.""",
     group="Operators",
     is_differentiable=False,
 )
@@ -11975,7 +12052,7 @@ def tile_matmul_lto_dispatch_func(
             num_threads,
             builder,
         )
-        if warp.config.enable_backward:
+        if options["enable_backward"]:
             # adjA += adjC * B^T - Transpose ~= flipped layout
             (fun_backward_A, lto_backward_A) = warp._src.build.build_lto_dot(
                 M,
@@ -12126,6 +12203,9 @@ def tile_fft_generic_value_func(arg_types, arg_values, func_name="tile_fft"):
             f"{func_name}() argument must be a tile of vec2f or vec2d (interpreted as complex) entries, got {inout.dtype!r}"
         )
 
+    if len(inout.shape) < 2:
+        raise ValueError(f"{func_name}() argument must be a tile with at least 2 dimensions, got {len(inout.shape)}D")
+
     return None
 
 
@@ -12162,8 +12242,8 @@ def tile_fft_generic_lto_dispatch_func(
     else:
         raise TypeError(f"Unsupported data type, got {dtype!r}")
 
-    # M FFTs of size N each
-    batch, size = inout.type.shape[0], inout.type.shape[1]
+    # batch = product of all leading dims, size = last (FFT) dim
+    batch, size = math.prod(inout.type.shape[:-1]), inout.type.shape[-1]
     num_threads = options["block_dim"]
     arch = options["output_arch"]
     ept = size // num_threads
@@ -12186,7 +12266,7 @@ def tile_fft_generic_lto_dispatch_func(
             arch, size, ept, direction, fwd_dir, precision, builder
         )
 
-        if warp.config.enable_backward:
+        if options["enable_backward"]:
             # generate the backward LTO (inverse direction for adjoint)
             # shared memory requirements are identical since tile sizes match
             lto_symbol_bwd, lto_code_data_bwd, _ = warp._src.build.build_lto_fft(
@@ -12215,16 +12295,18 @@ def tile_fft_generic_lto_dispatch_func(
 
 add_builtin(
     "tile_fft",
-    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
+    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, ...])},
     value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_fft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="forward"),
     variadic=True,
-    doc="""Compute the forward FFT along the second dimension of a 2D tile of data.
+    doc="""Compute the forward FFT along the last dimension of an N-D tile of data.
 
-    This function cooperatively computes the forward FFT on a tile of data inplace, treating each row individually.
+    This function cooperatively computes the forward FFT on a tile of data inplace.
+    All leading dimensions are treated as independent batch dimensions.
+    The tile must have at least two dimensions.
 
     The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    will scale the data by N, where N is the FFT size (the last dimension of the tile).
     Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
@@ -12239,16 +12321,18 @@ add_builtin(
 
 add_builtin(
     "tile_ifft",
-    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int])},
+    input_types={"inout": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, ...])},
     value_func=functools.partial(tile_fft_generic_value_func, func_name="tile_ifft"),
     lto_dispatch_func=functools.partial(tile_fft_generic_lto_dispatch_func, direction="inverse"),
     variadic=True,
-    doc="""Compute the inverse FFT along the second dimension of a 2D tile of data.
+    doc="""Compute the inverse FFT along the last dimension of an N-D tile of data.
 
-    This function cooperatively computes the inverse FFT on a tile of data inplace, treating each row individually.
+    This function cooperatively computes the inverse FFT on a tile of data inplace.
+    All leading dimensions are treated as independent batch dimensions.
+    The tile must have at least two dimensions.
 
     The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-    will scale the data by N, where N is the FFT size (the second dimension of the tile).
+    will scale the data by N, where N is the FFT size (the last dimension of the tile).
     Normalization is left to the user to perform as needed.
 
     Supported datatypes are:
@@ -12282,8 +12366,10 @@ def _tile_cholesky_generic_value_func(inplace: bool, arg_types, arg_values):
             return None
         return tile(dtype=Float, shape=tuple[int, int])
 
-    if len(arg_types) != 1:
-        raise TypeError("tile_cholesky() requires 1 positional args")
+    if len(arg_types) > 2:
+        raise TypeError(
+            f"tile_cholesky() takes 1 positional argument and 1 optional argument but {len(arg_types)} were given"
+        )
 
     a = arg_types["A"]
 
@@ -12309,6 +12395,20 @@ def tile_cholesky_inplace_generic_value_func(arg_types, arg_values):
     return _tile_cholesky_generic_value_func(True, arg_types, arg_values)
 
 
+def _tile_cholesky_extract_fill_mode(arg_values, func_name="tile_cholesky"):
+    """Extract fill_mode from arg_values, returning the upper bool."""
+    fill_mode_var = arg_values.get("fill_mode")
+    if fill_mode_var is not None:
+        if not hasattr(fill_mode_var, "constant") or fill_mode_var.constant is None:
+            raise ValueError(f"{func_name}() fill_mode must be a compile-time constant")
+        fill_mode_str = fill_mode_var.constant
+        if fill_mode_str not in ("lower", "upper"):
+            raise ValueError(f'{func_name}() fill_mode must be "lower" or "upper"')
+    else:
+        fill_mode_str = "lower"
+    return fill_mode_str == "upper"
+
+
 def _tile_cholesky_generic_lto_dispatch_func(
     inplace: bool,
     arg_types: Mapping[str, type],
@@ -12318,6 +12418,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
     options: Mapping[str, Any],
     builder: warp._src.context.ModuleBuilder,
 ):
+    upper = _tile_cholesky_extract_fill_mode(arg_values)
     a = arg_values["A"]
     # force source tile to shared memory
     a.type.storage = "shared"
@@ -12340,13 +12441,13 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, a) if inplace else (0, a, out), [], [], 0)
+        return ((0, a) if inplace else (0, a, out), [upper], [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
         side_enum = cusolver_side_map["-"]
         diag_enum = cusolver_diag_map["-"]
-        fill_mode = cusolver_fill_mode_map["lower"]
+        fill_mode = cusolver_fill_mode_map["upper" if upper else "lower"]
         dtype, precision_enum = cusolver_type_map[a.type.dtype]
         num_threads = options["block_dim"]
         parameter_list = f"({dtype}*, int*)"
@@ -12376,7 +12477,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
         )
 
         var = Var(lto_symbol, str, False, True, False)
-        return ((var, a) if inplace else (var, a, out), [], [lto_code_data], 0)
+        return ((var, a) if inplace else (var, a, out), [upper], [lto_code_data], 0)
 
 
 def tile_cholesky_generic_lto_dispatch_func(*args, **kwargs):
@@ -12389,16 +12490,17 @@ def tile_cholesky_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_cholesky",
-    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_generic_value_func,
     lto_dispatch_func=tile_cholesky_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Compute the Cholesky factorization ``L`` of a matrix ``A``.
+    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
 
-    ``L`` is lower triangular and satisfies ``LL^T = A``.
+    When ``fill_mode="lower"`` (default), returns lower-triangular ``L`` such that ``LL^T = A``.
+    When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
 
-    Only the lower triangular portion of ``A`` is used for the decomposition;
-    the upper triangular part may be left unspecified.
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note that computing the adjoint is not yet supported.
 
@@ -12407,29 +12509,32 @@ add_builtin(
         * float64
 
     Args:
-        A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is needed; the upper part is ignored.
+        A: A square, symmetric positive-definite matrix.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A square, lower triangular matrix, such that ``LL^T = A``.""",
+        A triangular matrix ``L`` or ``U``.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
 
 add_builtin(
     "tile_cholesky_inplace",
-    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Compute the Cholesky factorization ``L`` of a matrix ``A``.
+    doc="""Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
 
-    ``L`` is lower triangular and satisfies ``LL^T = A``.
+    When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+    such that ``LL^T = A``; the upper triangle is set to zero.
+    When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
+    such that ``U^T U = A``; the lower triangle is set to zero.
 
-    Only the lower triangular portion of ``A`` is used for the decomposition;
-    the upper triangular part may be left unspecified.
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
     but offers improved performance and uses half the shared memory compared to the standard version.
@@ -12439,10 +12544,10 @@ add_builtin(
         * float64
 
     Args:
-        A: A square, symmetric positive-definite, matrix. Only the lower triangular part of ``A`` is replaced by ``L``, such that ``LL^T = A``; the upper part is untouched.""",
+        A: A square, symmetric positive-definite matrix.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
@@ -12453,8 +12558,10 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
             return None
         return tile(dtype=Float, shape=tuple[int])
 
-    if len(arg_types) != 2:
-        raise TypeError("tile_cholesky_solve() requires exactly 2 positional args")
+    if len(arg_types) > 3:
+        raise TypeError(
+            f"tile_cholesky_solve() takes 2 positional arguments and 1 optional argument but {len(arg_types)} were given"
+        )
 
     l = arg_types["L"]
     y = arg_types["y"]
@@ -12477,7 +12584,7 @@ def _tile_cholesky_solve_generic_value_func(inplace: bool, arg_types, arg_values
     if y.shape[0] != l.shape[0]:
         raise ValueError(
             f"tile_cholesky_solve() 'y' argument must have the same number of elements as the number of rows in 'L', "
-            f"got {y.shape[0]} elements in 'x' and {l.shape[0]} rows in 'L'"
+            f"got {y.shape[0]} elements in 'y' and {l.shape[0]} rows in 'L'"
         )
 
     if inplace:
@@ -12502,6 +12609,7 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
     options: Mapping[str, Any],
     builder: warp._src.context.ModuleBuilder,
 ):
+    upper = _tile_cholesky_extract_fill_mode(arg_values, func_name="tile_cholesky_solve")
     L = arg_values["L"]
     y = arg_values["y"]
     # force the storage type of the input variables to shared memory
@@ -12538,14 +12646,14 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, L, y) if inplace else (0, L, y, x), [], [], 0)
+        return ((0, L, y) if inplace else (0, L, y, x), [upper], [], 0)
     else:
         NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
         solver = "potrs"
         solver_enum = cusolver_function_map[solver]
         side_enum = cusolver_side_map["-"]
         diag_enum = cusolver_diag_map["-"]
-        fill_mode = cusolver_fill_mode_map["lower"]
+        fill_mode = cusolver_fill_mode_map["upper" if upper else "lower"]
         dtype, precision_enum = cusolver_type_map[L.type.dtype]
         num_threads = options["block_dim"]
         parameter_list = f"({dtype}*, {dtype}*)"
@@ -12574,7 +12682,7 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
         )
 
         var = Var(lto_symbol, str, False, True, False)
-        return ((var, L, y) if inplace else (var, L, y, x), [], [lto_code_data], 0)
+        return ((var, L, y) if inplace else (var, L, y, x), [upper], [lto_code_data], 0)
 
 
 def tile_cholesky_solve_generic_lto_dispatch_func(*args, **kwargs):
@@ -12587,11 +12695,21 @@ def tile_cholesky_solve_inplace_generic_lto_dispatch_func(*args, **kwargs):
 
 add_builtin(
     "tile_cholesky_solve",
-    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
+    input_types={
+        "L": tile(dtype=Float, shape=tuple[int, int]),
+        "y": tile(dtype=Float, shape=tuple[int]),
+        "fill_mode": str,
+    },
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_solve_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_generic_lto_dispatch_func,
     variadic=True,
-    doc="""Solve for ``x`` in ``Ax = y``.
+    doc="""Solve for ``x`` in ``Ax = y`` given the Cholesky factor of ``A``.
+
+    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note that computing the adjoint is not yet supported.
 
@@ -12600,25 +12718,35 @@ add_builtin(
         * float64
 
     Args:
-        L: A square, lower triangular, matrix, such that ``LL^T = A``.
+        L: A square triangular Cholesky factor of ``A``.
         y: A 1D or 2D tile of length ``M``.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
 
     Returns:
-        A tile of the same shape as ``y`` such that ``LL^T x = y``.""",
+        A tile of the same shape as ``y`` such that ``Ax = y``.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
 
 add_builtin(
     "tile_cholesky_solve_inplace",
-    input_types={"L": tile(dtype=Float, shape=tuple[int, int]), "y": tile(dtype=Float, shape=tuple[int])},
+    input_types={
+        "L": tile(dtype=Float, shape=tuple[int, int]),
+        "y": tile(dtype=Float, shape=tuple[int]),
+        "fill_mode": str,
+    },
+    defaults={"fill_mode": "lower"},
     value_func=tile_cholesky_solve_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_solve_inplace_generic_lto_dispatch_func,
     variadic=True,
     doc="""Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+
+    When ``fill_mode="lower"`` (default), ``L`` is lower-triangular such that ``LL^T = A``.
+    When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+
+    The ``fill_mode`` parameter must be a compile-time constant.
 
     Note: This inplace variant does not support automatic differentiation (adjoint computation),
     but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
@@ -12628,11 +12756,11 @@ add_builtin(
         * float64
 
     Args:
-        L: A square, lower triangular, matrix, such that ``LL^T = A``.
-        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``LL^T x = y``.""",
+        L: A square triangular Cholesky factor of ``A``.
+        y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
+        fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
-    namespace="",
     is_differentiable=False,
 )
 
@@ -13065,7 +13193,11 @@ add_builtin(
     "len",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a vector.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13075,7 +13207,11 @@ add_builtin(
     "len",
     input_types={"a": quaternion(dtype=Float)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a quaternion.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13085,7 +13221,11 @@ add_builtin(
     "len",
     input_types={"a": matrix(shape=(Any, Any), dtype=Scalar)},
     value_func=static_len_value_func,
-    doc="Query the number of rows in a matrix.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13095,7 +13235,11 @@ add_builtin(
     "len",
     input_types={"a": transformation(dtype=Float)},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a transformation.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13105,7 +13249,11 @@ add_builtin(
     "len",
     input_types={"a": array(dtype=Any)},
     value_type=int,
-    doc="Query the size of the first dimension in an array.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13115,7 +13263,11 @@ add_builtin(
     "len",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...])},
     value_func=static_len_value_func,
-    doc="Query the number of rows in a tile.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,
@@ -13246,7 +13398,11 @@ add_builtin(
     "len",
     input_types={"a": tuple},
     value_func=static_len_value_func,
-    doc="Query the number of elements in a tuple.",
+    doc="""Query the length of ``a``.
+
+    Returns:
+        The number of elements for vectors, quaternions, and transformations; the number
+        of rows for matrices and tiles; or the size of the leading dimension for arrays.""",
     group="Utility",
     export=False,
     is_differentiable=False,

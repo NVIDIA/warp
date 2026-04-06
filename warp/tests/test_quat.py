@@ -487,7 +487,7 @@ def test_normalize(test, device, dtype, register_kernels=False):
     assert_np_equal(n2.numpy()[0], n2_alt.numpy()[0], tol=tol)
     assert_np_equal(n3.numpy()[0], n3_alt.numpy()[0], tol=tol)
 
-    for ncmp, ncmpalt in zip(outputs0, outputs1):
+    for ncmp, ncmpalt in zip(outputs0, outputs1, strict=False):
         tape0.backward(loss=ncmp)
         tape1.backward(loss=ncmpalt)
         assert_np_equal(tape0.gradients[q].numpy()[0], tape1.gradients[q].numpy()[0], tol=tol)

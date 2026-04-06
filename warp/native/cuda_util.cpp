@@ -105,6 +105,7 @@ static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
 static PFN_cuLaunchKernel_v4000 pfn_cuLaunchKernel;
+static PFN_cuOccupancyMaxPotentialBlockSize_v6050 pfn_cuOccupancyMaxPotentialBlockSize;
 static PFN_cuMemcpyPeerAsync_v4000 pfn_cuMemcpyPeerAsync;
 static PFN_cuPointerGetAttribute_v4000 pfn_cuPointerGetAttribute;
 static PFN_cuGraphicsMapResources_v3000 pfn_cuGraphicsMapResources;
@@ -271,6 +272,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuModuleUnload", 2000, &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", 2000, &(void*&)pfn_cuModuleGetFunction);
     get_driver_entry_point("cuLaunchKernel", 4000, &(void*&)pfn_cuLaunchKernel);
+    get_driver_entry_point("cuOccupancyMaxPotentialBlockSize", 6050, &(void*&)pfn_cuOccupancyMaxPotentialBlockSize);
     get_driver_entry_point("cuMemcpyPeerAsync", 4000, &(void*&)pfn_cuMemcpyPeerAsync);
     get_driver_entry_point("cuPointerGetAttribute", 4000, &(void*&)pfn_cuPointerGetAttribute);
     get_driver_entry_point("cuGraphicsMapResources", 3000, &(void*&)pfn_cuGraphicsMapResources);
@@ -680,6 +682,22 @@ CUresult cuLaunchKernel_f(
                                     hStream, kernelParams, extra
                                 )
                               : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuOccupancyMaxPotentialBlockSize_f(
+    int* minGridSize,
+    int* blockSize,
+    CUfunction func,
+    CUoccupancyB2DSize blockSizeToDynamicSMemSize,
+    size_t dynamicSMemSize,
+    int blockSizeLimit
+)
+{
+    return pfn_cuOccupancyMaxPotentialBlockSize
+        ? pfn_cuOccupancyMaxPotentialBlockSize(
+              minGridSize, blockSize, func, blockSizeToDynamicSMemSize, dynamicSMemSize, blockSizeLimit
+          )
+        : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuMemcpyPeerAsync_f(

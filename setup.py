@@ -7,7 +7,7 @@ import pathlib
 import platform
 import shutil
 import sys
-from typing import ClassVar, NamedTuple, Optional
+from typing import ClassVar, NamedTuple
 
 import setuptools
 from wheel.bdist_wheel import bdist_wheel
@@ -65,7 +65,7 @@ class Platform(NamedTuple):
     def name(self) -> str:
         return self.os + "-" + self.arch
 
-    def get_platform_tag(self, manylinux_flavor: Optional[str] = None) -> str:
+    def get_platform_tag(self, manylinux_flavor: str | None = None) -> str:
         """Get the platform tag, with optional manylinux flavor override for Linux."""
         if self.os == "linux" and manylinux_flavor:
             return f"{manylinux_flavor}_{self.arch}"

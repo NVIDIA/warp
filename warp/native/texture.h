@@ -617,6 +617,25 @@ inline float cpu_sample_3d_channel(const Texture* tex, float u, float v, float w
 // Texture Sampling Functions
 // ============================================================================
 
+// TODO: Implement texture fetch functions for Clang CUDA JIT (currently stubbed, texture API is not supported)
+#if defined(__clang__) && defined(__CUDA__)
+template <typename T> __device__ T tex1D(unsigned long long texObj, float x)
+{
+    T v {};
+    return v;
+}
+template <typename T> __device__ T tex2D(unsigned long long texObj, float x, float y)
+{
+    T v {};
+    return v;
+}
+template <typename T> __device__ T tex3D(unsigned long long texObj, float x, float y, float z)
+{
+    T v {};
+    return v;
+}
+#endif
+
 // Helper to convert CUDA types to Warp types
 template <typename T> struct texture_sample_helper;
 
