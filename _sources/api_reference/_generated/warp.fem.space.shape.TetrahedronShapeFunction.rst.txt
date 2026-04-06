@@ -1,0 +1,47 @@
+﻿warp.fem.space.shape.TetrahedronShapeFunction
+=============================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TetrahedronShapeFunction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TetrahedronShapeFunction.__init__
+      ~TetrahedronShapeFunction.make_element_inner_weight
+      ~TetrahedronShapeFunction.make_element_inner_weight_gradient
+      ~TetrahedronShapeFunction.make_node_coords_in_element
+      ~TetrahedronShapeFunction.make_node_quadrature_weight
+      ~TetrahedronShapeFunction.make_trace_node_quadrature_weight
+      ~TetrahedronShapeFunction.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TetrahedronShapeFunction.EDGE
+      ~TetrahedronShapeFunction.FACE
+      ~TetrahedronShapeFunction.INTERIOR
+      ~TetrahedronShapeFunction.VERTEX
+      ~TetrahedronShapeFunction.edge_vidx
+      ~TetrahedronShapeFunction.name
+      ~TetrahedronShapeFunction.opposite_edge_vidx
+      ~TetrahedronShapeFunction.value
+      ~TetrahedronShapeFunction.VERTEX_NODE_COUNT
+      ~TetrahedronShapeFunction.EDGE_NODE_COUNT
+      ~TetrahedronShapeFunction.FACE_NODE_COUNT
+      ~TetrahedronShapeFunction.INTERIOR_NODE_COUNT
+      ~TetrahedronShapeFunction.ORDER
+      ~TetrahedronShapeFunction.NODES_PER_ELEMENT
+   
+   

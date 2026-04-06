@@ -1,0 +1,6 @@
+﻿warp.jax\_experimental.custom\_call.jax\_kernel
+===============================================
+
+.. currentmodule:: warp.jax_experimental.custom_call
+
+.. autofunction:: jax_kernel

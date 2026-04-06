@@ -1,0 +1,71 @@
+﻿warp.fem.Geometry
+=================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Geometry
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Geometry.__init__
+      ~Geometry.boundary_side_count
+      ~Geometry.boundary_side_index
+      ~Geometry.build_bvh
+      ~Geometry.bvh_id
+      ~Geometry.cell_arg_value
+      ~Geometry.cell_count
+      ~Geometry.cell_deformation_gradient
+      ~Geometry.cell_inverse_deformation_gradient
+      ~Geometry.cell_measure
+      ~Geometry.cell_normal
+      ~Geometry.cell_position
+      ~Geometry.fill_cell_arg
+      ~Geometry.fill_side_arg
+      ~Geometry.fill_side_index_arg
+      ~Geometry.make_filtered_cell_lookup
+      ~Geometry.reference_cell
+      ~Geometry.reference_side
+      ~Geometry.side_arg_value
+      ~Geometry.side_count
+      ~Geometry.side_deformation_gradient
+      ~Geometry.side_from_cell_coords
+      ~Geometry.side_index_arg_value
+      ~Geometry.side_inner_cell_coords
+      ~Geometry.side_inner_cell_index
+      ~Geometry.side_inner_inverse_deformation_gradient
+      ~Geometry.side_measure
+      ~Geometry.side_measure_ratio
+      ~Geometry.side_normal
+      ~Geometry.side_outer_cell_coords
+      ~Geometry.side_outer_cell_index
+      ~Geometry.side_outer_inverse_deformation_gradient
+      ~Geometry.side_position
+      ~Geometry.side_to_cell_arg
+      ~Geometry.supports_cell_lookup
+      ~Geometry.update_bvh
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Geometry.base
+      ~Geometry.cell_dimension
+      ~Geometry.cell_lookup
+      ~Geometry.cell_measure_ratio
+      ~Geometry.dimension
+      ~Geometry.name
+      ~Geometry.CellArg
+      ~Geometry.SideArg
+      ~Geometry.SideIndexArg
+   
+   

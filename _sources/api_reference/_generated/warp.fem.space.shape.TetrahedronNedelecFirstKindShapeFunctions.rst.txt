@@ -1,0 +1,47 @@
+﻿warp.fem.space.shape.TetrahedronNedelecFirstKindShapeFunctions
+==============================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TetrahedronNedelecFirstKindShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TetrahedronNedelecFirstKindShapeFunctions.__init__
+      ~TetrahedronNedelecFirstKindShapeFunctions.make_element_inner_weight
+      ~TetrahedronNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient
+      ~TetrahedronNedelecFirstKindShapeFunctions.make_node_coords_in_element
+      ~TetrahedronNedelecFirstKindShapeFunctions.make_node_quadrature_weight
+      ~TetrahedronNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight
+      ~TetrahedronNedelecFirstKindShapeFunctions.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TetrahedronNedelecFirstKindShapeFunctions.EDGE
+      ~TetrahedronNedelecFirstKindShapeFunctions.FACE
+      ~TetrahedronNedelecFirstKindShapeFunctions.INTERIOR
+      ~TetrahedronNedelecFirstKindShapeFunctions.VERTEX
+      ~TetrahedronNedelecFirstKindShapeFunctions.edge_vidx
+      ~TetrahedronNedelecFirstKindShapeFunctions.name
+      ~TetrahedronNedelecFirstKindShapeFunctions.opposite_edge_vidx
+      ~TetrahedronNedelecFirstKindShapeFunctions.value
+      ~TetrahedronNedelecFirstKindShapeFunctions.VERTEX_NODE_COUNT
+      ~TetrahedronNedelecFirstKindShapeFunctions.EDGE_NODE_COUNT
+      ~TetrahedronNedelecFirstKindShapeFunctions.FACE_NODE_COUNT
+      ~TetrahedronNedelecFirstKindShapeFunctions.INTERIOR_NODE_COUNT
+      ~TetrahedronNedelecFirstKindShapeFunctions.ORDER
+      ~TetrahedronNedelecFirstKindShapeFunctions.NODES_PER_ELEMENT
+   
+   

@@ -1,0 +1,40 @@
+﻿warp.fem.space.shape.CubeShapeFunction
+======================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeShapeFunction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeShapeFunction.__init__
+      ~CubeShapeFunction.make_element_inner_weight
+      ~CubeShapeFunction.make_element_inner_weight_gradient
+      ~CubeShapeFunction.make_node_coords_in_element
+      ~CubeShapeFunction.make_node_quadrature_weight
+      ~CubeShapeFunction.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeShapeFunction.EDGE
+      ~CubeShapeFunction.FACE
+      ~CubeShapeFunction.INTERIOR
+      ~CubeShapeFunction.VERTEX
+      ~CubeShapeFunction.name
+      ~CubeShapeFunction.value
+      ~CubeShapeFunction.ORDER
+      ~CubeShapeFunction.NODES_PER_ELEMENT
+   
+   

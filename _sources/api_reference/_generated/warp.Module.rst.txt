@@ -1,0 +1,33 @@
+﻿warp.Module
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: Module
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Module.__init__
+      ~Module.get_kernel_hooks
+      ~Module.get_module_hash
+      ~Module.get_module_identifier
+      ~Module.hash_module
+      ~Module.increment_id
+      ~Module.load
+      ~Module.mark_modified
+      ~Module.register_function
+      ~Module.register_kernel
+      ~Module.register_struct
+      ~Module.unload
+   
+   
+
+   
+   
+   

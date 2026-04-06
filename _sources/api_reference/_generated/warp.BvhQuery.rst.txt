@@ -1,0 +1,22 @@
+﻿warp.BvhQuery
+=============
+
+.. currentmodule:: warp
+
+.. autoclass:: BvhQuery
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BvhQuery.__init__
+   
+   
+
+   
+   
+   

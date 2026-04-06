@@ -1,0 +1,44 @@
+﻿warp.fem.BasisSpace
+===================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: BasisSpace
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BasisSpace.__init__
+      ~BasisSpace.basis_arg_value
+      ~BasisSpace.fill_basis_arg
+      ~BasisSpace.make_element_inner_weight
+      ~BasisSpace.make_element_inner_weight_gradient
+      ~BasisSpace.make_element_outer_weight
+      ~BasisSpace.make_element_outer_weight_gradient
+      ~BasisSpace.make_node_coords_in_element
+      ~BasisSpace.make_node_quadrature_weight
+      ~BasisSpace.make_trace_node_quadrature_weight
+      ~BasisSpace.node_positions
+      ~BasisSpace.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BasisSpace.BasisArg
+      ~BasisSpace.geometry
+      ~BasisSpace.topology
+      ~BasisSpace.value
+      ~BasisSpace.weight_gradient_type
+      ~BasisSpace.weight_type
+   
+   

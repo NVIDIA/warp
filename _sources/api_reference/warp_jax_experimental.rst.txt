@@ -1,0 +1,32 @@
+warp.jax_experimental
+=====================
+
+.. automodule:: warp.jax_experimental
+   :no-members:
+
+.. currentmodule:: warp.jax_experimental
+
+.. toctree::
+   :hidden:
+
+   warp_jax_experimental_custom_call
+   warp_jax_experimental_ffi
+
+Additional Submodules
+---------------------
+
+These modules must be explicitly imported (e.g., ``import warp.jax_experimental.custom_call``).
+
+- :mod:`warp.jax_experimental.custom_call`
+- :mod:`warp.jax_experimental.ffi`
+
+API
+---
+
+- :obj:`GraphMode <warp.jax_experimental.ffi.GraphMode>`
+- :obj:`clear_jax_callable_graph_cache <warp.jax_experimental.ffi.clear_jax_callable_graph_cache>`
+- :obj:`get_jax_callable_default_graph_cache_max <warp.jax_experimental.ffi.get_jax_callable_default_graph_cache_max>`
+- :obj:`jax_callable <warp.jax_experimental.ffi.jax_callable>`
+- :obj:`jax_kernel <warp.jax_experimental.ffi.jax_kernel>`
+- :obj:`register_ffi_callback <warp.jax_experimental.ffi.register_ffi_callback>`
+- :obj:`set_jax_callable_default_graph_cache_max <warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max>`

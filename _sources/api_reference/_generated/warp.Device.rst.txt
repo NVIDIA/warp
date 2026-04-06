@@ -1,0 +1,42 @@
+﻿warp.Device
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: Device
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Device.__init__
+      ~Device.can_access
+      ~Device.get_allocator
+      ~Device.get_cuda_compile_arch
+      ~Device.get_cuda_output_format
+      ~Device.make_current
+      ~Device.set_stream
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Device.context
+      ~Device.free_memory
+      ~Device.has_context
+      ~Device.has_stream
+      ~Device.is_capturing
+      ~Device.is_cpu
+      ~Device.is_cuda
+      ~Device.stream
+      ~Device.total_memory
+   
+   

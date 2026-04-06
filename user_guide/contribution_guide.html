@@ -1,0 +1,1166 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Contribution Guide &#8212; Warp 1.12.1</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=5af6a172"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/contribution_guide';</script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Publications using Warp" href="publications.html" />
+    <link rel="prev" title="Limitations" href="limitations.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.12.1" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">Warp v1.12.1 is now available. See the <a href='https://github.com/NVIDIA/warp/releases/tag/v1.12.1'>release notes</a>.</div>
+</aside>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.12.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.12.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.12.1</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.12.1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.12.1 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.12.1</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interoperability.html">Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project Links</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NVIDIA/warp">GitHub</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pypi.org/project/warp-lang">PyPI</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Contribution Guide</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="d-flex justify-content-end w-100">
+  <a href="../_sources/user_guide/contribution_guide.rst.txt">
+    <i class="fa-solid fa-file-code"></i> View page source
+  </a>
+</div>
+</div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="contribution-guide">
+<h1>Contribution Guide<a class="headerlink" href="#contribution-guide" title="Link to this heading">#</a></h1>
+<p>Some ways to contribute to the development of Warp include:</p>
+<ul class="simple">
+<li><p>Reporting bugs and requesting new features on <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub</a>.</p></li>
+<li><p>Asking questions, sharing your work, or participating in discussion threads on
+<a class="reference external" href="https://github.com/NVIDIA/warp/discussions">GitHub</a>.</p></li>
+<li><p>Adding new examples to the Warp repository.</p></li>
+<li><p>Documentation improvements.</p></li>
+<li><p>Contributing bug fixes or new features.</p></li>
+<li><p>Adding your work to the <a class="reference internal" href="publications.html"><span class="doc">publications list</span></a>.</p></li>
+</ul>
+<section id="before-you-start">
+<span id="id1"></span><h2>Before You Start<a class="headerlink" href="#before-you-start" title="Link to this heading">#</a></h2>
+<p>For small fixes such as typos, broken links, or minor documentation improvements,
+feel free to open a pull request directly.</p>
+<p>For bug fixes, feature contributions, or any non-trivial change:</p>
+<ul class="simple">
+<li><p><strong>Check existing issues first.</strong> Search <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>
+to see if someone is already working on it. If an issue is already assigned to
+someone else, coordinate in the issue thread before starting your own implementation.</p></li>
+<li><p><strong>Propose new features before implementing them.</strong> Open a
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/new">GitHub Issue</a> or
+<a class="reference external" href="https://github.com/NVIDIA/warp/discussions">Discussion</a> to describe what you
+want to build and get feedback. Not all features are a good fit for Warp, and
+early discussion avoids wasted effort.</p></li>
+<li><p><strong>Gauge the complexity of what you’re picking up.</strong> Some areas of the codebase
+(e.g. JAX/PyTorch interop, code generation, CUDA runtime internals) involve subtle
+interactions that may not be apparent from a GitHub issue description alone. If you
+are not already familiar with the subsystem, comment on the issue to ask for context
+before investing time in a pull request.</p></li>
+</ul>
+</section>
+<section id="code-contributions">
+<span id="id2"></span><h2>Code Contributions<a class="headerlink" href="#code-contributions" title="Link to this heading">#</a></h2>
+<p>Code contributions from the community are welcome.
+Rather than requiring a formal Contributor License Agreement (CLA), we use the
+<a class="reference external" href="https://developercertificate.org/">Developer Certificate of Origin</a> to
+ensure contributors have the right to submit their contributions to this project.
+Please ensure that all commits have a
+<a class="reference external" href="https://git-scm.com/docs/git-commit#Documentation/git-commit.txt--s">sign-off</a>
+added with an email address that matches the commit author
+to agree to the DCO terms for each particular contribution.</p>
+<p>The full text of the DCO is as follows:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Version 1.1
+
+Copyright (C) 2004, 2006 The Linux Foundation and its contributors.
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+
+Developer&#39;s Certificate of Origin 1.1
+
+By making a contribution to this project, I certify that:
+
+(a) The contribution was created in whole or in part by me and I
+    have the right to submit it under the open source license
+    indicated in the file; or
+
+(b) The contribution is based upon previous work that, to the best
+    of my knowledge, is covered under an appropriate open source
+    license and I have the right under that license to submit that
+    work with modifications, whether created in whole or in part
+    by me, under the same open source license (unless I am
+    permitted to submit under a different license), as indicated
+    in the file; or
+
+(c) The contribution was provided directly to me by some other
+    person who certified (a), (b) or (c) and I have not modified
+    it.
+
+(d) I understand and agree that this project and the contribution
+    are public and that a record of the contribution (including all
+    personal information I submit with it, including my sign-off) is
+    maintained indefinitely and may be redistributed consistent with
+    this project or the open source license(s) involved.
+</pre></div>
+</div>
+<section id="overview">
+<h3>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h3>
+<ol class="arabic">
+<li><p>Create a fork of the Warp GitHub repository by visiting <a class="github reference external" href="https://github.com/NVIDIA/warp/fork">NVIDIA/warp</a></p></li>
+<li><p>Clone your fork on your local machine, e.g. <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">git&#64;github.com:username/warp.git</span></code>.</p></li>
+<li><p>Create a <code class="docutils literal notranslate"><span class="pre">username/short-description</span></code> branch for your contribution.</p></li>
+<li><p>Make your desired changes.</p>
+<ul class="simple">
+<li><p>Please familiarize yourself with the <a class="reference internal" href="#coding-guidelines"><span class="std std-ref">Coding Guidelines</span></a>.</p></li>
+<li><p>Ensure that code changes pass <a class="reference internal" href="#linting-and-formatting"><span class="std std-ref">linting and formatting checks</span></a>.</p></li>
+<li><p>Test cases should be written to verify correctness (<a class="reference internal" href="#testing-warp"><span class="std std-ref">Testing Warp</span></a>).</p></li>
+<li><p>Documentation should be added for new features (<a class="reference internal" href="#building-docs"><span class="std std-ref">Building the Documentation</span></a>).</p></li>
+<li><p>Add an entry to the unreleased section at the top of the
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md">CHANGELOG.md</a> describing the changes.</p></li>
+</ul>
+</li>
+<li><p>Prepare your commits.</p>
+<ul>
+<li><p>Use imperative mood in commit messages (e.g. “Fix array bounds check”, not “Fixed array bounds check”).</p></li>
+<li><p>Keep the subject line under ~50 characters. Use the body to explain <em>why</em> the change
+was made, not <em>what</em> changed (the diff shows that).</p></li>
+<li><p>Reference related GitHub issues in the commit message, e.g. <code class="docutils literal notranslate"><span class="pre">(GH-1234)</span></code>.</p></li>
+<li><p>Sign off every commit with <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">commit</span> <span class="pre">--signoff</span></code> (or <code class="docutils literal notranslate"><span class="pre">-s</span></code>) to certify the
+<a class="reference internal" href="#code-contributions"><span class="std std-ref">Developer Certificate of Origin</span></a>.</p></li>
+<li><p><strong>Clean up your commit history</strong> before the pull request can be merged.
+Pull requests naturally accumulate merge commits, review fixups, and
+work-in-progress saves. These clutter <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">log</span></code> and make
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">bisect</span></code> and <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">cherry-pick</span></code> less effective on <code class="docutils literal notranslate"><span class="pre">main</span></code>.</p>
+<p>Organize your branch into a small number of logical, self-contained commits
+(often just one). Each commit should represent a coherent unit of change,
+pass tests on its own, and have a clear commit message. A multi-commit branch
+is fine when the commits tell a meaningful story (e.g. “Add new API” followed
+by “Add tests for new API”), but there is no reason to keep fixup or merge
+commits around.</p>
+<p>The simplest way to clean up a branch is to squash everything into one commit:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Squash all commits on your branch into one</span>
+git<span class="w"> </span>fetch<span class="w"> </span>https://github.com/NVIDIA/warp.git<span class="w"> </span>main
+git<span class="w"> </span>reset<span class="w"> </span>--soft<span class="w"> </span>FETCH_HEAD
+git<span class="w"> </span>commit<span class="w"> </span>-s
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p>Push your branch to your GitHub fork, e.g. <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">origin</span> <span class="pre">username/feature-name</span></code>.</p></li>
+<li><p>Submit a pull request on GitHub to the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch (<a class="reference internal" href="#pull-requests"><span class="std std-ref">Pull Request Guidelines</span></a>).
+Work with reviewers to ensure the pull request is in a state suitable for merging.</p></li>
+</ol>
+</section>
+<section id="contribution-quality-expectations">
+<span id="quality-expectations"></span><h3>Contribution Quality Expectations<a class="headerlink" href="#contribution-quality-expectations" title="Link to this heading">#</a></h3>
+<p>To keep the review process efficient and the codebase healthy, please ensure your
+contribution meets these expectations:</p>
+<ul class="simple">
+<li><p><strong>Include tests.</strong> Bug fixes should include tests that reproduce the failure without
+the fix and pass with it. New features need tests that cover the core functionality
+and important edge cases. Pull requests that modify core library code without
+adequate test coverage will not be merged. That said, every test adds to the suite
+runtime, so focus on meaningful tests that verify real behavior rather than
+exhaustively testing trivial variations. See <a class="reference internal" href="#testing-warp"><span class="std std-ref">Testing Warp</span></a> for guidance.</p></li>
+<li><p><strong>Follow the pull request template.</strong> Fill out all relevant sections, including
+a test plan that explains how you verified the changes. This also helps reviewers
+reproduce and confirm your results. See <a class="reference internal" href="#pull-requests"><span class="std std-ref">Pull Request Guidelines</span></a>.</p></li>
+<li><p><strong>Keep changes focused.</strong> A pull request should address a single bug fix, feature, or
+improvement. Do not bundle unrelated changes; split them into separate PRs.</p></li>
+<li><p><strong>Minimize review cost.</strong> Well-tested, clearly described contributions with clean
+commit history get reviewed faster. Contributions that require substantial reviewer
+effort to verify correctness may be deprioritized or declined.</p></li>
+</ul>
+</section>
+<section id="coding-guidelines">
+<span id="id3"></span><h3>Coding Guidelines<a class="headerlink" href="#coding-guidelines" title="Link to this heading">#</a></h3>
+<section id="general-guidelines">
+<h4>General Guidelines<a class="headerlink" href="#general-guidelines" title="Link to this heading">#</a></h4>
+<ul>
+<li><p>Include the NVIDIA SPDX copyright header on all newly created files, updating the year to the current year at the
+time of initial file creation. Use the two-line form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># SPDX-FileCopyrightText: Copyright (c) &lt;YEAR&gt; NVIDIA CORPORATION &amp; AFFILIATES. All rights reserved.</span>
+<span class="c1"># SPDX-License-Identifier: Apache-2.0</span>
+</pre></div>
+</div>
+<p>(Use <code class="docutils literal notranslate"><span class="pre">//</span></code> instead of <code class="docutils literal notranslate"><span class="pre">#</span></code> for C/C++/CUDA files.)</p>
+</li>
+<li><p>Aim for consistency in variable and function names.</p>
+<ul class="simple">
+<li><p>Use the existing terminology when possible when naming new functions (e.g. use <code class="docutils literal notranslate"><span class="pre">points</span></code> instead of <code class="docutils literal notranslate"><span class="pre">vertex_buffer</span></code>).</p></li>
+<li><p>Don’t introduce new abbreviations if one already exists in the code base.</p></li>
+<li><p>Also be mindful of consistency and clarity when naming local function variables.</p></li>
+</ul>
+</li>
+<li><p>Avoid generic function names like <code class="docutils literal notranslate"><span class="pre">get_data()</span></code>.</p></li>
+<li><p>Prioritize matching the existing style and conventions of the file being modified to maintain consistency.</p></li>
+<li><p>Avoid introducing new dependencies. New required dependencies are not accepted. Optional
+dependencies may be considered on a case-by-case basis (e.g. for examples or interop),
+but even optional dependencies require an internal license review of the package and all
+of its transitive dependencies to ensure compatibility with Warp’s license. Discuss in
+the issue or PR before adding one.</p></li>
+</ul>
+</section>
+<section id="python-guidelines">
+<h4>Python Guidelines<a class="headerlink" href="#python-guidelines" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Follow <a class="reference external" href="https://peps.python.org/pep-0008/">PEP 8</a> as the baseline for coding style.</p></li>
+<li><p>Use <a class="reference external" href="https://en.wikipedia.org/wiki/Snake_case">snake case</a> for all function names.</p></li>
+<li><p>Use <a class="reference external" href="https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings">Google-style docstrings</a>.</p></li>
+<li><p>Use both <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> parameters in <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> in functions that are expected to be used in
+differentiable programming applications to aid in visualization and debugging tools.</p></li>
+</ul>
+</section>
+<section id="c-guidelines">
+<h4>C++ Guidelines<a class="headerlink" href="#c-guidelines" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Follow the clang-format style configuration in <code class="docutils literal notranslate"><span class="pre">.clang-format</span></code> (WebKit-based style with 120-character line limit).</p>
+<ul>
+<li><p>WebKit brace style: Function braces on new line, control statement braces on same line</p></li>
+<li><p>Left-aligned pointers and references: <code class="docutils literal notranslate"><span class="pre">Type*</span> <span class="pre">var</span></code> not <code class="docutils literal notranslate"><span class="pre">Type</span> <span class="pre">*var</span></code></p></li>
+<li><p>No indentation inside namespaces</p></li>
+<li><p>Automatic include sorting with <code class="docutils literal notranslate"><span class="pre">warp.h</span></code> always first</p></li>
+</ul>
+</li>
+<li><p><strong>Symbol Naming</strong>: All exported C/C++ symbols (functions, global variables) must be prefixed with <code class="docutils literal notranslate"><span class="pre">wp_</span></code>
+to prevent namespace pollution. This is enforced by a GitLab CI job that inspects the compiled libraries.</p>
+<ul>
+<li><p>Good: <code class="docutils literal notranslate"><span class="pre">wp_init()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp_cuda_launch_kernel()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp_graph_coloring()</span></code></p></li>
+<li><p>Bad: <code class="docutils literal notranslate"><span class="pre">init()</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda_launch_kernel()</span></code>, <code class="docutils literal notranslate"><span class="pre">graph_coloring()</span></code></p></li>
+<li><p>Note: Symbols inside the <code class="docutils literal notranslate"><span class="pre">wp</span></code> namespace in header files don’t need this prefix, but C symbols and <code class="docutils literal notranslate"><span class="pre">extern</span> <span class="pre">&quot;C&quot;</span></code>
+functions exported from implementation files must use the <code class="docutils literal notranslate"><span class="pre">wp_</span></code> prefix</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<section id="linting-and-formatting">
+<span id="id4"></span><h3>Linting and Formatting<a class="headerlink" href="#linting-and-formatting" title="Link to this heading">#</a></h3>
+<p><a class="reference external" href="https://docs.astral.sh/ruff/">Ruff</a> is used as the linter and code formatter for Python code in the Warp repository.
+The contents of pull requests will automatically be checked to ensure adherence to our formatting and linting standards.</p>
+<p>We recommend running the linters and formatters locally on your branch before opening a pull request.
+From the project root, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files
+</pre></div>
+</div>
+<p>This command will attempt to fix any lint violations and then format the code.
+Some lint violations cannot be <a class="reference external" href="https://docs.astral.sh/ruff/linter/#fix-safety">fixed automatically</a>
+and will require manual resolution.</p>
+<p>To run linting and formatting checks automatically at <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">commit</span></code> time, install the
+pre-commit hooks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>pre-commit<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+<section id="c-code-formatting">
+<h3>C++ Code Formatting<a class="headerlink" href="#c-code-formatting" title="Link to this heading">#</a></h3>
+<p>C++ code in the Warp repository must adhere to the clang-format style defined in <code class="docutils literal notranslate"><span class="pre">.clang-format</span></code>.
+The CI/CD pipeline will automatically check C++ formatting compliance for all pull requests.</p>
+<p><strong>Using clang-format</strong></p>
+<p>The same pre-commit setup handles both Python (Ruff) and C++ (clang-format) code:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all formatters and linters (Python and C++)</span>
+uvx<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files
+
+<span class="c1"># Run only clang-format on C++ files</span>
+uvx<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>clang-format<span class="w"> </span>--all-files
+</pre></div>
+</div>
+<p><strong>Optional: Installing clang-format locally</strong></p>
+<p>Pre-commit automatically downloads and uses the correct clang-format version, so manual
+installation is not required. However, if you want to install clang-format locally for IDE
+integration (e.g., VS Code format-on-save), install the version specified in <code class="docutils literal notranslate"><span class="pre">.pre-commit-config.yaml</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ubuntu/Debian - Install from apt.llvm.org</span>
+<span class="c1"># See https://apt.llvm.org/ for repository setup instructions</span>
+<span class="c1"># Check .pre-commit-config.yaml for the current version</span>
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>clang-format-21
+</pre></div>
+</div>
+<p>For other platforms, consult the LLVM documentation for installation instructions. We recommend using pre-commit
+for formatting, which handles version management automatically across all platforms.</p>
+<p><strong>Running clang-format directly:</strong></p>
+<p>If you have clang-format installed locally, you can run it directly from the command line:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Format all C++ files in warp/ (from repository root)</span>
+<span class="c1"># Note: nanovdb files are automatically skipped due to DisableFormat in nanovdb/.clang-format</span>
+clang-format<span class="w"> </span>-i<span class="w"> </span>warp/**/*.<span class="o">{</span>h,cpp,cu<span class="o">}</span>
+
+<span class="c1"># Format a specific file</span>
+clang-format<span class="w"> </span>-i<span class="w"> </span>warp/native/mesh.h
+</pre></div>
+</div>
+<p><strong>Disabling clang-format for specific code blocks:</strong></p>
+<p>In rare cases where automatic formatting would break critical formatting (e.g., dependency-sensitive include order,
+carefully aligned matrices), you can disable clang-format for a specific section:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// clang-format off</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;vec.h&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;mat.h&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;quat.h&quot;</span>
+<span class="c1">// clang-format on</span>
+</pre></div>
+</div>
+<p>Use this sparingly. Add a comment explaining why if the reason isn’t obvious. See <code class="docutils literal notranslate"><span class="pre">warp/native/builtin.h</span></code> for examples.</p>
+<p><strong>Note:</strong> The NanoVDB directory (<code class="docutils literal notranslate"><span class="pre">warp/native/nanovdb/</span></code>) is third-party code and automatically excluded via its own <code class="docutils literal notranslate"><span class="pre">.clang-format</span></code> configuration.</p>
+</section>
+<section id="building-the-documentation">
+<span id="building-docs"></span><h3>Building the Documentation<a class="headerlink" href="#building-the-documentation" title="Link to this heading">#</a></h3>
+<p>The Warp library should first be built locally by running <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> before building the Sphinx documentation.
+The documentation can then be built by running the following from the project root:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>build_docs.py
+</pre></div>
+</div>
+<p>The default behavior skips running the
+<a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html">doctest tests</a>,
+which take approximately 2 minutes to run.
+If your changes modify core library functionality, it can be a good idea to run <code class="docutils literal notranslate"><span class="pre">build_docs.py</span></code>
+with the <code class="docutils literal notranslate"><span class="pre">--doctest</span></code> flag to ensure that the documentation code snippets are still up to date.
+The <code class="docutils literal notranslate"><span class="pre">--no-html</span></code> flag can also be used to skip building the HTML documentation, e.g.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run only the doctest tests</span>
+uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>build_docs.py<span class="w"> </span>--no-html<span class="w"> </span>--doctest
+
+<span class="c1"># Build the HTML documentation AND run the doctest tests</span>
+uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>build_docs.py<span class="w"> </span>--doctest
+</pre></div>
+</div>
+<p>Running <code class="docutils literal notranslate"><span class="pre">build_docs.py</span></code> also regenerates both the stub file (<code class="docutils literal notranslate"><span class="pre">warp/__init__.pyi</span></code>) and the reStructuredText files for the
+reference pages. After building the documentation, it is recommended to run a <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span></code> to
+check if your changes have modified these files. If so, please commit the modified files to your branch.</p>
+</section>
+<section id="pull-request-guidelines">
+<span id="pull-requests"></span><h3>Pull Request Guidelines<a class="headerlink" href="#pull-request-guidelines" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Use the pull request template provided by the repository. Fill out all
+applicable sections and delete the ones that do not apply.</p></li>
+<li><p>Ensure your pull request has a descriptive title that clearly states the purpose of the changes.</p></li>
+<li><p>Include a brief description covering:</p>
+<ul>
+<li><p>Summary of changes.</p></li>
+<li><p>Areas affected by the changes.</p></li>
+<li><p>The problem being solved.</p></li>
+<li><p>Any limitations or non-handled areas in the changes.</p></li>
+<li><p>Any existing GitHub issues being addressed by the changes (use “closes #1234” syntax).</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="design-documents">
+<h3>Design Documents<a class="headerlink" href="#design-documents" title="Link to this heading">#</a></h3>
+<p>For complex features (new user-facing APIs, architectural changes, or features with
+non-obvious design trade-offs), consider adding a design document in the <code class="docutils literal notranslate"><span class="pre">design/</span></code>
+directory at the repository root. See <code class="docutils literal notranslate"><span class="pre">design/README.md</span></code> for guidelines and the
+template.</p>
+<p>Reviewers may request a design document during the review process for changes that
+would benefit from one.</p>
+</section>
+</section>
+<section id="testing-warp">
+<span id="id5"></span><h2>Testing Warp<a class="headerlink" href="#testing-warp" title="Link to this heading">#</a></h2>
+<section id="running-the-test-suite">
+<h3>Running the Test Suite<a class="headerlink" href="#running-the-test-suite" title="Link to this heading">#</a></h3>
+<p>Warp’s test suite uses the <a class="reference external" href="https://docs.python.org/3/library/unittest.html">unittest</a> unit testing framework,
+along with <a class="reference external" href="https://github.com/craigahobbs/unittest-parallel">unittest-parallel</a> to run tests in parallel.</p>
+<p>The majority of the Warp tests are located in the <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/tests">warp/tests</a>
+directory. As part of the test suite, most examples in the <code class="docutils literal notranslate"><span class="pre">warp/examples</span></code> subdirectories are tested via
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/tests/test_examples.py">test_examples.py</a>.</p>
+<p>After building the Warp library (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">build_lib.py</span></code> from the project root), run the test suite using
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">--extra</span> <span class="pre">dev</span> <span class="pre">-m</span> <span class="pre">warp.tests</span></code>. The tests should take approximately 10–20 minutes to run. By default, only the test modules
+defined in <code class="docutils literal notranslate"><span class="pre">default_suite()</span></code> (in <code class="docutils literal notranslate"><span class="pre">warp/tests/unittest_suites.py</span></code>) are run. To run the test suite
+using <a class="reference external" href="https://docs.python.org/3/library/unittest.html#test-discovery">test discovery</a>, use
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">--extra</span> <span class="pre">dev</span> <span class="pre">-m</span> <span class="pre">warp.tests</span> <span class="pre">-s</span> <span class="pre">autodetect</span></code>, which will discover tests in modules matching the path
+<code class="docutils literal notranslate"><span class="pre">warp/tests/test*.py</span></code>.</p>
+<section id="running-a-subset-of-tests">
+<h4>Running a subset of tests<a class="headerlink" href="#running-a-subset-of-tests" title="Link to this heading">#</a></h4>
+<p>Instead of running the full test suite, there are two main ways to select a subset of tests to run.
+These options must be used with the <code class="docutils literal notranslate"><span class="pre">-s</span> <span class="pre">autodetect</span></code> option.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">PATTERN</span></code> to define a pattern to match test files.
+For example, to run only tests that have <code class="docutils literal notranslate"><span class="pre">mesh</span></code> in the file name, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>-m<span class="w"> </span>warp.tests<span class="w"> </span>-s<span class="w"> </span>autodetect<span class="w"> </span>-p<span class="w"> </span><span class="s1">&#39;*mesh*.py&#39;</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">-k</span> <span class="pre">TESTNAMEPATTERNS</span></code> to define <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestLoader.testNamePatterns">wildcard test name patterns</a>.
+This option can be used multiple times.
+For example, to run only tests that have either <code class="docutils literal notranslate"><span class="pre">mgpu</span></code> or <code class="docutils literal notranslate"><span class="pre">cuda</span></code> in their name, use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>dev<span class="w"> </span>-m<span class="w"> </span>warp.tests<span class="w"> </span>-s<span class="w"> </span>autodetect<span class="w"> </span>-k<span class="w"> </span><span class="s1">&#39;mgpu&#39;</span><span class="w"> </span>-k<span class="w"> </span><span class="s1">&#39;cuda&#39;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="adding-new-tests">
+<h3>Adding New Tests<a class="headerlink" href="#adding-new-tests" title="Link to this heading">#</a></h3>
+<p>For tests that should be run on multiple devices, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;cuda:1&quot;</span></code>, we recommend
+first defining a test function at the module scope and then using <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> to add multiple
+test methods (a separate method for each device) to a test class.</p>
+<p>Always add new test modules to <code class="docutils literal notranslate"><span class="pre">default_suite()</span></code> in <code class="docutils literal notranslate"><span class="pre">warp/tests/unittest_suites.py</span></code>
+so they are included in the default test run.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Never call <code class="docutils literal notranslate"><span class="pre">wp.clear_kernel_cache()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.clear_lto_cache()</span></code> in test files —
+not in <code class="docutils literal notranslate"><span class="pre">__main__</span></code> blocks, test methods, or at module scope. Cache clearing is not
+multi-process-safe; concurrent clears cause LLVM crashes. The test suite runner and
+<code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> already handle cache management.</p>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION &amp; AFFILIATES. All rights reserved.</span>
+<span class="c1"># SPDX-License-Identifier: Apache-2.0</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp.tests.unittest_utils</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_amazing_code_test_one</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="n">devices</span> <span class="o">=</span> <span class="n">get_test_devices</span><span class="p">()</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestAmazingCode</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="n">add_function_test</span><span class="p">(</span><span class="n">TestAmazingCode</span><span class="p">,</span> <span class="s2">&quot;test_amazing_code_test_one&quot;</span><span class="p">,</span> <span class="n">test_amazing_code_test_one</span><span class="p">,</span> <span class="n">devices</span><span class="o">=</span><span class="n">devices</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">(</span><span class="n">verbosity</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If we directly run this module, we get the following output:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>test_amazing_code.py
+Warp<span class="w"> </span><span class="m">1</span>.11.1<span class="w"> </span>initialized:
+CUDA<span class="w"> </span>Toolkit<span class="w"> </span><span class="m">12</span>.9,<span class="w"> </span>Driver<span class="w"> </span><span class="m">13</span>.1
+Devices:
+<span class="w">    </span><span class="s2">&quot;cpu&quot;</span><span class="w">      </span>:<span class="w"> </span><span class="s2">&quot;x86_64&quot;</span>
+<span class="w">    </span><span class="s2">&quot;cuda:0&quot;</span><span class="w">   </span>:<span class="w"> </span><span class="s2">&quot;NVIDIA RTX 6000 Ada Generation&quot;</span><span class="w"> </span><span class="o">(</span><span class="m">48</span><span class="w"> </span>GiB,<span class="w"> </span>sm_89,<span class="w"> </span>mempool<span class="w"> </span>enabled<span class="o">)</span>
+<span class="w">    </span><span class="s2">&quot;cuda:1&quot;</span><span class="w">   </span>:<span class="w"> </span><span class="s2">&quot;NVIDIA RTX 6000 Ada Generation&quot;</span><span class="w"> </span><span class="o">(</span><span class="m">48</span><span class="w"> </span>GiB,<span class="w"> </span>sm_89,<span class="w"> </span>mempool<span class="w"> </span>enabled<span class="o">)</span>
+CUDA<span class="w"> </span>peer<span class="w"> </span>access:
+<span class="w">    </span>Supported<span class="w"> </span>fully<span class="w"> </span><span class="o">(</span>all-directional<span class="o">)</span>
+Kernel<span class="w"> </span>cache:
+<span class="w">    </span>/home/nvidia/.cache/warp/1.11.1
+test_amazing_code_test_one_cpu<span class="w"> </span><span class="o">(</span>__main__.TestAmazingCode<span class="o">)</span><span class="w"> </span>...<span class="w"> </span>ok
+test_amazing_code_test_one_cuda_0<span class="w"> </span><span class="o">(</span>__main__.TestAmazingCode<span class="o">)</span><span class="w"> </span>...<span class="w"> </span>ok
+test_amazing_code_test_one_cuda_1<span class="w"> </span><span class="o">(</span>__main__.TestAmazingCode<span class="o">)</span><span class="w"> </span>...<span class="w"> </span>ok
+
+----------------------------------------------------------------------
+Ran<span class="w"> </span><span class="m">3</span><span class="w"> </span>tests<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">0</span>.001s
+
+OK
+</pre></div>
+</div>
+<p>Note that the output indicated that three tests were run, despite us only writing a single test function called
+<code class="docutils literal notranslate"><span class="pre">test_amazing_code_test_one()</span></code>.
+A closer inspection reveals that the test function was run on three separate devices: <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>. This is a result of calling <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> in our test script with the <cite>devices=devices</cite> argument.
+<code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> is defined in <code class="docutils literal notranslate"><span class="pre">warp/tests/unittest_utils.py</span></code>.</p>
+<p>A caveat of using <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> is that this by itself is not sufficient to ensure that the registered test
+function (e.g. <cite>test_amazing_code_test_one()</cite>) is run on different devices. It is up to the body of the test to make use
+of the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument in ensuring that data is allocated on and kernels are run on the intended <code class="docutils literal notranslate"><span class="pre">device</span></code> for the
+test, e.g.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_amazing_code_test_one</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="n">device</span><span class="p">):</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_amazing_code_test_one</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">score</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="checking-for-expected-behaviors">
+<h3>Checking for Expected Behaviors<a class="headerlink" href="#checking-for-expected-behaviors" title="Link to this heading">#</a></h3>
+<p>Due to the use of the test-registration function <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code>, the <code class="docutils literal notranslate"><span class="pre">test</span></code> parameter actually refers to the
+instance of the test class, which always subclasses <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">unittest</span></code> library also provides methods to check that assertions are raised, as it is also important to test code
+paths that trigger errors. The <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertRaises">assertRaises()</a>
+and <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertRaisesRegex">assertRaisesRegex()</a>
+methods can be used to test that a block of code correctly raises an exception.</p>
+<p>Sometimes we need to compare the contents of a Warp array with an expected result.
+Some functions that are helpful include:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">assert_np_equal()</span></code>: Accepts two NumPy arrays as input parameters along with an optional absolute tolerance <code class="docutils literal notranslate"><span class="pre">tol</span></code>
+defaulted to 0. If the tolerance is 0, the arrays are compared using <code class="docutils literal notranslate"><span class="pre">np.testing.assert_array_equal()</span></code>. Otherwise,
+both NumPy arrays are flattened and compared with <code class="docutils literal notranslate"><span class="pre">np.testing.assert_allclose()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">assert_array_equal()</span></code>: Accepts two Warp arrays as input parameters, converts each array to a NumPy array on the
+CPU, and then compares the arrays using <code class="docutils literal notranslate"><span class="pre">np.testing.assert_equal()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.expect_eq()</span></code>: Unlike the previous two functions, the array(s) are to be compared by running a Warp kernel
+so the data can remain in the GPU. This is important if the array is particularly large that an element-wise
+comparison on the CPU would be prohibitively slow.</p></li>
+</ul>
+</section>
+<section id="skipping-tests">
+<h3>Skipping Tests<a class="headerlink" href="#skipping-tests" title="Link to this heading">#</a></h3>
+<p>Warp needs to be tested on multiple operating systems including macOS, on which NVIDIA GPUs are not supported.
+When it is not possible for a particular test to be executed on <em>any</em> devices, there are some mechanisms to mark the
+test as <em>skipped</em>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">unittest</span></code> provides some <a class="reference external" href="https://docs.python.org/3/library/unittest.html#skipping-tests-and-expected-failures">methods</a>
+to skip a test.</p>
+<p>If the test function is added to a test class using <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code>, we can pass an empty list as the argument
+to the <code class="docutils literal notranslate"><span class="pre">device</span></code> parameter.</p>
+<p>The final common technique is to avoid calling <code class="docutils literal notranslate"><span class="pre">add_function_test</span></code> on a test function in order to skip it.
+Examples are <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/tests/interop/test_torch.py">test_torch.py</a>,
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/tests/interop/test_jax.py">test_jax.py</a>, and
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/tests/interop/test_dlpack.py">test_dlpack.py</a>.
+This technique is discouraged because the test is not marked as skipped in the <code class="docutils literal notranslate"><span class="pre">unittest</span></code> framework.
+Instead, the test is treated as if it does not exist.
+This can create a situation in which we are unaware that a test is being skipped because it does not show up under the
+skipped tests count (it doesn’t show up under the passed tests count, either).</p>
+<p>Besides the situation in which a test requires CUDA, some examples for skipping tests are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">usd-core</span></code> is not installed in the current environment.</p></li>
+<li><p>The installed JAX version is too old.</p></li>
+<li><p>The system does not have at least two CUDA devices available (e.g. required for a multi-GPU test).</p></li>
+</ul>
+</section>
+<section id="tests-without-a-device">
+<h3>Tests Without a Device<a class="headerlink" href="#tests-without-a-device" title="Link to this heading">#</a></h3>
+<p>Recall that we previously discussed the use of <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> to register a test function so that it can be
+run on different devices (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>).
+Sometimes, a test function doesn’t make use of a specific device and we only want to run it a single time.</p>
+<p>If we still want to use <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> to register the test, we can pass <code class="docutils literal notranslate"><span class="pre">devices=None</span></code> to indicate that the
+function does not make use of devices. In this case, the function will be registered only a single time to the test
+class passed to <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code>.</p>
+<p>An alternative is to avoid the use of <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> altogether and define the test function inside the
+test class <em>directly</em>.
+Taking our previous example with <code class="docutils literal notranslate"><span class="pre">TestAmazingCode</span></code>, instead of the class body simply being
+<code class="docutils literal notranslate"><span class="pre">pass</span></code>, we can add a device-agnostic function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TestAmazingCode</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_amazing_code_no_device</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This technique can be more readable to some developers because it avoids the obfuscation of
+<code class="docutils literal notranslate"><span class="pre">add_function_test(...,</span> <span class="pre">device=None)</span></code>.
+After all, <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> is used to facilitate the execution of a single test function on different devices
+instead of having to define a separate function for each device.</p>
+</section>
+</section>
+<section id="benchmarks">
+<span id="id6"></span><h2>Benchmarks<a class="headerlink" href="#benchmarks" title="Link to this heading">#</a></h2>
+<p>Warp uses <a class="reference external" href="https://asv.readthedocs.io/">airspeed velocity (ASV)</a> for performance benchmarking.
+Benchmark scripts live in the <code class="docutils literal notranslate"><span class="pre">asv/benchmarks/</span></code> directory, and the ASV configuration is in
+<code class="docutils literal notranslate"><span class="pre">asv.conf.json</span></code>.</p>
+<section id="running-benchmarks">
+<h3>Running Benchmarks<a class="headerlink" href="#running-benchmarks" title="Link to this heading">#</a></h3>
+<p>To run all benchmarks against the current commit:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.12<span class="w"> </span>asv<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span>--launch-method<span class="w"> </span>spawn<span class="w"> </span>HEAD^!
+</pre></div>
+</div>
+<p>To run a specific benchmark against the current commit:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.12<span class="w"> </span>asv<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span>--launch-method<span class="w"> </span>spawn<span class="w"> </span>-b<span class="w"> </span>BenchmarkClassName<span class="w"> </span>HEAD^!
+</pre></div>
+</div>
+<p>To run benchmarks across a range of commits (from <code class="docutils literal notranslate"><span class="pre">older_commit</span></code> to
+<code class="docutils literal notranslate"><span class="pre">newer_commit</span></code>, inclusive):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.12<span class="w"> </span>asv<span class="w"> </span>run<span class="w"> </span>-e<span class="w"> </span>--launch-method<span class="w"> </span>spawn<span class="w"> </span>-b<span class="w"> </span>BenchmarkClassName<span class="w"> </span>older_commit..newer_commit
+</pre></div>
+</div>
+<p>On Linux, ASV defaults to <code class="docutils literal notranslate"><span class="pre">forkserver</span></code>, which isolates each benchmark run with
+<code class="docutils literal notranslate"><span class="pre">os.fork()</span></code> and terminates the child via <code class="docutils literal notranslate"><span class="pre">os._exit()</span></code>. Because <code class="docutils literal notranslate"><span class="pre">os._exit()</span></code>
+bypasses Python’s normal interpreter shutdown, <code class="docutils literal notranslate"><span class="pre">TemporaryDirectory</span></code> finalizers
+never run, and NVRTC precompiled-header directories (<code class="docutils literal notranslate"><span class="pre">/tmp/wp_pch_*</span></code>,
+<code class="docutils literal notranslate"><span class="pre">/tmp/__nvrtc_auto_pch_*</span></code>) accumulate in <code class="docutils literal notranslate"><span class="pre">/tmp</span></code>. These are cleaned up on
+reboot, so this is mainly a concern on long-running systems. Pass
+<code class="docutils literal notranslate"><span class="pre">--launch-method</span> <span class="pre">spawn</span></code> to avoid the issue.</p>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="limitations.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Limitations</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="publications.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Publications using Warp</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#before-you-start">Before You Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-contributions">Code Contributions</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#contribution-quality-expectations">Contribution Quality Expectations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#coding-guidelines">Coding Guidelines</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#general-guidelines">General Guidelines</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#python-guidelines">Python Guidelines</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#c-guidelines">C++ Guidelines</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linting-and-formatting">Linting and Formatting</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c-code-formatting">C++ Code Formatting</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#building-the-documentation">Building the Documentation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pull-request-guidelines">Pull Request Guidelines</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#design-documents">Design Documents</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-warp">Testing Warp</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-test-suite">Running the Test Suite</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#running-a-subset-of-tests">Running a subset of tests</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-new-tests">Adding New Tests</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-for-expected-behaviors">Checking for Expected Behaviors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#skipping-tests">Skipping Tests</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tests-without-a-device">Tests Without a Device</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmarks">Benchmarks</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-benchmarks">Running Benchmarks</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/v1.12.1/docs/user_guide/contribution_guide.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

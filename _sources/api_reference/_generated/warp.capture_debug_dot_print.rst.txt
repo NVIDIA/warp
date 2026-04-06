@@ -1,0 +1,6 @@
+﻿warp.capture\_debug\_dot\_print
+===============================
+
+.. currentmodule:: warp
+
+.. autofunction:: capture_debug_dot_print

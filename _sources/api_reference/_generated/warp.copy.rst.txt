@@ -1,0 +1,6 @@
+﻿warp.copy
+=========
+
+.. currentmodule:: warp
+
+.. autofunction:: copy

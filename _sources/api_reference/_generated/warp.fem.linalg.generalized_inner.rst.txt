@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.generalized\_inner
+==================================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autodata:: generalized_inner

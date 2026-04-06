@@ -1,0 +1,86 @@
+﻿warp.fem.Nanogrid
+=================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Nanogrid
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Nanogrid.__init__
+      ~Nanogrid.boundary_side_count
+      ~Nanogrid.build_bvh
+      ~Nanogrid.bvh_id
+      ~Nanogrid.cell_arg_value
+      ~Nanogrid.cell_count
+      ~Nanogrid.edge_count
+      ~Nanogrid.fill_cell_arg
+      ~Nanogrid.fill_side_arg
+      ~Nanogrid.fill_side_index_arg
+      ~Nanogrid.make_filtered_cell_lookup
+      ~Nanogrid.reference_cell
+      ~Nanogrid.reference_side
+      ~Nanogrid.side_arg_value
+      ~Nanogrid.side_count
+      ~Nanogrid.side_index_arg_value
+      ~Nanogrid.supports_cell_lookup
+      ~Nanogrid.update_bvh
+      ~Nanogrid.vertex_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Nanogrid.CellArg
+      ~Nanogrid.FACE_AXIS_MASK
+      ~Nanogrid.FACE_INNER_OFFSET_BIT
+      ~Nanogrid.FACE_OUTER_OFFSET_BIT
+      ~Nanogrid.GRID_AXIS_FLAG
+      ~Nanogrid.SideArg
+      ~Nanogrid.SideIndexArg
+      ~Nanogrid.base
+      ~Nanogrid.boundary_side_index
+      ~Nanogrid.cell_closest_point
+      ~Nanogrid.cell_coordinates
+      ~Nanogrid.cell_deformation_gradient
+      ~Nanogrid.cell_dimension
+      ~Nanogrid.cell_grid
+      ~Nanogrid.cell_inverse_deformation_gradient
+      ~Nanogrid.cell_lookup
+      ~Nanogrid.cell_measure
+      ~Nanogrid.cell_measure_ratio
+      ~Nanogrid.cell_normal
+      ~Nanogrid.cell_position
+      ~Nanogrid.dimension
+      ~Nanogrid.edge_grid
+      ~Nanogrid.face_grid
+      ~Nanogrid.name
+      ~Nanogrid.side_closest_point
+      ~Nanogrid.side_coordinates
+      ~Nanogrid.side_deformation_gradient
+      ~Nanogrid.side_from_cell_coords
+      ~Nanogrid.side_inner_cell_coords
+      ~Nanogrid.side_inner_cell_index
+      ~Nanogrid.side_inner_inverse_deformation_gradient
+      ~Nanogrid.side_measure
+      ~Nanogrid.side_measure_ratio
+      ~Nanogrid.side_normal
+      ~Nanogrid.side_outer_cell_coords
+      ~Nanogrid.side_outer_cell_index
+      ~Nanogrid.side_outer_inverse_deformation_gradient
+      ~Nanogrid.side_position
+      ~Nanogrid.side_to_cell_arg
+      ~Nanogrid.transform
+      ~Nanogrid.vertex_grid
+   
+   

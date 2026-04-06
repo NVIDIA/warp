@@ -1,0 +1,40 @@
+﻿warp.fem.space.shape.CubeRaviartThomasShapeFunctions
+====================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeRaviartThomasShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeRaviartThomasShapeFunctions.__init__
+      ~CubeRaviartThomasShapeFunctions.make_element_inner_weight
+      ~CubeRaviartThomasShapeFunctions.make_element_inner_weight_gradient
+      ~CubeRaviartThomasShapeFunctions.make_node_coords_in_element
+      ~CubeRaviartThomasShapeFunctions.make_node_quadrature_weight
+      ~CubeRaviartThomasShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeRaviartThomasShapeFunctions.EDGE
+      ~CubeRaviartThomasShapeFunctions.FACE
+      ~CubeRaviartThomasShapeFunctions.INTERIOR
+      ~CubeRaviartThomasShapeFunctions.VERTEX
+      ~CubeRaviartThomasShapeFunctions.name
+      ~CubeRaviartThomasShapeFunctions.value
+      ~CubeRaviartThomasShapeFunctions.ORDER
+      ~CubeRaviartThomasShapeFunctions.NODES_PER_ELEMENT
+   
+   
