@@ -70,6 +70,11 @@
 - Fix chained `and`/`or` operators in kernels to use short-circuit evaluation, matching Python semantics.
   Previously all operands were eagerly evaluated, so guards like `if arr and arr[i] == 0` could crash
   ([GH-1329](https://github.com/NVIDIA/warp/issues/1329)).
+- Fix mutating builtins like `wp.transform_set_translation()` silently operating on a temporary copy
+  instead of modifying the original when called with values from `wp.transform_identity()`,
+  `wp.quat_identity()`, or generic types created via `wp.types.transformation()`,
+  `wp.types.vector()`, etc. Kernel-scope usage was unaffected
+  ([GH-1336](https://github.com/NVIDIA/warp/issues/1336)).
 
 ### Documentation
 

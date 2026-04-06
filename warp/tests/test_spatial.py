@@ -2094,6 +2094,55 @@ def test_transform_getter_setter(test, device):
     test.assertEqual(d, b)
 
 
+def test_transform_identity_type(test, device):
+    """Mutating builtins on identity values must modify the original, not a copy."""
+    t = wp.transform_identity()
+    test.assertTrue(wp.types.types_equal(type(t), wp.transformf))
+
+    # Mutating builtins must modify the original, not a temporary copy
+    pos = wp.vec3f(1.0, 2.0, 3.0)
+    wp.transform_set_translation(t, pos)
+    test.assertEqual(t[0], 1.0)
+    test.assertEqual(t[1], 2.0)
+    test.assertEqual(t[2], 3.0)
+
+    rot = wp.quatf(0.0, 0.0, 0.0, 1.0)
+    wp.transform_set_rotation(t, rot)
+    test.assertEqual(t[3], 0.0)
+    test.assertEqual(t[6], 1.0)
+
+    q = wp.quat_identity()
+    test.assertTrue(wp.types.types_equal(type(q), wp.quatf))
+
+
+def test_generic_type_mutating_builtins(test, device):
+    """Mutating builtins must modify the original when given generic-typed instances.
+
+    Types created via ``wp.types.transformation(dtype=...)`` or ``wp.types.vector(...)``
+    are valid user-facing constructs. Passing instances of these types to mutating builtins
+    (e.g. ``transform_set_translation``) must modify the original, not a temporary copy.
+    """
+    # Generic transform created via transformation(dtype=...)
+    transform_type = wp.types.transformation(dtype=wp.float32)
+    t = transform_type()
+    pos = wp.vec3f(1.0, 2.0, 3.0)
+    wp.transform_set_translation(t, pos)
+    test.assertEqual(t[0], 1.0)
+    test.assertEqual(t[1], 2.0)
+    test.assertEqual(t[2], 3.0)
+
+    rot = wp.quatf(0.0, 0.0, 0.0, 1.0)
+    wp.transform_set_rotation(t, rot)
+    test.assertEqual(t[3], 0.0)
+    test.assertEqual(t[6], 1.0)
+
+    # Generic vector created via vector(length=..., dtype=...)
+    vec_type = wp.types.vector(length=3, dtype=wp.float32)
+    v = vec_type(4.0, 5.0, 6.0)
+    result = wp.dot(v, v)
+    test.assertAlmostEqual(result, 4.0**2 + 5.0**2 + 6.0**2)
+
+
 @wp.kernel
 def transform_extract_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=float)):
     tid = wp.tid()
@@ -2825,6 +2874,15 @@ for dtype in np_float_types:
 
 add_function_test(
     TestSpatial, "test_transform_getter_setter", test_transform_getter_setter, devices=wp.get_device("cpu")
+)
+add_function_test(
+    TestSpatial, "test_transform_identity_type", test_transform_identity_type, devices=wp.get_device("cpu")
+)
+add_function_test(
+    TestSpatial,
+    "test_generic_type_mutating_builtins",
+    test_generic_type_mutating_builtins,
+    devices=wp.get_device("cpu"),
 )
 add_function_test(TestSpatial, "test_transform_extract", test_transform_extract, devices=devices)
 add_function_test(TestSpatial, "test_transform_assign", test_transform_assign, devices=devices)
