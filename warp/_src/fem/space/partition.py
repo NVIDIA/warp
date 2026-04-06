@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from typing import Any, Optional
 
@@ -64,7 +52,7 @@ class SpacePartition:
     def space_node_indices(self) -> wp.array:
         """Return the global function space indices for nodes in this partition"""
 
-    def rebuild(self, device: Optional = None, temporary_store: Optional[cache.TemporaryStore] = None):
+    def rebuild(self, device: Optional = None, temporary_store: cache.TemporaryStore | None = None):
         """Rebuild the space partition indices"""
         pass
 
@@ -169,7 +157,7 @@ class NodePartition(SpacePartition):
         with_halo: bool = True,
         max_node_count: int = -1,
         device=None,
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        temporary_store: cache.TemporaryStore | None = None,
     ):
         super().__init__(space_topology=space_topology, geo_partition=geo_partition)
 
@@ -188,7 +176,7 @@ class NodePartition(SpacePartition):
 
         self.rebuild(device, temporary_store)
 
-    def rebuild(self, device: Optional = None, temporary_store: Optional[cache.TemporaryStore] = None):
+    def rebuild(self, device: Optional = None, temporary_store: cache.TemporaryStore | None = None):
         self._compute_node_indices_from_sides(device, self._with_halo, self._max_node_count, temporary_store)
 
     def node_count(self) -> int:
@@ -419,9 +407,9 @@ class NodePartition(SpacePartition):
 
 
 def make_space_partition(
-    space: Optional[FunctionSpace] = None,
-    geometry_partition: Optional[GeometryPartition] = None,
-    space_topology: Optional[SpaceTopology] = None,
+    space: FunctionSpace | None = None,
+    geometry_partition: GeometryPartition | None = None,
+    space_topology: SpaceTopology | None = None,
     with_halo: bool = True,
     max_node_count: int = -1,
     device=None,

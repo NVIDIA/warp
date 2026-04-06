@@ -17,8 +17,8 @@
     <package name="libmathdx-Linux-aarch64" version="0.3.1" platforms="linux-aarch64" remotes="cublasdx-linux-cu12"/>
   </dependency>
   <dependency name="libmathdx-cu13" linkPath="../_build/target-deps/libmathdx" tags="cu13">
-    <package name="libmathdx-win32-x86_64" version="0.3.1" platforms="windows-x86_64" remotes="cublasdx-windows-cu13"/>
-    <package name="libmathdx-Linux-x86_64" version="0.3.1" platforms="linux-x86_64" remotes="cublasdx-linux-cu13"/>
-    <package name="libmathdx-Linux-aarch64" version="0.3.1" platforms="linux-aarch64" remotes="cublasdx-linux-cu13"/>
+    <package name="libmathdx-win32-x86_64" version="0.3.2" platforms="windows-x86_64" remotes="cublasdx-windows-cu13"/>
+    <package name="libmathdx-Linux-x86_64" version="0.3.2" platforms="linux-x86_64" remotes="cublasdx-linux-cu13"/>
+    <package name="libmathdx-Linux-aarch64" version="0.3.2" platforms="linux-aarch64" remotes="cublasdx-linux-cu13"/>
   </dependency>
 </project>

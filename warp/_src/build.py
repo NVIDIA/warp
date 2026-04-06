@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import ctypes
 import errno
@@ -41,6 +29,8 @@ def build_cuda(
     cu_path,
     arch,
     output_path,
+    *,
+    pch_dir,
     config="release",
     optimization_level=3,
     verify_fp=False,
@@ -76,7 +66,9 @@ def build_cuda(
             fatbins
         )
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
-        kernel_cache_dir_bytes = warp.config.kernel_cache_dir.encode("utf-8")
+        # Per-thread directory shared across module compilations for PCH reuse,
+        # isolated between threads and processes to avoid .pch races.
+        pch_dir_bytes = pch_dir.encode("utf-8") if pch_dir else None
         arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
@@ -96,7 +88,7 @@ def build_cuda(
             compile_time_trace,
             warp.config.use_precompiled_headers,
             output_path,
-            kernel_cache_dir_bytes,
+            pch_dir_bytes,
             num_link,
             arr_link,
             arr_link_sizes,
@@ -114,7 +106,20 @@ def load_cuda(input_path, device):
     return warp._src.context.runtime.core.wp_cuda_load_module(device.context, input_path.encode("utf-8"))
 
 
-def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=False, fuse_fp=True):
+def build_cpu(
+    obj_path,
+    cpp_path,
+    mode="release",
+    verify_fp=False,
+    fast_math=False,
+    fuse_fp=True,
+    extra_flags="",
+    optimization_level=2,
+    verbose=False,
+    use_precompiled_headers=False,
+    pch_dir=None,
+    block_dim=256,
+):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
     cpp_path = cpp_path.encode("utf-8")
@@ -127,6 +132,11 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         # Default to True on aarch64 (Linux ARM), False otherwise
         enable_tiles_in_stack = platform.machine() == "aarch64"
 
+    flags_list = extra_flags.split()
+    flags_array = (ctypes.c_char_p * (len(flags_list) + 1))(*[f.encode("utf-8") for f in flags_list], None)
+
+    pch_dir_bytes = pch_dir.encode("utf-8") if pch_dir else None
+
     err = warp._src.context.runtime.llvm.wp_compile_cpp(
         src,
         cpp_path,
@@ -136,6 +146,12 @@ def build_cpu(obj_path, cpp_path, mode="release", verify_fp=False, fast_math=Fal
         verify_fp,
         fuse_fp,
         enable_tiles_in_stack,
+        flags_array,
+        optimization_level,
+        verbose,
+        use_precompiled_headers,
+        pch_dir_bytes,
+        block_dim,
     )
     if err != 0:
         raise Exception(f"CPU kernel build failed with error code {err}")

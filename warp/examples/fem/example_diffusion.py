@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 ###########################################################################
 # Example Diffusion
@@ -40,19 +28,19 @@ def linear_form(
 
 
 @fem.integrand
-def diffusion_form(s: fem.Sample, u: fem.Field, v: fem.Field, nu: float):
+def diffusion_form(s: fem.Sample, u: fem.Field, v: fem.Field, nu: wp.float64):
     """Diffusion bilinear form with constant coefficient ``nu``"""
-    return nu * wp.dot(
+    return fem.scalar_type(u)(nu) * wp.dot(
         fem.grad(u, s),
         fem.grad(v, s),
     )
 
 
 @fem.integrand
-def y_boundary_value_form(s: fem.Sample, domain: fem.Domain, v: fem.Field, val: float):
+def y_boundary_value_form(s: fem.Sample, domain: fem.Domain, v: fem.Field, val: wp.float64):
     """Linear form with coefficient val on vertical edges, zero elsewhere"""
     nor = fem.normal(domain, s)
-    return val * v(s) * wp.abs(nor[0])
+    return fem.scalar_type(domain)(val) * v(s) * wp.abs(nor[0])
 
 
 @fem.integrand
@@ -65,8 +53,8 @@ def y_boundary_projector_form(
     """
     Bilinear boundary condition projector form, non-zero on vertical edges only.
     """
-    # Reuse the above linear form implementation by evaluating one of the participating field and passing it as a normal scalar argument.
-    return y_boundary_value_form(s, domain, v, u(s))
+    nor = fem.normal(domain, s)
+    return u(s) * v(s) * wp.abs(nor[0])
 
 
 class Example:
@@ -80,22 +68,27 @@ class Example:
         viscosity=2.0,
         boundary_value=5.0,
         boundary_compliance=0.0,
+        fp64=False,
     ):
         self._quiet = quiet
 
-        self._viscosity = viscosity
-        self._boundary_value = boundary_value
+        self._viscosity = wp.float64(viscosity)
+        self._boundary_value = wp.float64(boundary_value)
         self._boundary_compliance = boundary_compliance
 
         # Grid or triangle mesh geometry
         if mesh == "tri":
             positions, tri_vidx = fem_example_utils.gen_trimesh(res=wp.vec2i(resolution))
+            if fp64:
+                positions = wp.array(positions.numpy(), dtype=wp.types.vector(2, wp.float64))
             self._geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
         elif mesh == "quad":
             positions, quad_vidx = fem_example_utils.gen_quadmesh(res=wp.vec2i(resolution))
+            if fp64:
+                positions = wp.array(positions.numpy(), dtype=wp.types.vector(2, wp.float64))
             self._geo = fem.Quadmesh2D(quad_vertex_indices=quad_vidx, positions=positions)
         else:
-            self._geo = fem.Grid2D(res=wp.vec2i(resolution))
+            self._geo = fem.Grid2D(res=wp.vec2i(resolution), scalar_type=wp.float64 if fp64 else wp.float32)
 
         # Scalar function space
         element_basis = fem.ElementBasis.SERENDIPITY if serendipity else None
@@ -175,6 +168,7 @@ if __name__ == "__main__":
         help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
     parser.add_argument("--quiet", action="store_true", help="Suppresses the printing out of iteration residuals.")
+    parser.add_argument("--fp64", action="store_true", default=False, help="Use double precision (fp64) throughout.")
 
     args = parser.parse_known_args()[0]
 
@@ -188,6 +182,7 @@ if __name__ == "__main__":
             viscosity=args.viscosity,
             boundary_value=args.boundary_value,
             boundary_compliance=args.boundary_compliance,
+            fp64=args.fp64,
         )
         example.step()
         example.render()

@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 ###########################################################################
 # Example Diffusion MGPU
@@ -24,7 +12,7 @@ import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 from warp.examples.fem.example_diffusion import diffusion_form, linear_form
-from warp.sparse import bsr_axpy, bsr_mv
+from warp.sparse import bsr_axpy
 from warp.utils import array_cast
 
 
@@ -37,21 +25,13 @@ def mass_form(
     return u(s) * v(s)
 
 
-@wp.kernel
-def scal_kernel(a: wp.array[wp.float64], res: wp.array[wp.float64], alpha: wp.float64):
-    res[wp.tid()] = a[wp.tid()] * alpha
-
-
-@wp.kernel
-def sum_kernel(a: wp.indexedarray[wp.float64], b: wp.array[wp.float64]):
-    a[wp.tid()] = a[wp.tid()] + b[wp.tid()]
-
-
 def sum_vecs(vecs, indices, sum: wp.array, tmp: wp.array):
-    for v, idx in zip(vecs, indices):
-        wp.copy(dest=tmp, src=v)
-        idx_sum = wp.indexedarray(sum, idx)
-        wp.launch(kernel=sum_kernel, dim=idx.shape, device=sum.device, inputs=[idx_sum, tmp])
+    for v, idx in zip(vecs, indices, strict=False):
+        tmp_i = tmp[: idx.size]
+        idx_sum = sum[idx]
+        # copy v to rank 0 then accumulate
+        tmp_i.assign(v)
+        idx_sum += tmp_i
 
     return sum
 
@@ -70,30 +50,32 @@ class DistributedSystem:
 
         tmp = self.tmp_buf
 
-        wp.launch(kernel=scal_kernel, dim=y.shape, device=y.device, inputs=[y, z, wp.float64(beta)])
-
         stream = wp.get_stream()
 
-        for mat_i, x_i, y_i, idx in zip(*self.rank_data):
+        with wp.ScopedStream(stream):
+            z.assign(y.dtype(beta) * y)
+
+        for mat_i, x_i, y_i, idx in zip(*self.rank_data, strict=False):
             tmp_i = tmp[: idx.size]
+            z_idx = z[idx]
 
-            # Compress rhs on rank 0
-            x_idx = wp.indexedarray(x, idx)
-            wp.copy(dest=tmp_i, src=x_idx, count=idx.size, stream=stream)
-
-            # Send to rank i
-            wp.copy(dest=x_i, src=tmp_i, count=idx.size, stream=stream)
+            with wp.ScopedStream(stream):
+                # Compress rhs on rank 0
+                tmp_i.assign(x[idx])
+                # Send to rank i (need to specify stream, otherwise copy
+                # will use the current stream on the destination device)
+                wp.copy(dest=x_i, src=tmp_i, stream=stream)
 
             with wp.ScopedDevice(x_i.device):
+                # Local matrix-vector multiplication
                 wp.wait_stream(stream)
-                bsr_mv(A=mat_i, x=x_i, y=y_i, alpha=alpha, beta=0.0)
+                y_i.assign(alpha * mat_i @ x_i)
 
-            wp.wait_stream(wp.get_stream(x_i.device))
-
-            # Back to rank 0 for sum
-            wp.copy(dest=tmp_i, src=y_i, count=idx.size, stream=stream)
-            z_idx = wp.indexedarray(z, idx)
-            wp.launch(kernel=sum_kernel, dim=idx.shape, device=z_idx.device, inputs=[z_idx, tmp_i], stream=stream)
+            with wp.ScopedStream(stream):
+                wp.wait_stream(wp.get_stream(x_i.device))
+                # Back to rank 0 for sum
+                tmp_i.assign(y_i)
+                z_idx += tmp_i
 
         wp.wait_stream(stream)
 
@@ -135,7 +117,7 @@ class Example:
                 indices.append(partition_node_indices.to(main_device))
 
         # Global rhs as sum of all local rhs
-        glob_rhs = wp.zeros(n=self._scalar_space.node_count(), dtype=wp.float64, device=main_device)
+        glob_rhs = wp.zeros(n=self._scalar_space.node_count(), dtype=float, device=main_device)
 
         # This temporary buffer will be used for peer-to-peer copying during graph capture,
         # so we allocate it using the default CUDA allocator.  This ensures that the copying

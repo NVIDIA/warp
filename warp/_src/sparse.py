@@ -1,23 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
 import ctypes
 import weakref
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 from numpy import eye
 
@@ -81,7 +69,7 @@ class _ScalarBlockType(Generic[Scalar]):
     pass
 
 
-BlockType = Union[_MatrixBlockType[Rows, Cols, Scalar], _ScalarBlockType[Scalar]]
+BlockType = _MatrixBlockType[Rows, Cols, Scalar] | _ScalarBlockType[Scalar]
 
 _struct_cache = {}
 _transfer_buffer_cache = {}
@@ -757,7 +745,7 @@ class _BsrScalingExpression(_BsrExpression):
         return _BsrScalingExpression(self.mat.transpose(), self.scale)
 
 
-BsrMatrixOrExpression = Union[BsrMatrix[_BlockType], _BsrExpression[_BlockType]]
+BsrMatrixOrExpression = BsrMatrix[_BlockType] | _BsrExpression[_BlockType]
 
 
 def _extract_matrix_and_scale(bsr: BsrMatrixOrExpression):

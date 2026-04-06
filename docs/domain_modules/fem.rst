@@ -138,6 +138,9 @@ Introductory Examples
  - ``example_magnetostatics.py``: 2D magnetostatics using a curl-curl formulation
  - ``example_elastic_shape_optimization.py``: Shape optimization of a 2D elastic cantilever beam 
  - ``example_darcy_ls_optimization.py``: Level-set-based optimization of a 2D Darcy flow
+ - ``example_taylor_green.py``: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration
+ - ``example_kelvin_helmholtz.py``: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter
+ - ``example_shallow_water.py``: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter
 
 Advanced Usages
 ---------------
@@ -241,6 +244,45 @@ though this is a lot less significant when :ref:`mempool_allocators` are in use.
 To overcome this issue, a :class:`.TemporaryStore` object may be created to persist and reuse temporary allocations across calls,
 either globally using :func:`set_default_temporary_store` or at a per-function granularity using the corresponding argument.
 
+Double-precision (fp64) mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, :mod:`warp.fem` operates in single precision (``wp.float32``).
+To use double precision, set the scalar type on the geometry:
+
+- For grids, pass ``scalar_type=wp.float64`` to the constructor::
+
+     geo = fem.Grid2D(res=wp.vec2i(10, 10), scalar_type=wp.float64)
+
+- For meshes (``Tetmesh``, ``Trimesh2D``, etc.), precision is inferred from the
+  position array dtype::
+
+     positions = wp.array(pos_np, dtype=wp.vec3d)  # fp64 positions
+     geo = fem.Tetmesh(indices, positions)          # automatically fp64
+
+All downstream objects (function spaces, quadratures, fields, integration
+kernels) automatically inherit the geometry's precision.
+The :func:`.integrate` function defaults ``output_dtype`` to the geometry's
+scalar type, so results are returned at the same precision as the geometry.
+
+Within integrands, the :obj:`.scalar_type` operator returns the geometry's
+scalar type as a constructor, making it possible to write precision-generic
+integrands::
+
+    @fem.integrand
+    def diffusion_form(s: fem.Sample, u: fem.Field, v: fem.Field, nu: float):
+        return fem.scalar_type(u)(nu) * wp.dot(fem.grad(u, s), fem.grad(v, s))
+
+``fem.scalar_type`` accepts both :class:`.Domain` and :class:`.Field` arguments.
+
+See ``example_diffusion.py`` and ``example_magnetostatics.py`` for complete
+examples with ``--fp64`` flags.
+
+.. note::
+   Warp's BVH API operates in fp32. For fp64 geometries, positions are
+   truncated to fp32 for spatial queries (e.g., :obj:`.lookup`); the
+   subsequent Newton iteration refines coordinates at full fp64 precision.
+
 .. _Fields:
 
 Fields
@@ -280,6 +322,7 @@ The following operators are available for use within integrands:
 - :obj:`.measure`: Integration measure (area or volume element).
 - :obj:`.measure_ratio`: Ratio of measures between a domain and its reference element.
 - :obj:`.deformation_gradient`: Deformation gradient of the domain.
+- :obj:`.scalar_type`: Scalar type constructor (``wp.float32`` or ``wp.float64``) for the geometry's precision.
 
 **Discontinuous Galerkin operators** (for use on interior sides):
 

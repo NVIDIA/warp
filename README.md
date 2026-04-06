@@ -9,22 +9,51 @@
 
 **[Documentation](https://nvidia.github.io/warp/)** | [Changelog](https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md)
 
-Warp is a Python framework for writing high-performance simulation and graphics code. Warp takes
+Warp is a Python framework for GPU-accelerated simulation, robotics, and machine learning. Warp takes
 regular Python functions and JIT compiles them to efficient kernel code that can run on the CPU or GPU.
 
-Warp is designed for [spatial computing](https://en.wikipedia.org/wiki/Spatial_computing)
-and comes with a rich set of primitives that make it easy to write
-programs for physics simulation, perception, robotics, and geometry processing. In addition, Warp kernels
-are differentiable and can be used as part of machine-learning pipelines with frameworks such as PyTorch, JAX and Paddle.
+Warp comes with a rich set of primitives for physics simulation, robotics, geometry processing,
+and more. Warp kernels are differentiable and can be used as part of machine-learning pipelines
+with frameworks such as PyTorch, JAX and Paddle.
 
 <div align="center">
     <img src="https://github.com/NVIDIA/warp/raw/main/docs/img/header.jpg">
     <p><i>A selection of physical simulations computed with Warp</i></p>
 </div>
 
+## Quick Start
+
+Simulate one million particles under gravitational attraction, in 20 lines:
+
+```python
+import warp as wp
+import numpy as np
+
+num_particles = 1_000_000
+dt = 0.01
+
+@wp.kernel
+def gravity_step(pos: wp.array[wp.vec3], vel: wp.array[wp.vec3]):
+    i = wp.tid()
+    position = pos[i]
+    dist_sq = wp.length_sq(position) + 0.01  # softened distance
+    acc = -1000.0 / dist_sq * wp.normalize(position)  # gravitational pull toward origin
+    vel[i] = vel[i] + acc * dt
+    pos[i] = pos[i] + vel[i] * dt
+
+rng = np.random.default_rng(42)
+positions = wp.array(rng.normal(size=(num_particles, 3)), dtype=wp.vec3)
+velocities = wp.array(rng.normal(size=(num_particles, 3)), dtype=wp.vec3)
+
+for _ in range(100):
+    wp.launch(gravity_step, dim=num_particles, inputs=[positions, velocities])
+
+print(positions.numpy())
+```
+
 ## Installing
 
-Python version 3.9 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux, and on Apple Silicon (ARMv8) on macOS.
+Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux, and on Apple Silicon (ARMv8) on macOS.
 GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
@@ -63,9 +92,8 @@ provide additional examples and cover key Warp features:
 
 ## Running Examples
 
-The [warp/examples](https://github.com/NVIDIA/warp/tree/main/warp/examples) directory contains a number of scripts categorized under subdirectories
-that show how to implement various simulation methods using the Warp API.
-Most examples will generate USD files containing time-sampled animations in the current working directory.
+The [warp/examples](https://github.com/NVIDIA/warp/tree/main/warp/examples) directory contains examples
+covering physics simulation, geometry processing, optimization, and tile-based GPU programming.
 Before running examples, install the optional example dependencies using:
 
 ```text
@@ -82,20 +110,12 @@ Examples can be run from the command-line as follows:
 python -m warp.examples.<example_subdir>.<example>
 ```
 
+Most examples can be run on either the CPU or a CUDA-capable device, but a handful require a CUDA-capable device. These are marked at the top of the example script. Some examples generate USD files containing time-sampled animations in the current working directory. These can be viewed in Pixar's UsdView, Blender, or any USD-compatible viewer.
+
 To browse the example source code, you can open the directory where the files are located like this:
 
 ```text
 python -m warp.examples.browse
-```
-
-Most examples can be run on either the CPU or a CUDA-capable device, but a handful require a CUDA-capable device. These are marked at the top of the example script.
-
-USD files can be viewed or rendered inside [NVIDIA Omniverse](https://developer.nvidia.com/omniverse), Pixar's UsdView, and Blender. Note that Preview in macOS is not recommended as it has limited support for time-sampled animations.
-
-Built-in unit tests can be run from the command-line as follows:
-
-```text
-python -m warp.tests
 ```
 
 ### warp/examples/core
@@ -165,14 +185,14 @@ python -m warp.tests
         </tr>
         <tr>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_distortion_energy.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_distortion_energy.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_navier_stokes.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_navier_stokes.png"></a></td>
-            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_burgers.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_burgers.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_taylor_green.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_taylor_green.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_kelvin_helmholtz.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_kelvin_helmholtz.png"></a></td>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/fem/example_magnetostatics.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/fem_magnetostatics.png"></a></td>
         </tr>
         <tr>
             <td align="center">distortion energy</td>
-            <td align="center">navier stokes</td>
-            <td align="center">burgers</td>
+            <td align="center">taylor green</td>
+            <td align="center">kelvin helmholtz</td>
             <td align="center">magnetostatics</td>
         </tr>
         <tr>

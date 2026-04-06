@@ -1,23 +1,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 
 import numpy as np
 
 import warp as wp
+from warp._src.codegen import WarpCodegenError
 from warp.tests.unittest_utils import *
 
 
@@ -41,14 +30,14 @@ def test_basic(test, device):
     ):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def saxpy_cu(
         a: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)
     ):
         tid = wp.tid()
         saxpy(a, x, y, out, tid)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def saxpy_py(
         a: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)
     ):
@@ -102,7 +91,7 @@ def test_shared_memory(test, device):
         """Reverse the array d in place using shared memory."""
         return
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def reverse_kernel(d: wp.array(dtype=int), N: int):
         tid = wp.tid()
         reverse(d, N, tid)
@@ -131,7 +120,7 @@ def test_cpu_snippet(test, device):
     ):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def increment(x: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
         tid = wp.tid()
         increment_snippet(x, out, tid)
@@ -162,7 +151,7 @@ def test_custom_replay_grad(test, device):
     def reversible_increment(counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def run_atomic_add(
         input: wp.array(dtype=float),
         counter: wp.array(dtype=int),
@@ -198,7 +187,7 @@ def test_replay_simplification(test, device):
     def square(x: wp.array(dtype=float), y: wp.array(dtype=float), tid: int):  # fmt: skip
         ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def log_square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
         tid = wp.tid()
         square(x, y, tid)
@@ -274,7 +263,7 @@ def test_return_type(test, device):
     @wp.func_native(snippet, adj_snippet)
     def square(x: wp.float32) -> wp.float32: ...
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def square_kernel(i: wp.array(dtype=float), o: wp.array(dtype=float)):
         tid = wp.tid()
         x = i[tid]
@@ -295,6 +284,159 @@ def test_return_type(test, device):
     assert_np_equal(x.grad.numpy(), np.array([0.0, 2.0, 4.0, 6.0, 8.0]))
 
 
+def test_return_vector_matrix(test, device):
+    """Test that func_native correctly handles vector and matrix return types."""
+    vec_snippet = """
+        return wp::vec_t<3, wp::float32>(x, x, x);
+        """
+
+    @wp.func_native(vec_snippet)
+    def make_vec3_generic(x: wp.float32) -> wp.types.vector(length=3, dtype=wp.float32): ...
+
+    @wp.func_native(vec_snippet)
+    def make_vec3_named(x: wp.float32) -> wp.vec3f: ...
+
+    mat_snippet = """
+        return wp::mat_t<2, 2, wp::float32>(x, 0.0f, 0.0f, x);
+        """
+
+    @wp.func_native(mat_snippet)
+    def make_mat22_generic(x: wp.float32) -> wp.types.matrix(shape=(2, 2), dtype=wp.float32): ...
+
+    @wp.func_native(mat_snippet)
+    def make_mat22_named(x: wp.float32) -> wp.mat22f: ...
+
+    @wp.kernel
+    def vec_kernel_generic(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+        tid = wp.tid()
+        output[tid] = make_vec3_generic(input[tid])
+
+    @wp.kernel
+    def vec_kernel_named(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+        tid = wp.tid()
+        output[tid] = make_vec3_named(input[tid])
+
+    @wp.kernel
+    def mat_kernel_generic(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+        tid = wp.tid()
+        output[tid] = make_mat22_generic(input[tid])
+
+    @wp.kernel
+    def mat_kernel_named(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+        tid = wp.tid()
+        output[tid] = make_mat22_named(input[tid])
+
+    N = 3
+    x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    expected_vec = [[float(i + 1)] * 3 for i in range(N)]
+
+    y_vec = wp.zeros(N, dtype=wp.vec3f, device=device)
+    wp.launch(vec_kernel_generic, dim=N, inputs=[x, y_vec], device=device)
+    for i in range(N):
+        np.testing.assert_allclose(y_vec.numpy()[i], expected_vec[i])
+
+    y_vec_named = wp.zeros(N, dtype=wp.vec3f, device=device)
+    wp.launch(vec_kernel_named, dim=N, inputs=[x, y_vec_named], device=device)
+    for i in range(N):
+        np.testing.assert_allclose(y_vec_named.numpy()[i], expected_vec[i])
+
+    y_mat = wp.zeros(N, dtype=wp.mat22f, device=device)
+    wp.launch(mat_kernel_generic, dim=N, inputs=[x, y_mat], device=device)
+    for i in range(N):
+        expected = np.array([[float(i + 1), 0.0], [0.0, float(i + 1)]])
+        np.testing.assert_allclose(y_mat.numpy()[i], expected)
+
+    y_mat_named = wp.zeros(N, dtype=wp.mat22f, device=device)
+    wp.launch(mat_kernel_named, dim=N, inputs=[x, y_mat_named], device=device)
+    for i in range(N):
+        expected = np.array([[float(i + 1), 0.0], [0.0, float(i + 1)]])
+        np.testing.assert_allclose(y_mat_named.numpy()[i], expected)
+
+
+def test_return_array(test, device):
+    """Test that func_native correctly handles array return types."""
+    snippet = """
+        return arr;
+        """
+
+    @wp.func_native(snippet)
+    def passthrough(arr: wp.array(dtype=wp.float32)) -> wp.array(dtype=wp.float32): ...
+
+    @wp.kernel
+    def kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        a = passthrough(input)
+        output[tid] = a[tid]
+
+    N = 3
+    x = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    y = wp.zeros(N, dtype=wp.float32, device=device)
+    wp.launch(kernel, dim=N, inputs=[x, y], device=device)
+    np.testing.assert_allclose(y.numpy(), [1.0, 2.0, 3.0])
+
+
+def test_return_fixedarray(test, device):
+    """Test that func_native correctly handles fixedarray return types."""
+    snippet = """
+        wp::fixedarray_t<3, wp::float32> result;
+        result[0] = x;
+        result[1] = x + 1.0f;
+        result[2] = x + 2.0f;
+        return result;
+        """
+
+    @wp.func_native(snippet)
+    def make_fixed(x: wp.float32) -> wp.fixedarray(dtype=wp.float32, shape=3): ...
+
+    @wp.kernel
+    def kernel(
+        input: wp.array(dtype=wp.float32),
+        out0: wp.array(dtype=wp.float32),
+        out1: wp.array(dtype=wp.float32),
+        out2: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        f = make_fixed(input[tid])
+        out0[tid] = f[0]
+        out1[tid] = f[1]
+        out2[tid] = f[2]
+
+    N = 3
+    x = wp.array([10.0, 20.0, 30.0], dtype=wp.float32, device=device)
+    o0 = wp.zeros(N, dtype=wp.float32, device=device)
+    o1 = wp.zeros(N, dtype=wp.float32, device=device)
+    o2 = wp.zeros(N, dtype=wp.float32, device=device)
+    wp.launch(kernel, dim=N, inputs=[x, o0, o1, o2], device=device)
+    np.testing.assert_allclose(o0.numpy(), [10.0, 20.0, 30.0])
+    np.testing.assert_allclose(o1.numpy(), [11.0, 21.0, 31.0])
+    np.testing.assert_allclose(o2.numpy(), [12.0, 22.0, 32.0])
+
+
+def test_return_struct_unsupported(test, device):
+    """Test that func_native rejects struct return types with a clear error."""
+
+    @wp.struct
+    class Pair:
+        x: wp.float32
+        y: wp.float32
+
+    snippet = "return {};"
+
+    @wp.func_native(snippet)
+    def make_pair(a: wp.float32) -> Pair: ...
+
+    @wp.kernel
+    def kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        p = make_pair(input[tid])
+        output[tid] = p.x
+
+    x = wp.array([1.0], dtype=wp.float32, device=device)
+    y = wp.zeros(1, dtype=wp.float32, device=device)
+    with test.assertRaisesRegex(WarpCodegenError, "unsupported return type"):
+        wp.launch(kernel, dim=1, inputs=[x, y], device=device)
+
+
 class TestSnippets(unittest.TestCase):
     pass
 
@@ -312,6 +454,30 @@ add_function_test(
     TestSnippets, "test_recompile_snippet", test_recompile_snippet, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestSnippets, "test_return_type", test_return_type, devices=get_selected_cuda_test_devices())
+add_function_test(
+    TestSnippets,
+    "test_return_vector_matrix",
+    test_return_vector_matrix,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestSnippets,
+    "test_return_array",
+    test_return_array,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestSnippets,
+    "test_return_fixedarray",
+    test_return_fixedarray,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestSnippets,
+    "test_return_struct_unsupported",
+    test_return_struct_unsupported,
+    devices=get_selected_cuda_test_devices(),
+)
 
 
 if __name__ == "__main__":

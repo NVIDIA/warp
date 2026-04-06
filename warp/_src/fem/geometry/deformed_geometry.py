@@ -1,24 +1,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.polynomial import Polynomial
-from warp._src.fem.types import Coords, ElementIndex, Sample, make_free_sample
+from warp._src.fem.types import ElementIndex, make_free_sample
 from warp._src.types import type_is_vector, type_size
 
 from .geometry import Geometry
@@ -102,12 +90,17 @@ class DeformedGeometry(Geometry):
     @property
     def name(self) -> str:
         """Unique name of the deformed geometry."""
-        return f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}"
+        suffix = "_f64" if self.scalar_type != wp.float32 else ""
+        return f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}{suffix}"
 
     @property
     def base(self) -> Geometry:
         """Base geometry prior to deformation."""
         return self.field.geometry.base
+
+    @property
+    def scalar_type(self):
+        return self.base.scalar_type
 
     # Geometry device interface
 
@@ -128,12 +121,12 @@ class DeformedGeometry(Geometry):
 
     def _make_cell_position(self):
         @cache.dynamic_func(suffix=self.name)
-        def cell_position_absolute(cell_arg: self.CellArg, s: Sample):
+        def cell_position_absolute(cell_arg: self.CellArg, s: self.sample_type):
             field_arg = self.field.ElementEvalArg(cell_arg.base_arg, cell_arg.field_arg)
             return self.field.eval_inner(field_arg, s)
 
         @cache.dynamic_func(suffix=self.name)
-        def cell_position(cell_arg: self.CellArg, s: Sample):
+        def cell_position(cell_arg: self.CellArg, s: self.sample_type):
             field_arg = self.field.ElementEvalArg(cell_arg.base_arg, cell_arg.field_arg)
             return self.field.eval_inner(field_arg, s) + self.base.cell_position(cell_arg.base_arg, s)
 
@@ -141,12 +134,12 @@ class DeformedGeometry(Geometry):
 
     def _make_cell_deformation_gradient(self):
         @cache.dynamic_func(suffix=self.name)
-        def cell_deformation_gradient_absolute(cell_arg: self.CellArg, s: Sample):
+        def cell_deformation_gradient_absolute(cell_arg: self.CellArg, s: self.sample_type):
             field_arg = self.field.ElementEvalArg(cell_arg.base_arg, cell_arg.field_arg)
             return self.field.eval_reference_grad_inner(field_arg, s)
 
         @cache.dynamic_func(suffix=self.name)
-        def cell_deformation_gradient(cell_arg: self.CellArg, s: Sample):
+        def cell_deformation_gradient(cell_arg: self.CellArg, s: self.sample_type):
             field_arg = self.field.ElementEvalArg(cell_arg.base_arg, cell_arg.field_arg)
             return self.field.eval_reference_grad_inner(field_arg, s) + self.base.cell_deformation_gradient(
                 cell_arg.base_arg, s
@@ -173,12 +166,12 @@ class DeformedGeometry(Geometry):
 
     def _make_side_position(self):
         @cache.dynamic_func(suffix=self.name)
-        def side_position_absolute(args: self.SideArg, s: Sample):
+        def side_position_absolute(args: self.SideArg, s: self.sample_type):
             trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
             return self.field_trace.eval_inner(trace_arg, s)
 
         @cache.dynamic_func(suffix=self.name)
-        def side_position(args: self.SideArg, s: Sample):
+        def side_position(args: self.SideArg, s: self.sample_type):
             trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
             return self.field_trace.eval_inner(trace_arg, s) + self.base.side_position(args.base_arg, s)
 
@@ -186,7 +179,7 @@ class DeformedGeometry(Geometry):
 
     def _make_side_deformation_gradient(self):
         @cache.dynamic_func(suffix=self.name)
-        def side_deformation_gradient_absolute(args: self.SideArg, s: Sample):
+        def side_deformation_gradient_absolute(args: self.SideArg, s: self.sample_type):
             base_def_grad = self.base.side_deformation_gradient(args.base_arg, s)
             trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
 
@@ -194,7 +187,7 @@ class DeformedGeometry(Geometry):
             return Du * base_def_grad
 
         @cache.dynamic_func(suffix=self.name)
-        def side_deformation_gradient(args: self.SideArg, s: Sample):
+        def side_deformation_gradient(args: self.SideArg, s: self.sample_type):
             base_def_grad = self.base.side_deformation_gradient(args.base_arg, s)
             trace_arg = self.field_trace.ElementEvalArg(args.base_arg, args.trace_arg)
 
@@ -219,14 +212,14 @@ class DeformedGeometry(Geometry):
 
     def _make_side_inner_cell_coords(self):
         @cache.dynamic_func(suffix=self.name)
-        def side_inner_cell_coords(args: self.SideArg, side_index: ElementIndex, side_coords: Coords):
+        def side_inner_cell_coords(args: self.SideArg, side_index: ElementIndex, side_coords: Any):
             return self.base.side_inner_cell_coords(args.base_arg, side_index, side_coords)
 
         return side_inner_cell_coords
 
     def _make_side_outer_cell_coords(self):
         @cache.dynamic_func(suffix=self.name)
-        def side_outer_cell_coords(args: self.SideArg, side_index: ElementIndex, side_coords: Coords):
+        def side_outer_cell_coords(args: self.SideArg, side_index: ElementIndex, side_coords: Any):
             return self.base.side_outer_cell_coords(args.base_arg, side_index, side_coords)
 
         return side_outer_cell_coords
@@ -237,7 +230,7 @@ class DeformedGeometry(Geometry):
             args: self.SideArg,
             side_index: ElementIndex,
             cell_index: ElementIndex,
-            cell_coords: Coords,
+            cell_coords: Any,
         ):
             return self.base.side_from_cell_coords(args.base_arg, side_index, cell_index, cell_coords)
 
@@ -258,17 +251,20 @@ class DeformedGeometry(Geometry):
         return cell_bvh_id
 
     def _make_cell_bounds(self):
-        points, _weights = self.reference_cell().prototype.instantiate_quadrature(
+        raw_points, _weights = self.reference_cell().prototype.instantiate_quadrature(
             order=self.field.degree, family=Polynomial.LOBATTO_GAUSS_LEGENDRE
         )
 
-        points = wp.matrix_from_rows(*points)
+        CoordsType = self.coords_type
+        points = wp.matrix_from_rows(*[CoordsType(*p) for p in raw_points])
         point_count = len(points)
+
+        vec3_type = cache.cached_vec_type(3, self.scalar_type)
 
         @cache.dynamic_func(suffix=self.name)
         def cell_bounds(cell_arg: self.CellArg, cell_index: ElementIndex):
-            lower = wp.vec3(1.0e8)
-            upper = wp.vec3(-1.0e8)
+            lower = vec3_type(self.scalar_type(1.0e8))
+            upper = vec3_type(self.scalar_type(-1.0e8))
             for k in range(point_count):
                 pos = self.cell_position(cell_arg, make_free_sample(cell_index, points[k]))
                 lower = wp.min(lower, pos)

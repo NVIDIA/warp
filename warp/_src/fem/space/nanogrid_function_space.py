@@ -1,19 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-from typing import Union
 
 import warp as wp
 from warp._src.fem import cache
@@ -43,7 +30,7 @@ class NanogridSpaceTopology(SpaceTopology):
 
     def __init__(
         self,
-        grid: Union[Nanogrid, AdaptiveNanogrid],
+        grid: Nanogrid | AdaptiveNanogrid,
         shape: CubeShapeFunction,
     ):
         self._shape = shape
@@ -86,29 +73,18 @@ class NanogridSpaceTopology(SpaceTopology):
 
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
-            geo_arg: Nanogrid.CellArg,
+            geo_arg: self._grid.CellArg,
             topo_arg: NanogridTopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
         ):
             ijk = geo_arg.cell_ijk[element_index]
-            return element_node_index_generic(topo_arg, element_index, node_index_in_elt, ijk, 0)
-
-        if isinstance(self._grid, Nanogrid):
-            return element_node_index
-
-        @cache.dynamic_func(suffix=self.name)
-        def element_node_index_adaptive(
-            geo_arg: AdaptiveNanogrid.CellArg,
-            topo_arg: NanogridTopologyArg,
-            element_index: ElementIndex,
-            node_index_in_elt: int,
-        ):
-            ijk = geo_arg.cell_ijk[element_index]
-            level = int(geo_arg.cell_level[element_index])
+            level = int(0)
+            if wp.static(isinstance(self._grid, AdaptiveNanogrid)):
+                level = int(geo_arg.cell_level[element_index])
             return element_node_index_generic(topo_arg, element_index, node_index_in_elt, ijk, level)
 
-        return element_node_index_adaptive
+        return element_node_index
 
     def node_count(self) -> int:
         return (
@@ -229,7 +205,7 @@ class NanogridBSplineSpaceTopology(SpaceTopology):
     def _make_element_node_index(self):
         @cache.dynamic_func(suffix=self.name)
         def element_node_index(
-            geo_arg: Nanogrid.CellArg,
+            geo_arg: self._grid.CellArg,
             topo_arg: NanogridBSplineSpaceTopology.TopologyArg,
             element_index: ElementIndex,
             node_index_in_elt: int,
@@ -271,7 +247,7 @@ def _pad_voxels(voxel_ijk: wp.array(dtype=wp.vec3i), padded_ijk: wp.array4d(dtyp
     padded_ijk[pid, i, j, k] = voxel_ijk[pid] + wp.vec3i(i - 1, j - 1, k - 1)
 
 
-def make_nanogrid_space_topology(grid: Union[Nanogrid, AdaptiveNanogrid], shape: CubeShapeFunction):
+def make_nanogrid_space_topology(grid: Nanogrid | AdaptiveNanogrid, shape: CubeShapeFunction):
     if isinstance(shape, CubeBSplineShapeFunctions):
         if isinstance(grid.base, AdaptiveNanogrid):
             raise ValueError(f"Adaptive Nanogrid does not support {shape.name}")

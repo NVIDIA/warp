@@ -1,20 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from functools import cached_property
-from typing import Any, Optional
+from typing import Any
 
 import warp as wp
 from warp._src.fem import cache
@@ -467,7 +455,7 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
         cell_mask: "wp.array(dtype=int)",
         max_cell_count: int = -1,
         max_side_count: int = -1,
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        temporary_store: cache.TemporaryStore | None = None,
     ):
         """Create a geometry partition from an active cell mask.
 
@@ -495,7 +483,7 @@ class ExplicitGeometryPartition(CellBasedGeometryPartition):
     def rebuild(
         self,
         cell_mask: "wp.array(dtype=int)",
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        temporary_store: cache.TemporaryStore | None = None,
     ):
         """Rebuild the geometry partition from a new active cell mask.
 

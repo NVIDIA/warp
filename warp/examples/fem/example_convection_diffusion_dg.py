@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 ###########################################################################
 # Example Convection Diffusion DG
@@ -157,7 +145,7 @@ class Example:
         )
 
         phi = wp.zeros_like(rhs)
-        fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=self._quiet)
+        fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=not wp.config.verbose)
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 
         # for visualization purposes only
@@ -216,8 +204,7 @@ if __name__ == "__main__":
             ang_vel=args.ang_vel,
         )
 
-        for k in range(args.num_frames):
-            print(f"Frame {k}:")
+        for _k, _ in fem_example_utils.progress_bar(args.num_frames, quiet=args.quiet):
             example.step()
             example.render()
 

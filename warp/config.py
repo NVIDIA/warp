@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """Global configuration settings for Warp.
 
@@ -25,8 +13,6 @@ setting documentation for details.
 
 For information on module-level and kernel-level settings, see :doc:`/user_guide/configuration`.
 """
-
-from typing import Optional as _Optional
 
 _wp_module_name_ = "warp.config"
 
@@ -72,15 +58,14 @@ Note: Debug mode may impact performance.
 This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
-optimization_level: _Optional[int] = None
+optimization_level: int | None = None
 """Optimization level for Warp kernels.
 
 Args:
-    optimization_level: An integer representing the optimization level (0-3), or ``None`` for default behavior.
+    optimization_level: An integer representing the optimization level (0-3), or ``None`` for
+        target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
 
 Note: Higher optimization levels increase compilation time but may improve run-time performance.
-
-Currently only affects GPU modules.
 
 This setting can be overridden at the module level by setting the ``"optimization_level"`` module option.
 """
@@ -122,7 +107,7 @@ operations return Python built-in types (``int``, ``float``, ``bool``).
 cache_kernels: bool = True
 """Enable kernel caching between application launches."""
 
-kernel_cache_dir: _Optional[str] = None
+kernel_cache_dir: str | None = None
 """Directory path for storing compiled kernel cache.
 
 If ``None``, the path is determined in the following order:
@@ -136,20 +121,20 @@ base path to prevent cache collisions between different Warp versions.
 Note: Subdirectories prefixed with ``wp_`` will be created in this location.
 """
 
-cuda_output: _Optional[str] = None
+cuda_output: str | None = None
 """Preferred CUDA output format for kernel compilation.
 
 Args:
     cuda_output: One of {``None``, ``"ptx"``, ``"cubin"``}. If ``None``, format is auto-determined.
 """
 
-ptx_target_arch: _Optional[int] = None
+ptx_target_arch: int | None = None
 """Target architecture version for PTX generation, e.g., ``ptx_target_arch = 75``.
 
 If ``None``, the architecture is determined by devices present in the system.
 """
 
-cuda_arch_suffix: _Optional[str] = None
+cuda_arch_suffix: str | None = None
 """CUDA architecture suffix for kernel compilation.
 
 Controls whether architecture-specific or family-specific suffixes are
@@ -207,6 +192,25 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
 """
 
+cpu_compiler_flags: str | None = None
+"""Flags controlling CPU kernel compilation.
+
+Warp acts as a compiler driver for the embedded Clang frontend. The flag
+``-march=native`` is intercepted and triggers host CPU feature detection
+(equivalent to ``llvm::sys::getHostCPUName()`` + ``getHostCPUFeatures()``).
+All other flags are passed through to the Clang frontend as-is.
+
+The value controls both CPU target detection and extra compiler flags:
+
+- ``None`` (default): detect host CPU features (equivalent to ``"-march=native"``).
+- ``""``: disable host CPU detection; compile for a generic target.
+- ``"-march=native"``: explicitly detect host CPU features.
+- ``"-march=native -fno-vectorize"``: detect host CPU + pass ``-fno-vectorize``.
+- ``"-fno-vectorize"``: generic target + pass ``-fno-vectorize``.
+
+Changing this setting invalidates the kernel cache.
+"""
+
 llvm_cuda: bool = False
 """Use Clang/LLVM compiler instead of NVRTC for CUDA compilation."""
 
@@ -229,7 +233,7 @@ if each nested loop is below the ``max_unroll`` threshold.
 This setting can be overridden at the module level by setting the ``"max_unroll"`` module option.
 """
 
-enable_tiles_in_stack_memory: _Optional[bool] = True
+enable_tiles_in_stack_memory: bool | None = True
 """Use stack memory instead of static memory for tile allocations on the CPU.
 
 Static memory in kernels is not well supported on some architectures (notably AArch64). We work
@@ -245,7 +249,7 @@ use_precompiled_headers: bool = True
 """Enable the use of precompiled headers during kernel compilation.
 """
 
-load_module_max_workers: _Optional[int] = 0
+load_module_max_workers: int | None = 0
 """Default number of worker threads for compiling and loading modules in parallel.
 
 For ``wp.load_module()`` and ``wp.force_load()``, if the ``max_workers`` parameter is not specified,
@@ -253,7 +257,7 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
-_git_commit_hash: _Optional[str] = None
+_git_commit_hash: str | None = None
 """Git commit hash associated with the Warp installation.
 
 Set automatically by CI, do not modify.

@@ -1,20 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from functools import cached_property
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 import warp as wp
 from warp._src.fem import cache
@@ -85,7 +73,7 @@ class SpaceTopology:
     @cached_property
     def name(self):
         """Unique name of the topology."""
-        return f"{self.__class__.__name__}_{self.MAX_NODES_PER_ELEMENT}"
+        return f"{self.__class__.__name__}_{self.geometry.name}_{self.MAX_NODES_PER_ELEMENT}"
 
     def __str__(self):
         return self.name
@@ -118,7 +106,7 @@ class SpaceTopology:
         """Return the number of nodes for both the inner and outer cells of a given sides."""
         raise NotImplementedError
 
-    def element_node_indices(self, out: Optional[wp.array] = None) -> wp.array:
+    def element_node_indices(self, out: wp.array | None = None) -> wp.array:
         """Return a temporary array containing the global index for each node of each element."""
 
         @cache.dynamic_kernel(suffix=self.name)

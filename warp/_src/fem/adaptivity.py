@@ -1,19 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-from typing import Optional
 
 import numpy as np
 
@@ -30,7 +17,7 @@ _wp_module_name_ = "warp.fem.adaptivity"
 
 
 def adaptive_nanogrid_from_hierarchy(
-    grids: list[wp.Volume], grading: Optional[str] = None, temporary_store: Optional[cache.TemporaryStore] = None
+    grids: list[wp.Volume], grading: str | None = None, temporary_store: cache.TemporaryStore | None = None
 ) -> AdaptiveNanogrid:
     """
     Constructs a :class:`warp.fem.AdaptiveNanogrid` from a non-overlapping grid hierarchy.
@@ -39,7 +26,7 @@ def adaptive_nanogrid_from_hierarchy(
 
     Args:
         grids: List of sparse Volumes, from finest to coarsest
-        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; see :func:`enforce_nanogrid_grading`
+        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; ``"face"`` ensures cells sharing a face differ by at most one level, ``"vertex"`` extends this to vertex neighbors
         temporary_store: Storage for temporary allocations
     """
     if not grids:
@@ -105,8 +92,8 @@ def adaptive_nanogrid_from_field(
     level_count: int,
     refinement_field: GeometryField,
     samples_per_voxel: int = 64,
-    grading: Optional[str] = None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
+    grading: str | None = None,
+    temporary_store: cache.TemporaryStore | None = None,
 ) -> AdaptiveNanogrid:
     """
     Constructs a :class:`warp.fem.AdaptiveNanogrid` from a coarse grid and a refinement field.
@@ -117,7 +104,7 @@ def adaptive_nanogrid_from_field(
         refinement_field: Scalar field used as a refinement oracle. If the returned value is negative, the corresponding voxel will be carved out.
             Positive values indicate the desired refinement with 0.0 corresponding to the finest level and 1.0 to the coarsest level.
         samples_per_voxel: How many samples to use for evaluating the refinement field within each voxel
-        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; see :func:`enforce_nanogrid_grading`
+        grading: Supplementary grading condition, may be ``None``, "face" or "vertex"; ``"face"`` ensures cells sharing a face differ by at most one level, ``"vertex"`` extends this to vertex neighbors
         temporary_store: Storage for temporary allocations
     """
 
@@ -219,8 +206,8 @@ def enforce_nanogrid_grading(
     cell_grid: wp.Volume,
     cell_level: wp.array,
     level_count: int,
-    grading: Optional[str] = None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
+    grading: str | None = None,
+    temporary_store: cache.TemporaryStore | None = None,
 ) -> tuple[wp.Volume, wp.array]:
     """
     Refines an adaptive grid such that if satisfies a grading condition.

@@ -80,7 +80,7 @@ Both frameworks only require the user to explicitly allocate the tensor ``x``: `
     import warp as wp
 
     @wp.kernel
-    def kernel_func(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    def kernel_func(x: wp.array[float], y: wp.array[float]):
         tid = wp.tid()
         y[tid] = x[tid] ** 2.0 + 3.0 * x[tid] + 1.0
 
@@ -110,7 +110,7 @@ If gradients and prior values of ``x`` aren't needed, we can instead write:
     wp.config.enable_backward = False
 
     @wp.kernel
-    def kernel_func(x: wp.array(dtype=float)):
+    def kernel_func(x: wp.array[float]):
         tid = wp.tid()
         x[tid] = x[tid] ** 2.0 + 3.0 * x[tid] + 1.0
 
@@ -146,7 +146,7 @@ PyTorch equivalents (for comparison):
 .. testcode::
 
     @wp.kernel
-    def double(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    def double(x: wp.array[float], y: wp.array[float]):
         tid = wp.tid()
         y[tid] = x[tid] * 2.0
 
@@ -322,10 +322,10 @@ by calling ``wp.grad(func)`` directly.
 
     @wp.kernel(enable_backward=False)
     def compute_jacobian(
-        x: wp.array(dtype=float),
-        y: wp.array(dtype=float),
-        z: wp.array(dtype=float),
-        J: wp.array2d(dtype=float),
+        x: wp.array[float],
+        y: wp.array[float],
+        z: wp.array[float],
+        J: wp.array2d[float],
     ):
         i = wp.tid()
 
@@ -420,7 +420,7 @@ Both the replay and the grad implementations can be customized by the user. They
                 wp.adjoint[inN] += ...
 
 .. note:: It is currently not possible to define custom replay or grad functions for functions that
-    have generic arguments, e.g. ``Any`` or ``wp.array(dtype=Any)``. Replay or grad functions that
+    have generic arguments, e.g. ``Any`` or ``wp.array[Any]``. Replay or grad functions that
     themselves use generic arguments are also not yet supported.
 
 Example 1: Custom Grad Function
@@ -439,7 +439,7 @@ To evaluate this function, we define a kernel that applies ``safe_sqrt`` to an a
 .. testcode::
 
     @wp.kernel
-    def run_safe_sqrt(xs: wp.array(dtype=float), output: wp.array(dtype=float)):
+    def run_safe_sqrt(xs: wp.array[float], output: wp.array[float]):
         i = wp.tid()
         output[i] = safe_sqrt(xs[i])
 
@@ -506,7 +506,7 @@ the square root of an input array at the incremented index:
 .. testcode::
 
     @wp.kernel
-    def test_add(counter: wp.array(dtype=int), input: wp.array(dtype=float), output: wp.array(dtype=float)):
+    def test_add(counter: wp.array[int], input: wp.array[float], output: wp.array[float]):
         idx = wp.atomic_add(counter, 0, 1)
         output[idx] = wp.sqrt(input[idx])
 
@@ -554,10 +554,10 @@ To fix this, we define a new Warp function ``reversible_increment()`` with a cus
 
     @wp.func
     def reversible_increment(
-        buf: wp.array(dtype=int),
+        buf: wp.array[int],
         buf_index: int,
         value: int,
-        thread_values: wp.array(dtype=int),
+        thread_values: wp.array[int],
         tid: int
     ):
         next_index = wp.atomic_add(buf, buf_index, value)
@@ -568,10 +568,10 @@ To fix this, we define a new Warp function ``reversible_increment()`` with a cus
 
     @wp.func_replay(reversible_increment)
     def replay_reversible_increment(
-        buf: wp.array(dtype=int),
+        buf: wp.array[int],
         buf_index: int,
         value: int,
-        thread_values: wp.array(dtype=int),
+        thread_values: wp.array[int],
         tid: int
     ):
         return thread_values[tid]
@@ -590,10 +590,10 @@ To use our function we write the following kernel:
 
     @wp.kernel
     def test_add_diff(
-        counter: wp.array(dtype=int),
-        thread_ids: wp.array(dtype=int),
-        input: wp.array(dtype=float),
-        output: wp.array(dtype=float)
+        counter: wp.array[int],
+        thread_ids: wp.array[int],
+        input: wp.array[float],
+        output: wp.array[float]
     ):
         tid = wp.tid()
         idx = reversible_increment(counter, 0, 1, thread_ids, tid)
@@ -664,11 +664,11 @@ For example:
         """
 
     @wp.func_native(snippet)
-    def reduce(arr: wp.array(dtype=int), out: wp.array(dtype=int), tid: int): ...
+    def reduce(arr: wp.array[int], out: wp.array[int], tid: int): ...
 
 
     @wp.kernel
-    def reduce_kernel(arr: wp.array(dtype=int), out: wp.array(dtype=int)):
+    def reduce_kernel(arr: wp.array[int], out: wp.array[int]):
         tid = wp.tid()
         reduce(arr, out, tid)
 
@@ -711,20 +711,20 @@ alongside your snippet as an additional input to the decorator, as in the follow
 
     @wp.func_native(snippet, adj_snippet)
     def saxpy(
-        a: wp.float32,
-        x: wp.array(dtype=wp.float32),
-        y: wp.array(dtype=wp.float32),
-        out: wp.array(dtype=wp.float32),
+        a: float,
+        x: wp.array[float],
+        y: wp.array[float],
+        out: wp.array[float],
         tid: int,
     ):
         ...
 
     @wp.kernel
     def saxpy_kernel(
-        a: wp.float32,
-        x: wp.array(dtype=wp.float32),
-        y: wp.array(dtype=wp.float32),
-        out: wp.array(dtype=wp.float32)
+        a: float,
+        x: wp.array[float],
+        y: wp.array[float],
+        out: wp.array[float]
     ):
         tid = wp.tid()
         saxpy(a, x, y, out, tid)
@@ -782,16 +782,16 @@ Consider the following example:
 
 
     @wp.func_native(snippet, replay_snippet=replay_snippet)
-    def reversible_increment(counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int):
+    def reversible_increment(counter: wp.array[int], thread_values: wp.array[int], tid: int):
         ...
 
 
     @wp.kernel
     def run_atomic_add(
-        input: wp.array(dtype=float),
-        counter: wp.array(dtype=int),
-        thread_values: wp.array(dtype=int),
-        output: wp.array(dtype=float),
+        input: wp.array[float],
+        counter: wp.array[int],
+        thread_values: wp.array[int],
+        output: wp.array[float],
     ):
         tid = wp.tid()
         reversible_increment(counter, thread_values, tid)
@@ -834,7 +834,7 @@ A native snippet may also include a return statement. If this is the case, you m
 
 
     @wp.kernel
-    def square_kernel(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
+    def square_kernel(input: wp.array[Any], output: wp.array[Any]):
         tid = wp.tid()
         x = input[tid]
         output[tid] = square(x)
@@ -882,7 +882,7 @@ The following example computes the gradient of a simple squaring function:
         return x * x
 
     @wp.kernel(enable_backward=False)
-    def compute_gradient(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+    def compute_gradient(x: wp.array[float], grad_x: wp.array[float]):
         tid = wp.tid()
         # Compute d(x^2)/dx = 2*x at each point
         grad_x[tid] = wp.grad(square)(x[tid])
@@ -909,10 +909,10 @@ For functions with multiple inputs, ``wp.grad()`` returns a tuple of gradients:
 
     @wp.kernel(enable_backward=False)
     def compute_atan2_gradients(
-        y: wp.array(dtype=float),
-        x: wp.array(dtype=float),
-        grad_y: wp.array(dtype=float),
-        grad_x: wp.array(dtype=float),
+        y: wp.array[float],
+        x: wp.array[float],
+        grad_y: wp.array[float],
+        grad_x: wp.array[float],
     ):
         tid = wp.tid()
         # wp.atan2(y, x) has two inputs, so grad returns (d/dy, d/dx)
@@ -942,7 +942,7 @@ The gradient wrapper can also be stored in a variable and called later:
 .. code-block:: python
 
     @wp.kernel(enable_backward=False)
-    def example_kernel(x: wp.array(dtype=float), grad_x: wp.array(dtype=float)):
+    def example_kernel(x: wp.array[float], grad_x: wp.array[float]):
         tid = wp.tid()
         grad_square = wp.grad(square)
         grad_x[tid] = grad_square(x[tid])
@@ -987,7 +987,7 @@ square root gradient:
             wp.adjoint[x] += wp.grad(wp.sqrt)(x) * adj_ret
 
     @wp.kernel
-    def safe_sqrt_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    def safe_sqrt_kernel(x: wp.array[float], y: wp.array[float]):
         tid = wp.tid()
         y[tid] = safe_sqrt(x[tid])
 
@@ -1047,8 +1047,8 @@ Example usage
 
     @wp.kernel
     def my_kernel(
-        a: wp.array(dtype=float), b: wp.array(dtype=wp.vec3),
-        out1: wp.array(dtype=wp.vec2), out2: wp.array(dtype=wp.quat),
+        a: wp.array[float], b: wp.array[wp.vec3],
+        out1: wp.array[wp.vec2], out2: wp.array[wp.quat],
     ):
         tid = wp.tid()
         ai, bi = a[tid], b[tid]
@@ -1175,7 +1175,7 @@ Example usage::
 
 
     @wp.kernel
-    def add(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
+    def add(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
         tid = wp.tid()
         c[tid] = a[tid] + b[tid]
 
@@ -1263,19 +1263,19 @@ A: Inter-Kernel Overwrite:
 .. testcode::
 
     @wp.kernel
-    def square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    def square_kernel(x: wp.array[float], y: wp.array[float]):
         tid = wp.tid()
         y[tid] = x[tid] * x[tid]
 
 
     @wp.kernel
-    def overwrite_kernel(z: wp.array(dtype=float), x: wp.array(dtype=float)):
+    def overwrite_kernel(z: wp.array[float], x: wp.array[float]):
         tid = wp.tid()
         x[tid] = z[tid]
 
 
     @wp.kernel
-    def loss_kernel(x: wp.array(dtype=float), loss: wp.array(dtype=float)):
+    def loss_kernel(x: wp.array[float], loss: wp.array[float]):
         tid = wp.tid()
         wp.atomic_add(loss, 0, x[tid])
 
@@ -1309,13 +1309,13 @@ B: Intra-Kernel Overwrite:
 .. testcode::
 
     @wp.kernel
-    def readwrite_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    def readwrite_kernel(a: wp.array[float], b: wp.array[float]):
         tid = wp.tid()
         b[tid] = a[tid] * a[tid]
         a[tid] = 1.0
 
     @wp.kernel
-    def loss_kernel(x: wp.array(dtype=float), loss: wp.array(dtype=float)):
+    def loss_kernel(x: wp.array[float], loss: wp.array[float]):
         tid = wp.tid()
         wp.atomic_add(loss, 0, x[tid])
 
@@ -1373,7 +1373,7 @@ In-place addition and subtraction can be used in kernels participating in the ba
 .. testcode::
 
     @wp.kernel
-    def inplace(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    def inplace(a: wp.array[float], b: wp.array[float]):
         i = wp.tid()
 
         a[i] -= b[i]
@@ -1418,7 +1418,7 @@ In the following example, the correct gradient is computed because the ``x`` arr
 .. testcode::
 
     @wp.kernel
-    def dynamic_loop_sum(x: wp.array(dtype=float), loss: wp.array(dtype=float), iters: int):
+    def dynamic_loop_sum(x: wp.array[float], loss: wp.array[float], iters: int):
         sum = float(0.0)
 
         for i in range(iters):
@@ -1450,7 +1450,7 @@ In contrast, in this example, the ``x`` array adjoints do depend on intermediate
 .. testcode::
 
     @wp.kernel
-    def dynamic_loop_mult(x: wp.array(dtype=float), loss: wp.array(dtype=float), iters: int):
+    def dynamic_loop_mult(x: wp.array[float], loss: wp.array[float], iters: int):
         prod = float(1.0)
 
         for i in range(iters):
@@ -1485,7 +1485,7 @@ For example, we can fix the above case like so:
 .. testcode::
 
     @wp.kernel
-    def dynamic_loop_mult(x: wp.array(dtype=float), prods: wp.array(dtype=float), loss: wp.array(dtype=float), iters: int):
+    def dynamic_loop_mult(x: wp.array[float], prods: wp.array[float], loss: wp.array[float], iters: int):
         for i in range(iters):
             prods[i + 1] = x[i] * prods[i]
 
@@ -1516,7 +1516,7 @@ the `final` value of a local variable is necessary for the adjoint computation. 
 .. testcode::
 
     @wp.kernel
-    def dynamic_loop_sum(x: wp.array(dtype=float), weights: wp.array(dtype=float), loss: wp.array(dtype=float), iters: int):
+    def dynamic_loop_sum(x: wp.array[float], weights: wp.array[float], loss: wp.array[float], iters: int):
         sum = float(0.0)
         norm = float(0.0)
 
@@ -1557,7 +1557,7 @@ a Warp function:
 .. testcode::
 
     @wp.func
-    def loop(x: wp.array(dtype=float), weights: wp.array(dtype=float), iters: int):
+    def loop(x: wp.array[float], weights: wp.array[float], iters: int):
         sum = float(0.0)
         norm = float(0.0)
 
@@ -1570,7 +1570,7 @@ a Warp function:
 
 
     @wp.kernel
-    def dynamic_loop_sum(x: wp.array(dtype=float), weights: wp.array(dtype=float), loss: wp.array(dtype=float), iters: int):
+    def dynamic_loop_sum(x: wp.array[float], weights: wp.array[float], loss: wp.array[float], iters: int):
         sum, norm = loop(x, weights, iters)
 
         l = sum / norm

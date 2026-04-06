@@ -1,20 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from functools import cached_property
-from typing import Any, Optional, Union
+from typing import Any
 
 import warp as wp
 import warp._src.fem.cache as cache
@@ -32,7 +20,7 @@ from warp._src.fem.types import NULL_ELEMENT_INDEX, Domain, ElementKind
 
 _wp_module_name_ = "warp.fem.domain"
 
-GeometryOrPartition = Union[Geometry, GeometryPartition]
+GeometryOrPartition = Geometry | GeometryPartition
 
 
 class GeometryDomain(Domain):
@@ -269,7 +257,7 @@ class Cells(GeometryDomain):
     @cached_property
     def element_partition_lookup(self) -> wp.Function:
         """Device function for partition-restricted element lookup."""
-        pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=self.geometry.scalar_type)
 
         @cache.dynamic_func(suffix=self.geometry_partition.name)
         def is_in_partition(args: self.ElementIndexArg, cell_index: int):
@@ -279,7 +267,6 @@ class Cells(GeometryDomain):
 
         # overloads
         filter_target = True
-        pos_type = cache.cached_vec_type(self.geometry.dimension, dtype=float)
 
         @cache.dynamic_func(suffix=self.name, allow_overloads=True)
         def cell_partition_lookup(args: self.DomainArg, pos: pos_type, max_dist: float):
@@ -502,9 +489,9 @@ class Subdomain(GeometryDomain):
     def __init__(
         self,
         domain: GeometryDomain,
-        element_mask: Optional[wp.array] = None,
-        element_indices: Optional[wp.array] = None,
-        temporary_store: Optional[cache.TemporaryStore] = None,
+        element_mask: wp.array | None = None,
+        element_indices: wp.array | None = None,
+        temporary_store: cache.TemporaryStore | None = None,
     ):
         """
         Create a subdomain from a subset of elements.

@@ -1,22 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import ast
 import inspect
 import textwrap
-from typing import Any, Callable, NamedTuple, Optional, Union
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 import warp as wp
 import warp._src.fem.operator as operator
@@ -52,7 +41,6 @@ from warp._src.fem.types import (
     NULL_NODE_INDEX,
     NULL_QP_INDEX,
     OUTSIDE,
-    Coords,
     DofIndex,
     Domain,
     Field,
@@ -125,7 +113,7 @@ class IntegrandVisitor(ast.NodeTransformer):
 
     @staticmethod
     def _build_field_info(integrand: Integrand, field_args: dict[str, FieldLike]):
-        def get_concrete_type(field: Union[FieldLike, Domain]):
+        def get_concrete_type(field: FieldLike | Domain):
             if isinstance(field, FieldLike):
                 return field.ElementEvalArg
             elif isinstance(field, GeometryDomain):
@@ -171,7 +159,9 @@ class IntegrandVisitor(ast.NodeTransformer):
             # Evaluating operators as op(field, x, ...)
             field_info = self._get_field_info(call.args[0])
             if field_info is not None:
-                self._process_operator_call(call, func, func, field_info)
+                replacement = self._process_operator_call(call, func, func, field_info)
+                if replacement is not None:
+                    return replacement
 
                 if func.field_result:
                     try:
@@ -254,7 +244,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
         self._operator_callback = callback
 
     def _process_operator_call(
-        self, call: ast.Call, callee: Union[str, Operator], operator: Operator, field_info: IntegrandVisitor.FieldInfo
+        self, call: ast.Call, callee: str | Operator, operator: Operator, field_info: IntegrandVisitor.FieldInfo
     ):
         self._operator_callback(field_info, operator)
 
@@ -272,7 +262,7 @@ class IntegrandOperatorParser(IntegrandVisitor):
 
     @staticmethod
     def apply(
-        integrand: Integrand, field_args: dict[str, FieldLike], operator_callback: Optional[Callable] = None
+        integrand: Integrand, field_args: dict[str, FieldLike], operator_callback: Callable | None = None
     ) -> wp.Function:
         field_info = IntegrandVisitor._build_field_info(integrand, field_args)
         IntegrandOperatorParser(integrand, field_info, callback=operator_callback)._apply()
@@ -280,20 +270,30 @@ class IntegrandOperatorParser(IntegrandVisitor):
 
 class IntegrandTransformer(IntegrandVisitor):
     def _process_operator_call(
-        self, call: ast.Call, callee: Union[str, Operator], operator: Operator, field_info: IntegrandVisitor.FieldInfo
+        self, call: ast.Call, callee: str | Operator, operator: Operator, field_info: IntegrandVisitor.FieldInfo
     ):
         field = field_info.field
 
         try:
             # Retrieve the function pointer corresponding to the operator implementation for the field type
             pointer = operator.resolver(field)
-            if not isinstance(pointer, wp.Function):
-                raise NotImplementedError(operator.resolver.__name__)
-
         except (AttributeError, NotImplementedError) as e:
             raise TypeError(
                 f"Operator `{operator.func.__name__}` is not defined for {field_info.abstract_type.__name__} {field.name}"
             ) from e
+
+        # Type-returning operator (e.g. scalar_type): replace the call node with a type reference
+        if isinstance(pointer, type):
+            if pointer == wp.float64:
+                return ast.Attribute(value=ast.Name(id="wp", ctx=ast.Load()), attr="float64", ctx=ast.Load())
+            if pointer == wp.float32 or pointer == float:
+                return ast.Name(id="float", ctx=ast.Load())
+            raise TypeError(f"Operator `{operator.func.__name__}` returned unrecognized type {pointer}")
+
+        if not isinstance(pointer, wp.Function):
+            raise TypeError(
+                f"Operator `{operator.func.__name__}` is not defined for {field_info.abstract_type.__name__} {field.name}"
+            )
 
         # Save the pointer as an attribute than can be accessed from the calling scope
         # (use the annotation node of the argument this field is constructed from)
@@ -309,19 +309,22 @@ class IntegrandTransformer(IntegrandVisitor):
         if operator.attr:
             call.args[0] = ast.Attribute(value=call.args[0], attr=operator.attr)
 
+        return None
+
     def _process_integrand_call(
         self, call: ast.Call, callee: Integrand, callee_field_args: dict[str, IntegrandVisitor.FieldInfo]
     ):
         callee_field_args = self._get_callee_field_args(callee, call.args)
         transformer = IntegrandTransformer(callee, callee_field_args)
-        key = transformer._apply().key
+        key = transformer._apply(sample_type=self._sample_type).key
         call.func = ast.Attribute(
             value=call.func,
             attr=key,
             ctx=ast.Load(),
         )
 
-    def _apply(self) -> wp.Function:
+    def _apply(self, sample_type=None) -> wp.Function:
+        self._sample_type = sample_type
         # Transform field evaluation calls
         field_info = self._field_symbols
 
@@ -329,7 +332,15 @@ class IntegrandTransformer(IntegrandVisitor):
         argspec = self._integrand.argspec
         annotations = argspec.annotations | {name: f.concrete_type for name, f in field_info.items()}
 
+        # Substitute Sample type with geometry-specific SampleType when needed
+        if sample_type is not None and sample_type is not Sample:
+            for name, ann in list(annotations.items()):
+                if ann is Sample:
+                    annotations[name] = sample_type
+
         suffix = "_".join([f.field.name for f in field_info.values()])
+        if sample_type is not None and sample_type is not Sample:
+            suffix += f"_{getattr(sample_type, 'key', id(sample_type))}"
         func = cache.get_integrand_function(
             integrand=self._integrand,
             suffix=suffix,
@@ -343,13 +354,13 @@ class IntegrandTransformer(IntegrandVisitor):
         return func
 
     @staticmethod
-    def apply(integrand: Integrand, field_args: dict[str, FieldLike]) -> wp.Function:
+    def apply(integrand: Integrand, field_args: dict[str, FieldLike], sample_type=None) -> wp.Function:
         field_info = IntegrandVisitor._build_field_info(integrand, field_args)
-        return IntegrandTransformer(integrand, field_info)._apply()
+        return IntegrandTransformer(integrand, field_info)._apply(sample_type=sample_type)
 
 
 class IntegrandArguments(NamedTuple):
-    field_args: dict[str, Union[FieldLike, GeometryDomain]]
+    field_args: dict[str, FieldLike | GeometryDomain]
     value_args: dict[str, Any]
     domain_name: str
     sample_name: str
@@ -627,6 +638,7 @@ def get_integrate_constant_kernel(
     tile_size: int = _INTEGRATE_CONSTANT_TILE_SIZE,
 ):
     zero_element = type_zero_element(accumulate_dtype)
+    SampleType = domain.geometry.sample_type
 
     def integrate_kernel_fn(
         qp_count: int,
@@ -661,10 +673,10 @@ def get_integrate_constant_kernel(
             test_dof_index = NULL_DOF_INDEX
             trial_dof_index = NULL_DOF_INDEX
 
-            sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+            sample = SampleType(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
             vol = domain.element_measure(domain_arg, sample)
 
-            val = accumulate_dtype(qp_weight * vol * integrand_func(sample, fields, values))
+            val = accumulate_dtype(qp_weight * vol) * accumulate_dtype(integrand_func(sample, fields, values))
 
         tile_integral = wp.tile_sum(wp.tile(val))
         wp.tile_atomic_add(result, tile_integral, offset=0)
@@ -682,6 +694,8 @@ def get_integrate_linear_kernel(
     output_dtype,
     accumulate_dtype,
 ):
+    SampleType = domain.geometry.sample_type
+
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
         domain_arg: domain.ElementArg,
@@ -724,10 +738,10 @@ def get_integrate_linear_kernel(
 
                 vol = domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
 
-                sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+                sample = SampleType(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
                 val = integrand_func(sample, fields, values)
 
-                val_sum += accumulate_dtype(qp_weight * vol * val)
+                val_sum += accumulate_dtype(qp_weight * vol) * accumulate_dtype(val)
 
         result[node_index, test_dof] += output_dtype(val_sum)
 
@@ -743,6 +757,8 @@ def get_integrate_linear_nodal_kernel(
     output_dtype,
     accumulate_dtype,
 ):
+    SampleType = domain.geometry.sample_type
+
     def integrate_kernel_fn(
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
@@ -793,7 +809,7 @@ def get_integrate_linear_nodal_kernel(
 
                 test_dof_index = DofIndex(node_element_index.node_index_in_element, dof)
 
-                sample = Sample(
+                sample = SampleType(
                     element_index,
                     coords,
                     node_index,
@@ -804,7 +820,7 @@ def get_integrate_linear_nodal_kernel(
                 vol = domain.element_measure(domain_arg, sample)
                 val = integrand_func(sample, fields, values)
 
-                val_sum += accumulate_dtype(node_weight * vol * val)
+                val_sum += accumulate_dtype(node_weight * vol) * accumulate_dtype(val)
 
         result[partition_node_index, dof] += output_dtype(val_sum)
 
@@ -819,6 +835,9 @@ def get_integrate_linear_local_kernel(
     ValueStruct: Struct,
     test: LocalTestField,
 ):
+    SampleType = domain.geometry.sample_type
+    local_scalar_type = domain.geometry.scalar_type
+
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
         qp_element_index_arg: quadrature.ElementIndexArg,
@@ -826,7 +845,7 @@ def get_integrate_linear_local_kernel(
         domain_index_arg: domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
-        result: wp.array3d(dtype=float),
+        result: wp.array3d(dtype=local_scalar_type),
     ):
         qp_eval_index, taylor_dof, test_dof = wp.tid()
         domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
@@ -847,9 +866,9 @@ def get_integrate_linear_local_kernel(
         trial_dof_index = NULL_DOF_INDEX
         test_dof_index = DofIndex(taylor_dof, test_dof)
 
-        sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        sample = SampleType(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
         val = integrand_func(sample, fields, values)
-        result[qp_eval_index, taylor_dof, test_dof] = qp_weight * vol * val
+        result[qp_eval_index, taylor_dof, test_dof] = qp_weight * vol * local_scalar_type(val)
 
     return integrate_kernel_fn
 
@@ -865,6 +884,8 @@ def get_integrate_bilinear_kernel(
     output_dtype,
     accumulate_dtype,
 ):
+    SampleType = domain.geometry.sample_type
+
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
         domain_arg: domain.ElementArg,
@@ -922,7 +943,7 @@ def get_integrate_bilinear_kernel(
                 )
                 vol = domain.element_measure(domain_arg, make_free_sample(element_index, coords))
 
-                sample = Sample(
+                sample = SampleType(
                     element_index,
                     coords,
                     qp_index,
@@ -931,7 +952,7 @@ def get_integrate_bilinear_kernel(
                     trial_dof_index,
                 )
                 val = integrand_func(sample, fields, values)
-                val_sum += accumulate_dtype(qp_weight * vol * val)
+                val_sum += accumulate_dtype(qp_weight * vol) * accumulate_dtype(val)
 
             block_offset = element * max_nodes_per_element + trial_node
             triplet_values[block_offset, test_dof, trial_dof] = output_dtype(val_sum)
@@ -962,6 +983,8 @@ def get_integrate_bilinear_nodal_kernel(
     output_dtype,
     accumulate_dtype,
 ):
+    SampleType = domain.geometry.sample_type
+
     def integrate_kernel_fn(
         domain_arg: domain.ElementArg,
         domain_index_arg: domain.ElementIndexArg,
@@ -1016,7 +1039,7 @@ def get_integrate_bilinear_nodal_kernel(
                 test_dof_index = DofIndex(node_element_index.node_index_in_element, test_dof)
                 trial_dof_index = DofIndex(node_element_index.node_index_in_element, trial_dof)
 
-                sample = Sample(
+                sample = SampleType(
                     element_index,
                     coords,
                     node_index,
@@ -1027,7 +1050,7 @@ def get_integrate_bilinear_nodal_kernel(
                 vol = domain.element_measure(domain_arg, sample)
                 val = integrand_func(sample, fields, values)
 
-                val_sum += accumulate_dtype(node_weight * vol * val)
+                val_sum += accumulate_dtype(node_weight * vol) * accumulate_dtype(val)
 
         triplet_values[local_node_index, test_dof, trial_dof] = output_dtype(val_sum)
         triplet_rows[local_node_index] = partition_node_index
@@ -1047,6 +1070,8 @@ def get_integrate_bilinear_local_kernel(
 ):
     TEST_TAYLOR_DOF_COUNT = test.TAYLOR_DOF_COUNT
     TRIAL_TAYLOR_DOF_COUNT = trial.TAYLOR_DOF_COUNT
+    SampleType = domain.geometry.sample_type
+    local_scalar_type = domain.geometry.scalar_type
 
     def integrate_kernel_fn(
         qp_arg: quadrature.Arg,
@@ -1055,7 +1080,7 @@ def get_integrate_bilinear_local_kernel(
         domain_index_arg: domain.ElementIndexArg,
         fields: FieldStruct,
         values: ValueStruct,
-        result: wp.array4d(dtype=float),
+        result: wp.array4d(dtype=local_scalar_type),
     ):
         qp_eval_index, test_dof, trial_dof, trial_taylor_dof = wp.tid()
 
@@ -1081,9 +1106,9 @@ def get_integrate_bilinear_local_kernel(
 
             test_dof_index = DofIndex(test_taylor_dof, test_dof)
 
-            sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+            sample = SampleType(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
             val = integrand_func(sample, fields, values)
-            result[test_dof, trial_dof, qp_eval_index, taylor_dof] = qp_vol * val
+            result[test_dof, trial_dof, qp_eval_index, taylor_dof] = qp_vol * local_scalar_type(val)
 
     return integrate_kernel_fn
 
@@ -1093,11 +1118,11 @@ def _generate_integrate_kernel(
     domain: GeometryDomain,
     quadrature: Quadrature,
     arguments: IntegrandArguments,
-    test: Optional[TestField],
-    trial: Optional[TrialField],
+    test: TestField | None,
+    trial: TrialField | None,
     output_dtype: type,
     accumulate_dtype: type,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ) -> wp.Kernel:
     output_dtype = type_scalar_type(output_dtype)
 
@@ -1124,7 +1149,9 @@ def _generate_integrate_kernel(
     # Not found in cache, transform integrand and generate kernel
     _check_field_compat(integrand, arguments, domain)
 
-    integrand_func = IntegrandTransformer.apply(integrand, arguments.field_args)
+    integrand_func = IntegrandTransformer.apply(
+        integrand, arguments.field_args, sample_type=domain.geometry.sample_type
+    )
 
     nodal = quadrature is None
 
@@ -1221,11 +1248,11 @@ def _generate_integrate_kernel(
 
 def _generate_auxiliary_kernels(
     quadrature: Quadrature,
-    test: Optional[TestField],
-    trial: Optional[TrialField],
+    test: TestField | None,
+    trial: TrialField | None,
     accumulate_dtype: type,
     device,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ) -> list[tuple[wp.Kernel, int]]:
     if test is None or not isinstance(test, LocalTestField):
         return ()
@@ -1275,16 +1302,16 @@ def _launch_integrate_kernel(
     value_struct_values: StructInstance,
     domain: GeometryDomain,
     quadrature: Quadrature,
-    test: Optional[TestField],
-    trial: Optional[TrialField],
+    test: TestField | None,
+    trial: TrialField | None,
     fields: dict[str, FieldLike],
     values: dict[str, Any],
     accumulate_dtype: type,
-    temporary_store: Optional[cache.TemporaryStore],
+    temporary_store: cache.TemporaryStore | None,
     output_dtype: type,
-    output: Optional[Union[wp.array, BsrMatrix]],
+    output: wp.array | BsrMatrix | None,
     add_to_output: bool,
-    bsr_options: Optional[dict[str, Any]],
+    bsr_options: dict[str, Any] | None,
     device,
 ):
     # Set-up launch arguments
@@ -1421,12 +1448,13 @@ def _launch_integrate_kernel(
                 device=device,
             )
         elif isinstance(test, LocalTestField):
+            local_scalar_type = domain.geometry.scalar_type
             local_result = cache.borrow_temporary(
                 temporary_store=temporary_store,
                 device=device,
                 requires_grad=output.requires_grad,
                 shape=(quadrature.evaluation_point_count(), test.TAYLOR_DOF_COUNT, test.value_dof_count),
-                dtype=float,
+                dtype=local_scalar_type,
             )
 
             wp.launch(
@@ -1531,6 +1559,7 @@ def _launch_integrate_kernel(
             device=device,
         )
     elif isinstance(test, LocalTestField):
+        local_scalar_type = domain.geometry.scalar_type
         qp_eval_count = quadrature.evaluation_point_count()
         local_result = cache.borrow_temporary(
             temporary_store=temporary_store,
@@ -1542,7 +1571,7 @@ def _launch_integrate_kernel(
                 qp_eval_count,
                 test.TAYLOR_DOF_COUNT * trial.TAYLOR_DOF_COUNT,
             ),
-            dtype=float,
+            dtype=local_scalar_type,
         )
 
         wp.launch(
@@ -1672,9 +1701,7 @@ _NODE_OPERATORS = {
 }
 
 
-def _pick_assembly_strategy(
-    assembly: Optional[str], operators: dict[str, set[Operator]], arguments: IntegrandArguments
-):
+def _pick_assembly_strategy(assembly: str | None, operators: dict[str, set[Operator]], arguments: IntegrandArguments):
     if assembly is not None:
         if assembly not in ("generic", "nodal", "dispatch"):
             raise ValueError(f"Invalid assembly strategy'{assembly}'")
@@ -1690,19 +1717,19 @@ def _pick_assembly_strategy(
 
 def integrate(
     integrand: Integrand,
-    domain: Optional[GeometryDomain] = None,
-    quadrature: Optional[Quadrature] = None,
-    fields: Optional[dict[str, FieldLike]] = None,
-    values: Optional[dict[str, Any]] = None,
+    domain: GeometryDomain | None = None,
+    quadrature: Quadrature | None = None,
+    fields: dict[str, FieldLike] | None = None,
+    values: dict[str, Any] | None = None,
     accumulate_dtype: type = wp.float64,
-    output_dtype: Optional[type] = None,
-    output: Optional[Union[BsrMatrix, wp.array]] = None,
+    output_dtype: type | None = None,
+    output: BsrMatrix | wp.array | None = None,
     device=None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
-    kernel_options: Optional[dict[str, Any]] = None,
-    assembly: Optional[str] = None,
+    temporary_store: cache.TemporaryStore | None = None,
+    kernel_options: dict[str, Any] | None = None,
+    assembly: str | None = None,
     add: bool = False,
-    bsr_options: Optional[dict[str, Any]] = None,
+    bsr_options: dict[str, Any] | None = None,
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
@@ -1716,7 +1743,7 @@ def integrate(
         temporary_store: shared pool from which to allocate temporary arrays
         accumulate_dtype: Scalar type to be used for accumulating integration samples
         output: Sparse matrix or warp array into which to store the result of the integration
-        output_dtype: Scalar type for returned results in `output` is not provided. If None, defaults to `accumulate_dtype`
+        output_dtype: Scalar type for returned results if `output` is not provided. If None, defaults to the geometry's scalar type (``wp.float32`` or ``wp.float64``)
         device: Device on which to perform the integration
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
         assembly: Specifies the strategy for assembling the integrated vector or matrix:
@@ -1810,7 +1837,7 @@ def integrate(
         else:
             output_dtype = output.dtype
     elif output_dtype is None:
-        output_dtype = accumulate_dtype
+        output_dtype = type_to_warp(domain.geometry.scalar_type)
     else:
         output_dtype = type_to_warp(output_dtype)
 
@@ -1864,9 +1891,12 @@ def get_interpolate_at_nodes_function(
     ValueStruct: Struct,
     space_restriction: SpaceRestriction,
     dest_basis: FunctionSpace,
-    dest_dtype: Optional[type],
+    dest_dtype: type | None,
     reduction: str,
 ):
+    SampleType = domain.geometry.sample_type
+    local_scalar_type = domain.geometry.scalar_type
+
     if dest_dtype is None:
         zero_value = float
     else:
@@ -1885,12 +1915,12 @@ def get_interpolate_at_nodes_function(
     ):
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
-        node_weight = 1.0
+        node_weight = local_scalar_type(1.0)
 
         # Volume-weighted average across elements
         # Superfluous if the interpolated function is continuous, but helpful for visualizing discontinuous spaces
 
-        weight_sum = float(0.0)
+        weight_sum = local_scalar_type(0.0)
         val_sum = zero_value()
 
         for n in range(element_beg, element_end):
@@ -1914,7 +1944,7 @@ def get_interpolate_at_nodes_function(
             )
 
             if coords[0] != OUTSIDE:
-                sample = Sample(
+                sample = SampleType(
                     element_index,
                     coords,
                     node_index,
@@ -1936,19 +1966,19 @@ def get_interpolate_at_nodes_function(
                         val_sum += vol * val
                     elif wp.static(reduction == "mean"):
                         val_sum += val
-                        weight_sum += 1.0
+                        weight_sum += local_scalar_type(1.0)
                     elif wp.static(reduction == "sum"):
                         val_sum += val
-                        weight_sum = 1.0
+                        weight_sum = local_scalar_type(1.0)
                     elif wp.static(reduction == "max"):
-                        val_sum = wp.where(weight_sum > 0.0, wp.max(val_sum, val), val)
-                        weight_sum = 1.0
+                        val_sum = wp.where(weight_sum > local_scalar_type(0.0), wp.max(val_sum, val), val)
+                        weight_sum = local_scalar_type(1.0)
                     elif wp.static(reduction == "min"):
-                        val_sum = wp.where(weight_sum > 0.0, wp.min(val_sum, val), val)
-                        weight_sum = 1.0
+                        val_sum = wp.where(weight_sum > local_scalar_type(0.0), wp.min(val_sum, val), val)
+                        weight_sum = local_scalar_type(1.0)
                     elif wp.static(reduction == "first"):
                         val_sum = val
-                        weight_sum = 1.0
+                        weight_sum = local_scalar_type(1.0)
                         break
                     else:
                         raise ValueError("Unsupported reduction method")  # codegen error
@@ -1997,7 +2027,7 @@ def get_interpolate_at_nodes_kernel(
     ValueStruct: Struct,
     space_restriction: SpaceRestriction,
     dest_space: FunctionSpace,
-    dest: Union[DiscreteField, wp.array, None],
+    dest: DiscreteField | wp.array | None,
 ):
     if isinstance(dest, DiscreteField):
         dest_arg_type = dest.EvalArg
@@ -2102,6 +2132,8 @@ def get_interpolate_jacobian_at_nodes_kernel(
     trial: TrialField,
     reduction: str,
 ):
+    SampleType = domain.geometry.sample_type
+    local_scalar_type = domain.geometry.scalar_type
     VALUE_SIZE = type_length(dest_space.dof_dtype)
     value_type = type_scalar_type(dest_space.dof_dtype)
 
@@ -2115,7 +2147,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
         dest_basis_arg: dest_space.basis.BasisArg,
         dest_topo_arg: dest_space.topology.TopologyArg,
     ):
-        vol_sum = float(0.0)
+        vol_sum = local_scalar_type(0.0)
         for n in range(element_beg, element_end):
             node_element_index = space_restriction.node_element_index(dest_node_arg, n)
             element_index = domain.element_index(domain_index_arg, node_element_index.domain_element_index)
@@ -2134,7 +2166,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
                     vol = domain.element_measure(domain_arg, sample)
                     vol_sum += vol
                 elif wp.static(reduction == "mean"):
-                    vol_sum += 1.0
+                    vol_sum += local_scalar_type(1.0)
 
         return vol_sum
 
@@ -2176,7 +2208,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = DofIndex(trial_node, trial_dof)
         trial_topo_arg = _get_trial_arg().topo_arg
-        node_weight = 1.0
+        node_weight = local_scalar_type(1.0)
 
         for n in range(element_beg, element_end):
             node_element_index = space_restriction.node_element_index(dest_node_arg, n)
@@ -2208,7 +2240,7 @@ def get_interpolate_jacobian_at_nodes_kernel(
             if coords[0] == OUTSIDE:
                 continue
 
-            sample = Sample(
+            sample = SampleType(
                 element_index,
                 coords,
                 node_index,
@@ -2261,8 +2293,10 @@ def get_interpolate_at_quadrature_kernel(
     quadrature: Quadrature,
     FieldStruct: Struct,
     ValueStruct: Struct,
-    value_type: Optional[type],
+    value_type: type | None,
 ):
+    SampleType = domain.geometry.sample_type
+
     def interpolate_at_quadrature_kernel_fn(
         qp_arg: quadrature.Arg,
         qp_element_index_arg: quadrature.ElementIndexArg,
@@ -2288,7 +2322,7 @@ def get_interpolate_at_quadrature_kernel(
         qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
         qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
 
-        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        sample = SampleType(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
 
         if wp.static(value_type is None):
             integrand_func(sample, fields, values)
@@ -2309,6 +2343,7 @@ def get_interpolate_jacobian_at_quadrature_kernel(
     value_type: type,
 ):
     VALUE_SIZE = wp.constant(value_size)
+    SampleType = domain.geometry.sample_type
 
     def interpolate_jacobian_kernel_fn(
         qp_arg: quadrature.Arg,
@@ -2346,7 +2381,7 @@ def get_interpolate_jacobian_at_quadrature_kernel(
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = DofIndex(trial_node, trial_dof)
 
-        sample = Sample(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        sample = SampleType(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
         val = integrand_func(sample, fields, values)
 
         for k in range(VALUE_SIZE):
@@ -2373,6 +2408,10 @@ def get_interpolate_free_kernel(
     ValueStruct: Struct,
     value_type: type,
 ):
+    SampleType = domain.geometry.sample_type
+    CoordsType = domain.geometry.coords_type
+    scalar = domain.geometry.scalar_type
+
     def interpolate_free_nonvalued_kernel_fn(
         dim: int,
         domain_arg: domain.ElementArg,
@@ -2382,14 +2421,14 @@ def get_interpolate_free_kernel(
         result: wp.array(dtype=float),
     ):
         qp_index = wp.tid()
-        qp_weight = 1.0 / float(dim)
+        qp_weight = scalar(1.0) / scalar(dim)
         element_index = NULL_ELEMENT_INDEX
-        coords = Coords(OUTSIDE)
+        coords = CoordsType(scalar(OUTSIDE))
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        sample = SampleType(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
         integrand_func(sample, fields, values)
 
     def interpolate_free_kernel_fn(
@@ -2401,14 +2440,14 @@ def get_interpolate_free_kernel(
         result: wp.array(dtype=value_type),
     ):
         qp_index = wp.tid()
-        qp_weight = 1.0 / float(dim)
+        qp_weight = scalar(1.0) / scalar(dim)
         element_index = NULL_ELEMENT_INDEX
-        coords = Coords(OUTSIDE)
+        coords = CoordsType(scalar(OUTSIDE))
 
         test_dof_index = NULL_DOF_INDEX
         trial_dof_index = NULL_DOF_INDEX
 
-        sample = Sample(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
+        sample = SampleType(element_index, coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
 
         result[qp_index] = integrand_func(sample, fields, values)
 
@@ -2418,13 +2457,13 @@ def get_interpolate_free_kernel(
 def _generate_interpolate_kernel(
     integrand: Integrand,
     domain: GeometryDomain,
-    dest: Union[DiscreteField, wp.array, BsrMatrix, None],
-    dest_space: Optional[FunctionSpace],
-    space_restriction: Optional[SpaceRestriction],
-    quadrature: Optional[Quadrature],
+    dest: DiscreteField | wp.array | BsrMatrix | None,
+    dest_space: FunctionSpace | None,
+    space_restriction: SpaceRestriction | None,
+    quadrature: Quadrature | None,
     reduction: str,
     arguments: IntegrandArguments,
-    kernel_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
 ) -> wp.Kernel:
     _notify_operator_usage(integrand, arguments.field_args)
 
@@ -2467,7 +2506,9 @@ def _generate_interpolate_kernel(
     # Not found in cache, transform integrand and generate kernel
     _check_field_compat(integrand, arguments, domain)
 
-    integrand_func = IntegrandTransformer.apply(integrand, arguments.field_args)
+    integrand_func = IntegrandTransformer.apply(
+        integrand, arguments.field_args, sample_type=domain.geometry.sample_type
+    )
 
     # Generate interpolation kernel
     if space_restriction is not None:
@@ -2576,7 +2617,7 @@ def _allocate_interpolate_jacobian_triplets(
     point_index_count: int,
     trial: TrialField,
     dest: BsrMatrix,
-    temporary_store: Optional[cache.TemporaryStore],
+    temporary_store: cache.TemporaryStore | None,
 ):
     nnz = evaluation_point_count * trial.space.topology.MAX_NODES_PER_ELEMENT
 
@@ -2606,17 +2647,17 @@ def _launch_interpolate_kernel(
     field_arg_values: StructInstance,
     value_struct_values: StructInstance,
     domain: GeometryDomain,
-    dest: Optional[Union[DiscreteField, wp.array, BsrMatrix]],
-    dest_space: Optional[FunctionSpace],
-    space_restriction: Optional[SpaceRestriction],
-    quadrature: Optional[Quadrature],
+    dest: DiscreteField | wp.array | BsrMatrix | None,
+    dest_space: FunctionSpace | None,
+    space_restriction: SpaceRestriction | None,
+    quadrature: Quadrature | None,
     reduction: str,
     dim: int,
-    trial: Optional[TrialField],
+    trial: TrialField | None,
     fields: dict[str, FieldLike],
     values: dict[str, Any],
-    temporary_store: Optional[cache.TemporaryStore],
-    bsr_options: Optional[dict[str, Any]],
+    temporary_store: cache.TemporaryStore | None,
+    bsr_options: dict[str, Any] | None,
     device,
 ) -> wp.Kernel:
     # Set-up launch arguments
@@ -2774,20 +2815,20 @@ def _identity_field(field: Field, s: Sample):
 
 
 def interpolate(
-    integrand: Union[Integrand, FieldLike],
-    dest: Union[DiscreteField, FieldRestriction, wp.array, BsrMatrix, None] = None,
-    at: Union[Quadrature, SpaceRestriction, GeometryDomain, None] = None,
-    dest_space: Optional[FunctionSpace] = None,
-    quadrature: Optional[Quadrature] = None,
-    dim: Optional[int] = None,
-    domain: Optional[GeometryDomain] = None,
-    fields: Optional[dict[str, FieldLike]] = None,
-    values: Optional[dict[str, Any]] = None,
+    integrand: Integrand | FieldLike,
+    dest: DiscreteField | FieldRestriction | wp.array | BsrMatrix | None = None,
+    at: Quadrature | SpaceRestriction | GeometryDomain | None = None,
+    dest_space: FunctionSpace | None = None,
+    quadrature: Quadrature | None = None,
+    dim: int | None = None,
+    domain: GeometryDomain | None = None,
+    fields: dict[str, FieldLike] | None = None,
+    values: dict[str, Any] | None = None,
     reduction: str = "weighted_average",
     device=None,
-    kernel_options: Optional[dict[str, Any]] = None,
-    temporary_store: Optional[cache.TemporaryStore] = None,
-    bsr_options: Optional[dict[str, Any]] = None,
+    kernel_options: dict[str, Any] | None = None,
+    temporary_store: cache.TemporaryStore | None = None,
+    bsr_options: dict[str, Any] | None = None,
 ):
     """
     Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field, raw warp array, or sparse matrix.

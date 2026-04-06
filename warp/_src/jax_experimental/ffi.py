@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from __future__ import annotations
 
@@ -20,8 +8,8 @@ import ctypes
 import inspect
 import threading
 import traceback
+from collections.abc import Callable
 from enum import IntEnum
-from typing import Callable
 
 import jax
 
@@ -223,7 +211,7 @@ class FfiKernel:
 
         # register the callback
         FFI_CCALLFUNC = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame))
-        self.callback_func = FFI_CCALLFUNC(lambda call_frame: self.ffi_callback(call_frame))
+        self.callback_func = FFI_CCALLFUNC(self.ffi_callback)
         ffi_ccall_address = ctypes.cast(self.callback_func, ctypes.c_void_p)
         ffi_capsule = jax.ffi.pycapsule(ffi_ccall_address.value)
         jax.ffi.register_ffi_target(self.name, ffi_capsule, platform="CUDA")
@@ -606,7 +594,7 @@ class FfiCallable:
 
         # register the callback
         FFI_CCALLFUNC = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame))
-        self.callback_func = FFI_CCALLFUNC(lambda call_frame: self.ffi_callback(call_frame))
+        self.callback_func = FFI_CCALLFUNC(self.ffi_callback)
         ffi_ccall_address = ctypes.cast(self.callback_func, ctypes.c_void_p)
         ffi_capsule = jax.ffi.pycapsule(ffi_ccall_address.value)
         jax.ffi.register_ffi_target(self.name, ffi_capsule, platform="CUDA")
@@ -1399,7 +1387,7 @@ def jax_kernel(
         non_static_inputs, output_vals_tuple = residuals
 
         input_vals = list(non_static_inputs)
-        for i, v in zip(static_args, nondiff_vals):
+        for i, v in zip(static_args, nondiff_vals, strict=False):
             input_vals.insert(i, v)
 
         # Normalize grad outputs and handle nested containers (e.g., single tuple for multi-output)
@@ -1415,7 +1403,7 @@ def jax_kernel(
 
         out_dims_map = {}
         param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
-        for name, val in zip(differentiable_input_names, non_static_inputs):
+        for name, val in zip(differentiable_input_names, non_static_inputs, strict=False):
             ann = param_ann.get(name)
             if ann is None:
                 continue

@@ -17,6 +17,7 @@
 
 # Exclude vendored code from project language stats
 warp/native/nanovdb/** linguist-vendored
+warp/native/cuBQL/** linguist-vendored
 tools/** linguist-vendored
 
 CHANGELOG.md merge=union

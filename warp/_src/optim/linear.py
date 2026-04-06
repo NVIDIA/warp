@@ -1,21 +1,10 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import functools
 import math
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import warp as wp
 import warp._src.sparse as sparse
@@ -83,7 +72,7 @@ class LinearOperator:
         return wp._src.types.type_scalar_type(self.dtype)
 
 
-_Matrix = Union[wp.array, sparse.BsrMatrix, LinearOperator]
+_Matrix = wp.array | sparse.BsrMatrix | LinearOperator
 
 
 def aslinearoperator(A: _Matrix) -> LinearOperator:
@@ -343,14 +332,14 @@ def cg(
     A: _Matrix,
     b: wp.array,
     x: wp.array,
-    tol: Optional[float] = None,
-    atol: Optional[float] = None,
-    maxiter: Optional[float] = 0,
-    M: Optional[_Matrix] = None,
-    callback: Optional[Callable] = None,
+    tol: float | None = None,
+    atol: float | None = None,
+    maxiter: float | None = 0,
+    M: _Matrix | None = None,
+    callback: Callable | None = None,
     check_every=10,
     use_cuda_graph=True,
-) -> Union[tuple[int, float, float], tuple[wp.array, wp.array, wp.array]]:
+) -> tuple[int, float, float] | tuple[wp.array, wp.array, wp.array]:
     """Compute an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Gradient algorithm.
 
@@ -468,11 +457,11 @@ def cr(
     A: _Matrix,
     b: wp.array,
     x: wp.array,
-    tol: Optional[float] = None,
-    atol: Optional[float] = None,
-    maxiter: Optional[float] = 0,
-    M: Optional[_Matrix] = None,
-    callback: Optional[Callable] = None,
+    tol: float | None = None,
+    atol: float | None = None,
+    maxiter: float | None = 0,
+    M: _Matrix | None = None,
+    callback: Callable | None = None,
     check_every=10,
     use_cuda_graph=True,
 ) -> tuple[int, float, float]:
@@ -618,11 +607,11 @@ def bicgstab(
     A: _Matrix,
     b: wp.array,
     x: wp.array,
-    tol: Optional[float] = None,
-    atol: Optional[float] = None,
-    maxiter: Optional[float] = 0,
-    M: Optional[_Matrix] = None,
-    callback: Optional[Callable] = None,
+    tol: float | None = None,
+    atol: float | None = None,
+    maxiter: float | None = 0,
+    M: _Matrix | None = None,
+    callback: Callable | None = None,
     check_every=10,
     use_cuda_graph=True,
     is_left_preconditioner=False,
@@ -788,12 +777,12 @@ def gmres(
     A: _Matrix,
     b: wp.array,
     x: wp.array,
-    tol: Optional[float] = None,
-    atol: Optional[float] = None,
+    tol: float | None = None,
+    atol: float | None = None,
     restart=31,
-    maxiter: Optional[float] = 0,
-    M: Optional[_Matrix] = None,
-    callback: Optional[Callable] = None,
+    maxiter: float | None = 0,
+    M: _Matrix | None = None,
+    callback: Callable | None = None,
     check_every=31,
     use_cuda_graph=True,
     is_left_preconditioner=False,
@@ -1081,7 +1070,7 @@ def _run_capturable_loop(
     r_norm_sq: wp.array,
     maxiter: int,
     atol_sq: wp.array,
-    callback: Optional[Callable],
+    callback: Callable | None,
     check_every: int,
     use_cuda_graph: bool,
     cycle_size: int = 1,

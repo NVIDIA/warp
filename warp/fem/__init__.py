@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """Finite Element Method (FEM) toolkit for solving differential equations.
 
@@ -42,6 +30,7 @@ from warp._src.fem.domain import BoundarySides as BoundarySides
 from warp._src.fem.geometry.partition import CellBasedGeometryPartition as CellBasedGeometryPartition
 from warp._src.fem.domain import Cells as Cells
 from warp._src.fem.types import Coords as Coords
+from warp._src.fem.types import Coords_f64 as Coords_f64
 from warp._src.fem.field.field import DiscreteField as DiscreteField
 from warp._src.fem.space.dof_mapper import DofMapper as DofMapper
 from warp._src.fem.types import Domain as Domain
@@ -148,10 +137,12 @@ from warp._src.fem.dirichlet import normalize_dirichlet_projector as normalize_d
 from warp._src.fem.operator import outer as outer
 from warp._src.fem.operator import partition_lookup as partition_lookup
 from warp._src.fem.operator import position as position
+from warp._src.fem.operator import scalar_type as scalar_type
 from warp._src.fem.dirichlet import project_linear_system as project_linear_system
 from warp._src.fem.dirichlet import project_system_matrix as project_system_matrix
 from warp._src.fem.dirichlet import project_system_rhs as project_system_rhs
 from warp._src.fem.types import Sample as Sample
+from warp._src.fem.types import Sample_f64 as Sample_f64
 from warp._src.fem.cache import set_default_temporary_store as set_default_temporary_store
 from warp._src.fem.operator import to_cell_side as to_cell_side
 from warp._src.fem.operator import to_inner_cell as to_inner_cell

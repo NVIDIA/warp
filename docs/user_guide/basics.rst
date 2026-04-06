@@ -3,6 +3,63 @@ Basics
 
 .. currentmodule:: warp
 
+Tutorial Notebooks
+------------------
+
+The `NVIDIA Accelerated Computing Hub <https://github.com/NVIDIA/accelerated-computing-hub>`_ contains the current,
+actively maintained set of Warp tutorials:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Notebook
+     - Colab Link
+   * - `Introduction to NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb
+          :alt: Open In Colab
+   * - `GPU-Accelerated Ising Model Simulation in NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb
+          :alt: Open In Colab
+
+Additionally, several notebooks in the `notebooks <https://github.com/NVIDIA/warp/tree/main/notebooks>`_ directory
+provide additional examples and cover key Warp features:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Notebook
+     - Colab Link
+   * - `Warp Core Tutorial: Basics <https://github.com/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb
+          :alt: Open In Colab
+   * - `Warp Core Tutorial: Generics <https://github.com/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb
+          :alt: Open In Colab
+   * - `Warp Core Tutorial: Points <https://github.com/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb
+          :alt: Open In Colab
+   * - `Warp Core Tutorial: Meshes <https://github.com/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb
+          :alt: Open In Colab
+   * - `Warp Core Tutorial: Volumes <https://github.com/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb
+          :alt: Open In Colab
+   * - `Warp PyTorch Tutorial: Basics <https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb
+          :alt: Open In Colab
+   * - `Warp PyTorch Tutorial: Custom Operators <https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb
+          :alt: Open In Colab
+
 .. _warp-initialization:
 
 Initialization
@@ -42,9 +99,9 @@ In Warp, compute kernels are defined as Python functions and annotated with the 
     import warp as wp
 
     @wp.kernel
-    def simple_kernel(a: wp.array(dtype=wp.vec3),
-                      b: wp.array(dtype=wp.vec3),
-                      c: wp.array(dtype=float)):
+    def simple_kernel(a: wp.array[wp.vec3],
+                      b: wp.array[wp.vec3],
+                      c: wp.array[float]):
 
         # get thread index
         tid = wp.tid()
@@ -93,7 +150,7 @@ We retrieve a 2D thread index inside the kernel by using multiple assignment whe
 .. code-block:: python
 
     @wp.kernel
-    def compute_image(pixel_data: wp.array2d(dtype=wp.vec3)):
+    def compute_image(pixel_data: wp.array2d[wp.vec3]):
         # get thread index
         i, j = wp.tid()
 
@@ -127,7 +184,7 @@ arguments:
 .. code-block:: python
 
     @wp.kernel
-    def make_field(field: wp.array3d(dtype=float), center: wp.vec3, radius: float):
+    def make_field(field: wp.array3d[float], center: wp.vec3, radius: float):
         i, j, k = wp.tid()
 
         p = wp.vec3(float(i), float(j), float(k))
@@ -199,7 +256,7 @@ Functions can accept arrays and structs as inputs:
 .. code-block:: python
 
     @wp.func
-    def lookup(foos: wp.array(dtype=wp.uint32), index: int):
+    def lookup(foos: wp.array[wp.uint32], index: int):
         return foos[index]
 
 Functions may also return multiple values:
@@ -211,7 +268,7 @@ Functions may also return multiple values:
         return a + b, a - b, a * b, a / b
 
     @wp.kernel
-    def test_multi_valued_kernel(test_data1: wp.array(dtype=wp.float32), test_data2: wp.array(dtype=wp.float32)):
+    def test_multi_valued_kernel(test_data1: wp.array[float], test_data2: wp.array[float]):
         tid = wp.tid()
         d1, d2 = test_data1[tid], test_data2[tid]
         a, b, c, d = multi_valued_func(d1, d2)
@@ -235,15 +292,14 @@ User functions may also be overloaded by defining multiple function signatures w
         return x + wp.vec3(1.0, 0.0, 0.0)
 
 Tiles may also be passed to user functions. The function signature tile argument should include
-dtype, shape, and storage parameters to match the tile type intended to be used in the function. For example:
+dtype and shape parameters to match the tile type intended to be used in the function. For example:
 
 .. code-block:: python
 
     @wp.func
-    def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N), storage="shared")):
+    def tile_sum_func(a: wp.tile[float, TILE_M, TILE_N]):
         return wp.tile_sum(a) * 0.5
 
-If the tile is non-contiguous (e.g. if the tile is transposed), the tile strides parameter should also be provided.
 For convenience, it is recommended that users rely on `typing.Any` to let the compiler automatically
 determine the tile argument type:
 
@@ -269,7 +325,7 @@ Users can define their own structures using the :func:`@wp.struct <warp.struct>`
         pos: wp.vec3
         vel: wp.vec3
         active: int
-        indices: wp.array(dtype=int)
+        indices: wp.array[int]
 
 As with kernel parameters, all attributes of a struct must have valid type hints at class definition time.
 
@@ -368,8 +424,8 @@ Types are inferred from source expressions and function signatures using the Pyt
 All kernel parameters must be annotated with the appropriate type, for example::
 
     @wp.kernel
-    def simple_kernel(a: wp.array(dtype=vec3),
-                      b: wp.array(dtype=vec3),
+    def simple_kernel(a: wp.array[vec3],
+                      b: wp.array[vec3],
                       c: float):
 
 For convenience, ``typing.Any`` may be used in place of concrete types
@@ -379,8 +435,8 @@ for more information. A generic version of the above kernel could look like::
     from typing import Any
 
     @wp.kernel
-    def generic_kernel(a: wp.array(dtype=Any),
-                      b: wp.array(dtype=Any),
+    def generic_kernel(a: wp.array[Any],
+                      b: wp.array[Any],
                       c: Any):
 
 Tuple initialization is not supported, instead variables should be explicitly typed::
@@ -389,7 +445,20 @@ Tuple initialization is not supported, instead variables should be explicitly ty
     a = (1.0, 2.0, 3.0)        
 
     # valid
-    a = wp.vec3(1.0, 2.0, 3.0) 
+    a = wp.vec3(1.0, 2.0, 3.0)
+
+Similarly, Python lists are not supported inside kernels. For small fixed-size collections,
+use vector types like :class:`wp.vec3() <warp.vec3>`. For larger collections, use
+:func:`wp.zeros() <warp.zeros>` to create a stack-allocated fixed-size array::
+
+    # invalid
+    my_data = [1.0, 2.0, 3.0]
+
+    # valid: vector (good for 2-4 elements)
+    my_data = wp.vec3(1.0, 2.0, 3.0)
+
+    # valid: fixed-size array (stack-allocated, supports array indexing and slicing)
+    my_data = wp.zeros(shape=16, dtype=float)
 
 
 Limitations and Unsupported Features

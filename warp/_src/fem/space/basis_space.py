@@ -1,21 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import weakref
 from functools import cached_property
-from typing import ClassVar, Optional
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -25,7 +13,6 @@ from warp._src.fem.geometry import Geometry
 from warp._src.fem.types import (
     NULL_ELEMENT_INDEX,
     NULL_QP_INDEX,
-    Coords,
     ElementIndex,
     QuadraturePointIndex,
     make_free_sample,
@@ -98,10 +85,10 @@ class BasisSpace:
 
     # Helpers for generating node positions
 
-    def node_positions(self, out: Optional[wp.array] = None) -> wp.array:
+    def node_positions(self, out: wp.array | None = None) -> wp.array:
         """Return a temporary array containing the world position for each node."""
 
-        pos_type = cache.cached_vec_type(length=self.geometry.dimension, dtype=float)
+        pos_type = cache.cached_vec_type(length=self.geometry.dimension, dtype=self.geometry.scalar_type)
 
         node_coords_in_element = self.make_node_coords_in_element()
 
@@ -185,20 +172,22 @@ class BasisSpace:
     @property
     def weight_type(self):
         """Data type of node weights returned by the basis."""
+        scalar = self.geometry.scalar_type
         if self.value is ShapeFunction.Value.Scalar:
-            return float
+            return scalar
 
-        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=float)
+        return cache.cached_vec_type(length=self.geometry.cell_dimension, dtype=scalar)
 
     @property
     def weight_gradient_type(self):
         """Data type of node weight gradients returned by the basis."""
+        scalar = self.geometry.scalar_type
         if self.value is ShapeFunction.Value.Scalar:
-            return wp.types.vector(length=self.geometry.cell_dimension, dtype=float)
+            return wp.types.vector(length=self.geometry.cell_dimension, dtype=scalar)
 
         return cache.cached_mat_type(
             shape=(self.geometry.cell_dimension, self.geometry.cell_dimension),
-            dtype=float,
+            dtype=scalar,
         )
 
 
@@ -271,14 +260,16 @@ class ShapeBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
             if wp.static(self.value == ShapeFunction.Value.Scalar):
                 return shape_element_inner_weight(coords, node_index_in_elt)
             else:
-                sign = self.topology.element_node_sign(elt_arg, topo_arg, element_index, node_index_in_elt)
+                sign = self.geometry.scalar_type(
+                    self.topology.element_node_sign(elt_arg, topo_arg, element_index, node_index_in_elt)
+                )
                 return sign * shape_element_inner_weight(coords, node_index_in_elt)
 
         return element_inner_weight
@@ -293,14 +284,16 @@ class ShapeBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
             if wp.static(self.value == ShapeFunction.Value.Scalar):
                 return shape_element_inner_weight_gradient(coords, node_index_in_elt)
             else:
-                sign = self.topology.element_node_sign(elt_arg, topo_arg, element_index, node_index_in_elt)
+                sign = self.geometry.scalar_type(
+                    self.topology.element_node_sign(elt_arg, topo_arg, element_index, node_index_in_elt)
+                )
                 return sign * shape_element_inner_weight_gradient(coords, node_index_in_elt)
 
         return element_inner_weight_gradient
@@ -460,7 +453,7 @@ class TraceBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
@@ -468,7 +461,7 @@ class TraceBasisSpace(BasisSpace):
                 geo_side_arg, topo_arg, element_index, node_index_in_elt
             )
             if cell_index == NULL_ELEMENT_INDEX:
-                return self.weight_type(0.0)
+                return self.weight_type(self.geometry.scalar_type(0.0))
 
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
 
@@ -494,7 +487,7 @@ class TraceBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
@@ -502,7 +495,7 @@ class TraceBasisSpace(BasisSpace):
                 geo_side_arg, topo_arg, element_index, node_index_in_elt
             )
             if cell_index == NULL_ELEMENT_INDEX:
-                return self.weight_type(0.0)
+                return self.weight_type(self.geometry.scalar_type(0.0))
 
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
 
@@ -528,7 +521,7 @@ class TraceBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
@@ -536,7 +529,7 @@ class TraceBasisSpace(BasisSpace):
                 geo_side_arg, topo_arg, element_index, node_index_in_elt
             )
             if cell_index == NULL_ELEMENT_INDEX:
-                return self.weight_gradient_type(0.0)
+                return self.weight_gradient_type(self.geometry.scalar_type(0.0))
 
             cell_coords = self.geometry.side_inner_cell_coords(geo_side_arg, element_index, coords)
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
@@ -561,7 +554,7 @@ class TraceBasisSpace(BasisSpace):
             topo_arg: self.topology.TopologyArg,
             basis_arg: self.BasisArg,
             element_index: ElementIndex,
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
             qp_index: QuadraturePointIndex,
         ):
@@ -569,7 +562,7 @@ class TraceBasisSpace(BasisSpace):
                 geo_side_arg, topo_arg, element_index, node_index_in_elt
             )
             if cell_index == NULL_ELEMENT_INDEX:
-                return self.weight_gradient_type(0.0)
+                return self.weight_gradient_type(self.geometry.scalar_type(0.0))
 
             cell_coords = self.geometry.side_outer_cell_coords(geo_side_arg, element_index, coords)
             geo_cell_arg = self.geometry.side_to_cell_arg(geo_side_arg)
@@ -595,7 +588,7 @@ class PiecewiseConstantBasisSpaceTrace(TraceBasisSpace):
         # For higher-order non-conforming elements direct interpolation on boundary is not possible,
         # need to do proper integration then solve with mass matrix
 
-        CENTER_COORDS = Coords(self.geometry.reference_side().prototype.center())
+        CENTER_COORDS = self.geometry.coords_type(self.geometry.reference_side().prototype.center())
 
         @cache.dynamic_func(suffix=self._basis.name)
         def trace_node_coords_in_element(

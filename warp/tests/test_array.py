@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import unittest
 from typing import Any
@@ -3077,12 +3065,14 @@ def test_kernel_array_from_ptr_variable_shape(test, device):
     assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (0.0, 0.0, 0.0))))
 
 
-def test_array_from_int32_domain(test, device):
-    wp.zeros(np.array([1504, 1080, 520], dtype=np.int32), dtype=wp.float32, device=device)
-
-
-def test_array_from_int64_domain(test, device):
-    wp.zeros(np.array([1504, 1080, 520], dtype=np.int64), dtype=wp.float32, device=device)
+def test_array_shape_int_promotion(test, device):
+    # Verify that numpy integer shape elements are promoted to Python int
+    # to prevent 32-bit overflow in capacity calculations.
+    for dtype in (np.int32, np.int64):
+        arr = wp.zeros(np.array([4, 3, 2], dtype=dtype), dtype=wp.float32, device=device)
+        test.assertEqual(arr.shape, (4, 3, 2))
+        for s in arr.shape:
+            test.assertIsInstance(s, int)
 
 
 def test_numpy_array_interface(test, device):
@@ -3877,8 +3867,7 @@ add_function_test(
     TestArray, "test_kernel_array_from_ptr_variable_shape", test_kernel_array_from_ptr_variable_shape, devices=devices
 )
 
-add_function_test(TestArray, "test_array_from_int32_domain", test_array_from_int32_domain, devices=devices)
-add_function_test(TestArray, "test_array_from_int64_domain", test_array_from_int64_domain, devices=devices)
+add_function_test(TestArray, "test_array_shape_int_promotion", test_array_shape_int_promotion, devices=devices)
 add_function_test(TestArray, "test_indexing_types", test_indexing_types, devices=devices)
 
 add_function_test(TestArray, "test_alloc_strides", test_alloc_strides, devices=devices)

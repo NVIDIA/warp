@@ -1,23 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+
+from typing import Any
 
 import numpy as np
 
 import warp as wp
 from warp._src.fem import cache
-from warp._src.fem.types import Coords
+from warp._src.fem.types import cached_coords_type
 
 from .shape_function import ShapeFunction
 from .triangle_shape_function import _triangle_node_index
@@ -109,6 +99,13 @@ def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
     return VERTEX_EDGE_FACE_NODE_COUNT + _tet_node_index(tx - 1, ty - 1, tz - 1, degree - 4)
 
 
+@wp.func
+def _tet_bary(coords: Any):
+    """Compute barycentric coordinates from reference element coordinates, preserving scalar precision."""
+    w0 = coords.dtype(1.0) - coords[0] - coords[1] - coords[2]
+    return wp.vector(w0, coords[0], coords[1], coords[2], dtype=coords.dtype)
+
+
 class TetrahedronShapeFunction(ShapeFunction):
     """Base class for shape functions defined on tetrahedral elements."""
 
@@ -165,7 +162,9 @@ class TetrahedronShapeFunction(ShapeFunction):
 class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
     """Polynomial Lagrange shape functions on tetrahedral elements."""
 
-    def __init__(self, degree: int):
+    def __init__(self, degree: int, scalar_type: type = wp.float32):
+        self.scalar_type = scalar_type
+        self.CoordsType = cached_coords_type(scalar_type)
         self.ORDER = wp.constant(degree)
 
         self.NODES_PER_ELEMENT = wp.constant((degree + 1) * (degree + 2) * (degree + 3) // 6)
@@ -195,7 +194,8 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
     @property
     def name(self) -> str:
-        return f"Tet_P{self.ORDER}"
+        suffix = self._precision_suffix
+        return f"Tet_P{self.ORDER}{suffix}"
 
     def _get_node_tet_coordinates(self):
         NODE_TET_COORDS = self.NODE_TET_COORDS
@@ -228,19 +228,23 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
     def make_node_coords_in_element(self):
         ORDER = self.ORDER
+        scalar = self.scalar_type
+        CoordsType = self.CoordsType
 
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
             tet_coords = self._node_tet_coordinates(node_index_in_elt)
-            cx = float(tet_coords[0]) / float(ORDER)
-            cy = float(tet_coords[1]) / float(ORDER)
-            cz = float(tet_coords[2]) / float(ORDER)
-            return Coords(cx, cy, cz)
+            cx = scalar(tet_coords[0]) / scalar(ORDER)
+            cy = scalar(tet_coords[1]) / scalar(ORDER)
+            cz = scalar(tet_coords[2]) / scalar(ORDER)
+            return CoordsType(cx, cy, cz)
 
         return cache.get_func(node_coords_in_element, self.name)
 
     def make_node_quadrature_weight(self):
+        scalar = self.scalar_type
+
         if self.ORDER == 3:
             # Order 1, but optimized quadrature weights for monomials of order <= 6
             vertex_weight = 0.007348845656
@@ -253,10 +257,10 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
             face_weight = 1.0 / self.NODES_PER_ELEMENT
             interior_weight = 1.0 / self.NODES_PER_ELEMENT
 
-        VERTEX_WEIGHT = wp.constant(vertex_weight)
-        EDGE_WEIGHT = wp.constant(edge_weight)
-        FACE_WEIGHT = wp.constant(face_weight)
-        INTERIOR_WEIGHT = wp.constant(interior_weight)
+        VERTEX_WEIGHT = wp.constant(scalar(vertex_weight))
+        EDGE_WEIGHT = wp.constant(scalar(edge_weight))
+        FACE_WEIGHT = wp.constant(scalar(face_weight))
+        INTERIOR_WEIGHT = wp.constant(scalar(interior_weight))
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
@@ -274,6 +278,8 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
         return node_quadrature_weight
 
     def make_trace_node_quadrature_weight(self):
+        scalar = self.scalar_type
+
         if self.ORDER == 3:
             # P3 intrinsic quadrature
             vertex_weight = 1.0 / 30
@@ -289,9 +295,9 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
             edge_weight = 1.0 / self.NODES_PER_SIDE
             interior_weight = 1.0 / self.NODES_PER_SIDE
 
-        VERTEX_WEIGHT = wp.constant(vertex_weight)
-        EDGE_WEIGHT = wp.constant(edge_weight)
-        FACE_INTERIOR_WEIGHT = wp.constant(interior_weight)
+        VERTEX_WEIGHT = wp.constant(scalar(vertex_weight))
+        EDGE_WEIGHT = wp.constant(scalar(edge_weight))
+        FACE_INTERIOR_WEIGHT = wp.constant(scalar(interior_weight))
 
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(node_index_in_element: int):
@@ -310,49 +316,49 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
         ORDER = self.ORDER
 
         def element_inner_weight_linear(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             if node_index_in_elt < 0 or node_index_in_elt >= 4:
-                return 0.0
+                return coords.dtype(0.0)
 
-            tet_coords = wp.vec4(1.0 - coords[0] - coords[1] - coords[2], coords[0], coords[1], coords[2])
+            tet_coords = _tet_bary(coords)
             return tet_coords[node_index_in_elt]
 
         def element_inner_weight_quadratic(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
 
-            tet_coords = wp.vec4(1.0 - coords[0] - coords[1] - coords[2], coords[0], coords[1], coords[2])
+            tet_coords = _tet_bary(coords)
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 # Vertex
-                return tet_coords[type_index] * (2.0 * tet_coords[type_index] - 1.0)
+                return tet_coords[type_index] * (tet_coords[type_index] + tet_coords[type_index] - coords.dtype(1.0))
 
             elif node_type == TetrahedronPolynomialShapeFunctions.EDGE:
                 # Edge
                 c1, c2 = TetrahedronShapeFunction.edge_vidx(type_index)
-                return 4.0 * tet_coords[c1] * tet_coords[c2]
+                return tet_coords[c1] * tet_coords[c2] * coords.dtype(4.0)
 
-            return 0.0
+            return coords.dtype(0.0)
 
         def element_inner_weight_cubic(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
 
-            tet_coords = wp.vec4(1.0 - coords[0] - coords[1] - coords[2], coords[0], coords[1], coords[2])
+            tet_coords = _tet_bary(coords)
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 # Vertex
                 return (
-                    0.5
+                    coords.dtype(0.5)
                     * tet_coords[type_index]
-                    * (3.0 * tet_coords[type_index] - 1.0)
-                    * (3.0 * tet_coords[type_index] - 2.0)
+                    * (coords.dtype(3.0) * tet_coords[type_index] - coords.dtype(1.0))
+                    * (coords.dtype(3.0) * tet_coords[type_index] - coords.dtype(2.0))
                 )
 
             elif node_type == TetrahedronPolynomialShapeFunctions.EDGE:
@@ -370,16 +376,21 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
                     c1 = 3
                     c2 = edge - 3
 
-                return 4.5 * tet_coords[c1] * tet_coords[c2] * (3.0 * tet_coords[c1] - 1.0)
+                return (
+                    coords.dtype(4.5)
+                    * tet_coords[c1]
+                    * tet_coords[c2]
+                    * (coords.dtype(3.0) * tet_coords[c1] - coords.dtype(1.0))
+                )
 
             elif node_type == TetrahedronPolynomialShapeFunctions.FACE:
                 # Interior
                 c1 = type_index
                 c2 = (c1 + 1) % 4
                 c3 = (c1 + 2) % 4
-                return 27.0 * tet_coords[c1] * tet_coords[c2] * tet_coords[c3]
+                return coords.dtype(27.0) * tet_coords[c1] * tet_coords[c2] * tet_coords[c3]
 
-            return 0.0
+            return coords.dtype(0.0)
 
         if ORDER == 1:
             return cache.get_func(element_inner_weight_linear, self.name)
@@ -394,55 +405,60 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
         ORDER = self.ORDER
 
         def element_inner_weight_gradient_linear(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             if node_index_in_elt < 0 or node_index_in_elt >= 4:
-                return wp.vec3(0.0)
+                return wp.vector(coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), dtype=coords.dtype)
 
-            dw_dc = wp.vec4(0.0)
-            dw_dc[node_index_in_elt] = 1.0
+            dw_dc = wp.vector(
+                coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), dtype=coords.dtype
+            )
+            dw_dc[node_index_in_elt] = coords.dtype(1.0)
 
-            dw_du = wp.vec3(dw_dc[1] - dw_dc[0], dw_dc[2] - dw_dc[0], dw_dc[3] - dw_dc[0])
-
-            return dw_du
+            return wp.vector(dw_dc[1] - dw_dc[0], dw_dc[2] - dw_dc[0], dw_dc[3] - dw_dc[0], dtype=coords.dtype)
 
         def element_inner_weight_gradient_quadratic(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
 
-            tet_coords = wp.vec4(1.0 - coords[0] - coords[1] - coords[2], coords[0], coords[1], coords[2])
-            dw_dc = wp.vec4(0.0)
+            tet_coords = _tet_bary(coords)
+            dw_dc = wp.vector(
+                coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), dtype=coords.dtype
+            )
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 # Vertex
-                dw_dc[type_index] = 4.0 * tet_coords[type_index] - 1.0
+                dw_dc[type_index] = coords.dtype(4.0) * tet_coords[type_index] - coords.dtype(1.0)
 
             elif node_type == TetrahedronPolynomialShapeFunctions.EDGE:
                 # Edge
                 c1, c2 = TetrahedronShapeFunction.edge_vidx(type_index)
-                dw_dc[c1] = 4.0 * tet_coords[c2]
-                dw_dc[c2] = 4.0 * tet_coords[c1]
+                dw_dc[c1] = coords.dtype(4.0) * tet_coords[c2]
+                dw_dc[c2] = coords.dtype(4.0) * tet_coords[c1]
 
-            dw_du = wp.vec3(dw_dc[1] - dw_dc[0], dw_dc[2] - dw_dc[0], dw_dc[3] - dw_dc[0])
-            return dw_du
+            return wp.vector(dw_dc[1] - dw_dc[0], dw_dc[2] - dw_dc[0], dw_dc[3] - dw_dc[0], dtype=coords.dtype)
 
         def element_inner_weight_gradient_cubic(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             node_type, type_index = self.node_type_and_type_index(node_index_in_elt)
 
-            tet_coords = wp.vec4(1.0 - coords[0] - coords[1] - coords[2], coords[0], coords[1], coords[2])
+            tet_coords = _tet_bary(coords)
 
-            dw_dc = wp.vec4(0.0)
+            dw_dc = wp.vector(
+                coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), coords.dtype(0.0), dtype=coords.dtype
+            )
 
             if node_type == TetrahedronPolynomialShapeFunctions.VERTEX:
                 # Vertex
                 dw_dc[type_index] = (
-                    0.5 * 27.0 * tet_coords[type_index] * tet_coords[type_index] - 9.0 * tet_coords[type_index] + 1.0
+                    coords.dtype(0.5) * coords.dtype(27.0) * tet_coords[type_index] * tet_coords[type_index]
+                    - coords.dtype(9.0) * tet_coords[type_index]
+                    + coords.dtype(1.0)
                 )
 
             elif node_type == TetrahedronPolynomialShapeFunctions.EDGE:
@@ -460,8 +476,12 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
                     c1 = 3
                     c2 = edge - 3
 
-                dw_dc[c1] = 4.5 * tet_coords[c2] * (6.0 * tet_coords[c1] - 1.0)
-                dw_dc[c2] = 4.5 * tet_coords[c1] * (3.0 * tet_coords[c1] - 1.0)
+                dw_dc[c1] = (
+                    coords.dtype(4.5) * tet_coords[c2] * (coords.dtype(6.0) * tet_coords[c1] - coords.dtype(1.0))
+                )
+                dw_dc[c2] = (
+                    coords.dtype(4.5) * tet_coords[c1] * (coords.dtype(3.0) * tet_coords[c1] - coords.dtype(1.0))
+                )
 
             elif node_type == TetrahedronPolynomialShapeFunctions.FACE:
                 # Interior
@@ -469,12 +489,11 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
                 c2 = (c1 + 1) % 4
                 c3 = (c1 + 2) % 4
 
-                dw_dc[c1] = 27.0 * tet_coords[c2] * tet_coords[c3]
-                dw_dc[c2] = 27.0 * tet_coords[c3] * tet_coords[c1]
-                dw_dc[c3] = 27.0 * tet_coords[c1] * tet_coords[c2]
+                dw_dc[c1] = coords.dtype(27.0) * tet_coords[c2] * tet_coords[c3]
+                dw_dc[c2] = coords.dtype(27.0) * tet_coords[c3] * tet_coords[c1]
+                dw_dc[c3] = coords.dtype(27.0) * tet_coords[c1] * tet_coords[c2]
 
-            dw_du = wp.vec3(dw_dc[1] - dw_dc[0], dw_dc[2] - dw_dc[0], dw_dc[3] - dw_dc[0])
-            return dw_du
+            return wp.vector(dw_dc[1] - dw_dc[0], dw_dc[2] - dw_dc[0], dw_dc[3] - dw_dc[0], dtype=coords.dtype)
 
         if ORDER == 1:
             return cache.get_func(element_inner_weight_gradient_linear, self.name)
@@ -516,8 +535,10 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
     """Non-conforming polynomial shape functions on tetrahedral elements."""
 
-    def __init__(self, degree: int):
-        self._tet_shape = TetrahedronPolynomialShapeFunctions(degree=degree)
+    def __init__(self, degree: int, scalar_type: type = wp.float32):
+        self.scalar_type = scalar_type
+        self.CoordsType = cached_coords_type(scalar_type)
+        self._tet_shape = TetrahedronPolynomialShapeFunctions(degree=degree, scalar_type=scalar_type)
         self.ORDER = self._tet_shape.ORDER
         self.NODES_PER_ELEMENT = self._tet_shape.NODES_PER_ELEMENT
 
@@ -533,12 +554,15 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
         else:
             self._TET_SCALE = 1.0
 
-        self._TET_SCALE = wp.constant(self._TET_SCALE)
-        self._TET_OFFSET = wp.constant((1.0 - self._TET_SCALE) * wp.vec3(0.25, 0.25, 0.25))
+        vec3_type = cache.cached_vec_type(3, scalar_type)
+        tet_offset_val = (1.0 - self._TET_SCALE) * 0.25
+        self._TET_SCALE = wp.constant(scalar_type(self._TET_SCALE))
+        self._TET_OFFSET = wp.constant(vec3_type(tet_offset_val, tet_offset_val, tet_offset_val))
 
     @property
     def name(self) -> str:
-        return f"Tet_P{self.ORDER}d"
+        suffix = self._precision_suffix
+        return f"Tet_P{self.ORDER}d{suffix}"
 
     def make_node_coords_in_element(self):
         node_coords_in_tet = self._tet_shape.make_node_coords_in_element()
@@ -556,6 +580,8 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
         return node_coords_in_element
 
     def make_node_quadrature_weight(self):
+        scalar = self.scalar_type
+
         # Intrinsic quadrature -- precomputed integral of node shape functions
         # over element. Order equal to self.ORDER
 
@@ -572,9 +598,9 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
             edge_weight = 1.0 / self.NODES_PER_ELEMENT
             face_interior_weight = 1.0 / self.NODES_PER_ELEMENT
 
-        VERTEX_WEIGHT = wp.constant(vertex_weight)
-        EDGE_WEIGHT = wp.constant(edge_weight)
-        FACE_INTERIOR_WEIGHT = wp.constant(face_interior_weight)
+        VERTEX_WEIGHT = wp.constant(scalar(vertex_weight))
+        EDGE_WEIGHT = wp.constant(scalar(edge_weight))
+        FACE_INTERIOR_WEIGHT = wp.constant(scalar(face_interior_weight))
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
@@ -590,11 +616,13 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
         return node_quadrature_weight
 
     def make_trace_node_quadrature_weight(self):
+        scalar = self.scalar_type
+
         # Non-conforming, zero measure on sides
 
-        @wp.func
+        @cache.dynamic_func(suffix=self.name)
         def zero(node_index_in_elt: int):
-            return 0.0
+            return scalar(0.0)
 
         return zero
 
@@ -606,7 +634,7 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def element_inner_weight(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             tet_coords = (coords - TET_OFFSET) / TET_SCALE
@@ -623,7 +651,7 @@ class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
 
         @cache.dynamic_func(suffix=self.name)
         def element_inner_weight_gradient(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             tet_coords = (coords - TET_OFFSET) / TET_SCALE
@@ -638,7 +666,9 @@ class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
 
     value = ShapeFunction.Value.CovariantVector
 
-    def __init__(self, degree: int):
+    def __init__(self, degree: int, scalar_type: type = wp.float32):
+        self.scalar_type = scalar_type
+        self.CoordsType = cached_coords_type(scalar_type)
         if degree != 1:
             raise NotImplementedError("Only linear Nédélec implemented right now")
 
@@ -656,7 +686,8 @@ class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
 
     @property
     def name(self) -> str:
-        return f"TetN1_{self.ORDER}"
+        suffix = self._precision_suffix
+        return f"TetN1_{self.ORDER}{suffix}"
 
     def _get_node_type_and_type_index(self):
         @cache.dynamic_func(suffix=self.name)
@@ -668,49 +699,57 @@ class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
         return node_type_and_index
 
     def make_node_coords_in_element(self):
+        CoordsType = self.CoordsType
+        scalar = self.scalar_type
+        HALF = wp.constant(scalar(0.5))
+        vec4_type = wp.types.vector(length=4, dtype=scalar)
+
         @cache.dynamic_func(suffix=self.name)
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
             c1, c2 = TetrahedronShapeFunction.edge_vidx(node_index_in_elt)
 
-            coords = wp.vec4(0.0)
-            coords[c1] = 0.5
-            coords[c2] = 0.5
+            coords = vec4_type(scalar(0.0))
+            coords[c1] = HALF
+            coords[c2] = HALF
 
-            return Coords(coords[1], coords[2], coords[3])
+            return CoordsType(coords[1], coords[2], coords[3])
 
         return node_coords_in_element
 
     def make_node_quadrature_weight(self):
-        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
+        scalar = self.scalar_type
+        WEIGHT = wp.constant(scalar(1.0 / self.NODES_PER_ELEMENT))
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
-            return 1.0 / float(NODES_PER_ELEMENT)
+            return WEIGHT
 
         return node_quadrature_weight
 
     def make_trace_node_quadrature_weight(self):
-        NODES_PER_SIDE = self.NODES_PER_SIDE
+        scalar = self.scalar_type
+        WEIGHT = wp.constant(scalar(1.0 / self.NODES_PER_SIDE))
 
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(node_index_in_element: int):
-            return 1.0 / float(NODES_PER_SIDE)
+            return WEIGHT
 
         return trace_node_quadrature_weight
 
     def make_element_inner_weight(self):
         ORDER = self.ORDER
+        vec_type = cache.cached_vec_type(3, self.scalar_type)
 
         def element_inner_weight_linear(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             e1, e2 = TetrahedronShapeFunction.opposite_edge_vidx(node_index_in_elt)
 
-            v1 = self._vertex_coords(e1)
-            v2 = self._vertex_coords(e2)
+            v1 = vec_type(self._vertex_coords(e1))
+            v2 = vec_type(self._vertex_coords(e2))
 
             nor = v2 - v1
             return wp.cross(nor, coords - v1)
@@ -722,15 +761,16 @@ class TetrahedronNedelecFirstKindShapeFunctions(TetrahedronShapeFunction):
 
     def make_element_inner_weight_gradient(self):
         ORDER = self.ORDER
+        vec_type = cache.cached_vec_type(3, self.scalar_type)
 
         def element_inner_weight_gradient_linear(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             e1, e2 = TetrahedronShapeFunction.opposite_edge_vidx(node_index_in_elt)
 
-            v1 = self._vertex_coords(e1)
-            v2 = self._vertex_coords(e2)
+            v1 = vec_type(self._vertex_coords(e1))
+            v2 = vec_type(self._vertex_coords(e2))
 
             nor = v2 - v1
             return wp.skew(nor)
@@ -746,7 +786,9 @@ class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
 
     value = ShapeFunction.Value.ContravariantVector
 
-    def __init__(self, degree: int):
+    def __init__(self, degree: int, scalar_type: type = wp.float32):
+        self.scalar_type = scalar_type
+        self.CoordsType = cached_coords_type(scalar_type)
         if degree != 1:
             raise NotImplementedError("Only linear Raviart-Thomas implemented right now")
 
@@ -764,7 +806,8 @@ class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
 
     @property
     def name(self) -> str:
-        return f"TetRT_{self.ORDER}"
+        suffix = self._precision_suffix
+        return f"TetRT_{self.ORDER}{suffix}"
 
     def _get_node_type_and_type_index(self):
         @cache.dynamic_func(suffix=self.name)
@@ -776,47 +819,56 @@ class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
         return node_type_and_index
 
     def make_node_coords_in_element(self):
+        CoordsType = self.CoordsType
+        scalar = self.scalar_type
+        vec4_type = wp.types.vector(length=4, dtype=scalar)
+        THIRD = wp.constant(scalar(1.0 / 3.0))
+
         @cache.dynamic_func(suffix=self.name)
         def node_coords_in_element(
             node_index_in_elt: int,
         ):
             v = (node_index_in_elt + 3) % 4
 
-            coords = wp.vec4(1.0 / 3.0)
-            coords[v] = 0.0
+            coords = vec4_type(THIRD)
+            coords[v] = scalar(0.0)
 
-            return Coords(coords[1], coords[2], coords[3])
+            return CoordsType(coords[1], coords[2], coords[3])
 
         return node_coords_in_element
 
     def make_node_quadrature_weight(self):
-        NODES_PER_ELEMENT = self.NODES_PER_ELEMENT
+        scalar = self.scalar_type
+        WEIGHT = wp.constant(scalar(1.0 / self.NODES_PER_ELEMENT))
 
         @cache.dynamic_func(suffix=self.name)
         def node_quadrature_weight(node_index_in_element: int):
-            return 1.0 / float(NODES_PER_ELEMENT)
+            return WEIGHT
 
         return node_quadrature_weight
 
     def make_trace_node_quadrature_weight(self):
-        NODES_PER_SIDE = self.NODES_PER_SIDE
+        scalar = self.scalar_type
+        WEIGHT = wp.constant(scalar(1.0 / self.NODES_PER_SIDE))
 
         @cache.dynamic_func(suffix=self.name)
         def trace_node_quadrature_weight(node_index_in_element: int):
-            return 1.0 / float(NODES_PER_SIDE)
+            return WEIGHT
 
         return trace_node_quadrature_weight
 
     def make_element_inner_weight(self):
         ORDER = self.ORDER
+        scalar = self.scalar_type
+        vec_type = cache.cached_vec_type(3, scalar)
 
         def element_inner_weight_linear(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
             v = (node_index_in_elt + 3) % 4
 
-            return 2.0 * (coords - self._vertex_coords(v))
+            return scalar(2.0) * (coords - vec_type(self._vertex_coords(v)))
 
         if ORDER == 1:
             return cache.get_func(element_inner_weight_linear, self.name)
@@ -825,12 +877,13 @@ class TetrahedronRaviartThomasShapeFunctions(TetrahedronShapeFunction):
 
     def make_element_inner_weight_gradient(self):
         ORDER = self.ORDER
+        scalar = self.scalar_type
 
         def element_inner_weight_gradient_linear(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
-            return 2.0 * wp.identity(n=3, dtype=float)
+            return scalar(2.0) * wp.identity(n=3, dtype=scalar)
 
         if ORDER == 1:
             return cache.get_func(element_inner_weight_gradient_linear, self.name)

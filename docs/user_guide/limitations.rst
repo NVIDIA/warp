@@ -22,13 +22,12 @@ Kernels and User Functions
 --------------------------
 
 * Strings cannot be passed into kernels.
-* Short-circuit evaluation is not supported
 * :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` on GPUs with compute capability below 7.0.
   On such devices, the function will return ``0.0`` without modifying the target memory.
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
 * Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
-  (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <load_module>`).
+  (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <warp.load_module>`).
 * A :class:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
   :class:`wp.float32 <float32>` (for Python floats) or :class:`wp.int32 <int32>` (for Python integers).
   To preserve full 64-bit precision, wrap the constant in an explicit type constructor
@@ -196,7 +195,7 @@ Modifying flags on arrays stored in structs may not trigger an update to the und
 
     @wp.struct
     class MyStruct:
-        arr: wp.array(dtype=float)
+        arr: wp.array[float]
 
     a = wp.zeros(10, dtype=float)
 

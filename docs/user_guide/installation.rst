@@ -1,7 +1,7 @@
 Installation
 ============
 
-Python version 3.9 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
+Python version 3.10 or newer is required. Warp can run on x86-64 and ARMv8 CPUs on Windows and Linux. macOS requires Apple Silicon (ARM64). GPU support requires a CUDA-capable NVIDIA GPU and driver (minimum GeForce GTX 9xx).
 
 .. note::
    Intel-based macOS (x86_64) is no longer supported. Users with Intel Macs should use Warp version 1.9.x or earlier.
@@ -40,11 +40,21 @@ Conda Installation
 ------------------
 
 Conda packages for Warp are also available on the `conda-forge <https://anaconda.org/conda-forge/warp-lang>`__ channel.
+By default, the CUDA variant with the latest toolkit version is installed:
 
 .. code-block:: sh
 
-    # Install warp-lang specifically built against CUDA Toolkit 12.6
-    $ conda install conda-forge::warp-lang=*=*cuda126*
+    $ conda install conda-forge::warp-lang
+
+To install a specific variant, use a build string filter:
+
+.. code-block:: sh
+
+    # CPU-only (no CUDA dependencies)
+    $ conda install conda-forge::warp-lang=*=*cpu*
+
+    # CUDA 12.9
+    $ conda install conda-forge::warp-lang=*=*cuda129*
 
 For more information, see the community-maintained feedstock for Warp
 `here <https://github.com/conda-forge/warp-lang-feedstock>`__.
@@ -63,11 +73,11 @@ the ``pip install`` command, e.g.
    * - Platform
      - Install Command
    * - Linux aarch64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.12.0/warp_lang-1.12.0+cu13-py3-none-manylinux_2_34_aarch64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.12.1/warp_lang-1.12.1+cu13-py3-none-manylinux_2_34_aarch64.whl``
    * - Linux x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.12.0/warp_lang-1.12.0+cu13-py3-none-manylinux_2_28_x86_64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.12.1/warp_lang-1.12.1+cu13-py3-none-manylinux_2_28_x86_64.whl``
    * - Windows x86-64
-     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.12.0/warp_lang-1.12.0+cu13-py3-none-win_amd64.whl``
+     - ``pip install https://github.com/NVIDIA/warp/releases/download/v1.12.1/warp_lang-1.12.1+cu13-py3-none-win_amd64.whl``
 
 The ``--force-reinstall`` option may need to be used to overwrite a previous installation.
 
@@ -118,7 +128,7 @@ Note that CUDA 13.0 dropped support for the same architectures entirely.
 Dependencies
 ------------
 
-Warp supports Python versions 3.9 onwards. Note that :ref:`some optional dependencies may not support the latest version of Python<conda>`.
+Warp supports Python versions 3.10 onwards. Note that :ref:`some optional dependencies may not support the latest version of Python<conda>`.
 
 `NumPy <https://numpy.org>`_ must be installed.
 
@@ -366,3 +376,15 @@ environments, and building the wheel file.
 After building the image with ``docker build -t warp-prod:example .``, we can use ``docker image ls`` to compare the
 image sizes.
 ``warp-prod:example`` is about 3.18 GB, while ``warp-github-clone:example`` is 9.03 GB!
+
+Using Warp in Omniverse
+-----------------------
+
+Omniverse extensions for Warp are available in the extension registry inside Omniverse Kit.
+
+The ``omni.warp.core`` extension installs Warp into Omniverse Kit's Python environment,
+which allows users to import the module in their scripts and nodes.
+
+Please see the
+`Omniverse Warp Documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_warp.html>`_
+for more details on how to use Warp in Omniverse.

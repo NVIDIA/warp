@@ -1,26 +1,15 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 from enum import Enum
+from typing import Any
 
 import numpy as np
 
 import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.geometry import Element
-from warp._src.fem.types import Coords
+from warp._src.fem.types import cached_coords_type
 
 _wp_module_name_ = "warp.fem.space.shape.shape_function"
 
@@ -44,6 +33,11 @@ class ShapeFunction:
 
     value: Value = Value.Scalar
     """Value type of the shape function."""
+
+    @property
+    def _precision_suffix(self) -> str:
+        """Suffix for cache key differentiation between fp32 and fp64 shape function variants."""
+        return "_f64" if getattr(self, "scalar_type", wp.float32) == wp.float64 else ""
 
     @property
     def name(self) -> str:
@@ -74,18 +68,20 @@ class ShapeFunction:
 class ConstantShapeFunction(ShapeFunction):
     """Shape function that is constant over the element."""
 
-    def __init__(self, element: Element):
+    def __init__(self, element: Element, scalar_type: type = wp.float32):
         self._element_prototype = element.prototype
+        self.scalar_type = scalar_type
 
         self.ORDER = wp.constant(0)
         self.NODES_PER_ELEMENT = wp.constant(1)
 
         coords, _ = self._element_prototype.instantiate_quadrature(order=0, family=None)
-        self.COORDS = wp.constant(coords[0])
+        CoordsType = cached_coords_type(scalar_type)
+        self.COORDS = wp.constant(CoordsType(*coords[0]))
 
     @property
     def name(self) -> str:
-        return f"{self._element_prototype.__name__}"
+        return f"{self._element_prototype.__name__}{self._precision_suffix}"
 
     def make_node_coords_in_element(self):
         COORDS = self.COORDS
@@ -98,37 +94,47 @@ class ConstantShapeFunction(ShapeFunction):
 
         return node_coords_in_element
 
-    @wp.func
-    def _node_quadrature_weight(
-        node_index_in_elt: int,
-    ):
-        return 1.0
+    def _make_weight_func(self):
+        scalar = self.scalar_type
+        ONE = wp.constant(scalar(1.0))
+
+        @cache.dynamic_func(suffix=self.name)
+        def _node_quadrature_weight(
+            node_index_in_elt: int,
+        ):
+            return ONE
+
+        return _node_quadrature_weight
 
     def make_node_quadrature_weight(self):
-        return ConstantShapeFunction._node_quadrature_weight
+        return self._make_weight_func()
 
     def make_trace_node_quadrature_weight(self):
-        return ConstantShapeFunction._node_quadrature_weight
-
-    @wp.func
-    def _element_inner_weight(
-        coords: Coords,
-        node_index_in_elt: int,
-    ):
-        return 1.0
+        return self._make_weight_func()
 
     def make_element_inner_weight(self):
-        return ConstantShapeFunction._element_inner_weight
+        scalar = self.scalar_type
+        ONE = wp.constant(scalar(1.0))
+
+        @cache.dynamic_func(suffix=self.name)
+        def element_inner_weight(
+            coords: Any,
+            node_index_in_elt: int,
+        ):
+            return ONE
+
+        return element_inner_weight
 
     def make_element_inner_weight_gradient(self):
-        grad_type = cache.cached_vec_type(length=self._element_prototype.dimension, dtype=float)
+        scalar = self.scalar_type
+        grad_type = cache.cached_vec_type(length=self._element_prototype.dimension, dtype=scalar)
 
         @cache.dynamic_func(suffix=self.name)
         def element_inner_weight_gradient(
-            coords: Coords,
+            coords: Any,
             node_index_in_elt: int,
         ):
-            return grad_type(0.0)
+            return grad_type(scalar(0.0))
 
         return element_inner_weight_gradient
 

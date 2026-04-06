@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import ctypes
 from functools import reduce
@@ -182,9 +170,9 @@ def _create_jax_warp_primitive():
         # Figure out the number of outputs.
         wp_kernel = _registered_kernels[params["kernel"]]
         output_count = len(wp_kernel.adj.args) - len(args)
-        shape, dim = next((a.shape, d) for a, d in zip(args, dims) if d is not None)
+        shape, dim = next((a.shape, d) for a, d in zip(args, dims, strict=False) if d is not None)
         size = shape[dim]
-        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims)]
+        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims, strict=False)]
         # Create the batched primitive.
         return _jax_warp_p.bind(*args, **params), [dims[0]] * output_count
 
@@ -336,7 +324,7 @@ def _create_jax_warp_primitive():
         # Figure out the types and shapes of the input arrays.
         arg_strings = []
         operand_layouts = []
-        for actual, warg in zip(args, wp_kernel.adj.args):
+        for actual, warg in zip(args, wp_kernel.adj.args, strict=False):
             wtype = warg.type
             rtt = ir.RankedTensorType(actual.type)
 

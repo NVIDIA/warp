@@ -1,19 +1,5 @@
-/*
- * SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 #if WP_ENABLE_CUDA
 
@@ -47,11 +33,15 @@
 // We define our own GL types, based on the spec here: https://www.khronos.org/opengl/wiki/OpenGL_Type
 namespace wp {
 typedef uint32_t GLuint;
+typedef uint32_t GLenum;
 }
 
 // function prototypes adapted from <cudaGLTypedefs.h>
 typedef CUresult(CUDAAPI* PFN_cuGraphicsGLRegisterBuffer_v3000)(
     CUgraphicsResource* pCudaResource, wp::GLuint buffer, unsigned int Flags
+);
+typedef CUresult(CUDAAPI* PFN_cuGraphicsGLRegisterImage_v3000)(
+    CUgraphicsResource* pCudaResource, wp::GLuint image, wp::GLenum target, unsigned int Flags
 );
 
 
@@ -115,12 +105,15 @@ static PFN_cuModuleLoadDataEx_v2010 pfn_cuModuleLoadDataEx;
 static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
 static PFN_cuLaunchKernel_v4000 pfn_cuLaunchKernel;
+static PFN_cuOccupancyMaxPotentialBlockSize_v6050 pfn_cuOccupancyMaxPotentialBlockSize;
 static PFN_cuMemcpyPeerAsync_v4000 pfn_cuMemcpyPeerAsync;
 static PFN_cuPointerGetAttribute_v4000 pfn_cuPointerGetAttribute;
 static PFN_cuGraphicsMapResources_v3000 pfn_cuGraphicsMapResources;
 static PFN_cuGraphicsUnmapResources_v3000 pfn_cuGraphicsUnmapResources;
 static PFN_cuGraphicsResourceGetMappedPointer_v3020 pfn_cuGraphicsResourceGetMappedPointer;
 static PFN_cuGraphicsGLRegisterBuffer_v3000 pfn_cuGraphicsGLRegisterBuffer;
+static PFN_cuGraphicsGLRegisterImage_v3000 pfn_cuGraphicsGLRegisterImage;
+static PFN_cuGraphicsSubResourceGetMappedArray_v3000 pfn_cuGraphicsSubResourceGetMappedArray;
 static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
 static PFN_cuModuleGetGlobal_v3020 pfn_cuModuleGetGlobal;
 static PFN_cuFuncSetAttribute_v9000 pfn_cuFuncSetAttribute;
@@ -134,6 +127,7 @@ static PFN_cuIpcCloseMemHandle_v4010 pfn_cuIpcCloseMemHandle;
 static PFN_cuArrayCreate_v3020 pfn_cuArrayCreate;
 static PFN_cuArrayDestroy_v2000 pfn_cuArrayDestroy;
 static PFN_cuArray3DCreate_v3020 pfn_cuArray3DCreate;
+static PFN_cuArray3DGetDescriptor_v3020 pfn_cuArray3DGetDescriptor;
 static PFN_cuMemcpy2D_v3020 pfn_cuMemcpy2D;
 static PFN_cuMemcpy2DAsync_v3020 pfn_cuMemcpy2DAsync;
 static PFN_cuMemcpy3D_v3020 pfn_cuMemcpy3D;
@@ -278,12 +272,17 @@ bool init_cuda_driver()
     get_driver_entry_point("cuModuleUnload", 2000, &(void*&)pfn_cuModuleUnload);
     get_driver_entry_point("cuModuleGetFunction", 2000, &(void*&)pfn_cuModuleGetFunction);
     get_driver_entry_point("cuLaunchKernel", 4000, &(void*&)pfn_cuLaunchKernel);
+    get_driver_entry_point("cuOccupancyMaxPotentialBlockSize", 6050, &(void*&)pfn_cuOccupancyMaxPotentialBlockSize);
     get_driver_entry_point("cuMemcpyPeerAsync", 4000, &(void*&)pfn_cuMemcpyPeerAsync);
     get_driver_entry_point("cuPointerGetAttribute", 4000, &(void*&)pfn_cuPointerGetAttribute);
     get_driver_entry_point("cuGraphicsMapResources", 3000, &(void*&)pfn_cuGraphicsMapResources);
     get_driver_entry_point("cuGraphicsUnmapResources", 3000, &(void*&)pfn_cuGraphicsUnmapResources);
     get_driver_entry_point("cuGraphicsResourceGetMappedPointer", 3020, &(void*&)pfn_cuGraphicsResourceGetMappedPointer);
     get_driver_entry_point("cuGraphicsGLRegisterBuffer", 3000, &(void*&)pfn_cuGraphicsGLRegisterBuffer);
+    get_driver_entry_point("cuGraphicsGLRegisterImage", 3000, &(void*&)pfn_cuGraphicsGLRegisterImage);
+    get_driver_entry_point(
+        "cuGraphicsSubResourceGetMappedArray", 3000, &(void*&)pfn_cuGraphicsSubResourceGetMappedArray
+    );
     get_driver_entry_point("cuGraphicsUnregisterResource", 3000, &(void*&)pfn_cuGraphicsUnregisterResource);
     get_driver_entry_point("cuModuleGetGlobal", 3020, &(void*&)pfn_cuModuleGetGlobal);
     get_driver_entry_point("cuFuncSetAttribute", 9000, &(void*&)pfn_cuFuncSetAttribute);
@@ -297,6 +296,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuArrayCreate", 3020, &(void*&)pfn_cuArrayCreate);
     get_driver_entry_point("cuArrayDestroy", 2000, &(void*&)pfn_cuArrayDestroy);
     get_driver_entry_point("cuArray3DCreate", 3020, &(void*&)pfn_cuArray3DCreate);
+    get_driver_entry_point("cuArray3DGetDescriptor", 3020, &(void*&)pfn_cuArray3DGetDescriptor);
     get_driver_entry_point("cuMemcpy2D", 3020, &(void*&)pfn_cuMemcpy2D);
     get_driver_entry_point("cuMemcpy2DAsync", 3020, &(void*&)pfn_cuMemcpy2DAsync);
     get_driver_entry_point("cuMemcpy3D", 3020, &(void*&)pfn_cuMemcpy3D);
@@ -684,6 +684,22 @@ CUresult cuLaunchKernel_f(
                               : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuOccupancyMaxPotentialBlockSize_f(
+    int* minGridSize,
+    int* blockSize,
+    CUfunction func,
+    CUoccupancyB2DSize blockSizeToDynamicSMemSize,
+    size_t dynamicSMemSize,
+    int blockSizeLimit
+)
+{
+    return pfn_cuOccupancyMaxPotentialBlockSize
+        ? pfn_cuOccupancyMaxPotentialBlockSize(
+              minGridSize, blockSize, func, blockSizeToDynamicSMemSize, dynamicSMemSize, blockSizeLimit
+          )
+        : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuMemcpyPeerAsync_f(
     CUdeviceptr dst_ptr, CUcontext dst_ctx, CUdeviceptr src_ptr, CUcontext src_ctx, size_t n, CUstream stream
 )
@@ -718,6 +734,23 @@ CUresult cuGraphicsGLRegisterBuffer_f(CUgraphicsResource* pCudaResource, unsigne
 {
     return pfn_cuGraphicsGLRegisterBuffer ? pfn_cuGraphicsGLRegisterBuffer(pCudaResource, (wp::GLuint)buffer, flags)
                                           : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphicsGLRegisterImage_f(
+    CUgraphicsResource* pCudaResource, unsigned int image, unsigned int target, unsigned int flags
+)
+{
+    return pfn_cuGraphicsGLRegisterImage ? pfn_cuGraphicsGLRegisterImage(pCudaResource, image, target, flags)
+                                         : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuGraphicsSubResourceGetMappedArray_f(
+    CUarray* pArray, CUgraphicsResource resource, unsigned int arrayIndex, unsigned int mipLevel
+)
+{
+    return pfn_cuGraphicsSubResourceGetMappedArray
+        ? pfn_cuGraphicsSubResourceGetMappedArray(pArray, resource, arrayIndex, mipLevel)
+        : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource)
@@ -774,6 +807,11 @@ CUresult cuArrayDestroy_f(CUarray hArray)
 CUresult cuArray3DCreate_f(CUarray* pHandle, const CUDA_ARRAY3D_DESCRIPTOR* pAllocateArray)
 {
     return pfn_cuArray3DCreate ? pfn_cuArray3DCreate(pHandle, pAllocateArray) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuArray3DGetDescriptor_f(CUDA_ARRAY3D_DESCRIPTOR* pArrayDescriptor, CUarray hArray)
+{
+    return pfn_cuArray3DGetDescriptor ? pfn_cuArray3DGetDescriptor(pArrayDescriptor, hArray) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuMemcpy2D_f(const CUDA_MEMCPY2D* pCopy)
