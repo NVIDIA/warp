@@ -587,10 +587,9 @@ class BuiltinParamKind(enum.Enum):
     This decides how it's being packed into its corresponding C type.
     """
 
-    BUILTIN_GENERIC = 1  # Type created with `wp.types.vector()`, `wp.types.matrix()`, ...
-    BUILTIN_PREDEFINED = 2  # Predefined type like `vec3`, `mat22`, ...
-    SCALAR = 3  # Float or integer value.
-    SCALAR_FLOAT_16 = 4  # 16-bit float value.
+    BUILTIN = 1  # Any built-in Warp type (predefined like `vec3` or created via `vector()`, etc.)
+    SCALAR = 2  # Float or integer value.
+    SCALAR_FLOAT_16 = 3  # 16-bit float value.
 
 
 class BuiltinCallDesc(NamedTuple):
@@ -642,10 +641,7 @@ def get_builtin_call_desc(
             if not warp._src.types.types_equal(param_type, arg_type):
                 return None
 
-            if issubclass(param_type, arg_type):
-                param_kind = BuiltinParamKind.BUILTIN_PREDEFINED
-            else:
-                param_kind = BuiltinParamKind.BUILTIN_GENERIC
+            param_kind = BuiltinParamKind.BUILTIN
         elif issubclass(param_type, Sequence):
             raise TypeError(
                 "Built-in functions cannot be called with non-Warp array types, "
@@ -698,14 +694,7 @@ def call_builtin_from_desc(
     for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=False)):
         param = params[i]
 
-        if param_kind == BuiltinParamKind.BUILTIN_GENERIC:
-            # Cast the value to its argument type to make sure that it
-            # can be assigned to the field of the `Param` struct.
-            # This could error otherwise when, for example, the field type
-            # is set to `vec3i` while the value is of type `vector(length=3, dtype=int)`,
-            # even though both types are semantically identical.
-            c_params.append(ctypes.byref(arg_type(param)))
-        elif param_kind == BuiltinParamKind.BUILTIN_PREDEFINED:
+        if param_kind == BuiltinParamKind.BUILTIN:
             c_params.append(ctypes.byref(param))
         elif param_kind == BuiltinParamKind.SCALAR:
             c_params.append(arg_type._type_(param))
