@@ -1387,7 +1387,7 @@ def jax_kernel(
         non_static_inputs, output_vals_tuple = residuals
 
         input_vals = list(non_static_inputs)
-        for i, v in zip(static_args, nondiff_vals, strict=False):
+        for i, v in zip(static_args, nondiff_vals, strict=True):
             input_vals.insert(i, v)
 
         # Normalize grad outputs and handle nested containers (e.g., single tuple for multi-output)
@@ -1403,7 +1403,7 @@ def jax_kernel(
 
         out_dims_map = {}
         param_ann = {p.name: p.annotation for p in parameters[:num_inputs]}
-        for name, val in zip(differentiable_input_names, non_static_inputs, strict=False):
+        for name, val in zip(differentiable_input_names, non_static_inputs, strict=True):
             ann = param_ann.get(name)
             if ann is None:
                 continue

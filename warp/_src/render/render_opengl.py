@@ -818,7 +818,7 @@ class ShapeInstancer:
             )
         else:
             self.instance_transforms = wp.array(
-                [(*pos, *rot) for pos, rot in zip(positions, rotations, strict=False)],
+                [(*pos, *rot) for pos, rot in zip(positions, rotations, strict=True)],
                 dtype=wp.transform,
                 device=self.device,
             )
@@ -1604,7 +1604,7 @@ class OpenGLRenderer:
             if all(tile_sizes[i][1] == tile_sizes[0][1] for i in range(n)):
                 # tiles all have the same height
                 self._tile_height = tile_sizes[0][1]
-            self._tile_viewports = [(x, y, w, h) for (x, y), (w, h) in zip(tile_positions, tile_sizes, strict=False)]
+            self._tile_viewports = [(x, y, w, h) for (x, y), (w, h) in zip(tile_positions, tile_sizes, strict=True)]
 
         if projection_matrices is None:
             projection_matrices = [None] * n

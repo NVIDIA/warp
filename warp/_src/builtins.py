@@ -26,7 +26,7 @@ def seq_check_equal(seq_1, seq_2):
     if len(seq_1) != len(seq_2):
         return False
 
-    return all(x == y for x, y in zip(seq_1, seq_2, strict=False))
+    return all(x == y for x, y in zip(seq_1, seq_2, strict=True))
 
 
 def sametypes(arg_types: Mapping[str, Any]):
@@ -529,7 +529,7 @@ def _check_vars_match_dtype(arg_values, arg_types, dtype, msg):
     else:
         values = tuple(v for k, v in arg_values.items() if k not in skip_keys)
 
-    for t, v in zip(arg_types, values, strict=False):
+    for t, v in zip(arg_types, values, strict=True):
         if not isinstance(v, Var):
             continue  # compile-time constant — will be cast in dispatch
         # Extract the scalar type from compound types (vec, mat, quat).
@@ -6044,10 +6044,10 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    arg_type_map = dict(zip(overload.input_types, dtypes, strict=False))
-    assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
+    assert len(dtypes) == len(overload.input_types), (
         f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
     )
+    arg_type_map = dict(zip(overload.input_types, dtypes, strict=True))
     value_type = overload.value_func(arg_type_map, None)
 
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):

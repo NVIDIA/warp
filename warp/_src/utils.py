@@ -460,8 +460,8 @@ def array_sum(
 
     stride = values.strides[axis]
     for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=False))
-        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=False))
+        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=True))
 
         native_func(
             values.ptr + val_offset,
@@ -573,9 +573,9 @@ def array_inner(
     stride_b = b.strides[axis]
 
     for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=False))
-        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=False))
-        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=False))
+        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=True))
+        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=True))
 
         native_func(
             a.ptr + a_offset,
@@ -1059,7 +1059,7 @@ def map(
 
         load_args = []
         kernel_args = []
-        for arg_name, inp in zip(arg_names, inputs, strict=False):
+        for arg_name, inp in zip(arg_names, inputs, strict=True):
             if is_array(inp):
                 arr_name = f"{arg_name}_array"
                 array_type_name = type(inp).__name__

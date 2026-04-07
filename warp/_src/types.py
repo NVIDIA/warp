@@ -710,7 +710,7 @@ def _binary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (a, x)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x, strict=False)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x, strict=True)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
@@ -738,7 +738,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (x, a)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x, strict=False)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x, strict=True)))
 
 
 @functools.cache
@@ -868,12 +868,12 @@ def vector(length, dtype):
                 try:
                     return super().__setitem__(key, value)
                 except TypeError:
-                    # ctypes.Array doesn't accept this sequence type (e.g. torch tensors)
-                    # or the sequence has a different size, fall back to element-by-element assignment
+                    # ctypes.Array doesn't accept this sequence type (e.g. torch tensors),
+                    # fall back to element-by-element assignment
                     if indices is None:
                         indices = range(*key.indices(self._length_))
 
-                    for idx, x in zip(indices, value, strict=False):
+                    for idx, x in zip(indices, value, strict=True):
                         try:
                             super().__setitem__(idx, self._type_(x))
                         except TypeError:
@@ -2665,7 +2665,7 @@ def types_equal_generic(a, b, match_generic=True):
                 return seq_match_ellipsis(b, a)
 
             return len(a) == len(b) and all(
-                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b, strict=False)
+                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b, strict=True)
             )
         elif a_is_seq or b_is_seq:
             # A sequence can only match to another sequence.
@@ -2690,7 +2690,7 @@ def types_equal_generic(a, b, match_generic=True):
         if not isinstance(a, type) or not isinstance(b, type):
             return False
 
-        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
+        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=True):
             if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
@@ -6631,7 +6631,7 @@ def type_generic_equal(a, b):
     if getattr(a, "_wp_generic_type_hint_", "a") is not getattr(b, "_wp_generic_type_hint_", "b"):
         return False
 
-    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
+    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=True):
         if not scalars_equal(p1, p2):
             return False
 

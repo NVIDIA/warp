@@ -207,7 +207,7 @@ class Triangle(PrototypeElement):
 
             # Scale weight by 2.0 so that they sum up to 1
             weights = [
-                2.0 * wx * (1.0 - x) * wy for x, wx in zip(gauss_1d, weights_1d, strict=False) for wy in weights_1d
+                2.0 * wx * (1.0 - x) * wy for x, wx in zip(gauss_1d, weights_1d, strict=True) for wy in weights_1d
             ]
 
             return coords, weights
@@ -582,8 +582,8 @@ class Tetrahedron(PrototypeElement):
             # Scale weight by 6.0 so that they sum up to 1
             weights = [
                 6.0 * wx * wy * wz * (1.0 - x) * (1.0 - x) * (1.0 - y)
-                for x, wx in zip(gauss_1d, weights_1d, strict=False)
-                for y, wy in zip(gauss_1d, weights_1d, strict=False)
+                for x, wx in zip(gauss_1d, weights_1d, strict=True)
+                for y, wy in zip(gauss_1d, weights_1d, strict=True)
                 for wz in weights_1d
             ]
 

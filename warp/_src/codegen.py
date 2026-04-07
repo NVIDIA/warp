@@ -126,7 +126,7 @@ def values_check_equal(a, b):
         if len(a) != len(b):
             return False
 
-        return all(x == y for x, y in zip(a, b, strict=False))
+        return all(x == y for x, y in zip(a, b, strict=True))
 
     return a == b
 
@@ -151,7 +151,7 @@ def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     spec = inspect.getfullargspec(func)
     # Capture closure variables to handle cases like `foo.Data` where `foo` is a closure variable
     closure_vars = dict(
-        zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())), strict=False)
+        zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())), strict=True)
     )
     # Filter out None values from empty cells
     closure_vars = {k: v for k, v in closure_vars.items() if v is not None}
@@ -815,7 +815,7 @@ def func_match_args(func, arg_types, kwarg_types):
     bound_arg_types = tuple(bound_arg_types.arguments.values())
 
     # Check the given argument types against the ones defined on the function.
-    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=False):
+    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=True):
         # Let the `value_func` callback infer the type.
         if bound_arg_type is None:
             continue
@@ -1416,7 +1416,7 @@ class Adjoint:
 
         prev_comp_var = None
 
-        for op, comp in zip(op_strings, comps, strict=False):
+        for op, comp in zip(op_strings, comps, strict=True):
             if prev_comp_var:
                 # We restrict chaining to operands of the same type
                 if prev_comp_var.type is comp.type:
@@ -2546,7 +2546,7 @@ class Adjoint:
         # It is important to do that in one pass, so that if evaluating these arguments have side effects
         # the code does not get generated more than once
         range_args = [adj.eval_num(arg) for arg in loop.iter.args]
-        arg_is_numeric, arg_values = zip(*range_args, strict=False)
+        arg_is_numeric, arg_values = zip(*range_args, strict=True)
 
         if all(arg_is_numeric):
             # All argument are numeric constants
@@ -3178,7 +3178,7 @@ class Adjoint:
                 )
 
             out = rhs
-            for name, rhs in zip(names, out, strict=False):
+            for name, rhs in zip(names, out, strict=True):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
                         raise WarpCodegenTypeError(
@@ -3706,7 +3706,7 @@ class Adjoint:
             zip(
                 adj.func.__code__.co_freevars,
                 [c.cell_contents for c in (adj.func.__closure__ or [])],
-                strict=False,
+                strict=True,
             )
         )
 

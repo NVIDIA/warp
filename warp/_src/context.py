@@ -691,7 +691,7 @@ def call_builtin_from_desc(
     # Try gathering the parameters that the function expects and pack them
     # into their corresponding C types.
     c_params = []
-    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=False)):
+    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=True)):
         param = params[i]
 
         if param_kind == BuiltinParamKind.BUILTIN:
@@ -723,7 +723,7 @@ def call_builtin_from_desc(
         return None
 
     value_ctype = tuple(warp._src.types.type_ctype(x) for x in value_type)
-    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=False))
+    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=True))
     if len(return_value) == 1:
         return_value = return_value[0]
 
@@ -837,7 +837,7 @@ class Kernel:
                         f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {type_repr(template_types[i])}, got {type_repr(arg_types[i])}"
                     )
 
-        overload_annotations = dict(zip(arg_names, arg_types, strict=False))
+        overload_annotations = dict(zip(arg_names, arg_types, strict=True))
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
@@ -1036,7 +1036,7 @@ def func_grad(forward_fn):
             if len(grad_args) != len(expected_args):
                 return False
             if any(
-                not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args, strict=False)
+                not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args, strict=True)
             ):
                 return False
             return True
@@ -1747,7 +1747,7 @@ def add_builtin(
                 typelists.append(l)
 
             for arg_types in itertools.product(*typelists):
-                concrete_arg_types = dict(zip(input_types.keys(), arg_types, strict=False))
+                concrete_arg_types = dict(zip(input_types.keys(), arg_types, strict=True))
 
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`

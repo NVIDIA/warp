@@ -170,9 +170,9 @@ def _create_jax_warp_primitive():
         # Figure out the number of outputs.
         wp_kernel = _registered_kernels[params["kernel"]]
         output_count = len(wp_kernel.adj.args) - len(args)
-        shape, dim = next((a.shape, d) for a, d in zip(args, dims, strict=False) if d is not None)
+        shape, dim = next((a.shape, d) for a, d in zip(args, dims, strict=True) if d is not None)
         size = shape[dim]
-        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims, strict=False)]
+        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims, strict=True)]
         # Create the batched primitive.
         return _jax_warp_p.bind(*args, **params), [dims[0]] * output_count
 

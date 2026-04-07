@@ -26,7 +26,7 @@ def mass_form(
 
 
 def sum_vecs(vecs, indices, sum: wp.array, tmp: wp.array):
-    for v, idx in zip(vecs, indices, strict=False):
+    for v, idx in zip(vecs, indices, strict=True):
         tmp_i = tmp[: idx.size]
         idx_sum = sum[idx]
         # copy v to rank 0 then accumulate
@@ -55,7 +55,7 @@ class DistributedSystem:
         with wp.ScopedStream(stream):
             z.assign(y.dtype(beta) * y)
 
-        for mat_i, x_i, y_i, idx in zip(*self.rank_data, strict=False):
+        for mat_i, x_i, y_i, idx in zip(*self.rank_data, strict=True):
             tmp_i = tmp[: idx.size]
             z_idx = z[idx]
 
