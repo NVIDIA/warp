@@ -595,11 +595,11 @@ def constant(x):
     return x
 
 
-def float_to_half_bits(value):
+def float_to_half_bits(value: float) -> int:
     return warp._src.context.runtime.core.wp_float_to_half_bits(value)
 
 
-def half_bits_to_float(value):
+def half_bits_to_float(value: int) -> float:
     return warp._src.context.runtime.core.wp_half_bits_to_float(value)
 
 
@@ -857,7 +857,7 @@ def vector(length, dtype):
                     try:
                         for x in value:
                             converted.append(vec_t.scalar_import(x))
-                    except ctypes.ArgumentError:
+                    except (ctypes.ArgumentError, TypeError):
                         raise TypeError(
                             f"Expected to assign a slice from a sequence of `float16` values "
                             f"but got `{type(x).__name__}` instead"
@@ -1169,7 +1169,7 @@ def matrix(shape, dtype):
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except ctypes.ArgumentError:
+                except (ctypes.ArgumentError, TypeError):
                     raise TypeError(
                         f"Expected to assign a slice from a sequence of `float16` values "
                         f"but got `{type(x).__name__}` instead"
@@ -1206,7 +1206,7 @@ def matrix(shape, dtype):
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except ctypes.ArgumentError:
+                except (ctypes.ArgumentError, TypeError):
                     raise TypeError(
                         f"Expected to assign a slice from a sequence of `float16` values "
                         f"but got `{type(x).__name__}` instead"

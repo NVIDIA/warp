@@ -64,6 +64,8 @@
   instead of `accumulate_dtype` (which itself defaults to `wp.float64`).
   Pass `output_dtype=wp.float64` explicitly to restore the previous behavior
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
+- Reduce Python-side dispatch overhead for half-float conversion using `METH_FASTCALL`
+  ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
 
 ### Fixed
 

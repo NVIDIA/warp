@@ -578,7 +578,7 @@ class Struct:
                 # scalar
                 cvalue = ctypes.cast(ptr + offset, ctypes.POINTER(var.type._type_)).contents
                 if var.type == warp.float16:
-                    setattr(instance, name, half_bits_to_float(cvalue))
+                    setattr(instance, name, half_bits_to_float(cvalue.value))
                 else:
                     setattr(instance, name, cvalue.value)
 
