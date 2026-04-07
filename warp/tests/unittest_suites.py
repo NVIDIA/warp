@@ -95,6 +95,14 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
     from warp.tests.cuda.test_texture import TestTexture
+    from warp.tests.fem.test_fem_examples import TestFemDiffusionExamples, TestFemExamples
+    from warp.tests.fem.test_fem_field import TestFemField
+    from warp.tests.fem.test_fem_fp64 import TestFemFp64
+    from warp.tests.fem.test_fem_geometry import TestFemGeometry
+    from warp.tests.fem.test_fem_integrate import TestFemIntegrate
+    from warp.tests.fem.test_fem_linalg import TestFemLinalg
+    from warp.tests.fem.test_fem_quadrature import TestFemQuadrature
+    from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
@@ -143,7 +151,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     )
     from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_fast_math import TestFastMath
-    from warp.tests.test_fem import TestFem, TestFemShapeFunctions, TestFemUtilities
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
     from warp.tests.test_future_annotations import TestFutureAnnotations
@@ -245,9 +252,15 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestOptimExamples,
         TestFabricArray,
         TestFastMath,
-        TestFem,
-        TestFemShapeFunctions,
-        TestFemUtilities,
+        TestFemDiffusionExamples,
+        TestFemExamples,
+        TestFemField,
+        TestFemFp64,
+        TestFemGeometry,
+        TestFemIntegrate,
+        TestFemLinalg,
+        TestFemQuadrature,
+        TestFemShape,
         TestFp16,
         TestFunc,
         TestFutureAnnotations,
