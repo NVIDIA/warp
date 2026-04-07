@@ -5795,12 +5795,13 @@ template <typename Tile, typename AdjTile, typename AdjReturnTile>
 inline CUDA_CALLABLE void adj_tile_astype(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
 {
     // gradients only flow between float conversions
-    if constexpr ((is_same<typename AdjTile::Type, wp::float16>::value
-                   || is_same<typename AdjTile::Type, wp::float32>::value
-                   || is_same<typename AdjTile::Type, wp::float64>::value)
-                  && (is_same<typename AdjReturnTile::Type, wp::float16>::value
-                      || is_same<typename AdjReturnTile::Type, wp::float32>::value
-                      || is_same<typename AdjReturnTile::Type, wp::float64>::value)) {
+    if constexpr (
+        (is_same<typename AdjTile::Type, wp::float16>::value || is_same<typename AdjTile::Type, wp::float32>::value
+         || is_same<typename AdjTile::Type, wp::float64>::value)
+        && (is_same<typename AdjReturnTile::Type, wp::float16>::value
+            || is_same<typename AdjReturnTile::Type, wp::float32>::value
+            || is_same<typename AdjReturnTile::Type, wp::float64>::value)
+    ) {
         auto adj_ret_reg = adj_ret.grad_to_register();
         auto adj_t_reg = tile_register_like<AdjTile>();
 

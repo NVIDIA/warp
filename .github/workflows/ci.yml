@@ -56,7 +56,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       
       - name: Set up Python
         run: uv python install
@@ -128,7 +128,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       
       - name: Set up Python
         run: uv python install
@@ -163,7 +163,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       
       - name: Set up Python
         run: uv python install
@@ -218,7 +218,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       
       - name: Set up Python
         run: uv python install
@@ -251,7 +251,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       - name: Set up Python
         run: uv python install
       - name: Download Warp binaries
@@ -307,7 +307,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       - name: Set up Python
         run: uv python install
       - name: Download native headers
@@ -375,7 +375,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
-          version: "0.11.0"
+          version: "0.11.3"
       - name: Set up Python
         run: uv python install
       - name: Run pyright on stub file
