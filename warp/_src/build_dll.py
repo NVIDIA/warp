@@ -843,7 +843,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                     if sym_bind == "GLOBAL" and sym_ndx == "UND" and sym_type == "NOTYPE":
                         undefined.append(sym_name)
 
-            unexpected = [sym for sym in undefined if not sym.startswith("Py")]
+            unexpected = [sym for sym in undefined if not sym.startswith(("Py", "_Py"))]
             if unexpected:
                 raise RuntimeError("Unexpected undefined symbols in " + dll_path + ":\n" + "\n".join(unexpected))
 
