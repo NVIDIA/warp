@@ -665,6 +665,11 @@ linux-x86_64 asv:
     - uvx asv machine --yes
     - uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA 2>&1 || (asv compare --split $COMPARE_REF $CI_COMMIT_SHA 2>&1 && exit 2)
   allow_failure: True
+  artifacts:
+    paths:
+      - asv/results/
+    expire_in: 1 week
+    when: always
 
 # Ensure cpp examples compile and run
 linux-x86_64 cpp examples test:
