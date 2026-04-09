@@ -1973,6 +1973,14 @@ class ModuleHasher:
             s = f"{opt}:{options[opt]}"
             ch.update(bytes(s, "utf-8"))
 
+        # Note: cuda_output defaults to None in the options dict and is not
+        # resolved before hashing, so modules with different cuda_output
+        # configs get the same hash. This is fine because cuda_output only
+        # affects the output filename (.ptx vs .cubin), not the binary
+        # content — different values produce different cache files.
+        # Options that affect the binary content (like mode) must be
+        # resolved in resolve_options() so the hash distinguishes them.
+
         # save the module hash
         self.hash = ch.digest()
 
@@ -2506,10 +2514,23 @@ class Module:
             options["cpu_compiler_flags"], config.cpu_compiler_flags
         )
 
+        # Resolve None-means-inherit for enable_mathdx_gemm
+        if options["enable_mathdx_gemm"] is None:
+            options["enable_mathdx_gemm"] = config.enable_mathdx_gemm
+
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
         options["line_directives"] = config.line_directives
         options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+        options["llvm_cuda"] = config.llvm_cuda
+        options["use_precompiled_headers"] = config.use_precompiled_headers
+        options["verify_autograd_array_access"] = config.verify_autograd_array_access
+
+        # Resolve None-means-autodetect for enable_tiles_in_stack_memory
+        enable_tiles = config.enable_tiles_in_stack_memory
+        if enable_tiles is None:
+            enable_tiles = platform.machine() == "aarch64"
+        options["enable_tiles_in_stack_memory"] = enable_tiles
 
         return options
 
@@ -2830,7 +2851,7 @@ class Module:
         # (forced rebuild when verifying autograd array access)
         if (
             warp.config.cache_kernels
-            and not warp.config.verify_autograd_array_access
+            and not options.get("verify_autograd_array_access", False)
             and os.path.exists(os.path.join(output_dir, output_name))
             and os.path.exists(os.path.join(output_dir, self._get_meta_name()))
         ):
@@ -2887,9 +2908,10 @@ class Module:
                         extra_flags=options["cpu_compiler_flags"],
                         optimization_level=opt,
                         verbose=warp.config.verbose,
-                        use_precompiled_headers=warp.config.use_precompiled_headers,
-                        pch_dir=runtime.get_clang_pch_dir() if warp.config.use_precompiled_headers else None,
+                        use_precompiled_headers=options["use_precompiled_headers"],
+                        pch_dir=runtime.get_clang_pch_dir() if options["use_precompiled_headers"] else None,
                         block_dim=options["block_dim"],
+                        enable_tiles_in_stack_memory=options["enable_tiles_in_stack_memory"],
                     )
 
             except Exception as e:
@@ -2933,6 +2955,8 @@ class Module:
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
                         pch_dir=runtime.get_nvrtc_pch_dir(),
+                        llvm_cuda=options["llvm_cuda"],
+                        use_precompiled_headers=options["use_precompiled_headers"],
                     )
 
             except Exception as e:

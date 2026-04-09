@@ -9036,7 +9036,7 @@ def create_atomic_op_value_func(op: str):
 
 def atomic_op_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # as this is a codegen callback, we can mark the fact that this func writes to an array here
-    if warp.config.verify_autograd_array_access:
+    if warp._src.codegen.options.get("verify_autograd_array_access", False):
         arr = args["arr"]
         arr.mark_write()
 
@@ -12020,11 +12020,7 @@ def tile_matmul_lto_dispatch_func(
     if (
         arch is None
         or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
-        or not (
-            options.get("enable_mathdx_gemm")
-            if options.get("enable_mathdx_gemm") is not None
-            else warp.config.enable_mathdx_gemm
-        )
+        or not options.get("enable_mathdx_gemm", True)
     ):
         # CPU/no-MathDx dispatch (or mathdx GEMM disabled via module option)
         return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)

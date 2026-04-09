@@ -69,6 +69,9 @@
 
 ### Fixed
 
+- Fix kernel cache serving stale binaries when compilation settings like
+  `llvm_cuda` or `use_precompiled_headers` are changed between runs
+  ([GH-903](https://github.com/NVIDIA/warp/issues/903)).
 - Fix chained `and`/`or` operators in kernels to use short-circuit evaluation, matching Python semantics.
   Previously all operands were eagerly evaluated, so guards like `if arr and arr[i] == 0` could crash
   ([GH-1329](https://github.com/NVIDIA/warp/issues/1329)).

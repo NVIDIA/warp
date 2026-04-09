@@ -746,7 +746,7 @@ class Var:
             return
 
         # detect if we are writing to an array after reading from it within the same kernel
-        if self.is_read and warp.config.verify_autograd_array_access:
+        if self.is_read and warp._src.codegen.options.get("verify_autograd_array_access", False):
             if "kernel_name" and "filename" and "lineno" in kwargs:
                 print(
                     f"Warning: Array passed to argument {self.label} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
@@ -1358,11 +1358,11 @@ class Adjoint:
 
         # lineinfo is enabled by default in debug mode regardless of the builder option, don't want to unnecessarily
         # emit line directives in generated code if it's not being compiled with line information
-        build_mode = adj.builder_options.get("mode") or warp.config.mode
+        build_mode = adj.builder_options.get("mode", "release")
 
         lineinfo_enabled = adj.builder_options.get("lineinfo", False) or build_mode == "debug"
 
-        if relative_lineno is not None and lineinfo_enabled and warp.config.line_directives:
+        if relative_lineno is not None and lineinfo_enabled and adj.builder_options.get("line_directives", True):
             is_comment = statement.strip().startswith("//")
             if not is_comment:
                 line = relative_lineno + adj.fun_lineno
@@ -2393,7 +2393,7 @@ class Adjoint:
     def emit_BinOp(adj, node):
         # evaluate binary operator arguments
 
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             # array overwrite tracking: in-place operators are a special case
             # x[tid] = x[tid] + 1 is a read followed by a write, but we only want to record the write
             # so we save the current arg read flags and restore them after lhs eval
@@ -2404,7 +2404,7 @@ class Adjoint:
         # evaluate lhs binary operator argument
         left = adj.eval(node.left)
 
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             # restore arg read flags
             for i, arg in enumerate(adj.args):
                 arg.is_read = is_read_states[i]
@@ -2572,10 +2572,7 @@ class Adjoint:
             # test if we're above max unroll count
             max_iters = abs(end - start) // abs(step)
 
-            if "max_unroll" in adj.builder_options:
-                max_unroll = adj.builder_options["max_unroll"]
-            else:
-                max_unroll = warp.config.max_unroll
+            max_unroll = adj.builder_options.get("max_unroll", 16)
 
             ok_to_unroll = True
 
@@ -2817,7 +2814,7 @@ class Adjoint:
 
         if is_array(target_type):
             builtin_name = "address"
-            if warp.config.verify_autograd_array_access:
+            if adj.builder_options.get("verify_autograd_array_access", False):
                 target.mark_read()
         else:
             builtin_name = "extract"
@@ -2952,7 +2949,7 @@ class Adjoint:
 
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
 
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             # Extract the types and values passed as arguments to the function call.
             arg_types = tuple(get_arg_type(x) for x in args)
             kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
@@ -3004,7 +3001,7 @@ class Adjoint:
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
 
-                if warp.config.verify_autograd_array_access:
+                if adj.builder_options.get("verify_autograd_array_access", False):
                     target.mark_read()
 
             else:
@@ -3026,7 +3023,7 @@ class Adjoint:
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
 
-                if warp.config.verify_autograd_array_access:
+                if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
                     out.parent = target
 
@@ -3248,7 +3245,7 @@ class Adjoint:
         if is_array(target_type):
             adj.add_builtin_call("array_store", [target, *indices, rhs])
 
-            if warp.config.verify_autograd_array_access:
+            if adj.builder_options.get("verify_autograd_array_access", False):
                 kernel_name = adj.fun_name
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
@@ -3286,7 +3283,7 @@ class Adjoint:
                         f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                     )
             else:
-                if warp.config.enable_vector_component_overwrites:
+                if adj.builder_options.get("enable_vector_component_overwrites", False):
                     out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
 
                     # re-point target symbol to out var
@@ -3318,7 +3315,7 @@ class Adjoint:
                 attr = adj.add_builtin_call("indexref", [aggregate, index])
                 adj.add_builtin_call("store", [attr, rhs])
             else:
-                if warp.config.enable_vector_component_overwrites:
+                if adj.builder_options.get("enable_vector_component_overwrites", False):
                     out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
 
                     # re-point target symbol to out var
@@ -3391,7 +3388,7 @@ class Adjoint:
         registering as a read in the autograd verification system, since the
         overall operation is a write, not a read.
         """
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             is_read_states = [arg.is_read for arg in adj.args]
         else:
             is_read_states = None
@@ -3537,31 +3534,31 @@ class Adjoint:
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("atomic_add", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.Sub):
                     adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitAnd):
                     adj.add_builtin_call("atomic_and", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitOr):
                     adj.add_builtin_call("atomic_or", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
                     if warp.config.verbose:
