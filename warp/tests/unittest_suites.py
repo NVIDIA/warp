@@ -145,6 +145,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_dense import TestDense
     from warp.tests.test_devices import TestDevices
     from warp.tests.test_diagnostics import TestDiagnostics
+    from warp.tests.test_enum import TestEnum
     from warp.tests.test_examples import (
         TestCoreExamples,
         TestOptimExamples,
@@ -249,6 +250,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestDevices,
         TestDiagnostics,
         TestDLPack,
+        TestEnum,
         TestCoreExamples,
         TestOptimExamples,
         TestFabricArray,
@@ -395,6 +397,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
+    from warp.tests.test_enum import TestEnum
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
@@ -429,6 +432,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestConditional,
         TestConstants,
         TestConstantPrecision,
+        TestEnum,
         TestFastMath,
         TestFunc,
         TestGenerics,

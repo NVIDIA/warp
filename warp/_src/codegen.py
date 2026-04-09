@@ -4387,7 +4387,9 @@ def constant_str(value):
         # Unwrap the raw value and handle special floats before applying
         # C++ literal suffixes for wide integer types.
         raw = value.value
-        if isinstance(raw, builtins.float):
+        if isinstance(raw, (enum.IntEnum, enum.IntFlag)):
+            raw = int(raw)
+        elif isinstance(raw, builtins.float):
             if raw == math.inf:
                 return "INFINITY"
             if raw == -math.inf:
