@@ -7421,6 +7421,42 @@ class Launch:
                 )
 
 
+_WARP_SIZE = 32
+_DEFAULT_BLOCK_DIM = 256
+
+
+def _select_block_dim(kernel, total_threads: int, device, max_blocks: int = 0) -> int:
+    """Choose block_dim using the CUDA occupancy API.
+
+    Uses the default of 256 when it already produces enough blocks to fill
+    every SM.  For smaller launches, reduces block_dim (in warp-size
+    multiples) so that blocks are distributed across SMs.
+
+    The occupancy query result is cached on the kernel object (``_occupancy``)
+    so repeated launches only pay the cost of a ``getattr`` + arithmetic.
+    """
+    # Fast path: occupancy data already cached on this kernel.
+    occ = getattr(kernel, "_occupancy", None)
+    if occ is not None and occ[0] == device.ordinal:
+        suggested, min_blocks = occ[1], occ[2]
+    else:
+        suggested, min_blocks = get_suggested_block_size(kernel, device)
+        kernel._occupancy = (device.ordinal, suggested, min_blocks)
+
+    num_blocks = (total_threads + _DEFAULT_BLOCK_DIM - 1) // _DEFAULT_BLOCK_DIM
+    if max_blocks > 0:
+        num_blocks = min(num_blocks, max_blocks)
+
+    # Default already fills the GPU, or grid capped by max_blocks.
+    if num_blocks >= min_blocks or (max_blocks > 0 and max_blocks < min_blocks):
+        return _DEFAULT_BLOCK_DIM
+
+    # Reduce block_dim so there are enough blocks to fill the GPU.
+    # Round down to a warp-size multiple.
+    ideal = total_threads // min_blocks
+    return max(_WARP_SIZE, ideal // _WARP_SIZE * _WARP_SIZE)
+
+
 def launch(
     kernel,
     dim: int | Sequence[int],
@@ -7434,7 +7470,7 @@ def launch(
     record_tape: bool = True,
     record_cmd: bool = False,
     max_blocks: int = 0,
-    block_dim: int = 256,
+    block_dim: int | None = None,
 ):
     """Launch a Warp kernel on the target device
 
@@ -7459,7 +7495,9 @@ def launch(
         max_blocks: The maximum number of CUDA thread blocks to use.
           Only has an effect for CUDA kernel launches.
           If negative or zero, the maximum hardware value will be used.
-        block_dim: The number of threads per block (always 1 for "cpu" devices).
+        block_dim: The number of threads per block.  When ``None`` (the
+          default), a value is chosen automatically using the CUDA occupancy
+          API to maximize GPU utilization.  Always 1 for ``"cpu"`` devices.
     """
 
     init()
@@ -7514,6 +7552,11 @@ def launch(
         if kernel.is_generic:
             fwd_types = kernel.infer_argument_types(fwd_args)
             kernel = kernel.add_overload(fwd_types)
+
+        # Select block_dim after overload resolution so generic kernels
+        # have their concrete types (needed for the occupancy query).
+        if block_dim is None:
+            block_dim = _select_block_dim(kernel, bounds.size, device, max_blocks)
 
         # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
         # Even though a Module compiles separately for each device (stored in Module.execs),

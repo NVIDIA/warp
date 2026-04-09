@@ -48,7 +48,7 @@ def test_block_dim_cpu_then_cuda(test, device):
 
     # Now launch on CUDA (should load separate module with block_dim=256)
     result_cuda = wp.zeros(2, dtype=wp.int32, device=device)
-    wp.launch(simple_conditional, dim=1, inputs=[1.0, result_cuda], device=device)
+    wp.launch(simple_conditional, dim=1, inputs=[1.0, result_cuda], device=device, block_dim=256)
 
     # Verify CUDA module exec was loaded with block_dim=256
     cuda_exec_key = (device.context, 256)

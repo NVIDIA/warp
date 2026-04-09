@@ -436,6 +436,101 @@ def test_launch_bounds_single_tuple(test, device):
     assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
 
 
+# ==================================================================================
+# Auto block_dim tests
+# ==================================================================================
+
+
+@wp.kernel
+def saxpy(alpha: float, x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    y[i] = alpha * x[i] + y[i]
+
+
+def test_auto_block_dim_correctness(test, device):
+    """Auto block_dim produces correct results for various launch sizes."""
+    for n in [1, 31, 32, 33, 100, 1000, 100_000]:
+        x = wp.ones(n, dtype=float, device=device)
+        y = wp.zeros(n, dtype=float, device=device)
+        wp.launch(saxpy, dim=n, inputs=[2.0, x, y], device=device)
+        wp.synchronize_device(device)
+        np.testing.assert_allclose(y.numpy(), np.full(n, 2.0))
+
+
+def test_explicit_block_dim_passthrough(test, device):
+    """Explicit block_dim is respected and not overridden."""
+    n = 1000
+    x = wp.ones(n, dtype=float, device=device)
+    y = wp.zeros(n, dtype=float, device=device)
+    wp.launch(saxpy, dim=n, inputs=[2.0, x, y], block_dim=64, device=device)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(y.numpy(), np.full(n, 2.0))
+
+
+def test_auto_block_dim_values(test, device):
+    """Auto block_dim is a warp-size multiple and within bounds."""
+    if device == "cpu":
+        return
+
+    from warp._src.context import _select_block_dim  # noqa: PLC0415
+
+    _suggested, min_blocks = wp.get_suggested_block_size(saxpy, device)
+    dev = wp.get_device(device)
+
+    for total in [1, 32, 1000, 100_000, 10_000_000]:
+        bd = _select_block_dim(saxpy, total, dev)
+        test.assertGreaterEqual(bd, 32, f"block_dim should be >= warp size for total={total}")
+        test.assertEqual(bd % 32, 0, f"block_dim should be a warp-size multiple for total={total}")
+        test.assertLessEqual(bd, 1024, f"block_dim should be <= 1024 for total={total}")
+
+        default_blocks = (total + 256 - 1) // 256
+        if default_blocks >= min_blocks:
+            # Large launch — default fills the GPU, keep it.
+            test.assertEqual(bd, 256, f"should use default for total={total}")
+        else:
+            # Small launch — should reduce below the default.
+            test.assertLess(bd, 256, f"should reduce block_dim for total={total}")
+
+
+def test_auto_block_dim_max_blocks(test, device):
+    """When max_blocks caps the grid, block_dim should use the default."""
+    if device == "cpu":
+        return
+
+    from warp._src.context import _select_block_dim  # noqa: PLC0415
+
+    dev = wp.get_device(device)
+
+    # Small total with max_blocks=4: grid is capped, should use default
+    bd = _select_block_dim(saxpy, 100, dev, max_blocks=4)
+    test.assertEqual(bd, 256, "should use default when max_blocks caps the grid")
+
+    # Correctness check with max_blocks
+    n = 1000
+    x = wp.ones(n, dtype=float, device=device)
+    y = wp.zeros(n, dtype=float, device=device)
+    wp.launch(saxpy, dim=n, inputs=[2.0, x, y], max_blocks=4, device=device)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(y.numpy(), np.full(n, 2.0))
+
+
+def test_auto_block_dim_graph_capture(test, device):
+    """Auto block_dim works correctly under CUDA graph capture."""
+    if device == "cpu":
+        return
+
+    n = 10_000
+    x = wp.ones(n, dtype=float, device=device)
+    y = wp.zeros(n, dtype=float, device=device)
+
+    with wp.ScopedCapture(device=device) as capture:
+        wp.launch(saxpy, dim=n, inputs=[2.0, x, y], device=device)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(y.numpy(), np.full(n, 2.0))
+
+
 devices = get_test_devices()
 
 
@@ -462,6 +557,14 @@ add_function_test(TestLaunch, "test_launch_bounds_none", test_launch_bounds_none
 add_function_test(TestLaunch, "test_launch_bounds_single", test_launch_bounds_single, devices=devices)
 add_function_test(TestLaunch, "test_launch_bounds_tuple", test_launch_bounds_tuple, devices=devices)
 add_function_test(TestLaunch, "test_launch_bounds_single_tuple", test_launch_bounds_single_tuple, devices=devices)
+
+add_function_test(TestLaunch, "test_auto_block_dim_correctness", test_auto_block_dim_correctness, devices=devices)
+add_function_test(
+    TestLaunch, "test_explicit_block_dim_passthrough", test_explicit_block_dim_passthrough, devices=devices
+)
+add_function_test(TestLaunch, "test_auto_block_dim_values", test_auto_block_dim_values, devices=devices)
+add_function_test(TestLaunch, "test_auto_block_dim_max_blocks", test_auto_block_dim_max_blocks, devices=devices)
+add_function_test(TestLaunch, "test_auto_block_dim_graph_capture", test_auto_block_dim_graph_capture, devices=devices)
 
 
 if __name__ == "__main__":

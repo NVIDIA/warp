@@ -66,6 +66,11 @@
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
 - Reduce Python-side dispatch overhead for half-float conversion using `METH_FASTCALL`
   ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
+- Change the default `block_dim` of `wp.launch()` from a fixed 256 to `None`,
+  which selects a value automatically using the CUDA occupancy API.
+  The heuristic uses the suggested block size when the launch is large enough to
+  fill all SMs, and reduces it (in warp-size multiples) for smaller launches.
+  Pass `block_dim=256` explicitly to restore the previous behavior.
 
 ### Fixed
 
