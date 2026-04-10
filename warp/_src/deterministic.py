@@ -166,24 +166,25 @@ def is_float_type(dtype) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def allocate_scatter_buffers(scatter_targets, dim_size, device):
+def allocate_scatter_buffers(scatter_targets, dim_size, device, min_capacity=0):
     """Allocate scatter buffers for Pattern A targets.
 
     Returns a list of (keys, values, counter, capacity) tuples.
     """
     buffers = []
     for target in scatter_targets:
-        capacity = max(dim_size * target.records_per_thread, 1024)
+        capacity = max(dim_size * target.records_per_thread, 1024, min_capacity)
         dtype_map = {
             "float": warp.float32,
             "double": warp.float64,
             "wp::half": warp.float16,
         }
         val_dtype = dtype_map.get(target.value_ctype, warp.float32)
-        keys = warp.empty(shape=(capacity,), dtype=warp.int64, device=device)
-        values = warp.empty(shape=(capacity,), dtype=val_dtype, device=device)
+        keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
+        values = warp.zeros(shape=(capacity,), dtype=val_dtype, device=device)
         counter = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
-        buffers.append((keys, values, counter, capacity))
+        overflow = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
+        buffers.append((keys, values, counter, overflow, capacity))
     return buffers
 
 
@@ -211,21 +212,8 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
         device: The target device.
     """
     for i, target in enumerate(scatter_targets):
-        keys, values, counter, capacity = scatter_buffers[i]
+        keys, values, _counter, _overflow, capacity = scatter_buffers[i]
         dest_arr = dest_arrays[i]
-
-        # Read the actual record count.
-        count = int(counter.numpy()[0])
-        if count <= 0:
-            continue
-
-        if count > capacity:
-            raise RuntimeError(
-                f"Deterministic scatter buffer overflow for '{target.array_var_label}': "
-                f"{count} records exceed capacity {capacity}. "
-                "This kernel emits more deterministic scatter records than the current "
-                "static estimate can hold."
-            )
 
         # Select the native sort-reduce function based on value type.
         if target.value_ctype in ("float", "wp::half"):
@@ -239,7 +227,7 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
         fn(
             keys.ptr,
             values.ptr,
-            count,
+            capacity,
             dest_arr.ptr,
             dest_arr.size,
             target.reduce_op,
