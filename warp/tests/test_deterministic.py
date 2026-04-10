@@ -98,6 +98,30 @@ def atomic_double_kernel(
     wp.atomic_add(output, idx, data[tid])
 
 
+@wp.kernel
+def triple_scatter_add_kernel(
+    data: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Emit three deterministic scatter records per thread to the same target."""
+    tid = wp.tid()
+    val = data[tid]
+    wp.atomic_add(output, 0, val)
+    wp.atomic_add(output, 0, val * 2.0)
+    wp.atomic_add(output, 0, val * 3.0)
+
+
+@wp.kernel
+def mixed_reduce_op_same_array_kernel(
+    data: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Apply different atomic reductions to the same destination array."""
+    tid = wp.tid()
+    wp.atomic_add(output, 0, data[tid])
+    wp.atomic_max(output, 0, 1.0)
+
+
 # ---------------------------------------------------------------------------
 # Pattern B kernels: counter/allocator (return value used)
 # ---------------------------------------------------------------------------
@@ -128,6 +152,19 @@ def conditional_counter_kernel(
     if val > threshold:
         slot = wp.atomic_add(counter, 0, 1)
         output[slot] = val
+
+
+@wp.kernel
+def counter_side_effect_kernel(
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+    scratch: wp.array(dtype=wp.float32),
+):
+    """Counter kernel with a normal array write that must not execute in phase 0."""
+    tid = wp.tid()
+    slot = wp.atomic_add(counter, 0, 1)
+    scratch[tid] = scratch[tid] + 1.0
+    output[slot] = float(tid)
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +443,43 @@ def test_atomic_double_deterministic(test, device):
         np.testing.assert_array_equal(results[0], results[i])
 
 
+def test_triple_scatter_capacity_estimate(test, device):
+    """Verify kernels with >2 scatters per thread do not overflow the buffer."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 512
+    rng = np.random.default_rng(12)
+    data_np = rng.random(n, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+
+    results = []
+    for _ in range(3):
+        output = wp.zeros(1, dtype=wp.float32, device=device)
+        wp.launch(triple_scatter_add_kernel, dim=n, inputs=[data], outputs=[output], device=device)
+        results.append(output.numpy().copy())
+
+    expected = np.array([6.0 * data_np.sum()], dtype=np.float32)
+    for result in results:
+        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_mixed_reduce_ops_same_array(test, device):
+    """Verify add/max atomics targeting one array are reduced independently."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    data_np = np.full(4, 0.05, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device)
+
+    wp.launch(mixed_reduce_op_same_array_kernel, dim=data_np.shape[0], inputs=[data], outputs=[output], device=device)
+
+    np.testing.assert_allclose(output.numpy(), np.array([1.0], dtype=np.float32), rtol=0.0, atol=0.0)
+
+
 def test_counter_reproducibility(test, device):
     """Verify counter/allocator pattern produces deterministic slot assignments."""
     if device.is_cpu:
@@ -435,6 +509,22 @@ def test_counter_reproducibility(test, device):
             results[i],
             err_msg=f"Counter run 0 vs run {i} differ",
         )
+
+
+def test_counter_phase0_suppresses_array_writes(test, device):
+    """Verify non-counter array stores are skipped during the counting pass."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 128
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device)
+    scratch = wp.zeros(n, dtype=wp.float32, device=device)
+
+    wp.launch(counter_side_effect_kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
+
+    np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
+    test.assertEqual(int(counter.numpy()[0]), n)
 
 
 def test_counter_correctness(test, device):
@@ -587,6 +677,43 @@ def test_module_option_override(test, device):
         wp.config.deterministic = old_det
 
 
+def test_record_cmd_deterministic_launch(test, device):
+    """Verify ``record_cmd=True`` works for deterministic CUDA launches."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 128
+    out_size = 8
+    rng = np.random.default_rng(19)
+
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(out_size, dtype=wp.float32, device=device)
+
+    cmd = wp.launch(
+        scatter_add_kernel,
+        dim=n,
+        inputs=[data, indices],
+        outputs=[output],
+        device=device,
+        record_cmd=True,
+    )
+
+    np.testing.assert_array_equal(output.numpy(), np.zeros(out_size, dtype=np.float32))
+
+    cmd.launch()
+    expected = output.numpy().copy()
+
+    output_2 = wp.zeros(out_size, dtype=wp.float32, device=device)
+    cmd.set_param_by_name("output", output_2)
+    cmd.launch()
+
+    np.testing.assert_array_equal(output_2.numpy(), expected)
+
+
 # ---------------------------------------------------------------------------
 # Test class registration
 # ---------------------------------------------------------------------------
@@ -624,9 +751,24 @@ add_function_test(TestDeterministic, "test_atomic_add_2d", test_atomic_add_2d, d
 add_function_test(
     TestDeterministic, "test_atomic_double_deterministic", test_atomic_double_deterministic, devices=cuda_devices
 )
+add_function_test(
+    TestDeterministic,
+    "test_triple_scatter_capacity_estimate",
+    test_triple_scatter_capacity_estimate,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic, "test_mixed_reduce_ops_same_array", test_mixed_reduce_ops_same_array, devices=cuda_devices
+)
 
 # Pattern B tests (counter).
 add_function_test(TestDeterministic, "test_counter_reproducibility", test_counter_reproducibility, devices=cuda_devices)
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_suppresses_array_writes",
+    test_counter_phase0_suppresses_array_writes,
+    devices=cuda_devices,
+)
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)
 add_function_test(TestDeterministic, "test_conditional_counter", test_conditional_counter, devices=cuda_devices)
 
@@ -636,6 +778,12 @@ add_function_test(TestDeterministic, "test_mixed_pattern", test_mixed_pattern, d
 # Passthrough / override tests.
 add_function_test(TestDeterministic, "test_int_atomic_passthrough", test_int_atomic_passthrough, devices=all_devices)
 add_function_test(TestDeterministic, "test_module_option_override", test_module_option_override, devices=all_devices)
+add_function_test(
+    TestDeterministic,
+    "test_record_cmd_deterministic_launch",
+    test_record_cmd_deterministic_launch,
+    devices=cuda_devices,
+)
 
 
 if __name__ == "__main__":
