@@ -36,6 +36,52 @@ deterministic without algorithm rewrites.
 - Kernels where counter contributions depend on scratch array writes within the
   same kernel (Phase 0 suppresses all side effects; documented limitation).
 
+## User Configuration
+
+Deterministic mode can be enabled at three scopes:
+
+- **Global**: set ``wp.config.deterministic = True`` before module compilation.
+- **Per shared module**: call ``wp.set_module_options({"deterministic": True})``
+  in the Python module that defines the kernels, just like other module-level
+  options such as ``enable_backward``.
+- **Per kernel**: use a unique module for that kernel and set
+  ``module_options={"deterministic": True}``, for example
+  ``@wp.kernel(module="unique", module_options={"deterministic": True})``.
+
+Like ``enable_backward``, the setting participates in module compilation and
+hashing. A kernel defined in a shared module inherits that module's
+``deterministic`` option; a unique-module kernel can override it independently.
+
+## Supported Operators
+
+Deterministic mode currently handles these atomic builtins:
+
+- ``atomic_add``
+- ``atomic_sub``
+- ``atomic_min``
+- ``atomic_max``
+
+Handling depends on how the atomic is used:
+
+- **Pattern A: accumulation, return value unused**
+  Examples: ``wp.atomic_add(arr, i, value)``, ``arr[i] += value``.
+  Floating-point ``add/sub/min/max`` are redirected through scatter-sort-reduce.
+  Integer ``add/sub/min/max`` with unused return values are left on the normal
+  atomic path because the final value is already deterministic.
+- **Pattern B: counter / allocator, return value consumed**
+  Example: ``slot = wp.atomic_add(counter, 0, 1)``.
+  This is handled with the two-pass count-scan-execute path.
+
+Operators that are not supported by deterministic mode:
+
+- ``atomic_cas``
+- ``atomic_exch``
+- Tile atomics such as ``tile_atomic_add``
+
+Bitwise integer atomics (``atomic_and``, ``atomic_or``, ``atomic_xor``) are not
+transformed because their final results are already deterministic for the
+unused-return case.
+
 ## Design
 
 ### Approach
@@ -85,8 +131,10 @@ automatically.
 during the codegen build phase. The ``_det_in_assign`` flag on the ``Adjoint``
 (set by ``emit_Assign``, cleared after) distinguishes Pattern B (return consumed
 in an assignment like ``slot = wp.atomic_add(...)``) from Pattern A (return
-discarded, as in ``arr[i] += val`` or bare ``wp.atomic_add(...)``).  Integer
-atomics with unused return values are skipped entirely (already deterministic).
+discarded, as in ``arr[i] += val`` or bare ``wp.atomic_add(...)``). Only
+``atomic_add``, ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are
+intercepted. Integer atomics with unused return values are skipped entirely
+(already deterministic).
 
 **CPU/CUDA dual compilation** is handled with ``#ifdef __CUDA_ARCH__`` guards
 in the generated function body.  On CUDA the scatter or phase-branching code
@@ -102,10 +150,11 @@ targets get ``_wp_scatter_keys_N``, ``_wp_scatter_vals_N``,
 (``_launch_deterministic``) allocates these buffers and appends the
 corresponding ctypes params to the launch args.
 
-**Multiple reduction buffers**: each distinct target array gets its own
-independent scatter buffer set. Multiple call sites targeting the same array
-share one buffer. The ``DeterministicMeta`` dataclass on the kernel's
-``Adjoint`` tracks all scatter and counter targets discovered during codegen.
+**Multiple reduction buffers**: each distinct ``(target array, value type,
+reduction op)`` combination gets its own scatter buffer set. Multiple call
+sites with the same target and reduction op share one buffer. The
+``DeterministicMeta`` dataclass on the kernel's ``Adjoint`` tracks all scatter
+and counter targets discovered during codegen.
 
 **Counter total writeback**: after the prefix sum in Phase 0, the launch system
 copies the total count (last element of the inclusive scan) back to the actual
@@ -125,7 +174,7 @@ counter array so user code that reads it post-launch sees the correct value.
 
 ## Testing Strategy
 
-17 tests in ``warp/tests/test_deterministic.py`` cover:
+21 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic=True``, assert ``np.array_equal`` across all runs for
@@ -134,9 +183,16 @@ counter array so user code that reads it post-launch sees the correct value.
   sequential CPU reference within ``rtol=1e-4``.
 - **Multiple arrays**: kernel that atomically adds to three different output
   arrays simultaneously.
+- **Mixed reduce ops on one array**: ``atomic_add`` and ``atomic_max`` targeting
+  the same destination array are reduced independently.
 - **Multi-dimensional indexing**: 2D array ``atomic_add`` with row/col indices.
+- **Scatter capacity accounting**: kernels with more than two deterministic
+  scatters per thread to the same target do not overflow a fixed heuristic
+  buffer.
 - **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, 0, 1);
   output[slot] = data[tid]`` produces identical output arrays across 10 runs.
+- **Phase 0 side-effect suppression**: non-counter array writes are skipped in
+  the counting pass.
 - **Counter correctness**: verifies counter value equals N and output is a
   permutation of input.
 - **Conditional counter**: stream compaction (only elements above threshold),
@@ -146,5 +202,7 @@ counter array so user code that reads it post-launch sees the correct value.
   transformation; result matches ``np.bincount``.
 - **Per-module override**: ``@wp.kernel(module_options={"deterministic": True},
   module="unique")`` works with global config off.
+- **Recorded launch support**: ``wp.launch(..., record_cmd=True)`` works for
+  deterministic CUDA kernels.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.

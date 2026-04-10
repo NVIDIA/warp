@@ -1290,8 +1290,9 @@ def kernel(
             after the kernel name and hash. If ``None``, the module is
             inferred from the function's module.
         module_options: A dict of module-level compilation options
-            (e.g. ``fast_math``, ``mode``, ``max_unroll``) that are
-            applied to the kernel's module. Requires
+            (e.g. ``fast_math``, ``mode``, ``max_unroll``,
+            ``deterministic``) that are applied to the kernel's
+            module. Requires
             ``module="unique"``; raises ``ValueError`` otherwise.
             For shared modules, use :func:`warp.set_module_options`
             instead. See :func:`warp.set_module_options` for the full
@@ -8621,6 +8622,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
+    * **deterministic**: Enable deterministic handling for supported atomic operations. If ``None`` (the default), defers to ``warp.config.deterministic`` at compile time.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
