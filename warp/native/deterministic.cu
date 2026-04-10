@@ -33,6 +33,24 @@ enum ReduceOp {
     REDUCE_MAX = 2,
 };
 
+enum ScalarType {
+    SCALAR_HALF = 0,
+    SCALAR_FLOAT = 1,
+    SCALAR_DOUBLE = 2,
+    SCALAR_INT = 3,
+    SCALAR_UINT = 4,
+    SCALAR_INT64 = 5,
+    SCALAR_UINT64 = 6,
+};
+
+__global__ void init_record_indices_kernel(int* indices, int count)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < count) {
+        indices[tid] = tid;
+    }
+}
+
 // Kernel that walks the sorted scatter records and applies a deterministic
 // segmented reduction.  Each thread handles one contiguous run of records that
 // target the same destination index.
@@ -43,8 +61,10 @@ enum ReduceOp {
 template <typename T>
 __global__ void deterministic_reduce_kernel(
     const int64_t* __restrict__ sorted_keys,
-    const T* __restrict__ sorted_values,
+    const int* __restrict__ sorted_indices,
+    const T* __restrict__ values,
     int num_records,
+    int components,
     T* __restrict__ dest_array,
     int dest_size,
     int op
@@ -62,38 +82,41 @@ __global__ void deterministic_reduce_kernel(
     if (!is_head)
         return;
 
-    // Accumulate the segment sequentially (deterministic left-to-right order).
-    T accum = sorted_values[tid];
-    for (int i = tid + 1; i < num_records; ++i) {
-        if (dest_index_from_key(sorted_keys[i]) != my_dest)
-            break;
-        T val = sorted_values[i];
-        switch (op) {
-        case REDUCE_ADD:
-            accum = accum + val;
-            break;
-        case REDUCE_MIN:
-            accum = (val < accum) ? val : accum;
-            break;
-        case REDUCE_MAX:
-            accum = (val > accum) ? val : accum;
-            break;
-        }
-    }
+    if (my_dest < 0 || my_dest >= dest_size)
+        return;
 
-    // Apply to destination.
-    if (my_dest >= 0 && my_dest < dest_size) {
+    int base = sorted_indices[tid] * components;
+    int dest_base = my_dest * components;
+
+    // Accumulate the segment sequentially (deterministic left-to-right order).
+    for (int c = 0; c < components; ++c) {
+        T accum = values[base + c];
+        for (int i = tid + 1; i < num_records; ++i) {
+            if (dest_index_from_key(sorted_keys[i]) != my_dest)
+                break;
+            T val = values[sorted_indices[i] * components + c];
+            switch (op) {
+            case REDUCE_ADD:
+                accum = accum + val;
+                break;
+            case REDUCE_MIN:
+                accum = wp::min(accum, val);
+                break;
+            case REDUCE_MAX:
+                accum = wp::max(accum, val);
+                break;
+            }
+        }
+
         switch (op) {
         case REDUCE_ADD:
-            dest_array[my_dest] = dest_array[my_dest] + accum;
+            dest_array[dest_base + c] = dest_array[dest_base + c] + accum;
             break;
         case REDUCE_MIN:
-            if (accum < dest_array[my_dest])
-                dest_array[my_dest] = accum;
+            dest_array[dest_base + c] = wp::min(dest_array[dest_base + c], accum);
             break;
         case REDUCE_MAX:
-            if (accum > dest_array[my_dest])
-                dest_array[my_dest] = accum;
+            dest_array[dest_base + c] = wp::max(dest_array[dest_base + c], accum);
             break;
         }
     }
@@ -102,7 +125,9 @@ __global__ void deterministic_reduce_kernel(
 // Sort the scatter buffer by key using CUB radix sort, then launch the
 // reduce kernel.
 template <typename T>
-void deterministic_sort_reduce_device(int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op)
+void deterministic_sort_reduce_device(
+    int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op, int components
+)
 {
     if (count <= 0)
         return;
@@ -114,42 +139,38 @@ void deterministic_sort_reduce_device(int64_t* keys, T* values, int count, T* de
     // The input buffers have a fixed capacity. Unused slots are initialized
     // with key == -1, which sorts to the end and is ignored by the reduce
     // kernel.
-    // We need a double-buffer for CUB's SortPairs.
-    // Allocate alternate buffers for keys and values.
+    // Sort keys together with record indices, then reduce from the original
+    // value buffer component-wise.
     ScopedTemporary<int64_t> alt_keys(WP_CURRENT_CONTEXT, count);
-    ScopedTemporary<T> alt_values(WP_CURRENT_CONTEXT, count);
+    ScopedTemporary<int> record_indices(WP_CURRENT_CONTEXT, count);
+    ScopedTemporary<int> alt_record_indices(WP_CURRENT_CONTEXT, count);
+
+    const int block_size = 256;
+    const int num_blocks = (count + block_size - 1) / block_size;
+    init_record_indices_kernel<<<num_blocks, block_size, 0, stream>>>(record_indices.buffer(), count);
 
     cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys.buffer());
-    cub::DoubleBuffer<T> d_values(values, alt_values.buffer());
+    cub::DoubleBuffer<int> d_indices(record_indices.buffer(), alt_record_indices.buffer());
 
     size_t sort_temp_size = 0;
     check_cuda(
         cub::DeviceRadixSort::SortPairs(
-            nullptr, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+            nullptr, sort_temp_size, d_keys, d_indices, count, 0, sizeof(int64_t) * 8, stream
         )
     );
 
     void* sort_temp = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
     check_cuda(
         cub::DeviceRadixSort::SortPairs(
-            sort_temp, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+            sort_temp, sort_temp_size, d_keys, d_indices, count, 0, sizeof(int64_t) * 8, stream
         )
     );
     wp_free_device(WP_CURRENT_CONTEXT, sort_temp);
 
-    // Copy results back if CUB put them in the alternate buffer.
-    if (d_keys.Current() != keys) {
-        wp_memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(int64_t) * count);
-    }
-    if (d_values.Current() != values) {
-        wp_memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(T) * count);
-    }
-
     // --- Segmented reduce ---
-    const int block_size = 256;
-    const int num_blocks = (count + block_size - 1) / block_size;
-    deterministic_reduce_kernel<T>
-        <<<num_blocks, block_size, 0, stream>>>(keys, values, count, dest_array, dest_size, op);
+    deterministic_reduce_kernel<T><<<num_blocks, block_size, 0, stream>>>(
+        d_keys.Current(), d_indices.Current(), values, count, components, dest_array, dest_size, op
+    );
 }
 
 }  // anonymous namespace
@@ -158,22 +179,61 @@ void deterministic_sort_reduce_device(int64_t* keys, T* values, int count, T* de
 // Public API entry points called from the Python runtime via ctypes.
 // Arguments are passed as uint64_t pointers (matching the Warp convention).
 
-void wp_deterministic_sort_reduce_float_device(
-    uint64_t keys, uint64_t values, int count, uint64_t dest_array, int dest_size, int op
+void wp_deterministic_sort_reduce_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t dest_array,
+    int dest_size,
+    int op,
+    int scalar_type,
+    int components
 )
 {
-    deterministic_sort_reduce_device<float>(
-        reinterpret_cast<int64_t*>(keys), reinterpret_cast<float*>(values), count, reinterpret_cast<float*>(dest_array),
-        dest_size, op
-    );
-}
-
-void wp_deterministic_sort_reduce_double_device(
-    uint64_t keys, uint64_t values, int count, uint64_t dest_array, int dest_size, int op
-)
-{
-    deterministic_sort_reduce_device<double>(
-        reinterpret_cast<int64_t*>(keys), reinterpret_cast<double*>(values), count,
-        reinterpret_cast<double*>(dest_array), dest_size, op
-    );
+    switch (scalar_type) {
+    case SCALAR_HALF:
+        deterministic_sort_reduce_device<wp::half>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<wp::half*>(values), count,
+            reinterpret_cast<wp::half*>(dest_array), dest_size, op, components
+        );
+        break;
+    case SCALAR_FLOAT:
+        deterministic_sort_reduce_device<float>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<float*>(values), count,
+            reinterpret_cast<float*>(dest_array), dest_size, op, components
+        );
+        break;
+    case SCALAR_DOUBLE:
+        deterministic_sort_reduce_device<double>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<double*>(values), count,
+            reinterpret_cast<double*>(dest_array), dest_size, op, components
+        );
+        break;
+    case SCALAR_INT:
+        deterministic_sort_reduce_device<int>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<int*>(values), count, reinterpret_cast<int*>(dest_array),
+            dest_size, op, components
+        );
+        break;
+    case SCALAR_UINT:
+        deterministic_sort_reduce_device<unsigned int>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<unsigned int*>(values), count,
+            reinterpret_cast<unsigned int*>(dest_array), dest_size, op, components
+        );
+        break;
+    case SCALAR_INT64:
+        deterministic_sort_reduce_device<int64_t>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<int64_t*>(values), count,
+            reinterpret_cast<int64_t*>(dest_array), dest_size, op, components
+        );
+        break;
+    case SCALAR_UINT64:
+        deterministic_sort_reduce_device<uint64_t>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<uint64_t*>(values), count,
+            reinterpret_cast<uint64_t*>(dest_array), dest_size, op, components
+        );
+        break;
+    default:
+        break;
+    }
 }

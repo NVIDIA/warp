@@ -67,7 +67,9 @@ Handling depends on how the atomic is used:
 
 - **Pattern A: accumulation, return value unused**
   Examples: ``wp.atomic_add(arr, i, value)``, ``arr[i] += value``.
-  Floating-point ``add/sub/min/max`` are redirected through scatter-sort-reduce.
+  Floating-point ``add/sub/min/max`` on scalar and composite leaf types are
+  redirected through scatter-sort-reduce. This includes vectors, matrices,
+  quaternions, and transforms with floating-point components.
   Integer ``add/sub/min/max`` with unused return values are left on the normal
   atomic path because the final value is already deterministic.
 - **Pattern B: counter / allocator, return value consumed**
@@ -95,12 +97,13 @@ the user:
 
 Instead of performing ``atomic_add`` in-place during kernel execution, each
 thread writes a ``(sort_key, value)`` record to a temporary scatter buffer. The
-sort key packs ``(dest_index << 32 | thread_id)``.  After the kernel completes,
-a CUB radix sort orders the fixed-capacity scatter buffer, then a custom CUDA
-kernel walks the sorted records and accumulates each destination's values
-left-to-right in a fixed (thread-id) order. Unused buffer slots are initialized
-with an invalid sentinel key and sort to the end. This avoids host-side scatter
-count readbacks and keeps the path compatible with CUDA graph capture.
+sort key packs ``(dest_index << 32 | thread_id)``. After the kernel completes,
+a CUB radix sort orders the fixed-capacity scatter buffer by key and record
+index, then a custom CUDA kernel walks the sorted records and accumulates each
+destination's scalar components left-to-right in a fixed (thread-id) order.
+Unused buffer slots are initialized with an invalid sentinel key and sort to
+the end. This avoids host-side scatter count readbacks and keeps the path
+compatible with CUDA graph capture.
 
 **Pattern B --- Two-Pass Execution** (counter/allocator, return value used):
 
@@ -185,11 +188,14 @@ counter array so user code that reads it post-launch sees the correct value.
 
 ## Testing Strategy
 
-23 tests in ``warp/tests/test_deterministic.py`` cover:
+29 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic=True``, assert ``np.array_equal`` across all runs for
   float32 scatter-add, ``+=`` syntax, float64, and atomic-sub.
+- **Composite leaf types**: deterministic ``wp.vec3`` atomic-add and
+  component-wise ``atomic_min``/``atomic_max``, plus deterministic ``wp.mat33``
+  atomic-add.
 - **Correctness** (Pattern A): compare GPU deterministic output against a
   sequential CPU reference within ``rtol=1e-4``.
 - **Multiple arrays**: kernel that atomically adds to three different output
@@ -218,6 +224,6 @@ counter array so user code that reads it post-launch sees the correct value.
 - **Recorded launch support**: ``wp.launch(..., record_cmd=True)`` works for
   deterministic CUDA kernels.
 - **Graph capture support**: deterministic scatter launches can be captured and
-  replayed with CUDA graphs.
+  replayed with CUDA graphs, including composite ``wp.vec3`` reductions.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.

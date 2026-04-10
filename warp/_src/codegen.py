@@ -2005,10 +2005,9 @@ class Adjoint:
         arr_var = args_list[0]  # the target array
         index_vars = args_list[1:-1]  # the index arguments (1-4 depending on ndim)
 
-        # Determine the scalar dtype of the array.
         arr_type = arr_var.type
-        scalar_dtype = arr_type.dtype
-        # For vector/matrix types, get the underlying scalar type
+        value_dtype = arr_type.dtype
+        scalar_dtype = value_dtype
         if hasattr(scalar_dtype, "_wp_scalar_type_"):
             scalar_dtype = scalar_dtype._wp_scalar_type_
 
@@ -2024,7 +2023,8 @@ class Adjoint:
         if not is_float_type(scalar_dtype) and not return_is_consumed:
             return None  # fall through to normal codegen
 
-        value_ctype = warp_type_to_ctype(scalar_dtype)
+        value_ctype = Var.dtype_to_ctype(value_dtype)
+        scalar_ctype = warp_type_to_ctype(scalar_dtype)
 
         # C++ zero literal for the value type.
         # Cannot use "float(0)" because Warp defines a macro #define float(x) cast_float(x).
@@ -2037,7 +2037,7 @@ class Adjoint:
             "int64_t": "int64_t(0)",
             "uint64_t": "uint64_t(0)",
         }
-        zero_literal = _ZERO_LITERALS.get(value_ctype, f"{value_ctype}(0)")
+        zero_literal = _ZERO_LITERALS.get(scalar_ctype, f"{scalar_ctype}(0)")
 
         # Map from builtin name to reduction op
         op_map = {
@@ -2069,7 +2069,7 @@ class Adjoint:
 
         if return_is_consumed:
             # Pattern B: Counter/Allocator
-            target = get_or_create_counter_target(adj.det_meta, arr_var.label, value_ctype)
+            target = get_or_create_counter_target(adj.det_meta, arr_var.label, scalar_ctype)
             N = target.index
 
             val_loaded = loaded_args[-1]  # already loaded above
@@ -2080,7 +2080,7 @@ class Adjoint:
                 f"_wp_det_contrib_{N}[_idx] += var_{val_loaded}; "
                 f"var_{output} = {zero_literal}; "
                 f"}} else {{ "
-                f"var_{output} = static_cast<{value_ctype}>(_wp_det_prefix_{N}[_idx]); "
+                f"var_{output} = static_cast<{scalar_ctype}>(_wp_det_prefix_{N}[_idx]); "
                 f"_wp_det_prefix_{N}[_idx] += var_{val_loaded}; "
                 f"}}",
                 replay="// deterministic counter replay (skipped)",
@@ -2091,7 +2091,14 @@ class Adjoint:
             return output
 
         # Pattern A: Accumulation (return value unused)
-        target = get_or_create_scatter_target(adj.det_meta, arr_var.label, value_ctype, reduce_op)
+        target = get_or_create_scatter_target(
+            adj.det_meta,
+            arr_var.label,
+            value_dtype,
+            value_ctype,
+            scalar_dtype,
+            reduce_op,
+        )
         N = target.index
 
         arr_loaded = loaded_args[0]

@@ -56,7 +56,9 @@ class ScatterTarget:
     """Tracks a Pattern A (accumulation) atomic target array during codegen."""
 
     array_var_label: str  # label of the target array Var
-    value_ctype: str  # C type of the value (e.g., "float", "double")
+    value_dtype: type  # Warp dtype of the accumulated value (e.g., wp.float32, wp.vec3)
+    value_ctype: str  # C type of the value (e.g., "float", "wp::vec_t<3, float>")
+    scalar_dtype: type  # scalar component dtype (e.g., wp.float32)
     reduce_op: int  # REDUCE_OP_ADD, REDUCE_OP_MIN, or REDUCE_OP_MAX
     index: int = 0  # scatter buffer index (assigned during codegen)
     records_per_thread: int = 1  # static estimate of emitted records per thread
@@ -95,7 +97,7 @@ class DeterministicMeta:
         return self.has_scatter or self.has_counter
 
 
-def get_or_create_scatter_target(meta, array_var_label, value_ctype, reduce_op):
+def get_or_create_scatter_target(meta, array_var_label, value_dtype, value_ctype, scalar_dtype, reduce_op):
     """Get existing scatter target for an array, or create a new one.
 
     Multiple atomic call sites targeting the same array and reduction op share
@@ -104,14 +106,18 @@ def get_or_create_scatter_target(meta, array_var_label, value_ctype, reduce_op):
     for target in meta.scatter_targets:
         if (
             target.array_var_label == array_var_label
+            and target.value_dtype == value_dtype
             and target.value_ctype == value_ctype
+            and target.scalar_dtype == scalar_dtype
             and target.reduce_op == reduce_op
         ):
             target.records_per_thread += 1
             return target
     target = ScatterTarget(
         array_var_label=array_var_label,
+        value_dtype=value_dtype,
         value_ctype=value_ctype,
+        scalar_dtype=scalar_dtype,
         reduce_op=reduce_op,
         index=len(meta.scatter_targets),
     )
@@ -147,6 +153,16 @@ _WARP_TO_CTYPE = {
     warp.uint64: "uint64_t",
 }
 
+_SCALAR_TYPE_IDS = {
+    warp.float16: 0,
+    warp.float32: 1,
+    warp.float64: 2,
+    warp.int32: 3,
+    warp.uint32: 4,
+    warp.int64: 5,
+    warp.uint64: 6,
+}
+
 
 def warp_type_to_ctype(dtype) -> str:
     """Map a Warp scalar type to its C++ type string."""
@@ -159,6 +175,14 @@ def warp_type_to_ctype(dtype) -> str:
 def is_float_type(dtype) -> bool:
     """Return True if dtype is a Warp floating-point type."""
     return dtype in (warp.float16, warp.float32, warp.float64)
+
+
+def warp_scalar_type_to_id(dtype) -> int:
+    """Map a Warp scalar type to the native deterministic reducer enum."""
+    type_id = _SCALAR_TYPE_IDS.get(dtype)
+    if type_id is None:
+        raise ValueError(f"Unsupported scalar type for deterministic atomic: {dtype}")
+    return type_id
 
 
 # ---------------------------------------------------------------------------
@@ -174,14 +198,8 @@ def allocate_scatter_buffers(scatter_targets, dim_size, device, min_capacity=0):
     buffers = []
     for target in scatter_targets:
         capacity = max(dim_size * target.records_per_thread, 1024, min_capacity)
-        dtype_map = {
-            "float": warp.float32,
-            "double": warp.float64,
-            "wp::half": warp.float16,
-        }
-        val_dtype = dtype_map.get(target.value_ctype, warp.float32)
         keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
-        values = warp.zeros(shape=(capacity,), dtype=val_dtype, device=device)
+        values = warp.zeros(shape=(capacity,), dtype=target.value_dtype, device=device)
         counter = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
         overflow = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
         buffers.append((keys, values, counter, overflow, capacity))
@@ -215,20 +233,19 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
         keys, values, _counter, _overflow, capacity = scatter_buffers[i]
         dest_arr = dest_arrays[i]
 
-        # Select the native sort-reduce function based on value type.
-        if target.value_ctype in ("float", "wp::half"):
-            fn = runtime.core.wp_deterministic_sort_reduce_float_device
-        elif target.value_ctype == "double":
-            fn = runtime.core.wp_deterministic_sort_reduce_double_device
-        else:
+        try:
+            scalar_type_id = warp_scalar_type_to_id(target.scalar_dtype)
+        except ValueError:
             warp_utils.warn(f"Unsupported value type '{target.value_ctype}' for deterministic sort-reduce.")
             continue
 
-        fn(
+        runtime.core.wp_deterministic_sort_reduce_device(
             keys.ptr,
             values.ptr,
             capacity,
             dest_arr.ptr,
             dest_arr.size,
             target.reduce_op,
+            scalar_type_id,
+            getattr(target.value_dtype, "_length_", 1),
         )
