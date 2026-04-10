@@ -4463,20 +4463,15 @@ class Runtime:
                 ctypes.c_int,
             ]
 
-            # Deterministic mode: sort-reduce for scatter buffers
-            self.core.wp_deterministic_sort_reduce_float_device.argtypes = [
+            # Deterministic mode: sort scatter records and apply
+            # component-wise segmented reduction for scalar/composite values.
+            self.core.wp_deterministic_sort_reduce_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_int,
-            ]
-            self.core.wp_deterministic_sort_reduce_double_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_int,
             ]

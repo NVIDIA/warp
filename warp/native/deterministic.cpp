@@ -9,13 +9,16 @@
 
 #if !WP_ENABLE_CUDA
 
-void wp_deterministic_sort_reduce_float_device(
-    uint64_t keys, uint64_t values, int count, uint64_t dest_array, int dest_size, int op)
-{
-}
-
-void wp_deterministic_sort_reduce_double_device(
-    uint64_t keys, uint64_t values, int count, uint64_t dest_array, int dest_size, int op)
+void wp_deterministic_sort_reduce_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t dest_array,
+    int dest_size,
+    int op,
+    int scalar_type,
+    int components
+)
 {
 }
 

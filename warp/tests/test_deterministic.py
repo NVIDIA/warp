@@ -98,6 +98,41 @@ def atomic_double_kernel(
     wp.atomic_add(output, idx, data[tid])
 
 
+@wp.kernel
+def vec3_scatter_add_kernel(
+    data: wp.array(dtype=wp.vec3),
+    dest_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.vec3),
+):
+    """Atomic add with ``wp.vec3`` values."""
+    tid = wp.tid()
+    wp.atomic_add(output, dest_indices[tid], data[tid])
+
+
+@wp.kernel
+def vec3_atomic_minmax_kernel(
+    points: wp.array(dtype=wp.vec3),
+    out_min: wp.array(dtype=wp.vec3),
+    out_max: wp.array(dtype=wp.vec3),
+):
+    """Component-wise deterministic min/max for bounding-box style reductions."""
+    tid = wp.tid()
+    p = points[tid]
+    wp.atomic_min(out_min, 0, p)
+    wp.atomic_max(out_max, 0, p)
+
+
+@wp.kernel
+def mat33_scatter_add_kernel(
+    data: wp.array(dtype=wp.mat33),
+    dest_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.mat33),
+):
+    """Atomic add with ``wp.mat33`` values."""
+    tid = wp.tid()
+    wp.atomic_add(output, dest_indices[tid], data[tid])
+
+
 @wp.kernel(deterministic=True, deterministic_capacity=4096)
 def decorator_deterministic_kernel(
     data: wp.array(dtype=wp.float32),
@@ -471,6 +506,101 @@ def test_atomic_double_deterministic(test, device):
         )
         results.append(output.numpy().copy())
 
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_vec3_atomic_add_deterministic(test, device):
+    """Verify deterministic mode for composite ``wp.vec3`` atomic adds."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 1024
+    out_size = 16
+    rng = np.random.default_rng(67)
+
+    data_np = rng.standard_normal((n, 3), dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.vec3, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(5):
+        output = wp.zeros(out_size, dtype=wp.vec3, device=device)
+        wp.launch(vec3_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+        results.append(output.numpy().copy())
+
+    expected = np.zeros((out_size, 3), dtype=np.float32)
+    for i in range(n):
+        expected[indices_np[i]] += data_np[i]
+
+    for result in results:
+        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_vec3_atomic_minmax_deterministic(test, device):
+    """Verify deterministic component-wise ``wp.vec3`` min/max reductions."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 2048
+    rng = np.random.default_rng(68)
+    points_np = rng.standard_normal((n, 3), dtype=np.float32)
+    points = wp.array(points_np, dtype=wp.vec3, device=device)
+
+    mins = []
+    maxs = []
+    for _ in range(5):
+        out_min = wp.empty(1, dtype=wp.vec3, device=device)
+        out_max = wp.empty(1, dtype=wp.vec3, device=device)
+        out_min.fill_(wp.vec3(np.inf, np.inf, np.inf))
+        out_max.fill_(wp.vec3(-np.inf, -np.inf, -np.inf))
+        wp.launch(vec3_atomic_minmax_kernel, dim=n, inputs=[points], outputs=[out_min, out_max], device=device)
+        mins.append(out_min.numpy().copy())
+        maxs.append(out_max.numpy().copy())
+
+    expected_min = np.min(points_np, axis=0, keepdims=True)
+    expected_max = np.max(points_np, axis=0, keepdims=True)
+
+    for result in mins:
+        np.testing.assert_allclose(result, expected_min, rtol=0.0, atol=0.0)
+    for result in maxs:
+        np.testing.assert_allclose(result, expected_max, rtol=0.0, atol=0.0)
+    for i in range(1, len(mins)):
+        np.testing.assert_array_equal(mins[0], mins[i])
+        np.testing.assert_array_equal(maxs[0], maxs[i])
+
+
+def test_mat33_atomic_add_deterministic(test, device):
+    """Verify deterministic mode for composite ``wp.mat33`` atomic adds."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 512
+    out_size = 8
+    rng = np.random.default_rng(69)
+
+    data_np = rng.standard_normal((n, 3, 3), dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.mat33, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(5):
+        output = wp.zeros(out_size, dtype=wp.mat33, device=device)
+        wp.launch(mat33_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+        results.append(output.numpy().copy())
+
+    expected = np.zeros((out_size, 3, 3), dtype=np.float32)
+    for i in range(n):
+        expected[indices_np[i]] += data_np[i]
+
+    for result in results:
+        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
     for i in range(1, len(results)):
         np.testing.assert_array_equal(results[0], results[i])
 
@@ -862,6 +992,46 @@ def test_graph_capture_deterministic_closure_kernel(test, device):
     np.testing.assert_array_equal(first, second)
 
 
+def test_graph_capture_vec3_atomic_minmax(test, device):
+    """Verify composite deterministic reductions remain capture-safe."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    n = 512
+    rng = np.random.default_rng(70)
+    points_np = rng.standard_normal((n, 3), dtype=np.float32)
+    points = wp.array(points_np, dtype=wp.vec3, device=device)
+
+    out_min = wp.empty(1, dtype=wp.vec3, device=device)
+    out_max = wp.empty(1, dtype=wp.vec3, device=device)
+    min_init = wp.vec3(np.inf, np.inf, np.inf)
+    max_init = wp.vec3(-np.inf, -np.inf, -np.inf)
+
+    out_min.fill_(min_init)
+    out_max.fill_(max_init)
+    wp.launch(vec3_atomic_minmax_kernel, dim=n, inputs=[points], outputs=[out_min, out_max], device=device)
+    out_min.fill_(min_init)
+    out_max.fill_(max_init)
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(vec3_atomic_minmax_kernel, dim=n, inputs=[points], outputs=[out_min, out_max], device=device)
+
+    wp.capture_launch(capture.graph)
+    first_min = out_min.numpy().copy()
+    first_max = out_max.numpy().copy()
+
+    out_min.fill_(min_init)
+    out_max.fill_(max_init)
+    wp.capture_launch(capture.graph)
+    second_min = out_min.numpy().copy()
+    second_max = out_max.numpy().copy()
+
+    np.testing.assert_array_equal(first_min, second_min)
+    np.testing.assert_array_equal(first_max, second_max)
+    np.testing.assert_allclose(first_min, np.min(points_np, axis=0, keepdims=True), rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(first_max, np.max(points_np, axis=0, keepdims=True), rtol=0.0, atol=0.0)
+
+
 # ---------------------------------------------------------------------------
 # Test class registration
 # ---------------------------------------------------------------------------
@@ -898,6 +1068,18 @@ add_function_test(
 add_function_test(TestDeterministic, "test_atomic_add_2d", test_atomic_add_2d, devices=cuda_devices)
 add_function_test(
     TestDeterministic, "test_atomic_double_deterministic", test_atomic_double_deterministic, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic, "test_vec3_atomic_add_deterministic", test_vec3_atomic_add_deterministic, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_vec3_atomic_minmax_deterministic",
+    test_vec3_atomic_minmax_deterministic,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic, "test_mat33_atomic_add_deterministic", test_mat33_atomic_add_deterministic, devices=cuda_devices
 )
 add_function_test(
     TestDeterministic,
@@ -948,6 +1130,12 @@ add_function_test(
     TestDeterministic,
     "test_graph_capture_deterministic_closure_kernel",
     test_graph_capture_deterministic_closure_kernel,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_graph_capture_vec3_atomic_minmax",
+    test_graph_capture_vec3_atomic_minmax,
     devices=cuda_devices,
 )
 
