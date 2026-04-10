@@ -2480,6 +2480,7 @@ class Module:
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
+            "deterministic": None,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2517,6 +2518,10 @@ class Module:
         # Resolve None-means-inherit for enable_mathdx_gemm
         if options["enable_mathdx_gemm"] is None:
             options["enable_mathdx_gemm"] = config.enable_mathdx_gemm
+
+        # Resolve None-means-inherit for deterministic
+        if options["deterministic"] is None:
+            options["deterministic"] = config.deterministic
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -4426,6 +4431,24 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+
+            # Deterministic mode: sort-reduce for scatter buffers
+            self.core.wp_deterministic_sort_reduce_float_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_sort_reduce_double_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
                 ctypes.c_int,
             ]
 
@@ -7421,6 +7444,135 @@ class Launch:
                 )
 
 
+def _launch_deterministic(
+    kernel, hooks, user_params, bounds, device, stream, max_blocks, block_dim, det_meta, fwd_args
+):
+    """Orchestrate a deterministic kernel launch with scatter-sort-reduce and/or two-pass execution.
+
+    This is called from launch() when deterministic mode is active and the
+    kernel has atomic operations that require deterministic treatment.
+    """
+    from warp._src.deterministic import (  # noqa: PLC0415
+        allocate_counter_buffers,
+        allocate_scatter_buffers,
+        run_sort_reduce,
+    )
+
+    dim_size = bounds.size
+
+    # Allocate buffers.
+    scatter_bufs = allocate_scatter_buffers(det_meta.scatter_targets, dim_size, device) if det_meta.has_scatter else []
+    counter_bufs = allocate_counter_buffers(det_meta.counter_targets, dim_size, device) if det_meta.has_counter else []
+
+    # Build the extra deterministic parameters (must match codegen_kernel order).
+    def build_det_params(phase, scatter_bufs, counter_bufs, use_scatter):
+        det_params = []
+        if det_meta.has_counter:
+            det_params.append(ctypes.c_int(phase))
+            for i, _ct in enumerate(det_meta.counter_targets):
+                contrib, prefix = counter_bufs[i]
+                if phase == 0:
+                    det_params.append(ctypes.c_void_p(contrib.ptr))
+                    det_params.append(ctypes.c_void_p(0))  # prefix not used in phase 0
+                else:
+                    det_params.append(ctypes.c_void_p(0))  # contrib not used in phase 1
+                    det_params.append(ctypes.c_void_p(prefix.ptr))
+        for i, _st in enumerate(det_meta.scatter_targets):
+            if use_scatter and i < len(scatter_bufs):
+                keys, values, counter, capacity = scatter_bufs[i]
+                det_params.append(ctypes.c_void_p(keys.ptr))
+                det_params.append(ctypes.c_void_p(values.ptr))
+                det_params.append(ctypes.c_void_p(counter.ptr))
+                det_params.append(ctypes.c_int(capacity))
+            else:
+                # Null scatter buffers (phase 0 doesn't scatter).
+                det_params.append(ctypes.c_void_p(0))
+                det_params.append(ctypes.c_void_p(0))
+                det_params.append(ctypes.c_void_p(0))
+                det_params.append(ctypes.c_int(0))
+        return det_params
+
+    def do_cuda_launch(hook, params_list):
+        kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params_list]
+        kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+        runtime.core.wp_cuda_launch_kernel(
+            device.context,
+            hook,
+            bounds.size,
+            max_blocks,
+            block_dim,
+            hooks.forward_smem_bytes,
+            kernel_params,
+            stream.cuda_stream,
+        )
+
+    if det_meta.has_counter:
+        # === Two-pass execution ===
+
+        # Phase 0: counting pass (side effects suppressed, scatter disabled).
+        det_params_p0 = build_det_params(
+            phase=0, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=False
+        )
+        # Append det params after all user args (matches codegen_kernel order:
+        # dim, user_args..., det_params...).
+        params_p0 = [*user_params, *det_params_p0]
+        do_cuda_launch(hooks.forward, params_p0)
+
+        # Prefix sum on each counter's contributions, then update the real counter.
+        for i, ct in enumerate(det_meta.counter_targets):
+            contrib, prefix = counter_bufs[i]
+            warp._src.utils.array_scan(contrib, prefix, inclusive=False)
+
+            # Write the total count to the actual counter array so user code
+            # that reads it after the launch sees the correct value.
+            # Total = exclusive_prefix[-1] + contrib[-1].
+            total_arr = warp.empty(shape=(1,), dtype=warp.int32, device=device)
+            # Use inclusive scan's last element = total
+            inclusive_out = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
+            warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
+            # Find the counter array in fwd_args and add the total.
+            for j, arg in enumerate(kernel.adj.args):
+                if arg.label == ct.array_var_label:
+                    counter_arr = fwd_args[j]
+                    # Copy the total (last element of inclusive scan) to the counter.
+                    warp.copy(counter_arr, inclusive_out, dest_offset=0, src_offset=dim_size - 1, count=1)
+                    break
+
+        # Phase 1: execution pass with deterministic slots.
+        det_params_p1 = build_det_params(
+            phase=1, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=True
+        )
+        params_p1 = [*user_params, *det_params_p1]
+        do_cuda_launch(hooks.forward, params_p1)
+
+    else:
+        # === Single-pass (scatter only) ===
+        det_params = build_det_params(phase=1, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=True)
+        params_all = [*user_params, *det_params]
+        do_cuda_launch(hooks.forward, params_all)
+
+    # Post-kernel: sort-reduce for Pattern A scatter targets.
+    if det_meta.has_scatter:
+        # Identify the destination arrays from fwd_args.
+        dest_arrays = []
+        for st in det_meta.scatter_targets:
+            # Find the array argument whose label matches the scatter target.
+            dest_arr = None
+            for j, arg in enumerate(kernel.adj.args):
+                if arg.label == st.array_var_label:
+                    dest_arr = fwd_args[j]
+                    break
+            dest_arrays.append(dest_arr)
+
+        run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device)
+
+    try:
+        runtime.verify_cuda_device(device)
+    except Exception as e:
+        print(f"Error in deterministic kernel launch: {kernel.key} on device {device}")
+        raise e
+
+
 def launch(
     kernel,
     dim: int | Sequence[int],
@@ -7537,6 +7689,34 @@ def launch(
 
         pack_args(fwd_args, params, adjoint=False)
         pack_args(adj_args, params, adjoint=True)
+
+        # Deterministic mode: redirect to multi-pass launcher for CUDA forward pass.
+        det_meta = getattr(kernel.adj, "det_meta", None)
+        if det_meta is not None and det_meta.needs_deterministic and device.is_cuda and not adjoint:
+            if stream is None:
+                stream = device.stream
+            _launch_deterministic(
+                kernel,
+                hooks,
+                params,
+                bounds,
+                device,
+                stream,
+                max_blocks,
+                block_dim,
+                det_meta,
+                fwd_args,
+            )
+            # Record on tape if one is active (same logic as below).
+            if runtime.tape and record_tape:
+                frame = inspect.currentframe().f_back
+                caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
+                runtime.tape.record_launch(
+                    kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
+                )
+                if warp.config.verify_autograd_array_access:
+                    runtime.tape._check_kernel_array_access(kernel, fwd_args)
+            return
 
         # run kernel
         if device.is_cpu:

@@ -324,6 +324,14 @@ wp_runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_
 WP_API void
 wp_runlength_encode_int_device(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
 
+// Deterministic mode: sort scatter buffer and apply segmented reduction.
+WP_API void wp_deterministic_sort_reduce_float_device(
+    uint64_t keys, uint64_t values, int count, uint64_t dest_array, int dest_size, int op
+);
+WP_API void wp_deterministic_sort_reduce_double_device(
+    uint64_t keys, uint64_t values, int count, uint64_t dest_array, int dest_size, int op
+);
+
 WP_API void wp_bsr_matrix_from_triplets_host(
     int block_size,
     int scalar_size_in_bytes,

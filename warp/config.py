@@ -257,6 +257,31 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
+deterministic: bool = False
+"""Enable deterministic execution mode for atomic operations.
+
+When enabled, floating-point atomic operations (``atomic_add``, ``atomic_sub``,
+``atomic_min``, ``atomic_max``) and counter-pattern atomics (where the return value
+is used for slot allocation) produce bit-exact reproducible results across runs.
+
+Accumulation atomics are deferred to a post-kernel sort-reduce step that processes
+values in a fixed order. Counter atomics use a two-pass execution scheme (counting
+pass + prefix sum + execution pass) to assign deterministic slot indices.
+
+Note: Enabling this flag impacts performance. Accumulation atomics incur ~2-5x
+overhead from sorting. Counter atomics incur ~2-3x overhead from the extra kernel
+pass.
+
+Known limitation: In the two-pass counter mode, the counting pass (Phase 0)
+suppresses all side effects (array writes, non-counter atomics, ``printf``).
+Kernels where counter contributions depend on earlier scratch array writes within
+the same kernel may produce incorrect results. Use local variables or read directly
+from input arrays for control flow that determines counter contributions.
+
+This setting can be overridden at the module level by setting the ``"deterministic"``
+module option.
+"""
+
 _git_commit_hash: str | None = None
 """Git commit hash associated with the Warp installation.
 
