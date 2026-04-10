@@ -59,6 +59,7 @@ class ScatterTarget:
     value_ctype: str  # C type of the value (e.g., "float", "double")
     reduce_op: int  # REDUCE_OP_ADD, REDUCE_OP_MIN, or REDUCE_OP_MAX
     index: int = 0  # scatter buffer index (assigned during codegen)
+    records_per_thread: int = 1  # static estimate of emitted records per thread
 
 
 @dataclass
@@ -97,10 +98,16 @@ class DeterministicMeta:
 def get_or_create_scatter_target(meta, array_var_label, value_ctype, reduce_op):
     """Get existing scatter target for an array, or create a new one.
 
-    Multiple atomic call sites targeting the same array share one scatter buffer.
+    Multiple atomic call sites targeting the same array and reduction op share
+    one scatter buffer.
     """
     for target in meta.scatter_targets:
-        if target.array_var_label == array_var_label:
+        if (
+            target.array_var_label == array_var_label
+            and target.value_ctype == value_ctype
+            and target.reduce_op == reduce_op
+        ):
+            target.records_per_thread += 1
             return target
     target = ScatterTarget(
         array_var_label=array_var_label,
@@ -166,7 +173,7 @@ def allocate_scatter_buffers(scatter_targets, dim_size, device):
     """
     buffers = []
     for target in scatter_targets:
-        capacity = max(dim_size * 2, 1024)  # heuristic: ~2 atomics per thread
+        capacity = max(dim_size * target.records_per_thread, 1024)
         dtype_map = {
             "float": warp.float32,
             "double": warp.float64,
@@ -213,11 +220,12 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
             continue
 
         if count > capacity:
-            warp_utils.warn(
-                f"Deterministic scatter buffer overflow: {count} records exceed capacity {capacity}. "
-                "Results may be incomplete. Increase buffer capacity via wp.config.deterministic."
+            raise RuntimeError(
+                f"Deterministic scatter buffer overflow for '{target.array_var_label}': "
+                f"{count} records exceed capacity {capacity}. "
+                "This kernel emits more deterministic scatter records than the current "
+                "static estimate can hold."
             )
-            count = capacity
 
         # Select the native sort-reduce function based on value type.
         if target.value_ctype in ("float", "wp::half"):

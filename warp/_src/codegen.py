@@ -1767,7 +1767,6 @@ class Adjoint:
 
         args_list = list(bound_args.values())
         arr_var = args_list[0]  # the target array
-        value_var = args_list[-1]  # the value being accumulated
         index_vars = args_list[1:-1]  # the index arguments (1-4 depending on ndim)
 
         # Determine the scalar dtype of the array.
@@ -3438,9 +3437,20 @@ class Adjoint:
         target_type = strip_reference(target.type)
 
         if is_array(target_type):
-            # Deterministic two-pass mode: suppress array writes in phase 0
-            # to prevent side effects during the counting pass.
-            adj.add_builtin_call("array_store", [target, *indices, rhs])
+            # Deterministic two-pass mode must suppress normal array writes in
+            # phase 0 so the counting pass does not introduce side effects.
+            if adj.det_meta is not None and adj.det_meta.has_counter:
+                loaded_store_args = [adj.load(x) for x in (target, *indices, rhs)]
+                cpu_store_args = ", ".join(f"var_{x}" for x in loaded_store_args)
+                adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
+                adj.add_forward("if (_wp_det_phase != 0) {", skip_replay=True)
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
+                adj.add_forward("}", skip_replay=True)
+                adj.add_forward("#else", skip_replay=True)
+                adj.add_forward(f"wp::array_store({cpu_store_args});")
+                adj.add_forward("#endif", skip_replay=True)
+            else:
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
 
             if adj.builder_options.get("verify_autograd_array_access", False):
                 kernel_name = adj.fun_name

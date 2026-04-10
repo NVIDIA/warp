@@ -7444,8 +7444,61 @@ class Launch:
                 )
 
 
+class DeterministicLaunch(Launch):
+    """Recorded launch wrapper for deterministic forward CUDA kernels."""
+
+    def __init__(
+        self,
+        kernel,
+        device: Device,
+        det_meta,
+        fwd_args: Sequence[Any],
+        hooks: KernelHooks | None = None,
+        params: Sequence[Any] | None = None,
+        bounds: launch_bounds_t | None = None,
+        max_blocks: int = 0,
+        block_dim: int = 256,
+    ):
+        super().__init__(
+            kernel=kernel,
+            device=device,
+            hooks=hooks,
+            params=params,
+            params_addr=None,
+            bounds=bounds,
+            max_blocks=max_blocks,
+            block_dim=block_dim,
+            adjoint=False,
+        )
+        self.det_meta = det_meta
+        self.fwd_args = list(fwd_args)
+
+    def set_param_at_index(self, index: int, value: Any, adjoint: bool = False):
+        super().set_param_at_index(index, value, adjoint)
+        if not adjoint and index < len(self.fwd_args):
+            self.fwd_args[index] = value
+
+    def launch(self, stream: Stream | None = None) -> None:
+        if stream is None:
+            stream = self.device.stream
+
+        _launch_deterministic(
+            self.kernel,
+            self.hooks,
+            self.params,
+            self.bounds,
+            self.device,
+            stream,
+            self.max_blocks,
+            self.block_dim,
+            self.det_meta,
+            self.fwd_args,
+            module_exec=self.module_exec,
+        )
+
+
 def _launch_deterministic(
-    kernel, hooks, user_params, bounds, device, stream, max_blocks, block_dim, det_meta, fwd_args
+    kernel, hooks, user_params, bounds, device, stream, max_blocks, block_dim, det_meta, fwd_args, module_exec=None
 ):
     """Orchestrate a deterministic kernel launch with scatter-sort-reduce and/or two-pass execution.
 
@@ -7495,6 +7548,17 @@ def _launch_deterministic(
     def do_cuda_launch(hook, params_list):
         kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params_list]
         kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+        if (
+            module_exec is not None
+            and len(runtime.captures) > 0
+            and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
+        ):
+            capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+            graph = runtime.captures.get(capture_id)
+            if graph is not None:
+                graph.retain_module_exec(module_exec)
+
         runtime.core.wp_cuda_launch_kernel(
             device.context,
             hook,
@@ -7526,7 +7590,6 @@ def _launch_deterministic(
             # Write the total count to the actual counter array so user code
             # that reads it after the launch sees the correct value.
             # Total = exclusive_prefix[-1] + contrib[-1].
-            total_arr = warp.empty(shape=(1,), dtype=warp.int32, device=device)
             # Use inclusive scan's last element = total
             inclusive_out = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
             warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
@@ -7695,6 +7758,18 @@ def launch(
         if det_meta is not None and det_meta.needs_deterministic and device.is_cuda and not adjoint:
             if stream is None:
                 stream = device.stream
+            if record_cmd:
+                return DeterministicLaunch(
+                    kernel=kernel,
+                    device=device,
+                    det_meta=det_meta,
+                    fwd_args=fwd_args,
+                    hooks=hooks,
+                    params=params,
+                    bounds=bounds,
+                    max_blocks=max_blocks,
+                    block_dim=block_dim,
+                )
             _launch_deterministic(
                 kernel,
                 hooks,
@@ -7706,6 +7781,7 @@ def launch(
                 block_dim,
                 det_meta,
                 fwd_args,
+                module_exec=module_exec,
             )
             # Record on tape if one is active (same logic as below).
             if runtime.tape and record_tape:
