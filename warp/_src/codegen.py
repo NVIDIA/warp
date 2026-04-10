@@ -1896,7 +1896,8 @@ class Adjoint:
             f"{phase_guard_open}"
             f"wp::deterministic::scatter("
             f"_wp_scatter_keys_{N}, _wp_scatter_vals_{N}, "
-            f"_wp_scatter_ctr_{N}, _wp_scatter_cap_{N}, "
+            f"_wp_scatter_ctr_{N}, _wp_scatter_overflow_{N}, _wp_scatter_cap_{N}, "
+            f"_wp_det_debug, "
             f"static_cast<int>({flat_idx_expr}), _idx, {val_expr});"
             f"{phase_guard_close}",
             replay="// deterministic scatter replay (skipped)",
@@ -5154,7 +5155,10 @@ def codegen_kernel(kernel, device, options):
                 forward_args.append(f"int64_t* _wp_scatter_keys_{st.index}")
                 forward_args.append(f"{st.value_ctype}* _wp_scatter_vals_{st.index}")
                 forward_args.append(f"int* _wp_scatter_ctr_{st.index}")
+                forward_args.append(f"int* _wp_scatter_overflow_{st.index}")
                 forward_args.append(f"int _wp_scatter_cap_{st.index}")
+            if det.has_scatter:
+                forward_args.append("int _wp_det_debug")
 
     forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
     template_fmt_args.update(
@@ -5196,7 +5200,10 @@ def codegen_kernel(kernel, device, options):
                     reverse_args.append(f"int64_t* _wp_scatter_keys_{st.index}")
                     reverse_args.append(f"{st.value_ctype}* _wp_scatter_vals_{st.index}")
                     reverse_args.append(f"int* _wp_scatter_ctr_{st.index}")
+                    reverse_args.append(f"int* _wp_scatter_overflow_{st.index}")
                     reverse_args.append(f"int _wp_scatter_cap_{st.index}")
+                if det.has_scatter:
+                    reverse_args.append("int _wp_det_debug")
 
         reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
         template_fmt_args.update(

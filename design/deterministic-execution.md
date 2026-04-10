@@ -41,12 +41,14 @@ deterministic without algorithm rewrites.
 Deterministic mode can be enabled at three scopes:
 
 - **Global**: set ``wp.config.deterministic = True`` before module compilation.
+- **Global diagnostics**: set ``wp.config.deterministic_debug = True`` to emit
+  debug diagnostics for deterministic scatter overflow.
 - **Per shared module**: call ``wp.set_module_options({"deterministic": True})``
   in the Python module that defines the kernels, just like other module-level
   options such as ``enable_backward``.
-- **Per kernel**: use a unique module for that kernel and set
-  ``module_options={"deterministic": True}``, for example
-  ``@wp.kernel(module="unique", module_options={"deterministic": True})``.
+- **Per kernel**: use ``@wp.kernel(deterministic=True)`` and optionally set a
+  minimum per-target scatter buffer capacity with
+  ``deterministic_capacity=...``.
 
 Like ``enable_backward``, the setting participates in module compilation and
 hashing. A kernel defined in a shared module inherits that module's
@@ -94,10 +96,11 @@ the user:
 Instead of performing ``atomic_add`` in-place during kernel execution, each
 thread writes a ``(sort_key, value)`` record to a temporary scatter buffer. The
 sort key packs ``(dest_index << 32 | thread_id)``.  After the kernel completes,
-a CUB radix sort orders the records, then a custom CUDA kernel walks the sorted
-buffer and accumulates each destination's values left-to-right in a fixed
-(thread-id) order.  This guarantees bit-exact reproducibility because the
-summation order is deterministic.
+a CUB radix sort orders the fixed-capacity scatter buffer, then a custom CUDA
+kernel walks the sorted records and accumulates each destination's values
+left-to-right in a fixed (thread-id) order. Unused buffer slots are initialized
+with an invalid sentinel key and sort to the end. This avoids host-side scatter
+count readbacks and keeps the path compatible with CUDA graph capture.
 
 **Pattern B --- Two-Pass Execution** (counter/allocator, return value used):
 
@@ -146,7 +149,8 @@ body that compiles for both targets.
 ``codegen_kernel()`` after the user arguments.  Pattern B kernels get
 ``_wp_det_phase``, ``_wp_det_contrib_N``, ``_wp_det_prefix_N``. Pattern A
 targets get ``_wp_scatter_keys_N``, ``_wp_scatter_vals_N``,
-``_wp_scatter_ctr_N``, ``_wp_scatter_cap_N``.  The launch system
+``_wp_scatter_ctr_N``, ``_wp_scatter_overflow_N``, ``_wp_scatter_cap_N``, and
+``_wp_det_debug``. The launch system
 (``_launch_deterministic``) allocates these buffers and appends the
 corresponding ctypes params to the launch args.
 
@@ -155,6 +159,13 @@ reduction op)`` combination gets its own scatter buffer set. Multiple call
 sites with the same target and reduction op share one buffer. The
 ``DeterministicMeta`` dataclass on the kernel's ``Adjoint`` tracks all scatter
 and counter targets discovered during codegen.
+
+**Scatter capacity**: each scatter target uses a fixed-capacity buffer sized
+from a code-generated lower bound (static records-per-thread analysis), with
+``deterministic_capacity`` acting as a per-target minimum capacity floor. On
+overflow, new records are truncated, a device-side overflow flag is set, and
+optional diagnostics may be emitted when ``wp.config.deterministic_debug`` is
+enabled.
 
 **Counter total writeback**: after the prefix sum in Phase 0, the launch system
 copies the total count (last element of the inclusive scan) back to the actual
@@ -174,7 +185,7 @@ counter array so user code that reads it post-launch sees the correct value.
 
 ## Testing Strategy
 
-21 tests in ``warp/tests/test_deterministic.py`` cover:
+23 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic=True``, assert ``np.array_equal`` across all runs for
@@ -202,7 +213,11 @@ counter array so user code that reads it post-launch sees the correct value.
   transformation; result matches ``np.bincount``.
 - **Per-module override**: ``@wp.kernel(module_options={"deterministic": True},
   module="unique")`` works with global config off.
+- **Kernel decorator override**: ``@wp.kernel(deterministic=True)`` works with
+  global config off.
 - **Recorded launch support**: ``wp.launch(..., record_cmd=True)`` works for
   deterministic CUDA kernels.
+- **Graph capture support**: deterministic scatter launches can be captured and
+  replayed with CUDA graphs.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.

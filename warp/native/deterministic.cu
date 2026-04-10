@@ -111,6 +111,9 @@ void deterministic_sort_reduce_device(int64_t* keys, T* values, int count, T* de
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     // --- Sort by key ---
+    // The input buffers have a fixed capacity. Unused slots are initialized
+    // with key == -1, which sorts to the end and is ignored by the reduce
+    // kernel.
     // We need a double-buffer for CUB's SortPairs.
     // Allocate alternate buffers for keys and values.
     ScopedTemporary<int64_t> alt_keys(WP_CURRENT_CONTEXT, count);

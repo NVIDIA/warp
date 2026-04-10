@@ -1228,6 +1228,8 @@ def kernel(
     f: Callable | None = None,
     *,
     enable_backward: bool | None = None,
+    deterministic: bool | None = None,
+    deterministic_capacity: int | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
@@ -1273,10 +1275,21 @@ def kernel(
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
+
+        @wp.kernel(deterministic=True, deterministic_capacity=1 << 20)
+        def my_kernel_deterministic(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+            # deterministic scatter buffers will use at least the requested capacity
+            tid = wp.tid()
+            wp.atomic_add(b, tid % 16, a[tid])
+
     Args:
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be
             generated.
+        deterministic: If True, enable deterministic handling for
+            supported atomic operations in this kernel.
+        deterministic_capacity: Optional minimum per-target scatter
+            buffer capacity to use when deterministic mode is enabled.
         launch_bounds: CUDA ``__launch_bounds__`` attribute for the
             kernel. Can be an int (``maxThreadsPerBlock``) or a tuple
             of 1-2 ints ``(maxThreadsPerBlock,
@@ -1291,7 +1304,7 @@ def kernel(
             inferred from the function's module.
         module_options: A dict of module-level compilation options
             (e.g. ``fast_math``, ``mode``, ``max_unroll``,
-            ``deterministic``) that are applied to the kernel's
+            ``deterministic``, ``deterministic_capacity``) that are applied to the kernel's
             module. Requires
             ``module="unique"``; raises ``ValueError`` otherwise.
             For shared modules, use :func:`warp.set_module_options`
@@ -1307,6 +1320,12 @@ def kernel(
 
         if enable_backward is not None:
             kernel_options["enable_backward"] = enable_backward
+
+        if deterministic is not None:
+            kernel_options["deterministic"] = deterministic
+
+        if deterministic_capacity is not None:
+            kernel_options["deterministic_capacity"] = deterministic_capacity
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
@@ -2171,10 +2190,15 @@ class ModuleBuilder:
         self.structs[struct] = None
 
     def build_kernel(self, kernel):
-        if kernel.options.get("enable_backward", True):
-            kernel.adj.used_by_backward_kernel = True
+        prev_options = self.options
+        self.options = self.options | kernel.options
+        try:
+            if kernel.options.get("enable_backward", True):
+                kernel.adj.used_by_backward_kernel = True
 
-        kernel.adj.build(self)
+            kernel.adj.build(self)
+        finally:
+            self.options = prev_options
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
@@ -2482,6 +2506,7 @@ class Module:
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
             "deterministic": None,
+            "deterministic_capacity": None,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2523,6 +2548,9 @@ class Module:
         # Resolve None-means-inherit for deterministic
         if options["deterministic"] is None:
             options["deterministic"] = config.deterministic
+
+        if options["deterministic_capacity"] is None:
+            options["deterministic_capacity"] = 0
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -7513,9 +7541,16 @@ def _launch_deterministic(
     )
 
     dim_size = bounds.size
+    options = kernel.module.resolve_options(warp.config) | kernel.options
+    min_scatter_capacity = max(0, int(options.get("deterministic_capacity", 0) or 0))
+    det_debug = int(warp.config.deterministic_debug)
 
     # Allocate buffers.
-    scatter_bufs = allocate_scatter_buffers(det_meta.scatter_targets, dim_size, device) if det_meta.has_scatter else []
+    scatter_bufs = (
+        allocate_scatter_buffers(det_meta.scatter_targets, dim_size, device, min_capacity=min_scatter_capacity)
+        if det_meta.has_scatter
+        else []
+    )
     counter_bufs = allocate_counter_buffers(det_meta.counter_targets, dim_size, device) if det_meta.has_counter else []
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
@@ -7533,17 +7568,21 @@ def _launch_deterministic(
                     det_params.append(ctypes.c_void_p(prefix.ptr))
         for i, _st in enumerate(det_meta.scatter_targets):
             if use_scatter and i < len(scatter_bufs):
-                keys, values, counter, capacity = scatter_bufs[i]
+                keys, values, counter, overflow, capacity = scatter_bufs[i]
                 det_params.append(ctypes.c_void_p(keys.ptr))
                 det_params.append(ctypes.c_void_p(values.ptr))
                 det_params.append(ctypes.c_void_p(counter.ptr))
+                det_params.append(ctypes.c_void_p(overflow.ptr))
                 det_params.append(ctypes.c_int(capacity))
             else:
                 # Null scatter buffers (phase 0 doesn't scatter).
                 det_params.append(ctypes.c_void_p(0))
                 det_params.append(ctypes.c_void_p(0))
                 det_params.append(ctypes.c_void_p(0))
+                det_params.append(ctypes.c_void_p(0))
                 det_params.append(ctypes.c_int(0))
+        if det_meta.has_scatter:
+            det_params.append(ctypes.c_int(det_debug))
         return det_params
 
     def do_cuda_launch(hook, params_list):
@@ -8623,6 +8662,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **deterministic**: Enable deterministic handling for supported atomic operations. If ``None`` (the default), defers to ``warp.config.deterministic`` at compile time.
+    * **deterministic_capacity**: Minimum per-target deterministic scatter buffer capacity. Defaults to ``0``, which means use the code-generated lower bound only.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.

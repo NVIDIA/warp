@@ -282,6 +282,14 @@ This setting can be overridden at the module level by setting the ``"determinist
 module option.
 """
 
+deterministic_debug: bool = False
+"""Enable debug diagnostics for deterministic execution mode.
+
+When enabled, deterministic scatter overflows may emit device-side diagnostics.
+This setting is intended for debugging capacity issues and should remain disabled
+for normal execution, especially when CUDA graph capture is performance-critical.
+"""
+
 _git_commit_hash: str | None = None
 """Git commit hash associated with the Warp installation.
 

@@ -98,6 +98,38 @@ def atomic_double_kernel(
     wp.atomic_add(output, idx, data[tid])
 
 
+@wp.kernel(deterministic=True, deterministic_capacity=4096)
+def decorator_deterministic_kernel(
+    data: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Kernel-level deterministic flag without module_options."""
+    tid = wp.tid()
+    wp.atomic_add(output, tid % 8, data[tid])
+
+
+@wp.func
+def _det_closure_transform_a(x: wp.float32) -> wp.float32:
+    return x + wp.float32(1.0)
+
+
+@wp.func
+def _det_closure_transform_b(x: wp.float32) -> wp.float32:
+    return x + wp.float32(2.0)
+
+
+def _make_deterministic_closure_kernel(transform_func):
+    @wp.kernel(deterministic=True, module="unique")
+    def _deterministic_closure_kernel(
+        data: wp.array(dtype=wp.float32),
+        output: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        wp.atomic_add(output, tid % 8, transform_func(data[tid]))
+
+    return _deterministic_closure_kernel
+
+
 @wp.kernel
 def triple_scatter_add_kernel(
     data: wp.array(dtype=wp.float32),
@@ -677,6 +709,63 @@ def test_module_option_override(test, device):
         wp.config.deterministic = old_det
 
 
+def test_kernel_decorator_override(test, device):
+    """Verify ``@wp.kernel(deterministic=True)`` works with global config off."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 512
+    rng = np.random.default_rng(28)
+    data_np = rng.random(n, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = False
+        results = []
+        for _ in range(3):
+            output = wp.zeros(8, dtype=wp.float32, device=device)
+            wp.launch(decorator_deterministic_kernel, dim=n, inputs=[data], outputs=[output], device=device)
+            results.append(output.numpy().copy())
+        for i in range(1, len(results)):
+            np.testing.assert_array_equal(results[0], results[i])
+    finally:
+        wp.config.deterministic = old_det
+
+
+def test_deterministic_closure_kernel(test, device):
+    """Verify deterministic closure kernels remain reproducible and distinct."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    kernel_a = _make_deterministic_closure_kernel(_det_closure_transform_a)
+    kernel_b = _make_deterministic_closure_kernel(_det_closure_transform_b)
+
+    test.assertIsNot(kernel_a, kernel_b)
+    test.assertNotEqual(kernel_a.module.name, kernel_b.module.name)
+
+    n = 512
+    rng = np.random.default_rng(30)
+    data_np = rng.random(n, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+
+    results_a = []
+    results_b = []
+    for _ in range(3):
+        out_a = wp.zeros(8, dtype=wp.float32, device=device)
+        out_b = wp.zeros(8, dtype=wp.float32, device=device)
+        wp.launch(kernel_a, dim=n, inputs=[data], outputs=[out_a], device=device)
+        wp.launch(kernel_b, dim=n, inputs=[data], outputs=[out_b], device=device)
+        results_a.append(out_a.numpy().copy())
+        results_b.append(out_b.numpy().copy())
+
+    for i in range(1, len(results_a)):
+        np.testing.assert_array_equal(results_a[0], results_a[i])
+        np.testing.assert_array_equal(results_b[0], results_b[i])
+
+    test.assertFalse(np.array_equal(results_a[0], results_b[0]))
+
+
 def test_record_cmd_deterministic_launch(test, device):
     """Verify ``record_cmd=True`` works for deterministic CUDA launches."""
     if device.is_cpu:
@@ -712,6 +801,65 @@ def test_record_cmd_deterministic_launch(test, device):
     cmd.launch()
 
     np.testing.assert_array_equal(output_2.numpy(), expected)
+
+
+def test_graph_capture_deterministic_launch(test, device):
+    """Verify deterministic scatter launches can be captured and replayed."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    n = 256
+    rng = np.random.default_rng(29)
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, 8, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(8, dtype=wp.float32, device=device)
+
+    wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+    output.zero_()
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first = output.numpy().copy()
+
+    output.zero_()
+    wp.capture_launch(capture.graph)
+    second = output.numpy().copy()
+
+    np.testing.assert_array_equal(first, second)
+
+
+def test_graph_capture_deterministic_closure_kernel(test, device):
+    """Verify deterministic closure kernels can be captured and replayed."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    kernel = _make_deterministic_closure_kernel(_det_closure_transform_a)
+
+    n = 256
+    rng = np.random.default_rng(31)
+    data_np = rng.random(n, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    output = wp.zeros(8, dtype=wp.float32, device=device)
+
+    wp.launch(kernel, dim=n, inputs=[data], outputs=[output], device=device)
+    output.zero_()
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(kernel, dim=n, inputs=[data], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first = output.numpy().copy()
+
+    output.zero_()
+    wp.capture_launch(capture.graph)
+    second = output.numpy().copy()
+
+    np.testing.assert_array_equal(first, second)
 
 
 # ---------------------------------------------------------------------------
@@ -779,9 +927,27 @@ add_function_test(TestDeterministic, "test_mixed_pattern", test_mixed_pattern, d
 add_function_test(TestDeterministic, "test_int_atomic_passthrough", test_int_atomic_passthrough, devices=all_devices)
 add_function_test(TestDeterministic, "test_module_option_override", test_module_option_override, devices=all_devices)
 add_function_test(
+    TestDeterministic, "test_kernel_decorator_override", test_kernel_decorator_override, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic, "test_deterministic_closure_kernel", test_deterministic_closure_kernel, devices=cuda_devices
+)
+add_function_test(
     TestDeterministic,
     "test_record_cmd_deterministic_launch",
     test_record_cmd_deterministic_launch,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_graph_capture_deterministic_launch",
+    test_graph_capture_deterministic_launch,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_graph_capture_deterministic_closure_kernel",
+    test_graph_capture_deterministic_closure_kernel,
     devices=cuda_devices,
 )
 
