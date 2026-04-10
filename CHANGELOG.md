@@ -273,6 +273,11 @@
   to `wp.Texture1D`, `wp.Texture2D`, or `wp.Texture3D` via the new `cuda_array=` parameter,
   or register an OpenGL texture for CUDA-OpenGL interop via the new `wp.GLTextureResource`
   class ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
+- Add deterministic execution mode for atomic operations via `wp.config.deterministic = True`.
+  Floating-point atomic accumulations use a scatter-sort-reduce strategy for bit-exact
+  reproducibility across runs. Counter/allocator atomics (where the return value is used)
+  use automatic two-pass execution with prefix-sum-based slot assignment. Configurable at
+  the global, module, and kernel level.
 - Add double-precision (`wp.float64`) support to `warp.fem`.
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels
