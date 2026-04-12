@@ -21,7 +21,7 @@
 namespace {
 
 // Extract the destination index (upper 32 bits) from a sort key.
-__device__ __forceinline__ int dest_index_from_key(int64_t key)
+__host__ __device__ __forceinline__ int dest_index_from_key(int64_t key)
 {
     return static_cast<int>(static_cast<uint64_t>(key) >> 32);
 }
@@ -48,6 +48,59 @@ __global__ void init_record_indices_kernel(int* indices, int count)
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid < count) {
         indices[tid] = tid;
+    }
+}
+
+template <typename T> struct ReduceByKeyOp {
+    int op;
+
+    __host__ __device__ T operator()(const T& a, const T& b) const
+    {
+        switch (op) {
+        case REDUCE_ADD:
+            return a + b;
+        case REDUCE_MIN:
+            return wp::min(a, b);
+        case REDUCE_MAX:
+            return wp::max(a, b);
+        default:
+            return a;
+        }
+    }
+};
+
+struct DestIndexTransform {
+    __host__ __device__ int operator()(const int64_t& key) const { return dest_index_from_key(key); }
+};
+
+template <typename T>
+__global__ void apply_reduced_runs_kernel(
+    const int* __restrict__ unique_dests,
+    const T* __restrict__ aggregates,
+    const int* __restrict__ num_runs,
+    T* __restrict__ dest_array,
+    int dest_size,
+    int op
+)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= *num_runs)
+        return;
+
+    int dest = unique_dests[tid];
+    if (dest < 0 || dest >= dest_size)
+        return;
+
+    switch (op) {
+    case REDUCE_ADD:
+        dest_array[dest] = dest_array[dest] + aggregates[tid];
+        break;
+    case REDUCE_MIN:
+        dest_array[dest] = wp::min(dest_array[dest], aggregates[tid]);
+        break;
+    case REDUCE_MAX:
+        dest_array[dest] = wp::max(dest_array[dest], aggregates[tid]);
+        break;
     }
 }
 
@@ -122,6 +175,67 @@ __global__ void deterministic_reduce_kernel(
     }
 }
 
+template <typename T>
+void deterministic_sort_reduce_device_scalar(int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op)
+{
+    if (count <= 0)
+        return;
+
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    ScopedTemporary<int64_t> alt_keys(WP_CURRENT_CONTEXT, count);
+    ScopedTemporary<T> alt_values(WP_CURRENT_CONTEXT, count);
+
+    cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys.buffer());
+    cub::DoubleBuffer<T> d_values(values, alt_values.buffer());
+
+    size_t sort_temp_size = 0;
+    check_cuda(
+        cub::DeviceRadixSort::SortPairs(
+            nullptr, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+        )
+    );
+
+    void* sort_temp = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
+    check_cuda(
+        cub::DeviceRadixSort::SortPairs(
+            sort_temp, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+        )
+    );
+    wp_free_device(WP_CURRENT_CONTEXT, sort_temp);
+
+    ScopedTemporary<int> unique_dests(WP_CURRENT_CONTEXT, count);
+    ScopedTemporary<T> aggregates(WP_CURRENT_CONTEXT, count);
+    ScopedTemporary<int> num_runs(WP_CURRENT_CONTEXT, 1);
+    auto dest_keys
+        = cub::TransformInputIterator<int, DestIndexTransform, const int64_t*>(d_keys.Current(), DestIndexTransform {});
+
+    size_t reduce_temp_size = 0;
+    ReduceByKeyOp<T> reduce_op { op };
+    check_cuda(
+        cub::DeviceReduce::ReduceByKey(
+            nullptr, reduce_temp_size, dest_keys, unique_dests.buffer(), d_values.Current(), aggregates.buffer(),
+            num_runs.buffer(), reduce_op, count, stream
+        )
+    );
+
+    void* reduce_temp = wp_alloc_device(WP_CURRENT_CONTEXT, reduce_temp_size);
+    check_cuda(
+        cub::DeviceReduce::ReduceByKey(
+            reduce_temp, reduce_temp_size, dest_keys, unique_dests.buffer(), d_values.Current(), aggregates.buffer(),
+            num_runs.buffer(), reduce_op, count, stream
+        )
+    );
+    wp_free_device(WP_CURRENT_CONTEXT, reduce_temp);
+
+    const int block_size = 256;
+    const int num_blocks = (count + block_size - 1) / block_size;
+    apply_reduced_runs_kernel<T><<<num_blocks, block_size, 0, stream>>>(
+        unique_dests.buffer(), aggregates.buffer(), num_runs.buffer(), dest_array, dest_size, op
+    );
+}
+
 // Sort the scatter buffer by key using CUB radix sort, then launch the
 // reduce kernel.
 template <typename T>
@@ -131,6 +245,11 @@ void deterministic_sort_reduce_device(
 {
     if (count <= 0)
         return;
+
+    if (components == 1) {
+        deterministic_sort_reduce_device_scalar(keys, values, count, dest_array, dest_size, op);
+        return;
+    }
 
     ContextGuard guard(wp_cuda_context_get_current());
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
