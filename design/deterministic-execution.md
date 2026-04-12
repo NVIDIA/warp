@@ -47,8 +47,8 @@ Deterministic mode can be enabled at three scopes:
   in the Python module that defines the kernels, just like other module-level
   options such as ``enable_backward``.
 - **Per kernel**: use ``@wp.kernel(deterministic=True)`` and optionally set a
-  minimum per-target scatter buffer capacity with
-  ``deterministic_capacity=...``.
+  per-target, per-thread scatter record limit with
+  ``deterministic_max_records=...``.
 
 Like ``enable_backward``, the setting participates in module compilation and
 hashing. A kernel defined in a shared module inherits that module's
@@ -163,12 +163,15 @@ sites with the same target and reduction op share one buffer. The
 ``DeterministicMeta`` dataclass on the kernel's ``Adjoint`` tracks all scatter
 and counter targets discovered during codegen.
 
-**Scatter capacity**: each scatter target uses a fixed-capacity buffer sized
-from a code-generated lower bound (static records-per-thread analysis), with
-``deterministic_capacity`` acting as a per-target minimum capacity floor. On
-overflow, new records are truncated, a device-side overflow flag is set, and
-optional diagnostics may be emitted when ``wp.config.deterministic_debug`` is
-enabled.
+**Scatter sizing**: each scatter target uses a fixed-capacity buffer sized from
+a code-generated lower bound (static records-per-thread analysis). The optional
+``deterministic_max_records`` setting overrides the per-thread record count when
+users know a thread may revisit the same atomic site multiple times, for
+example inside a dynamic loop. Warp uses
+``max(codegen_lower_bound, deterministic_max_records)`` records per thread for
+each target. On overflow, new records are truncated, a device-side overflow
+flag is set, and optional diagnostics may be emitted when
+``wp.config.deterministic_debug`` is enabled.
 
 **Counter total writeback**: after the prefix sum in Phase 0, the launch system
 copies the total count (last element of the inclusive scan) back to the actual
