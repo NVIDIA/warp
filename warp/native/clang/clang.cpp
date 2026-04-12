@@ -27,8 +27,11 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/JITEventListener.h>
 #include <llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h>
+#include <llvm/ExecutionEngine/Orc/DebugObjectManagerPlugin.h>
+#include <llvm/ExecutionEngine/Orc/EPCDebugObjectRegistrar.h>
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
+#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
 #include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/ExecutionEngine/Orc/TargetProcess/TargetExecutionUtils.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -617,53 +620,130 @@ WP_API int wp_compile_cuda(
     return 0;
 }
 
-// Global JIT instance
-static llvm::orc::LLJIT* jit = nullptr;
+// Two JIT instances: one for JITLink (default) and one for RTDyld (legacy).
+// Both are created lazily on first use and kept alive so that modules loaded
+// with either linker remain valid when the user switches between them.
+static llvm::orc::LLJIT* jit_default = nullptr;
+static llvm::orc::LLJIT* jit_legacy = nullptr;
 
-// Load an object file into an in-memory DLL named `module_name`
-WP_API int wp_load_obj(const char* object_file, const char* module_name)
+// Return the JIT instance for the given linker mode, creating it if needed.
+// Note: not thread-safe.  The caller (wp_load_obj) is serialized by Python's
+// Module._compile / Module.load, but if parallel loading is ever introduced at
+// the C++ level a mutex would be needed here.
+static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
 {
-    if (!jit) {
-        initialize_llvm();
+    if (use_legacy_linker && jit_legacy)
+        return jit_legacy;
+    if (!use_legacy_linker && jit_default)
+        return jit_default;
 
-        auto jit_expected = llvm::orc::LLJITBuilder()
-                                .setObjectLinkingLayerCreator(
+    initialize_llvm();
+
+    llvm::orc::LLJITBuilder builder;
+
+    if (use_legacy_linker) {
+        builder.setObjectLinkingLayerCreator(
 #if LLVM_VERSION_MAJOR >= 21
-                                    [&](llvm::orc::ExecutionSession& session) {
+            [](llvm::orc::ExecutionSession& session)
 #else
-                                    [&](llvm::orc::ExecutionSession& session, const llvm::Triple& triple) {
+            [](llvm::orc::ExecutionSession& session, const llvm::Triple& triple)
 #endif
+                -> llvm::Expected<std::unique_ptr<llvm::orc::ObjectLayer>> {
 #if LLVM_VERSION_MAJOR >= 21
-                                        auto get_memory_manager = [](const llvm::MemoryBuffer&) {
+                auto get_memory_manager = [](const llvm::MemoryBuffer&) {
 #else
-                                        auto get_memory_manager = []() {
+                auto get_memory_manager = []() {
 #endif
-                                            return std::make_unique<llvm::SectionMemoryManager>();
-                                        };
-                                        auto obj_linking_layer = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(
-                                            session, std::move(get_memory_manager)
-                                        );
+                    return std::make_unique<llvm::SectionMemoryManager>();
+                };
+                auto layer
+                    = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
 
-                                        // Register the event listener.
-                                        obj_linking_layer->registerJITEventListener(
-                                            *llvm::JITEventListener::createGDBRegistrationListener()
-                                        );
+                layer->registerJITEventListener(*llvm::JITEventListener::createGDBRegistrationListener());
 
-                                        // Make sure the debug info sections aren't stripped.
-                                        obj_linking_layer->setProcessAllSections(true);
+                // Make sure the debug info sections aren't stripped.
+                layer->setProcessAllSections(true);
 
-                                        return obj_linking_layer;
-                                    }
-                                )
-                                .create();
+                return layer;
+            }
+        );
+    } else {
+        builder.setObjectLinkingLayerCreator(
+#if LLVM_VERSION_MAJOR >= 21
+            [](llvm::orc::ExecutionSession& session)
+#else
+            [](llvm::orc::ExecutionSession& session, const llvm::Triple& triple)
+#endif
+                -> llvm::Expected<std::unique_ptr<llvm::orc::ObjectLayer>> {
+                auto layer = std::make_unique<llvm::orc::ObjectLinkingLayer>(session);
 
-        if (!jit_expected) {
-            std::cerr << "Failed to create JIT instance: " << toString(jit_expected.takeError()) << std::endl;
-            return -1;
-        }
+                if (WP_ENABLE_DEBUG) {
+                    // Register debug-object plugin for GDB/LLDB JIT debugging support.
+                    auto registrar = llvm::orc::createJITLoaderGDBRegistrar(session);
+                    if (registrar) {
+#if LLVM_VERSION_MAJOR >= 21
+                        layer->addPlugin(
+                            std::make_shared<llvm::orc::DebugObjectManagerPlugin>(
+                                session, std::move(*registrar), true, true
+                            )
+                        );
+#else
+                        layer->addPlugin(
+                            std::make_unique<llvm::orc::DebugObjectManagerPlugin>(session, std::move(*registrar))
+                        );
+#endif
+                    } else {
+                        llvm::consumeError(registrar.takeError());
+                        std::cout << "Warp notice: JIT debug support is not available with "
+                                     "this LLVM build. Step-through debugging of CPU kernels "
+                                     "requires building Warp with --build-llvm, or setting "
+                                     "wp.config.legacy_cpu_linker = True to use the legacy "
+                                     "RTDyld linker."
+                                  << std::endl;
+                    }
+                }
 
-        jit = (*jit_expected).release();
+                return layer;
+            }
+        );
     }
+
+    auto jit_expected = builder.create();
+
+    if (!jit_expected) {
+        std::cerr << "Failed to create JIT instance: " << toString(jit_expected.takeError()) << std::endl;
+        return nullptr;
+    }
+
+    auto* jit = (*jit_expected).release();
+    if (use_legacy_linker)
+        jit_legacy = jit;
+    else
+        jit_default = jit;
+    return jit;
+}
+
+// Find which JIT instance owns a module by name.
+static llvm::orc::LLJIT* find_jit_for_module(const char* module_name)
+{
+    if (jit_default && jit_default->getJITDylibByName(module_name))
+        return jit_default;
+    if (jit_legacy && jit_legacy->getJITDylibByName(module_name))
+        return jit_legacy;
+    return nullptr;
+}
+
+// Load an object file into an in-memory DLL named `module_name`.
+// When `use_legacy_linker` is true, the legacy RTDyld linker is used instead
+// of JITLink; this provides debug support with pre-built LLVM but is less
+// robust against virtual address space fragmentation.
+// Debug support (GDB/LLDB step-through) is enabled automatically in debug
+// builds (WP_ENABLE_DEBUG=1).
+WP_API int wp_load_obj(const char* object_file, const char* module_name, bool use_legacy_linker)
+{
+    auto* jit = get_or_create_jit(use_legacy_linker);
+    if (!jit)
+        return -1;
 
     auto dll = jit->createJITDylib(module_name);
 
@@ -722,7 +802,7 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name)
             SYMBOL(memset_pattern16),
             SYMBOL(__sincos_stret), SYMBOL(__sincosf_stret),
 #else
-                                        SYMBOL(sincosf), SYMBOL_T(sincos, void (*)(double, double*, double*)),
+            SYMBOL(sincosf), SYMBOL_T(sincos, void (*)(double, double*, double*)),
 #endif
 #if LLVM_VERSION_MAJOR >= 18
         })));
@@ -754,10 +834,9 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name)
 
 WP_API int wp_unload_obj(const char* module_name)
 {
-    if (!jit)  // If there's no JIT instance there are no object files loaded
-    {
+    auto* jit = find_jit_for_module(module_name);
+    if (!jit)
         return 0;
-    }
 
     auto* dll = jit->getJITDylibByName(module_name);
     llvm::Error error = jit->getExecutionSession().removeJITDylib(*dll);
@@ -772,6 +851,12 @@ WP_API int wp_unload_obj(const char* module_name)
 
 WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
 {
+    auto* jit = find_jit_for_module(dll_name);
+    if (!jit) {
+        std::cerr << "Failed to find module: " << dll_name << std::endl;
+        return 0;
+    }
+
     auto* dll = jit->getJITDylibByName(dll_name);
 
     auto func = jit->lookup(*dll, function_name);

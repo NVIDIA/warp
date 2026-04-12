@@ -25,6 +25,7 @@ API
    enable_tiles_in_stack_memory
    enable_vector_component_overwrites
    kernel_cache_dir
+   legacy_cpu_linker
    legacy_scalar_return_types
    line_directives
    lineinfo

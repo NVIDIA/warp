@@ -249,6 +249,29 @@ use_precompiled_headers: bool = True
 """Enable the use of precompiled headers during kernel compilation.
 """
 
+legacy_cpu_linker: bool = False
+"""Use the legacy RTDyld linker instead of JITLink for CPU kernel loading.
+
+The default JITLink linker is more robust against virtual address space
+fragmentation (e.g. caused by the CUDA driver). Set this to ``True`` to
+use the older RTDyld linker, which supports step-through debugging of CPU
+kernels with pre-built LLVM libraries that lack the JITLink debug symbols.
+
+This setting can be changed at runtime.  Each linker has its own JIT
+instance, created lazily on first use and kept alive so that previously
+loaded CPU modules remain valid.
+
+.. note::
+
+   Step-through debugging with JITLink requires building Warp with
+   ``--build-llvm`` to get LLVM 21+ with the necessary ORC runtime symbols.
+
+.. warning::
+
+   This flag is experimental and may be removed without warning in a
+   future release.
+"""
+
 load_module_max_workers: int | None = 0
 """Default number of worker threads for compiling and loading modules in parallel.
 

@@ -44,6 +44,10 @@
 
 ### Changed
 
+- Switch CPU JIT linker from RTDyld to JITLink, fixing sporadic access violations
+  when the CUDA driver fragments the virtual address space.
+  Add `warp.config.legacy_cpu_linker` to opt in to the previous RTDyld linker
+  ([GH-1346](https://github.com/NVIDIA/warp/issues/1346)).
 - Apply `warp.config.optimization_level` to the full CPU compilation pipeline.
   The default CPU optimization level remains `-O2`; CUDA kernels default to `-O3`
   ([GH-1310](https://github.com/NVIDIA/warp/issues/1310)).
