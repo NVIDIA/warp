@@ -1956,6 +1956,7 @@ class ModuleHasher:
     def __init__(self, kernels, options):
         # cache function hashes to avoid hashing multiple times
         self.function_hashes = {}  # (function: hash)
+        self.options = options
 
         # avoid recursive spiral of doom (e.g., function calling an overload of itself)
         self.functions_in_progress = set()
@@ -2014,7 +2015,20 @@ class ModuleHasher:
 
         ch = hashlib.sha256()
 
+        resolved_options = self.options | kernel.options
+
+        # Deterministic launches need ``adj.det_meta`` at runtime even when the
+        # module is loaded from a cache hit and code generation is skipped.
+        # Build the adjoint once during hashing so the launch path has the same
+        # metadata it would have received on a fresh compile.
+        if resolved_options.get("deterministic", False) and not hasattr(kernel.adj, "det_meta"):
+            kernel.adj.build(None, resolved_options)
+
         ch.update(bytes(kernel.key, "utf-8"))
+        if kernel.options:
+            for key in sorted(kernel.options):
+                ch.update(bytes(key, "utf-8"))
+                ch.update(bytes(repr(kernel.options[key]), "utf-8"))
         ch.update(self.hash_adjoint(kernel.adj))
 
         h = ch.digest()

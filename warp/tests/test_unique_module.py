@@ -18,6 +18,7 @@ from typing import Any
 import numpy as np
 
 import warp as wp
+from warp._src.context import ModuleHasher
 from warp.tests.unittest_utils import *
 
 
@@ -165,6 +166,63 @@ class TestUniqueModule(unittest.TestCase):
         b = wp.zeros(3, dtype=float, device="cpu")
         wp.launch(_kernel_fast_math, dim=3, inputs=[a, b], device="cpu")
         np.testing.assert_allclose(b.numpy(), [2.0, 3.0, 4.0])
+
+    def test_kernel_options_affect_unique_module_identity(self):
+        """Kernel decorator options must contribute to unique module hashing."""
+        if not wp.is_cuda_available():
+            self.skipTest("CUDA required for deterministic kernel launch test")
+
+        @wp.kernel(module="unique")
+        def _scatter_normal(
+            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
+        ):
+            tid = wp.tid()
+            wp.atomic_add(out, indices[tid], values[tid])
+
+        @wp.kernel(deterministic=True, deterministic_max_records=1, module="unique")
+        def _scatter_deterministic(
+            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
+        ):
+            tid = wp.tid()
+            wp.atomic_add(out, indices[tid], values[tid])
+
+        self.assertNotEqual(
+            _scatter_normal.module.name,
+            _scatter_deterministic.module.name,
+            "Different kernel options must produce different unique module names",
+        )
+
+        values = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device="cuda:0")
+        indices = wp.array([0, 0, 0, 0], dtype=wp.int32, device="cuda:0")
+
+        out_normal = wp.zeros(1, dtype=float, device="cuda:0")
+        out_deterministic = wp.zeros(1, dtype=float, device="cuda:0")
+
+        wp.launch(_scatter_normal, dim=4, inputs=[values, indices], outputs=[out_normal], device="cuda:0")
+        wp.launch(_scatter_deterministic, dim=4, inputs=[values, indices], outputs=[out_deterministic], device="cuda:0")
+
+        np.testing.assert_allclose(out_normal.numpy(), [10.0])
+        np.testing.assert_allclose(out_deterministic.numpy(), [10.0])
+
+    def test_deterministic_hashing_populates_launch_metadata(self):
+        """Hashing deterministic kernels must populate metadata used on cache hits."""
+
+        @wp.kernel(deterministic=True, deterministic_max_records=1, module="unique")
+        def _scatter_deterministic(
+            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
+        ):
+            tid = wp.tid()
+            wp.atomic_add(out, indices[tid], values[tid])
+
+        self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
+        delattr(_scatter_deterministic.adj, "det_meta")
+        self.assertFalse(hasattr(_scatter_deterministic.adj, "det_meta"))
+
+        resolved_options = _scatter_deterministic.module.resolve_options(wp.config) | _scatter_deterministic.options
+        ModuleHasher([_scatter_deterministic], resolved_options)
+
+        self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
+        self.assertTrue(_scatter_deterministic.adj.det_meta.needs_deterministic)
 
     def test_module_options_error_without_unique(self):
         """ValueError raised when module_options are used without ``module="unique"``."""
