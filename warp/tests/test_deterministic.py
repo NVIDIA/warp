@@ -133,7 +133,7 @@ def mat33_scatter_add_kernel(
     wp.atomic_add(output, dest_indices[tid], data[tid])
 
 
-@wp.kernel(deterministic=True, deterministic_capacity=4096)
+@wp.kernel(deterministic=True, deterministic_max_records=4096)
 def decorator_deterministic_kernel(
     data: wp.array(dtype=wp.float32),
     output: wp.array(dtype=wp.float32),
@@ -176,6 +176,20 @@ def triple_scatter_add_kernel(
     wp.atomic_add(output, 0, val)
     wp.atomic_add(output, 0, val * 2.0)
     wp.atomic_add(output, 0, val * 3.0)
+
+
+@wp.kernel(deterministic=True, deterministic_max_records=4)
+def loop_scatter_add_kernel(
+    data: wp.array(dtype=wp.float32),
+    counts: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Emit a data-dependent number of scatter records to the same target."""
+    tid = wp.tid()
+    val = data[tid]
+    count = counts[tid]
+    for _ in range(count):
+        wp.atomic_add(output, 0, val)
 
 
 @wp.kernel
@@ -622,6 +636,33 @@ def test_triple_scatter_capacity_estimate(test, device):
         results.append(output.numpy().copy())
 
     expected = np.array([6.0 * data_np.sum()], dtype=np.float32)
+    for result in results:
+        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_loop_scatter_max_records_override(test, device):
+    """Verify ``deterministic_max_records`` handles dynamic loop emission counts."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 256
+    rng = np.random.default_rng(71)
+    data_np = rng.random(n, dtype=np.float32)
+    counts_np = np.full(n, 4, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    counts = wp.array(counts_np, dtype=wp.int32, device=device)
+
+    expected = np.array([np.dot(data_np, counts_np).astype(np.float32)], dtype=np.float32)
+
+    results = []
+    for _ in range(3):
+        output = wp.zeros(1, dtype=wp.float32, device=device)
+        wp.launch(loop_scatter_add_kernel, dim=n, inputs=[data, counts], outputs=[output], device=device)
+        results.append(output.numpy().copy())
+
     for result in results:
         np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
     for i in range(1, len(results)):
@@ -1085,6 +1126,12 @@ add_function_test(
     TestDeterministic,
     "test_triple_scatter_capacity_estimate",
     test_triple_scatter_capacity_estimate,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_loop_scatter_max_records_override",
+    test_loop_scatter_max_records_override,
     devices=cuda_devices,
 )
 add_function_test(

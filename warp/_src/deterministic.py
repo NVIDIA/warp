@@ -190,14 +190,27 @@ def warp_scalar_type_to_id(dtype) -> int:
 # ---------------------------------------------------------------------------
 
 
-def allocate_scatter_buffers(scatter_targets, dim_size, device, min_capacity=0):
+def allocate_scatter_buffers(scatter_targets, dim_size, device, max_records=0):
     """Allocate scatter buffers for Pattern A targets.
 
-    Returns a list of (keys, values, counter, capacity) tuples.
+    Args:
+        scatter_targets: Deterministic scatter target metadata collected during
+            code generation.
+        dim_size: Launch dimension size. This corresponds to the number of
+            threads that may emit scatter records.
+        device: Target device for the temporary buffers.
+        max_records: Optional per-target, per-thread override for the maximum
+            number of scatter records a thread may emit. The final buffer size
+            uses ``max(codegen_lower_bound, max_records)`` records per thread.
+
+    Returns:
+        A list of ``(keys, values, counter, overflow, capacity)`` tuples, one
+        per scatter target.
     """
     buffers = []
     for target in scatter_targets:
-        capacity = max(dim_size * target.records_per_thread, 1024, min_capacity)
+        records_per_thread = max(target.records_per_thread, max_records)
+        capacity = max(dim_size * records_per_thread, 1024)
         keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
         values = warp.zeros(shape=(capacity,), dtype=target.value_dtype, device=device)
         counter = warp.zeros(shape=(1,), dtype=warp.int32, device=device)

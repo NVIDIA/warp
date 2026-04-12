@@ -1229,7 +1229,7 @@ def kernel(
     *,
     enable_backward: bool | None = None,
     deterministic: bool | None = None,
-    deterministic_capacity: int | None = None,
+    deterministic_max_records: int | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
@@ -1276,9 +1276,10 @@ def kernel(
             b[tid] = a[tid] + 1.0
 
 
-        @wp.kernel(deterministic=True, deterministic_capacity=1 << 20)
+        @wp.kernel(deterministic=True, deterministic_max_records=8)
         def my_kernel_deterministic(a: wp.array(dtype=float), b: wp.array(dtype=float)):
-            # deterministic scatter buffers will use at least the requested capacity
+            # deterministic scatter buffers will assume each thread emits at
+            # most 8 records per target, unless codegen proves a larger lower bound
             tid = wp.tid()
             wp.atomic_add(b, tid % 16, a[tid])
 
@@ -1288,8 +1289,12 @@ def kernel(
             generated.
         deterministic: If True, enable deterministic handling for
             supported atomic operations in this kernel.
-        deterministic_capacity: Optional minimum per-target scatter
-            buffer capacity to use when deterministic mode is enabled.
+        deterministic_max_records: Optional per-target, per-thread upper
+            bound for the number of deterministic scatter records a thread may
+            emit. Use this when a thread can execute the same atomic site
+            multiple times, for example inside a dynamic loop. Warp still uses
+            the code-generated static record count as a lower bound, so the
+            larger of the two values is used.
         launch_bounds: CUDA ``__launch_bounds__`` attribute for the
             kernel. Can be an int (``maxThreadsPerBlock``) or a tuple
             of 1-2 ints ``(maxThreadsPerBlock,
@@ -1304,7 +1309,7 @@ def kernel(
             inferred from the function's module.
         module_options: A dict of module-level compilation options
             (e.g. ``fast_math``, ``mode``, ``max_unroll``,
-            ``deterministic``, ``deterministic_capacity``) that are applied to the kernel's
+            ``deterministic``, ``deterministic_max_records``) that are applied to the kernel's
             module. Requires
             ``module="unique"``; raises ``ValueError`` otherwise.
             For shared modules, use :func:`warp.set_module_options`
@@ -1324,8 +1329,8 @@ def kernel(
         if deterministic is not None:
             kernel_options["deterministic"] = deterministic
 
-        if deterministic_capacity is not None:
-            kernel_options["deterministic_capacity"] = deterministic_capacity
+        if deterministic_max_records is not None:
+            kernel_options["deterministic_max_records"] = deterministic_max_records
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
@@ -2506,7 +2511,7 @@ class Module:
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
             "deterministic": None,
-            "deterministic_capacity": None,
+            "deterministic_max_records": None,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2549,8 +2554,8 @@ class Module:
         if options["deterministic"] is None:
             options["deterministic"] = config.deterministic
 
-        if options["deterministic_capacity"] is None:
-            options["deterministic_capacity"] = 0
+        if options["deterministic_max_records"] is None:
+            options["deterministic_max_records"] = 0
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -7537,12 +7542,12 @@ def _launch_deterministic(
 
     dim_size = bounds.size
     options = kernel.module.resolve_options(warp.config) | kernel.options
-    min_scatter_capacity = max(0, int(options.get("deterministic_capacity", 0) or 0))
+    max_scatter_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
     det_debug = int(warp.config.deterministic_debug)
 
     # Allocate buffers.
     scatter_bufs = (
-        allocate_scatter_buffers(det_meta.scatter_targets, dim_size, device, min_capacity=min_scatter_capacity)
+        allocate_scatter_buffers(det_meta.scatter_targets, dim_size, device, max_records=max_scatter_records)
         if det_meta.has_scatter
         else []
     )
@@ -8657,7 +8662,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **deterministic**: Enable deterministic handling for supported atomic operations. If ``None`` (the default), defers to ``warp.config.deterministic`` at compile time.
-    * **deterministic_capacity**: Minimum per-target deterministic scatter buffer capacity. Defaults to ``0``, which means use the code-generated lower bound only.
+    * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
