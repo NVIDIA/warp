@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Benchmarks for atomic operations under high thread contention.
+"""Benchmarks for atomic operations and deterministic mode overhead.
 
 All threads write to a single output location (index 0) to maximize contention
 and measure worst-case atomic operation performance.
@@ -25,6 +25,8 @@ import numpy as np
 
 import warp as wp
 
+wp.set_module_options({"enable_backward": False})
+
 # Map string parameter names to warp dtypes
 DTYPE_MAP = {
     "float32": wp.float32,
@@ -32,6 +34,8 @@ DTYPE_MAP = {
 }
 
 NUM_ELEMENTS = 32 * 1024 * 1024
+DETERMINISTIC_NUM_ELEMENTS = 1 * 1024 * 1024
+COUNTER_NUM_ELEMENTS = 4 * 1024 * 1024
 
 
 @wp.kernel
@@ -52,6 +56,48 @@ def min_kernel(
     tid = wp.tid()
     val = vals[tid]
     wp.atomic_min(out, 0, val)  # All threads contend on out[0]
+
+
+@wp.kernel
+def scatter_add_kernel(
+    vals: wp.array(dtype=wp.float32),
+    indices: wp.array(dtype=wp.int32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    wp.atomic_add(out, indices[tid], vals[tid])
+
+
+@wp.kernel(deterministic=True, deterministic_max_records=1)
+def scatter_add_kernel_deterministic(
+    vals: wp.array(dtype=wp.float32),
+    indices: wp.array(dtype=wp.int32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    wp.atomic_add(out, indices[tid], vals[tid])
+
+
+@wp.kernel
+def counter_kernel(
+    vals: wp.array(dtype=wp.float32),
+    counter: wp.array(dtype=wp.int32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    slot = wp.atomic_add(counter, 0, 1)
+    out[slot] = vals[tid]
+
+
+@wp.kernel(deterministic=True, deterministic_max_records=1)
+def counter_kernel_deterministic(
+    vals: wp.array(dtype=wp.float32),
+    counter: wp.array(dtype=wp.int32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    slot = wp.atomic_add(counter, 0, 1)
+    out[slot] = vals[tid]
 
 
 class AtomicMax:
@@ -165,4 +211,104 @@ class AtomicMin:
     def time_cuda(self, vals_np_dict, dtype_str):
         self.out.zero_()
         self.cmd.launch()
+        wp.synchronize_device(self.device)
+
+
+class AtomicAddDeterminismOverhead:
+    """Benchmark the overhead of deterministic accumulation atomics.
+
+    The benchmark compares the normal atomic-add path against deterministic
+    scatter-sort-reduce for the same kernel. Two destination counts are used:
+
+    - ``1``: worst-case contention, where every thread targets the same output.
+    - ``65536``: lower contention, closer to a scatter workload.
+    """
+
+    params = (["normal", "deterministic"], [1, 65536])
+    param_names = ["mode", "num_outputs"]
+
+    repeat = 10
+    number = 3
+
+    def setup_cache(self):
+        rng = np.random.default_rng(123)
+        vals_np = rng.random(DETERMINISTIC_NUM_ELEMENTS, dtype=np.float32)
+        indices_np = {
+            1: np.zeros(DETERMINISTIC_NUM_ELEMENTS, dtype=np.int32),
+            65536: rng.integers(0, 65536, size=DETERMINISTIC_NUM_ELEMENTS, dtype=np.int32),
+        }
+        return vals_np, indices_np
+
+    def setup(self, cache, mode, num_outputs):
+        wp.init()
+        self.device = wp.get_device("cuda:0")
+
+        vals_np, indices_np = cache
+        self.vals = wp.array(vals_np, dtype=wp.float32, device=self.device)
+        self.indices = wp.array(indices_np[num_outputs], dtype=wp.int32, device=self.device)
+        self.out = wp.zeros(shape=(num_outputs,), dtype=wp.float32, device=self.device)
+
+        self.kernel = scatter_add_kernel_deterministic if mode == "deterministic" else scatter_add_kernel
+        wp.launch(
+            self.kernel,
+            (DETERMINISTIC_NUM_ELEMENTS,),
+            inputs=[self.vals, self.indices],
+            outputs=[self.out],
+            device=self.device,
+        )
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self, cache, mode, num_outputs):
+        self.out.zero_()
+        wp.launch(
+            self.kernel,
+            (DETERMINISTIC_NUM_ELEMENTS,),
+            inputs=[self.vals, self.indices],
+            outputs=[self.out],
+            device=self.device,
+        )
+        wp.synchronize_device(self.device)
+
+
+class AtomicCounterDeterminismOverhead:
+    """Benchmark the overhead of deterministic counter/allocator atomics."""
+
+    params = ["normal", "deterministic"]
+    param_names = ["mode"]
+
+    repeat = 10
+    number = 3
+
+    def setup_cache(self):
+        rng = np.random.default_rng(321)
+        return rng.random(COUNTER_NUM_ELEMENTS, dtype=np.float32)
+
+    def setup(self, vals_np, mode):
+        wp.init()
+        self.device = wp.get_device("cuda:0")
+
+        self.vals = wp.array(vals_np, dtype=wp.float32, device=self.device)
+        self.counter = wp.zeros(shape=(1,), dtype=wp.int32, device=self.device)
+        self.out = wp.zeros(shape=(COUNTER_NUM_ELEMENTS,), dtype=wp.float32, device=self.device)
+
+        self.kernel = counter_kernel_deterministic if mode == "deterministic" else counter_kernel
+        wp.launch(
+            self.kernel,
+            (COUNTER_NUM_ELEMENTS,),
+            inputs=[self.vals, self.counter],
+            outputs=[self.out],
+            device=self.device,
+        )
+        wp.synchronize_device(self.device)
+
+    def time_cuda(self, vals_np, mode):
+        self.counter.zero_()
+        self.out.zero_()
+        wp.launch(
+            self.kernel,
+            (COUNTER_NUM_ELEMENTS,),
+            inputs=[self.vals, self.counter],
+            outputs=[self.out],
+            device=self.device,
+        )
         wp.synchronize_device(self.device)
