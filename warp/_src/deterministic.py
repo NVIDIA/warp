@@ -19,7 +19,7 @@ Pattern B — Counter/Allocator (return value used):
     with all side effects suppressed. Prefix sum computes deterministic
     offsets. Phase 1 re-executes with deterministic slot assignments.
 
-See ``warp.config.deterministic`` for the user-facing configuration flag.
+See ``warp.config.deterministic`` for the user-facing configuration modes.
 """
 
 from __future__ import annotations
@@ -33,6 +33,22 @@ from warp._src import utils as warp_utils
 REDUCE_OP_ADD = 0
 REDUCE_OP_MIN = 1
 REDUCE_OP_MAX = 2
+
+DETERMINISM_NOT_GUARANTEED = "not_guaranteed"
+DETERMINISM_RUN_TO_RUN = "run_to_run"
+DETERMINISM_GPU_TO_GPU = "gpu_to_gpu"
+
+_VALID_DETERMINISM_MODES = {
+    DETERMINISM_NOT_GUARANTEED,
+    DETERMINISM_RUN_TO_RUN,
+    DETERMINISM_GPU_TO_GPU,
+}
+
+_DETERMINISM_MODE_IDS = {
+    DETERMINISM_NOT_GUARANTEED: 0,
+    DETERMINISM_RUN_TO_RUN: 1,
+    DETERMINISM_GPU_TO_GPU: 2,
+}
 
 # Map from Warp builtin names to (is_accumulation, reduce_op).
 # Atomics whose return value is consumed are always Pattern B (counter);
@@ -49,6 +65,51 @@ _ALREADY_DETERMINISTIC_OPS = {"atomic_and", "atomic_or", "atomic_xor"}
 
 # Atomics that are inherently order-dependent (cannot be made deterministic).
 _ORDER_DEPENDENT_OPS = {"atomic_cas", "atomic_exch"}
+
+
+def normalize_determinism_mode(value, option_name="deterministic", allow_none=False):
+    """Normalize user-facing deterministic mode values.
+
+    The public API accepts the explicit mode strings plus ``True``/``False``
+    for backward compatibility:
+
+    - ``False`` -> ``"not_guaranteed"``
+    - ``True`` -> ``"run_to_run"``
+
+    Args:
+        value: User-provided config or option value.
+        option_name: Option name to use in error messages.
+        allow_none: Whether ``None`` is permitted.
+
+    Returns:
+        The normalized deterministic mode string, or ``None`` when
+        ``allow_none`` is ``True`` and the input is ``None``.
+    """
+    if value is None:
+        if allow_none:
+            return None
+        return DETERMINISM_NOT_GUARANTEED
+
+    if isinstance(value, bool):
+        return DETERMINISM_RUN_TO_RUN if value else DETERMINISM_NOT_GUARANTEED
+
+    if isinstance(value, str):
+        if value in _VALID_DETERMINISM_MODES:
+            return value
+        valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISM_MODES))
+        raise ValueError(f"{option_name} must be one of {valid_modes}, got {value!r}")
+
+    raise TypeError(f"{option_name} must be a bool or string, got {type(value).__name__}")
+
+
+def is_deterministic_mode_enabled(value) -> bool:
+    """Return ``True`` if a deterministic mode stronger than default is enabled."""
+    return normalize_determinism_mode(value) != DETERMINISM_NOT_GUARANTEED
+
+
+def determinism_mode_to_id(value) -> int:
+    """Map a normalized deterministic mode to the native enum id."""
+    return _DETERMINISM_MODE_IDS[normalize_determinism_mode(value)]
 
 
 @dataclass
@@ -232,7 +293,7 @@ def allocate_counter_buffers(counter_targets, dim_size, device):
     return buffers
 
 
-def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device):
+def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode):
     """Execute post-kernel sort-reduce for all Pattern A scatter targets.
 
     Args:
@@ -241,6 +302,7 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
         scatter_buffers: List of (keys, values, counter, capacity) tuples.
         dest_arrays: List of destination warp.array objects (parallel to scatter_targets).
         device: The target device.
+        determinism_mode: One of the user-facing deterministic mode strings.
     """
     for i, target in enumerate(scatter_targets):
         keys, values, _counter, _overflow, capacity = scatter_buffers[i]
@@ -261,4 +323,5 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
             target.reduce_op,
             scalar_type_id,
             getattr(target.value_dtype, "_length_", 1),
+            determinism_mode_to_id(determinism_mode),
         )

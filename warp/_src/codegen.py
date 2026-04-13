@@ -1118,9 +1118,9 @@ class Adjoint:
         options = adj.builder_options
 
         # Initialize deterministic mode metadata if enabled
-        if adj.builder_options.get("deterministic", False):
-            from warp._src.deterministic import DeterministicMeta  # noqa: PLC0415
+        from warp._src.deterministic import DeterministicMeta, is_deterministic_mode_enabled  # noqa: PLC0415
 
+        if is_deterministic_mode_enabled(adj.builder_options.get("deterministic")):
             adj.det_meta = DeterministicMeta()
         else:
             adj.det_meta = None

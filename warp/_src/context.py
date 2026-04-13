@@ -1228,7 +1228,7 @@ def kernel(
     f: Callable | None = None,
     *,
     enable_backward: bool | None = None,
-    deterministic: bool | None = None,
+    deterministic: str | bool | None = None,
     deterministic_max_records: int | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
     module: Module | Literal["unique"] | str | None = None,
@@ -1276,7 +1276,7 @@ def kernel(
             b[tid] = a[tid] + 1.0
 
 
-        @wp.kernel(deterministic=True, deterministic_max_records=8)
+        @wp.kernel(deterministic="run_to_run", deterministic_max_records=8)
         def my_kernel_deterministic(a: wp.array(dtype=float), b: wp.array(dtype=float)):
             # deterministic scatter buffers will assume each thread emits at
             # most 8 records per target, unless codegen proves a larger lower bound
@@ -1287,8 +1287,11 @@ def kernel(
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be
             generated.
-        deterministic: If True, enable deterministic handling for
-            supported atomic operations in this kernel.
+        deterministic: Determinism guarantee for supported atomic operations in
+            this kernel. Accepted values are ``"not_guaranteed"`` (disable the
+            transform), ``"run_to_run"``, and ``"gpu_to_gpu"``. ``True`` and
+            ``False`` are accepted for backward compatibility and map to
+            ``"run_to_run"`` and ``"not_guaranteed"``, respectively.
         deterministic_max_records: Optional per-target, per-thread upper
             bound for the number of deterministic scatter records a thread may
             emit. Use this when a thread can execute the same atomic site
@@ -1323,11 +1326,15 @@ def kernel(
     def wrapper(f, *args, **kwargs):
         kernel_options = {}
 
+        from warp._src.deterministic import normalize_determinism_mode  # noqa: PLC0415
+
         if enable_backward is not None:
             kernel_options["enable_backward"] = enable_backward
 
         if deterministic is not None:
-            kernel_options["deterministic"] = deterministic
+            kernel_options["deterministic"] = normalize_determinism_mode(
+                deterministic, option_name="deterministic", allow_none=True
+            )
 
         if deterministic_max_records is not None:
             kernel_options["deterministic_max_records"] = deterministic_max_records
@@ -2021,7 +2028,9 @@ class ModuleHasher:
         # module is loaded from a cache hit and code generation is skipped.
         # Build the adjoint once during hashing so the launch path has the same
         # metadata it would have received on a fresh compile.
-        if resolved_options.get("deterministic", False) and not hasattr(kernel.adj, "det_meta"):
+        from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
+
+        if is_deterministic_mode_enabled(resolved_options.get("deterministic")) and not hasattr(kernel.adj, "det_meta"):
             kernel.adj.build(None, resolved_options)
 
         ch.update(bytes(kernel.key, "utf-8"))
@@ -2564,9 +2573,12 @@ class Module:
         if options["enable_mathdx_gemm"] is None:
             options["enable_mathdx_gemm"] = config.enable_mathdx_gemm
 
+        from warp._src.deterministic import normalize_determinism_mode  # noqa: PLC0415
+
         # Resolve None-means-inherit for deterministic
         if options["deterministic"] is None:
             options["deterministic"] = config.deterministic
+        options["deterministic"] = normalize_determinism_mode(options["deterministic"], option_name="deterministic")
 
         if options["deterministic_max_records"] is None:
             options["deterministic_max_records"] = 0
@@ -4489,6 +4501,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_uint64,
+                ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
@@ -7551,11 +7564,13 @@ def _launch_deterministic(
     from warp._src.deterministic import (  # noqa: PLC0415
         allocate_counter_buffers,
         allocate_scatter_buffers,
+        normalize_determinism_mode,
         run_sort_reduce,
     )
 
     dim_size = bounds.size
     options = kernel.module.resolve_options(warp.config) | kernel.options
+    determinism_mode = normalize_determinism_mode(options.get("deterministic"), option_name="deterministic")
     max_scatter_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
     det_debug = int(warp.config.deterministic_debug)
 
@@ -7681,7 +7696,7 @@ def _launch_deterministic(
                     break
             dest_arrays.append(dest_arr)
 
-        run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device)
+        run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device, determinism_mode)
 
     try:
         runtime.verify_cuda_device(device)
@@ -8675,7 +8690,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
-    * **deterministic**: Enable deterministic handling for supported atomic operations. If ``None`` (the default), defers to ``warp.config.deterministic`` at compile time.
+    * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``"not_guaranteed"``, ``"run_to_run"``, ``"gpu_to_gpu"``, plus ``True``/``False`` for backward compatibility. If ``None`` (the default), defers to ``warp.config.deterministic`` at compile time.
     * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
@@ -8685,6 +8700,13 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
         options: Set of key-value option pairs
     """
+    if "deterministic" in options:
+        from warp._src.deterministic import normalize_determinism_mode  # noqa: PLC0415
+
+        options = dict(options)
+        options["deterministic"] = normalize_determinism_mode(
+            options["deterministic"], option_name="deterministic", allow_none=True
+        )
 
     if module is None:
         module_name = _get_caller_module_name(stack_level=2)

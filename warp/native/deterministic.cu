@@ -43,6 +43,12 @@ enum ScalarType {
     SCALAR_UINT64 = 6,
 };
 
+enum DeterminismLevel {
+    DETERMINISM_NOT_GUARANTEED = 0,
+    DETERMINISM_RUN_TO_RUN = 1,
+    DETERMINISM_GPU_TO_GPU = 2,
+};
+
 __global__ void init_record_indices_kernel(int* indices, int count)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -176,7 +182,9 @@ __global__ void deterministic_reduce_kernel(
 }
 
 template <typename T>
-void deterministic_sort_reduce_device_scalar(int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op)
+void deterministic_sort_reduce_device_scalar_run_to_run(
+    int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op
+)
 {
     if (count <= 0)
         return;
@@ -240,14 +248,14 @@ void deterministic_sort_reduce_device_scalar(int64_t* keys, T* values, int count
 // reduce kernel.
 template <typename T>
 void deterministic_sort_reduce_device(
-    int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op, int components
+    int64_t* keys, T* values, int count, T* dest_array, int dest_size, int op, int components, int determinism_level
 )
 {
     if (count <= 0)
         return;
 
-    if (components == 1) {
-        deterministic_sort_reduce_device_scalar(keys, values, count, dest_array, dest_size, op);
+    if (components == 1 && determinism_level == DETERMINISM_RUN_TO_RUN) {
+        deterministic_sort_reduce_device_scalar_run_to_run(keys, values, count, dest_array, dest_size, op);
         return;
     }
 
@@ -306,50 +314,51 @@ void wp_deterministic_sort_reduce_device(
     int dest_size,
     int op,
     int scalar_type,
-    int components
+    int components,
+    int determinism_level
 )
 {
     switch (scalar_type) {
     case SCALAR_HALF:
         deterministic_sort_reduce_device<wp::half>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<wp::half*>(values), count,
-            reinterpret_cast<wp::half*>(dest_array), dest_size, op, components
+            reinterpret_cast<wp::half*>(dest_array), dest_size, op, components, determinism_level
         );
         break;
     case SCALAR_FLOAT:
         deterministic_sort_reduce_device<float>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<float*>(values), count,
-            reinterpret_cast<float*>(dest_array), dest_size, op, components
+            reinterpret_cast<float*>(dest_array), dest_size, op, components, determinism_level
         );
         break;
     case SCALAR_DOUBLE:
         deterministic_sort_reduce_device<double>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<double*>(values), count,
-            reinterpret_cast<double*>(dest_array), dest_size, op, components
+            reinterpret_cast<double*>(dest_array), dest_size, op, components, determinism_level
         );
         break;
     case SCALAR_INT:
         deterministic_sort_reduce_device<int>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<int*>(values), count, reinterpret_cast<int*>(dest_array),
-            dest_size, op, components
+            dest_size, op, components, determinism_level
         );
         break;
     case SCALAR_UINT:
         deterministic_sort_reduce_device<unsigned int>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<unsigned int*>(values), count,
-            reinterpret_cast<unsigned int*>(dest_array), dest_size, op, components
+            reinterpret_cast<unsigned int*>(dest_array), dest_size, op, components, determinism_level
         );
         break;
     case SCALAR_INT64:
         deterministic_sort_reduce_device<int64_t>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<int64_t*>(values), count,
-            reinterpret_cast<int64_t*>(dest_array), dest_size, op, components
+            reinterpret_cast<int64_t*>(dest_array), dest_size, op, components, determinism_level
         );
         break;
     case SCALAR_UINT64:
         deterministic_sort_reduce_device<uint64_t>(
             reinterpret_cast<int64_t*>(keys), reinterpret_cast<uint64_t*>(values), count,
-            reinterpret_cast<uint64_t*>(dest_array), dest_size, op, components
+            reinterpret_cast<uint64_t*>(dest_array), dest_size, op, components, determinism_level
         );
         break;
     default:

@@ -257,12 +257,25 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
-deterministic: bool = False
-"""Enable deterministic execution mode for atomic operations.
+deterministic: str = "not_guaranteed"
+"""Determinism guarantee for supported atomic operations.
 
-When enabled, floating-point atomic operations (``atomic_add``, ``atomic_sub``,
-``atomic_min``, ``atomic_max``) and counter-pattern atomics (where the return value
-is used for slot allocation) produce bit-exact reproducible results across runs.
+Accepted values are:
+
+- ``"not_guaranteed"``: Default behavior. Atomic ordering is not constrained.
+- ``"run_to_run"``: Produce bit-exact reproducible results across repeated runs
+  on the same GPU architecture.
+- ``"gpu_to_gpu"``: Use a stronger reduction path intended to preserve the same
+  result across GPU architectures as well.
+
+For backward compatibility, module and kernel options may still pass ``True``
+or ``False``; they are interpreted as ``"run_to_run"`` and
+``"not_guaranteed"``, respectively.
+
+When this setting is stronger than ``"not_guaranteed"``, floating-point atomic
+operations (``atomic_add``, ``atomic_sub``, ``atomic_min``, ``atomic_max``) and
+counter-pattern atomics (where the return value is used for slot allocation)
+produce bit-exact reproducible results according to the selected guarantee.
 
 Accumulation atomics are deferred to a post-kernel sort-reduce step that processes
 values in a fixed order. Counter atomics use a two-pass execution scheme (counting
@@ -278,8 +291,8 @@ Kernels where counter contributions depend on earlier scratch array writes withi
 the same kernel may produce incorrect results. Use local variables or read directly
 from input arrays for control flow that determines counter contributions.
 
-This setting can be overridden at the module level by setting the ``"deterministic"``
-module option.
+This setting can be overridden at the module level by setting the
+``"deterministic"`` module option.
 """
 
 deterministic_debug: bool = False

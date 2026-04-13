@@ -333,7 +333,8 @@ WP_API void wp_deterministic_sort_reduce_device(
     int dest_size,
     int op,
     int scalar_type,
-    int components
+    int components,
+    int determinism_level
 );
 
 WP_API void wp_bsr_matrix_from_triplets_host(

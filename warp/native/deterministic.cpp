@@ -17,7 +17,8 @@ void wp_deterministic_sort_reduce_device(
     int dest_size,
     int op,
     int scalar_type,
-    int components
+    int components,
+    int determinism_level
 )
 {
 }
