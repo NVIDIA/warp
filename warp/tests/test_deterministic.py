@@ -3,8 +3,8 @@
 
 """Tests for deterministic execution mode.
 
-Validates that ``wp.config.deterministic = True`` produces bit-exact
-reproducible results for atomic operations across multiple runs.
+Validates that deterministic modes produce bit-exact reproducible results for
+atomic operations across multiple runs.
 """
 
 import unittest
@@ -13,6 +13,15 @@ import numpy as np
 
 import warp as wp
 from warp.tests.unittest_utils import *
+
+
+def _reference_scatter_add_float32(data_np, indices_np, out_size):
+    """Compute the canonical left-to-right float32 scatter reduction on CPU."""
+    expected = np.zeros(out_size, dtype=np.float32)
+    for value, index in zip(data_np, indices_np, strict=True):
+        expected[index] = np.float32(expected[index] + value)
+    return expected
+
 
 # ---------------------------------------------------------------------------
 # Pattern A kernels: accumulation (return value unused)
@@ -133,12 +142,12 @@ def mat33_scatter_add_kernel(
     wp.atomic_add(output, dest_indices[tid], data[tid])
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=4096)
+@wp.kernel(deterministic="gpu_to_gpu", deterministic_max_records=4096)
 def decorator_deterministic_kernel(
     data: wp.array(dtype=wp.float32),
     output: wp.array(dtype=wp.float32),
 ):
-    """Kernel-level deterministic flag without module_options."""
+    """Kernel-level GPU-to-GPU deterministic flag without module options."""
     tid = wp.tid()
     wp.atomic_add(output, tid % 8, data[tid])
 
@@ -327,6 +336,77 @@ def test_scatter_add_reproducibility(test, device):
             results[i],
             err_msg=f"Run 0 vs run {i} differ (deterministic mode should be bit-exact)",
         )
+
+
+def test_gpu_to_gpu_mode_reproducibility(test, device):
+    """Verify the global ``gpu_to_gpu`` mode produces reproducible results."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 1024
+    out_size = 16
+    rng = np.random.default_rng(44)
+
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "gpu_to_gpu"
+        results = []
+        for _ in range(3):
+            output = wp.zeros(out_size, dtype=wp.float32, device=device)
+            wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+            results.append(output.numpy().copy())
+        for i in range(1, len(results)):
+            np.testing.assert_array_equal(results[0], results[i])
+    finally:
+        wp.config.deterministic = old_det
+
+
+def test_gpu_to_gpu_matches_canonical_float32_reference(test, device):
+    """Verify ``gpu_to_gpu`` matches the canonical float32 CPU reduction order."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    data_np = np.array(
+        [
+            1.0e20,
+            1.0,
+            -1.0e20,
+            3.5,
+            -2.25,
+            2.0**-20,
+            1.0e10,
+            -1.0e10,
+            7.0,
+            -7.0,
+            9.0,
+            1.0e-7,
+        ],
+        dtype=np.float32,
+    )
+    indices_np = np.array([0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 2, 2], dtype=np.int32)
+    out_size = 3
+
+    expected = _reference_scatter_add_float32(data_np, indices_np, out_size)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "gpu_to_gpu"
+        output = wp.zeros(out_size, dtype=wp.float32, device=device)
+        wp.launch(scatter_add_kernel, dim=data_np.shape[0], inputs=[data, indices], outputs=[output], device=device)
+        result = output.numpy()
+    finally:
+        wp.config.deterministic = old_det
+
+    np.testing.assert_array_equal(result.view(np.uint32), expected.view(np.uint32))
 
 
 def test_augassign_add_reproducibility(test, device):
@@ -850,8 +930,8 @@ def test_int_atomic_passthrough(test, device):
 def test_module_option_override(test, device):
     """Verify per-module deterministic option works."""
 
-    # Create a kernel with per-module deterministic=True override.
-    @wp.kernel(module_options={"deterministic": True}, module="unique")
+    # Create a kernel with a per-module deterministic override.
+    @wp.kernel(module_options={"deterministic": "gpu_to_gpu"}, module="unique")
     def per_kernel_det(
         data: wp.array(dtype=wp.float32),
         output: wp.array(dtype=wp.float32),
@@ -864,10 +944,10 @@ def test_module_option_override(test, device):
     data_np = rng.random(n, dtype=np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    # Ensure global config is False but per-kernel override still works.
+    # Ensure global config is disabled but per-kernel override still works.
     old_det = wp.config.deterministic
     try:
-        wp.config.deterministic = False
+        wp.config.deterministic = "not_guaranteed"
         output = wp.zeros(4, dtype=wp.float32, device=device)
         wp.launch(per_kernel_det, dim=n, inputs=[data], outputs=[output], device=device)
         result = output.numpy()
@@ -881,7 +961,7 @@ def test_module_option_override(test, device):
 
 
 def test_kernel_decorator_override(test, device):
-    """Verify ``@wp.kernel(deterministic=True)`` works with global config off."""
+    """Verify ``@wp.kernel(deterministic="gpu_to_gpu")`` works with global config off."""
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
@@ -892,7 +972,7 @@ def test_kernel_decorator_override(test, device):
 
     old_det = wp.config.deterministic
     try:
-        wp.config.deterministic = False
+        wp.config.deterministic = "not_guaranteed"
         results = []
         for _ in range(3):
             output = wp.zeros(8, dtype=wp.float32, device=device)
@@ -1087,7 +1167,7 @@ class TestDeterministic(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._old_deterministic = wp.config.deterministic
-        wp.config.deterministic = True
+        wp.config.deterministic = "run_to_run"
 
     @classmethod
     def tearDownClass(cls):
@@ -1097,6 +1177,18 @@ class TestDeterministic(unittest.TestCase):
 # Pattern A tests (accumulation).
 add_function_test(
     TestDeterministic, "test_scatter_add_reproducibility", test_scatter_add_reproducibility, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_gpu_to_gpu_mode_reproducibility",
+    test_gpu_to_gpu_mode_reproducibility,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_gpu_to_gpu_matches_canonical_float32_reference",
+    test_gpu_to_gpu_matches_canonical_float32_reference,
+    devices=cuda_devices,
 )
 add_function_test(
     TestDeterministic, "test_augassign_add_reproducibility", test_augassign_add_reproducibility, devices=cuda_devices
