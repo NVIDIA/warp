@@ -131,14 +131,25 @@ def values_check_equal(a, b):
     return a == b
 
 
-def get_closure_cell_contents(obj):
-    """Retrieve a closure's cell contents or `None` if it's empty."""
-    try:
-        return obj.cell_contents
-    except ValueError:
-        pass
+def get_closure_vars(func: Callable) -> dict[str, Any]:
+    """Return a dict of the function's closure variables, skipping empty cells."""
+    result = {}
+    closure = func.__closure__
+    if closure is not None:
+        for name, cell in zip(func.__code__.co_freevars, closure, strict=True):
+            try:
+                result[name] = cell.cell_contents
+            except ValueError:
+                pass
+    return result
 
-    return None
+
+def resolve_closure_or_global(func: Callable, name: str):
+    """Look up *name* in the function's closure variables, falling back to globals."""
+    closure_vars = get_closure_vars(func)
+    if name in closure_vars:
+        return closure_vars[name]
+    return func.__globals__.get(name)
 
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
@@ -149,12 +160,7 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
 def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     """Same as `inspect.getfullargspec()` but always returning un-stringized annotations."""
     spec = inspect.getfullargspec(func)
-    # Capture closure variables to handle cases like `foo.Data` where `foo` is a closure variable
-    closure_vars = dict(
-        zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())), strict=True)
-    )
-    # Filter out None values from empty cells
-    closure_vars = {k: v for k, v in closure_vars.items() if v is not None}
+    closure_vars = get_closure_vars(func)
     return spec._replace(annotations=inspect.get_annotations(func, eval_str=True, locals=closure_vars))
 
 
@@ -3699,16 +3705,8 @@ class Adjoint:
     # retrieves a dictionary of all closure and global variables and their values
     # to be used in the evaluation context of wp.static() expressions
     def get_static_evaluation_context(adj):
-        closure_vars = dict(
-            zip(
-                adj.func.__code__.co_freevars,
-                [c.cell_contents for c in (adj.func.__closure__ or [])],
-                strict=True,
-            )
-        )
-
         # variables captured in closure have precedence over global vars
-        vars_dict = adj.func.__globals__ | closure_vars
+        vars_dict = adj.func.__globals__ | get_closure_vars(adj.func)
 
         return vars_dict
 
@@ -4048,14 +4046,7 @@ class Adjoint:
         return None, path
 
     def resolve_external_reference(adj, name: str):
-        try:
-            # look up in closure variables
-            idx = adj.func.__code__.co_freevars.index(name)
-            obj = adj.func.__closure__[idx].cell_contents
-        except ValueError:
-            # look up in global variables
-            obj = adj.func.__globals__.get(name)
-        return obj
+        return resolve_closure_or_global(adj.func, name)
 
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
