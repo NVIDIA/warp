@@ -29,6 +29,19 @@ _wp_module_name_ = "warp.codegen"
 # of current compile options (block_dim) etc
 options = {}
 
+# Atomic builtins that can be intercepted by deterministic mode.
+_DET_INTERCEPTABLE_ATOMICS = frozenset(
+    {
+        "atomic_add",
+        "atomic_sub",
+        "atomic_min",
+        "atomic_max",
+    }
+)
+
+# Atomics that are inherently order-dependent (warn but don't intercept).
+_DET_ORDER_DEPENDENT_ATOMICS = frozenset({"atomic_cas", "atomic_exch"})
+
 
 def get_node_name_safe(node):
     """Safely get a string representation of an AST node for error messages.
@@ -1110,6 +1123,15 @@ class Adjoint:
         global options
         options = adj.builder_options
 
+        # Initialize deterministic mode metadata if enabled
+        from warp._src.deterministic import DeterministicMeta, is_deterministic_mode_enabled  # noqa: PLC0415
+
+        if is_deterministic_mode_enabled(adj.builder_options.get("deterministic")):
+            adj.det_meta = DeterministicMeta()
+        else:
+            adj.det_meta = None
+        adj._det_in_assign = False
+
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
         adj.deferred_static_expressions = []
@@ -1626,6 +1648,13 @@ class Adjoint:
             output = [adj.add_var(v) for v in return_type]
             output_list = output
 
+        # Deterministic mode: intercept atomic builtins and emit scatter or
+        # two-pass code instead of the normal atomic call.
+        if adj.det_meta is not None and func.is_builtin() and func.key in _DET_INTERCEPTABLE_ATOMICS:
+            det_output = adj._emit_deterministic_atomic(func, bound_args, return_type, output, output_list)
+            if det_output is not None:
+                return det_output
+
         # If we have a built-in that requires special handling to dispatch
         # the arguments to the underlying C++ function, then we can resolve
         # these using the `dispatch_func`. Since this is only called from
@@ -1725,6 +1754,173 @@ class Adjoint:
     def add_builtin_call(adj, func_name, args, min_outputs=None):
         func = warp._src.context.builtin_functions[func_name]
         return adj.add_call(func, args, {}, {}, min_outputs=min_outputs)
+
+    def _emit_deterministic_atomic(adj, func, bound_args, return_type, output, output_list):
+        """Emit deterministic scatter or two-pass code for an atomic builtin.
+
+        Returns the output Var if the atomic was handled, or None to fall
+        through to normal codegen.
+        """
+        from warp._src.deterministic import (  # noqa: PLC0415
+            REDUCE_OP_ADD,
+            REDUCE_OP_MAX,
+            REDUCE_OP_MIN,
+            get_or_create_counter_target,
+            get_or_create_scatter_target,
+            is_float_type,
+            warp_type_to_ctype,
+        )
+
+        args_list = list(bound_args.values())
+        arr_var = args_list[0]  # the target array
+        index_vars = args_list[1:-1]  # the index arguments (1-4 depending on ndim)
+
+        arr_type = arr_var.type
+        value_dtype = arr_type.dtype
+        scalar_dtype = value_dtype
+        if hasattr(scalar_dtype, "_wp_scalar_type_"):
+            scalar_dtype = scalar_dtype._wp_scalar_type_
+
+        # Determine if the return value is actually consumed by the caller.
+        # When called from emit_AugAssign (arr[i] += val) or a bare expression,
+        # the return is discarded → Pattern A.
+        # When called from emit_Assign (slot = wp.atomic_add(...)),
+        # the return is captured → Pattern B.
+        return_is_consumed = getattr(adj, "_det_in_assign", False)
+
+        # Integer atomics with associative+commutative ops (add/sub/min/max)
+        # that don't use the return value are already deterministic — skip.
+        if not is_float_type(scalar_dtype) and not return_is_consumed:
+            return None  # fall through to normal codegen
+
+        value_ctype = Var.dtype_to_ctype(value_dtype)
+        scalar_ctype = warp_type_to_ctype(scalar_dtype)
+
+        # C++ zero literal for the value type.
+        # Cannot use "float(0)" because Warp defines a macro #define float(x) cast_float(x).
+        _ZERO_LITERALS = {
+            "float": "0.0f",
+            "double": "0.0",
+            "wp::half": "wp::half(0)",
+            "int": "0",
+            "unsigned int": "0u",
+            "int64_t": "int64_t(0)",
+            "uint64_t": "uint64_t(0)",
+        }
+        zero_literal = _ZERO_LITERALS.get(scalar_ctype, f"{scalar_ctype}(0)")
+
+        # Map from builtin name to reduction op
+        op_map = {
+            "atomic_add": REDUCE_OP_ADD,
+            "atomic_sub": REDUCE_OP_ADD,  # value is negated before scatter
+            "atomic_min": REDUCE_OP_MIN,
+            "atomic_max": REDUCE_OP_MAX,
+        }
+        reduce_op = op_map.get(func.key, REDUCE_OP_ADD)
+
+        # Classify: if the return value is consumed, this is Pattern B (counter).
+        # Otherwise, it's Pattern A (accumulation).
+        # All deterministic codegen is wrapped in #ifdef __CUDA_ARCH__ so that
+        # CPU compilation falls through to normal atomic calls (CPU execution
+        # is already sequential/deterministic).
+        # We return None for the #else branch, telling add_call to emit the
+        # normal atomic call below. However, since we can only return once,
+        # we handle both CUDA and CPU paths here: emit the CUDA path as
+        # raw C++ with #ifdef, then return output to skip the normal codegen.
+
+        # Build the CPU fallback: a normal atomic call string.
+        # This is used in the #else branch for CPU compilation.
+        loaded_args = [adj.load(a) for a in args_list]
+        cpu_args_str = ", ".join(f"var_{a}" for a in loaded_args)
+        if output is not None:
+            cpu_call = f"var_{output} = wp::{func.native_func}({cpu_args_str});"
+        else:
+            cpu_call = f"wp::{func.native_func}({cpu_args_str});"
+
+        if return_is_consumed:
+            # Pattern B: Counter/Allocator
+            target = get_or_create_counter_target(adj.det_meta, arr_var.label, scalar_ctype)
+            N = target.index
+
+            val_loaded = loaded_args[-1]  # already loaded above
+
+            adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
+            adj.add_forward(
+                f"if (_wp_det_phase == 0) {{ "
+                f"_wp_det_contrib_{N}[_idx] += var_{val_loaded}; "
+                f"var_{output} = {zero_literal}; "
+                f"}} else {{ "
+                f"var_{output} = static_cast<{scalar_ctype}>(_wp_det_prefix_{N}[_idx]); "
+                f"_wp_det_prefix_{N}[_idx] += var_{val_loaded}; "
+                f"}}",
+                replay="// deterministic counter replay (skipped)",
+            )
+            adj.add_forward("#else", skip_replay=True)
+            adj.add_forward(cpu_call, replay="// " + cpu_call)
+            adj.add_forward("#endif", skip_replay=True)
+            return output
+
+        # Pattern A: Accumulation (return value unused)
+        target = get_or_create_scatter_target(
+            adj.det_meta,
+            arr_var.label,
+            value_dtype,
+            value_ctype,
+            scalar_dtype,
+            reduce_op,
+        )
+        N = target.index
+
+        arr_loaded = loaded_args[0]
+        val_loaded = loaded_args[-1]
+        idx_loaded_list = loaded_args[1:-1]
+
+        ndim = len(index_vars)
+        if ndim == 1:
+            flat_idx_expr = f"var_{idx_loaded_list[0]}"
+        elif ndim == 2:
+            flat_idx_expr = f"(var_{idx_loaded_list[0]} * var_{arr_loaded}.shape[1] + var_{idx_loaded_list[1]})"
+        elif ndim == 3:
+            flat_idx_expr = (
+                f"(var_{idx_loaded_list[0]} * var_{arr_loaded}.shape[1] * var_{arr_loaded}.shape[2] "
+                f"+ var_{idx_loaded_list[1]} * var_{arr_loaded}.shape[2] + var_{idx_loaded_list[2]})"
+            )
+        elif ndim == 4:
+            flat_idx_expr = (
+                f"(var_{idx_loaded_list[0]} * var_{arr_loaded}.shape[1] * var_{arr_loaded}.shape[2] * var_{arr_loaded}.shape[3] "
+                f"+ var_{idx_loaded_list[1]} * var_{arr_loaded}.shape[2] * var_{arr_loaded}.shape[3] "
+                f"+ var_{idx_loaded_list[2]} * var_{arr_loaded}.shape[3] + var_{idx_loaded_list[3]})"
+            )
+        else:
+            flat_idx_expr = "0"
+
+        val_expr = f"var_{val_loaded}"
+        if func.key == "atomic_sub":
+            val_expr = f"(-{val_expr})"
+
+        phase_guard_open = ""
+        phase_guard_close = ""
+        if adj.det_meta.has_counter:
+            phase_guard_open = "if (_wp_det_phase != 0) { "
+            phase_guard_close = " }"
+
+        adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
+        adj.add_forward(
+            f"{phase_guard_open}"
+            f"wp::deterministic::scatter("
+            f"_wp_scatter_keys_{N}, _wp_scatter_vals_{N}, "
+            f"_wp_scatter_ctr_{N}, _wp_scatter_overflow_{N}, _wp_scatter_cap_{N}, "
+            f"_wp_det_debug, "
+            f"static_cast<int>({flat_idx_expr}), _idx, {val_expr});"
+            f"{phase_guard_close}",
+            replay="// deterministic scatter replay (skipped)",
+        )
+        if output is not None:
+            adj.add_forward(f"var_{output} = {zero_literal};")
+        adj.add_forward("#else", skip_replay=True)
+        adj.add_forward(cpu_call, replay="// " + cpu_call)
+        adj.add_forward("#endif", skip_replay=True)
+        return output
 
     def add_grad_call(adj, func, args, kwargs):
         """Generate code for calling the gradient of a function via warp.grad().
@@ -3150,10 +3346,16 @@ class Adjoint:
             node.value.expects = len(lhs.elts)
 
         # evaluate rhs
-        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
-            rhs = [adj.eval(v) for v in node.value.elts]
-        else:
-            rhs = adj.eval(node.value)
+        # Mark that return values are consumed (used by deterministic atomic
+        # classification to distinguish Pattern B from Pattern A).
+        adj._det_in_assign = True
+        try:
+            if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
+                rhs = [adj.eval(v) for v in node.value.elts]
+            else:
+                rhs = adj.eval(node.value)
+        finally:
+            adj._det_in_assign = False
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
@@ -3249,7 +3451,20 @@ class Adjoint:
         target_type = strip_reference(target.type)
 
         if is_array(target_type):
-            adj.add_builtin_call("array_store", [target, *indices, rhs])
+            # Deterministic two-pass mode must suppress normal array writes in
+            # phase 0 so the counting pass does not introduce side effects.
+            if adj.det_meta is not None and adj.det_meta.has_counter:
+                loaded_store_args = [adj.load(x) for x in (target, *indices, rhs)]
+                cpu_store_args = ", ".join(f"var_{x}" for x in loaded_store_args)
+                adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
+                adj.add_forward("if (_wp_det_phase != 0) {", skip_replay=True)
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
+                adj.add_forward("}", skip_replay=True)
+                adj.add_forward("#else", skip_replay=True)
+                adj.add_forward(f"wp::array_store({cpu_store_args});")
+                adj.add_forward("#endif", skip_replay=True)
+            else:
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
 
             if adj.builder_options.get("verify_autograd_array_access", False):
                 kernel_name = adj.fun_name
@@ -4135,6 +4350,7 @@ cuda_module_header = """
 #define WP_TILE_BLOCK_DIM {block_dim}
 #define WP_NO_CRT
 #include "builtin.h"
+#include "deterministic.h"
 
 // Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
 #if defined(__CUDACC__) && !defined(_MSC_VER)
@@ -4925,6 +5141,23 @@ def codegen_kernel(kernel, device, options):
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
 
+        # Deterministic mode: add hidden kernel parameters for scatter/counter buffers.
+        if device == "cuda" and adj.det_meta is not None and adj.det_meta.needs_deterministic:
+            det = adj.det_meta
+            if det.has_counter:
+                forward_args.append("int _wp_det_phase")
+                for ct in det.counter_targets:
+                    forward_args.append(f"int* _wp_det_contrib_{ct.index}")
+                    forward_args.append(f"int* _wp_det_prefix_{ct.index}")
+            for st in det.scatter_targets:
+                forward_args.append(f"int64_t* _wp_scatter_keys_{st.index}")
+                forward_args.append(f"{st.value_ctype}* _wp_scatter_vals_{st.index}")
+                forward_args.append(f"int* _wp_scatter_ctr_{st.index}")
+                forward_args.append(f"int* _wp_scatter_overflow_{st.index}")
+                forward_args.append(f"int _wp_scatter_cap_{st.index}")
+            if det.has_scatter:
+                forward_args.append("int _wp_det_debug")
+
     forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
     template_fmt_args.update(
         {
@@ -4951,6 +5184,24 @@ def codegen_kernel(kernel, device, options):
                     reverse_args.append(_arg.ctype() + " adj_" + arg.label)
                 else:
                     reverse_args.append(arg.ctype() + " adj_" + arg.label)
+
+            # Deterministic mode: backward kernel also gets scatter buffer params
+            # for deterministic gradient accumulation.
+            if device == "cuda" and adj.det_meta is not None and adj.det_meta.needs_deterministic:
+                det = adj.det_meta
+                if det.has_counter:
+                    reverse_args.append("int _wp_det_phase")
+                    for ct in det.counter_targets:
+                        reverse_args.append(f"int* _wp_det_contrib_{ct.index}")
+                        reverse_args.append(f"int* _wp_det_prefix_{ct.index}")
+                for st in det.scatter_targets:
+                    reverse_args.append(f"int64_t* _wp_scatter_keys_{st.index}")
+                    reverse_args.append(f"{st.value_ctype}* _wp_scatter_vals_{st.index}")
+                    reverse_args.append(f"int* _wp_scatter_ctr_{st.index}")
+                    reverse_args.append(f"int* _wp_scatter_overflow_{st.index}")
+                    reverse_args.append(f"int _wp_scatter_cap_{st.index}")
+                if det.has_scatter:
+                    reverse_args.append("int _wp_det_debug")
 
         reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
         template_fmt_args.update(

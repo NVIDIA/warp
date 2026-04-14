@@ -4,6 +4,11 @@
 
 ### Added
 
+- Add deterministic execution mode for atomic operations via `wp.config.deterministic = True`.
+  Floating-point atomic accumulations use a scatter-sort-reduce strategy for bit-exact
+  reproducibility across runs. Counter/allocator atomics (where the return value is used)
+  use automatic two-pass execution with prefix-sum-based slot assignment. Configurable at
+  the global, module, and kernel level.
 - Add double-precision (`wp.float64`) support to `warp.fem`.
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels

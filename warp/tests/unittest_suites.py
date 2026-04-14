@@ -140,6 +140,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
+    from warp.tests.test_deterministic import TestDeterministic
     from warp.tests.test_copy import TestCopy
     from warp.tests.test_cpu_precompiled_headers import TestCpuPrecompiledHeaders
     from warp.tests.test_ctypes import TestCTypes
