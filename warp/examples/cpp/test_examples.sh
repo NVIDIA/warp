@@ -7,6 +7,8 @@
 
 set -e  # Exit on error
 
+SEPARATOR="========================================"
+
 # Parse command-line arguments
 CLEANUP=false
 for arg in "$@"; do
@@ -31,19 +33,19 @@ for arg in "$@"; do
     esac
 done
 
-echo "========================================"
+echo "$SEPARATOR"
 echo "Warp C++ Examples Test Runner"
-echo "========================================"
+echo "$SEPARATOR"
 echo ""
 
 # Check for required commands
 if ! command -v nvcc &> /dev/null; then
-    echo "ERROR: Required command 'nvcc' not found in PATH"
+    echo "ERROR: Required command 'nvcc' not found in PATH" >&2
     exit 1
 fi
 
 if ! command -v cmake &> /dev/null; then
-    echo "ERROR: Required command 'cmake' not found in PATH"
+    echo "ERROR: Required command 'cmake' not found in PATH" >&2
     exit 1
 fi
 
@@ -53,7 +55,7 @@ if command -v uv &> /dev/null; then
 elif command -v python3 &> /dev/null; then
     PYTHON_VERSION="$(python3 --version)"
 else
-    echo "ERROR: Neither 'uv' nor 'python3' found in PATH"
+    echo "ERROR: Neither 'uv' nor 'python3' found in PATH" >&2
     exit 1
 fi
 
@@ -73,25 +75,25 @@ echo "  - Warp native directory: ${WARP_NATIVE_DIR}"
 echo ""
 
 # Compile Warp kernels for all examples (must happen before CMake configuration)
-echo "========================================"
+echo "$SEPARATOR"
 echo "Compiling Warp kernels..."
-echo "========================================"
+echo "$SEPARATOR"
 for example_dir in "${SCRIPT_DIR}"/*/; do
     # Skip if not a directory or if it's the build directory
-    if [ ! -d "${example_dir}" ] || [ "$(basename "${example_dir}")" = "build" ]; then
+    if [[ ! -d "${example_dir}" ]] || [[ "$(basename "${example_dir}")" = "build" ]]; then
         continue
     fi
     
     example_name=$(basename "${example_dir}")
     
     # Only process examples that have a compile_kernel.py
-    if [ -f "${example_dir}/compile_kernel.py" ]; then
+    if [[ -f "${example_dir}/compile_kernel.py" ]]; then
         echo "- Compiling ${example_name}..."
         cd "${example_dir}"
         if command -v uv &> /dev/null; then
-            uv run compile_kernel.py || { echo "ERROR: Failed to compile kernel for ${example_name}"; exit 1; }
+            uv run compile_kernel.py || { echo "ERROR: Failed to compile kernel for ${example_name}" >&2; exit 1; }
         else
-            python3 compile_kernel.py || { echo "ERROR: Failed to compile kernel for ${example_name}"; exit 1; }
+            python3 compile_kernel.py || { echo "ERROR: Failed to compile kernel for ${example_name}" >&2; exit 1; }
         fi
         cd "${SCRIPT_DIR}"
     else
@@ -108,52 +110,52 @@ mkdir -p "${BUILD_DIR}"
 echo ""
 
 # Configure with CMake
-echo "========================================"
+echo "$SEPARATOR"
 echo "Running CMake configuration..."
-echo "========================================"
+echo "$SEPARATOR"
 cd "${BUILD_DIR}"
 cmake -DWARP_NATIVE_DIR="${WARP_NATIVE_DIR}" ..
 echo ""
 
 # Build all targets
-echo "========================================"
+echo "$SEPARATOR"
 echo "Building all example targets..."
-echo "========================================"
+echo "$SEPARATOR"
 cmake --build .
 echo ""
 
 # Run tests with CTest
-echo "========================================"
+echo "$SEPARATOR"
 echo "Running tests with CTest..."
-echo "========================================"
+echo "$SEPARATOR"
 ctest --output-on-failure --verbose
 TEST_RESULT=$?
 echo ""
 
-if [ $TEST_RESULT -eq 0 ]; then
-    echo "========================================"
+if [[ $TEST_RESULT -eq 0 ]]; then
+    echo "$SEPARATOR"
     echo "✓ All C++ example tests passed!"
-    echo "========================================"
+    echo "$SEPARATOR"
     
     # Clean up if requested
-    if [ "$CLEANUP" = true ]; then
+    if [[ "$CLEANUP" = true ]]; then
         echo ""
         echo "Cleaning up generated files..."
         
         # Remove build directory
-        if [ -d "${BUILD_DIR}" ]; then
+        if [[ -d "${BUILD_DIR}" ]]; then
             rm -rf "${BUILD_DIR}"
             echo "  ✓ Removed ${BUILD_DIR}"
         fi
         
         # Remove generated directories from each example
         for example_dir in "${SCRIPT_DIR}"/*/; do
-            if [ ! -d "${example_dir}" ]; then
+            if [[ ! -d "${example_dir}" ]]; then
                 continue
             fi
             
             generated_dir="${example_dir}generated"
-            if [ -d "${generated_dir}" ]; then
+            if [[ -d "${generated_dir}" ]]; then
                 rm -rf "${generated_dir}"
                 echo "  ✓ Removed $(basename "${example_dir}")/generated/"
             fi
@@ -162,9 +164,9 @@ if [ $TEST_RESULT -eq 0 ]; then
         echo "✓ Cleanup complete"
     fi
 else
-    echo "========================================"
+    echo "$SEPARATOR"
     echo "✗ Some C++ example tests failed"
-    echo "========================================"
+    echo "$SEPARATOR"
 fi
 
 exit $TEST_RESULT
