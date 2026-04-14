@@ -101,7 +101,7 @@ nitpick_ignore_regex = [
         r"(Graph|Struct|BlockType|Rows|Cols|Sample|Coords|ElementIndex|"
         r"ElementArg|ElementEvalArg|ElementIndexArg|TopologyArg|EvalArg|"
         r"BsrMatrixOrExpression|_Var|_FuncParams|FunctionMetadata|KernelHooks|"
-        r"launch_bounds_t|FieldRestriction|scalar)",
+        r"launch_bounds_t|LaunchBounds|FieldRestriction|scalar)",
     ),
     # FEM nested type annotations (e.g., Geometry.CellArg, FunctionSpace.dof_dtype)
     (r"py:class", r"\w+\.(\w*Arg|\w*dtype|LocalValueMap)"),

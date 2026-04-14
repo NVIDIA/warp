@@ -5,7 +5,7 @@ import ctypes
 from functools import reduce
 
 import warp as wp
-from warp._src.context import type_str
+from warp._src.context import _normalize_launch_dim, type_str
 from warp._src.jax import get_jax_device
 from warp._src.types import array_t, launch_bounds_t, matches_array_class, strides_from_shape
 from warp._src.utils import warn
@@ -97,7 +97,8 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
 
     # Parse launch dimensions.
     dims = [int(d) for d in dim_str.split(",")]
-    bounds = launch_bounds_t(dims)
+    normalized = _normalize_launch_dim(dims, kernel.adj.kernel_dim)
+    bounds = launch_bounds_t(normalized)
 
     # Parse arguments.
     arg_strings = args_str.split(";")

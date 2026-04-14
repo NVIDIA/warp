@@ -290,6 +290,11 @@ class StructInstance:
         return tuple(npvalue)
 
 
+def _is_tid_call(node) -> bool:
+    """Return True if *node* is an AST call to ``wp.tid()``."""
+    return isinstance(node, ast.Call) and hasattr(node.func, "attr") and node.func.attr == "tid"
+
+
 def _is_texture_type(var_type: type) -> bool:
     """Check if var_type is a Texture subclass (Texture2D, Texture3D, etc.)."""
     from warp._src.texture import Texture  # noqa: PLC0415
@@ -1054,6 +1059,36 @@ class Adjoint:
         # so we only avoid rebuilding kernels that errored out to give a chance
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
+
+        # Infer kernel_dim from wp.tid() calls in the AST.  This must happen
+        # early (before hashing) because kernel_dim determines the
+        # launch_bounds_t<N> template parameter in the generated C++ and
+        # therefore affects the compiled binary.  The hasher runs before
+        # build(), so kernel_dim must already be correct at this point.
+        adj.kernel_dim = adj._infer_kernel_dim()
+
+    def _infer_kernel_dim(adj) -> int:
+        """Infer kernel_dim from ``wp.tid()`` calls in the already-parsed AST.
+
+        This is a lightweight scan that runs during ``__init__`` (before hashing
+        and before ``build()``).  It mirrors the tid-tracking logic that was
+        previously inside ``build()`` but only walks assignments looking for
+        ``wp.tid()`` patterns, so it is much cheaper than a full build.
+
+        Also sets ``max_tid_dimensionality`` (0 when no ``wp.tid()`` calls
+        exist) which is used by ``_construct_tiled_bounds`` to detect
+        kernels that don't call ``wp.tid()`` at all.
+        """
+        max_dim = 0
+        for node in ast.walk(adj.tree):
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call) and _is_tid_call(node.value):
+                target = node.targets[0]
+                if isinstance(target, ast.Tuple):
+                    max_dim = max(max_dim, len(target.elts))
+                else:
+                    max_dim = max(max_dim, 1)
+        adj.max_tid_dimensionality = max_dim
+        return max_dim if max_dim > 0 else 1
 
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
@@ -4292,7 +4327,7 @@ extern "C" {{
 
 // Python CPU entry points
 WP_API void {name}_cpu_forward(
-    wp::launch_bounds_t dim,
+    wp::launch_bounds_t<{launch_ndim}> dim,
     wp_args_{name} *_wp_args)
 {{
     wp::tile_shared_storage_t tile_mem;
@@ -4315,7 +4350,7 @@ cpu_module_template_backward = """
 extern "C" {{
 
 WP_API void {name}_cpu_backward(
-    wp::launch_bounds_t dim,
+    wp::launch_bounds_t<{launch_ndim}> dim,
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
@@ -4918,7 +4953,7 @@ def codegen_kernel(kernel, device, options):
             raise ValueError(f"launch_bounds must be an int or a tuple/list of 1-2 ints, got {type(launch_bounds)}")
 
     # build forward signature
-    forward_args = ["wp::launch_bounds_t dim"]
+    forward_args = [f"wp::launch_bounds_t<{adj.kernel_dim}> dim"]
     if device == "cpu":
         forward_args.append("size_t task_index")
     else:
@@ -4938,7 +4973,7 @@ def codegen_kernel(kernel, device, options):
 
     if options["enable_backward"]:
         # build reverse signature
-        reverse_args = ["wp::launch_bounds_t dim"]
+        reverse_args = [f"wp::launch_bounds_t<{adj.kernel_dim}> dim"]
         if device == "cpu":
             reverse_args.append("size_t task_index")
         else:
@@ -4975,6 +5010,7 @@ def codegen_module(kernel, device, options):
     template = ""
     template_fmt_args = {
         "name": kernel.get_mangled_name(),
+        "launch_ndim": kernel.adj.kernel_dim,
     }
 
     template += cpu_module_template_forward

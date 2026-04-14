@@ -129,7 +129,7 @@ cudaMalloc(&d_x, N * sizeof(float));
 cudaMalloc(&d_y, N * sizeof(float));
 
 // 3. Create Warp data structures (kernel signature: saxpy(alpha, x, y))
-wp::launch_bounds_t dim = {.shape = {N, 0, 0, 0}, .ndim = 1, .size = size_t(N)};
+wp::launch_bounds_t<1> dim = {{N}, size_t(N), false};
 wp::float32 alpha = 2.5f;  // Scalar parameter
 wp::array_t<wp::float32> arr_x(d_x, N);
 wp::array_t<wp::float32> arr_y(d_y, N);

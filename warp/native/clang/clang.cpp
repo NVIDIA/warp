@@ -145,6 +145,8 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
     args.push_back("-I");
     args.push_back(include_dir);
 
+    args.push_back("-std=c++17");
+
     if (debug) {
         args.push_back("-O0");
     } else {

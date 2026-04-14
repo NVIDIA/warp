@@ -1310,12 +1310,10 @@ template <typename T> CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, co
 template <typename T> CUDA_CALLABLE inline bool unot(const T& b) { return !b; }
 template <typename T> CUDA_CALLABLE inline void adj_unot(const T& b, T& adj_b, const bool& adj_ret) { }
 
-const int LAUNCH_MAX_DIMS = 4;  // should match types.py
-
-struct launch_bounds_t {
-    int shape[LAUNCH_MAX_DIMS];  // size of each dimension
-    int ndim;  // number of valid dimension
-    size_t size;  // total number of threads
+template <int N> struct launch_bounds_t {
+    int shape[N];
+    size_t size;
+    bool tiled;  // when true, launch_coord divides out block_dim() before unraveling
 };
 
 // represents coordinate in the launch grid
@@ -1326,33 +1324,6 @@ struct launch_coord_t {
     int l;
 };
 
-// unravels a linear thread index to the corresponding launch grid coord (up to 4d)
-inline CUDA_CALLABLE launch_coord_t launch_coord(size_t linear, const launch_bounds_t& bounds)
-{
-    launch_coord_t coord = { 0, 0, 0, 0 };
-
-    if (bounds.ndim > 3) {
-        coord.l = linear % bounds.shape[3];
-        linear /= bounds.shape[3];
-    }
-
-    if (bounds.ndim > 2) {
-        coord.k = linear % bounds.shape[2];
-        linear /= bounds.shape[2];
-    }
-
-    if (bounds.ndim > 1) {
-        coord.j = linear % bounds.shape[1];
-        linear /= bounds.shape[1];
-    }
-
-    if (bounds.ndim > 0) {
-        coord.i = linear;
-    }
-
-    return coord;
-}
-
 inline CUDA_CALLABLE int block_dim()
 {
 #if defined(__CUDA_ARCH__)
@@ -1362,7 +1333,38 @@ inline CUDA_CALLABLE int block_dim()
 #endif
 }
 
-inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t& bounds)
+// unravels a linear thread index to the corresponding launch grid coord (up to 4d)
+template <int N> inline CUDA_CALLABLE launch_coord_t launch_coord(size_t linear, const launch_bounds_t<N>& bounds)
+{
+    launch_coord_t coord = { 0, 0, 0, 0 };
+
+    // For tiled kernels, strip the intra-tile thread index before unraveling
+    if (bounds.tiled)
+        linear /= block_dim();
+
+    if constexpr (N > 3) {
+        coord.l = linear % bounds.shape[3];
+        linear /= bounds.shape[3];
+    }
+
+    if constexpr (N > 2) {
+        coord.k = linear % bounds.shape[2];
+        linear /= bounds.shape[2];
+    }
+
+    if constexpr (N > 1) {
+        coord.j = linear % bounds.shape[1];
+        linear /= bounds.shape[1];
+    }
+
+    if constexpr (N > 0) {
+        coord.i = linear;
+    }
+
+    return coord;
+}
+
+template <int N> inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t<N>& bounds)
 {
     // For the 1-D tid() we need to warn the user if we're about to provide a truncated index
     // Only do this in _DEBUG when called from device to avoid excessive register allocation
@@ -1372,32 +1374,34 @@ inline CUDA_CALLABLE int tid(size_t index, const launch_bounds_t& bounds)
     }
 #endif
 
-    launch_coord_t c = launch_coord(index, bounds);
-    return static_cast<int>(c.i);
+    launch_coord_t coord = launch_coord(index, bounds);
+    return static_cast<int>(coord.i);
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, size_t index, const launch_bounds_t& bounds)
+template <int N> inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, size_t index, const launch_bounds_t<N>& bounds)
 {
-    launch_coord_t c = launch_coord(index, bounds);
-    i = c.i;
-    j = c.j;
+    launch_coord_t coord = launch_coord(index, bounds);
+    i = coord.i;
+    j = coord.j;
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, size_t index, const launch_bounds_t& bounds)
+template <int N>
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, size_t index, const launch_bounds_t<N>& bounds)
 {
-    launch_coord_t c = launch_coord(index, bounds);
-    i = c.i;
-    j = c.j;
-    k = c.k;
+    launch_coord_t coord = launch_coord(index, bounds);
+    i = coord.i;
+    j = coord.j;
+    k = coord.k;
 }
 
-inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t index, const launch_bounds_t& bounds)
+template <int N>
+inline CUDA_CALLABLE_DEVICE void tid(int& i, int& j, int& k, int& l, size_t index, const launch_bounds_t<N>& bounds)
 {
-    launch_coord_t c = launch_coord(index, bounds);
-    i = c.i;
-    j = c.j;
-    k = c.k;
-    l = c.l;
+    launch_coord_t coord = launch_coord(index, bounds);
+    i = coord.i;
+    j = coord.j;
+    k = coord.k;
+    l = coord.l;
 }
 
 // should match types.py
