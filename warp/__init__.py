@@ -432,6 +432,7 @@ from warp._src.paddle import stream_from_paddle as stream_from_paddle
 # category: Mesh I/O
 
 from warp._src.io.mesh import load_mesh as load_mesh
+from warp._src.io.mesh import MeshData as MeshData
 from warp._src.io.mesh import read_mesh as read_mesh
 from warp._src.io.mesh import save_mesh as save_mesh
 

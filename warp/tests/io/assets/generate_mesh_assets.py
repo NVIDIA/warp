@@ -326,9 +326,9 @@ def generate_inverted_cube_obj(path: str) -> None:
         # Left
         f.write("f 1 8 4\n")
         f.write("f 1 5 8\n")
-        # Right
-        f.write("f 1 7 2\n")
-        f.write("f 2 7 6\n")
+        # Right (inverted from standard: f 2 6 7 / f 2 7 3)
+        f.write("f 7 6 2\n")
+        f.write("f 3 7 2\n")
 
 
 def main():

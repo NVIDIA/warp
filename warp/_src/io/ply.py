@@ -96,31 +96,41 @@ def _read_ply_ascii(filename: str, header: dict) -> MeshData:
             if line == "end_header":
                 break
 
+        # Check if we need normals or colors (before reading vertices)
+        has_normals = any(name in [p[1] for p in header["vertex_properties"]] for name in ["nx", "ny", "nz"])
+        has_colors = any(name in [p[1] for p in header["vertex_properties"]] for name in ["red", "green", "blue", "alpha"])
+
+        # Pre-allocate arrays for normals/colors if needed
+        if has_normals:
+            normals = [[0.0, 0.0, 0.0] for _ in range(header["vertex_count"])]
+        if has_colors:
+            colors = [[0, 0, 0] for _ in range(header["vertex_count"])]
+
         # Read vertices
-        for _ in range(header["vertex_count"]):
+        for vertex_idx in range(header["vertex_count"]):
             line = f.readline().decode("ascii").strip()
             values = line.split()
             points.append([float(values[0]), float(values[1]), float(values[2])])
 
-            # Check for normals (nx, ny, nz typically come after x, y, z)
+            # Process additional properties (normals, colors)
             idx = 3
             for _prop_type, prop_name in header["vertex_properties"][3:]:
                 if idx < len(values):
-                    if prop_name == "nx" or prop_name == "ny" or prop_name == "nz":
-                        if not normals:
-                            normals = [[0.0, 0.0, 0.0] for _ in range(len(points))]
-                        if prop_name == "nx":
-                            normals[-1][0] = float(values[idx])
-                        elif prop_name == "ny":
-                            normals[-1][1] = float(values[idx])
-                        elif prop_name == "nz":
-                            normals[-1][2] = float(values[idx])
-                    elif prop_name in ("red", "green", "blue", "alpha"):
-                        if not colors:
-                            colors = [[0, 0, 0] for _ in range(len(points))]
-                        color_idx = {"red": 0, "green": 1, "blue": 2}.get(prop_name)
-                        if color_idx is not None:
-                            colors[-1][color_idx] = int(values[idx])
+                    if prop_name == "nx" and normals is not None:
+                        normals[vertex_idx][0] = float(values[idx])
+                    elif prop_name == "ny" and normals is not None:
+                        normals[vertex_idx][1] = float(values[idx])
+                    elif prop_name == "nz" and normals is not None:
+                        normals[vertex_idx][2] = float(values[idx])
+                    elif prop_name == "red" and colors is not None:
+                        colors[vertex_idx][0] = int(values[idx])
+                    elif prop_name == "green" and colors is not None:
+                        colors[vertex_idx][1] = int(values[idx])
+                    elif prop_name == "blue" and colors is not None:
+                        colors[vertex_idx][2] = int(values[idx])
+                    elif prop_name == "alpha" and colors is not None:
+                        # alpha is stored but we only keep RGB in the 3-element array
+                        pass
                 idx += 1
 
         # Read faces
@@ -355,11 +365,13 @@ def write_ply(
             f.write(b"end_header\n")
 
             # Write vertices
-            vertex_format = "<3f"
+            # Build format string with single byte-order prefix at start
+            vertex_format = "<"
+            vertex_format += "3f"  # x, y, z
             if has_normals:
-                vertex_format += "<3f"
+                vertex_format += "3f"  # nx, ny, nz (no additional prefix)
             if has_colors:
-                vertex_format += "<3B"
+                vertex_format += "3B"  # red, green, blue (no additional prefix)
             vertex_struct = struct.Struct(vertex_format)
 
             for i in range(num_verts):

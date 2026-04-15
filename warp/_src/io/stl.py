@@ -35,7 +35,7 @@ def _detect_stl_format(filename: str) -> str:
         try:
             _read_ascii_stl(filename)
             return "ascii"
-        except Exception:
+        except (UnicodeDecodeError, ValueError, OSError):
             pass
 
     # Try binary first (fast)
@@ -59,7 +59,7 @@ def _detect_stl_format(filename: str) -> str:
     try:
         _read_ascii_stl(filename)
         return "ascii"
-    except Exception:
+    except (UnicodeDecodeError, ValueError, OSError):
         raise RuntimeError(f"Unable to parse STL file: '{filename}'") from None
 
 
@@ -112,7 +112,8 @@ def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
         merge_tolerance: Distance tolerance for vertex merging.
 
     Returns:
-        MeshData containing points and indices.
+        MeshData containing points and indices. Note: STL face normals are
+        not included since they are per-face, not per-vertex.
     """
     with open(filename, "rb") as f:
         f.read(80)  # Skip header
@@ -123,6 +124,7 @@ def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
 
         # Pre-allocate: worst case = 3 * num_tris unique vertices
         raw_points = np.empty((num_tris * 3, 3), dtype=np.float32)
+        # STL face normals are read but not used (per-face, not per-vertex)
         face_normals = np.empty((num_tris, 3), dtype=np.float32)
 
         for i in range(num_tris):
@@ -135,10 +137,12 @@ def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
     # Vertex deduplication using spatial hash
     points, indices = _deduplicate_stl_vertices(raw_points, merge_tolerance)
 
+    # Note: STL normals are per-face, not per-vertex. After deduplication,
+    # the number of vertices differs from the number of faces, so we cannot
+    # return face_normals in the normals field (which is documented as shape (N, 3)).
     return MeshData(
         points=points,
         indices=indices,
-        normals=face_normals,
     )
 
 
@@ -222,6 +226,10 @@ def read_stl(filename: str, flip_winding: bool = False, merge_tolerance: float =
         data = _read_binary_stl(filename, merge_tolerance)
     else:
         data = _read_ascii_stl(filename)
+        # Apply same deduplication as binary format for consistency
+        if merge_tolerance > 0:
+            points, indices = _deduplicate_stl_vertices(data.points, merge_tolerance)
+            data = MeshData(points=points, indices=indices)
 
     if flip_winding:
         data.indices, data.normals = _apply_flip_winding(data.indices, data.normals)

@@ -157,10 +157,8 @@ class TestMeshIO(unittest.TestCase):
 
     def test_read_mesh_returns_meshdata(self):
         """read_mesh() returns MeshData, not wp.Mesh."""
-        from warp._src.io.mesh import MeshData  # noqa: PLC0415
-
         data = wp.read_mesh(str(ASSETS_DIR / "triangle.obj"))
-        self.assertIsInstance(data, MeshData)
+        self.assertIsInstance(data, wp.MeshData)
         self.assertIsInstance(data.points, np.ndarray)
         self.assertIsInstance(data.indices, np.ndarray)
 

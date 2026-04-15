@@ -117,12 +117,19 @@ def write_obj(
 ) -> None:
     """Write a mesh to an OBJ file.
 
+    Note: This function assumes normals and uvs are per-vertex and aligned
+    with the points array (i.e., the same index is used for position,
+    texture coordinate, and normal when emitting faces). OBJ 1-based
+    indexing is applied automatically.
+
     Args:
         points: Vertex positions, shape (N, 3).
         indices: Triangle indices, shape (M * 3,).
         filename: Output file path.
-        normals: Optional vertex normals, shape (N, 3).
-        uvs: Optional texture coordinates, shape (N, 2).
+        normals: Optional vertex normals, shape (N, 3). Must be aligned
+            with points (same length, same indices).
+        uvs: Optional texture coordinates, shape (N, 2). Must be aligned
+            with points (same length, same indices).
     """
     with open(filename, "w", encoding="utf-8") as f:
         # Write header

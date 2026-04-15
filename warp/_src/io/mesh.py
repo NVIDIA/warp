@@ -69,7 +69,7 @@ def load_mesh(
     filename: str,
     device: DeviceLike | None = None,
     *,
-    format: str | None = None,
+    file_format: str | None = None,
     flip_winding: bool = False,
     max_file_size_mb: float | None = 500.0,
     stl_merge_tolerance: float = 1e-6,
@@ -87,7 +87,7 @@ def load_mesh(
             are accepted (relative paths are from current working directory).
         device: Device on which to create the mesh arrays. If None, calls
             wp.get_device() to use the current default device.
-        format: Explicit format override (``\"obj\"``, ``\"stl\"``, ``\"ply\"``).
+        file_format: Explicit format override (``\"obj\"``, ``\"stl\"``, ``\"ply\"``).
             Use this when the file extension is missing or incorrect.
             If None, format is inferred from the filename extension.
         flip_winding: If True, reverse triangle winding order. Use this
@@ -118,50 +118,22 @@ def load_mesh(
         >>> import warp as wp
         >>> mesh = wp.load_mesh("bunny.obj")
         >>> mesh = wp.load_mesh("part.stl", device="cuda:0")
-        >>> mesh = wp.load_mesh("mesh.unknown", format="ply")
+        >>> mesh = wp.load_mesh("mesh.unknown", file_format="ply")
     """
     # Resolve device: None means use the current default device
     if device is None:
         device = get_device()
 
-    # File existence check
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"Mesh file not found: '{filename}'")
+    # Delegate parsing to read_mesh (handles validation and format detection)
+    data = read_mesh(
+        filename,
+        file_format=file_format,
+        flip_winding=flip_winding,
+        max_file_size_mb=max_file_size_mb,
+        stl_merge_tolerance=stl_merge_tolerance,
+    )
 
-    # File size check
-    file_size = os.path.getsize(filename)
-    if max_file_size_mb is not None:
-        max_bytes = max_file_size_mb * 1024 * 1024
-        if file_size > max_bytes:
-            raise ValueError(
-                f"File too large: {file_size / (1024 * 1024):.1f} MB exceeds limit of {max_file_size_mb} MB"
-            )
-
-    # Format detection
-    if format is None:
-        _, ext = os.path.splitext(filename)
-        ext = ext.lower().lstrip(".")
-        if not ext:
-            raise ValueError(
-                "Cannot detect format from file extension. Use the 'format' parameter to specify explicitly."
-            )
-        format = ext
-
-    # Dispatch to format-specific parser
-    from warp._src.io.obj import read_obj  # noqa: PLC0415
-    from warp._src.io.ply import read_ply  # noqa: PLC0415
-    from warp._src.io.stl import read_stl  # noqa: PLC0415
-
-    if format == "obj":
-        data = read_obj(filename, flip_winding=flip_winding)
-    elif format == "stl":
-        data = read_stl(filename, flip_winding=flip_winding, merge_tolerance=stl_merge_tolerance)
-    elif format == "ply":
-        data = read_ply(filename, flip_winding=flip_winding)
-    else:
-        raise ValueError(f"Unsupported format: '{format}'. Supported formats are: obj, stl, ply")
-
-    # Convert to wp.Mesh
+    # Convert to wp.Mesh with device and BVH parameters
     return data.to_warp_mesh(
         device=device,
         support_winding_number=support_winding_number,
@@ -173,7 +145,7 @@ def load_mesh(
 def read_mesh(
     filename: str,
     *,
-    format: str | None = None,
+    file_format: str | None = None,
     flip_winding: bool = False,
     max_file_size_mb: float | None = 500.0,
     stl_merge_tolerance: float = 1e-6,
@@ -185,7 +157,7 @@ def read_mesh(
 
     Args:
         filename: Path to the mesh file.
-        format: Explicit format override (``\"obj\"``, ``\"stl\"``, ``\"ply\"``).
+        file_format: Explicit format override (``\"obj\"``, ``\"stl\"``, ``\"ply\"``).
             If None, format is inferred from the filename extension.
         flip_winding: If True, reverse triangle winding order.
         max_file_size_mb: Maximum file size in MB before raising ValueError.
@@ -220,28 +192,28 @@ def read_mesh(
             )
 
     # Format detection
-    if format is None:
+    if file_format is None:
         _, ext = os.path.splitext(filename)
         ext = ext.lower().lstrip(".")
         if not ext:
             raise ValueError(
-                "Cannot detect format from file extension. Use the 'format' parameter to specify explicitly."
+                "Cannot detect format from file extension. Use the 'file_format' parameter to specify explicitly."
             )
-        format = ext
+        file_format = ext
 
     # Dispatch to format-specific parser
     from warp._src.io.obj import read_obj  # noqa: PLC0415
     from warp._src.io.ply import read_ply  # noqa: PLC0415
     from warp._src.io.stl import read_stl  # noqa: PLC0415
 
-    if format == "obj":
+    if file_format == "obj":
         return read_obj(filename, flip_winding=flip_winding)
-    elif format == "stl":
+    elif file_format == "stl":
         return read_stl(filename, flip_winding=flip_winding, merge_tolerance=stl_merge_tolerance)
-    elif format == "ply":
+    elif file_format == "ply":
         return read_ply(filename, flip_winding=flip_winding)
     else:
-        raise ValueError(f"Unsupported format: '{format}'. Supported formats are: obj, stl, ply")
+        raise ValueError(f"Unsupported format: '{file_format}'. Supported formats are: obj, stl, ply")
 
 
 def save_mesh(

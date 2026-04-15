@@ -27,7 +27,16 @@ def test_real_world_meshes():
 
     real_world_dir = Path(__file__).parent / "real_world_assets"
 
-    for mesh_file in real_world_dir.glob("*.obj"):
+    if not real_world_dir.exists():
+        print("  Skipping: real_world_assets directory not found")
+        return
+
+    files = list(real_world_dir.glob("*.obj"))
+    if not files:
+        print("  Skipping: no .obj files in real_world_assets")
+        return
+
+    for mesh_file in files:
         print(f"  {mesh_file.name}...", end=" ")
         mesh = wp.load_mesh(str(mesh_file))
         assert mesh.points.shape[0] > 0, "No vertices loaded"
@@ -47,10 +56,6 @@ def test_large_mesh_performance():
     num_tris = 100000
 
     print(f"  Generating {num_verts} vertices, {num_tris} triangles...", end=" ")
-
-    # Create vertices on a sphere
-    indices_u = np.arange(num_tris, dtype=np.int32)
-    indices_v = np.arange(num_tris, dtype=np.int32)
 
     # Simple triangulated plane
     rng = np.random.default_rng()
@@ -160,8 +165,9 @@ def test_mesh_operations_integration():
     """Test integration with Warp mesh operations."""
     print("\nTesting Warp mesh operations integration...")
 
-    # Load a test mesh
-    mesh = wp.load_mesh("warp/tests/io/assets/cube.obj")
+    # Load a test mesh (path relative to this file)
+    assets_dir = Path(__file__).parent / "assets"
+    mesh = wp.load_mesh(str(assets_dir / "cube.obj"))
 
     # Test that mesh can be used in warp operations
     print("  Mesh properties...", end=" ")

@@ -4,5 +4,5 @@
 """Internal mesh I/O utilities.
 
 This package is not a public submodule. Functions are re-exported through
-the main warp namespace (e.g., wp.load_mesh).
+the main Warp namespace (e.g., ``wp.load_mesh``).
 """
