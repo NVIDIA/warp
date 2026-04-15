@@ -28,7 +28,7 @@ import time
 import build_llvm
 import warp._src.build_dll as build_dll
 import warp.config as config
-from warp._src.context import export_builtins
+from warp._src.generated_files import generate_exports_header_file, generate_version_header
 
 
 def handle_ci_nightly_build(base_path: str) -> str | None:
@@ -80,26 +80,6 @@ def handle_ci_nightly_build(base_path: str) -> str | None:
         update_git_hash_in_config(config_file, git_hash, dry_run=False)
 
     return dev_version_string
-
-
-def generate_version_header(base_path: str, version: str) -> None:
-    """Generate version.h with WP_VERSION_STRING macro."""
-    version_header_path = os.path.join(base_path, "warp", "native", "version.h")
-    current_year = datetime.date.today().year
-
-    copyright_notice = f"""// SPDX-FileCopyrightText: Copyright (c) {current_year} NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// SPDX-License-Identifier: Apache-2.0
-
-"""
-
-    with open(version_header_path, "w") as f:
-        f.write(copyright_notice)
-        f.write("#ifndef WP_VERSION_H\n")
-        f.write("#define WP_VERSION_H\n\n")
-        f.write(f'#define WP_VERSION_STRING "{version}"\n\n')
-        f.write("#endif  // WP_VERSION_H\n")
-
-    print(f"Generated {version_header_path} with version {version}")
 
 
 def find_cuda_sdk() -> str | None:
@@ -235,31 +215,6 @@ def lib_name(name: str) -> str:
         return f"lib{name}.dylib"
     else:
         return f"{name}.so"
-
-
-def generate_exports_header_file(base_path: str) -> None:
-    """Generates warp/native/exports.h, which lets built-in functions be callable from outside kernels."""
-    export_path = os.path.join(base_path, "warp", "native", "exports.h")
-    os.makedirs(os.path.dirname(export_path), exist_ok=True)
-
-    try:
-        with open(export_path, "w") as f:
-            copyright_notice = """// SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-// SPDX-License-Identifier: Apache-2.0
-
-"""
-            f.write(copyright_notice)
-            export_builtins(f)
-
-        print(f"Finished writing {export_path}")
-    except FileNotFoundError:
-        print(f"Error: The file '{export_path}' was not found.")
-    except PermissionError:
-        print(f"Error: Permission denied. Unable to write to '{export_path}'.")
-    except OSError as e:
-        print(f"Error: An OS-related error occurred: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
 
 
 def main(argv: list[str] | None = None) -> int:

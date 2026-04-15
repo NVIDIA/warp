@@ -126,6 +126,7 @@ ignore = [
 convention = "google"
 
 [tool.ruff.format]
+exclude = ["warp/__init__.pyi"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false

@@ -9257,11 +9257,11 @@ def type_str(t):
 
         # for generic vector / matrix type use a Generic type hint (dtype-first order)
         if generic_type == warp._src.types.Vector:
-            return f"Vector[{type_str(t._wp_scalar_type_)},{type_str(t._wp_type_params_[0])}]"
+            return f"Vector[{type_str(t._wp_scalar_type_)}, {type_str(t._wp_type_params_[0])}]"
         elif generic_type == warp._src.types.Quaternion:
             return f"Quaternion[{type_str(t._wp_scalar_type_)}]"
         elif generic_type == warp._src.types.Matrix:
-            return f"Matrix[{type_str(t._wp_scalar_type_)},{type_str(t._wp_type_params_[0])},{type_str(t._wp_type_params_[1])}]"
+            return f"Matrix[{type_str(t._wp_scalar_type_)}, {type_str(t._wp_type_params_[0])}, {type_str(t._wp_type_params_[1])}]"
         elif generic_type == warp._src.types.Transformation:
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
 
@@ -9277,7 +9277,7 @@ def type_str(t):
     elif t is Ellipsis:
         return "..."
     elif warp._src.types.is_tile(t):
-        return f"Tile[{type_str(t.dtype)},{type_str(t.shape)}]"
+        return f"Tile[{type_str(t.dtype)}, {type_str(t.shape)}]"
 
     return t.__name__
 
@@ -9620,25 +9620,73 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
+    print("import builtins as _builtins", file=file)
     print("from collections.abc import Callable, Sequence", file=file)
-    print("from typing import Any", file=file)
-    print("from typing import TypeVar", file=file)
-    print("from typing import Generic", file=file)
-    print("from typing import Literal", file=file)
+    print("from typing import Any, Generic, Literal, TypeVar", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
-    # Import builtins with underscore prefix to avoid re-exporting (PEP 484).
-    # This is needed because warp._src.types.bool shadows Python's bool.
-    print("import builtins as _builtins", file=file)
-    print(file=file)
-
-    # Import Int/Scalar/Float TypeVars from types.py. Their constraints are defined
-    # so that Int ⊂ Scalar and Float ⊂ Scalar, which lets mypy accept Vector[Int, Any]
-    # and Vector[Float, Any] when Vector is Generic[Scalar, Length].
+    print("from warp._src.types import Float as Float", file=file)
     print("from warp._src.types import Int as Int", file=file)
     print("from warp._src.types import Scalar as Scalar", file=file)
-    print("from warp._src.types import Float as Float", file=file)
 
+    # =========================================================================
+    # Step 2b: Pre-classify __init__.py lines into imports vs. other content
+    # =========================================================================
+    # Pattern to match: "from module import name as name" or "from module import name"
+    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
+
+    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
+    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
+    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
+
+    # Type aliases already imported in the header (skip to avoid duplicates)
+    header_imported_types = {"Int", "Float", "Scalar"}
+
+    init_lines = init_content.split("\n")
+    init_import_lines = []
+    init_other_lines = []
+
+    for line in init_lines:
+        if line.startswith("#"):
+            continue  # Skip comment lines from __init__.py
+
+        # Check if this line is a top-level import statement (no leading whitespace).
+        # Indented imports inside function bodies (e.g., in __getattr__) are not top-level imports.
+        is_top_level = not line or not line[0].isspace()
+        is_import = is_top_level and (import_pattern.search(line) or line.startswith("import ") or "import *" in line)
+
+        if is_import:
+            match = import_pattern.search(line)
+            if match:
+                original_name = match.group(1)
+                alias_name = match.group(2) if match.group(2) else original_name
+                if alias_name in function_conflicts:
+                    # Skip this import - we'll generate merged stubs later
+                    init_other_lines.append(f"# Skipped: {line.strip()} (merged stubs generated below)")
+                    continue
+                if alias_name in prefer_builtin:
+                    # Skip this import - kernel builtin stubs are preferred
+                    init_other_lines.append(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)")
+                    continue
+                if alias_name in class_stub_types:
+                    # Skip this import - class stubs are generated below
+                    continue
+                if alias_name in header_imported_types:
+                    # Skip this import - already imported in header for generic class definitions
+                    continue
+            init_import_lines.append(line)
+        else:
+            init_other_lines.append(line)
+
+    # Emit __init__.py import lines right after the header imports (before TypeVars/class stubs)
+    # so that all module-level imports appear at the top of the stub file (avoids E402).
+    print(file=file)
+    for line in init_import_lines:
+        print(line, file=file)
+
+    # =========================================================================
+    # Step 2c/2d: TypeVar declarations and Generic class stubs
+    # =========================================================================
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
     print('Rows = TypeVar("Rows", bound=int)', file=file)
@@ -9660,46 +9708,35 @@ def export_stubs(file):  # pragma: no cover
     print("class Tile(Generic[DType, Shape]): ...", file=file)
 
     # =========================================================================
-    # Step 3: Copy __init__.py, but skip re-exports for function conflicts
+    # Step 3: Emit __init__.py non-import lines (docstring, __version__, __getattr__, etc.)
     # =========================================================================
-    # Pattern to match: "from module import name as name" or "from module import name"
-    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
-
-    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
-    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
-    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
-
-    # Type aliases already imported in the header (skip to avoid duplicates)
-    header_imported_types = {"Int", "Float", "Scalar"}
-
-    init_lines = init_content.split("\n")
-    for line in init_lines:
-        if line.startswith("#"):
-            continue  # Skip comment lines
-
-        # Check if this line imports a symbol we handle specially
-        match = import_pattern.search(line)
-        if match:
-            original_name = match.group(1)
-            alias_name = match.group(2) if match.group(2) else original_name
-            if alias_name in function_conflicts:
-                # Skip this import - we'll generate merged stubs later
-                print(f"# Skipped: {line.strip()} (merged stubs generated below)", file=file)
+    prev_blank = False
+    for line in init_other_lines:
+        if not line.strip():
+            if prev_blank:
                 continue
-            if alias_name in prefer_builtin:
-                # Skip this import - kernel builtin stubs are preferred
-                print(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)", file=file)
-                continue
-            if alias_name in class_stub_types:
-                # Skip this import - class stubs are generated below
-                continue
-            if alias_name in header_imported_types:
-                # Skip this import - already imported in header for generic class definitions
-                continue
-
+            prev_blank = True
+        else:
+            prev_blank = False
         print(line, file=file)
 
     print(file=file)
+
+    # Line-length limit matching pyproject.toml [tool.ruff] line-length.
+    _LINE_LENGTH = 120
+
+    def _write_def(name, args, return_str, indent=""):
+        """Write a def line, wrapping one-param-per-line if it exceeds _LINE_LENGTH."""
+        args_str = ", ".join(args)
+        line = f"{indent}def {name}({args_str}){return_str}:"
+        if len(line) <= _LINE_LENGTH:
+            print(line, file=file)
+        else:
+            inner = indent + "    "
+            print(f"{indent}def {name}(", file=file)
+            for arg in args:
+                print(f"{inner}{arg},", file=file)
+            print(f"{indent}){return_str}:", file=file)
 
     def get_return_type_str(f):
         """Get the return type string for a builtin function."""
@@ -9716,21 +9753,20 @@ def export_stubs(file):  # pragma: no cover
             return
 
         if type_overrides:
-            args = ", ".join(
+            args = [
                 f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(v)}"
                 for k, v in f.input_types.items()
-            )
+            ]
         else:
-            args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+            args = [f"{k}: {type_str(v)}" for k, v in f.input_types.items()]
         rt_str = get_return_type_str(f)
         return_str = f" -> {rt_str}"
 
         if use_overload:
             print("@over", file=file)
-        print(f"def {f.key}({args}){return_str}:", file=file)
-        print(f'    """{f.doc}', file=file)
-        print('    """', file=file)
-        print("    ...\n\n", file=file)
+        _write_def(f.key, args, return_str)
+        print(f'    """{f.doc.rstrip()}"""', file=file)
+        print("    ...\n", file=file)
 
     def add_merged_builtin_function_stub(overloads):
         """Generate a single stub with union return type for overloads with identical input_types.
@@ -9758,12 +9794,11 @@ def export_stubs(file):  # pragma: no cover
                 seen.add(rt_str)
                 return_types.append(rt_str)
 
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in first.input_types.items())
+        args = [f"{k}: {type_str(v)}" for k, v in first.input_types.items()]
         return_str = " -> " + " | ".join(return_types) if return_types else ""
-        print(f"def {first.key}({args}){return_str}:", file=file)
-        print(f'    """{first.doc}', file=file)
-        print('    """', file=file)
-        print("    ...\n\n", file=file)
+        _write_def(first.key, args, return_str)
+        print(f'    """{first.doc.rstrip()}"""', file=file)
+        print("    ...\n", file=file)
 
     def add_vector_type_stub(cls, label):
         cls_name = cls.__name__
@@ -9772,30 +9807,30 @@ def export_stubs(file):  # pragma: no cover
         print(f"class {cls_name}:", file=file)
 
         print("    @over", file=file)
-        print("    def __init__(self) -> None:", file=file)
+        _write_def("__init__", ["self"], " -> None", indent="    ")
         print(f'        """Construct a zero-initialized {label}."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"other: {cls_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} by copy."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ", ".join(f"{x}: {scalar_type_name}" for x in "xyzw"[: cls._length_])
+        args = ["self"] + [f"{x}: {scalar_type_name}" for x in "xyzw"[: cls._length_]]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its component values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        _write_def("__init__", ["self", f"args: Sequence[{scalar_type_name}]"], " -> None", indent="    ")
         print(f'        """Construct a {label} from a sequence of values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"value: {scalar_type_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} filled with a value."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
     def add_matrix_type_stub(cls, label):
         cls_name = cls.__name__
@@ -9805,36 +9840,36 @@ def export_stubs(file):  # pragma: no cover
         print(f"class {cls_name}:", file=file)
 
         print("    @over", file=file)
-        print("    def __init__(self) -> None:", file=file)
+        _write_def("__init__", ["self"], " -> None", indent="    ")
         print(f'        """Construct a zero-initialized {label}."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"other: {cls_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} by copy."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ", ".join(f"m{i}{j}: {scalar_type_name}" for i in range(cls._shape_[0]) for j in range(cls._shape_[1]))
+        args = ["self"] + [f"m{i}{j}: {scalar_type_name}" for i in range(cls._shape_[0]) for j in range(cls._shape_[1])]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its component values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ", ".join(f"v{i}: vec{cls._shape_[0]}{scalar_short_name}" for i in range(cls._shape_[0]))
+        args = ["self"] + [f"v{i}: vec{cls._shape_[0]}{scalar_short_name}" for i in range(cls._shape_[0])]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its row vectors."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        _write_def("__init__", ["self", f"args: Sequence[{scalar_type_name}]"], " -> None", indent="    ")
         print(f'        """Construct a {label} from a sequence of values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"value: {scalar_type_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} filled with a value."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
     def add_transform_type_stub(cls, label):
         cls_name = cls.__name__
@@ -9844,41 +9879,49 @@ def export_stubs(file):  # pragma: no cover
         print(f"class {cls_name}:", file=file)
 
         print("    @over", file=file)
-        print("    def __init__(self) -> None:", file=file)
+        _write_def("__init__", ["self"], " -> None", indent="    ")
         print(f'        """Construct a zero-initialized {label}."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"other: {cls_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} by copy."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, p: vec3{scalar_short_name}, q: quat{scalar_short_name}) -> None:", file=file)
+        _write_def(
+            "__init__",
+            ["self", f"p: vec3{scalar_short_name}", f"q: quat{scalar_short_name}"],
+            " -> None",
+            indent="    ",
+        )
         print(f'        """Construct a {label} from its p and q components."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ()
-        args += tuple(f"p{x}: {scalar_type_name}" for x in "xyz")
-        args += tuple(f"q{x}: {scalar_type_name}" for x in "xyzw")
-        args = ", ".join(args)
+        args = [
+            "self",
+            *[f"p{x}: {scalar_type_name}" for x in "xyz"],
+            *[f"q{x}: {scalar_type_name}" for x in "xyzw"],
+        ]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its component values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(
-            f"    def __init__(self, p: Sequence[{scalar_type_name}], q: Sequence[{scalar_type_name}]) -> None:",
-            file=file,
+        _write_def(
+            "__init__",
+            ["self", f"p: Sequence[{scalar_type_name}]", f"q: Sequence[{scalar_type_name}]"],
+            " -> None",
+            indent="    ",
         )
         print(f'        """Construct a {label} from two sequences of values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"value: {scalar_type_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} filled with a value."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
     # Vector types.
     suffixes = ("h", "f", "d", "b", "ub", "s", "us", "i", "ui", "l", "ul")
@@ -9926,20 +9969,6 @@ def export_stubs(file):  # pragma: no cover
         s = re.sub(r"\bbool\b", "_builtins.bool", s)
         return s
 
-    def format_signature(func) -> str | None:
-        """Format function signature for stubs with unquoted type annotations."""
-        try:
-            sig = str(inspect.signature(func))
-        except (ValueError, TypeError):
-            return None
-        # Remove quotes around type annotations (PEP 563 stringified annotations)
-        sig = re.sub(r": '([^']+)'", r": \1", sig)
-        sig = re.sub(r" -> '([^']+)'", r" -> \1", sig)
-        # Fix <class 'X'> -> X for type defaults
-        sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
-        # Clean up module prefixes and bool shadowing
-        return format_annotation(sig)
-
     if function_conflicts:
         print("\n# " + "=" * 70, file=file)
         print("# Merged stubs for symbols with both Python API and kernel-scope versions", file=file)
@@ -9950,9 +9979,36 @@ def export_stubs(file):  # pragma: no cover
         builtin = builtin_functions[name]
 
         # Python API overload
-        if sig_str := format_signature(python_func):
+        try:
+            sig = inspect.signature(python_func)
+        except (ValueError, TypeError):
+            sig = None
+        if sig is not None:
+            params = []
+            for pname, param in sig.parameters.items():
+                if param.kind == inspect.Parameter.VAR_POSITIONAL:
+                    s = f"*{pname}"
+                elif param.kind == inspect.Parameter.VAR_KEYWORD:
+                    s = f"**{pname}"
+                else:
+                    s = pname
+                if param.annotation is not inspect.Parameter.empty:
+                    s += f": {format_annotation(param.annotation)}"
+                if param.default is not inspect.Parameter.empty:
+                    if isinstance(param.default, (type, str)):
+                        default_str = format_annotation(param.default)
+                    else:
+                        default_str = repr(param.default)
+                    s += f" = {default_str}"
+                params.append(s)
+            ret = ""
+            if sig.return_annotation is not inspect.Parameter.empty:
+                ret = f" -> {format_annotation(sig.return_annotation)}"
             doc = (python_func.__doc__ or "").strip().split("\n")[0] or "Python API version."
-            print(f'@over\ndef {name}{sig_str}:\n    """{doc}"""\n    ...\n', file=file)
+            print("@over", file=file)
+            _write_def(name, params, ret)
+            print(f'    """{doc}"""', file=file)
+            print("    ...\n", file=file)
 
         # Kernel-scope overloads
         for f in getattr(builtin, "overloads", [builtin]):
