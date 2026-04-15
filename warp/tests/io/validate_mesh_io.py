@@ -187,8 +187,9 @@ def test_mesh_operations_integration():
 
     # Test mesh device
     print("  Mesh device...", end=" ")
-    assert str(mesh.device) == "cpu"
-    print("OK")
+    expected_device = wp.get_device()
+    assert str(mesh.device) == str(expected_device), f"Expected {expected_device}, got {mesh.device}"
+    print(f"OK ({mesh.device})")
 
     print("Mesh operations integration tests passed!")
 
