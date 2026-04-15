@@ -115,6 +115,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.interop.test_jax import TestJax
     from warp.tests.interop.test_torch import TestTorch
+    from warp.tests.io.test_mesh import TestMeshIO, TestMeshIODevices
     from warp.tests.matrix.test_mat import TestMat
     from warp.tests.matrix.test_mat_assign_copy import TestMatAssignCopy
     from warp.tests.matrix.test_mat_basics import TestMatBasics
@@ -299,6 +300,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestMath,
         TestMempool,
         TestMesh,
+        TestMeshIO,
+        TestMeshIODevices,
         TestMeshQueryAABBMethods,
         TestMeshQueryPoint,
         TestMeshQueryRay,

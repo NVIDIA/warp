@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add native mesh file I/O utilities `wp.load_mesh()`, `wp.save_mesh()`, and `wp.read_mesh()`
+  supporting OBJ, STL (binary/ASCII), and PLY (binary/ASCII) formats with zero external dependencies.
+  Use `wp.MeshData.to_warp_mesh()` for custom mesh data pipelines.
 - Add double-precision (`wp.float64`) support to `warp.fem`.
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels

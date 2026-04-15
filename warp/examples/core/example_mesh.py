@@ -87,15 +87,21 @@ class Example:
 
         self.sim_margin = 0.1
 
+        # create collision mesh
+        # Option 1: Load from USD file (requires OpenUSD/pxr)
         usd_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
         usd_geom = UsdGeom.Mesh(usd_stage.GetPrimAtPath("/root/bunny"))
         usd_scale = 10.0
 
-        # create collision mesh
         self.mesh = wp.Mesh(
             points=wp.array(usd_geom.GetPointsAttr().Get() * usd_scale, dtype=wp.vec3),
             indices=wp.array(usd_geom.GetFaceVertexIndicesAttr().Get(), dtype=int),
         )
+
+        # Option 2: Load from mesh file (OBJ, STL, PLY) - zero external dependencies
+        # self.mesh = wp.load_mesh(
+        #     os.path.join(warp.examples.get_asset_directory(), "bunny.obj")
+        # )
 
         # random particles
         init_pos = (rng.random((self.num_particles, 3)) - np.array([0.5, -1.5, 0.5])) * 10.0
