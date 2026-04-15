@@ -12031,6 +12031,8 @@ def tile_matmul_lto_dispatch_func(
                 return "colmajor"
             elif layout == "colmajor":
                 return "rowmajor"
+            else:
+                raise ValueError(f"unexpected layout {layout!r}")
 
         # generate the LTOs
         #    C += A * B
@@ -12437,7 +12439,9 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, a) if inplace else (0, a, out), [upper], [], 0)
+        if inplace:
+            return ((0, a), [upper], [], 0)
+        return ((0, 0, 0, a, out), [upper], [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
@@ -12450,8 +12454,10 @@ def _tile_cholesky_generic_lto_dispatch_func(
         req_smem_bytes = a.type.size * type_size_in_bytes(a.type.dtype)
         if not inplace:
             req_smem_bytes *= 2
+            if options["enable_backward"]:
+                req_smem_bytes += 2 * M * M * type_size_in_bytes(a.type.dtype)
 
-        # generate the LTO
+        # generate the forward LTO
         assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
@@ -12472,8 +12478,74 @@ def _tile_cholesky_generic_lto_dispatch_func(
             smem_estimate_bytes=req_smem_bytes,
         )
 
-        var = Var(lto_symbol, str, False, True, False)
-        return ((var, a) if inplace else (var, a, out), [upper], [lto_code_data], 0)
+        if inplace:
+            var = Var(lto_symbol, str, False, True, False)
+            return ((var, a), [upper], [lto_code_data], 0)
+
+        # for out-of-place Cholesky, build backward LTOs for adjoint
+        # we need a GEMM and two trsm solves for the adjoint
+        lto_list = [lto_code_data]
+        if options["enable_backward"]:
+
+            def tile_flip_layout(layout):
+                if layout == "rowmajor":
+                    return "colmajor"
+                elif layout == "colmajor":
+                    return "rowmajor"
+                else:
+                    raise ValueError(f"unexpected layout {layout!r}")
+
+            # LTO to calculate transpose(L).adj_L or adj_U.transpose(U)
+            # Lower: first operand (L) flipped -> L^T; Upper: second operand (U) flipped -> U^T
+            gemm_layout_a = out.type.layout if upper else tile_flip_layout(out.type.layout)
+            gemm_layout_b = tile_flip_layout(out.type.layout) if upper else out.type.layout
+            fun_bkwd_gemm, lto_bkwd_gemm = warp._src.build.build_lto_dot(
+                M,
+                M,
+                M,
+                a.type.dtype,
+                a.type.dtype,
+                a.type.dtype,
+                gemm_layout_a,
+                gemm_layout_b,
+                out.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+            # LTO to solve L^T @ X = Y (lower) or U @ X = Y (upper)
+            fun_bkwd_trsm, lto_bkwd_trsm = warp._src.build.build_lto_solver(
+                M,
+                M,
+                1,
+                "trsm",
+                cusolver_function_map["trsm"],
+                cusolver_side_map["left"],
+                cusolver_diag_map["nounit"],
+                tile_flip_layout(out.type.layout) if not upper else out.type.layout,
+                out.type.layout,
+                cusolver_fill_mode_map["upper"],
+                arch,
+                precision_enum,
+                num_threads,
+                f"({dtype}*, {dtype}*)",
+                builder,
+                smem_estimate_bytes=req_smem_bytes,
+            )
+            lto_list.extend([lto_bkwd_gemm, lto_bkwd_trsm])
+        else:
+            fun_bkwd_gemm = 0
+            fun_bkwd_trsm = 0
+
+        var_fwd = Var(lto_symbol, str, False, True, False)
+        if options["enable_backward"]:
+            var_gemm = Var(fun_bkwd_gemm, str, False, True, False)
+            var_trsm = Var(fun_bkwd_trsm, str, False, True, False)
+        else:
+            var_gemm = 0
+            var_trsm = 0
+        result = ((var_fwd, var_gemm, var_trsm, a, out), [upper], lto_list, 0)
+        return result
 
 
 def tile_cholesky_generic_lto_dispatch_func(*args, **kwargs):
@@ -12498,7 +12570,9 @@ add_builtin(
 
     The ``fill_mode`` parameter must be a compile-time constant.
 
-    Note that computing the adjoint is not yet supported.
+    Backward propagation computes gradients with respect to the corresponding
+    triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
+    upper triangle when ``fill_mode="upper"``).
 
     Supported datatypes are:
         * float32
@@ -12512,7 +12586,7 @@ add_builtin(
         A triangular matrix ``L`` or ``U``.""",
     group="Tile Primitives",
     export=False,
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 

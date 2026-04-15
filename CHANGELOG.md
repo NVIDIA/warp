@@ -30,6 +30,7 @@
   based on occupancy ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
 - Add `module_options` dict parameter to `@wp.kernel` for inline module-level compilation options
   on `"unique"` modules ([GH-1250](https://github.com/NVIDIA/warp/issues/1250)).
+- Add adjoint (backward pass) for out-of-place `tile_cholesky` factorization ([GH-1316](https://github.com/NVIDIA/warp/issues/1316)).
 
 ### Removed
 

@@ -6187,7 +6187,9 @@ def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str) -> Tile[Float
 
     The ``fill_mode`` parameter must be a compile-time constant.
 
-    Note that computing the adjoint is not yet supported.
+    Backward propagation computes gradients with respect to the corresponding
+    triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
+    upper triangle when ``fill_mode="upper"``).
 
     Supported datatypes are:
         * float32

@@ -1745,7 +1745,11 @@ class Adjoint:
                 require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
-                reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
+                if func.lto_dispatch_func is not None:
+                    adj_func_name = compute_type_str(func.native_func, template_args)
+                else:
+                    adj_func_name = func.native_func
+                reverse_call = f"{func.namespace}adj_{adj_func_name}({arg_str});"
                 adj.add_reverse(reverse_call)
 
         # update our smem roofline requirements based on any

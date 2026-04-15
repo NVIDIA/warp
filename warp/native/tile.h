@@ -5024,6 +5024,74 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileA& A, TileX& X, TileY& Y)
 }
 
 
+// Single-threaded Cholesky adjoint.
+// Upper=false: A = L L^T, Upper=true: A = U^T U
+template <bool Upper, typename TileA, typename TileOut>
+inline CUDA_CALLABLE void scalar_cholesky_adj_impl(TileA& adj_A, TileOut& adj_Out, TileOut& Out)
+{
+    using T = typename TileA::Type;
+    constexpr int n = TileA::Layout::Shape::dim(1);
+
+    // Helper: index into the output triangle.
+    // Lower: Out(row, col), Upper: Out(col, row)
+    auto idx = [](int row, int col) { return Upper ? tile_coord(col, row) : tile_coord(row, col); };
+
+    T buffer1[n][n];
+    T buffer2[n][n];
+
+    // P = adj_Out @ Out^T (upper) or Out^T @ adj_Out (lower)
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j < n; ++j) {
+            T s = T(0);
+            for (int k = 0; k < n; ++k)
+                if constexpr (Upper)
+                    s += adj_Out.grad(tile_coord(i, k)) * Out.data(tile_coord(j, k));
+                else
+                    s += Out.data(tile_coord(k, i)) * adj_Out.grad(tile_coord(k, j));
+            buffer1[i][j] = s;
+        }
+
+    // Symmetrize P: mirror the stored triangle to the other side (preserving the diagonal).
+    // Upper: keep triu, mirror to lower; Lower: keep tril, mirror to upper.
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j < i; ++j)
+            if constexpr (Upper)
+                buffer1[i][j] = buffer1[j][i];
+            else
+                buffer1[j][i] = buffer1[i][j];
+
+    // Solve L^T X = S (lower) or U X = S (upper)
+    for (int k = 0; k < n; ++k) {
+        for (int i = n - 1; i >= 0; --i) {
+            T s = buffer1[i][k];
+            for (int j = i + 1; j < n; ++j)
+                s -= Out.data(idx(j, i)) * buffer2[j][k];
+            T diag = Out.data(tile_coord(i, i));
+            buffer2[i][k] = (diag != T(0.0f)) ? s / diag : s;
+        }
+    }
+
+    // Solve L^T B = X^T (lower) or U B = X^T (upper)
+    for (int k = 0; k < n; ++k) {
+        for (int i = n - 1; i >= 0; --i) {
+            T s = buffer2[k][i];
+            for (int j = i + 1; j < n; ++j)
+                s -= Out.data(idx(j, i)) * buffer1[j][k];
+            T diag = Out.data(tile_coord(i, i));
+            buffer1[i][k] = (diag != T(0.0f)) ? s / diag : s;
+        }
+    }
+
+    // Accumulate B into adj_A.grad (upper or lower triangle only).
+    // Diagonal halved because B = A_bar + A_bar^T double-counts it.
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j <= i; ++j) {
+            T scale = (i == j) ? T(0.5) : T(1);
+            adj_A.grad(idx(i, j)) += scale * buffer1[i][j];
+        }
+}
+
+
 }  // namespace partition_gemm
 
 
@@ -5400,6 +5468,90 @@ CUDA_CALLABLE TileOut& tile_cholesky_impl(Fwd fun_forward, TileA& A, TileOut& Ou
     return Out;
 }
 
+
+template <bool Upper, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
+CUDA_CALLABLE void
+adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& Out, TileA& adj_A, TileOut& adj_Out)
+{
+    using T = typename TileA::Type;
+    constexpr int n = TileA::Layout::Shape::dim(1);
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    // CPU / GPU-without-mathdx: single-threaded solve
+    if (WP_TILE_THREAD_IDX == 0)
+        partitioned_gemm::scalar_cholesky_adj_impl<Upper>(adj_A, adj_Out, Out);
+
+#else
+
+    if constexpr (wp_is_null_func<BkwdGemm>::value) {
+        // GPU with mathdx but no backward LTOs: scalar fallback
+        if (WP_TILE_THREAD_IDX == 0)
+            partitioned_gemm::scalar_cholesky_adj_impl<Upper>(adj_A, adj_Out, Out);
+    } else {
+        __shared__ T W1[n * n];
+        __shared__ T W2[n * n];
+
+        T alpha_one = T(1);
+        T beta_zero = T(0);
+        WP_TILE_SYNC();
+
+        // P = adj_Out @ Out^T (upper) or Out^T @ adj_Out (lower)
+        if constexpr (Upper) {
+            fun_bkwd_gemm(&alpha_one, adj_Out.grad.ptr, Out.data.ptr, &beta_zero, W1);
+        } else {
+            fun_bkwd_gemm(&alpha_one, Out.data.ptr, adj_Out.grad.ptr, &beta_zero, W1);
+        }
+        WP_TILE_SYNC();
+
+        // Symmetrize P: mirror the stored triangle to the other side (preserving the diagonal).
+        // Upper: keep triu, mirror to lower; Lower: keep tril, mirror to upper.
+        for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+            int row = idx / n;
+            int col = idx % n;
+            bool mirror = Upper ? (row > col) : (row < col);
+            if (mirror)
+                W2[idx] = W1[col * n + row];
+            else
+                W2[idx] = W1[idx];
+        }
+        WP_TILE_SYNC();
+
+        // Solve L^T X = S (lower) or U X = S (upper), in-place into W2
+        fun_bkwd_trsm(Out.data.ptr, W2);
+        WP_TILE_SYNC();
+
+        // Transpose X into W1
+        for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+            int row = idx / n;
+            int col = idx % n;
+            W1[idx] = W2[col * n + row];
+        }
+        WP_TILE_SYNC();
+
+        // Solve L^T B = X^T (lower) or U B = X^T (upper), in-place into W1
+        fun_bkwd_trsm(Out.data.ptr, W1);
+        WP_TILE_SYNC();
+
+        // Accumulate B into adj_A.grad (upper or lower triangle only).
+        // Diagonal halved because B = A_bar + A_bar^T double-counts it.
+        // W1 and adj_A share same layout so gradient accumulates at correct indices.
+        for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+            int row = idx / n;
+            int col = idx % n;
+            bool in_triangle = Upper ? (row <= col) : (row >= col);
+            if (in_triangle) {
+                T scale = (row == col) ? T(0.5) : T(1);
+                adj_A.grad(tile_coord(row, col)) += scale * W1[row * n + col];
+            }
+        }
+    }
+
+#endif
+
+    WP_TILE_SYNC();
+}
+
 // Cholesky factorization (inplace) implementation.
 template <bool Upper, typename Fwd, typename TileA>
 CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
@@ -5448,10 +5600,31 @@ CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
 }
 
 // Cholesky (out-of-place): tile_cholesky<false>(...) for lower, tile_cholesky<true>(...) for upper
-template <bool Upper, typename Fwd, typename TileA, typename TileOut>
-CUDA_CALLABLE TileOut& tile_cholesky(Fwd fun_forward, TileA& A, TileOut& Out)
+template <bool Upper, typename Fwd, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
+CUDA_CALLABLE TileOut&
+tile_cholesky(Fwd fun_forward, BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileA& A, TileOut& Out)
 {
     return tile_cholesky_impl<Upper>(fun_forward, A, Out);
+}
+
+// Adjoint of Cholesky (out-of-place, Murray 2016, "Differentiation of the Cholesky decomposition"):
+// adj_tile_cholesky<false>(...) for lower, adj_tile_cholesky<true>(...) for upper
+template <bool Upper, typename Fwd, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
+CUDA_CALLABLE void adj_tile_cholesky(
+    Fwd fun_forward,
+    BkwdGemm fun_bkwd_gemm,
+    BkwdTrsm fun_bkwd_trsm,
+    TileA& A,
+    TileOut& Out,
+    Fwd adj_fun_forward,
+    BkwdGemm adj_fun_bkwd_gemm,
+    BkwdTrsm adj_fun_bkwd_trsm,
+    TileA& adj_A,
+    TileOut& adj_Out,
+    TileOut& adj_ret
+)
+{
+    adj_tile_cholesky_impl<Upper>(fun_bkwd_gemm, fun_bkwd_trsm, Out, adj_A, adj_Out);
 }
 
 // Cholesky (inplace): tile_cholesky_inplace<false>(...) for lower, tile_cholesky_inplace<true>(...) for upper
@@ -5459,11 +5632,6 @@ template <bool Upper, typename Fwd, typename TileA> CUDA_CALLABLE void tile_chol
 {
     tile_cholesky_inplace_impl<Upper>(fun_forward, A);
 }
-
-#define adj_tile_cholesky(function_name, A, Out, adj_function_name, adj_A, adj_Out, adj_ret) \
-     do { \
-         assert(false); \
-     } while (0)
 
 #define adj_tile_cholesky_inplace(function_name, A, adj_function_name, adj_A) \
      do { \
