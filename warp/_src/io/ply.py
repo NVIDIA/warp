@@ -12,7 +12,7 @@ import struct
 # Third-party
 import numpy as np
 
-from warp._src.io.mesh import _apply_flip_winding, MeshData
+from warp._src.io.mesh import MeshData, _apply_flip_winding
 
 
 def _read_ply_header(filename: str) -> dict:
@@ -104,7 +104,7 @@ def _read_ply_ascii(filename: str, header: dict) -> MeshData:
 
             # Check for normals (nx, ny, nz typically come after x, y, z)
             idx = 3
-            for prop_type, prop_name in header["vertex_properties"][3:]:
+            for _prop_type, prop_name in header["vertex_properties"][3:]:
                 if idx < len(values):
                     if prop_name == "nx" or prop_name == "ny" or prop_name == "nz":
                         if not normals:
@@ -217,9 +217,7 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
         for i in range(vertex_count):
             data = vertex_struct.unpack(f.read(vertex_size))
             # Only access properties that exist in the header
-            points[i] = [data[prop_offsets["x"]],
-                         data[prop_offsets["y"]],
-                         data[prop_offsets["z"]]]
+            points[i] = [data[prop_offsets["x"]], data[prop_offsets["y"]], data[prop_offsets["z"]]]
 
             if has_normals and normals is not None:
                 nx_idx = prop_offsets.get("nx")

@@ -12,7 +12,7 @@ import struct
 # Third-party
 import numpy as np
 
-from warp._src.io.mesh import _apply_flip_winding, MeshData
+from warp._src.io.mesh import MeshData, _apply_flip_winding
 
 
 def _detect_stl_format(filename: str) -> str:
@@ -60,7 +60,7 @@ def _detect_stl_format(filename: str) -> str:
         _read_ascii_stl(filename)
         return "ascii"
     except Exception:
-        raise RuntimeError(f"Unable to parse STL file: '{filename}'")
+        raise RuntimeError(f"Unable to parse STL file: '{filename}'") from None
 
 
 def _deduplicate_stl_vertices(
@@ -157,9 +157,9 @@ def _read_ascii_stl(filename: str) -> MeshData:
     in_solid = False
     in_facet = False
 
-    with open(filename, "r") as f:
+    with open(filename, encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
+            line = line.strip()  # noqa: PLW2901
             if not line:
                 continue
 
@@ -280,7 +280,7 @@ def write_stl(
                 # Write attribute byte count (usually 0)
                 f.write(struct.pack("<H", 0))
     else:
-        with open(filename, "w") as f:
+        with open(filename, "w", encoding="utf-8") as f:
             f.write("solid mesh\n")
             for face in indices_reshaped:
                 v0 = points[face[0]]

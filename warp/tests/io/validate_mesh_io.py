@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+
 import warp as wp
 
 
@@ -52,8 +53,9 @@ def test_large_mesh_performance():
     indices_v = np.arange(num_tris, dtype=np.int32)
 
     # Simple triangulated plane
-    points = np.random.rand(num_verts, 3).astype(np.float32) * 10.0
-    indices = np.random.randint(0, num_verts, (num_tris * 3,), dtype=np.int32)
+    rng = np.random.default_rng()
+    points = rng.random((num_verts, 3), dtype=np.float32) * 10.0
+    indices = rng.integers(0, num_verts, (num_tris * 3,), dtype=np.int32)
 
     # Save and load via OBJ
     with tempfile.NamedTemporaryFile(suffix=".obj", mode="w", delete=False) as f:
@@ -65,7 +67,7 @@ def test_large_mesh_performance():
             for p in points:
                 f.write(f"v {p[0]} {p[1]} {p[2]}\n")
             for i in range(0, len(indices), 3):
-                f.write(f"f {indices[i]+1} {indices[i+1]+1} {indices[i+2]+1}\n")
+                f.write(f"f {indices[i] + 1} {indices[i + 1] + 1} {indices[i + 2] + 1}\n")
 
         # Time the load
         start = time.time()
@@ -93,16 +95,15 @@ def test_edge_cases():
     print("  Empty lines in OBJ...", end=" ")
     with tempfile.NamedTemporaryFile(suffix=".obj", mode="w", delete=False) as f:
         temp_path = f.name
-        with open(temp_path, "w") as f:
-            f.write("\n")
-            f.write("# Comment\n")
-            f.write("v 0 0 0\n")
-            f.write("\n")
-            f.write("v 1 0 0\n")
-            f.write("v 0 1 0\n")
-            f.write("\n")
-            f.write("f 1 2 3\n")
-            f.write("\n")
+        f.write("\n")
+        f.write("# Comment\n")
+        f.write("v 0 0 0\n")
+        f.write("\n")
+        f.write("v 1 0 0\n")
+        f.write("v 0 1 0\n")
+        f.write("\n")
+        f.write("f 1 2 3\n")
+        f.write("\n")
 
     mesh = wp.load_mesh(temp_path)
     assert mesh.points.shape[0] == 3
@@ -113,11 +114,10 @@ def test_edge_cases():
     print("  Very small coordinate values...", end=" ")
     with tempfile.NamedTemporaryFile(suffix=".obj", mode="w", delete=False) as f:
         temp_path = f.name
-        with open(temp_path, "w") as f:
-            f.write("v 1e-10 1e-10 1e-10\n")
-            f.write("v 1.0 0.0 0.0\n")
-            f.write("v 0.0 1.0 0.0\n")
-            f.write("f 1 2 3\n")
+        f.write("v 1e-10 1e-10 1e-10\n")
+        f.write("v 1.0 0.0 0.0\n")
+        f.write("v 0.0 1.0 0.0\n")
+        f.write("f 1 2 3\n")
 
     mesh = wp.load_mesh(temp_path)
     Path(temp_path).unlink()
@@ -127,11 +127,10 @@ def test_edge_cases():
     print("  Very large coordinate values...", end=" ")
     with tempfile.NamedTemporaryFile(suffix=".obj", mode="w", delete=False) as f:
         temp_path = f.name
-        with open(temp_path, "w") as f:
-            f.write("v 1e6 1e6 1e6\n")
-            f.write("v 0.0 0.0 0.0\n")
-            f.write("v 1.0 0.0 0.0\n")
-            f.write("f 1 2 3\n")
+        f.write("v 1e6 1e6 1e6\n")
+        f.write("v 0.0 0.0 0.0\n")
+        f.write("v 1.0 0.0 0.0\n")
+        f.write("f 1 2 3\n")
 
     mesh = wp.load_mesh(temp_path)
     Path(temp_path).unlink()
@@ -141,14 +140,13 @@ def test_edge_cases():
     print("  Mixed face formats (v/vt/vn, v//vn, v)...", end=" ")
     with tempfile.NamedTemporaryFile(suffix=".obj", mode="w", delete=False) as f:
         temp_path = f.name
-        with open(temp_path, "w") as f:
-            f.write("v 0 0 0\n")
-            f.write("v 1 0 0\n")
-            f.write("v 0 1 0\n")
-            f.write("v 1 1 0\n")
-            f.write("f 1 2 3\n")
-            f.write("f 1/1 2/2 3/3\n")
-            f.write("f 1//1 2//1 3//1\n")
+        f.write("v 0 0 0\n")
+        f.write("v 1 0 0\n")
+        f.write("v 0 1 0\n")
+        f.write("v 1 1 0\n")
+        f.write("f 1 2 3\n")
+        f.write("f 1/1 2/2 3/3\n")
+        f.write("f 1//1 2//1 3//1\n")
 
     mesh = wp.load_mesh(temp_path)
     assert mesh.points.shape[0] == 4
@@ -206,12 +204,11 @@ def test_format_variations():
     print("  OBJ with vertex normal before position...", end=" ")
     with tempfile.NamedTemporaryFile(suffix=".obj", mode="w", delete=False) as f:
         temp_path = f.name
-        with open(temp_path, "w") as f:
-            f.write("vn 0 0 1\n")
-            f.write("v 0 0 0\n")
-            f.write("v 1 0 0\n")
-            f.write("v 0 1 0\n")
-            f.write("f 1 2 3\n")
+        f.write("vn 0 0 1\n")
+        f.write("v 0 0 0\n")
+        f.write("v 1 0 0\n")
+        f.write("v 0 1 0\n")
+        f.write("f 1 2 3\n")
 
     mesh = wp.load_mesh(temp_path)
     assert mesh.points.shape[0] == 3
@@ -240,7 +237,7 @@ def test_error_handling():
     print("  Non-existent file...", end=" ")
     try:
         wp.load_mesh("nonexistent.obj")
-        assert False, "Should have raised FileNotFoundError"
+        raise AssertionError("Should have raised FileNotFoundError")
     except FileNotFoundError:
         print("OK")
 
@@ -252,7 +249,7 @@ def test_error_handling():
 
     try:
         wp.load_mesh(temp_path)
-        assert False, "Should have raised ValueError"
+        raise AssertionError("Should have raised ValueError")
     except ValueError:
         Path(temp_path).unlink()
         print("OK")
@@ -269,7 +266,7 @@ def test_error_handling():
     try:
         # Try to load with very small limit
         wp.load_mesh(temp_path, max_file_size_mb=0.000001)
-        assert False, "Should have raised ValueError"
+        raise AssertionError("Should have raised ValueError")
     except ValueError:
         Path(temp_path).unlink()
         print("OK")

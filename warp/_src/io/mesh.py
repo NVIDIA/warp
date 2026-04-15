@@ -8,7 +8,6 @@ from __future__ import annotations
 # Standard library
 import dataclasses
 import os
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 # Third-party
@@ -17,7 +16,6 @@ import numpy as np
 # Warp
 import warp as wp
 from warp._src.context import DeviceLike, get_device
-from warp._src.utils import warn
 
 if TYPE_CHECKING:
     from warp._src.types import BvhConstructor
@@ -136,8 +134,7 @@ def load_mesh(
         max_bytes = max_file_size_mb * 1024 * 1024
         if file_size > max_bytes:
             raise ValueError(
-                f"File too large: {file_size / (1024 * 1024):.1f} MB "
-                f"exceeds limit of {max_file_size_mb} MB"
+                f"File too large: {file_size / (1024 * 1024):.1f} MB exceeds limit of {max_file_size_mb} MB"
             )
 
     # Format detection
@@ -146,15 +143,14 @@ def load_mesh(
         ext = ext.lower().lstrip(".")
         if not ext:
             raise ValueError(
-                "Cannot detect format from file extension. "
-                "Use the 'format' parameter to specify explicitly."
+                "Cannot detect format from file extension. Use the 'format' parameter to specify explicitly."
             )
         format = ext
 
     # Dispatch to format-specific parser
-    from warp._src.io.obj import read_obj
-    from warp._src.io.stl import read_stl
-    from warp._src.io.ply import read_ply
+    from warp._src.io.obj import read_obj  # noqa: PLC0415
+    from warp._src.io.ply import read_ply  # noqa: PLC0415
+    from warp._src.io.stl import read_stl  # noqa: PLC0415
 
     if format == "obj":
         data = read_obj(filename, flip_winding=flip_winding)
@@ -163,10 +159,7 @@ def load_mesh(
     elif format == "ply":
         data = read_ply(filename, flip_winding=flip_winding)
     else:
-        raise ValueError(
-            f"Unsupported format: '{format}'. "
-            f"Supported formats are: obj, stl, ply"
-        )
+        raise ValueError(f"Unsupported format: '{format}'. Supported formats are: obj, stl, ply")
 
     # Convert to wp.Mesh
     return data.to_warp_mesh(
@@ -223,8 +216,7 @@ def read_mesh(
         max_bytes = max_file_size_mb * 1024 * 1024
         if file_size > max_bytes:
             raise ValueError(
-                f"File too large: {file_size / (1024 * 1024):.1f} MB "
-                f"exceeds limit of {max_file_size_mb} MB"
+                f"File too large: {file_size / (1024 * 1024):.1f} MB exceeds limit of {max_file_size_mb} MB"
             )
 
     # Format detection
@@ -233,15 +225,14 @@ def read_mesh(
         ext = ext.lower().lstrip(".")
         if not ext:
             raise ValueError(
-                "Cannot detect format from file extension. "
-                "Use the 'format' parameter to specify explicitly."
+                "Cannot detect format from file extension. Use the 'format' parameter to specify explicitly."
             )
         format = ext
 
     # Dispatch to format-specific parser
-    from warp._src.io.obj import read_obj
-    from warp._src.io.stl import read_stl
-    from warp._src.io.ply import read_ply
+    from warp._src.io.obj import read_obj  # noqa: PLC0415
+    from warp._src.io.ply import read_ply  # noqa: PLC0415
+    from warp._src.io.stl import read_stl  # noqa: PLC0415
 
     if format == "obj":
         return read_obj(filename, flip_winding=flip_winding)
@@ -250,10 +241,7 @@ def read_mesh(
     elif format == "ply":
         return read_ply(filename, flip_winding=flip_winding)
     else:
-        raise ValueError(
-            f"Unsupported format: '{format}'. "
-            f"Supported formats are: obj, stl, ply"
-        )
+        raise ValueError(f"Unsupported format: '{format}'. Supported formats are: obj, stl, ply")
 
 
 def save_mesh(
@@ -287,17 +275,16 @@ def save_mesh(
 
     if not ext:
         raise ValueError(
-            "Cannot detect format from file extension. "
-            "Provide a filename with .obj, .stl, or .ply extension."
+            "Cannot detect format from file extension. Provide a filename with .obj, .stl, or .ply extension."
         )
 
     # Get mesh data as numpy arrays
     points = mesh.points.numpy().astype(np.float32)
     indices = mesh.indices.numpy().astype(np.int32)
 
-    from warp._src.io.obj import write_obj
-    from warp._src.io.stl import write_stl
-    from warp._src.io.ply import write_ply
+    from warp._src.io.obj import write_obj  # noqa: PLC0415
+    from warp._src.io.ply import write_ply  # noqa: PLC0415
+    from warp._src.io.stl import write_stl  # noqa: PLC0415
 
     if ext == "obj":
         write_obj(points, indices, filename)
@@ -306,10 +293,7 @@ def save_mesh(
     elif ext == "ply":
         write_ply(points, indices, filename, binary=binary)
     else:
-        raise ValueError(
-            f"Unsupported format: '{ext}'. "
-            f"Supported formats are: obj, stl, ply"
-        )
+        raise ValueError(f"Unsupported format: '{ext}'. Supported formats are: obj, stl, ply")
 
 
 def _flip_winding_order(indices: np.ndarray) -> np.ndarray:
