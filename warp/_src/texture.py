@@ -82,12 +82,18 @@ class texture1d_t(ctypes.Structure):
         ("tex", ctypes.c_uint64),
         ("width", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("filter_mode", ctypes.c_int32),
+        ("use_normalized_coords", ctypes.c_int32),
+        ("address_mode_u", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, num_channels=0):
+    def __init__(self, tex=0, width=0, num_channels=0, filter_mode=0, use_normalized_coords=1, address_mode_u=0):
         self.tex = tex
         self.width = width
         self.num_channels = num_channels
+        self.filter_mode = filter_mode
+        self.use_normalized_coords = use_normalized_coords
+        self.address_mode_u = address_mode_u
 
 
 class texture2d_t(ctypes.Structure):
@@ -101,13 +107,31 @@ class texture2d_t(ctypes.Structure):
         ("width", ctypes.c_int32),
         ("height", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("filter_mode", ctypes.c_int32),
+        ("use_normalized_coords", ctypes.c_int32),
+        ("address_mode_u", ctypes.c_int32),
+        ("address_mode_v", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, height=0, num_channels=0):
+    def __init__(
+        self,
+        tex=0,
+        width=0,
+        height=0,
+        num_channels=0,
+        filter_mode=0,
+        use_normalized_coords=1,
+        address_mode_u=0,
+        address_mode_v=0,
+    ):
         self.tex = tex
         self.width = width
         self.height = height
         self.num_channels = num_channels
+        self.filter_mode = filter_mode
+        self.use_normalized_coords = use_normalized_coords
+        self.address_mode_u = address_mode_u
+        self.address_mode_v = address_mode_v
 
 
 class texture3d_t(ctypes.Structure):
@@ -122,14 +146,36 @@ class texture3d_t(ctypes.Structure):
         ("height", ctypes.c_int32),
         ("depth", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("filter_mode", ctypes.c_int32),
+        ("use_normalized_coords", ctypes.c_int32),
+        ("address_mode_u", ctypes.c_int32),
+        ("address_mode_v", ctypes.c_int32),
+        ("address_mode_w", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, height=0, depth=0, num_channels=0):
+    def __init__(
+        self,
+        tex=0,
+        width=0,
+        height=0,
+        depth=0,
+        num_channels=0,
+        filter_mode=0,
+        use_normalized_coords=1,
+        address_mode_u=0,
+        address_mode_v=0,
+        address_mode_w=0,
+    ):
         self.tex = tex
         self.width = width
         self.height = height
         self.depth = depth
         self.num_channels = num_channels
+        self.filter_mode = filter_mode
+        self.use_normalized_coords = use_normalized_coords
+        self.address_mode_u = address_mode_u
+        self.address_mode_v = address_mode_v
+        self.address_mode_w = address_mode_w
 
 
 class cuda_array_desc_t(ctypes.Structure):
@@ -165,6 +211,20 @@ class Texture:
     Supports ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``, ``wp.int32``,
     ``wp.float16``, and ``wp.float32`` data types. Unsigned integer textures are read as normalized
     floats in [0, 1]; signed integer textures are normalized to [-1, 1]; float types are returned as-is.
+
+    .. warning::
+        **Automatic differentiation with LINEAR filtering is only correct when all texture
+        address modes are set to BORDER.**
+
+        Using ``wp.texture_sample()`` with ``requires_grad=True``, ``filter_mode=LINEAR``,
+        and address modes other than BORDER (WRAP/CLAMP/MIRROR) will produce silent gradient
+        errors at texture boundaries. The gradient computation assumes BORDER behavior
+        (returns zero outside bounds).
+
+        If you need automatic differentiation with LINEAR filtering, create textures with
+        ``address_mode=wp.TextureAddressMode.BORDER``. CLOSEST filtering does not have this
+        limitation (gradients are always zero).
+
 
     This class should not be instantiated directly. A specific subclass should be used instead
     (:class:`Texture1D`, :class:`Texture2D`, or :class:`Texture3D`).
@@ -958,7 +1018,14 @@ class Texture1D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture1d_t(self._tex_handle, self._width, self._num_channels)
+        return texture1d_t(
+            self._tex_handle,
+            self._width,
+            self._num_channels,
+            int(self._filter_mode),
+            int(self._normalized_coords),
+            int(self._address_mode_u),
+        )
 
 
 class Texture2D(Texture):
@@ -1035,7 +1102,16 @@ class Texture2D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
+        return texture2d_t(
+            self._tex_handle,
+            self._width,
+            self._height,
+            self._num_channels,
+            int(self._filter_mode),
+            int(self._normalized_coords),
+            int(self._address_mode_u),
+            int(self._address_mode_v),
+        )
 
 
 class Texture3D(Texture):
@@ -1116,7 +1192,18 @@ class Texture3D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)
+        return texture3d_t(
+            self._tex_handle,
+            self._width,
+            self._height,
+            self._depth,
+            self._num_channels,
+            int(self._filter_mode),
+            int(self._normalized_coords),
+            int(self._address_mode_u),
+            int(self._address_mode_v),
+            int(self._address_mode_w),
+        )
 
 
 class TextureResourceFlags(enum.IntEnum):
