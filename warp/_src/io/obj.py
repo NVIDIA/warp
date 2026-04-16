@@ -77,7 +77,7 @@ def read_obj(filename: str, flip_winding: bool = False) -> MeshData:
                     v_idx = int(v_idx_str)
                     # OBJ is 1-indexed; negative = relative to end
                     if v_idx < 0:
-                        v_idx = len(points) + v_idx + 1
+                        v_idx = len(points) + v_idx
                     else:
                         v_idx -= 1
                     face_verts.append(v_idx)

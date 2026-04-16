@@ -18,13 +18,13 @@ from warp._src.io.mesh import MeshData, _apply_flip_winding
 def _detect_stl_format(filename: str) -> str:
     """Detect STL format by attempting to parse.
 
-    Returns "binary" or "ascii". Raises RuntimeError if neither works.
+    Returns ``\"binary\"`` or ``\"ascii\"``. Raises ``RuntimeError`` if neither works.
 
     Args:
         filename: Path to the STL file.
 
     Returns:
-        "binary" or "ascii".
+        ``\"binary\"`` or ``\"ascii\"``.
     """
     # Check file size first
     file_size = os.path.getsize(filename)
@@ -69,7 +69,7 @@ def _deduplicate_stl_vertices(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Deduplicate STL vertices using spatial hashing.
 
-    More memory-efficient than np.unique() for large meshes.
+    More memory-efficient than ``np.unique()`` for large meshes.
     Uses a dictionary to track first occurrence of each grid-rounded position.
 
     Args:
@@ -117,7 +117,7 @@ def _compute_face_normal(
         v2: Third vertex position.
 
     Returns:
-        Normalized normal vector, or [0, 0, 1] for degenerate triangles.
+        Normalized normal vector, or ``[0, 0, 1]`` for degenerate triangles.
     """
     edge1 = v1 - v0
     edge2 = v2 - v0
@@ -136,7 +136,7 @@ def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
         merge_tolerance: Distance tolerance for vertex merging.
 
     Returns:
-        MeshData containing points and indices. Note: STL face normals are
+        ``MeshData`` containing points and indices. Note: STL face normals are
         not included since they are per-face, not per-vertex.
     """
     with open(filename, "rb") as f:
@@ -174,7 +174,7 @@ def _read_ascii_stl(filename: str) -> MeshData:
         filename: Path to the ASCII STL file.
 
     Returns:
-        MeshData containing points and indices.
+        ``MeshData`` containing points and indices.
     """
     points = []
     indices = []
@@ -208,6 +208,7 @@ def _read_ascii_stl(filename: str) -> MeshData:
                         f"Invalid facet in STL file: expected 3 vertices, got {facet_vertex_count}. File: '{filename}'"
                     )
                 in_facet = False
+                facet_vertex_count = 0
             elif keyword == "vertex" and in_facet:
                 if len(parts) >= 4:
                     points.append([float(parts[1]), float(parts[2]), float(parts[3])])
@@ -215,6 +216,10 @@ def _read_ascii_stl(filename: str) -> MeshData:
                     if facet_vertex_count == 3:
                         indices.extend([vertex_offset, vertex_offset + 1, vertex_offset + 2])
                         vertex_offset += 3
+
+    # Reject unterminated facets (truncated file)
+    if in_facet:
+        raise RuntimeError(f"Unexpected end of STL file while reading facet. File: '{filename}'")
 
     if not points:
         raise RuntimeError(f"No vertices found in STL file: '{filename}'")
@@ -230,7 +235,7 @@ def read_stl(filename: str, flip_winding: bool = False, merge_tolerance: float =
 
     STL files store each triangle independently, so vertices are duplicated
     across triangles. This function deduplicates vertices within the
-    merge_tolerance.
+    ``merge_tolerance``.
 
     Args:
         filename: Path to the STL file.
@@ -238,7 +243,7 @@ def read_stl(filename: str, flip_winding: bool = False, merge_tolerance: float =
         merge_tolerance: Distance tolerance for vertex deduplication.
 
     Returns:
-        MeshData containing points and indices.
+        ``MeshData`` containing points and indices.
 
     Raises:
         FileNotFoundError: If the file does not exist.
