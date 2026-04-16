@@ -1079,13 +1079,31 @@ type_closure_kernel_float = create_type_closure_scalar(float)
 type_closure_kernel_uint8 = create_type_closure_scalar(wp.uint8)
 
 
+def create_type_closure_scalar_f64(scalar_type):
+    @wp.kernel
+    def k(input: wp.float64, expected: wp.float64):
+        x = scalar_type(input)
+        wp.expect_eq(wp.float64(x), expected)
+
+    return k
+
+
+type_closure_kernel_uint64_f64 = create_type_closure_scalar_f64(wp.uint64)
+
+
 def test_type_closure_scalar(test, device):
     with wp.ScopedDevice(device):
         wp.launch(type_closure_kernel_int, dim=1, inputs=[-1.5, -1.0])
         wp.launch(type_closure_kernel_float, dim=1, inputs=[-1.5, -1.5])
 
-        # FIXME: a problem with type conversions breaks this case
-        # wp.launch(type_closure_kernel_uint8, dim=1, inputs=[-1.5, 255.0])
+        wp.launch(type_closure_kernel_uint8, dim=1, inputs=[-1.5, 255.0])
+        wp.launch(type_closure_kernel_uint8, dim=1, inputs=[-0.1, 0.0])
+        wp.launch(type_closure_kernel_uint8, dim=1, inputs=[255.1, 255.0])
+        wp.launch(type_closure_kernel_uint8, dim=1, inputs=[128.0, 128.0])
+        wp.launch(type_closure_kernel_uint8, dim=1, inputs=[-100.0, 156.0])
+
+        # Test boundary cases for uint64 truncation safety with float64 precision
+        wp.launch(type_closure_kernel_uint64_f64, dim=1, inputs=[9223372036854774784.0, 9223372036854774784.0])
 
 
 # =======================================================================
