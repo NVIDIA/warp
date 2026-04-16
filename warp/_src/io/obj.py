@@ -94,7 +94,9 @@ def read_obj(filename: str, flip_winding: bool = False) -> MeshData:
 
     points_array = np.array(points, dtype=np.float32)
     indices_array = np.array(indices, dtype=np.int32)
-    normals_array = np.array(normals, dtype=np.float32) if normals else None
+    # Only include normals if count matches vertices (per-vertex normals required)
+    # OBJ files can have different vn count than v count for hard-edge meshes
+    normals_array = np.array(normals, dtype=np.float32) if normals and len(normals) == len(points) else None
     uvs_array = np.array(uvs, dtype=np.float32) if uvs else None
 
     if flip_winding:
