@@ -37,14 +37,19 @@ def _read_ply_header(filename: str) -> dict:
             "face_count": 0,
             "vertex_properties": [],
             "has_colors": False,
+            "has_normals": False,
             "face_index_count_type": None,  # Type for vertex count per face
             "face_index_value_type": None,  # Type for vertex indices
         }
 
         current_element = None
+        vertex_prop_names = []
 
         while True:
-            line = f.readline().decode("ascii").strip()
+            raw_line = f.readline()
+            if raw_line == b"":
+                raise RuntimeError(f"Unexpected EOF before PLY end_header: '{filename}'")
+            line = raw_line.decode("ascii").strip()
             if not line:
                 continue
 
@@ -69,12 +74,21 @@ def _read_ply_header(filename: str) -> dict:
                     prop_type = parts[1]
                     prop_name = parts[2]
                     header_info["vertex_properties"].append((prop_type, prop_name))
-                    if prop_name in ("red", "green", "blue", "alpha"):
-                        header_info["has_colors"] = True
-                elif current_element == "face" and len(parts) >= 5 and parts[1] == "list":
-                    # property list <count_type> <value_type> <name>
+                    vertex_prop_names.append(prop_name)
+                elif (
+                    current_element == "face"
+                    and len(parts) >= 5
+                    and parts[1] == "list"
+                    and len(parts) >= 5
+                    and parts[4] in ("vertex_indices", "vertex_index")
+                ):
+                    # property list <count_type> <value_type> vertex_indices
                     header_info["face_index_count_type"] = parts[2]
                     header_info["face_index_value_type"] = parts[3]
+
+        # Check if we have complete normal/color sets (all components required)
+        header_info["has_normals"] = all(name in vertex_prop_names for name in ["nx", "ny", "nz"])
+        header_info["has_colors"] = all(name in vertex_prop_names for name in ["red", "green", "blue"])
 
     return header_info
 
@@ -97,13 +111,16 @@ def _read_ply_ascii(filename: str, header: dict) -> MeshData:
     with open(filename, "rb") as f:
         # Skip to end of header
         while True:
-            line = f.readline().decode("ascii").strip()
+            raw_line = f.readline()
+            if raw_line == b"":
+                raise RuntimeError(f"Unexpected EOF before PLY end_header: '{filename}'")
+            line = raw_line.decode("ascii").strip()
             if line == "end_header":
                 break
 
-        # Check if we need normals or colors (before reading vertices)
-        has_normals = any(name in [p[1] for p in header["vertex_properties"]] for name in ["nx", "ny", "nz"])
-        has_colors = any(name in [p[1] for p in header["vertex_properties"]] for name in ["red", "green", "blue", "alpha"])
+        # Use has_normals/has_colors from header (requires full component sets)
+        has_normals = header.get("has_normals", False)
+        has_colors = header.get("has_colors", False)
 
         # Pre-allocate arrays for normals/colors if needed
         if has_normals:
@@ -114,14 +131,12 @@ def _read_ply_ascii(filename: str, header: dict) -> MeshData:
         # Validate required vertex position properties (first 3 should be x, y, z)
         if len(header["vertex_properties"]) < 3:
             raise RuntimeError(
-                f"PLY file has insufficient vertex properties. Expected at least x, y, z. "
-                f"File: '{filename}'"
+                f"PLY file has insufficient vertex properties. Expected at least x, y, z. File: '{filename}'"
             )
         first_three_names = [p[1] for p in header["vertex_properties"][:3]]
         if first_three_names != ["x", "y", "z"]:
             raise RuntimeError(
-                f"PLY file vertex properties must start with x, y, z. Got: {first_three_names}. "
-                f"File: '{filename}'"
+                f"PLY file vertex properties must start with x, y, z. Got: {first_three_names}. File: '{filename}'"
             )
 
         # Read vertices
@@ -221,7 +236,10 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
     with open(filename, "rb") as f:
         # Skip to end of header
         while True:
-            line = f.readline().decode("ascii").strip()
+            raw_line = f.readline()
+            if raw_line == b"":
+                raise RuntimeError(f"Unexpected EOF before PLY end_header: '{filename}'")
+            line = raw_line.decode("ascii").strip()
             if line == "end_header":
                 break
 
@@ -231,22 +249,21 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
         normals = None
         colors = None
 
-        # Check if we have normals
-        has_normals = any(name in prop_offsets for name in ["nx", "ny", "nz"])
-        if has_normals:
-            normals = np.empty((vertex_count, 3), dtype=np.float32)
+        # Use has_normals/has_colors from header (requires full component sets)
+        if header.get("has_normals"):
+            if all(name in prop_offsets for name in ["nx", "ny", "nz"]):
+                normals = np.empty((vertex_count, 3), dtype=np.float32)
 
-        # Check if we have colors
-        if header["has_colors"]:
-            colors = np.empty((vertex_count, 3), dtype=np.uint8)
+        if header.get("has_colors"):
+            if all(name in prop_offsets for name in ["red", "green", "blue"]):
+                colors = np.empty((vertex_count, 3), dtype=np.uint8)
 
         # Validate required vertex position properties
         required_props = ["x", "y", "z"]
         missing_props = [p for p in required_props if p not in prop_offsets]
         if missing_props:
             raise RuntimeError(
-                f"PLY file is missing required vertex position properties: {missing_props}. "
-                f"File: '{filename}'"
+                f"PLY file is missing required vertex position properties: {missing_props}. File: '{filename}'"
             )
 
         # Read vertices
@@ -256,14 +273,14 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
             # Only access properties that exist in the header
             points[i] = [data[prop_offsets["x"]], data[prop_offsets["y"]], data[prop_offsets["z"]]]
 
-            if has_normals and normals is not None:
+            if normals is not None:
                 nx_idx = prop_offsets.get("nx")
                 ny_idx = prop_offsets.get("ny")
                 nz_idx = prop_offsets.get("nz")
                 if nx_idx is not None and ny_idx is not None and nz_idx is not None:
                     normals[i] = [data[nx_idx], data[ny_idx], data[nz_idx]]
 
-            if header["has_colors"] and colors is not None:
+            if colors is not None:
                 red_idx = prop_offsets.get("red")
                 green_idx = prop_offsets.get("green")
                 blue_idx = prop_offsets.get("blue")

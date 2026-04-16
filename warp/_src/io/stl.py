@@ -52,7 +52,7 @@ def _detect_stl_format(filename: str) -> str:
                     f.read(12)  # vertex
                 f.read(2)  # attribute byte count
                 return "binary"
-    except (struct.error, OSError, EOFError):
+    except (struct.error, OSError):
         pass
 
     # Try ASCII
@@ -102,6 +102,30 @@ def _deduplicate_stl_vertices(
         np.array(unique_points, dtype=np.float32),
         np.array(unique_indices, dtype=np.int32),
     )
+
+
+def _compute_face_normal(
+    v0: np.ndarray,
+    v1: np.ndarray,
+    v2: np.ndarray,
+) -> np.ndarray:
+    """Compute normalized face normal for a triangle.
+
+    Args:
+        v0: First vertex position.
+        v1: Second vertex position.
+        v2: Third vertex position.
+
+    Returns:
+        Normalized normal vector, or [0, 0, 1] for degenerate triangles.
+    """
+    edge1 = v1 - v0
+    edge2 = v2 - v0
+    normal = np.cross(edge1, edge2)
+    norm_length = np.linalg.norm(normal)
+    if norm_length > 0:
+        return normal / norm_length
+    return np.array([0.0, 0.0, 1.0])
 
 
 def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
@@ -157,6 +181,7 @@ def _read_ascii_stl(filename: str) -> MeshData:
     vertex_offset = 0
     in_solid = False
     in_facet = False
+    facet_vertex_count = 0
 
     with open(filename, encoding="utf-8") as f:
         for line in f:
@@ -176,12 +201,18 @@ def _read_ascii_stl(filename: str) -> MeshData:
                 in_solid = False
             elif keyword == "facet" and in_solid:
                 in_facet = True
+                facet_vertex_count = 0
             elif keyword == "endfacet":
+                if facet_vertex_count != 3:
+                    raise ValueError(
+                        f"Invalid facet in STL file: expected 3 vertices, got {facet_vertex_count}. File: '{filename}'"
+                    )
                 in_facet = False
             elif keyword == "vertex" and in_facet:
                 if len(parts) >= 4:
                     points.append([float(parts[1]), float(parts[2]), float(parts[3])])
-                    if len(points) % 3 == 0:
+                    facet_vertex_count += 1
+                    if facet_vertex_count == 3:
                         indices.extend([vertex_offset, vertex_offset + 1, vertex_offset + 2])
                         vertex_offset += 3
 
@@ -247,7 +278,12 @@ def write_stl(
         indices: Triangle indices, shape (M * 3,).
         filename: Output file path.
         binary: If True, write binary STL (default). If False, write ASCII.
+
+    Raises:
+        ValueError: If indices length is not divisible by 3.
     """
+    if len(indices) % 3 != 0:
+        raise ValueError(f"indices length must be divisible by 3, got {len(indices)}")
     indices_reshaped = indices.reshape(-1, 3)
 
     if binary:
@@ -265,15 +301,7 @@ def write_stl(
                 v1 = points[face[1]]
                 v2 = points[face[2]]
 
-                # Compute face normal
-                edge1 = v1 - v0
-                edge2 = v2 - v0
-                normal = np.cross(edge1, edge2)
-                norm_length = np.linalg.norm(normal)
-                if norm_length > 0:
-                    normal = normal / norm_length
-                else:
-                    normal = np.array([0.0, 0.0, 1.0])
+                normal = _compute_face_normal(v0, v1, v2)
 
                 # Write normal
                 f.write(struct.pack("<3f", normal[0], normal[1], normal[2]))
@@ -292,15 +320,7 @@ def write_stl(
                 v1 = points[face[1]]
                 v2 = points[face[2]]
 
-                # Compute face normal
-                edge1 = v1 - v0
-                edge2 = v2 - v0
-                normal = np.cross(edge1, edge2)
-                norm_length = np.linalg.norm(normal)
-                if norm_length > 0:
-                    normal = normal / norm_length
-                else:
-                    normal = np.array([0.0, 0.0, 1.0])
+                normal = _compute_face_normal(v0, v1, v2)
 
                 f.write(f"  facet normal {normal[0]} {normal[1]} {normal[2]}\n")
                 f.write("    outer loop\n")
