@@ -9,7 +9,7 @@ Run this script to regenerate all test assets.
 
 from __future__ import annotations
 
-import os
+import struct
 from pathlib import Path
 
 
@@ -25,8 +25,6 @@ def generate_triangle_obj(path: str) -> None:
 
 def generate_triangle_stl(path: str, binary: bool = True) -> None:
     """Write a single triangle mesh in STL format."""
-    import struct
-
     if binary:
         with open(path, "wb") as f:
             f.write(b"\x00" * 80)  # Header
@@ -53,8 +51,6 @@ def generate_triangle_stl(path: str, binary: bool = True) -> None:
 
 def generate_triangle_ply(path: str, binary: bool = True) -> None:
     """Write a single triangle mesh in PLY format."""
-    import struct
-
     if binary:
         with open(path, "wb") as f:
             f.write(b"ply\n")
@@ -155,8 +151,6 @@ def generate_cube_obj(path: str, use_quads: bool = False) -> None:
 
 def generate_cube_stl(path: str, binary: bool = True) -> None:
     """Write a cube mesh in STL format (12 triangles)."""
-    import struct
-
     # Cube vertices
     v = [
         (0.0, 0.0, 0.0),
@@ -216,8 +210,6 @@ def generate_cube_stl(path: str, binary: bool = True) -> None:
 
 def generate_cube_ply(path: str, binary: bool = True) -> None:
     """Write a cube mesh in PLY format (12 triangles)."""
-    import struct
-
     # 8 vertices
     vertices = [
         (0.0, 0.0, 0.0),
@@ -232,12 +224,18 @@ def generate_cube_ply(path: str, binary: bool = True) -> None:
 
     # 12 triangles
     faces = [
-        (0, 1, 2), (0, 2, 3),  # Bottom
-        (4, 7, 6), (4, 6, 5),  # Top
-        (0, 4, 5), (0, 5, 1),  # Front
-        (3, 2, 6), (3, 6, 7),  # Back
-        (0, 3, 7), (0, 7, 4),  # Left
-        (1, 5, 6), (1, 6, 2),  # Right
+        (0, 1, 2),
+        (0, 2, 3),  # Bottom
+        (4, 7, 6),
+        (4, 6, 5),  # Top
+        (0, 4, 5),
+        (0, 5, 1),  # Front
+        (3, 2, 6),
+        (3, 6, 7),  # Back
+        (0, 3, 7),
+        (0, 7, 4),  # Left
+        (1, 5, 6),
+        (1, 6, 2),  # Right
     ]
 
     if binary:
