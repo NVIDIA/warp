@@ -124,12 +124,9 @@ def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
 
         # Pre-allocate: worst case = 3 * num_tris unique vertices
         raw_points = np.empty((num_tris * 3, 3), dtype=np.float32)
-        # STL face normals are read but not used (per-face, not per-vertex)
-        face_normals = np.empty((num_tris, 3), dtype=np.float32)
 
         for i in range(num_tris):
-            normal = struct.unpack("<3f", f.read(12))
-            face_normals[i] = normal
+            f.read(12)  # skip face normal (per-face, not per-vertex)
             for j in range(3):
                 raw_points[i * 3 + j] = struct.unpack("<3f", f.read(12))
             f.read(2)  # attribute byte count

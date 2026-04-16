@@ -195,7 +195,7 @@ class TestMeshIO(unittest.TestCase):
             with open(fake_file, "w") as f:
                 f.write("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")
 
-            mesh = wp.load_mesh(fake_file, format="obj")
+            mesh = wp.load_mesh(fake_file, file_format="obj")
             self.assertEqual(mesh.points.shape[0], 3)
 
     # ── Winding Order Tests ──

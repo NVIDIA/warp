@@ -23,7 +23,7 @@ def _read_ply_header(filename: str) -> dict:
 
     Returns:
         Dictionary with header information including format, vertex_count,
-        face_count, vertex_properties, and has_colors.
+        face_count, vertex_properties, has_colors, and face_index_types.
     """
     with open(filename, "rb") as f:
         # Read magic number
@@ -37,6 +37,8 @@ def _read_ply_header(filename: str) -> dict:
             "face_count": 0,
             "vertex_properties": [],
             "has_colors": False,
+            "face_index_count_type": None,  # Type for vertex count per face
+            "face_index_value_type": None,  # Type for vertex indices
         }
 
         current_element = None
@@ -63,13 +65,16 @@ def _read_ply_header(filename: str) -> dict:
                 elif parts[1] == "face":
                     header_info["face_count"] = int(parts[2])
             elif keyword == "property":
-                # Only add properties for the vertex element
                 if current_element == "vertex" and len(parts) >= 3:
                     prop_type = parts[1]
                     prop_name = parts[2]
                     header_info["vertex_properties"].append((prop_type, prop_name))
                     if prop_name in ("red", "green", "blue", "alpha"):
                         header_info["has_colors"] = True
+                elif current_element == "face" and len(parts) >= 5 and parts[1] == "list":
+                    # property list <count_type> <value_type> <name>
+                    header_info["face_index_count_type"] = parts[2]
+                    header_info["face_index_value_type"] = parts[3]
 
     return header_info
 
@@ -105,6 +110,19 @@ def _read_ply_ascii(filename: str, header: dict) -> MeshData:
             normals = [[0.0, 0.0, 0.0] for _ in range(header["vertex_count"])]
         if has_colors:
             colors = [[0, 0, 0] for _ in range(header["vertex_count"])]
+
+        # Validate required vertex position properties (first 3 should be x, y, z)
+        if len(header["vertex_properties"]) < 3:
+            raise RuntimeError(
+                f"PLY file has insufficient vertex properties. Expected at least x, y, z. "
+                f"File: '{filename}'"
+            )
+        first_three_names = [p[1] for p in header["vertex_properties"][:3]]
+        if first_three_names != ["x", "y", "z"]:
+            raise RuntimeError(
+                f"PLY file vertex properties must start with x, y, z. Got: {first_three_names}. "
+                f"File: '{filename}'"
+            )
 
         # Read vertices
         for vertex_idx in range(header["vertex_count"]):
@@ -222,6 +240,15 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
         if header["has_colors"]:
             colors = np.empty((vertex_count, 3), dtype=np.uint8)
 
+        # Validate required vertex position properties
+        required_props = ["x", "y", "z"]
+        missing_props = [p for p in required_props if p not in prop_offsets]
+        if missing_props:
+            raise RuntimeError(
+                f"PLY file is missing required vertex position properties: {missing_props}. "
+                f"File: '{filename}'"
+            )
+
         # Read vertices
         vertex_struct = struct.Struct(endian + vertex_format)
         for i in range(vertex_count):
@@ -247,16 +274,40 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
         indices = []
         face_count = header["face_count"]
 
-        # For faces, format is: uchar count + vertex_indices
-        for _ in range(face_count):
-            count_byte = f.read(1)
-            if not count_byte:
-                break
-            num_verts = struct.unpack("B", count_byte)[0]
+        # Get face index types from header, default to uchar count + int indices
+        count_type = header.get("face_index_count_type") or "uchar"
+        value_type = header.get("face_index_value_type") or "int"
 
-            # Read vertex indices (typically int32/uint)
-            idx_format = endian + "i"
-            idx_size = struct.calcsize(idx_format)
+        # Map PLY types to struct format characters
+        ply_to_struct = {
+            "char": "b",
+            "uchar": "B",
+            "short": "h",
+            "ushort": "H",
+            "int": "i",
+            "int8": "b",
+            "int32": "i",
+            "uint": "I",
+            "uint8": "B",
+            "uint32": "I",
+        }
+
+        count_fmt = ply_to_struct.get(count_type, "B")
+        idx_fmt = ply_to_struct.get(value_type, "i")
+
+        count_format = endian + count_fmt
+        count_size = struct.calcsize(count_format)
+        idx_format = endian + idx_fmt
+        idx_size = struct.calcsize(idx_format)
+
+        # For faces, format is: <count_type> count + <value_type> vertex_indices
+        for _ in range(face_count):
+            count_bytes = f.read(count_size)
+            if not count_bytes:
+                break
+            num_verts = struct.unpack(count_format, count_bytes)[0]
+
+            # Read vertex indices using the type from header
             face_verts = []
             for _ in range(num_verts):
                 idx = struct.unpack(idx_format, f.read(idx_size))[0]
