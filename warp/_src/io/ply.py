@@ -79,7 +79,6 @@ def _read_ply_header(filename: str) -> dict:
                     current_element == "face"
                     and len(parts) >= 5
                     and parts[1] == "list"
-                    and len(parts) >= 5
                     and parts[4] in ("vertex_indices", "vertex_index")
                 ):
                     # property list <count_type> <value_type> vertex_indices
@@ -143,25 +142,29 @@ def _read_ply_ascii(filename: str, header: dict) -> MeshData:
         for vertex_idx in range(header["vertex_count"]):
             line = f.readline().decode("ascii").strip()
             values = line.split()
+            if len(values) < 3:
+                raise RuntimeError(
+                    f"Malformed vertex data at index {vertex_idx}: expected at least 3 values, got {len(values)}. Line: '{line}'. File: '{filename}'"
+                )
             points.append([float(values[0]), float(values[1]), float(values[2])])
 
             # Process additional properties (normals, colors)
             idx = 3
             for _prop_type, prop_name in header["vertex_properties"][3:]:
                 if idx < len(values):
-                    if prop_name == "nx" and normals is not None:
+                    if prop_name == "nx" and has_normals:
                         normals[vertex_idx][0] = float(values[idx])
-                    elif prop_name == "ny" and normals is not None:
+                    elif prop_name == "ny" and has_normals:
                         normals[vertex_idx][1] = float(values[idx])
-                    elif prop_name == "nz" and normals is not None:
+                    elif prop_name == "nz" and has_normals:
                         normals[vertex_idx][2] = float(values[idx])
-                    elif prop_name == "red" and colors is not None:
+                    elif prop_name == "red" and has_colors:
                         colors[vertex_idx][0] = int(values[idx])
-                    elif prop_name == "green" and colors is not None:
+                    elif prop_name == "green" and has_colors:
                         colors[vertex_idx][1] = int(values[idx])
-                    elif prop_name == "blue" and colors is not None:
+                    elif prop_name == "blue" and has_colors:
                         colors[vertex_idx][2] = int(values[idx])
-                    elif prop_name == "alpha" and colors is not None:
+                    elif prop_name == "alpha" and has_colors:
                         # alpha is stored but we only keep RGB in the 3-element array
                         pass
                 idx += 1
@@ -210,12 +213,15 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
         "ushort": "H",
         "int": "i",
         "int8": "b",
+        "int16": "h",
         "int32": "i",
         "uint": "I",
         "uint8": "B",
+        "uint16": "H",
         "uint32": "I",
         "float": "f",
         "float32": "f",
+        "float64": "d",
         "double": "d",
     }
 
@@ -303,9 +309,11 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
             "ushort": "H",
             "int": "i",
             "int8": "b",
+            "int16": "h",
             "int32": "i",
             "uint": "I",
             "uint8": "B",
+            "uint16": "H",
             "uint32": "I",
         }
 
@@ -318,10 +326,10 @@ def _read_ply_binary(filename: str, header: dict) -> MeshData:
         idx_size = struct.calcsize(idx_format)
 
         # For faces, format is: <count_type> count + <value_type> vertex_indices
-        for _ in range(face_count):
+        for face_idx in range(face_count):
             count_bytes = f.read(count_size)
-            if not count_bytes:
-                break
+            if not count_bytes or len(count_bytes) < count_size:
+                raise RuntimeError(f"Unexpected EOF while reading face {face_idx} in PLY file: '{filename}'")
             num_verts = struct.unpack(count_format, count_bytes)[0]
 
             # Read vertex indices using the type from header

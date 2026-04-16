@@ -82,8 +82,13 @@ def _deduplicate_stl_vertices(
     if tolerance <= 0.0:
         return raw_points, np.arange(len(raw_points), dtype=np.int32)
 
-    # Scale points to integer grid
+    # Scale points to integer grid, guard against int64 overflow
     scale = 1.0 / tolerance
+    max_coord = np.max(np.abs(raw_points)) if len(raw_points) > 0 else 0.0
+    if max_coord > 0:
+        max_safe_scale = np.iinfo(np.int64).max / 2 / max_coord  # Use half for safety margin
+        if scale > max_safe_scale:
+            scale = max_safe_scale
     grid_points = np.round(raw_points * scale).astype(np.int64)
 
     # Use dictionary for first occurrence lookup
@@ -145,6 +150,15 @@ def _read_binary_stl(filename: str, merge_tolerance: float) -> MeshData:
 
         if num_tris == 0:
             raise RuntimeError(f"No triangles found in STL file: '{filename}'")
+
+        # Validate file size matches expected size
+        file_size = os.path.getsize(filename)
+        expected_size = 84 + num_tris * 50  # 80 header + 4 count + 50 per triangle
+        if file_size != expected_size:
+            raise RuntimeError(
+                f"STL file size mismatch: expected {expected_size} bytes, got {file_size} bytes. "
+                f"File may be truncated or corrupt. File: '{filename}'"
+            )
 
         # Pre-allocate: worst case = 3 * num_tris unique vertices
         raw_points = np.empty((num_tris * 3, 3), dtype=np.float32)
@@ -290,6 +304,13 @@ def write_stl(
     if len(indices) % 3 != 0:
         raise ValueError(f"indices length must be divisible by 3, got {len(indices)}")
     indices_reshaped = indices.reshape(-1, 3)
+
+    # Validate index bounds
+    num_points = len(points)
+    min_idx = np.min(indices)
+    max_idx = np.max(indices)
+    if min_idx < 0 or max_idx >= num_points:
+        raise ValueError(f"Indices out of bounds: min={min_idx}, max={max_idx}, num_points={num_points}")
 
     if binary:
         with open(filename, "wb") as f:
