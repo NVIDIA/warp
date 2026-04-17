@@ -395,6 +395,9 @@ class TestUtils(unittest.TestCase):
     def test_warn_respects_user_filters(self):
         # Verify that user-configured warning filters are not overridden by warp.warn().
         saved_filters = warnings.filters[:] if hasattr(warnings, 'filters') else []
+        saved_showwarning = warnings.showwarning
+        saved_seen = wp._src.utils.warnings_seen.copy()
+        wp._src.utils.warnings_seen.clear()
         try:
             # Suppress all DeprecationWarnings via the standard Python API.
             warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -410,10 +413,21 @@ class TestUtils(unittest.TestCase):
 
             self.assertEqual(f.getvalue(), "Warp UserWarning: should appear\n")
 
+            # Verify that warnings_seen did NOT record the suppressed warning.
+            # This ensures removing the filter later would re-enable the warning.
+            self.assertNotIn(
+                (DeprecationWarning, "should be suppressed"),
+                wp._src.utils.warnings_seen,
+                "Suppressed warnings should not be marked as seen",
+            )
+
         finally:
-            # Restore original filters.
+            # Restore original filters, showwarning handler, and seen set.
             if hasattr(warnings, 'filters'):
                 warnings.filters[:] = saved_filters
+            warnings.showwarning = saved_showwarning
+            wp._src.utils.warnings_seen.clear()
+            wp._src.utils.warnings_seen.update(saved_seen)
 
     def test_transform_expand(self):
         t = (1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0)
