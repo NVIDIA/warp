@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add `wp.tile_scatter_masked()` for per-thread writes into a shared-memory tile, with
+  cooperative synchronization ([GH-1298](https://github.com/NVIDIA/warp/issues/1298)).
 - Add double-precision (`wp.float64`) support to `warp.fem`.
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels

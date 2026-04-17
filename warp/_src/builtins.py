@@ -4620,6 +4620,114 @@ add_builtin(
 )
 
 
+def tile_scatter_masked_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    t = arg_types["a"]
+    if not is_tile(t):
+        raise TypeError(f"tile_scatter_masked() 'a' argument must be a tile, got {t!r}")
+
+    t.storage = "shared"
+
+    num_indices = len(arg_types) - 3  # subtract 'a', 'value', 'has_value'
+    if num_indices != len(t.shape):
+        raise IndexError(
+            f"tile_scatter_masked() incorrect number of indices ({num_indices}) for tile shape {tuple(t.shape)}"
+        )
+
+    value_type = arg_types["value"]
+    if not types_equal(t.dtype, value_type):
+        raise TypeError(
+            f"tile_scatter_masked() 'value' type must match tile dtype, got {value_type} and tile dtype {t.dtype}"
+        )
+
+    return None
+
+
+add_builtin(
+    "tile_scatter_masked",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any, "has_value": builtins.bool},
+    value_func=tile_scatter_masked_value_func,
+    doc="""Write a value into a shared-memory tile from the calling thread.
+
+    All threads in the block must call this function cooperatively.
+    Each thread whose ``has_value`` is ``True`` writes ``value`` at the
+    specified index.  A synchronization barrier is included so the written
+    values are visible to all threads after the call returns.
+
+    Each index should be written by at most one thread per call.  If multiple
+    threads write to the same index, the result is undefined (data race in the
+    forward pass, incorrect gradients in the backward pass).
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def write_kernel(out: wp.array[int]):
+                tile_idx, thread_idx = wp.tid()
+
+                # Allocate a shared-memory tile
+                t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+
+                # Each thread writes its own slot
+                wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+
+                wp.tile_store(out, t)
+
+    Args:
+        a: The tile to write into (will use shared memory).
+        i: Index of the element to write.
+        value: The value to write (must match the tile's dtype).
+        has_value: Whether this thread should perform the write.""",
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_inplace_value_func(arg_types, arg_values):
     if not types_equal(arg_types["a"].dtype, arg_types["value"]):
         raise TypeError(

@@ -226,6 +226,7 @@ Load/Store
 * :func:`tile_atomic_add_indexed <warp._src.lang.tile_atomic_add_indexed>`
 * :func:`tile_assign <warp._src.lang.tile_assign>`
 * :func:`tile_extract <warp._src.lang.tile_extract>`
+* :func:`tile_scatter_masked <warp._src.lang.tile_scatter_masked>`
 
 Maps/Reductions
 ^^^^^^^^^^^^^^^

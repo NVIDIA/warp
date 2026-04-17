@@ -3381,6 +3381,72 @@ def tile_extract(
         The value of the element at the specified tile location, with the same data type as the input tile."""
     ...
 
+@over
+def tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool) -> None:
+    """Write a value into a shared-memory tile from the calling thread.
+
+    All threads in the block must call this function cooperatively.
+    Each thread whose ``has_value`` is ``True`` writes ``value`` at the
+    specified index.  A synchronization barrier is included so the written
+    values are visible to all threads after the call returns.
+
+    Each index should be written by at most one thread per call.  If multiple
+    threads write to the same index, the result is undefined (data race in the
+    forward pass, incorrect gradients in the backward pass).
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def write_kernel(out: wp.array[int]):
+                tile_idx, thread_idx = wp.tid()
+
+                # Allocate a shared-memory tile
+                t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+
+                # Each thread writes its own slot
+                wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+
+                wp.tile_store(out, t)
+
+    Args:
+        a: The tile to write into (will use shared memory).
+        i: Index of the element to write.
+        value: The value to write (must match the tile's dtype).
+        has_value: Whether this thread should perform the write."""
+    ...
+
+@over
+def tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, value: Any, has_value: bool) -> None:
+    """"""
+    ...
+
+@over
+def tile_scatter_masked(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32,
+    j: int32,
+    k: int32,
+    value: Any,
+    has_value: bool,
+) -> None:
+    """"""
+    ...
+
+@over
+def tile_scatter_masked(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32,
+    j: int32,
+    k: int32,
+    l: int32,
+    value: Any,
+    has_value: bool,
+) -> None:
+    """"""
+    ...
+
 def tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]:
     """Transpose a tile.
 

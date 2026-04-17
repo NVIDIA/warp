@@ -4237,6 +4237,130 @@ void adj_tile_extract(
 }
 
 
+// Per-thread write into a shared tile.
+// All threads must call this cooperatively; each thread whose
+// `has_value` is true writes `value` at index `i`.
+//
+// Each index should be written by at most one thread per call. If multiple
+// threads write to the same index, the result is undefined (data race in the
+// forward pass, incorrect gradients in the backward pass).
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_masked(Tile& t, int i, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i)) = value;
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_masked(Tile& t, int i, int j, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i, j)) = value;
+    WP_TILE_SYNC();
+}
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_masked(Tile& t, int i, int j, int k, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i, j, k)) = value;
+    WP_TILE_SYNC();
+}
+template <typename Tile>
+inline CUDA_CALLABLE void
+tile_scatter_masked(Tile& t, int i, int j, int k, int l, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i, j, k, l)) = value;
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i));
+        t.grad(tile_coord(i)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    int j,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i, j));
+        t.grad(tile_coord(i, j)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i, j, k));
+        t.grad(tile_coord(i, j, k)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    int& adj_l,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i, j, k, l));
+        t.grad(tile_coord(i, j, k, l)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+
+
 template <typename Tile> void tile_add_inplace(Tile& t, int i, typename Tile::Type value)
 {
     t.add_inplace(tile_coord(i), value);
