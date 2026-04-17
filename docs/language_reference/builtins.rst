@@ -215,6 +215,7 @@ Tile Primitives
    tile_scan_inclusive
    tile_scan_max_inclusive
    tile_scan_min_inclusive
+   tile_scatter_add
    tile_scatter_masked
    tile_sort
    tile_squeeze

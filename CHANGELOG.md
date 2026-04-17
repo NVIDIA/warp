@@ -10,6 +10,10 @@
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
+- Add ``wp.tile_scatter_add()`` for per-thread cooperative adds into shared-memory tiles.
+  Supports an ``atomic`` parameter (default ``True``); set ``atomic=False`` when indices are
+  guaranteed unique across threads for ~4x faster shared memory writes
+  ([GH-1342](https://github.com/NVIDIA/warp/issues/1342)).
 - **Experimental**: Add cuBQL BVH backend for `wp.Mesh`, selectable via `bvh_constructor="cubql"`.
   Currently only supports `wp.mesh_query_ray()`;
   point queries, AABB queries, grouped queries, and winding number queries are not yet supported

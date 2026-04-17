@@ -3382,6 +3382,89 @@ def tile_extract(
     ...
 
 @over
+def tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool, atomic: bool) -> None:
+    """Scatter-add a per-thread value into a shared-memory tile.
+
+    Cooperative operation -- all threads in the block must call this function.
+    Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+
+    A synchronization barrier is included so the updated values are visible to
+    all threads after the call returns.
+
+    Args:
+        a: A shared-memory tile to scatter-add into.
+        i: Index of the element to add to.
+        value: The value to add (must match the tile's dtype).
+        has_value: Whether this thread should perform the add.
+        atomic: If True (default), use atomic add for safe concurrent writes.
+            Set to False when indices are guaranteed unique across threads
+            (e.g., lane-parallel writes) for better performance.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def histogram(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+
+                bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
+                i = wp.tid()
+                # Bin values in [0, 8) into 4 bins of width 2
+                b = int(data[i] / 2.0)
+                wp.tile_scatter_add(bins, b, 1.0, True)
+                wp.tile_store(out, bins, offset=0)
+
+            data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
+            output = wp.zeros(4, dtype=float)
+            wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+
+            print(output.numpy())
+
+        .. code-block:: text
+
+            [2. 2. 2. 2.]"""
+    ...
+
+@over
+def tile_scatter_add(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32,
+    j: int32,
+    value: Any,
+    has_value: bool,
+    atomic: bool,
+) -> None:
+    """"""
+    ...
+
+@over
+def tile_scatter_add(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32,
+    j: int32,
+    k: int32,
+    value: Any,
+    has_value: bool,
+    atomic: bool,
+) -> None:
+    """"""
+    ...
+
+@over
+def tile_scatter_add(
+    a: Tile[Any, tuple[int, ...]],
+    i: int32,
+    j: int32,
+    k: int32,
+    l: int32,
+    value: Any,
+    has_value: bool,
+    atomic: bool,
+) -> None:
+    """"""
+    ...
+
+@over
 def tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, value: Any, has_value: bool) -> None:
     """Write a value into a shared-memory tile from the calling thread.
 

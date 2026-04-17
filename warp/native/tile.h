@@ -4236,6 +4236,285 @@ void adj_tile_extract(
     }
 }
 
+// Per-thread scatter-add into a shared tile.
+// All threads must call this cooperatively; each thread whose
+// `has_value` is true atomically adds `value` at the given index.
+//
+// Multiple threads may target the same index — atomics ensure correctness.
+// A synchronization barrier follows so the updated values are visible to
+// all threads after the call returns.
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i)), value);
+        else
+            t.data(tile_coord(i)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i, j)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i, j)), value);
+        else
+            t.data(tile_coord(i, j)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, int k, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2))
+    );
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i, j, k)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, int k, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2))
+    );
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i, j, k)), value);
+        else
+            t.data(tile_coord(i, j, k)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void
+tile_scatter_add(Tile& t, int i, int j, int k, int l, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
+    );
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i, j, k, l)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void
+tile_scatter_add(Tile& t, int i, int j, int k, int l, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
+    );
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i, j, k, l)), value);
+        else
+            t.data(tile_coord(i, j, k, l)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i));
+    WP_TILE_SYNC();
+}
+
+// Adjoint for non-atomic variant (delegates to atomic adjoint)
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, value, has_value, adj_t, adj_i, adj_value, adj_has_value);
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i, j));
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2))
+    );
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i, j, k));
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    int& adj_l,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
+    );
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i, j, k, l));
+    WP_TILE_SYNC();
+}
+
+// Adjoints for non-atomic ND variants (delegate to atomic adjoints)
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, j, value, has_value, adj_t, adj_i, adj_j, adj_value, adj_has_value);
+}
+
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, j, k, value, has_value, adj_t, adj_i, adj_j, adj_k, adj_value, adj_has_value);
+}
+
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    int& adj_l,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, j, k, l, value, has_value, adj_t, adj_i, adj_j, adj_k, adj_l, adj_value, adj_has_value);
+}
+
 
 // Per-thread write into a shared tile.
 // All threads must call this cooperatively; each thread whose

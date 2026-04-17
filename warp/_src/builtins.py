@@ -4620,6 +4620,154 @@ add_builtin(
 )
 
 
+def tile_scatter_add_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    t = arg_types["a"]
+    if not is_tile(t):
+        raise TypeError(f"tile_scatter_add() 'a' argument must be a tile, got {t!r}")
+
+    t.storage = "shared"
+
+    num_indices = sum(1 for k in arg_types if k in {"i", "j", "k", "l"})
+    if num_indices != len(t.shape):
+        raise IndexError(
+            f"tile_scatter_add: incorrect number of indices ({num_indices}) for tile shape {tuple(t.shape)}"
+        )
+
+    value_type = arg_types["value"]
+    if not types_equal(t.dtype, value_type):
+        raise TypeError(
+            f"tile_scatter_add() 'value' type must match tile dtype, got {value_type} and tile dtype {t.dtype}"
+        )
+
+    return None
+
+
+def tile_scatter_add_dispatch_func(input_types, return_type, args):
+    atomic = args["atomic"]
+    if atomic.constant is None:
+        raise ValueError(
+            "tile_scatter_add() 'atomic' must be a compile-time constant (True or False), not a runtime variable"
+        )
+    idx_names = [x for x in "ijkl" if args.get(x) is not None]
+    func_args = (args["a"], *(args[x] for x in idx_names), args["value"], args["has_value"])
+    if atomic.constant is False:
+        template_args = (False,)
+    else:
+        template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    doc="""Scatter-add a per-thread value into a shared-memory tile.
+
+    Cooperative operation -- all threads in the block must call this function.
+    Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+
+    A synchronization barrier is included so the updated values are visible to
+    all threads after the call returns.
+
+    Args:
+        a: A shared-memory tile to scatter-add into.
+        i: Index of the element to add to.
+        value: The value to add (must match the tile's dtype).
+        has_value: Whether this thread should perform the add.
+        atomic: If True (default), use atomic add for safe concurrent writes.
+            Set to False when indices are guaranteed unique across threads
+            (e.g., lane-parallel writes) for better performance.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def histogram(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+
+                bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
+                i = wp.tid()
+                # Bin values in [0, 8) into 4 bins of width 2
+                b = int(data[i] / 2.0)
+                wp.tile_scatter_add(bins, b, 1.0, True)
+                wp.tile_store(out, bins, offset=0)
+
+            data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
+            output = wp.zeros(4, dtype=float)
+            wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+
+            print(output.numpy())
+
+        .. code-block:: text
+
+            [2. 2. 2. 2.]""",
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_scatter_masked_value_func(arg_types, arg_values):
     if arg_types is None:
         return None
