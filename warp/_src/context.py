@@ -6675,6 +6675,7 @@ def zeros(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return a zero-initialized array.
@@ -6685,12 +6686,21 @@ def zeros(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    arr = empty(
+        shape=shape,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
     arr.zero_()
 
@@ -6698,7 +6708,11 @@ def zeros(
 
 
 def zeros_like(
-    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array.
 
@@ -6707,12 +6721,13 @@ def zeros_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
     arr.zero_()
 
@@ -6725,6 +6740,7 @@ def ones(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return a one-initialized array.
@@ -6735,16 +6751,30 @@ def ones(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    return full(shape=shape, value=1, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    return full(
+        shape=shape,
+        value=1,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
 
 def ones_like(
-    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return a one-initialized array with the same type and dimension of another array.
 
@@ -6753,12 +6783,13 @@ def ones_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    return full_like(src, 1, device=device, requires_grad=requires_grad, pinned=pinned)
+    return full_like(src, 1, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
 
 def full(
@@ -6768,6 +6799,7 @@ def full(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return an array with all elements initialized to the given value.
@@ -6779,6 +6811,7 @@ def full(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
@@ -6820,7 +6853,15 @@ def full(
         else:
             raise ValueError(f"Invalid value type for Warp array: {value_type}")
 
-    arr = empty(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    arr = empty(
+        shape=shape,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
     arr.fill_(value)
 
@@ -6833,6 +6874,7 @@ def full_like(
     device: DeviceLike = None,
     requires_grad: bool | None = None,
     pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return an array with all elements initialized to the given value with the same type and dimension of another array.
 
@@ -6842,12 +6884,13 @@ def full_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
     arr.fill_(value)
 
@@ -6855,7 +6898,11 @@ def full_like(
 
 
 def clone(
-    src: warp.array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: warp.array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Clone an existing array, allocating a copy of the src memory.
 
@@ -6864,12 +6911,13 @@ def clone(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
     warp.copy(arr, src)
 
@@ -6882,6 +6930,7 @@ def empty(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return an uninitialized array.
@@ -6892,6 +6941,7 @@ def empty(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
@@ -6906,11 +6956,23 @@ def empty(
     if shape is None:
         shape = 0
 
-    return warp.array(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    return warp.array(
+        shape=shape,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
 
 def empty_like(
-    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array.
 
@@ -6919,6 +6981,7 @@ def empty_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
@@ -6939,7 +7002,14 @@ def empty_like(
         else:
             pinned = False
 
-    arr = empty(shape=src.shape, dtype=src.dtype, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty(
+        shape=src.shape,
+        dtype=src.dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+    )
     return arr
 
 
@@ -6949,6 +7019,7 @@ def from_numpy(
     shape: Sequence[int] | None = None,
     device: DeviceLike | None = None,
     requires_grad: bool = False,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return a Warp array created from a NumPy array.
 
@@ -6958,6 +7029,7 @@ def from_numpy(
         shape: The shape of the Warp array.
         device: The device on which the Warp array will be constructed.
         requires_grad: Whether gradients will be tracked for this array.
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Raises:
         RuntimeError: The data type of the NumPy array is not supported.
@@ -6981,6 +7053,7 @@ def from_numpy(
         shape=shape,
         device=device,
         requires_grad=requires_grad,
+        retain_grad=retain_grad,
     )
 
 

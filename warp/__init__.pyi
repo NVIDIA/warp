@@ -1766,6 +1766,7 @@ def zeros(
     device: DeviceLike = None,
     requires_grad: _builtins.bool = False,
     pinned: _builtins.bool = False,
+    retain_grad: _builtins.bool = False,
     **kwargs,
 ) -> array:
     """Return a zero-initialized array."""

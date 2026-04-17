@@ -2054,6 +2054,9 @@ ARRAY_TYPE_INDEXED = 1
 ARRAY_TYPE_FABRIC = 2
 ARRAY_TYPE_FABRIC_INDEXED = 3
 
+# must match array.h
+ARRAY_FLAG_RETAIN_GRAD = 1 << 0
+
 
 # Template specializations for different launch dimensions.
 # ctypes requires _fields_ at class-definition time, so we generate one
@@ -2158,13 +2161,15 @@ class array_t(ctypes.Structure):
         ("grad", ctypes.c_uint64),
         ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
         ("strides", ctypes.c_int32 * ARRAY_MAX_DIMS),
-        ("ndim", ctypes.c_int32),
+        ("ndim", ctypes.c_uint16),
+        ("flags", ctypes.c_uint16),
     )
 
-    def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,)):
+    def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,), flags=0):
         self.data = data
         self.grad = grad
         self.ndim = ndim
+        self.flags = flags
         for i in range(ndim):
             self.shape[i] = shape[i]
             self.strides[i] = strides[i]
@@ -2176,19 +2181,20 @@ class array_t(ctypes.Structure):
 
     # structured value used when array_t is packed in a struct and shared via a numpy structured array
     def numpy_value(self):
-        return (self.data, self.grad, list(self.shape), list(self.strides), self.ndim)
+        return (self.data, self.grad, list(self.shape), list(self.strides), self.ndim, self.flags)
 
 
 # NOTE: must match array_t._fields_
 array_t._numpy_dtype_ = {
-    "names": ["data", "grad", "shape", "strides", "ndim"],
-    "formats": ["u8", "u8", f"{ARRAY_MAX_DIMS}i4", f"{ARRAY_MAX_DIMS}i4", "i4"],
+    "names": ["data", "grad", "shape", "strides", "ndim", "flags"],
+    "formats": ["u8", "u8", f"{ARRAY_MAX_DIMS}i4", f"{ARRAY_MAX_DIMS}i4", "u2", "u2"],
     "offsets": [
         array_t.data.offset,
         array_t.grad.offset,
         array_t.shape.offset,
         array_t.strides.offset,
         array_t.ndim.offset,
+        array_t.flags.offset,
     ],
     "itemsize": ctypes.sizeof(array_t),
 }
@@ -2898,6 +2904,7 @@ class array(Array[DType, NDim]):
         ndim: int | None = None,
         grad: array | None = None,
         requires_grad: builtins.bool = False,
+        retain_grad: builtins.bool = False,
     ):
         """Construct a new Warp array object.
 
@@ -2930,6 +2937,8 @@ class array(Array[DType, NDim]):
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
             deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
             requires_grad: Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+            retain_grad: Whether to preserve the array's gradient during the backward pass instead of
+                zeroing it after it has been read. Requires ``requires_grad=True``.
             grad: The array in which to accumulate gradients in the backward pass. If ``None`` and ``requires_grad`` is ``True``,
                 then a gradient array will be allocated automatically.
             pinned: Whether to allocate pinned host memory, which allows asynchronous host–device transfers
@@ -2941,6 +2950,7 @@ class array(Array[DType, NDim]):
 
         # properties
         self._requires_grad = False
+        self._retain_grad = False
         self._grad = None
         # __array_interface__ or __cuda_array_interface__, evaluated lazily and cached
         self._array_interface = None
@@ -2996,6 +3006,12 @@ class array(Array[DType, NDim]):
                 self._requires_grad = requires_grad
                 if requires_grad:
                     self._alloc_grad()
+
+        # initialize retain_grad
+        if retain_grad:
+            if not self._requires_grad:
+                raise ValueError("retain_grad=True requires requires_grad=True")
+            self._retain_grad = True
 
     def _init_from_data(self, data, dtype, shape, device, copy, pinned):
         if not hasattr(data, "__len__"):
@@ -3672,7 +3688,12 @@ class array(Array[DType, NDim]):
         if self.ctype is None:
             data = 0 if self.ptr is None else ctypes.c_uint64(self.ptr)
             grad = 0 if self.grad is None or self.grad.ptr is None else ctypes.c_uint64(self.grad.ptr)
-            self.ctype = array_t(data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides)
+            flags = 0
+            if self._retain_grad:
+                flags |= ARRAY_FLAG_RETAIN_GRAD
+            self.ctype = array_t(
+                data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides, flags=flags
+            )
 
         return self.ctype
 
@@ -3731,9 +3752,22 @@ class array(Array[DType, NDim]):
             self._alloc_grad()
         elif not value:
             self._grad = None
+            self._retain_grad = False
 
         self._requires_grad = value
 
+        # trigger re-creation of C-representation
+        self.ctype = None
+
+    @property
+    def retain_grad(self):
+        return self._retain_grad
+
+    @retain_grad.setter
+    def retain_grad(self, value: builtins.bool):
+        if value and not self._requires_grad:
+            raise ValueError("retain_grad=True requires requires_grad=True")
+        self._retain_grad = value
         # trigger re-creation of C-representation
         self.ctype = None
 

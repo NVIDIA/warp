@@ -97,6 +97,14 @@
 - Tile parameters in ``@wp.func_native`` are now passed by reference, matching ``@wp.func`` behavior.
   Previously tile parameters were passed by value, preventing native snippets from modifying shared
   tiles in-place ([GH-1362](https://github.com/NVIDIA/warp/issues/1362)).
+- **Breaking:** Zero the gradient of output arrays after reading them during the backward pass of
+  array stores (e.g. `array[i] = value`). Code that inspects `.grad` on arrays written to in the
+  forward pass will see zeros after `tape.backward()`. To preserve output gradients for inspection,
+  use `wp.array(..., retain_grad=True)`. Pass fresh incoming gradients via the `grads=` argument
+  when calling `tape.backward()` multiple times. Backward passes of kernels with many per-element
+  array writes (e.g. matrix component assignments) may be slower due to the additional zeroing. See
+  the [differentiability guide](https://nvidia.github.io/warp/user_guide/differentiability.html)
+  for details ([GH-1062](https://github.com/NVIDIA/warp/issues/1062)).
 
 ### Fixed
 

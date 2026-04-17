@@ -193,6 +193,7 @@ def from_torch(
     requires_grad: bool | None = None,
     grad=None,
     return_ctype: bool = False,
+    retain_grad: bool = False,
 ) -> warp.array | warp._src.types.array_t:
     """Convert a Torch tensor to a Warp array without copying the data.
 
@@ -205,6 +206,7 @@ def from_torch(
           If not provided and ``requires_grad`` is True, the tensor's gradient will be wrapped or allocated.
         return_ctype: Whether to return a low-level array descriptor instead of a ``wp.array`` object (faster).
           The descriptor can be passed to Warp kernels.
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read.
 
     Returns:
         The wrapped array or array descriptor.
@@ -304,6 +306,7 @@ def from_torch(
             copy=False,
             grad=grad,
             requires_grad=requires_grad,
+            retain_grad=retain_grad,
         )
 
         # save a reference to the source tensor, otherwise it may get deallocated
