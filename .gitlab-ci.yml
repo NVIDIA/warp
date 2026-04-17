@@ -627,11 +627,57 @@ linux-x86_64 python matrix test:
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
+# Build Warp for ASV benchmarks on a CPU runner to avoid wasting GPU time
+# on compilation. The benchmark job downloads the build cache artifact.
+# This is a build-stage job placed here alongside its companion benchmark
+# job for readability.
+linux-x86_64 asv build:
+  stage: build
+  needs: []
+  image: $WARP_BUILDER_IMAGE_CU12
+  extends:
+    - .ipp_lnx_x86_64_cpu_medium
+  variables:
+    GIT_DEPTH: "50"
+    CUDA_HOME: "/usr/local/cuda"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - .gitlab-ci.yml
+        - asv/**/*
+        - asv.conf.json
+        - warp/**/*
+        - pyproject.toml
+        - deps/*
+        - build_lib.py
+        - build_llvm.py
+  before_script:
+    - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+    - df -h
+    # Remove /shared/local/bin from PATH - contains musl-linked binaries from the ephemeral
+    # runner (v1.5.1+) that are incompatible with this glibc-based container
+    - export PATH=$(echo "$PATH" | sed 's|:/shared/local/bin||g; s|/shared/local/bin:||g')
+    # Make sure the comparison ref can be checked out by asv
+    - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
+    - 'echo "COMPARE_REF value: ${COMPARE_REF}"'
+    - git config --global --add safe.directory $CI_PROJECT_DIR
+    - git fetch origin $COMPARE_REF
+    - git checkout -f $COMPARE_REF
+    - git checkout -f $CI_COMMIT_SHA
+    - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+  script:
+    - uvx asv machine --machine asv-build --yes
+    - rc=0; uvx asv continuous --quick -b PythonBuiltins $COMPARE_REF $CI_COMMIT_SHA || rc=$?; if [ $rc -gt 1 ]; then exit $rc; fi
+  artifacts:
+    paths:
+      - asv/env/
+    expire_in: 1 week
+
 # Benchmark this commit with the current main branch using Airspeed Velocity
 # Only runs on merge requests
 linux-x86_64 asv:
   stage: test
-  needs: []
+  needs: ["linux-x86_64 asv build"]
   image: $WARP_BUILDER_IMAGE_CU12
   extends:
     - .ipp_lnx_x86_64_gpu
@@ -664,7 +710,7 @@ linux-x86_64 asv:
     - git checkout -f $CI_COMMIT_SHA
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
-    - uvx asv machine --yes
+    - uvx asv machine --machine asv-bench --yes
     - uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench '^(?!api)' $COMPARE_REF $CI_COMMIT_SHA 2>&1 || (asv compare --split $COMPARE_REF $CI_COMMIT_SHA 2>&1 && exit 2)
   allow_failure: True
   artifacts:
