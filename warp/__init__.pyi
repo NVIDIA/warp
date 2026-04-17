@@ -220,6 +220,10 @@ from warp._src.paddle import dtype_to_paddle as dtype_to_paddle
 from warp._src.paddle import device_from_paddle as device_from_paddle
 from warp._src.paddle import device_to_paddle as device_to_paddle
 from warp._src.paddle import stream_from_paddle as stream_from_paddle
+from warp._src.io.mesh import load_mesh as load_mesh
+from warp._src.io.mesh import MeshData as MeshData
+from warp._src.io.mesh import read_mesh as read_mesh
+from warp._src.io.mesh import save_mesh as save_mesh
 from warp._src.utils import transform_expand as transform_expand
 from warp._src.utils import quat_between_vectors as quat_between_vectors
 from warp._src.constants import *
