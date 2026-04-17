@@ -182,6 +182,8 @@ from warp._src.utils import TimingResult as TimingResult
 from warp._src.utils import timing_begin as timing_begin
 from warp._src.utils import timing_end as timing_end
 from warp._src.utils import timing_print as timing_print
+from warp._src.utils import ScopedMemoryTracker as ScopedMemoryTracker
+from warp._src.context import print_memory_report as print_memory_report
 from warp._src.utils import TIMING_KERNEL as TIMING_KERNEL
 from warp._src.utils import TIMING_KERNEL_BUILTIN as TIMING_KERNEL_BUILTIN
 from warp._src.utils import TIMING_MEMCPY as TIMING_MEMCPY

@@ -37,6 +37,7 @@ API
    print_launches
    ptx_target_arch
    quiet
+   track_memory
    use_precompiled_headers
    verbose
    verbose_warnings

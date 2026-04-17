@@ -7,6 +7,8 @@
 #include "cuda_util.h"
 #include "mesh.h"
 
+#include <new>
+
 using namespace wp;
 
 #include <map>
@@ -124,12 +126,13 @@ uint64_t wp_mesh_create_host(
     int bvh_leaf_size
 )
 {
-    Mesh* m = new Mesh(points, velocities, indices, num_points, num_tris);
+    Mesh* m
+        = new (wp_alloc_host(sizeof(Mesh), "(native:mesh)")) Mesh(points, velocities, indices, num_points, num_tris);
     const bool use_cubql = (constructor_type == CUBQL_MESH_CONSTRUCTOR_TYPE);
     m->bvh_backend = use_cubql ? MESH_BVH_BACKEND_CUBQL : MESH_BVH_BACKEND_WARP;
 
-    m->lowers = new vec3[num_tris];
-    m->uppers = new vec3[num_tris];
+    m->lowers = static_cast<vec3*>(wp_alloc_host(sizeof(vec3) * num_tris, "(native:mesh)"));
+    m->uppers = static_cast<vec3*>(wp_alloc_host(sizeof(vec3) * num_tris, "(native:mesh)"));
 
     float sum = 0.0;
     for (int i = 0; i < num_tris; ++i) {
@@ -168,9 +171,10 @@ uint64_t wp_mesh_create_host(
         wp::bvh_create_host(m->lowers, m->uppers, num_tris, constructor_type, groups, bvh_leaf_size, m->bvh);
 
         if (support_winding_number) {
-            // Let's first compute the sold
             int num_bvh_nodes = 2 * num_tris - 1;
-            m->solid_angle_props = new SolidAngleProps[num_bvh_nodes];
+            m->solid_angle_props = static_cast<SolidAngleProps*>(
+                wp_alloc_host(sizeof(SolidAngleProps) * num_bvh_nodes, "(native:mesh)")
+            );
             bvh_refit_with_solid_angle_host(m->bvh, *m);
         }
     }
@@ -183,11 +187,11 @@ void wp_mesh_destroy_host(uint64_t id)
 {
     Mesh* m = (Mesh*)(id);
 
-    delete[] m->lowers;
-    delete[] m->uppers;
+    wp_free_host(m->lowers);
+    wp_free_host(m->uppers);
 
     if (m->solid_angle_props) {
-        delete[] m->solid_angle_props;
+        wp_free_host(m->solid_angle_props);
     }
 #ifndef WP_DISABLE_CUBQL
     if (m->bvh_backend == MESH_BVH_BACKEND_CUBQL) {
@@ -198,7 +202,8 @@ void wp_mesh_destroy_host(uint64_t id)
         wp::bvh_destroy_host(m->bvh);
     }
 
-    delete m;
+    m->~Mesh();
+    wp_free_host(m);
 }
 
 void wp_mesh_refit_host(uint64_t id)

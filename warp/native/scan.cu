@@ -24,7 +24,7 @@ template <typename T> void scan_device(const T* values_in, T* values_out, int n,
         check_cuda(cub::DeviceScan::ExclusiveSum(NULL, scan_temp_size, values_in, values_out, n));
     }
 
-    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, scan_temp_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, scan_temp_size, "(native:scan)");
 
     // scan
     if (inclusive) {

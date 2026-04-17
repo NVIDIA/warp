@@ -98,7 +98,7 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
     // Copy or alias buffer
     volume.size_in_bytes = size;
     if (copy) {
-        volume.buffer = wp_alloc_host(size);
+        volume.buffer = wp_alloc_host(size, "(native:volume)");
         wp_memcpy_h2h(volume.buffer, buf, size);
         volume.owner = true;
     } else {
@@ -148,7 +148,7 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
     // Copy or alias data buffer
     volume.size_in_bytes = size;
     if (copy) {
-        volume.buffer = wp_alloc_device(WP_CURRENT_CONTEXT, size);
+        volume.buffer = wp_alloc_device(WP_CURRENT_CONTEXT, size, "(native:volume)");
         wp_memcpy_d2d(WP_CURRENT_CONTEXT, volume.buffer, buf, size);
         volume.owner = true;
     } else {
@@ -158,7 +158,8 @@ uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool c
 
     // Make blind metadata accessible on host
     const uint64_t blindmetadata_size = volume.grid_data.blind_metadata_count * sizeof(pnanovdb_gridblindmetadata_t);
-    volume.blind_metadata = static_cast<pnanovdb_gridblindmetadata_t*>(wp_alloc_pinned(blindmetadata_size));
+    volume.blind_metadata
+        = static_cast<pnanovdb_gridblindmetadata_t*>(wp_alloc_pinned(blindmetadata_size, "(native:volume)"));
     wp_memcpy_d2h(
         WP_CURRENT_CONTEXT, volume.blind_metadata,
         static_cast<uint8_t*>(volume.buffer) + volume.grid_data.blind_metadata_offset, blindmetadata_size

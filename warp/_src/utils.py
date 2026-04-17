@@ -1825,6 +1825,123 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
         print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")
 
 
+class ScopedMemoryTracker:
+    """Context manager that tracks memory allocations across all devices.
+
+    Tracking is performed in the C++ native layer by intercepting all
+    ``wp_alloc_*`` / ``wp_free_*`` calls, so both Python-originated and
+    C++ internal allocations (BVH, HashGrid, etc.) are captured.  C++
+    allocations are labeled with the originating subsystem (e.g.
+    ``(native:bvh)``), while Python allocations include the call-site
+    file, line, and function name.
+
+    Args:
+        name: Scope name for grouping allocations.  Nested trackers form a
+            hierarchical scope path, e.g. ``"simulation/collision"``.
+        active: If ``False``, the tracker becomes a no-op.  This allows
+            keeping tracker calls in the code and toggling them without
+            changing the call sites.
+        print: If ``True`` (the default), print an allocation summary
+            on exit.
+        report_func: Optional callback ``(str) -> None`` for custom report
+            handling.  When set, the report text is passed to this function
+            instead of being printed to ``sys.stdout``.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedMemoryTracker("my_scope") as tracker:
+                a = wp.zeros(1000, dtype=wp.float32, device="cpu")
+                b = wp.zeros(1000, dtype=wp.float32, device="cuda:0")
+            # prints allocation summary automatically
+
+    See Also:
+        :attr:`warp.config.track_memory`
+    """
+
+    def __init__(
+        self,
+        name: str = "root",
+        active: bool = True,
+        print: bool = True,
+        report_func: Callable[[str], None] | None = None,
+    ):
+        self.name = name
+        self.active = active
+        self.print = print
+        self.report_func = report_func
+        self._did_enable = False
+
+    def __enter__(self):
+        if not self.active:
+            return self
+
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_push_scope(self.name.encode())
+        if not runtime.core.wp_alloc_tracker_is_enabled():
+            runtime.core.wp_alloc_tracker_enable(1)
+            self._did_enable = True
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if not self.active:
+            return
+
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_pop_scope()
+        try:
+            if self.print:
+                self.report()
+        finally:
+            if self._did_enable:
+                runtime.core.wp_alloc_tracker_enable(0)
+
+    def report(self, file=None, sort="size", max_items=10):
+        """Print an allocation report.
+
+        Can be called multiple times -- each call reflects the current state.
+
+        .. note::
+
+            Not safe to call concurrently from multiple threads.
+
+        Args:
+            file: File object to write to (defaults to ``sys.stdout``).
+            sort: Sort order for live allocations: ``"size"`` (default, largest
+                first) or ``"chronological"`` (oldest first).
+            max_items: Maximum number of individual allocations shown per
+                category (default ``10``).
+
+        Raises:
+            ValueError: If ``sort`` is not ``"size"`` or ``"chronological"``.
+        """
+        if sort not in ("size", "chronological"):
+            raise ValueError(f"Invalid sort order {sort!r}; expected 'size' or 'chronological'")
+
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        sort_order = 1 if sort == "chronological" else 0
+        text = runtime.core.wp_alloc_tracker_report(sort_order, max_items)
+        if text:
+            decoded = text.decode("utf-8")
+            if self.report_func is not None:
+                self.report_func(decoded)
+            else:
+                print(decoded, file=file or sys.stdout, end="")
+
+    def clear(self):
+        """Reset all tracking data while keeping the tracker active.
+
+        After calling this, subsequent :meth:`report` calls only reflect
+        allocations that occurred after the reset.
+        """
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_reset()
+
+
 _importing_deprecated_namespace = False
 
 

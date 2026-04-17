@@ -12,6 +12,12 @@
   Currently only supports `wp.mesh_query_ray()`;
   point queries, AABB queries, grouped queries, and winding number queries are not yet supported
   ([GH-1286](https://github.com/NVIDIA/warp/issues/1286)).
+- Add `wp.ScopedMemoryTracker` context manager and `wp.config.track_memory` flag for tracking
+  memory allocations with call-site attribution, scope grouping, and per-category reports (GPU,
+  host, pinned host). Tracking is implemented in the C++ native layer, capturing both
+  Python-originated and C++ internal allocations with descriptive labels (e.g. `(native:bvh)`,
+  `(native:hashgrid)`, `(native:mesh)`, `(native:volume)`, `(native:sparse)`)
+  ([GH-1269](https://github.com/NVIDIA/warp/issues/1269)).
 - Add external texture interoperability for CUDA (e.g. `wp.Texture2D(cuda_array=handle)`)
   and OpenGL (`wp.GLTextureResource`) ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
 - Add `copy_from()` and `copy_to()` methods to texture objects for copying between textures,

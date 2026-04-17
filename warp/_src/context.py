@@ -3172,15 +3172,72 @@ class Module:
 # execution context
 
 
+def _capture_alloc_tag():
+    """Walk the Python stack to find the first frame outside the ``warp`` package.
+
+    Returns a compact string like ``"array[vec3f, 1000] : example.py:3 : my_func()"``.
+
+    Uses ``sys._getframe()`` instead of ``inspect.stack()`` to avoid the
+    overhead of reading source files and constructing ``FrameInfo`` objects.
+    """
+    import sys  # noqa: PLC0415
+
+    frame = None
+    try:
+        frame = sys._getframe(1)
+    except ValueError:
+        return "(python)"
+
+    array_info = ""
+    while frame is not None:
+        co = frame.f_code
+        if not array_info and co.co_name == "__init__" and warp._src.types.is_array(frame.f_locals.get("self")):
+            shape = frame.f_locals.get("shape")
+            dtype = frame.f_locals.get("dtype")
+            if dtype is not None:
+                dtype_str = warp._src.types.type_repr(dtype)
+                if shape is not None:
+                    shape_list = list(shape) if hasattr(shape, "__iter__") else [shape]
+                    if len(shape_list) == 1:
+                        array_info = f"array[{dtype_str}, {shape_list[0]}]"
+                    else:
+                        array_info = f"array[{dtype_str}, {tuple(shape_list)}]"
+                else:
+                    array_info = f"array[{dtype_str}]"
+
+        package = (frame.f_globals.get("__package__") or "").split(".")
+        if package[0] != "warp" or (len(package) > 1 and package[1] == "examples"):
+            parts = []
+            if array_info:
+                parts.append(array_info)
+            parts.append(f"{os.path.basename(co.co_filename)}:{frame.f_lineno}")
+            parts.append(f"{co.co_name}()")
+            return " : ".join(parts)
+
+        frame = frame.f_back
+
+    return "(python)"
+
+
+def _set_alloc_tag_if_tracking(ptr):
+    """Associate a Python call-site tag with a tracked allocation identified by pointer."""
+    if runtime.core.wp_alloc_tracker_is_enabled() and ptr:
+        try:
+            runtime.core.wp_alloc_tracker_set_tag(ptr, _capture_alloc_tag().encode())
+        except Exception:
+            pass
+
+
 class CpuDefaultAllocator:
     def __init__(self, device):
         assert device.is_cpu
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_host(size_in_bytes)
+        ptr = runtime.core.wp_alloc_host(size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device 'cpu'")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -3190,12 +3247,14 @@ class CpuDefaultAllocator:
 class CpuPinnedAllocator:
     def __init__(self, device):
         assert device.is_cpu
+        self.device = device
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_pinned(size_in_bytes)
+        ptr = runtime.core.wp_alloc_pinned(size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -3209,7 +3268,7 @@ class CudaDefaultAllocator:
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes)
+        ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes, None)
         # If the allocation fails, check if graph capture is active to raise an informative error.
         # We delay the capture check to avoid overhead.
         if not ptr:
@@ -3228,6 +3287,7 @@ class CudaDefaultAllocator:
                         f"on device '{self.device}'.  Try calling wp.set_mempool_enabled('{self.device}', True) before capture begins."
                     )
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'{reason}")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -3242,9 +3302,10 @@ class CudaMempoolAllocator:
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes)
+        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -4182,15 +4243,15 @@ class Runtime:
             self.core.wp_is_error_output_enabled.argtypes = []
             self.core.wp_is_error_output_enabled.restype = ctypes.c_int
 
-            self.core.wp_alloc_host.argtypes = [ctypes.c_size_t]
+            self.core.wp_alloc_host.argtypes = [ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_host.restype = ctypes.c_void_p
-            self.core.wp_alloc_pinned.argtypes = [ctypes.c_size_t]
+            self.core.wp_alloc_pinned.argtypes = [ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_pinned.restype = ctypes.c_void_p
-            self.core.wp_alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device.restype = ctypes.c_void_p
-            self.core.wp_alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device_default.restype = ctypes.c_void_p
-            self.core.wp_alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device_async.restype = ctypes.c_void_p
 
             self.core.wp_float_to_half_bits.argtypes = [ctypes.c_float]
@@ -4208,6 +4269,31 @@ class Runtime:
             self.core.wp_free_device_default.restype = None
             self.core.wp_free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_free_device_async.restype = None
+
+            self.core.wp_alloc_tracker_enable.argtypes = [ctypes.c_int]
+            self.core.wp_alloc_tracker_enable.restype = None
+            self.core.wp_alloc_tracker_is_enabled.argtypes = []
+            self.core.wp_alloc_tracker_is_enabled.restype = ctypes.c_int
+            self.core.wp_alloc_tracker_reset.argtypes = []
+            self.core.wp_alloc_tracker_reset.restype = None
+            self.core.wp_alloc_tracker_set_tag.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.wp_alloc_tracker_set_tag.restype = None
+            self.core.wp_alloc_tracker_push_scope.argtypes = [ctypes.c_char_p]
+            self.core.wp_alloc_tracker_push_scope.restype = None
+            self.core.wp_alloc_tracker_pop_scope.argtypes = []
+            self.core.wp_alloc_tracker_pop_scope.restype = None
+            self.core.wp_alloc_tracker_report.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.wp_alloc_tracker_report.restype = ctypes.c_char_p
+            self.core.wp_alloc_tracker_get_current_bytes.argtypes = []
+            self.core.wp_alloc_tracker_get_current_bytes.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_peak_bytes.argtypes = []
+            self.core.wp_alloc_tracker_get_peak_bytes.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_total_alloc_count.argtypes = []
+            self.core.wp_alloc_tracker_get_total_alloc_count.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_total_alloc_bytes.argtypes = []
+            self.core.wp_alloc_tracker_get_total_alloc_bytes.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_live_count.argtypes = []
+            self.core.wp_alloc_tracker_get_live_count.restype = ctypes.c_int
 
             self.core.wp_memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
             self.core.wp_memset_host.restype = None
@@ -10190,6 +10276,61 @@ def init():
 
     if runtime is None:
         runtime = Runtime()
+
+    if warp.config.track_memory and not runtime.core.wp_alloc_tracker_is_enabled():
+        import atexit  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_enable(1)
+        runtime.core.wp_alloc_tracker_push_scope(b"global")
+        atexit.register(_stop_global_alloc_tracking)
+
+
+def _stop_global_alloc_tracking():
+    """Disable tracking on interpreter shutdown."""
+    try:
+        if runtime is not None and runtime.core.wp_alloc_tracker_is_enabled():
+            runtime.core.wp_alloc_tracker_pop_scope()
+            runtime.core.wp_alloc_tracker_enable(0)
+    except (TypeError, AttributeError, OSError):
+        pass
+
+
+def print_memory_report(file=None, sort="size", max_items=10):
+    """Print a report of all currently tracked memory allocations.
+
+    Requires :attr:`warp.config.track_memory` to be ``True`` (set before
+    :func:`warp.init`), or an active :class:`~warp.ScopedMemoryTracker`.
+
+    .. note::
+
+        Not safe to call concurrently from multiple threads.
+
+    Args:
+        file: File object to write to (defaults to ``sys.stdout``).
+        sort: Sort order for live allocations: ``"size"`` (default, largest
+            first) or ``"chronological"`` (oldest first).
+        max_items: Maximum number of individual allocations shown per
+            category (default ``10``).
+
+    Raises:
+        ValueError: If ``sort`` is not ``"size"`` or ``"chronological"``.
+        RuntimeError: If allocation tracking is not active.
+    """
+    if sort not in ("size", "chronological"):
+        raise ValueError(f"Invalid sort order {sort!r}; expected 'size' or 'chronological'")
+
+    if runtime is None:
+        init()
+    if not runtime.core.wp_alloc_tracker_is_enabled():
+        raise RuntimeError(
+            "Allocation tracking is not active. "
+            "Set wp.config.track_memory = True before calling wp.init(), "
+            "or use wp.ScopedMemoryTracker as a context manager."
+        )
+    sort_order = 1 if sort == "chronological" else 0
+    text = runtime.core.wp_alloc_tracker_report(sort_order, max_items)
+    if text:
+        print(text.decode("utf-8"), file=file or sys.stdout, end="")
 
 
 def get_warp_version():

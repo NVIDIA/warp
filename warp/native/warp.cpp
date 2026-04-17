@@ -3,6 +3,7 @@
 
 #include "warp.h"
 
+#include "alloc_tracker.h"
 #include "array.h"
 #include "error.h"
 #include "exports.h"
@@ -188,25 +189,33 @@ int wp_is_fast_math_enabled()
 #endif
 }
 
-void* wp_alloc_host(size_t s)
+void* wp_alloc_host(size_t s, const char* tag)
 {
     // increase CPU array alignment for compatibility with other libs, e.g., JAX, XLA, Eigen.
     size_t alignment = 64;
 
+    void* ptr;
 // msvc does not provide the standard aligned_alloc()
 #if defined(_MSC_VER)
-    return _aligned_malloc(s, alignment);
+    ptr = _aligned_malloc(s, alignment);
 #else
     // ensure that the size is a multiple of alignment
-    size_t remainder = s % alignment;
+    size_t alloc_size = s;
+    size_t remainder = alloc_size % alignment;
     if (remainder != 0)
-        s += alignment - remainder;
-    return aligned_alloc(alignment, s);
+        alloc_size += alignment - remainder;
+    ptr = aligned_alloc(alignment, alloc_size);
 #endif
+
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_HOST, -1, tag);
+    return ptr;
 }
 
 void wp_free_host(void* ptr)
 {
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
 #if defined(_MSC_VER)
     _aligned_free(ptr);
 #else
@@ -861,23 +870,15 @@ WP_API void wp_array_fill_host(void* arr_ptr, int arr_type, const void* value_pt
 // stubs for platforms where there is no CUDA
 #if !WP_ENABLE_CUDA
 
-void* wp_alloc_pinned(size_t s)
-{
-    // CUDA is not available, fall back on system allocator
-    return wp_alloc_host(s);
-}
+void* wp_alloc_pinned(size_t s, const char* tag) { return wp_alloc_host(s, tag); }
 
-void wp_free_pinned(void* ptr)
-{
-    // CUDA is not available, fall back on system allocator
-    wp_free_host(ptr);
-}
+void wp_free_pinned(void* ptr) { wp_free_host(ptr); }
 
-void* wp_alloc_device(void* context, size_t s) { return NULL; }
+void* wp_alloc_device(void* context, size_t s, const char* tag) { return NULL; }
 
-void* wp_alloc_device_default(void* context, size_t s) { return NULL; }
+void* wp_alloc_device_default(void* context, size_t s, const char* tag) { return NULL; }
 
-void* wp_alloc_device_async(void* context, size_t s) { return NULL; }
+void* wp_alloc_device_async(void* context, size_t s, const char* tag) { return NULL; }
 
 void wp_free_device(void* context, void* ptr) { }
 
