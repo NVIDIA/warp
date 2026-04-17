@@ -56,18 +56,23 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
     sys.stdout.write(s)
 
 
+# Register Warp's custom warning handler globally at import time.
+# This preserves Warp-branded formatting while respecting user-configured
+# warning filters (unlike setting it inside catch_warnings() on each call).
+warnings.showwarning = warp_showwarning
+
+
 def warn(message, category=None, stacklevel=1, once=False):
     if (category, message) in warnings_seen:
         return
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("default")  # Change the filter in this process
-        warnings.showwarning = warp_showwarning
-        warnings.warn(
-            message,
-            category,
-            stacklevel=stacklevel + 1,  # Increment stacklevel by 1 since we are in a wrapper
-        )
+    # Call warnings.warn() directly, respecting user-configured filters.
+    # Increment stacklevel by 1 since we are in a wrapper.
+    warnings.warn(
+        message,
+        category,
+        stacklevel=stacklevel + 1,
+    )
 
     if category is DeprecationWarning or once:
         warnings_seen.add((category, message))
