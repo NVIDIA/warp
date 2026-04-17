@@ -384,50 +384,179 @@ def test_hashgrid_edge_cases(test, device):
         test.assertEqual(counts_np[1], 1)
 
 
-def test_hashgrid_negative_wrapping(test, device):
-    """Test that hash grid wrapping works correctly with negative coordinates.
+def test_hashgrid_negative_coordinates(test, device):
+    """Test hash grid correctness with negative point coordinates.
 
-    With a small grid, the truncation bug (int() instead of floor()) causes
-    points near negative cell boundaries to map to the wrong physical cell.
-    Virtual cell -1 and cell 0 map to different physical cells after modulo
-    wrapping, so a misplaced point becomes invisible to queries that should
-    find it via the wrapped cell.
+    Verifies that points in negative coordinate space are correctly binned
+    and found by neighbor queries.  Regression test for issue #1256 where
+    C++ ``int()`` truncation (toward zero) was used instead of ``floor()`` (toward
+    negative infinity), causing missed neighbors when coordinates cross the
+    zero boundary.
     """
-    grid_dim = 4
+    grid_dim = 64
     cell_width = 1.0
-    period = float(grid_dim) * cell_width
-    radius = 0.5
+    query_rad = 0.6
 
-    grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+    # --- Case 1: points on both sides of the zero boundary ---
+    # A at (-0.3, 0, 0) and B at (+0.2, 0, 0).  Distance = 0.5 < 0.6.
+    # Both should see each other.
+    with test.subTest(case="cross_zero_boundary"):
+        grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+        pts = wp.array([[-0.3, 0.0, 0.0], [0.2, 0.0, 0.0]], dtype=wp.vec3, device=device)
+        counts = wp.zeros(2, dtype=int, device=device)
 
-    # Point A at -0.3: should be virtual cell -1 (physical 3)
-    #   Bug: int(-0.3) = 0 -> physical cell 0 (WRONG)
-    # Point B at 3.9: virtual cell 3 -> physical cell 3 (correct in both cases)
-    # Periodic distance: 0.2 (A wraps to 3.7 in [0, 4), |3.9 - 3.7| = 0.2),
-    # well within radius 0.5.
-    #
-    # With the bug, query from A searches only physical cell 0 and misses B
-    # in physical cell 3. Query from B wraps to include physical cell 0 and
-    # finds the misplaced A, producing an asymmetric result [1, 2].
-    points = wp.array(
-        [[-0.3, 0.0, 0.0], [3.9, 0.0, 0.0]],
-        dtype=wp.vec3,
+        grid.build(pts, cell_width)
+
+        wp.launch(
+            kernel=count_neighbors,
+            dim=2,
+            inputs=[wp.uint64(grid.id), query_rad, pts, counts],
+            device=device,
+        )
+
+        counts_np = counts.numpy()
+        test.assertEqual(counts_np[0], 2, "Point A at -0.3 should see point B at +0.2")
+        test.assertEqual(counts_np[1], 2, "Point B at +0.2 should see point A at -0.3")
+
+    # --- Case 2: all points in negative space ---
+    # Four points forming a tight cluster entirely in negative coordinates.
+    with test.subTest(case="all_negative"):
+        grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+        pts = wp.array(
+            [[-5.1, -5.1, -5.1], [-5.0, -5.1, -5.1], [-5.1, -5.0, -5.1], [-5.0, -5.0, -5.1]],
+            dtype=wp.vec3,
+            device=device,
+        )
+        counts = wp.zeros(4, dtype=int, device=device)
+
+        grid.build(pts, cell_width)
+
+        wp.launch(
+            kernel=count_neighbors,
+            dim=4,
+            inputs=[wp.uint64(grid.id), query_rad, pts, counts],
+            device=device,
+        )
+
+        # Max pairwise distance is sqrt(0.1^2 + 0.1^2) ≈ 0.141, all within 0.6
+        counts_np = counts.numpy()
+        for i in range(4):
+            test.assertEqual(counts_np[i], 4, f"Point {i} in all-negative cluster should see all 4 points")
+
+    # --- Case 3: negative fractional cell coordinate (the exact bug scenario) ---
+    # With cell_width=1.0, a point at -0.3 should go in cell -1, not cell 0.
+    # Place point A at -0.3 (cell -1) and point B at +0.3 (cell 0).
+    # Distance = 0.6, so with query_radius = 0.7 they should see each other.
+    with test.subTest(case="fractional_negative_cell"):
+        grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+        pts = wp.array([[-0.3, 0.0, 0.0], [0.3, 0.0, 0.0]], dtype=wp.vec3, device=device)
+        counts = wp.zeros(2, dtype=int, device=device)
+
+        grid.build(pts, cell_width)
+
+        wp.launch(
+            kernel=count_neighbors,
+            dim=2,
+            inputs=[wp.uint64(grid.id), 0.7, pts, counts],
+            device=device,
+        )
+
+        counts_np = counts.numpy()
+        test.assertEqual(counts_np[0], 2, "Point at -0.3 should find point at +0.3 with radius 0.7")
+        test.assertEqual(counts_np[1], 2, "Point at +0.3 should find point at -0.3 with radius 0.7")
+
+    # --- Case 4: negative coordinates on all three axes ---
+    with test.subTest(case="negative_all_axes"):
+        grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+        pts = wp.array([[-0.2, -0.2, -0.2], [0.2, 0.2, 0.2]], dtype=wp.vec3, device=device)
+        counts = wp.zeros(2, dtype=int, device=device)
+
+        grid.build(pts, cell_width)
+
+        # Distance = sqrt(0.4^2 * 3) ≈ 0.693
+        wp.launch(
+            kernel=count_neighbors,
+            dim=2,
+            inputs=[wp.uint64(grid.id), 0.8, pts, counts],
+            device=device,
+        )
+
+        counts_np = counts.numpy()
+        test.assertEqual(counts_np[0], 2, "Negative all-axes point should see positive counterpart")
+        test.assertEqual(counts_np[1], 2, "Positive all-axes point should see negative counterpart")
+
+
+def test_hashgrid_negative_brute_force(test, device):
+    """Cross-validate hash grid against brute-force for negative-space points.
+
+    Uses the same reference kernel approach as ``test_hashgrid_query`` but with
+    points spanning negative and positive coordinates.
+    """
+    grid_dim = 64
+    cell_width = 2.0
+    radius = 2.0
+
+    # Generate points centred on the origin so half are in negative space
+    points = particle_grid(8, 8, 8, (-4.0, -4.0, -4.0), cell_width * 0.25, 0.1)
+    points_arr = wp.array(points, dtype=wp.vec3, device=device)
+
+    n = len(points)
+    counts_grid = wp.zeros(n, dtype=int, device=device)
+    counts_ref = wp.zeros(n, dtype=int, device=device)
+
+    # Brute-force reference
+    wp.launch(
+        kernel=count_neighbors_reference,
+        dim=n * n,
+        inputs=[radius, points_arr, counts_ref, n],
         device=device,
     )
-    counts = wp.zeros(2, dtype=int, device=device)
 
-    grid.build(points, cell_width)
+    # Hash grid
+    grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device)
+    grid.build(points_arr, cell_width)
 
     wp.launch(
-        kernel=count_neighbors_periodic,
-        dim=2,
-        inputs=[wp.uint64(grid.id), radius, period, points, counts],
+        kernel=count_neighbors,
+        dim=n,
+        inputs=[wp.uint64(grid.id), radius, points_arr, counts_grid],
         device=device,
     )
 
-    counts_np = counts.numpy()
-    test.assertEqual(counts_np[0], 2)  # A finds self + B
-    test.assertEqual(counts_np[1], 2)  # B finds self + A
+    assert_np_equal(counts_grid.numpy(), counts_ref.numpy())
+
+
+def test_hashgrid_negative_multiprecision(test, device):
+    """Verify that the negative-coordinate fix works for all precision types."""
+    grid_dim = 64
+    cell_width = 1.0
+
+    # Two points straddling zero — should find each other with radius 0.6
+    pts_np = np.array([[-0.3, 0.0, 0.0], [0.2, 0.0, 0.0]], dtype=np.float64)
+    expected = np.array([2, 2])
+
+    precision_types = [
+        (wp.float16, wp.vec3h, count_neighbors_f16),
+        (wp.float32, wp.vec3, count_neighbors_f32),
+        (wp.float64, wp.vec3d, count_neighbors_f64),
+    ]
+
+    for scalar_dtype, vec3_dtype, kernel in precision_types:
+        with test.subTest(dtype=scalar_dtype.__name__):
+            pts = wp.array(pts_np, dtype=vec3_dtype, device=device)
+            counts = wp.zeros(2, dtype=int, device=device)
+
+            grid = wp.HashGrid(grid_dim, grid_dim, grid_dim, device, dtype=scalar_dtype)
+            grid.build(pts, cell_width)
+
+            wp.launch(
+                kernel=kernel,
+                dim=2,
+                inputs=[wp.uint64(grid.id), scalar_dtype(0.6), pts, counts],
+                device=device,
+            )
+
+            assert_np_equal(counts.numpy(), expected)
 
 
 devices = get_test_devices()
@@ -462,7 +591,15 @@ add_function_test(
 )
 add_function_test(TestHashGrid, "test_hashgrid_dtype_validation", test_hashgrid_dtype_validation, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_edge_cases", test_hashgrid_edge_cases, devices=devices)
-add_function_test(TestHashGrid, "test_hashgrid_negative_wrapping", test_hashgrid_negative_wrapping, devices=devices)
+add_function_test(
+    TestHashGrid, "test_hashgrid_negative_coordinates", test_hashgrid_negative_coordinates, devices=devices
+)
+add_function_test(
+    TestHashGrid, "test_hashgrid_negative_brute_force", test_hashgrid_negative_brute_force, devices=devices
+)
+add_function_test(
+    TestHashGrid, "test_hashgrid_negative_multiprecision", test_hashgrid_negative_multiprecision, devices=devices
+)
 
 
 if __name__ == "__main__":
