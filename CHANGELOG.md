@@ -88,6 +88,9 @@
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
 - Reduce Python-side dispatch overhead for half-float conversion using `METH_FASTCALL`
   ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
+- Tile parameters in ``@wp.func_native`` are now passed by reference, matching ``@wp.func`` behavior.
+  Previously tile parameters were passed by value, preventing native snippets from modifying shared
+  tiles in-place ([GH-1362](https://github.com/NVIDIA/warp/issues/1362)).
 
 ### Fixed
 

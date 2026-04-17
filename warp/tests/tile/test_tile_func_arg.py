@@ -351,6 +351,96 @@ def test_inplace_modify_func_grad(test, device):
     np.testing.assert_allclose(inp_b.grad.numpy(), expected_grad, rtol=1e-5)
 
 
+# ---- @wp.func_native tests ----
+
+
+def test_native_func_shared_tile(test, device):
+    """Pass a shared tile to a @wp.func_native and read from it."""
+
+    snippet = """
+    // Extract element [0,0] of the tile and write to out[0]
+    auto val = tile_extract(t, 0, 0);
+    if (threadIdx.x == 0) {
+        out[0] = val;
+    }
+    """
+
+    @wp.func_native(snippet)
+    def read_tile_native(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N)), out: wp.array(dtype=float)): ...
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(input: wp.array2d(dtype=float), out: wp.array(dtype=float)):
+        i = wp.tid()
+        t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
+        read_tile_native(t, out)
+
+    inp = wp.array(np.ones((TILE_M, TILE_N), dtype=np.float32) * 7.0, device=device)
+    out = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[inp, out], block_dim=BLOCK_DIM, device=device)
+
+    np.testing.assert_allclose(out.numpy()[0], 7.0)
+
+
+def test_native_func_register_tile(test, device):
+    """Pass a register tile to a @wp.func_native and read from it."""
+
+    snippet = """
+    auto val = tile_extract(t, 0, 0);
+    if (threadIdx.x == 0) {
+        out[0] = val;
+    }
+    """
+
+    @wp.func_native(snippet)
+    def read_tile_native(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N)), out: wp.array(dtype=float)): ...
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(input: wp.array2d(dtype=float), out: wp.array(dtype=float)):
+        i = wp.tid()
+        t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="register")
+        read_tile_native(t, out)
+
+    inp = wp.array(np.ones((TILE_M, TILE_N), dtype=np.float32) * 3.0, device=device)
+    out = wp.zeros(1, dtype=float, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[inp, out], block_dim=BLOCK_DIM, device=device)
+
+    np.testing.assert_allclose(out.numpy()[0], 3.0)
+
+
+def test_native_func_inplace_modify_tile(test, device):
+    """Modify a shared tile in-place inside a @wp.func_native via reference."""
+
+    snippet = """
+    // Add 10.0 to element [0,0] of the tile via shared memory pointer
+    auto& data = t.data;
+    if (threadIdx.x == 0) {
+        data.ptr[0] += wp::float32(10.0);
+    }
+    __syncthreads();
+    """
+
+    @wp.func_native(snippet)
+    def modify_tile_native(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))): ...
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+        i = wp.tid()
+        t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
+        modify_tile_native(t)
+        wp.tile_store(out, t)
+
+    inp = wp.array(np.ones((TILE_M, TILE_N), dtype=np.float32) * 5.0, device=device)
+    out = wp.zeros((TILE_M, TILE_N), dtype=float, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[inp, out], block_dim=BLOCK_DIM, device=device)
+
+    result = out.numpy()
+    test.assertAlmostEqual(result[0, 0], 15.0)  # 5.0 + 10.0
+    test.assertAlmostEqual(result[0, 1], 5.0)  # unchanged
+
+
 devices = get_test_devices()
 
 
@@ -374,6 +464,18 @@ add_function_test(TestTileFuncArg, "test_register_tile_func_grad", test_register
 add_function_test(TestTileFuncArg, "test_mixed_storage_func_grad", test_mixed_storage_func_grad, devices=devices)
 add_function_test(TestTileFuncArg, "test_nested_func_calls_grad", test_nested_func_calls_grad, devices=devices)
 add_function_test(TestTileFuncArg, "test_inplace_modify_func_grad", test_inplace_modify_func_grad, devices=devices)
+add_function_test(
+    TestTileFuncArg, "test_native_func_shared_tile", test_native_func_shared_tile, devices=get_cuda_test_devices()
+)
+add_function_test(
+    TestTileFuncArg, "test_native_func_register_tile", test_native_func_register_tile, devices=get_cuda_test_devices()
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_native_func_inplace_modify_tile",
+    test_native_func_inplace_modify_tile,
+    devices=get_cuda_test_devices(),
+)
 
 
 if __name__ == "__main__":

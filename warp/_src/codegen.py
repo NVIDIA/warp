@@ -4881,9 +4881,21 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     forward_args = []
     reverse_args = []
 
+    # Tile parameters use C++ template parameters (matching codegen_func)
+    # so that the same @wp.func_native can accept tiles with any storage
+    # type (register or shared).  They are passed by non-const reference
+    # for the same reasons as @wp.func: owning shared tiles cannot be
+    # copied, and adjoint built-ins expect non-const Tile& parameters.
+    template_params = []
+
     # forward args
     for _i, arg in enumerate(adj.args):
-        s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
+        if is_tile(arg.type):
+            tname = f"tile_{arg.label}"
+            template_params.append(tname)
+            s = f"{tname}& {arg.emit().replace('var_', '')}"
+        else:
+            s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
         forward_args.append(s)
         reverse_args.append(s)
 
@@ -4892,10 +4904,17 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
+        elif is_tile(arg.type):
+            reverse_args.append(f"tile_{arg.label} & adj_{arg.label}")
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
     if return_type != "void":
         reverse_args.append(return_type + " & adj_ret")
+
+    # build template prefix for snippets with tile parameters
+    template_prefix = ""
+    if template_params:
+        template_prefix = "template<" + ", ".join(f"typename {t}" for t in template_params) + ">\n"
 
     forward_template = cuda_forward_function_template
     replay_template = cuda_forward_function_template
@@ -4905,7 +4924,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
 
     # Pass 1: Forward and replay (both are "forward-like" functions)
     if not reverse_only:
-        s += forward_template.format(
+        s += template_prefix + forward_template.format(
             name=name,
             return_type=return_type,
             forward_args=indent(forward_args),
@@ -4916,7 +4935,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         )
 
         if replay_snippet is not None:
-            s += replay_template.format(
+            s += template_prefix + replay_template.format(
                 name="replay_" + name,
                 return_type=return_type,
                 forward_args=indent(forward_args),
@@ -4933,7 +4952,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         else:
             reverse_body = ""
 
-        s += reverse_template.format(
+        s += template_prefix + reverse_template.format(
             name=name,
             return_type=return_type,
             reverse_args=indent(reverse_args),
