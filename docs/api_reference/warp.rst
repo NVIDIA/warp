@@ -383,9 +383,13 @@ CUDA Memory Management
    :nosignatures:
    :toctree: _generated
 
+   Allocator
+   RmmAllocator
+   ScopedAllocator
    ScopedMempool
    ScopedMempoolAccess
    ScopedPeerAccess
+   get_device_allocator
    get_mempool_release_threshold
    get_mempool_used_mem_current
    get_mempool_used_mem_high
@@ -395,6 +399,8 @@ CUDA Memory Management
    is_mempool_supported
    is_peer_access_enabled
    is_peer_access_supported
+   set_cuda_allocator
+   set_device_allocator
    set_mempool_access_enabled
    set_mempool_enabled
    set_mempool_release_threshold

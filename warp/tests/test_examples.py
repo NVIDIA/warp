@@ -254,6 +254,7 @@ add_example_test(
     devices=test_devices,
     test_options={"headless": True, "num_frames": 1000, "torch_required": True},
 )
+add_example_test(TestCoreExamples, name="core.example_custom_allocator", devices=cuda_test_devices)
 add_example_test(TestCoreExamples, name="core.example_wave", devices=test_devices)
 add_example_test(
     TestCoreExamples,

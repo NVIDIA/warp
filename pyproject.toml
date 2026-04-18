@@ -66,6 +66,7 @@ dev = [
     "warp-lang[docs]",
     "nvtx",
     "coverage[toml]",
+    "rmm-cu12 ; platform_system == 'Linux' and python_version < '3.14'",
 ]
 
 [tool.setuptools.packages.find]

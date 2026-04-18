@@ -36,9 +36,11 @@ from typing import (
     Any,
     Literal,
     NamedTuple,
+    Protocol,
     TypeVar,
     get_args,
     get_origin,
+    runtime_checkable,
 )
 from typing import (
     overload as typing_overload,
@@ -3243,6 +3245,41 @@ class Module:
 # execution context
 
 
+@runtime_checkable
+class Allocator(Protocol):
+    """Protocol for custom memory allocators.
+
+    Any object with ``allocate`` and ``deallocate`` methods matching
+    these signatures can be used as a Warp allocator.
+    """
+
+    def allocate(self, size_in_bytes: int) -> int:
+        """Allocate memory and return a device pointer as an ``int``."""
+        ...
+
+    def deallocate(self, ptr: int, size_in_bytes: int) -> None:
+        """Free previously allocated memory."""
+        ...
+
+
+def _validate_allocator(allocator):
+    if allocator is None:
+        return
+    # Protocol isinstance only checks attribute presence, not that they are callable —
+    # an object with allocate=None or allocate=42 would otherwise pass and fail later
+    # in array.__del__ where exceptions are swallowed.
+    if (
+        not isinstance(allocator, Allocator)
+        or not callable(getattr(allocator, "allocate", None))
+        or not callable(getattr(allocator, "deallocate", None))
+    ):
+        raise TypeError(
+            f"allocator must implement the Allocator protocol "
+            f"(allocate(size_in_bytes) -> int, deallocate(ptr, size_in_bytes) -> None), "
+            f"got {type(allocator)!r}"
+        )
+
+
 def _capture_alloc_tag():
     """Walk the Python stack to find the first frame outside the ``warp`` package.
 
@@ -3302,16 +3339,15 @@ def _set_alloc_tag_if_tracking(ptr):
 class CpuDefaultAllocator:
     def __init__(self, device):
         assert device.is_cpu
-        self.deleter = self.free
 
-    def alloc(self, size_in_bytes):
+    def allocate(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_host(size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device 'cpu'")
         _set_alloc_tag_if_tracking(ptr)
         return ptr
 
-    def free(self, ptr, size_in_bytes):
+    def deallocate(self, ptr, size_in_bytes):
         runtime.core.wp_free_host(ptr)
 
 
@@ -3319,16 +3355,15 @@ class CpuPinnedAllocator:
     def __init__(self, device):
         assert device.is_cpu
         self.device = device
-        self.deleter = self.free
 
-    def alloc(self, size_in_bytes):
+    def allocate(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_pinned(size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
         _set_alloc_tag_if_tracking(ptr)
         return ptr
 
-    def free(self, ptr, size_in_bytes):
+    def deallocate(self, ptr, size_in_bytes):
         runtime.core.wp_free_pinned(ptr)
 
 
@@ -3336,9 +3371,8 @@ class CudaDefaultAllocator:
     def __init__(self, device):
         assert device.is_cuda
         self.device = device
-        self.deleter = self.free
 
-    def alloc(self, size_in_bytes):
+    def allocate(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes, None)
         # If the allocation fails, check if graph capture is active to raise an informative error.
         # We delay the capture check to avoid overhead.
@@ -3361,7 +3395,7 @@ class CudaDefaultAllocator:
         _set_alloc_tag_if_tracking(ptr)
         return ptr
 
-    def free(self, ptr, size_in_bytes):
+    def deallocate(self, ptr, size_in_bytes):
         runtime.core.wp_free_device_default(self.device.context, ptr)
 
 
@@ -3370,16 +3404,15 @@ class CudaMempoolAllocator:
         assert device.is_cuda
         assert device.is_mempool_supported
         self.device = device
-        self.deleter = self.free
 
-    def alloc(self, size_in_bytes):
+    def allocate(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
         _set_alloc_tag_if_tracking(ptr)
         return ptr
 
-    def free(self, ptr, size_in_bytes):
+    def deallocate(self, ptr, size_in_bytes):
         runtime.core.wp_free_device_async(self.device.context, ptr)
 
 
@@ -3598,6 +3631,10 @@ class Stream:
             # Suppress TypeError and AttributeError when callables become None during shutdown
             pass
 
+    def __cuda_stream__(self):
+        # CUDA Stream Protocol: https://nvidia.github.io/cuda-python/cuda-core/latest/interoperability.html#cuda-stream-protocol
+        return (0, int(self.cuda_stream) if self.cuda_stream else 0)
+
     @property
     def cached_event(self) -> Event:
         if self._cached_event is None:
@@ -3806,6 +3843,8 @@ class Device:
             else:
                 self.current_allocator = self.default_allocator
 
+            self._custom_allocator = None
+
             # check whether our NVRTC can generate CUBINs for this architecture
             self.is_cubin_supported = self.arch in runtime.nvrtc_supported_archs
 
@@ -3825,11 +3864,18 @@ class Device:
     def get_allocator(self, pinned: bool = False):
         """Get the memory allocator for this device.
 
+        For CUDA devices, returns the custom allocator if one has been set via
+        :func:`set_device_allocator` or :func:`set_cuda_allocator`, otherwise
+        returns the device's current built-in allocator.
+
         Args:
             pinned: If ``True``, an allocator for pinned memory will be
-              returned. Only applicable when this device is a CPU device.
+              returned. Only applicable to CPU devices; ignored on CUDA
+              devices.
         """
         if self.is_cuda:
+            if self._custom_allocator is not None:
+                return self._custom_allocator
             return self.current_allocator
         else:
             if pinned:
@@ -6212,6 +6258,63 @@ def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:
     else:
         if enable:
             raise ValueError("Memory pools are only supported on CUDA devices")
+
+
+def set_cuda_allocator(allocator: Allocator | None) -> None:
+    """Set the memory allocator for all CUDA devices.
+
+    Any object with ``allocate(size_in_bytes) -> int`` and
+    ``deallocate(ptr, size_in_bytes)`` methods can be used.
+
+    Pass ``None`` to restore the built-in allocator.
+
+    Args:
+        allocator: An :class:`Allocator`-compatible object, or ``None``.
+    """
+    init()
+    _validate_allocator(allocator)
+    devices = get_cuda_devices()
+    if not devices:
+        raise RuntimeError("set_cuda_allocator: no CUDA devices available")
+    for device in devices:
+        device._custom_allocator = allocator
+
+
+def set_device_allocator(device: DeviceLike, allocator: Allocator | None) -> None:
+    """Set the memory allocator for a specific CUDA device.
+
+    Pass ``None`` to restore the built-in allocator.
+
+    Args:
+        device: The CUDA device.
+        allocator: An :class:`Allocator`-compatible object, or ``None``.
+    """
+    init()
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError("Custom allocators are only supported on CUDA devices")
+    _validate_allocator(allocator)
+    device._custom_allocator = allocator
+
+
+def get_device_allocator(device: DeviceLike) -> Allocator:
+    """Get the current effective memory allocator for a device.
+
+    For CUDA devices, returns the custom allocator if one has been set via
+    :func:`set_device_allocator` or :func:`set_cuda_allocator`, otherwise
+    returns the device's current built-in allocator.
+
+    For CPU devices, returns the default host memory allocator.
+
+    Args:
+        device: The device to query.
+
+    Returns:
+        The current allocator for the device.
+    """
+    init()
+    device = runtime.get_device(device)
+    return device.get_allocator()
 
 
 def set_mempool_release_threshold(device: DeviceLike, threshold: int | float) -> None:

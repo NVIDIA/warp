@@ -124,6 +124,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.matrix.test_mat_lite import TestMatLite
     from warp.tests.test_adam import TestAdam
     from warp.tests.test_allocation_tracker import TestAllocTracker
+    from warp.tests.test_allocator import TestAllocatorProtocol, TestCustomAllocator, TestRmmAllocator
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
@@ -228,6 +229,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     test_classes = [
         TestAdam,
         TestAllocTracker,
+        TestAllocatorProtocol,
         TestArithmetic,
         TestArray,
         TestArrayReduce,
@@ -252,6 +254,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCpuPrecompiledHeaders,
         TestCTypes,
         TestCudaArchSuffix,
+        TestCustomAllocator,
         TestDense,
         TestDevices,
         TestDiagnostics,
@@ -321,6 +324,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestQuat,
         TestRand,
         TestReload,
+        TestRmmAllocator,
         TestRounding,
         TestRunlengthEncode,
         TestScalarOps,

@@ -223,12 +223,13 @@ class fabricarray(noncontiguous_array_base[DType, NDim]):
                     # copy bucket info to device
                     buckets_size = ctypes.sizeof(buckets)
                     allocator = self.device.get_allocator()
-                    buckets_ptr = allocator.alloc(buckets_size)
+                    with self.device.context_guard:
+                        buckets_ptr = allocator.allocate(buckets_size)
                     cuda_stream = self.device.stream.cuda_stream
                     runtime.core.wp_memcpy_h2d(
                         self.device.context, buckets_ptr, ctypes.addressof(buckets), buckets_size, cuda_stream
                     )
-                    self.deleter = allocator.deleter
+                    self.deleter = allocator.deallocate
                 else:
                     buckets_ptr = ctypes.addressof(buckets)
             else:

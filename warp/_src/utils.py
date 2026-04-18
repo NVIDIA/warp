@@ -21,7 +21,7 @@ import numpy as np
 import warp as wp
 import warp._src.context
 import warp._src.types
-from warp._src.context import DeviceLike
+from warp._src.context import Allocator, DeviceLike, _validate_allocator
 from warp._src.types import Array, DType, type_repr, types_equal
 
 _wp_module_name_ = "warp.utils"
@@ -1514,6 +1514,41 @@ class ScopedMempool:
 
     def __exit__(self, exc_type, exc_value, traceback):
         wp.set_mempool_enabled(self.device, self.saved_setting)
+
+
+class ScopedAllocator:
+    """Context manager to temporarily use a custom allocator on a device.
+
+    On context exit, the previous allocator setting is restored.
+
+    Args:
+        device: The CUDA device on which to set the allocator.
+        allocator: The allocator to use, or ``None`` to restore the built-in allocator.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedAllocator(device, my_allocator):
+                arr = wp.zeros(1000, dtype=wp.float32, device=device)
+
+    See Also:
+        :func:`set_cuda_allocator`, :func:`set_device_allocator`, :func:`get_device_allocator`
+    """
+
+    def __init__(self, device: DeviceLike, allocator: Allocator | None):
+        self.device = wp.get_device(device)
+        if not self.device.is_cuda:
+            raise RuntimeError("Custom allocators are only supported on CUDA devices")
+        _validate_allocator(allocator)
+        self.allocator = allocator
+
+    def __enter__(self):
+        self.saved = self.device._custom_allocator
+        self.device._custom_allocator = self.allocator
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.device._custom_allocator = self.saved
 
 
 # Allow temporarily enabling/disabling mempool access

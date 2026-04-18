@@ -3408,8 +3408,15 @@ class array(Array[DType, NDim]):
                 capacity = dtype_size
 
         allocator = device.get_allocator(pinned=pinned)
+        # Resolve the deallocate callable before allocating so a bad descriptor/__getattr__
+        # cannot leak a freshly-allocated pointer between allocate() and self.deleter assignment.
+        deleter = allocator.deallocate
         if capacity > 0:
-            ptr = allocator.alloc(capacity)
+            if device.is_cuda:
+                with device.context_guard:
+                    ptr = allocator.allocate(capacity)
+            else:
+                ptr = allocator.allocate(capacity)
         else:
             ptr = None
 
@@ -3423,7 +3430,7 @@ class array(Array[DType, NDim]):
         self.device = device
         self.pinned = pinned if device.is_cpu else False
         self.is_contiguous = is_contiguous
-        self.deleter = allocator.deleter
+        self.deleter = deleter
         self._allocator = allocator
 
     def _init_annotation(self, dtype, ndim):
@@ -3439,6 +3446,10 @@ class array(Array[DType, NDim]):
         self.is_contiguous = False
 
     def __del__(self):
+        # Skip deallocation for partially-initialized arrays (e.g. when allocation failed)
+        # and for zero-size arrays which were never allocated.
+        if not hasattr(self, "device") or self.device is None or self.ptr is None:
+            return
         try:
             with self.device.context_guard:
                 self.deleter(self.ptr, self.capacity)

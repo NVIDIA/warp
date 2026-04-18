@@ -266,3 +266,100 @@ If mempool access is not supported, you will need to pre-allocate the arrays inv
     wp.capture_launch(capture.graph)
 
 This is due to a limitation in CUDA, which we envision being fixed in the future.
+
+
+.. _custom_allocators:
+
+Custom Allocators
+-----------------
+
+Warp supports pluggable memory allocators for CUDA devices. You can redirect all
+GPU array allocations through a custom allocator by implementing the
+:class:`warp.Allocator` protocol, i.e., any object with ``allocate(size_in_bytes)`` and
+``deallocate(ptr, size_in_bytes)`` methods. Custom allocators only affect
+:class:`warp.array` allocations on CUDA devices; CPU allocations, pinned memory, and
+internal native allocations (e.g., BVH construction temporaries) are not affected.
+
+Setting a Custom Allocator
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use :func:`set_cuda_allocator` to set a custom allocator on all CUDA devices, or
+:func:`set_device_allocator` for a specific device:
+
+.. code:: python
+
+    wp.set_cuda_allocator(my_allocator)           # all CUDA devices
+    wp.set_device_allocator("cuda:0", my_allocator)  # one device
+
+Pass ``None`` to restore the built-in allocator:
+
+.. code:: python
+
+    wp.set_cuda_allocator(None)
+
+Use :func:`get_device_allocator` to query the current allocator:
+
+.. code:: python
+
+    allocator = wp.get_device_allocator("cuda:0")
+
+For temporary allocator changes, use the :class:`ScopedAllocator` context manager:
+
+.. code:: python
+
+    with wp.ScopedAllocator("cuda:0", my_allocator):
+        a = wp.zeros(1000, dtype=wp.float32, device="cuda:0")
+    # Original allocator is restored here
+
+Writing a Custom Allocator
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A custom allocator is any object that implements ``allocate`` and ``deallocate``:
+
+.. code:: python
+
+    class MyAllocator:
+        def allocate(self, size_in_bytes: int) -> int:
+            # Return a device pointer (int)
+            ...
+
+        def deallocate(self, ptr: int, size_in_bytes: int) -> None:
+            # Free the device pointer
+            ...
+
+Allocators that do not support stream-ordered allocation may not work correctly
+during CUDA graph capture.
+
+See ``warp/examples/core/example_custom_allocator.py`` for a complete example.
+
+RMM Integration
+~~~~~~~~~~~~~~~
+
+`RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ provides high-performance
+pooled allocators for CUDA. Warp includes a built-in adapter, :class:`RmmAllocator`, that
+routes array allocations through RMM.
+
+Install RMM (Linux only):
+
+.. code:: bash
+
+    pip install rmm-cu12
+
+Set up a shared RMM pool for PyTorch and Warp:
+
+.. code:: python
+
+    import rmm
+    rmm.reinitialize(pool_allocator=True, initial_pool_size=2**30)
+
+    # Route PyTorch through RMM
+    import torch
+    from rmm.allocators.torch import rmm_torch_allocator
+    torch.cuda.memory.change_current_allocator(rmm_torch_allocator)
+
+    # Route Warp through RMM
+    import warp as wp
+    wp.set_cuda_allocator(wp.RmmAllocator())
+
+    # Now both frameworks share the same memory pool
+    a = wp.zeros(1000, dtype=wp.float32, device="cuda:0")

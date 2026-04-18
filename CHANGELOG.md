@@ -56,6 +56,7 @@
   ``wp.dot(a[i], b[i])`` for tiles of ``vec3f``). Replaces the longer
   ``wp.tile_extract(wp.tile_sum(wp.tile_map(wp.tensordot, a, b)), 0)`` pattern
   ([GH-1364](https://github.com/NVIDIA/warp/issues/1364)).
+- Add pluggable allocator interface for custom GPU memory allocators, including built-in RMM support via ``wp.RmmAllocator`` ([GH-781](https://github.com/NVIDIA/warp/issues/781)).
 
 ### Removed
 
