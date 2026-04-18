@@ -348,20 +348,14 @@ def tile_mesh_query_aabb_kernel(
 ):
     query = wp.tile_mesh_query_aabb(mesh_id, lower, upper)
 
-    # Query returns a tile of indices, one per thread
-    result_tile = wp.tile_mesh_query_aabb_next(query)
-
-    # Continue querying while we have results
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_mesh_query_aabb_next(query)
         result_idx = wp.untile(result_tile)
 
         # Mark faces as intersected using atomic add (skip -1 which means no result)
         # This ensures we can verify that each face is only reported once
         if result_idx >= 0:
             wp.atomic_add(faces_intersected, result_idx, 1)
-
-        result_tile = wp.tile_mesh_query_aabb_next(query)
 
 
 @wp.kernel
@@ -445,6 +439,23 @@ def test_tile_mesh_query_aabb(test, device):
     test.assertEqual(single_result[0], 1)
     test.assertEqual(single_result[1], 1)
 
+    # Also test tile_query_valid-based loop
+    faces_intersected_count = wp.zeros(shape=(2), dtype=int, device=device)
+    wp.launch_tiled(
+        kernel=tile_mesh_query_aabb_valid_kernel,
+        dim=1,
+        inputs=[mesh.id, query_lower, query_upper, faces_intersected_count],
+        device=device,
+        block_dim=block_dim,
+    )
+    count_result = faces_intersected_count.numpy()
+    for i in range(2):
+        test.assertEqual(
+            single_result[i],
+            count_result[i],
+            f"tile_query_valid mismatch at face {i}: single={single_result[i]}, count={count_result[i]}",
+        )
+
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
 def test_tile_mesh_query_aabb_large(test, device):
@@ -513,19 +524,13 @@ def mesh_query_aabb_tiled_kernel(
 ):
     query = wp.mesh_query_aabb_tiled(mesh_id, lower, upper)
 
-    # Query returns a tile of indices, one per thread
-    result_tile = wp.mesh_query_aabb_next_tiled(query)
-
-    # Continue querying while we have results
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.mesh_query_aabb_next_tiled(query)
         result_idx = wp.untile(result_tile)
 
         # Mark faces as intersected using atomic add (skip -1 which means no result)
         if result_idx >= 0:
             wp.atomic_add(faces_intersected, result_idx, 1)
-
-        result_tile = wp.mesh_query_aabb_next_tiled(query)
 
 
 def test_mesh_query_aabb_tiled(test, device):
@@ -590,6 +595,23 @@ def test_mesh_query_aabb_tiled(test, device):
             tiled_result[i],
             f"Mismatch at face {i}: single={single_result[i]}, tiled={tiled_result[i]}",
         )
+
+
+@wp.kernel
+def tile_mesh_query_aabb_valid_kernel(
+    mesh_id: wp.uint64,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    faces_intersected: wp.array(dtype=int),
+):
+    query = wp.tile_mesh_query_aabb(mesh_id, lower, upper)
+
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_mesh_query_aabb_next(query)
+        result_idx = wp.untile(result_tile)
+
+        if result_idx >= 0:
+            wp.atomic_add(faces_intersected, result_idx, 1)
 
 
 devices = get_test_devices()

@@ -17,6 +17,7 @@ struct bvh_query_thread_block_t {
         , count_shared_mem(nullptr)
         , result_counter_shared_mem(nullptr)
         , result_buffer_shared_mem(nullptr)
+        , last_valid_shared_mem(nullptr)
         , is_ray(false)
         , input_lower()
         , input_upper()
@@ -33,6 +34,12 @@ struct bvh_query_thread_block_t {
     int* count_shared_mem;  // [1] - counter for number of nodes on the stack
     int* result_counter_shared_mem;  // [1] - counter for number of results found
     int* result_buffer_shared_mem;  // [block_size] - buffer to store result indices
+    // Flag recording whether the most recent tile_bvh_query_next() produced any valid
+    // results (non-zero) or the query is exhausted (zero). Needed because the counters
+    // above are decremented after the tile is emitted, so they cannot be used alone to
+    // answer tile_query_valid() once the final (possibly partial) batch has been handed
+    // out to the caller.
+    int* last_valid_shared_mem;  // [1]
     static const int result_buffer_capacity = WP_TILE_BLOCK_DIM * 5;
     static const int stack_capacity = 64 * BVH_QUERY_STACK_SIZE;
 
@@ -84,6 +91,7 @@ bvh_query_thread_block(uint64_t id, bool is_ray, const vec3& lower, const vec3& 
     __shared__ int stack_shared_mem[bvh_query_thread_block_t::stack_capacity];
     __shared__ int count_shared_mem[1];
     __shared__ int result_counter[1];
+    __shared__ int last_valid[1];
 
     __shared__ int
         result_buffer[bvh_query_thread_block_t::result_buffer_capacity];  // Conservative bounds for up to
@@ -94,12 +102,16 @@ bvh_query_thread_block(uint64_t id, bool is_ray, const vec3& lower, const vec3& 
     query.count_shared_mem = count_shared_mem;
     query.result_counter_shared_mem = result_counter;
     query.result_buffer_shared_mem = result_buffer;
+    query.last_valid_shared_mem = last_valid;
 
     // optimization: make the latest
     if (threadIdx.x == 0) {
         query.stack_shared_mem[0] = *bvh.root;
         query.count_shared_mem[0] = 1;
         query.result_counter_shared_mem[0] = 0;
+        // Pre-seed as "valid" so the first tile_query_valid() check (which happens after
+        // the first tile_bvh_query_next()) doesn't return false before the query runs.
+        query.last_valid_shared_mem[0] = 1;
     }
     __syncthreads();
 
@@ -176,8 +188,11 @@ CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_bloc
     if (query.result_counter_shared_mem[0] >= block_size) {
         index = query.result_buffer_shared_mem[query.result_counter_shared_mem[0] - block_size + lane_id];
         __syncthreads();
-        if (lane_id == 0)
+        if (lane_id == 0) {
             query.result_counter_shared_mem[0] = max(0, query.result_counter_shared_mem[0] - block_size);
+            query.last_valid_shared_mem[0] = 1;
+        }
+        __syncthreads();
         return true;
     }
 
@@ -287,8 +302,12 @@ CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_bloc
     bool result = query.result_counter_shared_mem[0] > 0;
     __syncthreads();
 
-    if (lane_id == 0)
+    if (lane_id == 0) {
         query.result_counter_shared_mem[0] = max(0, query.result_counter_shared_mem[0] - block_size);
+        // Latch whether this call produced any valid indices so tile_query_valid()
+        // can consult it after the counters are decremented.
+        query.last_valid_shared_mem[0] = result ? 1 : 0;
+    }
 
     __syncthreads();
 
@@ -333,6 +352,15 @@ CUDA_CALLABLE inline auto tile_bvh_query_next(bvh_query_thread_block_t& query)
     return tile_bvh_query_next_impl<WP_TILE_BLOCK_DIM>(query);
 }
 
+CUDA_CALLABLE inline bool tile_query_valid(const bvh_query_thread_block_t& query)
+{
+    // Reflects the outcome of the most recent tile_bvh_query_next() call (or the initial
+    // state right after bvh_query_aabb/ray, where it is seeded to true). Using the
+    // counters directly would produce false negatives once the final partial tile has
+    // been emitted but not yet consumed by the caller.
+    return query.last_valid_shared_mem[0] != 0;
+}
+
 // New tile-based alias for the query function
 CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
@@ -372,6 +400,8 @@ adj_tile_bvh_query_next(bvh_query_thread_block_t& query, bvh_query_thread_block_
 {
 }
 
+CUDA_CALLABLE inline void adj_tile_query_valid(const bvh_query_thread_block_t&, bvh_query_thread_block_t&, bool&) { }
+
 #else
 
 // CPU implementation: falls back to single-threaded query, returns index only in first element
@@ -381,6 +411,7 @@ template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_bloc
     // We just call the regular query and put the result in the first element of a tile
     int index = -1;
     bvh_query_next(query, index, FLT_MAX);
+    query.last_query_valid = (index >= 0);
 
     // Create a tile with the index in the first element, -1 in all others
     // This simulates a single-threaded execution where only thread 0 has work
@@ -400,6 +431,8 @@ inline auto tile_bvh_query_next(bvh_query_thread_block_t& query)
     // Using Length=1 since we don't have block_dim available
     return tile_bvh_query_next_impl<1>(query);
 }
+
+inline bool tile_query_valid(const bvh_query_thread_block_t& query) { return query.last_query_valid; }
 
 // CPU version: tile_bvh_query_aabb just creates a regular query
 inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
@@ -442,6 +475,8 @@ inline void
 adj_tile_bvh_query_next(bvh_query_thread_block_t& query, bvh_query_thread_block_t&, decltype(tile_register<int, 1>())&)
 {
 }
+
+inline void adj_tile_query_valid(const bvh_query_thread_block_t&, bvh_query_thread_block_t&, bool&) { }
 
 #endif  // __CUDA_ARCH__
 

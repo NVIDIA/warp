@@ -391,6 +391,7 @@ struct bvh_query_t {
         , input_upper()
         , bounds_nr(0)
         , primitive_counter(-1)
+        , last_query_valid(true)
     {
     }
 
@@ -417,6 +418,10 @@ struct bvh_query_t {
 
     int bounds_nr;
     bool is_ray;
+    // Tracks whether the most recent bvh_query_next() / tile_bvh_query_next() call
+    // produced a valid index. Seeded to true on construction so an initial
+    // tile_query_valid() check (before any next() call) reports valid.
+    bool last_query_valid;
 };
 
 CUDA_CALLABLE inline bool

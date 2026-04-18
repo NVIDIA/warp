@@ -2535,6 +2535,7 @@ struct mesh_query_aabb_t {
         , input_upper()
         , face(0)
         , primitive_counter(-1)
+        , last_query_valid(true)
     {
     }
 
@@ -2561,6 +2562,11 @@ struct mesh_query_aabb_t {
 
     // Face
     int face;
+
+    // Tracks whether the most recent mesh_query_aabb_next() / tile_mesh_query_aabb_next()
+    // call produced a valid face index. Seeded to true so an initial tile_query_valid()
+    // check (before any next() call) reports valid.
+    bool last_query_valid;
 };
 
 

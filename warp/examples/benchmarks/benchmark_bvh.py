@@ -69,19 +69,14 @@ def tile_bvh_query_aabb_kernel(
     i, _j = wp.tid()
     query = wp.tile_bvh_query_aabb(bvh_id, query_lowers[i], query_uppers[i])
 
-    result_tile = wp.tile_bvh_query_next(query)
-
-    # Continue querying while we have results
     # Each iteration, each thread in the block gets one result (or -1)
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_bvh_query_next(query)
         result_idx = wp.untile(result_tile)
 
         # Atomically increment the count for each valid hit
         if result_idx >= 0:
             wp.atomic_add(hit_counts, i, 1)
-
-        result_tile = wp.tile_bvh_query_next(query)
 
 
 # Tiled ray query kernel
@@ -95,19 +90,14 @@ def tile_bvh_query_ray_kernel(
     i, _j = wp.tid()
     query = wp.tile_bvh_query_ray(bvh_id, query_starts[i], query_dirs[i])
 
-    result_tile = wp.tile_bvh_query_next(query)
-
-    # Continue querying while we have results
     # Each iteration, each thread in the block gets one result (or -1)
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_bvh_query_next(query)
         result_idx = wp.untile(result_tile)
 
         # Atomically increment the count for each valid hit
         if result_idx >= 0:
             wp.atomic_add(hit_counts, i, 1)
-
-        result_tile = wp.tile_bvh_query_next(query)
 
 
 def benchmark_bvh_aabb(bvh, query_lowers, query_uppers, hit_counts, warm_up, iterations):

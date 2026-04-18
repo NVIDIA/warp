@@ -424,6 +424,7 @@ Spatial Queries
 * :func:`tile_bvh_query_next <warp._src.lang.tile_bvh_query_next>`
 * :func:`tile_mesh_query_aabb <warp._src.lang.tile_mesh_query_aabb>`
 * :func:`tile_mesh_query_aabb_next <warp._src.lang.tile_mesh_query_aabb_next>`
+* :func:`tile_query_valid <warp._src.lang.tile_query_valid>`
 
 Tiles and SIMT Code
 -------------------
