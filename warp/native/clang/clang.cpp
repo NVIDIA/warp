@@ -880,6 +880,28 @@ WP_API const char* wp_llvm_version()
     return version;
 }
 
+WP_API const char* wp_get_host_cpu_name() { return get_host_cpu_info().name.c_str(); }
+
+WP_API const char* wp_get_host_cpu_features()
+{
+    // Build a comma-separated string of only the *enabled* features.
+    // cpu.feature_list includes both +enabled and -disabled flags;
+    // we filter to only the enabled ones and strip the leading '+'.
+    static std::string enabled_features = []() {
+        const auto& cpu = get_host_cpu_info();
+        std::string result;
+        for (const auto& flag : cpu.feature_list) {
+            if (!flag.empty() && flag[0] == '+') {
+                if (!result.empty())
+                    result += ",";
+                result += flag.substr(1);  // strip leading '+'
+            }
+        }
+        return result;
+    }();
+    return enabled_features.c_str();
+}
+
 }  // extern "C"
 
 }  // namespace wp

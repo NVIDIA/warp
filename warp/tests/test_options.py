@@ -6,12 +6,13 @@ import importlib
 import io
 import runpy
 import sys
+import tempfile
 import types
 import unittest
 from unittest.mock import patch
 
 import warp as wp
-from warp._src.context import _get_caller_module_name
+from warp._src.context import _get_caller_module_name, _get_cpu_isa_hash
 from warp.tests.unittest_utils import *
 
 
@@ -226,6 +227,54 @@ class TestOptions(unittest.TestCase):
 
         main_module = wp.get_module("__main__")
         self.assertFalse(main_module.options["enable_backward"])
+
+    def test_cpu_isa_output_name_differentiation(self):
+        """CPU output filename must include ISA hash when using -march=native."""
+        module = wp.get_module(__name__)
+        device = wp.get_device("cpu")
+
+        old_flags = module.options["cpu_compiler_flags"]
+        try:
+            module.options["cpu_compiler_flags"] = "-march=native"
+            name_native = module._get_compile_output_name(device)
+
+            module.options["cpu_compiler_flags"] = ""
+            name_generic = module._get_compile_output_name(device)
+
+            if _get_cpu_isa_hash():
+                # On platforms where features are detected, filenames must differ
+                self.assertNotEqual(name_native, name_generic)
+                self.assertIn(".cpu", name_native)
+            # Generic build never has the ISA suffix
+            self.assertNotIn(".cpu", name_generic)
+        finally:
+            module.options["cpu_compiler_flags"] = old_flags
+
+    def test_cpu_isa_aot_warning(self):
+        """compile_aot_module for CPU with -march=native must emit a portability warning."""
+        module = wp.get_module(__name__)
+        old_flags = wp.config.cpu_compiler_flags
+
+        # Clear once-per-session warning dedup so the warning fires in this test
+        saved_warnings = wp._src.utils.warnings_seen.copy()
+        wp._src.utils.warnings_seen.clear()
+
+        try:
+            wp.config.cpu_compiler_flags = None  # resolves to -march=native
+            module.hashers.clear()
+
+            stdout_capture = io.StringIO()
+            with contextlib.redirect_stdout(stdout_capture):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    wp.compile_aot_module(module, device="cpu", module_dir=tmpdir)
+
+            output = stdout_capture.getvalue()
+            self.assertIn("-march=native", output)
+            self.assertIn("cpu_compiler_flags=''", output)
+        finally:
+            wp.config.cpu_compiler_flags = old_flags
+            module.hashers.clear()
+            wp._src.utils.warnings_seen.update(saved_warnings)
 
     def test_get_caller_module_name_error_message(self):
         """_get_caller_module_name should raise RuntimeError with a helpful message when all fallbacks fail."""

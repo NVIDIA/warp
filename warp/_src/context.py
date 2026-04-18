@@ -1921,6 +1921,60 @@ def _resolve_cpu_compiler_flags(module_flags, config_flags):
     return flags if flags is not None else "-march=native"
 
 
+def _uses_march_native(flags: str) -> bool:
+    """Check whether ``-march=native`` appears as a distinct flag."""
+    return "-march=native" in flags.split()
+
+
+# Cached CPU feature set — computed once from LLVM after the native library is loaded.
+_cpu_feature_set_cache: frozenset[str] | None = None
+
+
+def _get_cpu_feature_set() -> frozenset[str]:
+    """Return the set of enabled ISA features on the host CPU.
+
+    The result is cached once the native library call completes (even if no
+    features are detected).  Returns an uncached empty frozenset when the
+    LLVM native library is unavailable, allowing a successful retry after
+    initialization.
+    """
+    global _cpu_feature_set_cache
+    if _cpu_feature_set_cache is not None:
+        return _cpu_feature_set_cache
+
+    if runtime is None or runtime.llvm is None:
+        return frozenset()
+
+    if not hasattr(runtime.llvm, "wp_get_host_cpu_features"):
+        return frozenset()
+
+    features_ptr = runtime.llvm.wp_get_host_cpu_features()
+    features_str = features_ptr.decode("utf-8") if features_ptr else ""
+    if features_str:
+        _cpu_feature_set_cache = frozenset(features_str.split(","))
+    else:
+        _cpu_feature_set_cache = frozenset()
+    return _cpu_feature_set_cache
+
+
+def _get_cpu_isa_hash() -> str:
+    """Return a short hash of the CPU ISA features, or empty string if none detected."""
+    features = ",".join(sorted(_get_cpu_feature_set()))
+    if not features:
+        return ""
+    return hashlib.sha256(features.encode()).hexdigest()[:8]
+
+
+def _get_host_cpu_name() -> str:
+    """Return the host CPU model name as detected by LLVM."""
+    if runtime is None or runtime.llvm is None:
+        return "unknown"
+    if not hasattr(runtime.llvm, "wp_get_host_cpu_name"):
+        return "unknown"
+    name_ptr = runtime.llvm.wp_get_host_cpu_name()
+    return name_ptr.decode("utf-8") if name_ptr else "unknown"
+
+
 # ModuleHasher computes the module hash based on all the kernels, module options,
 # and build configuration.  For each kernel, it computes a deep hash by recursively
 # hashing all referenced functions, structs, and constants, even those defined in
@@ -2732,17 +2786,34 @@ class Module:
         return device.get_cuda_compile_arch()
 
     def _get_compile_output_name(
-        self, device: Device | None, output_arch: int | None = None, arch_suffix: str = "", use_ptx: bool | None = None
+        self,
+        device: Device | None,
+        output_arch: int | None = None,
+        arch_suffix: str = "",
+        use_ptx: bool | None = None,
     ) -> str:
         """Get the filename to use for the compiled module binary.
 
         This is only the filename, e.g. ``wp___main___0340cd1.sm86.ptx`` or
         ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
+
+        For CPU targets compiled with ``-march=native``, a short hash of
+        the host CPU's ISA features is included in the filename (e.g.
+        ``wp___main___0340cd1.cpu1a2b3c4d.o``), ensuring different CPUs
+        produce distinct ``.o`` filenames without affecting the shared
+        module directory (and thus CUDA caches).
         """
         module_name_short = self.get_module_identifier()
 
         if device and device.is_cpu:
+            resolved_flags = _resolve_cpu_compiler_flags(
+                self.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags
+            )
+            if _uses_march_native(resolved_flags):
+                cpu_isa_hash = _get_cpu_isa_hash()
+                if cpu_isa_hash:
+                    return f"{module_name_short}.cpu{cpu_isa_hash}.o"
             return f"{module_name_short}.o"
 
         # For CUDA compilation, we must have an architecture.
@@ -4202,6 +4273,14 @@ class Runtime:
             if hasattr(self.llvm, "wp_llvm_version"):
                 self.llvm.wp_llvm_version.argtypes = []
                 self.llvm.wp_llvm_version.restype = ctypes.c_char_p
+
+            if hasattr(self.llvm, "wp_get_host_cpu_name"):
+                self.llvm.wp_get_host_cpu_name.argtypes = []
+                self.llvm.wp_get_host_cpu_name.restype = ctypes.c_char_p
+
+            if hasattr(self.llvm, "wp_get_host_cpu_features"):
+                self.llvm.wp_get_host_cpu_features.argtypes = []
+                self.llvm.wp_get_host_cpu_features.restype = ctypes.c_char_p
 
             # Verify warp-clang version (guard against missing symbol in older/mismatched DLL)
             if hasattr(self.llvm, "wp_warp_clang_version"):
@@ -8479,6 +8558,28 @@ def compile_aot_module(
             f"Kernels: {', '.join(multiple_overloads_with_strip_hash)}"
         )
 
+    # Warn when producing non-portable CPU AOT modules
+    resolved_cpu_flags = _resolve_cpu_compiler_flags(
+        module_object.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags
+    )
+    aot_targets_cpu = False
+    if device is None and not arch:
+        # Default device — check if it's CPU
+        aot_targets_cpu = get_device().is_cpu
+    elif isinstance(device, list):
+        aot_targets_cpu = any(get_device(d).is_cpu for d in device)
+    elif device is not None:
+        aot_targets_cpu = get_device(device).is_cpu
+
+    if aot_targets_cpu and _uses_march_native(resolved_cpu_flags):
+        warp._src.utils.warn(
+            "compile_aot_module: CPU module is being compiled with -march=native. "
+            "The result requires this CPU's instruction set extensions "
+            "and may not run on CPUs with fewer features. "
+            "Set cpu_compiler_flags='' for a portable build.",
+            once=True,
+        )
+
     if device is None and arch:
         # User provided no device, but an arch, so we will not compile for the default device
         devices = []
@@ -10587,6 +10688,9 @@ def print_diagnostics() -> dict:
     info["nanovdb"] = runtime.get_nanovdb_version()
     info["host_compiler"] = runtime.get_host_compiler_version()
 
+    info["cpu_name"] = _get_host_cpu_name()
+    info["cpu_features"] = sorted(_get_cpu_feature_set())
+
     # Build flags
     info["debug"] = _build_flag("debug")
     info["verify_fp"] = _build_flag("verify_fp")
@@ -10659,6 +10763,16 @@ def print_diagnostics() -> dict:
     _field("Debug:", info["debug"])
     _field("Verify FP:", info["verify_fp"])
     _field("Fast math:", info["fast_math"])
+
+    _section("CPU")
+    _field("Model:", info["cpu_name"])
+    _field("ISA features:", len(info["cpu_features"]))
+    if info["cpu_features"]:
+        # Show first few features for quick reference
+        preview = ", ".join(info["cpu_features"][:8])
+        if len(info["cpu_features"]) > 8:
+            preview += ", ..."
+        _field("", preview, indent=4)
 
     _section("Devices")
     for dev in devices:
