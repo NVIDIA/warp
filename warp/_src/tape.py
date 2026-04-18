@@ -128,6 +128,7 @@ class Tape:
                 outputs = launch[4]
                 device = launch[5]
                 block_dim = launch[6]
+                tiled = launch[8]
 
                 adj_inputs = []
                 adj_outputs = []
@@ -152,13 +153,14 @@ class Tape:
                         adjoint=True,
                         max_blocks=max_blocks,
                         block_dim=block_dim,
+                        tiled=tiled,
                     )
 
     # record a kernel launch on the tape
-    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, block_dim=0, metadata=None):
+    def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, block_dim=0, metadata=None, tiled=False):
         if metadata is None:
             metadata = {}
-        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata])
+        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata, tiled])
 
     def record_func(self, backward, arrays):
         """

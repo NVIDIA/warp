@@ -103,7 +103,7 @@ Examples use Warp's AOT (Ahead-Of-Time) header (`warp/native/aot.h`) which provi
 - Automatic CUDA detection and configuration
 - Error checking macros (`CHECK_CU`, `CHECK_CUDA`)
 - Common Warp type definitions via `builtin.h`:
-  - `wp::launch_bounds_t` - Thread count and grid dimensions
+  - `wp::launch_bounds_t<N>` - Thread count and grid dimensions (templated on dimensionality)
   - `wp::array_t<T>` - Array descriptor with pointer, shape, strides
   - `wp::vec_t<N, T>`, `wp::mat_t<N, M, T>` - Vector and matrix types
 

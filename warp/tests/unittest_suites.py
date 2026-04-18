@@ -95,6 +95,14 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
     from warp.tests.cuda.test_texture import TestTexture
+    from warp.tests.fem.test_fem_examples import TestFemDiffusionExamples, TestFemExamples
+    from warp.tests.fem.test_fem_field import TestFemField
+    from warp.tests.fem.test_fem_fp64 import TestFemFp64
+    from warp.tests.fem.test_fem_geometry import TestFemGeometry
+    from warp.tests.fem.test_fem_integrate import TestFemIntegrate
+    from warp.tests.fem.test_fem_linalg import TestFemLinalg
+    from warp.tests.fem.test_fem_quadrature import TestFemQuadrature
+    from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
@@ -115,6 +123,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.matrix.test_mat_linalg import TestMatLinalg
     from warp.tests.matrix.test_mat_lite import TestMatLite
     from warp.tests.test_adam import TestAdam
+    from warp.tests.test_allocation_tracker import TestAllocTracker
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
@@ -127,6 +136,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
     from warp.tests.test_codegen import TestCodeGen
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
+    from warp.tests.test_compilation import TestCompilation
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
@@ -137,13 +147,14 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_dense import TestDense
     from warp.tests.test_devices import TestDevices
     from warp.tests.test_diagnostics import TestDiagnostics
+    from warp.tests.test_enum import TestEnum
     from warp.tests.test_examples import (
         TestCoreExamples,
         TestOptimExamples,
     )
     from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_fast_math import TestFastMath
-    from warp.tests.test_fem import TestFem, TestFemShapeFunctions, TestFemUtilities
+    from warp.tests.test_fastcall import TestFastcall, TestFastcallAvailable
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
     from warp.tests.test_future_annotations import TestFutureAnnotations
@@ -187,6 +198,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_struct import TestStruct
     from warp.tests.test_subscript_types import TestSubscriptTypes
     from warp.tests.test_tape import TestTape
+    from warp.tests.test_template_launch_bounds import TestTemplateLaunchBounds
     from warp.tests.test_transient_module import TestTransientModule
     from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
     from warp.tests.test_types import TestTypes
@@ -214,6 +226,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
 
     test_classes = [
         TestAdam,
+        TestAllocTracker,
         TestArithmetic,
         TestArray,
         TestArrayReduce,
@@ -229,8 +242,9 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestClosestPointEdgeEdgeMethods,
         TestCodeGen,
         TestCodeGenInstancing,
-        TestConditional,
+        TestCompilation,
         TestConstants,
+        TestConditional,
         TestConstantPrecision,
         TestContext,
         TestCopy,
@@ -241,13 +255,22 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestDevices,
         TestDiagnostics,
         TestDLPack,
+        TestEnum,
         TestCoreExamples,
         TestOptimExamples,
         TestFabricArray,
         TestFastMath,
-        TestFem,
-        TestFemShapeFunctions,
-        TestFemUtilities,
+        TestFastcall,
+        TestFastcallAvailable,
+        TestFemDiffusionExamples,
+        TestFemExamples,
+        TestFemField,
+        TestFemFp64,
+        TestFemGeometry,
+        TestFemIntegrate,
+        TestFemLinalg,
+        TestFemQuadrature,
+        TestFemShape,
         TestFp16,
         TestFunc,
         TestFutureAnnotations,
@@ -311,6 +334,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStruct,
         TestSubscriptTypes,
         TestTape,
+        TestTemplateLaunchBounds,
         TestTexture,
         TestTile,
         TestTileAtomicBitwise,
@@ -379,6 +403,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
+    from warp.tests.test_enum import TestEnum
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
@@ -413,6 +438,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestConditional,
         TestConstants,
         TestConstantPrecision,
+        TestEnum,
         TestFastMath,
         TestFunc,
         TestGenerics,

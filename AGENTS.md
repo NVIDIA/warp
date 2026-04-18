@@ -9,6 +9,7 @@
 - Create a feature branch before committing—never commit directly to `main`. Use `username/short-description`.
 - Always use imperative mood in commit messages ("Fix X", not "Fixed X"), ~50 char subject, reference issues as `(GH-XXX)`. Body explains *why*, not what.
 - Always use `git commit --signoff` (or `-s`) to add a `Signed-off-by` line (DCO).
+- After rebasing, diff `CHANGELOG.md` against the target branch to catch duplicate entries or other issues from clean but incorrect merges.
 - CI lives in both GitLab (`.gitlab-ci.yml`) and GitHub (`.github/workflows/`). Lightweight jobs (linting, docs, packaging) may exist in both—keep them in sync. GPU-dependent jobs differ by platform.
 - Pin GitHub Actions to commit hashes, not tags. Good: `uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86`. Bad: `uses: astral-sh/setup-uv@v4`.
 - Let uv infer Python version from `.python-version`. Use `uv python install` without arguments.

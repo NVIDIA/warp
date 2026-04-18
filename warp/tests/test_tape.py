@@ -76,11 +76,8 @@ def test_tape_mul_variable(test, device):
 
         wp.launch(kernel=mul_variable, dim=dim, inputs=[multiplicands], outputs=[z], device=device)
 
-    # loss = wp.sum(x)
-    z.grad = wp.array(np.ones(dim), device=device, dtype=wp.float32)
-
-    # run backward
-    tape.backward()
+    # run backward with loss = wp.sum(z)
+    tape.backward(grads={z: wp.ones_like(z)})
 
     # grad_x=y, grad_y=x
     assert_np_equal(tape.gradients[multiplicands].x.numpy(), multiplicands.y.numpy())
@@ -89,7 +86,7 @@ def test_tape_mul_variable(test, device):
     # run backward again with different incoming gradient
     # should accumulate the same gradients again onto output
     # so gradients = 2.0*prev
-    tape.backward()
+    tape.backward(grads={z: wp.ones_like(z)})
 
     assert_np_equal(tape.gradients[multiplicands].x.numpy(), multiplicands.y.numpy() * 2.0)
     assert_np_equal(tape.gradients[multiplicands].y.numpy(), multiplicands.x.numpy() * 2.0)

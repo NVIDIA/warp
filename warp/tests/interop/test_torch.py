@@ -664,6 +664,21 @@ def test_torch_mgpu_interop(test, device):
     assert_np_equal(t1.cpu().numpy(), expected)
 
 
+def test_torch_retain_grad_from_torch(test, device):
+    """Test that retain_grad can be set when converting from PyTorch via from_torch"""
+    import torch
+
+    torch_device = wp.device_to_torch(device)
+
+    t = torch.zeros(10, dtype=torch.float32, device=torch_device, requires_grad=True)
+    a = wp.from_torch(t, requires_grad=True, retain_grad=True)
+    test.assertTrue(a.retain_grad)
+
+    # Default should be False
+    a2 = wp.from_torch(t, requires_grad=True)
+    test.assertFalse(a2.retain_grad)
+
+
 def test_torch_autograd(test, device):
     """Test torch autograd with a custom Warp op"""
 
@@ -977,6 +992,12 @@ try:
         add_function_test(TestTorch, "test_to_torch", test_to_torch, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=torch_compatible_devices)
         add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=torch_compatible_devices)
+        add_function_test(
+            TestTorch,
+            "test_torch_retain_grad_from_torch",
+            test_torch_retain_grad_from_torch,
+            devices=torch_compatible_devices,
+        )
         add_function_test(TestTorch, "test_direct", test_direct, devices=torch_compatible_devices)
         add_function_test(
             TestTorch, "test_tensor_in_warp_kernel", test_tensor_in_warp_kernel, devices=torch_compatible_devices

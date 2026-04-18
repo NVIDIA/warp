@@ -123,6 +123,8 @@ const int ARRAY_TYPE_INDEXED = 1;
 const int ARRAY_TYPE_FABRIC = 2;
 const int ARRAY_TYPE_FABRIC_INDEXED = 3;
 
+constexpr uint16_t ARRAY_FLAG_RETAIN_GRAD = 1 << 0;
+
 struct shape_t {
     int dims[ARRAY_MAX_DIMS];
 
@@ -165,6 +167,7 @@ template <typename T> struct array_t {
         , shape()
         , strides()
         , ndim(0)
+        , flags(0)
     {
     }
 
@@ -178,6 +181,7 @@ template <typename T> struct array_t {
         shape.dims[2] = 0;
         shape.dims[3] = 0;
         ndim = 1;
+        flags = 0;
         strides[0] = sizeof(T);
         strides[1] = 0;
         strides[2] = 0;
@@ -193,6 +197,7 @@ template <typename T> struct array_t {
         shape.dims[2] = 0;
         shape.dims[3] = 0;
         ndim = 2;
+        flags = 0;
         strides[0] = dim1 * sizeof(T);
         strides[1] = sizeof(T);
         strides[2] = 0;
@@ -208,6 +213,7 @@ template <typename T> struct array_t {
         shape.dims[2] = dim2;
         shape.dims[3] = 0;
         ndim = 3;
+        flags = 0;
         strides[0] = dim1 * dim2 * sizeof(T);
         strides[1] = dim2 * sizeof(T);
         strides[2] = sizeof(T);
@@ -223,6 +229,7 @@ template <typename T> struct array_t {
         shape.dims[2] = dim2;
         shape.dims[3] = dim3;
         ndim = 4;
+        flags = 0;
         strides[0] = dim1 * dim2 * dim3 * sizeof(T);
         strides[1] = dim2 * dim3 * sizeof(T);
         strides[2] = dim3 * sizeof(T);
@@ -255,7 +262,8 @@ template <typename T> struct array_t {
     T* grad;
     shape_t shape;
     int strides[ARRAY_MAX_DIMS];
-    int ndim;
+    uint16_t ndim;
+    uint16_t flags;
 
     CUDA_CALLABLE inline operator T*() const { return data; }
 };
@@ -325,6 +333,7 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
         }
 
         this->ndim = other.ndim;
+        this->flags = other.flags;
 
         return *this;
     }
@@ -1275,6 +1284,10 @@ CUDA_CALLABLE inline void adj_where(
 // atomic add the whole struct onto an array (e.g.: during backwards pass)
 template <typename T> CUDA_CALLABLE inline void atomic_add(array_t<T>*, array_t<T>) { }
 
+// stub for the case where we have an indexed array inside a struct and
+// atomic add the whole struct onto an array (e.g.: during backwards pass)
+template <typename T> CUDA_CALLABLE inline void atomic_add(indexedarray_t<T>*, indexedarray_t<T>) { }
+
 // for float and vector types this is just an alias for an atomic add
 template <typename T> CUDA_CALLABLE inline void adj_atomic_add(T* buf, T value) { atomic_add(buf, value); }
 
@@ -1353,10 +1366,23 @@ template <typename T>
 inline CUDA_CALLABLE void
 adj_array_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf, int adj_i, T& adj_value)
 {
-    if (adj_buf.data)
-        adj_value += index(adj_buf, i);
-    else if (buf.grad)
-        adj_value += index_grad(buf, i);
+    if (adj_buf.data) {
+        T& g = index(adj_buf, i);
+        adj_value += g;
+
+        // Only zero if adj_buf aliases buf.grad (standard Warp Tape case)
+        // and retain_grad is not set on the forward array.
+        // Skip zeroing for external gradient buffers passed via adj_inputs,
+        // since the caller owns them and may need to preserve accumulated gradients.
+        if (buf.grad && adj_buf.data == buf.grad && !(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    } else if (buf.grad) {
+        // No explicit adjoint passed (adj_buf is null), fall back to buf.grad.
+        T& g = index_grad(buf, i);
+        adj_value += g;
+        if (!(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    }
 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
@@ -1365,10 +1391,17 @@ inline CUDA_CALLABLE void adj_array_store(
     const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, T& adj_value
 )
 {
-    if (adj_buf.data)
-        adj_value += index(adj_buf, i, j);
-    else if (buf.grad)
-        adj_value += index_grad(buf, i, j);
+    if (adj_buf.data) {
+        T& g = index(adj_buf, i, j);
+        adj_value += g;
+        if (buf.grad && adj_buf.data == buf.grad && !(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    } else if (buf.grad) {
+        T& g = index_grad(buf, i, j);
+        adj_value += g;
+        if (!(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    }
 
     FP_VERIFY_ADJ_2(value, adj_value)
 }
@@ -1386,10 +1419,17 @@ inline CUDA_CALLABLE void adj_array_store(
     T& adj_value
 )
 {
-    if (adj_buf.data)
-        adj_value += index(adj_buf, i, j, k);
-    else if (buf.grad)
-        adj_value += index_grad(buf, i, j, k);
+    if (adj_buf.data) {
+        T& g = index(adj_buf, i, j, k);
+        adj_value += g;
+        if (buf.grad && adj_buf.data == buf.grad && !(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    } else if (buf.grad) {
+        T& g = index_grad(buf, i, j, k);
+        adj_value += g;
+        if (!(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    }
 
     FP_VERIFY_ADJ_3(value, adj_value)
 }
@@ -1409,10 +1449,17 @@ inline CUDA_CALLABLE void adj_array_store(
     T& adj_value
 )
 {
-    if (adj_buf.data)
-        adj_value += index(adj_buf, i, j, k, l);
-    else if (buf.grad)
-        adj_value += index_grad(buf, i, j, k, l);
+    if (adj_buf.data) {
+        T& g = index(adj_buf, i, j, k, l);
+        adj_value += g;
+        if (buf.grad && adj_buf.data == buf.grad && !(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    } else if (buf.grad) {
+        T& g = index_grad(buf, i, j, k, l);
+        adj_value += g;
+        if (!(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            g = T {};
+    }
 
     FP_VERIFY_ADJ_4(value, adj_value)
 }

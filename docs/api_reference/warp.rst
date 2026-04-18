@@ -433,8 +433,10 @@ Profiling
    :nosignatures:
    :toctree: _generated
 
+   ScopedMemoryTracker
    ScopedTimer
    TimingResult
+   print_memory_report
    timing_begin
    timing_end
    timing_print

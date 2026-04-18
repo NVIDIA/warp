@@ -13,7 +13,7 @@ template <typename T> void scan_host(const T* values_in, T* values_out, int n, b
     // compute temporary memory required
     if (!inclusive && n > scan_temp_max_size) {
         wp_free_host(scan_temp_memory);
-        scan_temp_memory = wp_alloc_host(sizeof(T) * n);
+        scan_temp_memory = wp_alloc_host(sizeof(T) * n, "(native:scan)");
         scan_temp_max_size = n;
     }
 

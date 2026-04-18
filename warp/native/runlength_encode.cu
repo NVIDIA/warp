@@ -19,7 +19,7 @@ void runlength_encode_device(int n, const T* values, T* run_values, int* run_len
         cub::DeviceRunLengthEncode::Encode(nullptr, buff_size, values, run_values, run_lengths, run_count, n, stream)
     );
 
-    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size, "(native:runlength_encode)");
 
     check_cuda(
         cub::DeviceRunLengthEncode::Encode(

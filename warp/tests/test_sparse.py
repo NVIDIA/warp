@@ -43,7 +43,7 @@ def _triplets_to_dense(shape, rows, cols, values):
 
     block_shape = values.shape[1:] if values.ndim == 3 else (1, 1)
 
-    for row, col, val in zip(rows, cols, values, strict=False):
+    for row, col, val in zip(rows, cols, values, strict=True):
         mat_block = _get_block(mat, row, col, block_shape)
         mat_block += val
 
@@ -426,7 +426,7 @@ def make_test_bsr_axpy(block_shape, scalar_type):
         bsr_set_from_triplets(y, y_rows, y_cols, y_vals)
 
         work_arrays = bsr_axpy_work_arrays()
-        for alpha, beta in zip(alphas, betas, strict=False):
+        for alpha, beta in zip(alphas, betas, strict=True):
             ref = alpha * _bsr_to_dense(x) + beta * _bsr_to_dense(y)
             bsr_axpy(x, y, alpha, beta, work_arrays=work_arrays)
 
@@ -499,7 +499,7 @@ def make_test_bsr_mm(block_shape, scalar_type):
         bsr_set_from_triplets(z, z_rows, z_cols, z_vals)
 
         work_arrays = bsr_mm_work_arrays()
-        for alpha, beta in zip(alphas, betas, strict=False):
+        for alpha, beta in zip(alphas, betas, strict=True):
             ref = alpha * (_bsr_to_dense(x) @ _bsr_to_dense(y)) + beta * _bsr_to_dense(z)
 
             bsr_mm(x, y, z, alpha, beta, work_arrays=work_arrays)
@@ -588,7 +588,7 @@ def make_test_bsr_mv(block_shape, scalar_type):
             )
 
         work_buffer = wp.empty_like(y)
-        for alpha, beta in zip(alphas, betas, strict=False):
+        for alpha, beta in zip(alphas, betas, strict=True):
             ref = alpha * _bsr_to_dense(A) @ x.numpy().flatten() + beta * y.numpy().flatten()
 
             if beta == 0.0:

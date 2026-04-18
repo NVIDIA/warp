@@ -257,16 +257,17 @@ uint64_t wp_mesh_create_device(
     mesh.context = context ? context : wp_cuda_context_get_current();
 
     // create lower upper arrays expected by GPU BVH builder
-    mesh.lowers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris);
-    mesh.uppers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris);
+    mesh.lowers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
+    mesh.uppers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
 
     if (support_winding_number && !use_cubql) {
         int num_bvh_nodes = 2 * num_tris;
-        mesh.solid_angle_props
-            = (wp::SolidAngleProps*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes);
+        mesh.solid_angle_props = (wp::SolidAngleProps*)wp_alloc_device(
+            WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes, "(native:mesh)"
+        );
     }
 
-    wp::Mesh* mesh_device = (wp::Mesh*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::Mesh));
+    wp::Mesh* mesh_device = (wp::Mesh*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::Mesh), "(native:mesh)");
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &mesh, sizeof(wp::Mesh));
 
     // save descriptor

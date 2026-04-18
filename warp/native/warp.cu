@@ -3,6 +3,7 @@
 
 #include "warp.h"
 
+#include "alloc_tracker.h"
 #include "cuda_util.h"
 #include "error.h"
 #include "scan.h"
@@ -685,24 +686,30 @@ static inline const char* get_cuda_kernel_name(void* kernel)
 }
 
 
-void* wp_alloc_pinned(size_t s)
+void* wp_alloc_pinned(size_t s, const char* tag)
 {
     void* ptr = NULL;
     check_cuda(cudaMallocHost(&ptr, s));
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_PINNED, -1, tag);
     return ptr;
 }
 
-void wp_free_pinned(void* ptr) { cudaFreeHost(ptr); }
+void wp_free_pinned(void* ptr)
+{
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
+    cudaFreeHost(ptr);
+}
 
-void* wp_alloc_device(void* context, size_t s)
+void* wp_alloc_device(void* context, size_t s, const char* tag)
 {
     int ordinal = wp_cuda_context_get_device_ordinal(context);
 
-    // use stream-ordered allocator if available
     if (wp_cuda_device_is_mempool_supported(ordinal))
-        return wp_alloc_device_async(context, s);
+        return wp_alloc_device_async(context, s, tag);
     else
-        return wp_alloc_device_default(context, s);
+        return wp_alloc_device_default(context, s, tag);
 }
 
 void wp_free_device(void* context, void* ptr)
@@ -716,18 +723,23 @@ void wp_free_device(void* context, void* ptr)
         wp_free_device_default(context, ptr);
 }
 
-void* wp_alloc_device_default(void* context, size_t s)
+void* wp_alloc_device_default(void* context, size_t s, const char* tag)
 {
     ContextGuard guard(context);
 
     void* ptr = NULL;
     check_cuda(cudaMalloc(&ptr, s));
 
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
     return ptr;
 }
 
 void wp_free_device_default(void* context, void* ptr)
 {
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
+
     ContextGuard guard(context);
 
     // check if a capture is in progress
@@ -739,7 +751,7 @@ void wp_free_device_default(void* context, void* ptr)
     }
 }
 
-void* wp_alloc_device_async(void* context, size_t s)
+void* wp_alloc_device_async(void* context, size_t s, const char* tag)
 {
     // stream-ordered allocations don't rely on the current context,
     // but we set the context here for consistent behaviour
@@ -772,11 +784,16 @@ void* wp_alloc_device_async(void* context, size_t s)
         }
     }
 
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
     return ptr;
 }
 
 void wp_free_device_async(void* context, void* ptr)
 {
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
+
     // stream-ordered allocators generally don't rely on the current context,
     // but we set the context here for consistent behaviour
     ContextGuard guard(context);

@@ -26,7 +26,7 @@ def seq_check_equal(seq_1, seq_2):
     if len(seq_1) != len(seq_2):
         return False
 
-    return all(x == y for x, y in zip(seq_1, seq_2, strict=False))
+    return all(x == y for x, y in zip(seq_1, seq_2, strict=True))
 
 
 def sametypes(arg_types: Mapping[str, Any]):
@@ -529,7 +529,7 @@ def _check_vars_match_dtype(arg_values, arg_types, dtype, msg):
     else:
         values = tuple(v for k, v in arg_values.items() if k not in skip_keys)
 
-    for t, v in zip(arg_types, values, strict=False):
+    for t, v in zip(arg_types, values, strict=True):
         if not isinstance(v, Var):
             continue  # compile-time constant — will be cast in dispatch
         # Extract the scalar type from compound types (vec, mat, quat).
@@ -4620,6 +4620,262 @@ add_builtin(
 )
 
 
+def tile_scatter_add_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    t = arg_types["a"]
+    if not is_tile(t):
+        raise TypeError(f"tile_scatter_add() 'a' argument must be a tile, got {t!r}")
+
+    t.storage = "shared"
+
+    num_indices = sum(1 for k in arg_types if k in {"i", "j", "k", "l"})
+    if num_indices != len(t.shape):
+        raise IndexError(
+            f"tile_scatter_add: incorrect number of indices ({num_indices}) for tile shape {tuple(t.shape)}"
+        )
+
+    value_type = arg_types["value"]
+    if not types_equal(t.dtype, value_type):
+        raise TypeError(
+            f"tile_scatter_add() 'value' type must match tile dtype, got {value_type} and tile dtype {t.dtype}"
+        )
+
+    return None
+
+
+def tile_scatter_add_dispatch_func(input_types, return_type, args):
+    atomic = args["atomic"]
+    if atomic.constant is None:
+        raise ValueError(
+            "tile_scatter_add() 'atomic' must be a compile-time constant (True or False), not a runtime variable"
+        )
+    idx_names = [x for x in "ijkl" if args.get(x) is not None]
+    func_args = (args["a"], *(args[x] for x in idx_names), args["value"], args["has_value"])
+    if atomic.constant is False:
+        template_args = (False,)
+    else:
+        template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    doc="""Scatter-add a per-thread value into a shared-memory tile.
+
+    Cooperative operation -- all threads in the block must call this function.
+    Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+
+    A synchronization barrier is included so the updated values are visible to
+    all threads after the call returns.
+
+    Args:
+        a: A shared-memory tile to scatter-add into.
+        i: Index of the element to add to.
+        value: The value to add (must match the tile's dtype).
+        has_value: Whether this thread should perform the add.
+        atomic: If True (default), use atomic add for safe concurrent writes.
+            Set to False when indices are guaranteed unique across threads
+            (e.g., lane-parallel writes) for better performance.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def histogram(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+
+                bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
+                i = wp.tid()
+                # Bin values in [0, 8) into 4 bins of width 2
+                b = int(data[i] / 2.0)
+                wp.tile_scatter_add(bins, b, 1.0, True)
+                wp.tile_store(out, bins, offset=0)
+
+            data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
+            output = wp.zeros(4, dtype=float)
+            wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+
+            print(output.numpy())
+
+        .. code-block:: text
+
+            [2. 2. 2. 2.]""",
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_scatter_masked_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    t = arg_types["a"]
+    if not is_tile(t):
+        raise TypeError(f"tile_scatter_masked() 'a' argument must be a tile, got {t!r}")
+
+    t.storage = "shared"
+
+    num_indices = len(arg_types) - 3  # subtract 'a', 'value', 'has_value'
+    if num_indices != len(t.shape):
+        raise IndexError(
+            f"tile_scatter_masked() incorrect number of indices ({num_indices}) for tile shape {tuple(t.shape)}"
+        )
+
+    value_type = arg_types["value"]
+    if not types_equal(t.dtype, value_type):
+        raise TypeError(
+            f"tile_scatter_masked() 'value' type must match tile dtype, got {value_type} and tile dtype {t.dtype}"
+        )
+
+    return None
+
+
+add_builtin(
+    "tile_scatter_masked",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any, "has_value": builtins.bool},
+    value_func=tile_scatter_masked_value_func,
+    doc="""Write a value into a shared-memory tile from the calling thread.
+
+    All threads in the block must call this function cooperatively.
+    Each thread whose ``has_value`` is ``True`` writes ``value`` at the
+    specified index.  A synchronization barrier is included so the written
+    values are visible to all threads after the call returns.
+
+    Each index should be written by at most one thread per call.  If multiple
+    threads write to the same index, the result is undefined (data race in the
+    forward pass, incorrect gradients in the backward pass).
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def write_kernel(out: wp.array[int]):
+                tile_idx, thread_idx = wp.tid()
+
+                # Allocate a shared-memory tile
+                t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+
+                # Each thread writes its own slot
+                wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+
+                wp.tile_store(out, t)
+
+    Args:
+        a: The tile to write into (will use shared memory).
+        i: Index of the element to write.
+        value: The value to write (must match the tile's dtype).
+        has_value: Whether this thread should perform the write.""",
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_inplace_value_func(arg_types, arg_values):
     if not types_equal(arg_types["a"].dtype, arg_types["value"]):
         raise TypeError(
@@ -6044,10 +6300,10 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    arg_type_map = dict(zip(overload.input_types, dtypes, strict=False))
-    assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
+    assert len(dtypes) == len(overload.input_types), (
         f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
     )
+    arg_type_map = dict(zip(overload.input_types, dtypes, strict=True))
     value_type = overload.value_func(arg_type_map, None)
 
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
@@ -9036,7 +9292,7 @@ def create_atomic_op_value_func(op: str):
 
 def atomic_op_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # as this is a codegen callback, we can mark the fact that this func writes to an array here
-    if warp.config.verify_autograd_array_access:
+    if warp._src.codegen.options.get("verify_autograd_array_access", False):
         arr = args["arr"]
         arr.mark_write()
 
@@ -12020,11 +12276,7 @@ def tile_matmul_lto_dispatch_func(
     if (
         arch is None
         or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
-        or not (
-            options.get("enable_mathdx_gemm")
-            if options.get("enable_mathdx_gemm") is not None
-            else warp.config.enable_mathdx_gemm
-        )
+        or not options.get("enable_mathdx_gemm", True)
     ):
         # CPU/no-MathDx dispatch (or mathdx GEMM disabled via module option)
         return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
@@ -12035,6 +12287,8 @@ def tile_matmul_lto_dispatch_func(
                 return "colmajor"
             elif layout == "colmajor":
                 return "rowmajor"
+            else:
+                raise ValueError(f"unexpected layout {layout!r}")
 
         # generate the LTOs
         #    C += A * B
@@ -12441,7 +12695,9 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, a) if inplace else (0, a, out), [upper], [], 0)
+        if inplace:
+            return ((0, a), [upper], [], 0)
+        return ((0, 0, 0, a, out), [upper], [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
@@ -12454,8 +12710,10 @@ def _tile_cholesky_generic_lto_dispatch_func(
         req_smem_bytes = a.type.size * type_size_in_bytes(a.type.dtype)
         if not inplace:
             req_smem_bytes *= 2
+            if options["enable_backward"]:
+                req_smem_bytes += 2 * M * M * type_size_in_bytes(a.type.dtype)
 
-        # generate the LTO
+        # generate the forward LTO
         assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
@@ -12476,8 +12734,74 @@ def _tile_cholesky_generic_lto_dispatch_func(
             smem_estimate_bytes=req_smem_bytes,
         )
 
-        var = Var(lto_symbol, str, False, True, False)
-        return ((var, a) if inplace else (var, a, out), [upper], [lto_code_data], 0)
+        if inplace:
+            var = Var(lto_symbol, str, False, True, False)
+            return ((var, a), [upper], [lto_code_data], 0)
+
+        # for out-of-place Cholesky, build backward LTOs for adjoint
+        # we need a GEMM and two trsm solves for the adjoint
+        lto_list = [lto_code_data]
+        if options["enable_backward"]:
+
+            def tile_flip_layout(layout):
+                if layout == "rowmajor":
+                    return "colmajor"
+                elif layout == "colmajor":
+                    return "rowmajor"
+                else:
+                    raise ValueError(f"unexpected layout {layout!r}")
+
+            # LTO to calculate transpose(L).adj_L or adj_U.transpose(U)
+            # Lower: first operand (L) flipped -> L^T; Upper: second operand (U) flipped -> U^T
+            gemm_layout_a = out.type.layout if upper else tile_flip_layout(out.type.layout)
+            gemm_layout_b = tile_flip_layout(out.type.layout) if upper else out.type.layout
+            fun_bkwd_gemm, lto_bkwd_gemm = warp._src.build.build_lto_dot(
+                M,
+                M,
+                M,
+                a.type.dtype,
+                a.type.dtype,
+                a.type.dtype,
+                gemm_layout_a,
+                gemm_layout_b,
+                out.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+            # LTO to solve L^T @ X = Y (lower) or U @ X = Y (upper)
+            fun_bkwd_trsm, lto_bkwd_trsm = warp._src.build.build_lto_solver(
+                M,
+                M,
+                1,
+                "trsm",
+                cusolver_function_map["trsm"],
+                cusolver_side_map["left"],
+                cusolver_diag_map["nounit"],
+                tile_flip_layout(out.type.layout) if not upper else out.type.layout,
+                out.type.layout,
+                cusolver_fill_mode_map["upper"],
+                arch,
+                precision_enum,
+                num_threads,
+                f"({dtype}*, {dtype}*)",
+                builder,
+                smem_estimate_bytes=req_smem_bytes,
+            )
+            lto_list.extend([lto_bkwd_gemm, lto_bkwd_trsm])
+        else:
+            fun_bkwd_gemm = 0
+            fun_bkwd_trsm = 0
+
+        var_fwd = Var(lto_symbol, str, False, True, False)
+        if options["enable_backward"]:
+            var_gemm = Var(fun_bkwd_gemm, str, False, True, False)
+            var_trsm = Var(fun_bkwd_trsm, str, False, True, False)
+        else:
+            var_gemm = 0
+            var_trsm = 0
+        result = ((var_fwd, var_gemm, var_trsm, a, out), [upper], lto_list, 0)
+        return result
 
 
 def tile_cholesky_generic_lto_dispatch_func(*args, **kwargs):
@@ -12502,7 +12826,9 @@ add_builtin(
 
     The ``fill_mode`` parameter must be a compile-time constant.
 
-    Note that computing the adjoint is not yet supported.
+    Backward propagation computes gradients with respect to the corresponding
+    triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
+    upper triangle when ``fill_mode="upper"``).
 
     Supported datatypes are:
         * float32
@@ -12516,7 +12842,7 @@ add_builtin(
         A triangular matrix ``L`` or ``U``.""",
     group="Tile Primitives",
     export=False,
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 

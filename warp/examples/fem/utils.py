@@ -738,7 +738,7 @@ class Plot:
                 offsets = np.cumsum(counts)
                 ranges = np.array([offsets - counts, offsets]).T
                 faces = np.concatenate(
-                    [[count, *list(indices[beg:end])] for (count, (beg, end)) in zip(counts, ranges, strict=False)]
+                    [[count, *list(indices[beg:end])] for (count, (beg, end)) in zip(counts, ranges, strict=True)]
                 )
                 ref_geom = pyvista.PolyData(vertices, faces)
             else:

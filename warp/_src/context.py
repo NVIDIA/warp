@@ -10,7 +10,9 @@ import enum
 import functools
 import hashlib
 import importlib
+import importlib.machinery
 import importlib.metadata
+import importlib.util
 import inspect
 import io
 import itertools
@@ -61,7 +63,7 @@ import warp._src.codegen
 import warp.config
 from warp._src.codegen import WarpCodegenTypeError, synchronized
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
-from warp._src.types import Array, launch_bounds_t, type_repr
+from warp._src.types import Array, LaunchBounds, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
 
@@ -587,10 +589,9 @@ class BuiltinParamKind(enum.Enum):
     This decides how it's being packed into its corresponding C type.
     """
 
-    BUILTIN_GENERIC = 1  # Type created with `wp.types.vector()`, `wp.types.matrix()`, ...
-    BUILTIN_PREDEFINED = 2  # Predefined type like `vec3`, `mat22`, ...
-    SCALAR = 3  # Float or integer value.
-    SCALAR_FLOAT_16 = 4  # 16-bit float value.
+    BUILTIN = 1  # Any built-in Warp type (predefined like `vec3` or created via `vector()`, etc.)
+    SCALAR = 2  # Float or integer value.
+    SCALAR_FLOAT_16 = 3  # 16-bit float value.
 
 
 class BuiltinCallDesc(NamedTuple):
@@ -642,10 +643,7 @@ def get_builtin_call_desc(
             if not warp._src.types.types_equal(param_type, arg_type):
                 return None
 
-            if issubclass(param_type, arg_type):
-                param_kind = BuiltinParamKind.BUILTIN_PREDEFINED
-            else:
-                param_kind = BuiltinParamKind.BUILTIN_GENERIC
+            param_kind = BuiltinParamKind.BUILTIN
         elif issubclass(param_type, Sequence):
             raise TypeError(
                 "Built-in functions cannot be called with non-Warp array types, "
@@ -695,17 +693,10 @@ def call_builtin_from_desc(
     # Try gathering the parameters that the function expects and pack them
     # into their corresponding C types.
     c_params = []
-    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=False)):
+    for i, (arg_type, param_kind) in enumerate(zip(builtin_desc.arg_types, builtin_desc.param_kinds, strict=True)):
         param = params[i]
 
-        if param_kind == BuiltinParamKind.BUILTIN_GENERIC:
-            # Cast the value to its argument type to make sure that it
-            # can be assigned to the field of the `Param` struct.
-            # This could error otherwise when, for example, the field type
-            # is set to `vec3i` while the value is of type `vector(length=3, dtype=int)`,
-            # even though both types are semantically identical.
-            c_params.append(ctypes.byref(arg_type(param)))
-        elif param_kind == BuiltinParamKind.BUILTIN_PREDEFINED:
+        if param_kind == BuiltinParamKind.BUILTIN:
             c_params.append(ctypes.byref(param))
         elif param_kind == BuiltinParamKind.SCALAR:
             c_params.append(arg_type._type_(param))
@@ -734,7 +725,7 @@ def call_builtin_from_desc(
         return None
 
     value_ctype = tuple(warp._src.types.type_ctype(x) for x in value_type)
-    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=False))
+    return_value = tuple(extract_return_value(x, y, z) for x, y, z in zip(value_type, value_ctype, ret, strict=True))
     if len(return_value) == 1:
         return_value = return_value[0]
 
@@ -848,7 +839,7 @@ class Kernel:
                         f"Kernel {self.key} argument '{arg_names[i]}' type mismatch: expected {type_repr(template_types[i])}, got {type_repr(arg_types[i])}"
                     )
 
-        overload_annotations = dict(zip(arg_names, arg_types, strict=False))
+        overload_annotations = dict(zip(arg_names, arg_types, strict=True))
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
@@ -1047,7 +1038,7 @@ def func_grad(forward_fn):
             if len(grad_args) != len(expected_args):
                 return False
             if any(
-                not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args, strict=False)
+                not types_equal(a.type, exp_type) for a, (_, exp_type) in zip(grad_args, expected_args, strict=True)
             ):
                 return False
             return True
@@ -1758,7 +1749,7 @@ def add_builtin(
                 typelists.append(l)
 
             for arg_types in itertools.product(*typelists):
-                concrete_arg_types = dict(zip(input_types.keys(), arg_types, strict=False))
+                concrete_arg_types = dict(zip(input_types.keys(), arg_types, strict=True))
 
                 # Some of these argument lists won't work, eg if the function is mul(), we won't be
                 # able to do a matrix vector multiplication for a mat22 and a vec3. The `constraint`
@@ -1981,6 +1972,14 @@ class ModuleHasher:
         for opt in sorted(options.keys()):
             s = f"{opt}:{options[opt]}"
             ch.update(bytes(s, "utf-8"))
+
+        # Note: cuda_output defaults to None in the options dict and is not
+        # resolved before hashing, so modules with different cuda_output
+        # configs get the same hash. This is fine because cuda_output only
+        # affects the output filename (.ptx vs .cubin), not the binary
+        # content — different values produce different cache files.
+        # Options that affect the binary content (like mode) must be
+        # resolved in resolve_options() so the hash distinguishes them.
 
         # save the module hash
         self.hash = ch.digest()
@@ -2515,10 +2514,23 @@ class Module:
             options["cpu_compiler_flags"], config.cpu_compiler_flags
         )
 
+        # Resolve None-means-inherit for enable_mathdx_gemm
+        if options["enable_mathdx_gemm"] is None:
+            options["enable_mathdx_gemm"] = config.enable_mathdx_gemm
+
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
         options["line_directives"] = config.line_directives
         options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+        options["llvm_cuda"] = config.llvm_cuda
+        options["use_precompiled_headers"] = config.use_precompiled_headers
+        options["verify_autograd_array_access"] = config.verify_autograd_array_access
+
+        # Resolve None-means-autodetect for enable_tiles_in_stack_memory
+        enable_tiles = config.enable_tiles_in_stack_memory
+        if enable_tiles is None:
+            enable_tiles = platform.machine() == "aarch64"
+        options["enable_tiles_in_stack_memory"] = enable_tiles
 
         return options
 
@@ -2839,7 +2851,7 @@ class Module:
         # (forced rebuild when verifying autograd array access)
         if (
             warp.config.cache_kernels
-            and not warp.config.verify_autograd_array_access
+            and not options.get("verify_autograd_array_access", False)
             and os.path.exists(os.path.join(output_dir, output_name))
             and os.path.exists(os.path.join(output_dir, self._get_meta_name()))
         ):
@@ -2896,9 +2908,10 @@ class Module:
                         extra_flags=options["cpu_compiler_flags"],
                         optimization_level=opt,
                         verbose=warp.config.verbose,
-                        use_precompiled_headers=warp.config.use_precompiled_headers,
-                        pch_dir=runtime.get_clang_pch_dir() if warp.config.use_precompiled_headers else None,
+                        use_precompiled_headers=options["use_precompiled_headers"],
+                        pch_dir=runtime.get_clang_pch_dir() if options["use_precompiled_headers"] else None,
                         block_dim=options["block_dim"],
+                        enable_tiles_in_stack_memory=options["enable_tiles_in_stack_memory"],
                     )
 
             except Exception as e:
@@ -2942,6 +2955,8 @@ class Module:
                         fatbins=builder.fatbins.values(),
                         arch_suffix=arch_suffix,
                         pch_dir=runtime.get_nvrtc_pch_dir(),
+                        llvm_cuda=options["llvm_cuda"],
+                        use_precompiled_headers=options["use_precompiled_headers"],
                     )
 
             except Exception as e:
@@ -3103,7 +3118,15 @@ class Module:
                 # LLVM modules are identified using strings, so we need to ensure uniqueness
                 id = self.increment_id()
                 module_handle = f"wp_{self.name}_{id}"
-                runtime.llvm.wp_load_obj(binary_path.encode("utf-8"), module_handle.encode("utf-8"))
+                if (
+                    runtime.llvm.wp_load_obj(
+                        binary_path.encode("utf-8"),
+                        module_handle.encode("utf-8"),
+                        warp.config.legacy_cpu_linker,
+                    )
+                    != 0
+                ):
+                    raise Exception(f"Failed to load CPU module '{self.name}'")
                 module_exec = ModuleExec(module_handle, module_hash, device, meta)
                 self.execs[(None, active_block_dim)] = module_exec
 
@@ -3149,15 +3172,72 @@ class Module:
 # execution context
 
 
+def _capture_alloc_tag():
+    """Walk the Python stack to find the first frame outside the ``warp`` package.
+
+    Returns a compact string like ``"array[vec3f, 1000] : example.py:3 : my_func()"``.
+
+    Uses ``sys._getframe()`` instead of ``inspect.stack()`` to avoid the
+    overhead of reading source files and constructing ``FrameInfo`` objects.
+    """
+    import sys  # noqa: PLC0415
+
+    frame = None
+    try:
+        frame = sys._getframe(1)
+    except ValueError:
+        return "(python)"
+
+    array_info = ""
+    while frame is not None:
+        co = frame.f_code
+        if not array_info and co.co_name == "__init__" and warp._src.types.is_array(frame.f_locals.get("self")):
+            shape = frame.f_locals.get("shape")
+            dtype = frame.f_locals.get("dtype")
+            if dtype is not None:
+                dtype_str = warp._src.types.type_repr(dtype)
+                if shape is not None:
+                    shape_list = list(shape) if hasattr(shape, "__iter__") else [shape]
+                    if len(shape_list) == 1:
+                        array_info = f"array[{dtype_str}, {shape_list[0]}]"
+                    else:
+                        array_info = f"array[{dtype_str}, {tuple(shape_list)}]"
+                else:
+                    array_info = f"array[{dtype_str}]"
+
+        package = (frame.f_globals.get("__package__") or "").split(".")
+        if package[0] != "warp" or (len(package) > 1 and package[1] == "examples"):
+            parts = []
+            if array_info:
+                parts.append(array_info)
+            parts.append(f"{os.path.basename(co.co_filename)}:{frame.f_lineno}")
+            parts.append(f"{co.co_name}()")
+            return " : ".join(parts)
+
+        frame = frame.f_back
+
+    return "(python)"
+
+
+def _set_alloc_tag_if_tracking(ptr):
+    """Associate a Python call-site tag with a tracked allocation identified by pointer."""
+    if runtime.core.wp_alloc_tracker_is_enabled() and ptr:
+        try:
+            runtime.core.wp_alloc_tracker_set_tag(ptr, _capture_alloc_tag().encode())
+        except Exception:
+            pass
+
+
 class CpuDefaultAllocator:
     def __init__(self, device):
         assert device.is_cpu
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_host(size_in_bytes)
+        ptr = runtime.core.wp_alloc_host(size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device 'cpu'")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -3167,12 +3247,14 @@ class CpuDefaultAllocator:
 class CpuPinnedAllocator:
     def __init__(self, device):
         assert device.is_cpu
+        self.device = device
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_pinned(size_in_bytes)
+        ptr = runtime.core.wp_alloc_pinned(size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -3186,7 +3268,7 @@ class CudaDefaultAllocator:
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes)
+        ptr = runtime.core.wp_alloc_device_default(self.device.context, size_in_bytes, None)
         # If the allocation fails, check if graph capture is active to raise an informative error.
         # We delay the capture check to avoid overhead.
         if not ptr:
@@ -3205,6 +3287,7 @@ class CudaDefaultAllocator:
                         f"on device '{self.device}'.  Try calling wp.set_mempool_enabled('{self.device}', True) before capture begins."
                     )
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'{reason}")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -3219,9 +3302,10 @@ class CudaMempoolAllocator:
         self.deleter = self.free
 
     def alloc(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes)
+        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
+        _set_alloc_tag_if_tracking(ptr)
         return ptr
 
     def free(self, ptr, size_in_bytes):
@@ -4081,6 +4165,13 @@ class Runtime:
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
 
+            self.llvm.wp_load_obj.argtypes = [
+                ctypes.c_char_p,  # object_file
+                ctypes.c_char_p,  # module_name
+                ctypes.c_bool,  # use_legacy_linker
+            ]
+            self.llvm.wp_load_obj.restype = ctypes.c_int
+
             self.llvm.wp_compile_cpp.argtypes = [
                 ctypes.c_char_p,  # cpp_src
                 ctypes.c_char_p,  # input_file
@@ -4152,15 +4243,15 @@ class Runtime:
             self.core.wp_is_error_output_enabled.argtypes = []
             self.core.wp_is_error_output_enabled.restype = ctypes.c_int
 
-            self.core.wp_alloc_host.argtypes = [ctypes.c_size_t]
+            self.core.wp_alloc_host.argtypes = [ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_host.restype = ctypes.c_void_p
-            self.core.wp_alloc_pinned.argtypes = [ctypes.c_size_t]
+            self.core.wp_alloc_pinned.argtypes = [ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_pinned.restype = ctypes.c_void_p
-            self.core.wp_alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device.restype = ctypes.c_void_p
-            self.core.wp_alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device_default.restype = ctypes.c_void_p
-            self.core.wp_alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device_async.restype = ctypes.c_void_p
 
             self.core.wp_float_to_half_bits.argtypes = [ctypes.c_float]
@@ -4178,6 +4269,31 @@ class Runtime:
             self.core.wp_free_device_default.restype = None
             self.core.wp_free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_free_device_async.restype = None
+
+            self.core.wp_alloc_tracker_enable.argtypes = [ctypes.c_int]
+            self.core.wp_alloc_tracker_enable.restype = None
+            self.core.wp_alloc_tracker_is_enabled.argtypes = []
+            self.core.wp_alloc_tracker_is_enabled.restype = ctypes.c_int
+            self.core.wp_alloc_tracker_reset.argtypes = []
+            self.core.wp_alloc_tracker_reset.restype = None
+            self.core.wp_alloc_tracker_set_tag.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.wp_alloc_tracker_set_tag.restype = None
+            self.core.wp_alloc_tracker_push_scope.argtypes = [ctypes.c_char_p]
+            self.core.wp_alloc_tracker_push_scope.restype = None
+            self.core.wp_alloc_tracker_pop_scope.argtypes = []
+            self.core.wp_alloc_tracker_pop_scope.restype = None
+            self.core.wp_alloc_tracker_report.argtypes = [ctypes.c_int, ctypes.c_int]
+            self.core.wp_alloc_tracker_report.restype = ctypes.c_char_p
+            self.core.wp_alloc_tracker_get_current_bytes.argtypes = []
+            self.core.wp_alloc_tracker_get_current_bytes.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_peak_bytes.argtypes = []
+            self.core.wp_alloc_tracker_get_peak_bytes.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_total_alloc_count.argtypes = []
+            self.core.wp_alloc_tracker_get_total_alloc_count.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_total_alloc_bytes.argtypes = []
+            self.core.wp_alloc_tracker_get_total_alloc_bytes.restype = ctypes.c_size_t
+            self.core.wp_alloc_tracker_get_live_count.argtypes = []
+            self.core.wp_alloc_tracker_get_live_count.restype = ctypes.c_int
 
             self.core.wp_memset_host.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
             self.core.wp_memset_host.restype = None
@@ -5195,6 +5311,27 @@ class Runtime:
             if hasattr(self.core, name):
                 getattr(self.core, name).argtypes = []
                 getattr(self.core, name).restype = restype
+
+        # Load the METH_FASTCALL module from the same native library and override
+        # the ctypes bindings on self.core with faster versions. If the module fails
+        # to load, the ctypes versions remain in place as a fallback. This must happen
+        # after the ctypes argtypes/restype setup above, since the override replaces
+        # ctypes function objects with plain Python callables that lack those attributes.
+        self.fastcall = None
+        try:
+            loader = importlib.machinery.ExtensionFileLoader("_warp_fastcall", warp_lib)
+            spec = importlib.util.spec_from_file_location("_warp_fastcall", warp_lib, loader=loader)
+            fastcall = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(fastcall)
+            self.fastcall = fastcall
+            self.core.ctypes = types.SimpleNamespace()
+            for name in dir(fastcall):
+                if name.startswith("wp_"):
+                    # Save the original ctypes function before overriding, for testing.
+                    setattr(self.core.ctypes, name, getattr(self.core, name))
+                    setattr(self.core, name, getattr(fastcall, name))
+        except Exception as e:
+            warp._src.utils.warn(f"Failed to load _warp_fastcall module: {e}. Falling back to ctypes.")
 
         # Initialize with version verification
         error = self.core.wp_init(warp.config.version.encode("utf-8"))
@@ -6538,6 +6675,7 @@ def zeros(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return a zero-initialized array.
@@ -6548,12 +6686,21 @@ def zeros(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    arr = empty(
+        shape=shape,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
     arr.zero_()
 
@@ -6561,7 +6708,11 @@ def zeros(
 
 
 def zeros_like(
-    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return a zero-initialized array with the same type and dimension of another array.
 
@@ -6570,12 +6721,13 @@ def zeros_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
     arr.zero_()
 
@@ -6588,6 +6740,7 @@ def ones(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return a one-initialized array.
@@ -6598,16 +6751,30 @@ def ones(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    return full(shape=shape, value=1, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    return full(
+        shape=shape,
+        value=1,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
 
 def ones_like(
-    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return a one-initialized array with the same type and dimension of another array.
 
@@ -6616,12 +6783,13 @@ def ones_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    return full_like(src, 1, device=device, requires_grad=requires_grad, pinned=pinned)
+    return full_like(src, 1, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
 
 def full(
@@ -6631,6 +6799,7 @@ def full(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return an array with all elements initialized to the given value.
@@ -6642,6 +6811,7 @@ def full(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
@@ -6683,7 +6853,15 @@ def full(
         else:
             raise ValueError(f"Invalid value type for Warp array: {value_type}")
 
-    arr = empty(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    arr = empty(
+        shape=shape,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
     arr.fill_(value)
 
@@ -6696,6 +6874,7 @@ def full_like(
     device: DeviceLike = None,
     requires_grad: bool | None = None,
     pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return an array with all elements initialized to the given value with the same type and dimension of another array.
 
@@ -6705,12 +6884,13 @@ def full_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
     arr.fill_(value)
 
@@ -6718,7 +6898,11 @@ def full_like(
 
 
 def clone(
-    src: warp.array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: warp.array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Clone an existing array, allocating a copy of the src memory.
 
@@ -6727,12 +6911,13 @@ def clone(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
     """
 
-    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty_like(src, device=device, requires_grad=requires_grad, pinned=pinned, retain_grad=retain_grad)
 
     warp.copy(arr, src)
 
@@ -6745,6 +6930,7 @@ def empty(
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
+    retain_grad: bool = False,
     **kwargs,
 ) -> warp.array:
     """Return an uninitialized array.
@@ -6755,6 +6941,7 @@ def empty(
         device: Device that array will live on
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
@@ -6769,11 +6956,23 @@ def empty(
     if shape is None:
         shape = 0
 
-    return warp.array(shape=shape, dtype=dtype, device=device, requires_grad=requires_grad, pinned=pinned, **kwargs)
+    return warp.array(
+        shape=shape,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+        **kwargs,
+    )
 
 
 def empty_like(
-    src: Array, device: DeviceLike = None, requires_grad: bool | None = None, pinned: bool | None = None
+    src: Array,
+    device: DeviceLike = None,
+    requires_grad: bool | None = None,
+    pinned: bool | None = None,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return an uninitialized array with the same type and dimension of another array.
 
@@ -6782,6 +6981,7 @@ def empty_like(
         device: The device where the new array will be created (defaults to src.device)
         requires_grad: Whether the array will be tracked for back propagation
         pinned: Whether the array uses pinned host memory (only applicable to CPU arrays)
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Returns:
         A warp.array object representing the allocation
@@ -6802,7 +7002,14 @@ def empty_like(
         else:
             pinned = False
 
-    arr = empty(shape=src.shape, dtype=src.dtype, device=device, requires_grad=requires_grad, pinned=pinned)
+    arr = empty(
+        shape=src.shape,
+        dtype=src.dtype,
+        device=device,
+        requires_grad=requires_grad,
+        pinned=pinned,
+        retain_grad=retain_grad,
+    )
     return arr
 
 
@@ -6812,6 +7019,7 @@ def from_numpy(
     shape: Sequence[int] | None = None,
     device: DeviceLike | None = None,
     requires_grad: bool = False,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Return a Warp array created from a NumPy array.
 
@@ -6821,6 +7029,7 @@ def from_numpy(
         shape: The shape of the Warp array.
         device: The device on which the Warp array will be constructed.
         requires_grad: Whether gradients will be tracked for this array.
+        retain_grad: Whether to preserve gradients during backward instead of zeroing after read
 
     Raises:
         RuntimeError: The data type of the NumPy array is not supported.
@@ -6844,6 +7053,7 @@ def from_numpy(
         shape=shape,
         device=device,
         requires_grad=requires_grad,
+        retain_grad=retain_grad,
     )
 
 
@@ -7170,7 +7380,7 @@ class Launch:
         hooks: KernelHooks | None = None,
         params: Sequence[Any] | None = None,
         params_addr: Sequence[ctypes.c_void_p] | None = None,
-        bounds: launch_bounds_t | None = None,
+        bounds: LaunchBounds | None = None,
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
@@ -7184,9 +7394,10 @@ class Launch:
         if not hooks:
             hooks = self.module_exec.get_kernel_hooks(kernel)
 
-        # if not specified set a zero bound
+        # if not specified set a zero bound sized to match the compiled kernel
         if not bounds:
-            bounds = launch_bounds_t(0)
+            kernel_dim = kernel.adj.kernel_dim
+            bounds = launch_bounds_t((0,) * kernel_dim)
 
         # if not specified then build a list of default value params for args
         if not params:
@@ -7228,7 +7439,7 @@ class Launch:
         This should not be changed after the launch object is created.
         """
 
-        self.bounds: launch_bounds_t = bounds
+        self.bounds: LaunchBounds = bounds
         """The launch bounds. Update with :meth:`set_dim`."""
 
         self.max_blocks: int = max_blocks
@@ -7246,7 +7457,8 @@ class Launch:
         Args:
             dim: The dimensions of the launch.
         """
-        self.bounds = launch_bounds_t(dim)
+        normalized = _normalize_launch_dim(dim, self.kernel.adj.kernel_dim)
+        self.bounds = launch_bounds_t(normalized)
 
         # launch bounds always at index 0
         self.params[0] = self.bounds
@@ -7385,6 +7597,73 @@ class Launch:
                 )
 
 
+def _canonicalize_dim(dim: int | Sequence[int]) -> tuple[int, ...]:
+    """Convert *dim* to a canonical ``tuple[int, ...]``."""
+    if isinstance(dim, int):
+        return (dim,)
+    if isinstance(dim, tuple):
+        return dim
+    return tuple(dim)
+
+
+def _normalize_launch_dim(dim: int | Sequence[int], kernel_dim: int) -> tuple[int, ...]:
+    """Reshape *dim* to exactly *kernel_dim* dimensions for ABI compatibility.
+
+    The compiled C++ kernel expects ``launch_bounds_t<kernel_dim>``, so the
+    Python-side ctypes struct must have exactly *kernel_dim* shape elements.
+    Excess dimensions are folded into the last slot; missing dimensions are
+    padded with ones.
+    """
+    dim = _canonicalize_dim(dim)
+    ndim = len(dim)
+    if ndim == kernel_dim:
+        return dim
+    elif ndim < kernel_dim:
+        return dim + (1,) * (kernel_dim - ndim)
+    else:
+        head = dim[: kernel_dim - 1]
+        tail_product = 1
+        for d in dim[kernel_dim - 1 :]:
+            tail_product *= d
+        return (*head, tail_product)
+
+
+def _construct_tiled_bounds(dim, block_dim, kernel):
+    """Construct launch bounds for a tiled launch.
+
+    After compilation, kernel_dim tells us how many dimensions wp.tid() uses.
+    If it matches len(dim), the user's wp.tid() covers only the user-facing
+    dims and we set tiled=True so launch_coord divides out block_dim().
+    If it's len(dim)+1, the user explicitly covers the block_dim dimension
+    in their wp.tid() call, so we append block_dim to the shape.
+    """
+    dim = _canonicalize_dim(dim)
+    ndim = len(dim)
+    kernel_dim = kernel.adj.kernel_dim
+
+    if kernel.adj.max_tid_dimensionality == 0:
+        # No wp.tid() calls — flatten to 1D, only total thread count matters.
+        dim = _normalize_launch_dim(dim, 1)
+        ndim = 1
+
+    if kernel_dim == ndim:
+        # wp.tid() returns user dims only — block_dim threads share coordinates
+        bounds = launch_bounds_t(dim)
+        bounds.size *= block_dim
+        bounds.tiled = True
+    elif kernel_dim == ndim + 1:
+        # wp.tid() explicitly covers the block_dim dimension
+        bounds = launch_bounds_t((*dim, block_dim))
+    else:
+        raise RuntimeError(
+            f"Tiled launch dimension mismatch for kernel '{kernel.key}': "
+            f"wp.tid() uses {kernel_dim} dimensions but launch_tiled was given {ndim} user dimensions. "
+            f"Expected kernel_dim to be {ndim} or {ndim + 1}."
+        )
+
+    return bounds
+
+
 def launch(
     kernel,
     dim: int | Sequence[int],
@@ -7399,6 +7678,7 @@ def launch(
     record_cmd: bool = False,
     max_blocks: int = 0,
     block_dim: int = 256,
+    tiled: bool = False,
 ):
     """Launch a Warp kernel on the target device
 
@@ -7424,6 +7704,9 @@ def launch(
           Only has an effect for CUDA kernel launches.
           If negative or zero, the maximum hardware value will be used.
         block_dim: The number of threads per block (always 1 for "cpu" devices).
+        tiled: If ``True``, treat the launch as a tiled launch where
+          ``block_dim`` threads cooperate per tile.  Normally set
+          automatically by :func:`wp.launch_tiled`.
     """
 
     init()
@@ -7445,22 +7728,13 @@ def launch(
     if warp.config.print_launches:
         print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
-    # construct launch bounds
-    bounds = launch_bounds_t(dim)
+    # quick check: compute total size to skip zero-size launches early
+    dim = _canonicalize_dim(dim)
+    total_dim_size = 1
+    for d in dim:
+        total_dim_size *= d
 
-    if bounds.size > 0:
-        # first param is the number of threads
-        params = []
-        params.append(bounds)
-
-        # converts arguments to kernel's expected ctypes and packs into params
-        def pack_args(args, params, adjoint=False):
-            for i, a in enumerate(args):
-                arg_type = kernel.adj.args[i].type
-                arg_name = kernel.adj.args[i].label
-
-                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
-
+    if total_dim_size > 0:
         fwd_args = []
         fwd_args.extend(inputs)
         fwd_args.extend(outputs)
@@ -7495,6 +7769,25 @@ def launch(
 
         if not module_exec:
             return
+
+        # construct launch bounds after compilation so kernel_dim is available
+        if tiled:
+            bounds = _construct_tiled_bounds(dim, block_dim, kernel)
+        else:
+            normalized = _normalize_launch_dim(dim, kernel.adj.kernel_dim)
+            bounds = launch_bounds_t(normalized)
+
+        # first param is the number of threads
+        params = []
+        params.append(bounds)
+
+        # converts arguments to kernel's expected ctypes and packs into params
+        def pack_args(args, params, adjoint=False):
+            for i, a in enumerate(args):
+                arg_type = kernel.adj.args[i].type
+                arg_name = kernel.adj.args[i].label
+
+                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
 
         # late bind
         hooks = module_exec.get_kernel_hooks(kernel)
@@ -7620,7 +7913,7 @@ def launch(
         frame = inspect.currentframe().f_back
         caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
         runtime.tape.record_launch(
-            kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
+            kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}, tiled=tiled
         )
 
         # detect illegal inter-kernel read/write access patterns if verification flag is set
@@ -7676,15 +7969,15 @@ def launch_tiled(*args, **kwargs):
     if device.is_cpu:
         kwargs["block_dim"] = 1
 
-    dim = kwargs["dim"]
-    if not isinstance(dim, list):
-        dim = list(dim) if isinstance(dim, tuple) else [dim]
+    dim = _canonicalize_dim(kwargs["dim"])
 
     if len(dim) > 3:
         raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")
 
-    # add trailing dimension
-    kwargs["dim"] = [*dim, kwargs["block_dim"]]
+    # Signal to launch() that this is a tiled launch.  Bounds construction
+    # is deferred until after module compilation so we can inspect kernel_dim
+    # to decide whether wp.tid() already covers the block_dim dimension.
+    kwargs["tiled"] = True
 
     # forward to original launch method
     return launch(*args, **kwargs)
@@ -9123,11 +9416,11 @@ def type_str(t):
 
         # for generic vector / matrix type use a Generic type hint (dtype-first order)
         if generic_type == warp._src.types.Vector:
-            return f"Vector[{type_str(t._wp_scalar_type_)},{type_str(t._wp_type_params_[0])}]"
+            return f"Vector[{type_str(t._wp_scalar_type_)}, {type_str(t._wp_type_params_[0])}]"
         elif generic_type == warp._src.types.Quaternion:
             return f"Quaternion[{type_str(t._wp_scalar_type_)}]"
         elif generic_type == warp._src.types.Matrix:
-            return f"Matrix[{type_str(t._wp_scalar_type_)},{type_str(t._wp_type_params_[0])},{type_str(t._wp_type_params_[1])}]"
+            return f"Matrix[{type_str(t._wp_scalar_type_)}, {type_str(t._wp_type_params_[0])}, {type_str(t._wp_type_params_[1])}]"
         elif generic_type == warp._src.types.Transformation:
             return f"Transformation[{type_str(t._wp_scalar_type_)}]"
 
@@ -9143,7 +9436,7 @@ def type_str(t):
     elif t is Ellipsis:
         return "..."
     elif warp._src.types.is_tile(t):
-        return f"Tile[{type_str(t.dtype)},{type_str(t.shape)}]"
+        return f"Tile[{type_str(t.dtype)}, {type_str(t.shape)}]"
 
     return t.__name__
 
@@ -9486,25 +9779,73 @@ def export_stubs(file):  # pragma: no cover
         file=file,
     )
     print("", file=file)
+    print("import builtins as _builtins", file=file)
     print("from collections.abc import Callable, Sequence", file=file)
-    print("from typing import Any", file=file)
-    print("from typing import TypeVar", file=file)
-    print("from typing import Generic", file=file)
-    print("from typing import Literal", file=file)
+    print("from typing import Any, Generic, Literal, TypeVar", file=file)
     print("from typing import overload as over", file=file)
     print(file=file)
-    # Import builtins with underscore prefix to avoid re-exporting (PEP 484).
-    # This is needed because warp._src.types.bool shadows Python's bool.
-    print("import builtins as _builtins", file=file)
-    print(file=file)
-
-    # Import Int/Scalar/Float TypeVars from types.py. Their constraints are defined
-    # so that Int ⊂ Scalar and Float ⊂ Scalar, which lets mypy accept Vector[Int, Any]
-    # and Vector[Float, Any] when Vector is Generic[Scalar, Length].
+    print("from warp._src.types import Float as Float", file=file)
     print("from warp._src.types import Int as Int", file=file)
     print("from warp._src.types import Scalar as Scalar", file=file)
-    print("from warp._src.types import Float as Float", file=file)
 
+    # =========================================================================
+    # Step 2b: Pre-classify __init__.py lines into imports vs. other content
+    # =========================================================================
+    # Pattern to match: "from module import name as name" or "from module import name"
+    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
+
+    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
+    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
+    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
+
+    # Type aliases already imported in the header (skip to avoid duplicates)
+    header_imported_types = {"Int", "Float", "Scalar"}
+
+    init_lines = init_content.split("\n")
+    init_import_lines = []
+    init_other_lines = []
+
+    for line in init_lines:
+        if line.startswith("#"):
+            continue  # Skip comment lines from __init__.py
+
+        # Check if this line is a top-level import statement (no leading whitespace).
+        # Indented imports inside function bodies (e.g., in __getattr__) are not top-level imports.
+        is_top_level = not line or not line[0].isspace()
+        is_import = is_top_level and (import_pattern.search(line) or line.startswith("import ") or "import *" in line)
+
+        if is_import:
+            match = import_pattern.search(line)
+            if match:
+                original_name = match.group(1)
+                alias_name = match.group(2) if match.group(2) else original_name
+                if alias_name in function_conflicts:
+                    # Skip this import - we'll generate merged stubs later
+                    init_other_lines.append(f"# Skipped: {line.strip()} (merged stubs generated below)")
+                    continue
+                if alias_name in prefer_builtin:
+                    # Skip this import - kernel builtin stubs are preferred
+                    init_other_lines.append(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)")
+                    continue
+                if alias_name in class_stub_types:
+                    # Skip this import - class stubs are generated below
+                    continue
+                if alias_name in header_imported_types:
+                    # Skip this import - already imported in header for generic class definitions
+                    continue
+            init_import_lines.append(line)
+        else:
+            init_other_lines.append(line)
+
+    # Emit __init__.py import lines right after the header imports (before TypeVars/class stubs)
+    # so that all module-level imports appear at the top of the stub file (avoids E402).
+    print(file=file)
+    for line in init_import_lines:
+        print(line, file=file)
+
+    # =========================================================================
+    # Step 2c/2d: TypeVar declarations and Generic class stubs
+    # =========================================================================
     # type hints, these need to be mirrored into the stubs file
     print('Length = TypeVar("Length", bound=int)', file=file)
     print('Rows = TypeVar("Rows", bound=int)', file=file)
@@ -9526,46 +9867,35 @@ def export_stubs(file):  # pragma: no cover
     print("class Tile(Generic[DType, Shape]): ...", file=file)
 
     # =========================================================================
-    # Step 3: Copy __init__.py, but skip re-exports for function conflicts
+    # Step 3: Emit __init__.py non-import lines (docstring, __version__, __getattr__, etc.)
     # =========================================================================
-    # Pattern to match: "from module import name as name" or "from module import name"
-    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
-
-    # Types that will have class stubs generated below (skip their imports to avoid duplicates).
-    # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
-    class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
-
-    # Type aliases already imported in the header (skip to avoid duplicates)
-    header_imported_types = {"Int", "Float", "Scalar"}
-
-    init_lines = init_content.split("\n")
-    for line in init_lines:
-        if line.startswith("#"):
-            continue  # Skip comment lines
-
-        # Check if this line imports a symbol we handle specially
-        match = import_pattern.search(line)
-        if match:
-            original_name = match.group(1)
-            alias_name = match.group(2) if match.group(2) else original_name
-            if alias_name in function_conflicts:
-                # Skip this import - we'll generate merged stubs later
-                print(f"# Skipped: {line.strip()} (merged stubs generated below)", file=file)
+    prev_blank = False
+    for line in init_other_lines:
+        if not line.strip():
+            if prev_blank:
                 continue
-            if alias_name in prefer_builtin:
-                # Skip this import - kernel builtin stubs are preferred
-                print(f"# Skipped: {line.strip()} (kernel builtin stubs preferred)", file=file)
-                continue
-            if alias_name in class_stub_types:
-                # Skip this import - class stubs are generated below
-                continue
-            if alias_name in header_imported_types:
-                # Skip this import - already imported in header for generic class definitions
-                continue
-
+            prev_blank = True
+        else:
+            prev_blank = False
         print(line, file=file)
 
     print(file=file)
+
+    # Line-length limit matching pyproject.toml [tool.ruff] line-length.
+    _LINE_LENGTH = 120
+
+    def _write_def(name, args, return_str, indent=""):
+        """Write a def line, wrapping one-param-per-line if it exceeds _LINE_LENGTH."""
+        args_str = ", ".join(args)
+        line = f"{indent}def {name}({args_str}){return_str}:"
+        if len(line) <= _LINE_LENGTH:
+            print(line, file=file)
+        else:
+            inner = indent + "    "
+            print(f"{indent}def {name}(", file=file)
+            for arg in args:
+                print(f"{inner}{arg},", file=file)
+            print(f"{indent}){return_str}:", file=file)
 
     def get_return_type_str(f):
         """Get the return type string for a builtin function."""
@@ -9582,21 +9912,20 @@ def export_stubs(file):  # pragma: no cover
             return
 
         if type_overrides:
-            args = ", ".join(
+            args = [
                 f"{k}: {type_overrides[k]}" if k in type_overrides else f"{k}: {type_str(v)}"
                 for k, v in f.input_types.items()
-            )
+            ]
         else:
-            args = ", ".join(f"{k}: {type_str(v)}" for k, v in f.input_types.items())
+            args = [f"{k}: {type_str(v)}" for k, v in f.input_types.items()]
         rt_str = get_return_type_str(f)
         return_str = f" -> {rt_str}"
 
         if use_overload:
             print("@over", file=file)
-        print(f"def {f.key}({args}){return_str}:", file=file)
-        print(f'    """{f.doc}', file=file)
-        print('    """', file=file)
-        print("    ...\n\n", file=file)
+        _write_def(f.key, args, return_str)
+        print(f'    """{f.doc.rstrip()}"""', file=file)
+        print("    ...\n", file=file)
 
     def add_merged_builtin_function_stub(overloads):
         """Generate a single stub with union return type for overloads with identical input_types.
@@ -9624,12 +9953,11 @@ def export_stubs(file):  # pragma: no cover
                 seen.add(rt_str)
                 return_types.append(rt_str)
 
-        args = ", ".join(f"{k}: {type_str(v)}" for k, v in first.input_types.items())
+        args = [f"{k}: {type_str(v)}" for k, v in first.input_types.items()]
         return_str = " -> " + " | ".join(return_types) if return_types else ""
-        print(f"def {first.key}({args}){return_str}:", file=file)
-        print(f'    """{first.doc}', file=file)
-        print('    """', file=file)
-        print("    ...\n\n", file=file)
+        _write_def(first.key, args, return_str)
+        print(f'    """{first.doc.rstrip()}"""', file=file)
+        print("    ...\n", file=file)
 
     def add_vector_type_stub(cls, label):
         cls_name = cls.__name__
@@ -9638,30 +9966,30 @@ def export_stubs(file):  # pragma: no cover
         print(f"class {cls_name}:", file=file)
 
         print("    @over", file=file)
-        print("    def __init__(self) -> None:", file=file)
+        _write_def("__init__", ["self"], " -> None", indent="    ")
         print(f'        """Construct a zero-initialized {label}."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"other: {cls_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} by copy."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ", ".join(f"{x}: {scalar_type_name}" for x in "xyzw"[: cls._length_])
+        args = ["self"] + [f"{x}: {scalar_type_name}" for x in "xyzw"[: cls._length_]]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its component values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        _write_def("__init__", ["self", f"args: Sequence[{scalar_type_name}]"], " -> None", indent="    ")
         print(f'        """Construct a {label} from a sequence of values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"value: {scalar_type_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} filled with a value."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
     def add_matrix_type_stub(cls, label):
         cls_name = cls.__name__
@@ -9671,36 +9999,36 @@ def export_stubs(file):  # pragma: no cover
         print(f"class {cls_name}:", file=file)
 
         print("    @over", file=file)
-        print("    def __init__(self) -> None:", file=file)
+        _write_def("__init__", ["self"], " -> None", indent="    ")
         print(f'        """Construct a zero-initialized {label}."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"other: {cls_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} by copy."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ", ".join(f"m{i}{j}: {scalar_type_name}" for i in range(cls._shape_[0]) for j in range(cls._shape_[1]))
+        args = ["self"] + [f"m{i}{j}: {scalar_type_name}" for i in range(cls._shape_[0]) for j in range(cls._shape_[1])]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its component values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ", ".join(f"v{i}: vec{cls._shape_[0]}{scalar_short_name}" for i in range(cls._shape_[0]))
+        args = ["self"] + [f"v{i}: vec{cls._shape_[0]}{scalar_short_name}" for i in range(cls._shape_[0])]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its row vectors."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, args: Sequence[{scalar_type_name}]) -> None:", file=file)
+        _write_def("__init__", ["self", f"args: Sequence[{scalar_type_name}]"], " -> None", indent="    ")
         print(f'        """Construct a {label} from a sequence of values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"value: {scalar_type_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} filled with a value."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
     def add_transform_type_stub(cls, label):
         cls_name = cls.__name__
@@ -9710,41 +10038,49 @@ def export_stubs(file):  # pragma: no cover
         print(f"class {cls_name}:", file=file)
 
         print("    @over", file=file)
-        print("    def __init__(self) -> None:", file=file)
+        _write_def("__init__", ["self"], " -> None", indent="    ")
         print(f'        """Construct a zero-initialized {label}."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, other: {cls_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"other: {cls_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} by copy."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, p: vec3{scalar_short_name}, q: quat{scalar_short_name}) -> None:", file=file)
+        _write_def(
+            "__init__",
+            ["self", f"p: vec3{scalar_short_name}", f"q: quat{scalar_short_name}"],
+            " -> None",
+            indent="    ",
+        )
         print(f'        """Construct a {label} from its p and q components."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
-        args = ()
-        args += tuple(f"p{x}: {scalar_type_name}" for x in "xyz")
-        args += tuple(f"q{x}: {scalar_type_name}" for x in "xyzw")
-        args = ", ".join(args)
+        args = [
+            "self",
+            *[f"p{x}: {scalar_type_name}" for x in "xyz"],
+            *[f"q{x}: {scalar_type_name}" for x in "xyzw"],
+        ]
         print("    @over", file=file)
-        print(f"    def __init__(self, {args}) -> None:", file=file)
+        _write_def("__init__", args, " -> None", indent="    ")
         print(f'        """Construct a {label} from its component values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(
-            f"    def __init__(self, p: Sequence[{scalar_type_name}], q: Sequence[{scalar_type_name}]) -> None:",
-            file=file,
+        _write_def(
+            "__init__",
+            ["self", f"p: Sequence[{scalar_type_name}]", f"q: Sequence[{scalar_type_name}]"],
+            " -> None",
+            indent="    ",
         )
         print(f'        """Construct a {label} from two sequences of values."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
         print("    @over", file=file)
-        print(f"    def __init__(self, value: {scalar_type_name}) -> None:", file=file)
+        _write_def("__init__", ["self", f"value: {scalar_type_name}"], " -> None", indent="    ")
         print(f'        """Construct a {label} filled with a value."""', file=file)
-        print("        ...\n\n", file=file)
+        print("        ...\n", file=file)
 
     # Vector types.
     suffixes = ("h", "f", "d", "b", "ub", "s", "us", "i", "ui", "l", "ul")
@@ -9792,20 +10128,6 @@ def export_stubs(file):  # pragma: no cover
         s = re.sub(r"\bbool\b", "_builtins.bool", s)
         return s
 
-    def format_signature(func) -> str | None:
-        """Format function signature for stubs with unquoted type annotations."""
-        try:
-            sig = str(inspect.signature(func))
-        except (ValueError, TypeError):
-            return None
-        # Remove quotes around type annotations (PEP 563 stringified annotations)
-        sig = re.sub(r": '([^']+)'", r": \1", sig)
-        sig = re.sub(r" -> '([^']+)'", r" -> \1", sig)
-        # Fix <class 'X'> -> X for type defaults
-        sig = re.sub(r"<class '([^']+)'>", r"\1", sig)
-        # Clean up module prefixes and bool shadowing
-        return format_annotation(sig)
-
     if function_conflicts:
         print("\n# " + "=" * 70, file=file)
         print("# Merged stubs for symbols with both Python API and kernel-scope versions", file=file)
@@ -9816,9 +10138,36 @@ def export_stubs(file):  # pragma: no cover
         builtin = builtin_functions[name]
 
         # Python API overload
-        if sig_str := format_signature(python_func):
+        try:
+            sig = inspect.signature(python_func)
+        except (ValueError, TypeError):
+            sig = None
+        if sig is not None:
+            params = []
+            for pname, param in sig.parameters.items():
+                if param.kind == inspect.Parameter.VAR_POSITIONAL:
+                    s = f"*{pname}"
+                elif param.kind == inspect.Parameter.VAR_KEYWORD:
+                    s = f"**{pname}"
+                else:
+                    s = pname
+                if param.annotation is not inspect.Parameter.empty:
+                    s += f": {format_annotation(param.annotation)}"
+                if param.default is not inspect.Parameter.empty:
+                    if isinstance(param.default, (type, str)):
+                        default_str = format_annotation(param.default)
+                    else:
+                        default_str = repr(param.default)
+                    s += f" = {default_str}"
+                params.append(s)
+            ret = ""
+            if sig.return_annotation is not inspect.Parameter.empty:
+                ret = f" -> {format_annotation(sig.return_annotation)}"
             doc = (python_func.__doc__ or "").strip().split("\n")[0] or "Python API version."
-            print(f'@over\ndef {name}{sig_str}:\n    """{doc}"""\n    ...\n', file=file)
+            print("@over", file=file)
+            _write_def(name, params, ret)
+            print(f'    """{doc}"""', file=file)
+            print("    ...\n", file=file)
 
         # Kernel-scope overloads
         for f in getattr(builtin, "overloads", [builtin]):
@@ -10000,6 +10349,61 @@ def init():
 
     if runtime is None:
         runtime = Runtime()
+
+    if warp.config.track_memory and not runtime.core.wp_alloc_tracker_is_enabled():
+        import atexit  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_enable(1)
+        runtime.core.wp_alloc_tracker_push_scope(b"global")
+        atexit.register(_stop_global_alloc_tracking)
+
+
+def _stop_global_alloc_tracking():
+    """Disable tracking on interpreter shutdown."""
+    try:
+        if runtime is not None and runtime.core.wp_alloc_tracker_is_enabled():
+            runtime.core.wp_alloc_tracker_pop_scope()
+            runtime.core.wp_alloc_tracker_enable(0)
+    except (TypeError, AttributeError, OSError):
+        pass
+
+
+def print_memory_report(file=None, sort="size", max_items=10):
+    """Print a report of all currently tracked memory allocations.
+
+    Requires :attr:`warp.config.track_memory` to be ``True`` (set before
+    :func:`warp.init`), or an active :class:`~warp.ScopedMemoryTracker`.
+
+    .. note::
+
+        Not safe to call concurrently from multiple threads.
+
+    Args:
+        file: File object to write to (defaults to ``sys.stdout``).
+        sort: Sort order for live allocations: ``"size"`` (default, largest
+            first) or ``"chronological"`` (oldest first).
+        max_items: Maximum number of individual allocations shown per
+            category (default ``10``).
+
+    Raises:
+        ValueError: If ``sort`` is not ``"size"`` or ``"chronological"``.
+        RuntimeError: If allocation tracking is not active.
+    """
+    if sort not in ("size", "chronological"):
+        raise ValueError(f"Invalid sort order {sort!r}; expected 'size' or 'chronological'")
+
+    if runtime is None:
+        init()
+    if not runtime.core.wp_alloc_tracker_is_enabled():
+        raise RuntimeError(
+            "Allocation tracking is not active. "
+            "Set wp.config.track_memory = True before calling wp.init(), "
+            "or use wp.ScopedMemoryTracker as a context manager."
+        )
+    sort_order = 1 if sort == "chronological" else 0
+    text = runtime.core.wp_alloc_tracker_report(sort_order, max_items)
+    if text:
+        print(text.decode("utf-8"), file=file or sys.stdout, end="")
 
 
 def get_warp_version():

@@ -22,6 +22,7 @@ from typing import (
     Literal,
     NamedTuple,
     TypeVar,
+    Union,
     get_args,
     get_origin,
 )
@@ -595,11 +596,11 @@ def constant(x):
     return x
 
 
-def float_to_half_bits(value):
+def float_to_half_bits(value: float) -> int:
     return warp._src.context.runtime.core.wp_float_to_half_bits(value)
 
 
-def half_bits_to_float(value):
+def half_bits_to_float(value: int) -> float:
     return warp._src.context.runtime.core.wp_half_bits_to_float(value)
 
 
@@ -710,7 +711,7 @@ def _binary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (a, x)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x, strict=False)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (a, b)) for a, b in zip(self, x, strict=True)))
 
 
 def _rbinary_op(self, op, x, t, cw=True):
@@ -738,7 +739,7 @@ def _rbinary_op(self, op, x, t, cw=True):
     if kind == BuiltinOpDispatchKind.BROADCAST_SCALAR:
         return t(*(warp._src.context.call_builtin_from_desc(desc, (x, a)) for a in self))
 
-    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x, strict=False)))
+    return t(*(warp._src.context.call_builtin_from_desc(desc, (b, a)) for a, b in zip(self, x, strict=True)))
 
 
 @functools.cache
@@ -857,7 +858,7 @@ def vector(length, dtype):
                     try:
                         for x in value:
                             converted.append(vec_t.scalar_import(x))
-                    except ctypes.ArgumentError:
+                    except (ctypes.ArgumentError, TypeError):
                         raise TypeError(
                             f"Expected to assign a slice from a sequence of `float16` values "
                             f"but got `{type(x).__name__}` instead"
@@ -868,12 +869,12 @@ def vector(length, dtype):
                 try:
                     return super().__setitem__(key, value)
                 except TypeError:
-                    # ctypes.Array doesn't accept this sequence type (e.g. torch tensors)
-                    # or the sequence has a different size, fall back to element-by-element assignment
+                    # ctypes.Array doesn't accept this sequence type (e.g. torch tensors),
+                    # fall back to element-by-element assignment
                     if indices is None:
                         indices = range(*key.indices(self._length_))
 
-                    for idx, x in zip(indices, value, strict=False):
+                    for idx, x in zip(indices, value, strict=True):
                         try:
                             super().__setitem__(idx, self._type_(x))
                         except TypeError:
@@ -1169,7 +1170,7 @@ def matrix(shape, dtype):
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except ctypes.ArgumentError:
+                except (ctypes.ArgumentError, TypeError):
                     raise TypeError(
                         f"Expected to assign a slice from a sequence of `float16` values "
                         f"but got `{type(x).__name__}` instead"
@@ -1206,7 +1207,7 @@ def matrix(shape, dtype):
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except ctypes.ArgumentError:
+                except (ctypes.ArgumentError, TypeError):
                     raise TypeError(
                         f"Expected to assign a slice from a sequence of `float16` values "
                         f"but got `{type(x).__name__}` instead"
@@ -2053,34 +2054,55 @@ ARRAY_TYPE_INDEXED = 1
 ARRAY_TYPE_FABRIC = 2
 ARRAY_TYPE_FABRIC_INDEXED = 3
 
+# must match array.h
+ARRAY_FLAG_RETAIN_GRAD = 1 << 0
 
-# represents bounds for kernel launch (number of threads across multiple dimensions)
-class launch_bounds_t(ctypes.Structure):
-    _fields_ = (
-        ("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS),
-        ("ndim", ctypes.c_int32),
-        ("size", ctypes.c_size_t),
+
+# Template specializations for different launch dimensions.
+# ctypes requires _fields_ at class-definition time, so we generate one
+# struct class per dimensionality and cache them.
+def _make_launch_bounds_class(ndim):
+    def __init__(self, shape):
+        if isinstance(shape, int):
+            shape = (shape,)
+        total = 1
+        for i, s in enumerate(shape):
+            self.shape[i] = s
+            total *= s
+        self.size = total
+        self.tiled = False
+
+    return type(
+        f"launch_bounds_{ndim}d_t",
+        (ctypes.Structure,),
+        {
+            "_fields_": (
+                ("shape", ctypes.c_int32 * ndim),
+                ("size", ctypes.c_size_t),
+                ("tiled", ctypes.c_bool),
+            ),
+            "__init__": __init__,
+        },
     )
 
-    def __init__(self, shape: int | Sequence[int]):
-        if isinstance(shape, int):
-            # 1d launch
-            self.ndim = 1
-            self.size = shape
-            self.shape[0] = shape
 
-        else:
-            # nd launch
-            self.ndim = len(shape)
-            self.size = 1
+_launch_bounds_classes = {n: _make_launch_bounds_class(n) for n in range(1, LAUNCH_MAX_DIMS + 1)}
 
-            for i in range(self.ndim):
-                self.shape[i] = shape[i]
-                self.size = self.size * shape[i]
+# Union of all possible launch bounds struct types (for type annotations).
+LaunchBounds = Union[tuple(_launch_bounds_classes.values())]  # noqa: UP007 - dynamic union
 
-        # initialize the remaining dims to 1
-        for i in range(self.ndim, LAUNCH_MAX_DIMS):
-            self.shape[i] = 1
+
+def launch_bounds_t(dim) -> LaunchBounds:
+    """Create a launch bounds struct sized for *dim*."""
+    if isinstance(dim, int):
+        dim = (dim,)
+    elif isinstance(dim, list):
+        dim = tuple(dim)
+    ndim = len(dim)
+    cls = _launch_bounds_classes.get(ndim)
+    if cls is None:
+        raise ValueError(f"Unsupported launch bounds dimensionality: {ndim}")
+    return cls(dim)
 
 
 INT_WIDTH = ctypes.sizeof(ctypes.c_int) * 8
@@ -2139,13 +2161,15 @@ class array_t(ctypes.Structure):
         ("grad", ctypes.c_uint64),
         ("shape", ctypes.c_int32 * ARRAY_MAX_DIMS),
         ("strides", ctypes.c_int32 * ARRAY_MAX_DIMS),
-        ("ndim", ctypes.c_int32),
+        ("ndim", ctypes.c_uint16),
+        ("flags", ctypes.c_uint16),
     )
 
-    def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,)):
+    def __init__(self, data=0, grad=0, ndim=0, shape=(0,), strides=(0,), flags=0):
         self.data = data
         self.grad = grad
         self.ndim = ndim
+        self.flags = flags
         for i in range(ndim):
             self.shape[i] = shape[i]
             self.strides[i] = strides[i]
@@ -2157,19 +2181,20 @@ class array_t(ctypes.Structure):
 
     # structured value used when array_t is packed in a struct and shared via a numpy structured array
     def numpy_value(self):
-        return (self.data, self.grad, list(self.shape), list(self.strides), self.ndim)
+        return (self.data, self.grad, list(self.shape), list(self.strides), self.ndim, self.flags)
 
 
 # NOTE: must match array_t._fields_
 array_t._numpy_dtype_ = {
-    "names": ["data", "grad", "shape", "strides", "ndim"],
-    "formats": ["u8", "u8", f"{ARRAY_MAX_DIMS}i4", f"{ARRAY_MAX_DIMS}i4", "i4"],
+    "names": ["data", "grad", "shape", "strides", "ndim", "flags"],
+    "formats": ["u8", "u8", f"{ARRAY_MAX_DIMS}i4", f"{ARRAY_MAX_DIMS}i4", "u2", "u2"],
     "offsets": [
         array_t.data.offset,
         array_t.grad.offset,
         array_t.shape.offset,
         array_t.strides.offset,
         array_t.ndim.offset,
+        array_t.flags.offset,
     ],
     "itemsize": ctypes.sizeof(array_t),
 }
@@ -2184,7 +2209,8 @@ class indexedarray_t(ctypes.Structure):
 
     def __init__(self, data, indices, shape):
         if data is None:
-            self.data = array().__ctype__()
+            ndim = len(shape)
+            self.data = array_t(data=0, grad=0, ndim=ndim, shape=(0,) * ndim, strides=(0,) * ndim)
             for i in range(ARRAY_MAX_DIMS):
                 self.indices[i] = ctypes.c_void_p(None)
                 self.shape[i] = 0
@@ -2196,6 +2222,38 @@ class indexedarray_t(ctypes.Structure):
                 else:
                     self.indices[i] = ctypes.c_void_p(None)
                 self.shape[i] = shape[i]
+
+    # structured type description used when indexedarray_t is packed in a struct and shared via numpy structured array.
+    @classmethod
+    def numpy_dtype(cls):
+        return cls._numpy_dtype_
+
+    # structured value used when indexedarray_t is packed in a struct and shared via a numpy structured array
+    def numpy_value(self):
+        # pointers are represented as unsigned 64-bit integers
+        indices = []
+        for i in range(ARRAY_MAX_DIMS):
+            v = self.indices[i]
+            # v may be a ctypes.c_void_p instance
+            if isinstance(v, ctypes.c_void_p):
+                indices.append(0 if v.value is None else int(v.value))
+            else:
+                indices.append(0 if v is None else int(v))
+
+        return (self.data.numpy_value(), indices, list(self.shape))
+
+
+# NOTE: must match indexedarray_t._fields_
+indexedarray_t._numpy_dtype_ = {
+    "names": ["data", "indices", "shape"],
+    "formats": [array_t.numpy_dtype(), f"{ARRAY_MAX_DIMS}u8", f"{ARRAY_MAX_DIMS}i4"],
+    "offsets": [
+        indexedarray_t.data.offset,
+        indexedarray_t.indices.offset,
+        indexedarray_t.shape.offset,
+    ],
+    "itemsize": ctypes.sizeof(indexedarray_t),
+}
 
 
 class tuple_t:
@@ -2665,7 +2723,7 @@ def types_equal_generic(a, b, match_generic=True):
                 return seq_match_ellipsis(b, a)
 
             return len(a) == len(b) and all(
-                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b, strict=False)
+                types_equal_generic(x, y, match_generic=match_generic) for x, y in zip(a, b, strict=True)
             )
         elif a_is_seq or b_is_seq:
             # A sequence can only match to another sequence.
@@ -2690,7 +2748,7 @@ def types_equal_generic(a, b, match_generic=True):
         if not isinstance(a, type) or not isinstance(b, type):
             return False
 
-        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
+        for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=True):
             if not scalars_equal_generic(p1, p2, match_generic=match_generic):
                 return False
 
@@ -2846,6 +2904,7 @@ class array(Array[DType, NDim]):
         ndim: int | None = None,
         grad: array | None = None,
         requires_grad: builtins.bool = False,
+        retain_grad: builtins.bool = False,
     ):
         """Construct a new Warp array object.
 
@@ -2878,6 +2937,8 @@ class array(Array[DType, NDim]):
                 the incoming ``data`` already lives on the ``device`` specified and the data types match.
             deleter: Function to be called when the array is deleted, taking two arguments: pointer and size
             requires_grad: Whether or not gradients will be tracked for this array, see :class:`warp.Tape` for details
+            retain_grad: Whether to preserve the array's gradient during the backward pass instead of
+                zeroing it after it has been read. Requires ``requires_grad=True``.
             grad: The array in which to accumulate gradients in the backward pass. If ``None`` and ``requires_grad`` is ``True``,
                 then a gradient array will be allocated automatically.
             pinned: Whether to allocate pinned host memory, which allows asynchronous host–device transfers
@@ -2889,6 +2950,7 @@ class array(Array[DType, NDim]):
 
         # properties
         self._requires_grad = False
+        self._retain_grad = False
         self._grad = None
         # __array_interface__ or __cuda_array_interface__, evaluated lazily and cached
         self._array_interface = None
@@ -2944,6 +3006,12 @@ class array(Array[DType, NDim]):
                 self._requires_grad = requires_grad
                 if requires_grad:
                     self._alloc_grad()
+
+        # initialize retain_grad
+        if retain_grad:
+            if not self._requires_grad:
+                raise ValueError("retain_grad=True requires requires_grad=True")
+            self._retain_grad = True
 
     def _init_from_data(self, data, dtype, shape, device, copy, pinned):
         if not hasattr(data, "__len__"):
@@ -3620,7 +3688,12 @@ class array(Array[DType, NDim]):
         if self.ctype is None:
             data = 0 if self.ptr is None else ctypes.c_uint64(self.ptr)
             grad = 0 if self.grad is None or self.grad.ptr is None else ctypes.c_uint64(self.grad.ptr)
-            self.ctype = array_t(data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides)
+            flags = 0
+            if self._retain_grad:
+                flags |= ARRAY_FLAG_RETAIN_GRAD
+            self.ctype = array_t(
+                data=data, grad=grad, ndim=self.ndim, shape=self.shape, strides=self.strides, flags=flags
+            )
 
         return self.ctype
 
@@ -3679,9 +3752,22 @@ class array(Array[DType, NDim]):
             self._alloc_grad()
         elif not value:
             self._grad = None
+            self._retain_grad = False
 
         self._requires_grad = value
 
+        # trigger re-creation of C-representation
+        self.ctype = None
+
+    @property
+    def retain_grad(self):
+        return self._retain_grad
+
+    @retain_grad.setter
+    def retain_grad(self, value: builtins.bool):
+        if value and not self._requires_grad:
+            raise ValueError("retain_grad=True requires requires_grad=True")
+        self._retain_grad = value
         # trigger re-creation of C-representation
         self.ctype = None
 
@@ -6631,7 +6717,7 @@ def type_generic_equal(a, b):
     if getattr(a, "_wp_generic_type_hint_", "a") is not getattr(b, "_wp_generic_type_hint_", "b"):
         return False
 
-    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=False):
+    for p1, p2 in zip(a._wp_type_params_, b._wp_type_params_, strict=True):
         if not scalars_equal(p1, p2):
             return False
 
@@ -6771,7 +6857,7 @@ simple_type_codes = {
     float64: "f8",
     shape_t: "sh",
     range_t: "rg",
-    launch_bounds_t: "lb",
+    **{cls: f"lb{n}" for n, cls in _launch_bounds_classes.items()},
     HashGridQuery: "hgq",
     HashGridQueryH: "hgqh",
     HashGridQueryD: "hgqd",

@@ -4,14 +4,26 @@
 
 ### Added
 
+- Add `wp.tile_scatter_masked()` for per-thread writes into a shared-memory tile, with
+  cooperative synchronization ([GH-1298](https://github.com/NVIDIA/warp/issues/1298)).
 - Add double-precision (`wp.float64`) support to `warp.fem`.
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
+- Add ``wp.tile_scatter_add()`` for per-thread cooperative adds into shared-memory tiles.
+  Supports an ``atomic`` parameter (default ``True``); set ``atomic=False`` when indices are
+  guaranteed unique across threads for ~4x faster shared memory writes
+  ([GH-1342](https://github.com/NVIDIA/warp/issues/1342)).
 - **Experimental**: Add cuBQL BVH backend for `wp.Mesh`, selectable via `bvh_constructor="cubql"`.
   Currently only supports `wp.mesh_query_ray()`;
   point queries, AABB queries, grouped queries, and winding number queries are not yet supported
   ([GH-1286](https://github.com/NVIDIA/warp/issues/1286)).
+- Add `wp.ScopedMemoryTracker` context manager and `wp.config.track_memory` flag for tracking
+  memory allocations with call-site attribution, scope grouping, and per-category reports (GPU,
+  host, pinned host). Tracking is implemented in the C++ native layer, capturing both
+  Python-originated and C++ internal allocations with descriptive labels (e.g. `(native:bvh)`,
+  `(native:hashgrid)`, `(native:mesh)`, `(native:volume)`, `(native:sparse)`)
+  ([GH-1269](https://github.com/NVIDIA/warp/issues/1269)).
 - Add external texture interoperability for CUDA (e.g. `wp.Texture2D(cuda_array=handle)`)
   and OpenGL (`wp.GLTextureResource`) ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
 - Add `copy_from()` and `copy_to()` methods to texture objects for copying between textures,
@@ -30,6 +42,9 @@
   based on occupancy ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
 - Add `module_options` dict parameter to `@wp.kernel` for inline module-level compilation options
   on `"unique"` modules ([GH-1250](https://github.com/NVIDIA/warp/issues/1250)).
+- Add adjoint (backward pass) for out-of-place `tile_cholesky` factorization ([GH-1316](https://github.com/NVIDIA/warp/issues/1316)).
+- Add support for `wp.indexedarray` fields in `@wp.struct` (assignment, device transfer, and NumPy structured values)
+  ([GH-1327](https://github.com/NVIDIA/warp/issues/1327)).
 
 ### Removed
 
@@ -44,6 +59,10 @@
 
 ### Changed
 
+- Switch CPU JIT linker from RTDyld to JITLink, fixing sporadic access violations
+  when the CUDA driver fragments the virtual address space.
+  Add `warp.config.legacy_cpu_linker` to opt in to the previous RTDyld linker
+  ([GH-1346](https://github.com/NVIDIA/warp/issues/1346)).
 - Apply `warp.config.optimization_level` to the full CPU compilation pipeline.
   The default CPU optimization level remains `-O2`; CUDA kernels default to `-O3`
   ([GH-1310](https://github.com/NVIDIA/warp/issues/1310)).
@@ -55,6 +74,15 @@
 - Allow typed composite constructors (e.g. `wp.vec3d()`, `wp.mat22h()`, `wp.quatd()`)
   to accept scalar literals directly, preserving precision without explicit casts
   ([GH-1297](https://github.com/NVIDIA/warp/issues/1297)).
+- Template `launch_bounds_t` on dimensionality (`launch_bounds_t<N>`) so that `launch_coord()` and `wp.tid()`
+  use `if constexpr` instead of runtime dimension checks, eliminating dead branches and reducing register
+  pressure for lower-dimensional launches
+  ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
+  **Breaking:** Kernels that use fewer ``wp.tid()`` return values than launch dimensions now flatten
+  excess dimensions instead of unraveling them. For example, a kernel using ``i = wp.tid()`` launched
+  with ``dim=(3, 3)`` now yields thread IDs ``0, 1, …, 8`` instead of the previous ``0, 0, 0, 1, 1, 1,
+  2, 2, 2``. To preserve the old behavior, unpack all dimensions and discard the ones you don't need
+  (e.g. ``i, _ = wp.tid()`` to recover the previous first-dimension indexing).
 - Allow `wp.Volume.load_from_numpy()` and `wp.Volume.allocate()` to accept a 3-element sequence for `voxel_size`,
   enabling anisotropic voxel spacing ([GH-1193](https://github.com/NVIDIA/warp/issues/1193)).
 - Include the Warp version in kernel cache paths when a custom cache path is set,
@@ -64,12 +92,38 @@
   instead of `accumulate_dtype` (which itself defaults to `wp.float64`).
   Pass `output_dtype=wp.float64` explicitly to restore the previous behavior
   ([GH-418](https://github.com/NVIDIA/warp/issues/418)).
+- Reduce Python-side dispatch overhead for half-float conversion using `METH_FASTCALL`
+  ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
+- Tile parameters in ``@wp.func_native`` are now passed by reference, matching ``@wp.func`` behavior.
+  Previously tile parameters were passed by value, preventing native snippets from modifying shared
+  tiles in-place ([GH-1362](https://github.com/NVIDIA/warp/issues/1362)).
+- **Breaking:** Zero the gradient of output arrays after reading them during the backward pass of
+  array stores (e.g. `array[i] = value`). Code that inspects `.grad` on arrays written to in the
+  forward pass will see zeros after `tape.backward()`. To preserve output gradients for inspection,
+  use `wp.array(..., retain_grad=True)`. Pass fresh incoming gradients via the `grads=` argument
+  when calling `tape.backward()` multiple times. Backward passes of kernels with many per-element
+  array writes (e.g. matrix component assignments) may be slower due to the additional zeroing. See
+  the [differentiability guide](https://nvidia.github.io/warp/user_guide/differentiability.html)
+  for details ([GH-1062](https://github.com/NVIDIA/warp/issues/1062)).
 
 ### Fixed
 
+- Fix kernel cache serving stale binaries when compilation settings like
+  `llvm_cuda` or `use_precompiled_headers` are changed between runs
+  ([GH-903](https://github.com/NVIDIA/warp/issues/903)).
 - Fix chained `and`/`or` operators in kernels to use short-circuit evaluation, matching Python semantics.
   Previously all operands were eagerly evaluated, so guards like `if arr and arr[i] == 0` could crash
   ([GH-1329](https://github.com/NVIDIA/warp/issues/1329)).
+- Fix mutating builtins like `wp.transform_set_translation()` silently operating on a temporary copy
+  instead of modifying the original when called with values from `wp.transform_identity()`,
+  `wp.quat_identity()`, or generic types created via `wp.types.transformation()`,
+  `wp.types.vector()`, etc. Kernel-scope usage was unaffected
+  ([GH-1336](https://github.com/NVIDIA/warp/issues/1336)).
+- Fix ``wp.constant(wp.int32(IntEnum_value))`` emitting the symbolic enum name instead of the
+  integer value in generated C++/CUDA code on Python 3.10, causing compilation failures
+  ([newton#2363](https://github.com/newton-physics/newton/issues/2363)).
+- Fix `ValueError: Cell is empty` crash during eager module hashing when a kernel closure references a variable
+  assigned later in the enclosing scope ([GH-913](https://github.com/NVIDIA/warp/issues/913)).
 
 ### Documentation
 

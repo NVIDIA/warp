@@ -12,6 +12,7 @@ PUSH=false
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SEPARATOR="======================================"
 
 # Function to display usage
 usage() {
@@ -43,7 +44,7 @@ EXAMPLES:
     $0 --registry registry.example.com --push
 
 EOF
-    exit "$exit_code"
+    return "$exit_code"
 }
 
 # Parse arguments
@@ -66,11 +67,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            usage
+            usage; exit 0
             ;;
         *)
             echo "Unknown option: $1"
-            usage 1
+            usage 1; exit 1
             ;;
     esac
 done
@@ -79,21 +80,21 @@ done
 IMAGE_NAME="warp-cpp-test-env"
 TAG="${CUDA_VERSION}-ubuntu${UBUNTU_VERSION}"
 
-if [ -n "$REGISTRY" ]; then
+if [[ -n "$REGISTRY" ]]; then
     FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}:${TAG}"
 else
     FULL_IMAGE="${IMAGE_NAME}:${TAG}"
 fi
 
-echo "======================================"
+echo "$SEPARATOR"
 echo "Building Warp C++ Test Environment"
-echo "======================================"
+echo "$SEPARATOR"
 echo "CUDA Version:    $CUDA_VERSION"
 echo "Ubuntu Version:  $UBUNTU_VERSION"
 echo "Architecture:    x86_64 only"
 echo "Image:           $FULL_IMAGE"
 echo "Push:            $PUSH"
-echo "======================================"
+echo "$SEPARATOR"
 echo
 
 # Build for x86_64
@@ -104,20 +105,20 @@ docker build \
     "$SCRIPT_DIR"
 
 # Push if requested
-if [ "$PUSH" = true ]; then
+if [[ "$PUSH" = true ]]; then
     echo
     echo "Pushing image to registry..."
     docker push "$FULL_IMAGE"
 fi
 
 echo
-echo "======================================"
+echo "$SEPARATOR"
 echo "Build complete!"
-echo "======================================"
+echo "$SEPARATOR"
 echo "Image: $FULL_IMAGE"
 echo
 
-if [ "$PUSH" = false ] && [ -n "$REGISTRY" ]; then
+if [[ "$PUSH" = false ]] && [[ -n "$REGISTRY" ]]; then
     echo "To push this image, run:"
     echo "  docker push $FULL_IMAGE"
     echo

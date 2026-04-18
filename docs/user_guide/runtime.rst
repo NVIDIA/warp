@@ -2024,6 +2024,92 @@ This results in a printout at runtime to the standard output stream like:
 See :doc:`../deep_dive/profiling` documentation for more information.
 
 
+Allocation Tracking
+-------------------
+
+:class:`wp.ScopedMemoryTracker <warp.ScopedMemoryTracker>` can be used to track
+memory allocations and identify where memory is being consumed:
+
+.. code:: python
+
+    with wp.ScopedMemoryTracker("my_simulation") as tracker:
+        positions = wp.zeros(1000, dtype=wp.vec3, device="cuda:0")
+        velocities = wp.zeros(1000, dtype=wp.vec3, device="cuda:0")
+
+This prints an allocation report on exit showing total allocations, peak usage,
+live allocations, and the Python call sites that triggered them:
+
+.. code:: text
+
+    Allocation Tracking Report
+      Total allocations:
+        cuda:0           2 (23.44 KB)
+      Peak usage:
+        cuda:0           23.44 KB
+      Live allocations:
+        cuda:0           2 (23.44 KB)
+
+      Live cuda:0 allocations by size (largest first) (up to 10):
+        11.72 KB : cuda:0 : array[vec3f, 1000] : example.py:3 : <module>()
+        11.72 KB : cuda:0 : array[vec3f, 1000] : example.py:4 : <module>()
+
+Each live allocation is shown on a single line with colon-separated fields:
+``size : device : tag``.  For Python-originated allocations the tag includes
+the array type, source file, line number, and function name.  Allocations made
+internally by C++ are tagged with the originating subsystem, e.g.
+``(native:bvh)``, ``(native:hashgrid)``, ``(native:mesh)``.
+
+Scopes can be nested to group allocations hierarchically:
+
+.. code:: python
+
+    with wp.ScopedMemoryTracker("simulation"):
+        with wp.ScopedMemoryTracker("collision"):
+            body = wp.zeros(1000, dtype=wp.vec3, device="cuda:0")
+        with wp.ScopedMemoryTracker("integration"):
+            vel = wp.zeros(1000, dtype=wp.vec3, device="cuda:0")
+
+The report breaks down allocations by scope path (e.g.,
+``simulation/collision``).
+
+By default, live allocations are sorted by size (largest first).  Pass
+``sort="chronological"`` to list them in allocation order instead:
+
+.. code:: python
+
+    tracker.report(sort="chronological")
+    wp.print_memory_report(sort="chronological")
+
+To enable tracking for the entire application, set
+:attr:`warp.config.track_memory` to ``True`` before calling
+:func:`warp.init`. The report can then be printed at any time via
+:func:`warp.print_memory_report`.
+
+.. note::
+
+    Tracking is implemented in the C++ native layer, intercepting all
+    ``wp_alloc_*`` / ``wp_free_*`` calls.  This means both Python-originated
+    allocations (arrays, volumes) and C++ internal allocations (BVH, HashGrid,
+    sparse ops, sort, scan) are captured.  When disabled (the default), there
+    is zero overhead -- a single branch check on each allocation path.
+
+    C++ internal allocations are labeled with the originating subsystem, e.g.
+    ``(native:bvh)``, ``(native:hashgrid)``, ``(native:mesh)``,
+    ``(native:volume)``, ``(native:sparse)``.
+
+.. note::
+
+    The following allocations are **not** tracked:
+
+    * **NanoVDB internal buffers** -- NanoVDB uses its own device and host
+      allocators (``cudaMalloc``/``std::malloc``) that bypass Warp's
+      ``wp_alloc_*`` functions.  Volume data that Warp copies into its own
+      buffers *is* tracked.
+    * **CUDA texture objects** -- CUDA array allocations
+      (``cudaMalloc3DArray``) used by GPU textures are opaque driver
+      allocations and cannot be intercepted.
+
+
 Interprocess Communication (IPC)
 --------------------------------
 

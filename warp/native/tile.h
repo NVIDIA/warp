@@ -4236,6 +4236,409 @@ void adj_tile_extract(
     }
 }
 
+// Per-thread scatter-add into a shared tile.
+// All threads must call this cooperatively; each thread whose
+// `has_value` is true atomically adds `value` at the given index.
+//
+// Multiple threads may target the same index — atomics ensure correctness.
+// A synchronization barrier follows so the updated values are visible to
+// all threads after the call returns.
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i)), value);
+        else
+            t.data(tile_coord(i)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i, j)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, typename Tile::Type value, bool has_value)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i, j)), value);
+        else
+            t.data(tile_coord(i, j)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, int k, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2))
+    );
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i, j, k)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, int k, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2))
+    );
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i, j, k)), value);
+        else
+            t.data(tile_coord(i, j, k)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void
+tile_scatter_add(Tile& t, int i, int j, int k, int l, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
+    );
+    if (has_value)
+        wp::atomic_add(&t.data(tile_coord(i, j, k, l)), value);
+    WP_TILE_SYNC();
+}
+
+template <bool Atomic, typename Tile>
+inline CUDA_CALLABLE void
+tile_scatter_add(Tile& t, int i, int j, int k, int l, typename Tile::Type value, bool has_value)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
+    );
+    if (has_value) {
+        if constexpr (Atomic)
+            wp::atomic_add(&t.data(tile_coord(i, j, k, l)), value);
+        else
+            t.data(tile_coord(i, j, k, l)) += value;
+    }
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i));
+    WP_TILE_SYNC();
+}
+
+// Adjoint for non-atomic variant (delegates to atomic adjoint)
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, value, has_value, adj_t, adj_i, adj_value, adj_has_value);
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i, j));
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2))
+    );
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i, j, k));
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    int& adj_l,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    assert(
+        !has_value
+        || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1) && k >= 0
+            && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
+    );
+    if (t.grad.ptr && has_value)
+        adj_value += t.grad(tile_coord(i, j, k, l));
+    WP_TILE_SYNC();
+}
+
+// Adjoints for non-atomic ND variants (delegate to atomic adjoints)
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, j, value, has_value, adj_t, adj_i, adj_j, adj_value, adj_has_value);
+}
+
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, j, k, value, has_value, adj_t, adj_i, adj_j, adj_k, adj_value, adj_has_value);
+}
+
+template <bool Atomic, typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_add(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    int& adj_l,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    adj_tile_scatter_add(t, i, j, k, l, value, has_value, adj_t, adj_i, adj_j, adj_k, adj_l, adj_value, adj_has_value);
+}
+
+
+// Per-thread write into a shared tile.
+// All threads must call this cooperatively; each thread whose
+// `has_value` is true writes `value` at index `i`.
+//
+// Each index should be written by at most one thread per call. If multiple
+// threads write to the same index, the result is undefined (data race in the
+// forward pass, incorrect gradients in the backward pass).
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_masked(Tile& t, int i, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i)) = value;
+    WP_TILE_SYNC();
+}
+
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_masked(Tile& t, int i, int j, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i, j)) = value;
+    WP_TILE_SYNC();
+}
+template <typename Tile>
+inline CUDA_CALLABLE void tile_scatter_masked(Tile& t, int i, int j, int k, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i, j, k)) = value;
+    WP_TILE_SYNC();
+}
+template <typename Tile>
+inline CUDA_CALLABLE void
+tile_scatter_masked(Tile& t, int i, int j, int k, int l, typename Tile::Type value, bool has_value)
+{
+    if (has_value)
+        t.data(tile_coord(i, j, k, l)) = value;
+    WP_TILE_SYNC();
+}
+
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i));
+        t.grad(tile_coord(i)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    int j,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i, j));
+        t.grad(tile_coord(i, j)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i, j, k));
+        t.grad(tile_coord(i, j, k)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+template <typename Tile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_scatter_masked(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    typename Tile::Type value,
+    bool has_value,
+    AdjTile& adj_t,
+    int& adj_i,
+    int& adj_j,
+    int& adj_k,
+    int& adj_l,
+    typename Tile::Type& adj_value,
+    bool& adj_has_value
+)
+{
+    if (t.grad.ptr && has_value) {
+        adj_value += t.grad(tile_coord(i, j, k, l));
+        t.grad(tile_coord(i, j, k, l)) = typename Tile::Type {};
+    }
+    WP_TILE_SYNC();
+}
+
 
 template <typename Tile> void tile_add_inplace(Tile& t, int i, typename Tile::Type value)
 {
@@ -5024,6 +5427,74 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileA& A, TileX& X, TileY& Y)
 }
 
 
+// Single-threaded Cholesky adjoint.
+// Upper=false: A = L L^T, Upper=true: A = U^T U
+template <bool Upper, typename TileA, typename TileOut>
+inline CUDA_CALLABLE void scalar_cholesky_adj_impl(TileA& adj_A, TileOut& adj_Out, TileOut& Out)
+{
+    using T = typename TileA::Type;
+    constexpr int n = TileA::Layout::Shape::dim(1);
+
+    // Helper: index into the output triangle.
+    // Lower: Out(row, col), Upper: Out(col, row)
+    auto idx = [](int row, int col) { return Upper ? tile_coord(col, row) : tile_coord(row, col); };
+
+    T buffer1[n][n];
+    T buffer2[n][n];
+
+    // P = adj_Out @ Out^T (upper) or Out^T @ adj_Out (lower)
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j < n; ++j) {
+            T s = T(0);
+            for (int k = 0; k < n; ++k)
+                if constexpr (Upper)
+                    s += adj_Out.grad(tile_coord(i, k)) * Out.data(tile_coord(j, k));
+                else
+                    s += Out.data(tile_coord(k, i)) * adj_Out.grad(tile_coord(k, j));
+            buffer1[i][j] = s;
+        }
+
+    // Symmetrize P: mirror the stored triangle to the other side (preserving the diagonal).
+    // Upper: keep triu, mirror to lower; Lower: keep tril, mirror to upper.
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j < i; ++j)
+            if constexpr (Upper)
+                buffer1[i][j] = buffer1[j][i];
+            else
+                buffer1[j][i] = buffer1[i][j];
+
+    // Solve L^T X = S (lower) or U X = S (upper)
+    for (int k = 0; k < n; ++k) {
+        for (int i = n - 1; i >= 0; --i) {
+            T s = buffer1[i][k];
+            for (int j = i + 1; j < n; ++j)
+                s -= Out.data(idx(j, i)) * buffer2[j][k];
+            T diag = Out.data(tile_coord(i, i));
+            buffer2[i][k] = (diag != T(0.0f)) ? s / diag : s;
+        }
+    }
+
+    // Solve L^T B = X^T (lower) or U B = X^T (upper)
+    for (int k = 0; k < n; ++k) {
+        for (int i = n - 1; i >= 0; --i) {
+            T s = buffer2[k][i];
+            for (int j = i + 1; j < n; ++j)
+                s -= Out.data(idx(j, i)) * buffer1[j][k];
+            T diag = Out.data(tile_coord(i, i));
+            buffer1[i][k] = (diag != T(0.0f)) ? s / diag : s;
+        }
+    }
+
+    // Accumulate B into adj_A.grad (upper or lower triangle only).
+    // Diagonal halved because B = A_bar + A_bar^T double-counts it.
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j <= i; ++j) {
+            T scale = (i == j) ? T(0.5) : T(1);
+            adj_A.grad(idx(i, j)) += scale * buffer1[i][j];
+        }
+}
+
+
 }  // namespace partition_gemm
 
 
@@ -5400,6 +5871,90 @@ CUDA_CALLABLE TileOut& tile_cholesky_impl(Fwd fun_forward, TileA& A, TileOut& Ou
     return Out;
 }
 
+
+template <bool Upper, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
+CUDA_CALLABLE void
+adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& Out, TileA& adj_A, TileOut& adj_Out)
+{
+    using T = typename TileA::Type;
+    constexpr int n = TileA::Layout::Shape::dim(1);
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+
+    // CPU / GPU-without-mathdx: single-threaded solve
+    if (WP_TILE_THREAD_IDX == 0)
+        partitioned_gemm::scalar_cholesky_adj_impl<Upper>(adj_A, adj_Out, Out);
+
+#else
+
+    if constexpr (wp_is_null_func<BkwdGemm>::value) {
+        // GPU with mathdx but no backward LTOs: scalar fallback
+        if (WP_TILE_THREAD_IDX == 0)
+            partitioned_gemm::scalar_cholesky_adj_impl<Upper>(adj_A, adj_Out, Out);
+    } else {
+        __shared__ T W1[n * n];
+        __shared__ T W2[n * n];
+
+        T alpha_one = T(1);
+        T beta_zero = T(0);
+        WP_TILE_SYNC();
+
+        // P = adj_Out @ Out^T (upper) or Out^T @ adj_Out (lower)
+        if constexpr (Upper) {
+            fun_bkwd_gemm(&alpha_one, adj_Out.grad.ptr, Out.data.ptr, &beta_zero, W1);
+        } else {
+            fun_bkwd_gemm(&alpha_one, Out.data.ptr, adj_Out.grad.ptr, &beta_zero, W1);
+        }
+        WP_TILE_SYNC();
+
+        // Symmetrize P: mirror the stored triangle to the other side (preserving the diagonal).
+        // Upper: keep triu, mirror to lower; Lower: keep tril, mirror to upper.
+        for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+            int row = idx / n;
+            int col = idx % n;
+            bool mirror = Upper ? (row > col) : (row < col);
+            if (mirror)
+                W2[idx] = W1[col * n + row];
+            else
+                W2[idx] = W1[idx];
+        }
+        WP_TILE_SYNC();
+
+        // Solve L^T X = S (lower) or U X = S (upper), in-place into W2
+        fun_bkwd_trsm(Out.data.ptr, W2);
+        WP_TILE_SYNC();
+
+        // Transpose X into W1
+        for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+            int row = idx / n;
+            int col = idx % n;
+            W1[idx] = W2[col * n + row];
+        }
+        WP_TILE_SYNC();
+
+        // Solve L^T B = X^T (lower) or U B = X^T (upper), in-place into W1
+        fun_bkwd_trsm(Out.data.ptr, W1);
+        WP_TILE_SYNC();
+
+        // Accumulate B into adj_A.grad (upper or lower triangle only).
+        // Diagonal halved because B = A_bar + A_bar^T double-counts it.
+        // W1 and adj_A share same layout so gradient accumulates at correct indices.
+        for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+            int row = idx / n;
+            int col = idx % n;
+            bool in_triangle = Upper ? (row <= col) : (row >= col);
+            if (in_triangle) {
+                T scale = (row == col) ? T(0.5) : T(1);
+                adj_A.grad(tile_coord(row, col)) += scale * W1[row * n + col];
+            }
+        }
+    }
+
+#endif
+
+    WP_TILE_SYNC();
+}
+
 // Cholesky factorization (inplace) implementation.
 template <bool Upper, typename Fwd, typename TileA>
 CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
@@ -5448,10 +6003,31 @@ CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
 }
 
 // Cholesky (out-of-place): tile_cholesky<false>(...) for lower, tile_cholesky<true>(...) for upper
-template <bool Upper, typename Fwd, typename TileA, typename TileOut>
-CUDA_CALLABLE TileOut& tile_cholesky(Fwd fun_forward, TileA& A, TileOut& Out)
+template <bool Upper, typename Fwd, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
+CUDA_CALLABLE TileOut&
+tile_cholesky(Fwd fun_forward, BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileA& A, TileOut& Out)
 {
     return tile_cholesky_impl<Upper>(fun_forward, A, Out);
+}
+
+// Adjoint of Cholesky (out-of-place, Murray 2016, "Differentiation of the Cholesky decomposition"):
+// adj_tile_cholesky<false>(...) for lower, adj_tile_cholesky<true>(...) for upper
+template <bool Upper, typename Fwd, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
+CUDA_CALLABLE void adj_tile_cholesky(
+    Fwd fun_forward,
+    BkwdGemm fun_bkwd_gemm,
+    BkwdTrsm fun_bkwd_trsm,
+    TileA& A,
+    TileOut& Out,
+    Fwd adj_fun_forward,
+    BkwdGemm adj_fun_bkwd_gemm,
+    BkwdTrsm adj_fun_bkwd_trsm,
+    TileA& adj_A,
+    TileOut& adj_Out,
+    TileOut& adj_ret
+)
+{
+    adj_tile_cholesky_impl<Upper>(fun_bkwd_gemm, fun_bkwd_trsm, Out, adj_A, adj_Out);
 }
 
 // Cholesky (inplace): tile_cholesky_inplace<false>(...) for lower, tile_cholesky_inplace<true>(...) for upper
@@ -5459,11 +6035,6 @@ template <bool Upper, typename Fwd, typename TileA> CUDA_CALLABLE void tile_chol
 {
     tile_cholesky_inplace_impl<Upper>(fun_forward, A);
 }
-
-#define adj_tile_cholesky(function_name, A, Out, adj_function_name, adj_A, adj_Out, adj_ret) \
-     do { \
-         assert(false); \
-     } while (0)
 
 #define adj_tile_cholesky_inplace(function_name, A, adj_function_name, adj_A) \
      do { \
@@ -5795,12 +6366,13 @@ template <typename Tile, typename AdjTile, typename AdjReturnTile>
 inline CUDA_CALLABLE void adj_tile_astype(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
 {
     // gradients only flow between float conversions
-    if constexpr ((is_same<typename AdjTile::Type, wp::float16>::value
-                   || is_same<typename AdjTile::Type, wp::float32>::value
-                   || is_same<typename AdjTile::Type, wp::float64>::value)
-                  && (is_same<typename AdjReturnTile::Type, wp::float16>::value
-                      || is_same<typename AdjReturnTile::Type, wp::float32>::value
-                      || is_same<typename AdjReturnTile::Type, wp::float64>::value)) {
+    if constexpr (
+        (is_same<typename AdjTile::Type, wp::float16>::value || is_same<typename AdjTile::Type, wp::float32>::value
+         || is_same<typename AdjTile::Type, wp::float64>::value)
+        && (is_same<typename AdjReturnTile::Type, wp::float16>::value
+            || is_same<typename AdjReturnTile::Type, wp::float32>::value
+            || is_same<typename AdjReturnTile::Type, wp::float64>::value)
+    ) {
         auto adj_ret_reg = adj_ret.grad_to_register();
         auto adj_t_reg = tile_register_like<AdjTile>();
 

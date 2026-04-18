@@ -1039,7 +1039,7 @@ def test_tile_untile(test, device):
         tape.backward()
 
         assert_np_equal(y.numpy(), x.numpy())
-        assert_np_equal(x.grad.numpy(), wp.ones_like(x, device="cpu").numpy())
+        assert_np_equal(x.grad.numpy(), wp.ones_like(x).numpy())
 
     test_func_preserve_type(float)
     test_func_preserve_type(wp.vec3)
@@ -1059,7 +1059,7 @@ def test_tile_untile(test, device):
         tape.backward()
 
         assert_np_equal(y.numpy(), x.numpy())
-        assert_np_equal(x.grad.numpy(), wp.ones_like(x, device="cpu").numpy())
+        assert_np_equal(x.grad.numpy(), wp.ones_like(x).numpy())
 
     test_func(float)
     test_func(wp.vec3)

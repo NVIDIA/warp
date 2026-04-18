@@ -364,6 +364,10 @@ from warp._src.utils import timing_end as timing_end
 from warp._src.utils import timing_print as timing_print
 
 
+from warp._src.utils import ScopedMemoryTracker as ScopedMemoryTracker
+from warp._src.context import print_memory_report as print_memory_report
+
+
 # category: Profiling > Timing Flags
 
 from warp._src.utils import TIMING_KERNEL as TIMING_KERNEL

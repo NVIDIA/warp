@@ -90,7 +90,8 @@ void hash_grid_rebuild_device(const HashGrid_t<Type>& grid, const wp::array_t<ve
 
 template <typename Type> uint64_t hash_grid_create_host_impl(int dim_x, int dim_y, int dim_z)
 {
-    HashGrid_t<Type>* grid = new HashGrid_t<Type>();
+    static const char* tag = "(native:hashgrid)";
+    HashGrid_t<Type>* grid = static_cast<HashGrid_t<Type>*>(wp_alloc_host(sizeof(HashGrid_t<Type>), tag));
     memset(grid, 0, sizeof(HashGrid_t<Type>));
 
     grid->dim_x = dim_x;
@@ -98,8 +99,8 @@ template <typename Type> uint64_t hash_grid_create_host_impl(int dim_x, int dim_
     grid->dim_z = dim_z;
 
     const int num_cells = dim_x * dim_y * dim_z;
-    grid->cell_starts = (int*)wp_alloc_host(num_cells * sizeof(int));
-    grid->cell_ends = (int*)wp_alloc_host(num_cells * sizeof(int));
+    grid->cell_starts = (int*)wp_alloc_host(num_cells * sizeof(int), tag);
+    grid->cell_ends = (int*)wp_alloc_host(num_cells * sizeof(int), tag);
 
     return (uint64_t)(grid);
 }
@@ -113,11 +114,12 @@ template <typename Type> void hash_grid_destroy_host_impl(uint64_t id)
     wp_free_host(grid->cell_starts);
     wp_free_host(grid->cell_ends);
 
-    delete grid;
+    wp_free_host(grid);
 }
 
 template <typename Type> void hash_grid_reserve_host_impl(uint64_t id, int num_points)
 {
+    static const char* tag = "(native:hashgrid)";
     HashGrid_t<Type>* grid = (HashGrid_t<Type>*)(id);
 
     if (num_points > grid->max_points) {
@@ -125,8 +127,8 @@ template <typename Type> void hash_grid_reserve_host_impl(uint64_t id, int num_p
         wp_free_host(grid->point_ids);
 
         const int num_to_alloc = num_points * 3 / 2;
-        grid->point_cells = (int*)wp_alloc_host(2 * num_to_alloc * sizeof(int));  // *2 for auxiliary radix buffers
-        grid->point_ids = (int*)wp_alloc_host(2 * num_to_alloc * sizeof(int));  // *2 for auxiliary radix buffers
+        grid->point_cells = (int*)wp_alloc_host(2 * num_to_alloc * sizeof(int), tag);
+        grid->point_ids = (int*)wp_alloc_host(2 * num_to_alloc * sizeof(int), tag);
 
         grid->max_points = num_to_alloc;
     }
@@ -198,6 +200,7 @@ void hash_grid_update_host_impl(uint64_t id, Type cell_width, const wp::array_t<
 
 template <typename Type> uint64_t hash_grid_create_device_impl(void* context, int dim_x, int dim_y, int dim_z)
 {
+    static const char* tag = "(native:hashgrid)";
     ContextGuard guard(context);
 
     HashGrid_t<Type> grid;
@@ -210,11 +213,11 @@ template <typename Type> uint64_t hash_grid_create_device_impl(void* context, in
     grid.dim_z = dim_z;
 
     const int num_cells = dim_x * dim_y * dim_z;
-    grid.cell_starts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells * sizeof(int));
-    grid.cell_ends = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells * sizeof(int));
+    grid.cell_starts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells * sizeof(int), tag);
+    grid.cell_ends = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, num_cells * sizeof(int), tag);
 
-    // upload to device
-    HashGrid_t<Type>* grid_device = (HashGrid_t<Type>*)(wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid_t<Type>)));
+    HashGrid_t<Type>* grid_device
+        = (HashGrid_t<Type>*)(wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid_t<Type>), tag));
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, grid_device, &grid, sizeof(HashGrid_t<Type>));
 
     uint64_t grid_id = (uint64_t)(grid_device);
@@ -243,6 +246,7 @@ template <typename Type> void hash_grid_destroy_device_impl(uint64_t id)
 
 template <typename Type> void hash_grid_reserve_device_impl(uint64_t id, int num_points)
 {
+    static const char* tag = "(native:hashgrid)";
     HashGrid_t<Type> grid;
 
     if (hash_grid_get_descriptor(id, grid)) {
@@ -253,12 +257,8 @@ template <typename Type> void hash_grid_reserve_device_impl(uint64_t id, int num
             wp_free_device(WP_CURRENT_CONTEXT, grid.point_ids);
 
             const int num_to_alloc = num_points * 3 / 2;
-            grid.point_cells = (int*)wp_alloc_device(
-                WP_CURRENT_CONTEXT, 2 * num_to_alloc * sizeof(int)
-            );  // *2 for auxiliary radix buffers
-            grid.point_ids = (int*)wp_alloc_device(
-                WP_CURRENT_CONTEXT, 2 * num_to_alloc * sizeof(int)
-            );  // *2 for auxiliary radix buffers
+            grid.point_cells = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, 2 * num_to_alloc * sizeof(int), tag);
+            grid.point_ids = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, 2 * num_to_alloc * sizeof(int), tag);
             grid.max_points = num_to_alloc;
 
             // ensure we pre-size our sort routine to avoid

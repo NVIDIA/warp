@@ -5,7 +5,7 @@ import ctypes
 from functools import reduce
 
 import warp as wp
-from warp._src.context import type_str
+from warp._src.context import _normalize_launch_dim, type_str
 from warp._src.jax import get_jax_device
 from warp._src.types import array_t, launch_bounds_t, matches_array_class, strides_from_shape
 from warp._src.utils import warn
@@ -97,7 +97,8 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
 
     # Parse launch dimensions.
     dims = [int(d) for d in dim_str.split(",")]
-    bounds = launch_bounds_t(dims)
+    normalized = _normalize_launch_dim(dims, kernel.adj.kernel_dim)
+    bounds = launch_bounds_t(normalized)
 
     # Parse arguments.
     arg_strings = args_str.split(";")
@@ -170,9 +171,9 @@ def _create_jax_warp_primitive():
         # Figure out the number of outputs.
         wp_kernel = _registered_kernels[params["kernel"]]
         output_count = len(wp_kernel.adj.args) - len(args)
-        shape, dim = next((a.shape, d) for a, d in zip(args, dims, strict=False) if d is not None)
+        shape, dim = next((a.shape, d) for a, d in zip(args, dims, strict=True) if d is not None)
         size = shape[dim]
-        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims, strict=False)]
+        args = [batching.bdim_at_front(a, d, size) if len(a.shape) else a for a, d in zip(args, dims, strict=True)]
         # Create the batched primitive.
         return _jax_warp_p.bind(*args, **params), [dims[0]] * output_count
 

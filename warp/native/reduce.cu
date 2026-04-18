@@ -82,7 +82,7 @@ template <typename T> void array_sum_device(const T* ptr_a, T* ptr_out, int coun
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, ptr_strided, ptr_out, count, stream));
-    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size, "(native:reduce)");
 
     for (int k = 0; k < type_length; ++k) {
         cub_strided_iterator<const T> ptr_strided { ptr_a + k, stride };
@@ -220,7 +220,7 @@ void array_inner_device(
 
     size_t buff_size = 0;
     check_cuda(cub::DeviceReduce::Sum(nullptr, buff_size, inner_iterator, ptr_out, count, stream));
-    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size);
+    void* temp_buffer = wp_alloc_device(WP_CURRENT_CONTEXT, buff_size, "(native:reduce)");
 
     check_cuda(cub::DeviceReduce::Sum(temp_buffer, buff_size, inner_iterator, ptr_out, count, stream));
 

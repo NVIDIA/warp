@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 
     // Prepare kernel parameters
     // CRITICAL: Using positional initialization for MSVC compatibility
-    wp::launch_bounds_t dim = { { ARRAY_SIZE, 0, 0, 0 }, 1, size_t(ARRAY_SIZE) };
+    wp::launch_bounds_t<1> dim = { { ARRAY_SIZE }, size_t(ARRAY_SIZE), false };
     wp::array_t<wp::float32> arr_x(d_x, ARRAY_SIZE);
     wp::array_t<wp::float32> arr_y(d_y, ARRAY_SIZE);
     wp::float32 alpha_scalar = ALPHA;
