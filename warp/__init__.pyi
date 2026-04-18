@@ -3621,6 +3621,78 @@ def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
             [256] = tile(shape=(1), storage=register)"""
     ...
 
+def tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Any:
+    """Compute the dot product of two tiles.
+
+    Computes a full contraction (tensordot) between corresponding elements,
+    sums the results, and broadcasts the scalar to all threads. For scalar
+    tiles this is the standard dot product; for vector or matrix tiles each
+    element pair is fully contracted (e.g., ``wp.dot(a[i], b[i])`` for
+    ``vec3`` elements), so the result is always a single scalar value.
+
+    Equivalent to ``wp.tile_extract(wp.tile_sum(wp.tile_map(wp.tensordot, a, b)), 0)``
+    but without any intermediate tiles or shared-memory round trips.
+
+    Args:
+        a: First tile operand.
+        b: Second tile operand (must have same shape and dtype as ``a``).
+
+    Returns:
+        The scalar result of the full contraction, i.e. the sum of
+        ``wp.tensordot(a[i], b[i])`` over all elements. The return type
+        is the tile's scalar type (e.g., ``float`` for tiles of ``vec3f``).
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute():
+
+                a = wp.tile_ones(dtype=float, shape=64)
+                b = wp.tile_ones(dtype=float, shape=64) * 2.0
+                d = wp.tile_dot(a, b)
+
+                print(d)
+
+            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+        .. code-block:: text
+
+            128.0"""
+    ...
+
+def tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None:
+    """Scale ``src`` by ``alpha`` and accumulate into ``dest``.
+
+    Performs a fused multiply-add directly into the destination tile without
+    creating an intermediate scaled tile.
+
+    Args:
+        alpha: Scalar multiplier (must match the tile's underlying scalar type).
+        src: Source tile (must have same shape and dtype as ``dest``).
+        dest: Destination tile, modified in place.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute():
+
+                dest = wp.tile_ones(dtype=float, shape=4) * 2.0
+                src = wp.tile_ones(dtype=float, shape=4) * 3.0
+                wp.tile_axpy(5.0, src, dest)
+
+                print(dest)
+
+            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+        .. code-block:: text
+
+            [17 17 17 17] = tile(shape=(4), storage=register)"""
+    ...
+
 def tile_sort(keys: Tile[Any, tuple[int]], values: Tile[Any, tuple[int]]) -> None:
     """Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.
 

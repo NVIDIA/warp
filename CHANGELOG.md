@@ -47,6 +47,15 @@
 - Add adjoint (backward pass) for out-of-place `tile_cholesky` factorization ([GH-1316](https://github.com/NVIDIA/warp/issues/1316)).
 - Add support for `wp.indexedarray` fields in `@wp.struct` (assignment, device transfer, and NumPy structured values)
   ([GH-1327](https://github.com/NVIDIA/warp/issues/1327)).
+- Add ``wp.tile_axpy(alpha, src, dest)`` for the fused in-place update
+  ``dest += alpha * src`` on tiles. Avoids allocating an intermediate scaled tile
+  ([GH-1363](https://github.com/NVIDIA/warp/issues/1363)).
+- Add ``wp.tile_dot(a, b)`` to compute the dot product of two tiles of matching
+  shape and dtype, returning a single scalar of the tile's element type. For tiles
+  of vectors or matrices, each element pair is fully contracted (e.g.
+  ``wp.dot(a[i], b[i])`` for tiles of ``vec3f``). Replaces the longer
+  ``wp.tile_extract(wp.tile_sum(wp.tile_map(wp.tensordot, a, b)), 0)`` pattern
+  ([GH-1364](https://github.com/NVIDIA/warp/issues/1364)).
 
 ### Removed
 

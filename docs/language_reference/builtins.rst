@@ -182,6 +182,7 @@ Tile Primitives
    tile_astype
    tile_atomic_add
    tile_atomic_add_indexed
+   tile_axpy
    tile_broadcast
    tile_bvh_query_aabb
    tile_bvh_query_next
@@ -191,6 +192,7 @@ Tile Primitives
    tile_cholesky_solve
    tile_cholesky_solve_inplace
    tile_diag_add
+   tile_dot
    tile_extract
    tile_fft
    tile_from_thread

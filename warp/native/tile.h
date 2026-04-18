@@ -1982,6 +1982,44 @@ inline CUDA_CALLABLE void adj_copy(
     adj_dest.grad_zero();
 }
 
+// ---------------------------------------------------------------------------
+// Direct element access helpers — read/write tile elements without copying
+// to intermediate register tiles.  Dispatched at compile time by tile type.
+// ---------------------------------------------------------------------------
+
+// Read one element from a register tile (indexed by register slot).
+template <typename T, typename L>
+inline CUDA_CALLABLE T tile_read(const tile_register_t<T, L>& tile, int reg, int /*linear*/)
+{
+    return tile.data[reg];
+}
+
+// Read one element from a shared tile (indexed by linear position).
+template <typename T, typename L, bool Owner>
+inline CUDA_CALLABLE T tile_read(const tile_shared_t<T, L, Owner>& tile, int /*reg*/, int linear)
+{
+    return tile.data(linear);
+}
+
+// Add a value to one element of a register tile.
+template <typename T, typename L>
+inline CUDA_CALLABLE void tile_add(tile_register_t<T, L>& tile, int reg, int /*linear*/, T val)
+{
+    tile.data[reg] += val;
+}
+
+// Add a value to one element of a shared tile.
+template <typename T, typename L, bool Owner>
+inline CUDA_CALLABLE void tile_add(tile_shared_t<T, L, Owner>& tile, int /*reg*/, int linear, T val)
+{
+    if constexpr (L::Unique)
+        tile.data(linear) += val;
+    else
+        wp::atomic_add(&tile.data(linear), val);
+}
+
+// ---------------------------------------------------------------------------
+
 // helpers to allocate shared tiles
 template <typename T, typename Shape, typename Strides, bool RequiresGrad> inline CUDA_CALLABLE auto tile_alloc_empty()
 {
@@ -3917,6 +3955,40 @@ inline CUDA_CALLABLE void adj_tile_add_inplace(TileA& a, TileB& b, AdjTileA& adj
 
     adj_b.grad_add(adj_b_reg);
 }
+
+// Fused dest += alpha * src (AXPY) — avoids creating an intermediate tile.
+// Accesses each tile in its native storage (register or shared) without
+// copying to intermediate register tiles.
+template <typename TileDest, typename TileSrc>
+inline CUDA_CALLABLE void tile_axpy(
+    decltype(tensordot(typename TileDest::Type {}, typename TileDest::Type {})) alpha, TileSrc& src, TileDest& dest
+)
+{
+    using ShapeDest = typename TileDest::Layout::Shape;
+    using ShapeSrc = typename TileSrc::Layout::Shape;
+
+    static_assert(ShapeDest::N == ShapeSrc::N, "Tile shapes must match for tile_axpy");
+    static_assert(ShapeDest::size() == ShapeSrc::size(), "Tile sizes must match for tile_axpy");
+
+    // Use the register layout to drive the per-thread iteration.
+    using RegLayout = tile_layout_register_t<ShapeDest>;
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < RegLayout::NumRegs; ++i) {
+        const int linear = RegLayout::linear_from_register(i);
+
+        if (!RegLayout::valid(linear))
+            break;
+
+        // Read src in its native storage, FMA, write directly to dest.
+        auto src_val = tile_read(src, i, linear);
+        tile_add(dest, i, linear, src_val * alpha);
+    }
+
+    WP_TILE_SYNC();
+}
+
+// adj_tile_axpy is defined in tile_reduce.h (needs warp shuffle for adj_alpha reduction)
 
 template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_sub_inplace(TileA& a, TileB& b)
 {

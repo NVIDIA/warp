@@ -5247,6 +5247,142 @@ add_builtin(
 )
 
 
+def tile_dot_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return Any
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_dot() first argument must be a tile, got {a!r}")
+    if not is_tile(b):
+        raise TypeError(f"tile_dot() second argument must be a tile, got {b!r}")
+    if a.shape != b.shape:
+        raise TypeError(f"tile_dot() arguments must have the same shape, got {a.shape} and {b.shape}")
+    if not types_equal(a.dtype, b.dtype):
+        raise TypeError(f"tile_dot() arguments must have the same dtype, got {a.dtype} and {b.dtype}")
+
+    return type_scalar_type(a.dtype)
+
+
+add_builtin(
+    "tile_dot",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
+    value_func=tile_dot_value_func,
+    doc="""Compute the dot product of two tiles.
+
+    Computes a full contraction (tensordot) between corresponding elements,
+    sums the results, and broadcasts the scalar to all threads. For scalar
+    tiles this is the standard dot product; for vector or matrix tiles each
+    element pair is fully contracted (e.g., ``wp.dot(a[i], b[i])`` for
+    ``vec3`` elements), so the result is always a single scalar value.
+
+    Equivalent to ``wp.tile_extract(wp.tile_sum(wp.tile_map(wp.tensordot, a, b)), 0)``
+    but without any intermediate tiles or shared-memory round trips.
+
+    Args:
+        a: First tile operand.
+        b: Second tile operand (must have same shape and dtype as ``a``).
+
+    Returns:
+        The scalar result of the full contraction, i.e. the sum of
+        ``wp.tensordot(a[i], b[i])`` over all elements. The return type
+        is the tile's scalar type (e.g., ``float`` for tiles of ``vec3f``).
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute():
+
+                a = wp.tile_ones(dtype=float, shape=64)
+                b = wp.tile_ones(dtype=float, shape=64) * 2.0
+                d = wp.tile_dot(a, b)
+
+                print(d)
+
+            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+        .. code-block:: text
+
+            128.0""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_axpy_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    alpha = arg_types["alpha"]
+    src = arg_types["src"]
+    dest = arg_types["dest"]
+
+    if not is_tile(src):
+        raise TypeError(f"tile_axpy() 'src' argument must be a tile, got {src!r}")
+    if not is_tile(dest):
+        raise TypeError(f"tile_axpy() 'dest' argument must be a tile, got {dest!r}")
+    if dest.shape != src.shape:
+        raise TypeError(f"tile_axpy() 'dest' and 'src' must have the same shape, got {dest.shape} and {src.shape}")
+    if not types_equal(dest.dtype, src.dtype):
+        raise TypeError(f"tile_axpy() 'dest' and 'src' must have the same dtype, got {dest.dtype} and {src.dtype}")
+    if is_tile(alpha):
+        raise TypeError(f"tile_axpy() 'alpha' must be a scalar, got tile {alpha!r}")
+    if not type_is_scalar(alpha):
+        raise TypeError(f"tile_axpy() 'alpha' must be a scalar type, got {alpha}")
+    tile_scalar = type_scalar_type(dest.dtype)
+    if not types_equal(tile_scalar, alpha):
+        raise TypeError(
+            f"tile_axpy() 'alpha' must match the tile's scalar type, got {alpha} for tile scalar type {tile_scalar}"
+        )
+
+    return None
+
+
+add_builtin(
+    "tile_axpy",
+    input_types={
+        "alpha": Any,
+        "src": tile(dtype=Any, shape=tuple[int, ...]),
+        "dest": tile(dtype=Any, shape=tuple[int, ...]),
+    },
+    value_func=tile_axpy_value_func,
+    doc="""Scale ``src`` by ``alpha`` and accumulate into ``dest``.
+
+    Performs a fused multiply-add directly into the destination tile without
+    creating an intermediate scaled tile.
+
+    Args:
+        alpha: Scalar multiplier (must match the tile's underlying scalar type).
+        src: Source tile (must have same shape and dtype as ``dest``).
+        dest: Destination tile, modified in place.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute():
+
+                dest = wp.tile_ones(dtype=float, shape=4) * 2.0
+                src = wp.tile_ones(dtype=float, shape=4) * 3.0
+                wp.tile_axpy(5.0, src, dest)
+
+                print(dest)
+
+            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+        .. code-block:: text
+
+            [17 17 17 17] = tile(shape=(4), storage=register)""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_sum_axis_value_func(arg_types, arg_values):
     if arg_types is None:
         return tile(dtype=Any, shape=tuple[int, ...])
