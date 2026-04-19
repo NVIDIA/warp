@@ -1911,6 +1911,7 @@ class ScopedMemoryTracker:
         if not self.active:
             return self
 
+        wp.init()
         from warp._src.context import runtime  # noqa: PLC0415
 
         runtime.core.wp_alloc_tracker_push_scope(self.name.encode())

@@ -2094,8 +2094,8 @@ live allocations, and the Python call sites that triggered them:
         cuda:0           2 (23.44 KB)
 
       Live cuda:0 allocations by size (largest first) (up to 10):
-        11.72 KB : cuda:0 : array[vec3f, 1000] : example.py:3 : <module>()
         11.72 KB : cuda:0 : array[vec3f, 1000] : example.py:4 : <module>()
+        11.72 KB : cuda:0 : array[vec3f, 1000] : example.py:5 : <module>()
 
 Each live allocation is shown on a single line with colon-separated fields:
 ``size : device : tag``.  For Python-originated allocations the tag includes
@@ -2127,7 +2127,9 @@ By default, live allocations are sorted by size (largest first).  Pass
 To enable tracking for the entire application, set
 :attr:`warp.config.track_memory` to ``True`` before calling
 :func:`warp.init`. The report can then be printed at any time via
-:func:`warp.print_memory_report`.
+:func:`warp.print_memory_report`.  Calling :func:`warp.print_memory_report`
+without tracking active (either via the config flag or an enclosing
+:class:`~warp.ScopedMemoryTracker`) raises ``RuntimeError``.
 
 .. note::
 
@@ -2139,7 +2141,7 @@ To enable tracking for the entire application, set
 
     C++ internal allocations are labeled with the originating subsystem, e.g.
     ``(native:bvh)``, ``(native:hashgrid)``, ``(native:mesh)``,
-    ``(native:volume)``, ``(native:sparse)``.
+    ``(native:volume)``, ``(native:volume_builder)``, ``(native:sparse)``.
 
 .. note::
 
