@@ -6673,9 +6673,15 @@ inline CUDA_CALLABLE void adj_tile_astype(Tile& t, AdjTile& adj_t, AdjReturnTile
 {
     // gradients only flow between float conversions
     if constexpr (
-        (is_same<typename AdjTile::Type, wp::float16>::value || is_same<typename AdjTile::Type, wp::float32>::value
-         || is_same<typename AdjTile::Type, wp::float64>::value)
+        (is_same<typename AdjTile::Type, wp::float16>::value
+#ifndef WP_NO_BFLOAT16
+         || is_same<typename AdjTile::Type, wp::bfloat16>::value
+#endif
+         || is_same<typename AdjTile::Type, wp::float32>::value || is_same<typename AdjTile::Type, wp::float64>::value)
         && (is_same<typename AdjReturnTile::Type, wp::float16>::value
+#ifndef WP_NO_BFLOAT16
+            || is_same<typename AdjReturnTile::Type, wp::bfloat16>::value
+#endif
             || is_same<typename AdjReturnTile::Type, wp::float32>::value
             || is_same<typename AdjReturnTile::Type, wp::float64>::value)
     ) {

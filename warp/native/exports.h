@@ -8,6 +8,7 @@ namespace wp {
 
 extern "C" {
 
+WP_API void wp_builtin_min_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::min(a, b); }
 WP_API void wp_builtin_min_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::min(a, b); }
 WP_API void wp_builtin_min_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::min(a, b); }
 WP_API void wp_builtin_min_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::min(a, b); }
@@ -91,6 +92,7 @@ WP_API void wp_builtin_min_vec4ul(vec4ul& a, uint64* ret) { *ret = wp::min(a); }
 WP_API void wp_builtin_min_vec2ub(vec2ub& a, uint8* ret) { *ret = wp::min(a); }
 WP_API void wp_builtin_min_vec3ub(vec3ub& a, uint8* ret) { *ret = wp::min(a); }
 WP_API void wp_builtin_min_vec4ub(vec4ub& a, uint8* ret) { *ret = wp::min(a); }
+WP_API void wp_builtin_max_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::max(a, b); }
 WP_API void wp_builtin_max_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::max(a, b); }
 WP_API void wp_builtin_max_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::max(a, b); }
 WP_API void wp_builtin_max_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::max(a, b); }
@@ -174,6 +176,7 @@ WP_API void wp_builtin_max_vec4ul(vec4ul& a, uint64* ret) { *ret = wp::max(a); }
 WP_API void wp_builtin_max_vec2ub(vec2ub& a, uint8* ret) { *ret = wp::max(a); }
 WP_API void wp_builtin_max_vec3ub(vec3ub& a, uint8* ret) { *ret = wp::max(a); }
 WP_API void wp_builtin_max_vec4ub(vec4ub& a, uint8* ret) { *ret = wp::max(a); }
+WP_API void wp_builtin_clamp_bfloat16_bfloat16_bfloat16(bfloat16 x, bfloat16 low, bfloat16 high, bfloat16* ret) { *ret = wp::clamp(x, low, high); }
 WP_API void wp_builtin_clamp_float16_float16_float16(float16 x, float16 low, float16 high, float16* ret) { *ret = wp::clamp(x, low, high); }
 WP_API void wp_builtin_clamp_float32_float32_float32(float32 x, float32 low, float32 high, float32* ret) { *ret = wp::clamp(x, low, high); }
 WP_API void wp_builtin_clamp_float64_float64_float64(float64 x, float64 low, float64 high, float64* ret) { *ret = wp::clamp(x, low, high); }
@@ -185,6 +188,7 @@ WP_API void wp_builtin_clamp_uint16_uint16_uint16(uint16 x, uint16 low, uint16 h
 WP_API void wp_builtin_clamp_uint32_uint32_uint32(uint32 x, uint32 low, uint32 high, uint32* ret) { *ret = wp::clamp(x, low, high); }
 WP_API void wp_builtin_clamp_uint64_uint64_uint64(uint64 x, uint64 low, uint64 high, uint64* ret) { *ret = wp::clamp(x, low, high); }
 WP_API void wp_builtin_clamp_uint8_uint8_uint8(uint8 x, uint8 low, uint8 high, uint8* ret) { *ret = wp::clamp(x, low, high); }
+WP_API void wp_builtin_abs_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::abs(x); }
 WP_API void wp_builtin_abs_float16(float16 x, float16* ret) { *ret = wp::abs(x); }
 WP_API void wp_builtin_abs_float32(float32 x, float32* ret) { *ret = wp::abs(x); }
 WP_API void wp_builtin_abs_float64(float64 x, float64* ret) { *ret = wp::abs(x); }
@@ -232,6 +236,7 @@ WP_API void wp_builtin_abs_vec4ul(vec4ul& x, vec4ul* ret) { *ret = wp::abs(x); }
 WP_API void wp_builtin_abs_vec2ub(vec2ub& x, vec2ub* ret) { *ret = wp::abs(x); }
 WP_API void wp_builtin_abs_vec3ub(vec3ub& x, vec3ub* ret) { *ret = wp::abs(x); }
 WP_API void wp_builtin_abs_vec4ub(vec4ub& x, vec4ub* ret) { *ret = wp::abs(x); }
+WP_API void wp_builtin_sign_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::sign(x); }
 WP_API void wp_builtin_sign_float16(float16 x, float16* ret) { *ret = wp::sign(x); }
 WP_API void wp_builtin_sign_float32(float32 x, float32* ret) { *ret = wp::sign(x); }
 WP_API void wp_builtin_sign_float64(float64 x, float64* ret) { *ret = wp::sign(x); }
@@ -279,6 +284,7 @@ WP_API void wp_builtin_sign_vec4ul(vec4ul& x, vec4ul* ret) { *ret = wp::sign(x);
 WP_API void wp_builtin_sign_vec2ub(vec2ub& x, vec2ub* ret) { *ret = wp::sign(x); }
 WP_API void wp_builtin_sign_vec3ub(vec3ub& x, vec3ub* ret) { *ret = wp::sign(x); }
 WP_API void wp_builtin_sign_vec4ub(vec4ub& x, vec4ub* ret) { *ret = wp::sign(x); }
+WP_API void wp_builtin_step_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::step(x); }
 WP_API void wp_builtin_step_float16(float16 x, float16* ret) { *ret = wp::step(x); }
 WP_API void wp_builtin_step_float32(float32 x, float32* ret) { *ret = wp::step(x); }
 WP_API void wp_builtin_step_float64(float64 x, float64* ret) { *ret = wp::step(x); }
@@ -290,6 +296,7 @@ WP_API void wp_builtin_step_uint16(uint16 x, uint16* ret) { *ret = wp::step(x); 
 WP_API void wp_builtin_step_uint32(uint32 x, uint32* ret) { *ret = wp::step(x); }
 WP_API void wp_builtin_step_uint64(uint64 x, uint64* ret) { *ret = wp::step(x); }
 WP_API void wp_builtin_step_uint8(uint8 x, uint8* ret) { *ret = wp::step(x); }
+WP_API void wp_builtin_nonzero_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::nonzero(x); }
 WP_API void wp_builtin_nonzero_float16(float16 x, float16* ret) { *ret = wp::nonzero(x); }
 WP_API void wp_builtin_nonzero_float32(float32 x, float32* ret) { *ret = wp::nonzero(x); }
 WP_API void wp_builtin_nonzero_float64(float64 x, float64* ret) { *ret = wp::nonzero(x); }
@@ -301,93 +308,123 @@ WP_API void wp_builtin_nonzero_uint16(uint16 x, uint16* ret) { *ret = wp::nonzer
 WP_API void wp_builtin_nonzero_uint32(uint32 x, uint32* ret) { *ret = wp::nonzero(x); }
 WP_API void wp_builtin_nonzero_uint64(uint64 x, uint64* ret) { *ret = wp::nonzero(x); }
 WP_API void wp_builtin_nonzero_uint8(uint8 x, uint8* ret) { *ret = wp::nonzero(x); }
+WP_API void wp_builtin_sin_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::sin(x); }
 WP_API void wp_builtin_sin_float16(float16 x, float16* ret) { *ret = wp::sin(x); }
 WP_API void wp_builtin_sin_float32(float32 x, float32* ret) { *ret = wp::sin(x); }
 WP_API void wp_builtin_sin_float64(float64 x, float64* ret) { *ret = wp::sin(x); }
+WP_API void wp_builtin_cos_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::cos(x); }
 WP_API void wp_builtin_cos_float16(float16 x, float16* ret) { *ret = wp::cos(x); }
 WP_API void wp_builtin_cos_float32(float32 x, float32* ret) { *ret = wp::cos(x); }
 WP_API void wp_builtin_cos_float64(float64 x, float64* ret) { *ret = wp::cos(x); }
+WP_API void wp_builtin_acos_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::acos(x); }
 WP_API void wp_builtin_acos_float16(float16 x, float16* ret) { *ret = wp::acos(x); }
 WP_API void wp_builtin_acos_float32(float32 x, float32* ret) { *ret = wp::acos(x); }
 WP_API void wp_builtin_acos_float64(float64 x, float64* ret) { *ret = wp::acos(x); }
+WP_API void wp_builtin_asin_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::asin(x); }
 WP_API void wp_builtin_asin_float16(float16 x, float16* ret) { *ret = wp::asin(x); }
 WP_API void wp_builtin_asin_float32(float32 x, float32* ret) { *ret = wp::asin(x); }
 WP_API void wp_builtin_asin_float64(float64 x, float64* ret) { *ret = wp::asin(x); }
+WP_API void wp_builtin_sqrt_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::sqrt(x); }
 WP_API void wp_builtin_sqrt_float16(float16 x, float16* ret) { *ret = wp::sqrt(x); }
 WP_API void wp_builtin_sqrt_float32(float32 x, float32* ret) { *ret = wp::sqrt(x); }
 WP_API void wp_builtin_sqrt_float64(float64 x, float64* ret) { *ret = wp::sqrt(x); }
+WP_API void wp_builtin_cbrt_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::cbrt(x); }
 WP_API void wp_builtin_cbrt_float16(float16 x, float16* ret) { *ret = wp::cbrt(x); }
 WP_API void wp_builtin_cbrt_float32(float32 x, float32* ret) { *ret = wp::cbrt(x); }
 WP_API void wp_builtin_cbrt_float64(float64 x, float64* ret) { *ret = wp::cbrt(x); }
+WP_API void wp_builtin_tan_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::tan(x); }
 WP_API void wp_builtin_tan_float16(float16 x, float16* ret) { *ret = wp::tan(x); }
 WP_API void wp_builtin_tan_float32(float32 x, float32* ret) { *ret = wp::tan(x); }
 WP_API void wp_builtin_tan_float64(float64 x, float64* ret) { *ret = wp::tan(x); }
+WP_API void wp_builtin_atan_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::atan(x); }
 WP_API void wp_builtin_atan_float16(float16 x, float16* ret) { *ret = wp::atan(x); }
 WP_API void wp_builtin_atan_float32(float32 x, float32* ret) { *ret = wp::atan(x); }
 WP_API void wp_builtin_atan_float64(float64 x, float64* ret) { *ret = wp::atan(x); }
+WP_API void wp_builtin_atan2_bfloat16_bfloat16(bfloat16 y, bfloat16 x, bfloat16* ret) { *ret = wp::atan2(y, x); }
 WP_API void wp_builtin_atan2_float16_float16(float16 y, float16 x, float16* ret) { *ret = wp::atan2(y, x); }
 WP_API void wp_builtin_atan2_float32_float32(float32 y, float32 x, float32* ret) { *ret = wp::atan2(y, x); }
 WP_API void wp_builtin_atan2_float64_float64(float64 y, float64 x, float64* ret) { *ret = wp::atan2(y, x); }
+WP_API void wp_builtin_sinh_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::sinh(x); }
 WP_API void wp_builtin_sinh_float16(float16 x, float16* ret) { *ret = wp::sinh(x); }
 WP_API void wp_builtin_sinh_float32(float32 x, float32* ret) { *ret = wp::sinh(x); }
 WP_API void wp_builtin_sinh_float64(float64 x, float64* ret) { *ret = wp::sinh(x); }
+WP_API void wp_builtin_cosh_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::cosh(x); }
 WP_API void wp_builtin_cosh_float16(float16 x, float16* ret) { *ret = wp::cosh(x); }
 WP_API void wp_builtin_cosh_float32(float32 x, float32* ret) { *ret = wp::cosh(x); }
 WP_API void wp_builtin_cosh_float64(float64 x, float64* ret) { *ret = wp::cosh(x); }
+WP_API void wp_builtin_tanh_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::tanh(x); }
 WP_API void wp_builtin_tanh_float16(float16 x, float16* ret) { *ret = wp::tanh(x); }
 WP_API void wp_builtin_tanh_float32(float32 x, float32* ret) { *ret = wp::tanh(x); }
 WP_API void wp_builtin_tanh_float64(float64 x, float64* ret) { *ret = wp::tanh(x); }
+WP_API void wp_builtin_degrees_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::degrees(x); }
 WP_API void wp_builtin_degrees_float16(float16 x, float16* ret) { *ret = wp::degrees(x); }
 WP_API void wp_builtin_degrees_float32(float32 x, float32* ret) { *ret = wp::degrees(x); }
 WP_API void wp_builtin_degrees_float64(float64 x, float64* ret) { *ret = wp::degrees(x); }
+WP_API void wp_builtin_radians_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::radians(x); }
 WP_API void wp_builtin_radians_float16(float16 x, float16* ret) { *ret = wp::radians(x); }
 WP_API void wp_builtin_radians_float32(float32 x, float32* ret) { *ret = wp::radians(x); }
 WP_API void wp_builtin_radians_float64(float64 x, float64* ret) { *ret = wp::radians(x); }
+WP_API void wp_builtin_log_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::log(x); }
 WP_API void wp_builtin_log_float16(float16 x, float16* ret) { *ret = wp::log(x); }
 WP_API void wp_builtin_log_float32(float32 x, float32* ret) { *ret = wp::log(x); }
 WP_API void wp_builtin_log_float64(float64 x, float64* ret) { *ret = wp::log(x); }
+WP_API void wp_builtin_log2_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::log2(x); }
 WP_API void wp_builtin_log2_float16(float16 x, float16* ret) { *ret = wp::log2(x); }
 WP_API void wp_builtin_log2_float32(float32 x, float32* ret) { *ret = wp::log2(x); }
 WP_API void wp_builtin_log2_float64(float64 x, float64* ret) { *ret = wp::log2(x); }
+WP_API void wp_builtin_log10_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::log10(x); }
 WP_API void wp_builtin_log10_float16(float16 x, float16* ret) { *ret = wp::log10(x); }
 WP_API void wp_builtin_log10_float32(float32 x, float32* ret) { *ret = wp::log10(x); }
 WP_API void wp_builtin_log10_float64(float64 x, float64* ret) { *ret = wp::log10(x); }
+WP_API void wp_builtin_exp_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::exp(x); }
 WP_API void wp_builtin_exp_float16(float16 x, float16* ret) { *ret = wp::exp(x); }
 WP_API void wp_builtin_exp_float32(float32 x, float32* ret) { *ret = wp::exp(x); }
 WP_API void wp_builtin_exp_float64(float64 x, float64* ret) { *ret = wp::exp(x); }
+WP_API void wp_builtin_pow_bfloat16_bfloat16(bfloat16 x, bfloat16 y, bfloat16* ret) { *ret = wp::pow(x, y); }
 WP_API void wp_builtin_pow_float16_float16(float16 x, float16 y, float16* ret) { *ret = wp::pow(x, y); }
 WP_API void wp_builtin_pow_float32_float32(float32 x, float32 y, float32* ret) { *ret = wp::pow(x, y); }
 WP_API void wp_builtin_pow_float64_float64(float64 x, float64 y, float64* ret) { *ret = wp::pow(x, y); }
+WP_API void wp_builtin_erf_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::erf(x); }
 WP_API void wp_builtin_erf_float16(float16 x, float16* ret) { *ret = wp::erf(x); }
 WP_API void wp_builtin_erf_float32(float32 x, float32* ret) { *ret = wp::erf(x); }
 WP_API void wp_builtin_erf_float64(float64 x, float64* ret) { *ret = wp::erf(x); }
+WP_API void wp_builtin_erfc_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::erfc(x); }
 WP_API void wp_builtin_erfc_float16(float16 x, float16* ret) { *ret = wp::erfc(x); }
 WP_API void wp_builtin_erfc_float32(float32 x, float32* ret) { *ret = wp::erfc(x); }
 WP_API void wp_builtin_erfc_float64(float64 x, float64* ret) { *ret = wp::erfc(x); }
+WP_API void wp_builtin_erfinv_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::erfinv(x); }
 WP_API void wp_builtin_erfinv_float16(float16 x, float16* ret) { *ret = wp::erfinv(x); }
 WP_API void wp_builtin_erfinv_float32(float32 x, float32* ret) { *ret = wp::erfinv(x); }
 WP_API void wp_builtin_erfinv_float64(float64 x, float64* ret) { *ret = wp::erfinv(x); }
+WP_API void wp_builtin_erfcinv_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::erfcinv(x); }
 WP_API void wp_builtin_erfcinv_float16(float16 x, float16* ret) { *ret = wp::erfcinv(x); }
 WP_API void wp_builtin_erfcinv_float32(float32 x, float32* ret) { *ret = wp::erfcinv(x); }
 WP_API void wp_builtin_erfcinv_float64(float64 x, float64* ret) { *ret = wp::erfcinv(x); }
+WP_API void wp_builtin_round_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::round(x); }
 WP_API void wp_builtin_round_float16(float16 x, float16* ret) { *ret = wp::round(x); }
 WP_API void wp_builtin_round_float32(float32 x, float32* ret) { *ret = wp::round(x); }
 WP_API void wp_builtin_round_float64(float64 x, float64* ret) { *ret = wp::round(x); }
+WP_API void wp_builtin_rint_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::rint(x); }
 WP_API void wp_builtin_rint_float16(float16 x, float16* ret) { *ret = wp::rint(x); }
 WP_API void wp_builtin_rint_float32(float32 x, float32* ret) { *ret = wp::rint(x); }
 WP_API void wp_builtin_rint_float64(float64 x, float64* ret) { *ret = wp::rint(x); }
+WP_API void wp_builtin_trunc_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::trunc(x); }
 WP_API void wp_builtin_trunc_float16(float16 x, float16* ret) { *ret = wp::trunc(x); }
 WP_API void wp_builtin_trunc_float32(float32 x, float32* ret) { *ret = wp::trunc(x); }
 WP_API void wp_builtin_trunc_float64(float64 x, float64* ret) { *ret = wp::trunc(x); }
+WP_API void wp_builtin_floor_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::floor(x); }
 WP_API void wp_builtin_floor_float16(float16 x, float16* ret) { *ret = wp::floor(x); }
 WP_API void wp_builtin_floor_float32(float32 x, float32* ret) { *ret = wp::floor(x); }
 WP_API void wp_builtin_floor_float64(float64 x, float64* ret) { *ret = wp::floor(x); }
+WP_API void wp_builtin_ceil_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::ceil(x); }
 WP_API void wp_builtin_ceil_float16(float16 x, float16* ret) { *ret = wp::ceil(x); }
 WP_API void wp_builtin_ceil_float32(float32 x, float32* ret) { *ret = wp::ceil(x); }
 WP_API void wp_builtin_ceil_float64(float64 x, float64* ret) { *ret = wp::ceil(x); }
+WP_API void wp_builtin_frac_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::frac(x); }
 WP_API void wp_builtin_frac_float16(float16 x, float16* ret) { *ret = wp::frac(x); }
 WP_API void wp_builtin_frac_float32(float32 x, float32* ret) { *ret = wp::frac(x); }
 WP_API void wp_builtin_frac_float64(float64 x, float64* ret) { *ret = wp::frac(x); }
+WP_API void wp_builtin_isfinite_bfloat16(bfloat16 a, bool* ret) { *ret = wp::isfinite(a); }
 WP_API void wp_builtin_isfinite_float16(float16 a, bool* ret) { *ret = wp::isfinite(a); }
 WP_API void wp_builtin_isfinite_float32(float32 a, bool* ret) { *ret = wp::isfinite(a); }
 WP_API void wp_builtin_isfinite_float64(float64 a, bool* ret) { *ret = wp::isfinite(a); }
@@ -418,6 +455,7 @@ WP_API void wp_builtin_isfinite_mat22d(mat22d& a, bool* ret) { *ret = wp::isfini
 WP_API void wp_builtin_isfinite_mat33d(mat33d& a, bool* ret) { *ret = wp::isfinite(a); }
 WP_API void wp_builtin_isfinite_mat44d(mat44d& a, bool* ret) { *ret = wp::isfinite(a); }
 WP_API void wp_builtin_isfinite_spatial_matrixd(spatial_matrixd& a, bool* ret) { *ret = wp::isfinite(a); }
+WP_API void wp_builtin_isnan_bfloat16(bfloat16 a, bool* ret) { *ret = wp::isnan(a); }
 WP_API void wp_builtin_isnan_float16(float16 a, bool* ret) { *ret = wp::isnan(a); }
 WP_API void wp_builtin_isnan_float32(float32 a, bool* ret) { *ret = wp::isnan(a); }
 WP_API void wp_builtin_isnan_float64(float64 a, bool* ret) { *ret = wp::isnan(a); }
@@ -448,6 +486,7 @@ WP_API void wp_builtin_isnan_mat22d(mat22d& a, bool* ret) { *ret = wp::isnan(a);
 WP_API void wp_builtin_isnan_mat33d(mat33d& a, bool* ret) { *ret = wp::isnan(a); }
 WP_API void wp_builtin_isnan_mat44d(mat44d& a, bool* ret) { *ret = wp::isnan(a); }
 WP_API void wp_builtin_isnan_spatial_matrixd(spatial_matrixd& a, bool* ret) { *ret = wp::isnan(a); }
+WP_API void wp_builtin_isinf_bfloat16(bfloat16 a, bool* ret) { *ret = wp::isinf(a); }
 WP_API void wp_builtin_isinf_float16(float16 a, bool* ret) { *ret = wp::isinf(a); }
 WP_API void wp_builtin_isinf_float32(float32 a, bool* ret) { *ret = wp::isinf(a); }
 WP_API void wp_builtin_isinf_float64(float64 a, bool* ret) { *ret = wp::isinf(a); }
@@ -1004,6 +1043,7 @@ WP_API void wp_builtin_expect_eq_uint32_uint32(uint32 a, uint32 b) { wp::expect_
 WP_API void wp_builtin_expect_eq_int64_int64(int64 a, int64 b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_uint64_uint64(uint64 a, uint64 b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_float16_float16(float16 a, float16 b) { wp::expect_eq(a, b); }
+WP_API void wp_builtin_expect_eq_bfloat16_bfloat16(bfloat16 a, bfloat16 b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_float32_float32(float32 a, float32 b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_float64_float64(float64 a, float64 b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_quath_quath(quath& a, quath& b) { wp::expect_eq(a, b); }
@@ -1061,6 +1101,7 @@ WP_API void wp_builtin_expect_eq_mat22d_mat22d(mat22d& a, mat22d& b) { wp::expec
 WP_API void wp_builtin_expect_eq_mat33d_mat33d(mat33d& a, mat33d& b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_mat44d_mat44d(mat44d& a, mat44d& b) { wp::expect_eq(a, b); }
 WP_API void wp_builtin_expect_eq_spatial_matrixd_spatial_matrixd(spatial_matrixd& a, spatial_matrixd& b) { wp::expect_eq(a, b); }
+WP_API void wp_builtin_lerp_bfloat16_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16 t, bfloat16* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void wp_builtin_lerp_float16_float16_float16(float16 a, float16 b, float16 t, float16* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void wp_builtin_lerp_float32_float32_float32(float32 a, float32 b, float32 t, float32* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void wp_builtin_lerp_float64_float64_float64(float64 a, float64 b, float64 t, float64* ret) { *ret = wp::lerp(a, b, t); }
@@ -1094,9 +1135,11 @@ WP_API void wp_builtin_lerp_quatd_quatd_float64(quatd& a, quatd& b, float64 t, q
 WP_API void wp_builtin_lerp_transformh_transformh_float16(transformh& a, transformh& b, float16 t, transformh* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void wp_builtin_lerp_transformf_transformf_float32(transformf& a, transformf& b, float32 t, transformf* ret) { *ret = wp::lerp(a, b, t); }
 WP_API void wp_builtin_lerp_transformd_transformd_float64(transformd& a, transformd& b, float64 t, transformd* ret) { *ret = wp::lerp(a, b, t); }
+WP_API void wp_builtin_smoothstep_bfloat16_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16 x, bfloat16* ret) { *ret = wp::smoothstep(a, b, x); }
 WP_API void wp_builtin_smoothstep_float16_float16_float16(float16 a, float16 b, float16 x, float16* ret) { *ret = wp::smoothstep(a, b, x); }
 WP_API void wp_builtin_smoothstep_float32_float32_float32(float32 a, float32 b, float32 x, float32* ret) { *ret = wp::smoothstep(a, b, x); }
 WP_API void wp_builtin_smoothstep_float64_float64_float64(float64 a, float64 b, float64 x, float64* ret) { *ret = wp::smoothstep(a, b, x); }
+WP_API void wp_builtin_expect_near_bfloat16_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16 tolerance) { wp::expect_near(a, b, tolerance); }
 WP_API void wp_builtin_expect_near_float16_float16_float16(float16 a, float16 b, float16 tolerance) { wp::expect_near(a, b, tolerance); }
 WP_API void wp_builtin_expect_near_float32_float32_float32(float32 a, float32 b, float32 tolerance) { wp::expect_near(a, b, tolerance); }
 WP_API void wp_builtin_expect_near_float64_float64_float64(float64 a, float64 b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
@@ -1127,6 +1170,7 @@ WP_API void wp_builtin_expect_near_mat22d_mat22d_float64(mat22d& a, mat22d& b, f
 WP_API void wp_builtin_expect_near_mat33d_mat33d_float64(mat33d& a, mat33d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
 WP_API void wp_builtin_expect_near_mat44d_mat44d_float64(mat44d& a, mat44d& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
 WP_API void wp_builtin_expect_near_spatial_matrixd_spatial_matrixd_float64(spatial_matrixd& a, spatial_matrixd& b, float64 tolerance) { wp::expect_near(a, b, tolerance); }
+WP_API void wp_builtin_add_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::add(a, b); }
 WP_API void wp_builtin_add_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::add(a, b); }
 WP_API void wp_builtin_add_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::add(a, b); }
 WP_API void wp_builtin_add_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::add(a, b); }
@@ -1192,6 +1236,7 @@ WP_API void wp_builtin_add_spatial_matrixd_spatial_matrixd(spatial_matrixd& a, s
 WP_API void wp_builtin_add_transformh_transformh(transformh& a, transformh& b, transformh* ret) { *ret = wp::add(a, b); }
 WP_API void wp_builtin_add_transformf_transformf(transformf& a, transformf& b, transformf* ret) { *ret = wp::add(a, b); }
 WP_API void wp_builtin_add_transformd_transformd(transformd& a, transformd& b, transformd* ret) { *ret = wp::add(a, b); }
+WP_API void wp_builtin_sub_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::sub(a, b); }
 WP_API void wp_builtin_sub_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::sub(a, b); }
 WP_API void wp_builtin_sub_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::sub(a, b); }
 WP_API void wp_builtin_sub_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::sub(a, b); }
@@ -1449,6 +1494,7 @@ WP_API void wp_builtin_invert_vec4ul(vec4ul& a, vec4ul* ret) { *ret = wp::invert
 WP_API void wp_builtin_invert_vec2ub(vec2ub& a, vec2ub* ret) { *ret = wp::invert(a); }
 WP_API void wp_builtin_invert_vec3ub(vec3ub& a, vec3ub* ret) { *ret = wp::invert(a); }
 WP_API void wp_builtin_invert_vec4ub(vec4ub& a, vec4ub* ret) { *ret = wp::invert(a); }
+WP_API void wp_builtin_mul_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::mul(a, b); }
 WP_API void wp_builtin_mul_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::mul(a, b); }
 WP_API void wp_builtin_mul_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::mul(a, b); }
 WP_API void wp_builtin_mul_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::mul(a, b); }
@@ -1610,6 +1656,7 @@ WP_API void wp_builtin_mul_float64_transformd(float64 a, transformd& b, transfor
 WP_API void wp_builtin_mul_transformh_float16(transformh& a, float16 b, transformh* ret) { *ret = wp::mul(a, b); }
 WP_API void wp_builtin_mul_transformf_float32(transformf& a, float32 b, transformf* ret) { *ret = wp::mul(a, b); }
 WP_API void wp_builtin_mul_transformd_float64(transformd& a, float64 b, transformd* ret) { *ret = wp::mul(a, b); }
+WP_API void wp_builtin_mod_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::mod(a, b); }
 WP_API void wp_builtin_mod_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::mod(a, b); }
 WP_API void wp_builtin_mod_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::mod(a, b); }
 WP_API void wp_builtin_mod_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::mod(a, b); }
@@ -1657,6 +1704,7 @@ WP_API void wp_builtin_mod_vec4ul_vec4ul(vec4ul& a, vec4ul& b, vec4ul* ret) { *r
 WP_API void wp_builtin_mod_vec2ub_vec2ub(vec2ub& a, vec2ub& b, vec2ub* ret) { *ret = wp::mod(a, b); }
 WP_API void wp_builtin_mod_vec3ub_vec3ub(vec3ub& a, vec3ub& b, vec3ub* ret) { *ret = wp::mod(a, b); }
 WP_API void wp_builtin_mod_vec4ub_vec4ub(vec4ub& a, vec4ub& b, vec4ub* ret) { *ret = wp::mod(a, b); }
+WP_API void wp_builtin_div_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::div(a, b); }
 WP_API void wp_builtin_div_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::div(a, b); }
 WP_API void wp_builtin_div_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::div(a, b); }
 WP_API void wp_builtin_div_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::div(a, b); }
@@ -1770,6 +1818,7 @@ WP_API void wp_builtin_div_quatd_float64(quatd& a, float64 b, quatd* ret) { *ret
 WP_API void wp_builtin_div_float16_quath(float16 a, quath& b, quath* ret) { *ret = wp::div(a, b); }
 WP_API void wp_builtin_div_float32_quatf(float32 a, quatf& b, quatf* ret) { *ret = wp::div(a, b); }
 WP_API void wp_builtin_div_float64_quatd(float64 a, quatd& b, quatd* ret) { *ret = wp::div(a, b); }
+WP_API void wp_builtin_floordiv_bfloat16_bfloat16(bfloat16 a, bfloat16 b, bfloat16* ret) { *ret = wp::floordiv(a, b); }
 WP_API void wp_builtin_floordiv_float16_float16(float16 a, float16 b, float16* ret) { *ret = wp::floordiv(a, b); }
 WP_API void wp_builtin_floordiv_float32_float32(float32 a, float32 b, float32* ret) { *ret = wp::floordiv(a, b); }
 WP_API void wp_builtin_floordiv_float64_float64(float64 a, float64 b, float64* ret) { *ret = wp::floordiv(a, b); }
@@ -1781,6 +1830,7 @@ WP_API void wp_builtin_floordiv_uint16_uint16(uint16 a, uint16 b, uint16* ret) {
 WP_API void wp_builtin_floordiv_uint32_uint32(uint32 a, uint32 b, uint32* ret) { *ret = wp::floordiv(a, b); }
 WP_API void wp_builtin_floordiv_uint64_uint64(uint64 a, uint64 b, uint64* ret) { *ret = wp::floordiv(a, b); }
 WP_API void wp_builtin_floordiv_uint8_uint8(uint8 a, uint8 b, uint8* ret) { *ret = wp::floordiv(a, b); }
+WP_API void wp_builtin_pos_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::pos(x); }
 WP_API void wp_builtin_pos_float16(float16 x, float16* ret) { *ret = wp::pos(x); }
 WP_API void wp_builtin_pos_float32(float32 x, float32* ret) { *ret = wp::pos(x); }
 WP_API void wp_builtin_pos_float64(float64 x, float64* ret) { *ret = wp::pos(x); }
@@ -1843,6 +1893,7 @@ WP_API void wp_builtin_pos_mat22d(mat22d& x, mat22d* ret) { *ret = wp::pos(x); }
 WP_API void wp_builtin_pos_mat33d(mat33d& x, mat33d* ret) { *ret = wp::pos(x); }
 WP_API void wp_builtin_pos_mat44d(mat44d& x, mat44d* ret) { *ret = wp::pos(x); }
 WP_API void wp_builtin_pos_spatial_matrixd(spatial_matrixd& x, spatial_matrixd* ret) { *ret = wp::pos(x); }
+WP_API void wp_builtin_neg_bfloat16(bfloat16 x, bfloat16* ret) { *ret = wp::neg(x); }
 WP_API void wp_builtin_neg_float16(float16 x, float16* ret) { *ret = wp::neg(x); }
 WP_API void wp_builtin_neg_float32(float32 x, float32* ret) { *ret = wp::neg(x); }
 WP_API void wp_builtin_neg_float64(float64 x, float64* ret) { *ret = wp::neg(x); }

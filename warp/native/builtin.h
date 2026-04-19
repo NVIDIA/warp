@@ -169,6 +169,74 @@ static_assert(sizeof(half) == 2, "Size of half / float16 type must be 2-bytes");
 
 typedef half float16;
 
+#ifndef WP_NO_BFLOAT16
+
+struct wp_bfloat16;
+CUDA_CALLABLE wp_bfloat16 float_to_bfloat16(float x);
+CUDA_CALLABLE float bfloat16_to_float(wp_bfloat16 x);
+
+struct wp_bfloat16 {
+    CUDA_CALLABLE inline wp_bfloat16()
+        : u(0)
+    {
+    }
+    CUDA_CALLABLE inline wp_bfloat16(float f) { *this = float_to_bfloat16(f); }
+
+    unsigned short u;
+
+    // Comparison operators — promote to float for IEEE 754 NaN/zero semantics (same as half)
+    CUDA_CALLABLE inline bool operator==(const wp_bfloat16& other) const { return float32(*this) == float32(other); }
+    CUDA_CALLABLE inline bool operator!=(const wp_bfloat16& other) const { return float32(*this) != float32(other); }
+    CUDA_CALLABLE inline bool operator>(const wp_bfloat16& other) const { return float32(*this) > float32(other); }
+    CUDA_CALLABLE inline bool operator>=(const wp_bfloat16& other) const { return float32(*this) >= float32(other); }
+    CUDA_CALLABLE inline bool operator<(const wp_bfloat16& other) const { return float32(*this) < float32(other); }
+    CUDA_CALLABLE inline bool operator<=(const wp_bfloat16& other) const { return float32(*this) <= float32(other); }
+    CUDA_CALLABLE inline bool operator!() const { return float32(*this) == 0; }
+
+    CUDA_CALLABLE inline wp_bfloat16& operator*=(wp_bfloat16 other)
+    {
+        wp_bfloat16 tmp = float_to_bfloat16(bfloat16_to_float(*this) * bfloat16_to_float(other));
+        u = tmp.u;
+        return *this;
+    }
+    CUDA_CALLABLE inline wp_bfloat16& operator/=(wp_bfloat16 other)
+    {
+        wp_bfloat16 tmp = float_to_bfloat16(bfloat16_to_float(*this) / bfloat16_to_float(other));
+        u = tmp.u;
+        return *this;
+    }
+    CUDA_CALLABLE inline wp_bfloat16& operator+=(wp_bfloat16 other)
+    {
+        wp_bfloat16 tmp = float_to_bfloat16(bfloat16_to_float(*this) + bfloat16_to_float(other));
+        u = tmp.u;
+        return *this;
+    }
+    CUDA_CALLABLE inline wp_bfloat16& operator-=(wp_bfloat16 other)
+    {
+        wp_bfloat16 tmp = float_to_bfloat16(bfloat16_to_float(*this) - bfloat16_to_float(other));
+        u = tmp.u;
+        return *this;
+    }
+
+    // Conversion operators — non-explicit, using Warp type aliases (same as half)
+    CUDA_CALLABLE inline operator float32() const { return bfloat16_to_float(*this); }
+    CUDA_CALLABLE inline operator float64() const { return static_cast<float64>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator int8() const { return static_cast<int8>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint8() const { return static_cast<uint8>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator int16() const { return static_cast<int16>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint16() const { return static_cast<uint16>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator int32() const { return static_cast<int32>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint32() const { return static_cast<uint32>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator int64() const { return static_cast<int64>(bfloat16_to_float(*this)); }
+    CUDA_CALLABLE inline operator uint64() const { return static_cast<uint64>(bfloat16_to_float(*this)); }
+};
+
+static_assert(sizeof(wp_bfloat16) == 2, "Size of wp_bfloat16 / bfloat16 type must be 2-bytes");
+
+typedef wp_bfloat16 bfloat16;
+
+#endif  // WP_NO_BFLOAT16
+
 // Approximate division/reciprocal intrinsics
 #if defined(__CUDA_ARCH__)
 
@@ -191,6 +259,10 @@ inline __device__ float16 approx_rcp(float16 a)
     return float16(approx_rcp(float(a)));  // No approx PTX for f16; use fp32 approx rcp
 }
 
+#ifndef WP_NO_BFLOAT16
+inline __device__ bfloat16 approx_rcp(bfloat16 a) { return bfloat16(approx_rcp(float(a))); }
+#endif
+
 inline __device__ float approx_div(float a, float b)
 {
     float r;
@@ -209,6 +281,10 @@ inline __device__ float16 approx_div(float16 a, float16 b)
     return float16(approx_div(float(a), float(b)));  // No approx PTX for f16; use fp32 approx div
 }
 
+#ifndef WP_NO_BFLOAT16
+inline __device__ bfloat16 approx_div(bfloat16 a, bfloat16 b) { return bfloat16(approx_div(float(a), float(b))); }
+#endif
+
 #else
 
 // CPU fallbacks: exact division
@@ -218,8 +294,45 @@ inline CUDA_CALLABLE float16 approx_rcp(float16 a) { return float16(1.0f / float
 inline CUDA_CALLABLE float approx_div(float a, float b) { return a / b; }
 inline CUDA_CALLABLE double approx_div(double a, double b) { return a / b; }
 inline CUDA_CALLABLE float16 approx_div(float16 a, float16 b) { return float16(float(a) / float(b)); }
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE bfloat16 approx_rcp(bfloat16 a) { return bfloat16(1.0f / float(a)); }
+inline CUDA_CALLABLE bfloat16 approx_div(bfloat16 a, bfloat16 b) { return bfloat16(float(a) / float(b)); }
+#endif
 
 #endif
+
+#ifndef WP_NO_BFLOAT16
+// Software bfloat16 conversion utilities.
+// float-to-bfloat16 is used by non-PTX paths (CUDA CC < 8.0, Clang, CPU/native via warp.cpp).
+// bfloat16-to-float is used universally since it is a trivial bit-shift with no PTX advantage.
+// Placed before the platform-specific #if so it is available in all branches.
+inline CUDA_CALLABLE unsigned short wp_float_to_bfloat16_bits_sw(float x)
+{
+    unsigned int bits;
+    memcpy(&bits, &x, sizeof(bits));
+    // NaN or Inf (exponent all 1s) — truncate, no rounding needed.
+    // For NaN, ensure the quiet-NaN bit (bit 6 of bfloat16 mantissa) is set so
+    // that NaN values whose top 7 mantissa bits are zero don't become infinities.
+    if ((bits & 0x7F800000) == 0x7F800000) {
+        unsigned short h = static_cast<unsigned short>(bits >> 16);
+        if ((bits & 0x007FFFFF) != 0 && (h & 0x007F) == 0)
+            h |= 0x0040;  // was NaN but mantissa truncated to zero — set quiet NaN bit
+        return h;
+    }
+    // Round-to-nearest-even
+    unsigned int rounding_bias = (bits >> 16) & 1;
+    bits += 0x7FFF + rounding_bias;
+    return static_cast<unsigned short>(bits >> 16);
+}
+
+inline CUDA_CALLABLE float wp_bfloat16_bits_to_float_sw(unsigned short u)
+{
+    float val;
+    unsigned int bits = static_cast<unsigned int>(u) << 16;
+    memcpy(&val, &bits, sizeof(val));
+    return val;
+}
+#endif  // WP_NO_BFLOAT16
 
 #if defined(__CUDA_ARCH__)
 
@@ -237,6 +350,21 @@ CUDA_CALLABLE inline float half_to_float(half x)
     return val;
 }
 
+#ifndef WP_NO_BFLOAT16
+CUDA_CALLABLE inline wp_bfloat16 float_to_bfloat16(float x)
+{
+    wp_bfloat16 h;
+#if __CUDA_ARCH__ >= 800
+    asm("{  cvt.rn.bf16.f32 %0, %1;}\n" : "=h"(h.u) : "f"(x));
+#else
+    h.u = wp_float_to_bfloat16_bits_sw(x);
+#endif
+    return h;
+}
+
+CUDA_CALLABLE inline float bfloat16_to_float(wp_bfloat16 x) { return wp_bfloat16_bits_to_float_sw(x.u); }
+#endif  // WP_NO_BFLOAT16
+
 #elif defined(__clang__)
 
 // _Float16 is Clang's native half-precision floating-point type
@@ -253,6 +381,17 @@ CUDA_CALLABLE inline float half_to_float(half h)
     return static_cast<float>(f16);
 }
 
+#ifndef WP_NO_BFLOAT16
+CUDA_CALLABLE inline wp_bfloat16 float_to_bfloat16(float x)
+{
+    wp_bfloat16 h;
+    h.u = wp_float_to_bfloat16_bits_sw(x);
+    return h;
+}
+
+CUDA_CALLABLE inline float bfloat16_to_float(wp_bfloat16 h) { return wp_bfloat16_bits_to_float_sw(h.u); }
+#endif  // WP_NO_BFLOAT16
+
 #else  // Native C++ for Warp builtins outside of kernels
 
 extern "C" WP_API uint16_t wp_float_to_half_bits(float x);
@@ -266,6 +405,20 @@ inline half float_to_half(float x)
 }
 
 inline float half_to_float(half h) { return wp_half_bits_to_float(h.u); }
+
+#ifndef WP_NO_BFLOAT16
+extern "C" WP_API uint16_t wp_float_to_bfloat16_bits(float x);
+extern "C" WP_API float wp_bfloat16_bits_to_float(uint16_t u);
+
+inline wp_bfloat16 float_to_bfloat16(float x)
+{
+    wp_bfloat16 h;
+    h.u = wp_float_to_bfloat16_bits(x);
+    return h;
+}
+
+inline float bfloat16_to_float(wp_bfloat16 h) { return wp_bfloat16_bits_to_float(h.u); }
+#endif  // WP_NO_BFLOAT16
 
 #endif
 
@@ -292,6 +445,101 @@ inline CUDA_CALLABLE half operator*(double a, half b) { return float_to_half(a *
 inline CUDA_CALLABLE half operator/(half a, half b) { return float_to_half(half_to_float(a) / half_to_float(b)); }
 
 
+#ifndef WP_NO_BFLOAT16
+// bfloat16 arithmetic operators
+inline CUDA_CALLABLE wp_bfloat16 operator-(wp_bfloat16 a) { return float_to_bfloat16(-bfloat16_to_float(a)); }
+
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900
+inline CUDA_CALLABLE wp_bfloat16 operator+(wp_bfloat16 a, wp_bfloat16 b)
+{
+    wp_bfloat16 result;
+    asm("{  add.bf16 %0, %1, %2;}\n" : "=h"(result.u) : "h"(a.u), "h"(b.u));
+    return result;
+}
+inline CUDA_CALLABLE wp_bfloat16 operator-(wp_bfloat16 a, wp_bfloat16 b)
+{
+    wp_bfloat16 result;
+    asm("{  sub.bf16 %0, %1, %2;}\n" : "=h"(result.u) : "h"(a.u), "h"(b.u));
+    return result;
+}
+inline CUDA_CALLABLE wp_bfloat16 operator*(wp_bfloat16 a, wp_bfloat16 b)
+{
+    wp_bfloat16 result;
+    asm("{  mul.bf16 %0, %1, %2;}\n" : "=h"(result.u) : "h"(a.u), "h"(b.u));
+    return result;
+}
+#elif defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+// sm_80-89: emulate add/sub/mul via fma.rn.bf16 (matches cuda_bf16.hpp)
+inline CUDA_CALLABLE wp_bfloat16 operator+(wp_bfloat16 a, wp_bfloat16 b)
+{
+    wp_bfloat16 result;
+    asm("{.reg .b16 c;\n"
+        "  mov.b16 c, 0x3f80U;\n"
+        "  fma.rn.bf16 %0, %1, c, %2;}\n"
+        : "=h"(result.u)
+        : "h"(a.u), "h"(b.u));
+    return result;
+}
+inline CUDA_CALLABLE wp_bfloat16 operator-(wp_bfloat16 a, wp_bfloat16 b)
+{
+    wp_bfloat16 result;
+    asm("{.reg .b16 c;\n"
+        "  mov.b16 c, 0xbf80U;\n"
+        "  fma.rn.bf16 %0, %2, c, %1;}\n"
+        : "=h"(result.u)
+        : "h"(a.u), "h"(b.u));
+    return result;
+}
+inline CUDA_CALLABLE wp_bfloat16 operator*(wp_bfloat16 a, wp_bfloat16 b)
+{
+    wp_bfloat16 result;
+    asm("{.reg .b16 c;\n"
+        "  mov.b16 c, 0x8000U;\n"
+        "  fma.rn.bf16 %0, %1, %2, c;}\n"
+        : "=h"(result.u)
+        : "h"(a.u), "h"(b.u));
+    return result;
+}
+#else
+inline CUDA_CALLABLE wp_bfloat16 operator+(wp_bfloat16 a, wp_bfloat16 b)
+{
+    return float_to_bfloat16(bfloat16_to_float(a) + bfloat16_to_float(b));
+}
+inline CUDA_CALLABLE wp_bfloat16 operator-(wp_bfloat16 a, wp_bfloat16 b)
+{
+    return float_to_bfloat16(bfloat16_to_float(a) - bfloat16_to_float(b));
+}
+inline CUDA_CALLABLE wp_bfloat16 operator*(wp_bfloat16 a, wp_bfloat16 b)
+{
+    return float_to_bfloat16(bfloat16_to_float(a) * bfloat16_to_float(b));
+}
+#endif
+
+inline CUDA_CALLABLE wp_bfloat16 operator/(wp_bfloat16 a, wp_bfloat16 b)
+{
+    return float_to_bfloat16(bfloat16_to_float(a) / bfloat16_to_float(b));
+}
+
+// Mixed-type multiply for bfloat16 (matches half's mixed-type operators)
+inline CUDA_CALLABLE wp_bfloat16 operator*(wp_bfloat16 a, float b)
+{
+    return float_to_bfloat16(bfloat16_to_float(a) * b);
+}
+inline CUDA_CALLABLE wp_bfloat16 operator*(float a, wp_bfloat16 b)
+{
+    return float_to_bfloat16(a * bfloat16_to_float(b));
+}
+inline CUDA_CALLABLE wp_bfloat16 operator*(wp_bfloat16 a, double b)
+{
+    return float_to_bfloat16(bfloat16_to_float(a) * static_cast<float>(b));
+}
+inline CUDA_CALLABLE wp_bfloat16 operator*(double a, wp_bfloat16 b)
+{
+    return float_to_bfloat16(static_cast<float>(a) * bfloat16_to_float(b));
+}
+#endif  // WP_NO_BFLOAT16
+
+
 template <typename TRet, typename T> inline CUDA_CALLABLE TRet cast(T a)
 {
     static_assert(sizeof(TRet) == sizeof(T), "source and destination must have the same size");
@@ -305,6 +553,9 @@ template <typename T> CUDA_CALLABLE inline int cast_int(T x) { return (int)(x); 
 template <typename T> CUDA_CALLABLE inline void adj_cast_float(T x, T& adj_x, float adj_ret) { }
 
 CUDA_CALLABLE inline void adj_cast_float(float16 x, float16& adj_x, float adj_ret) { adj_x += float16(adj_ret); }
+#ifndef WP_NO_BFLOAT16
+CUDA_CALLABLE inline void adj_cast_float(bfloat16 x, bfloat16& adj_x, float adj_ret) { adj_x += bfloat16(adj_ret); }
+#endif
 CUDA_CALLABLE inline void adj_cast_float(float32 x, float32& adj_x, float adj_ret) { adj_x += float32(adj_ret); }
 CUDA_CALLABLE inline void adj_cast_float(float64 x, float64& adj_x, float adj_ret) { adj_x += float64(adj_ret); }
 
@@ -321,6 +572,9 @@ template <typename T> CUDA_CALLABLE inline void adj_uint64(T, T&, uint64) { }
 
 
 template <typename T> CUDA_CALLABLE inline void adj_float16(T x, T& adj_x, float16 adj_ret) { adj_x += T(adj_ret); }
+#ifndef WP_NO_BFLOAT16
+template <typename T> CUDA_CALLABLE inline void adj_bfloat16(T x, T& adj_x, bfloat16 adj_ret) { adj_x += T(adj_ret); }
+#endif
 template <typename T> CUDA_CALLABLE inline void adj_float32(T x, T& adj_x, float32 adj_ret) { adj_x += T(adj_ret); }
 template <typename T> CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x += T(adj_ret); }
 
@@ -410,20 +664,33 @@ inline CUDA_CALLABLE uint64 sign(uint64 x) { return 1; }
 template <typename T> inline bool CUDA_CALLABLE isfinite(const T&) { return true; }
 
 inline bool CUDA_CALLABLE isfinite(half x) { return ::isfinite(float(x)); }
+#ifndef WP_NO_BFLOAT16
+inline bool CUDA_CALLABLE isfinite(bfloat16 x) { return ::isfinite(float(x)); }
+#endif
 inline bool CUDA_CALLABLE isfinite(float x) { return ::isfinite(x); }
 inline bool CUDA_CALLABLE isfinite(double x) { return ::isfinite(x); }
 
 inline bool CUDA_CALLABLE isnan(half x) { return ::isnan(float(x)); }
+#ifndef WP_NO_BFLOAT16
+inline bool CUDA_CALLABLE isnan(bfloat16 x) { return ::isnan(float(x)); }
+#endif
 inline bool CUDA_CALLABLE isnan(float x) { return ::isnan(x); }
 inline bool CUDA_CALLABLE isnan(double x) { return ::isnan(x); }
 
 inline bool CUDA_CALLABLE isinf(half x) { return ::isinf(float(x)); }
+#ifndef WP_NO_BFLOAT16
+inline bool CUDA_CALLABLE isinf(bfloat16 x) { return ::isinf(float(x)); }
+#endif
 inline bool CUDA_CALLABLE isinf(float x) { return ::isinf(x); }
 inline bool CUDA_CALLABLE isinf(double x) { return ::isinf(x); }
 
 template <typename T> inline CUDA_CALLABLE void print(const T&) { printf("<type without print implementation>\n"); }
 
 inline CUDA_CALLABLE void print(float16 f) { printf("%g\n", half_to_float(f)); }
+
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE void print(bfloat16 f) { printf("%g\n", bfloat16_to_float(f)); }
+#endif
 
 inline CUDA_CALLABLE void print(float f) { printf("%g\n", f); }
 
@@ -505,6 +772,9 @@ inline CUDA_CALLABLE void adj_isinf(const T&, T&, bool) { }\
 inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
 
 DECLARE_FLOAT_OPS(float16)
+#ifndef WP_NO_BFLOAT16
+DECLARE_FLOAT_OPS(bfloat16)
+#endif
 DECLARE_FLOAT_OPS(float32)
 DECLARE_FLOAT_OPS(float64)
 
@@ -517,6 +787,9 @@ inline CUDA_CALLABLE void adj_approx_div(T a, T b, T ret, T& adj_a, T& adj_b, T 
 }
 
 DECLARE_ADJ_APPROX_DIV(float16)
+#ifndef WP_NO_BFLOAT16
+DECLARE_ADJ_APPROX_DIV(bfloat16)
+#endif
 DECLARE_ADJ_APPROX_DIV(float32)
 DECLARE_ADJ_APPROX_DIV(float64)
 
@@ -534,6 +807,19 @@ inline CUDA_CALLABLE float16 mod(float16 a, float16 b)
 #endif
     return fmodf(float(a), float(b));
 }
+
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE bfloat16 mod(bfloat16 a, bfloat16 b)
+{
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(b) || float(b) == 0.0f) {
+        printf("%s:%d mod(%f, %f)\n", __FILE__, __LINE__, float(a), float(b));
+        assert(0);
+    }
+#endif
+    return fmodf(float(a), float(b));
+}
+#endif  // WP_NO_BFLOAT16
 
 inline CUDA_CALLABLE float32 mod(float32 a, float32 b)
 {
@@ -939,6 +1225,40 @@ inline CUDA_CALLABLE void adj_erfcinv(double a, double ret, double& adj_a, doubl
     adj_a -= M_SQRT_PI_2 * ::exp(ret * ret) * adj_ret;
 }
 
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE void adj_erf(bfloat16 a, bfloat16& adj_a, bfloat16 adj_ret)
+{
+    adj_a += bfloat16(M_2_SQRT_PI_F * ::expf(-float(a) * float(a))) * adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_erfc(bfloat16 a, bfloat16& adj_a, bfloat16 adj_ret)
+{
+    adj_a -= bfloat16(M_2_SQRT_PI_F * ::expf(-float(a) * float(a))) * adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_erfinv(bfloat16 a, bfloat16 ret, bfloat16& adj_a, bfloat16 adj_ret)
+{
+#if FP_CHECK
+    if (float(a) < -1.0f || float(a) > 1.0f) {
+        printf("%s:%d adj_erfinv(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    adj_a += bfloat16(M_SQRT_PI_F_2 * ::expf(float(ret) * float(ret))) * adj_ret;
+}
+
+inline CUDA_CALLABLE void adj_erfcinv(bfloat16 a, bfloat16 ret, bfloat16& adj_a, bfloat16 adj_ret)
+{
+#if FP_CHECK
+    if (float(a) < 0.0f || float(a) > 2.0f) {
+        printf("%s:%d adj_erfcinv(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    adj_a -= bfloat16(M_SQRT_PI_F_2 * ::expf(float(ret) * float(ret))) * adj_ret;
+}
+#endif  // WP_NO_BFLOAT16
+
 inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
 inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
 
@@ -1044,6 +1364,124 @@ inline CUDA_CALLABLE half trunc(half x) { return ::truncf(float(x)); }
 inline CUDA_CALLABLE half floor(half x) { return ::floorf(float(x)); }
 inline CUDA_CALLABLE half ceil(half x) { return ::ceilf(float(x)); }
 inline CUDA_CALLABLE half frac(half x) { return float(x) - trunc(float(x)); }
+
+#ifndef WP_NO_BFLOAT16
+// bfloat16 math function overloads (forward to float, convert back)
+inline CUDA_CALLABLE bfloat16 abs(bfloat16 x) { return ::fabsf(float(x)); }
+inline CUDA_CALLABLE bfloat16 acos(bfloat16 x) { return ::acosf(min(max(float(x), -1.0f), 1.0f)); }
+inline CUDA_CALLABLE bfloat16 asin(bfloat16 x) { return ::asinf(min(max(float(x), -1.0f), 1.0f)); }
+inline CUDA_CALLABLE bfloat16 atan(bfloat16 x) { return ::atanf(float(x)); }
+inline CUDA_CALLABLE bfloat16 atan2(bfloat16 y, bfloat16 x) { return ::atan2f(float(y), float(x)); }
+inline CUDA_CALLABLE bfloat16 sin(bfloat16 x) { return ::sinf(float(x)); }
+inline CUDA_CALLABLE bfloat16 cos(bfloat16 x) { return ::cosf(float(x)); }
+inline CUDA_CALLABLE bfloat16 tan(bfloat16 x) { return ::tanf(float(x)); }
+inline CUDA_CALLABLE bfloat16 sinh(bfloat16 x) { return ::sinhf(float(x)); }
+inline CUDA_CALLABLE bfloat16 cosh(bfloat16 x) { return ::coshf(float(x)); }
+inline CUDA_CALLABLE bfloat16 tanh(bfloat16 x) { return ::tanhf(float(x)); }
+inline CUDA_CALLABLE bfloat16 degrees(bfloat16 x) { return x * RAD_TO_DEG; }
+inline CUDA_CALLABLE bfloat16 radians(bfloat16 x) { return x * DEG_TO_RAD; }
+inline CUDA_CALLABLE bfloat16 round(bfloat16 x) { return ::roundf(float(x)); }
+inline CUDA_CALLABLE bfloat16 rint(bfloat16 x) { return ::rintf(float(x)); }
+inline CUDA_CALLABLE bfloat16 trunc(bfloat16 x) { return ::truncf(float(x)); }
+inline CUDA_CALLABLE bfloat16 floor(bfloat16 x) { return ::floorf(float(x)); }
+inline CUDA_CALLABLE bfloat16 ceil(bfloat16 x) { return ::ceilf(float(x)); }
+inline CUDA_CALLABLE bfloat16 frac(bfloat16 x) { return float(x) - trunc(float(x)); }
+inline CUDA_CALLABLE bfloat16 sqrt(bfloat16 x)
+{
+#if FP_CHECK
+    if (float(x) < 0.0f) {
+        printf("%s:%d sqrt(%f)\n", __FILE__, __LINE__, float(x));
+        assert(0);
+    }
+#endif
+    return ::sqrtf(float(x));
+}
+inline CUDA_CALLABLE bfloat16 cbrt(bfloat16 x) { return ::cbrtf(float(x)); }
+inline CUDA_CALLABLE bfloat16 log(bfloat16 a)
+{
+#if FP_CHECK
+    if (!isfinite(a) || float(a) < 0.0f) {
+        printf("%s:%d log(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    return ::logf(float(a));
+}
+inline CUDA_CALLABLE bfloat16 log2(bfloat16 a)
+{
+#if FP_CHECK
+    if (!isfinite(a) || float(a) < 0.0f) {
+        printf("%s:%d log2(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    return ::log2f(float(a));
+}
+inline CUDA_CALLABLE bfloat16 log10(bfloat16 a)
+{
+#if FP_CHECK
+    if (!isfinite(a) || float(a) < 0.0f) {
+        printf("%s:%d log10(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    return ::log10f(float(a));
+}
+inline CUDA_CALLABLE bfloat16 exp(bfloat16 a)
+{
+    bfloat16 result = ::expf(float(a));
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(result)) {
+        printf("%s:%d exp(%f) = %f\n", __FILE__, __LINE__, float(a), float(result));
+        assert(0);
+    }
+#endif
+    return result;
+}
+inline CUDA_CALLABLE bfloat16 pow(bfloat16 a, bfloat16 b)
+{
+    float result = ::powf(float(a), float(b));
+#if FP_CHECK
+    if (!isfinite(float(a)) || !isfinite(float(b)) || !isfinite(result)) {
+        printf("%s:%d pow(%f, %f) = %f\n", __FILE__, __LINE__, float(a), float(b), result);
+        assert(0);
+    }
+#endif
+    return result;
+}
+inline CUDA_CALLABLE bfloat16 floordiv(bfloat16 a, bfloat16 b)
+{
+#if FP_CHECK
+    if (!isfinite(a) || !isfinite(b) || float(b) == 0.0f) {
+        printf("%s:%d floordiv(%f, %f)\n", __FILE__, __LINE__, float(a), float(b));
+        assert(0);
+    }
+#endif
+    return floorf(float(a / b));
+}
+inline CUDA_CALLABLE bfloat16 erf(bfloat16 a) { return erff(float(a)); }
+inline CUDA_CALLABLE bfloat16 erfc(bfloat16 a) { return erfcf(float(a)); }
+inline CUDA_CALLABLE bfloat16 erfinv(bfloat16 a)
+{
+#if FP_CHECK
+    if (float(a) < -1.0f || float(a) > 1.0f) {
+        printf("%s:%d erfinv(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    return ::erfinvf(float(a));
+}
+inline CUDA_CALLABLE bfloat16 erfcinv(bfloat16 a)
+{
+#if FP_CHECK
+    if (float(a) < 0.0f || float(a) > 2.0f) {
+        printf("%s:%d erfcinv(%f)\n", __FILE__, __LINE__, float(a));
+        assert(0);
+    }
+#endif
+    return ::erfcinvf(float(a));
+}
+#endif  // WP_NO_BFLOAT16
 
 #define DECLARE_ADJOINTS(T)\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
@@ -1200,11 +1638,11 @@ inline CUDA_CALLABLE void adj_cbrt(T x, T ret, T& adj_x, T adj_ret)\
 }\
 inline CUDA_CALLABLE void adj_degrees(T x, T& adj_x, T adj_ret)\
 {\
-    adj_x += RAD_TO_DEG * adj_ret;\
+    adj_x += T(RAD_TO_DEG) * adj_ret;\
 }\
 inline CUDA_CALLABLE void adj_radians(T x, T& adj_x, T adj_ret)\
 {\
-    adj_x += DEG_TO_RAD * adj_ret;\
+    adj_x += T(DEG_TO_RAD) * adj_ret;\
 }\
 inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret){ }\
 inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret){ }\
@@ -1214,6 +1652,9 @@ inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret){ }\
 inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret){ }
 
 DECLARE_ADJOINTS(float16)
+#ifndef WP_NO_BFLOAT16
+DECLARE_ADJOINTS(bfloat16)
+#endif
 DECLARE_ADJOINTS(float32)
 DECLARE_ADJOINTS(float64)
 
@@ -1535,6 +1976,39 @@ template <> inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
 #endif
 }
 
+#ifndef WP_NO_BFLOAT16
+template <> inline CUDA_CALLABLE bfloat16 atomic_add(bfloat16* buf, bfloat16 value)
+{
+#if !defined(__CUDA_ARCH__)
+    bfloat16 old = buf[0];
+    buf[0] += value;
+    return old;
+#elif __CUDA_ARCH__ >= 900
+    bfloat16 old;
+    asm volatile("atom.add.noftz.bf16 %0, [%1], %2;" : "=h"(old.u) : "l"(buf), "h"(value.u) : "memory");
+    return old;
+#elif __CUDA_ARCH__ >= 700
+    // Fall back to CAS loop using 16-bit atomicCAS (available on compute capability >= 7.0)
+    unsigned short int* address_as_ushort = reinterpret_cast<unsigned short int*>(buf);
+    unsigned short int old_val = *address_as_ushort;
+    unsigned short int assumed;
+    do {
+        assumed = old_val;
+        bfloat16 old_bf16;
+        old_bf16.u = assumed;
+        bfloat16 new_bf16 = float_to_bfloat16(bfloat16_to_float(old_bf16) + bfloat16_to_float(value));
+        old_val = atomicCAS(address_as_ushort, assumed, new_bf16.u);
+    } while (assumed != old_val);
+    bfloat16 result;
+    result.u = old_val;
+    return result;
+#else
+    // No bfloat16 atomic support on compute capability < 7.0
+    return bfloat16(0);
+#endif
+}
+#endif  // WP_NO_BFLOAT16
+
 template <> inline CUDA_CALLABLE float64 atomic_add(float64* buf, float64 value)
 {
 #if !defined(__CUDA_ARCH__)
@@ -1629,6 +2103,41 @@ template <> inline CUDA_CALLABLE double atomic_min(double* address, double val)
 #endif
 }
 
+#ifndef WP_NO_BFLOAT16
+// emulate atomic bfloat16 min with atomicCAS()
+template <> inline CUDA_CALLABLE bfloat16 atomic_min(bfloat16* buf, bfloat16 val)
+{
+#if !defined(__CUDA_ARCH__)
+    bfloat16 old = buf[0];
+    buf[0] = min(old, val);
+    return old;
+#elif __CUDA_ARCH__ >= 700
+    // 16-bit atomicCAS is available on compute capability >= 7.0
+    unsigned short int* address_as_ushort = reinterpret_cast<unsigned short int*>(buf);
+    unsigned short int old_val = *address_as_ushort;
+    unsigned short int assumed;
+
+    float val_f = bfloat16_to_float(val);
+    bfloat16 old_bf16;
+    old_bf16.u = old_val;
+    if (val_f < bfloat16_to_float(old_bf16)) {
+        do {
+            assumed = old_val;
+            old_bf16.u = assumed;
+            bfloat16 new_bf16 = float_to_bfloat16(min(bfloat16_to_float(old_bf16), val_f));
+            old_val = atomicCAS(address_as_ushort, assumed, new_bf16.u);
+        } while (assumed != old_val);
+    }
+    bfloat16 result;
+    result.u = old_val;
+    return result;
+#else
+    // No bfloat16 atomic support on compute capability < 7.0
+    return bfloat16(0);
+#endif
+}
+#endif  // WP_NO_BFLOAT16
+
 template <typename T> inline CUDA_CALLABLE T atomic_max(T* address, T val)
 {
 #if defined(__CUDA_ARCH__)
@@ -1691,6 +2200,41 @@ template <> inline CUDA_CALLABLE double atomic_max(double* address, double val)
     return old;
 #endif
 }
+
+#ifndef WP_NO_BFLOAT16
+// emulate atomic bfloat16 max with atomicCAS()
+template <> inline CUDA_CALLABLE bfloat16 atomic_max(bfloat16* buf, bfloat16 val)
+{
+#if !defined(__CUDA_ARCH__)
+    bfloat16 old = buf[0];
+    buf[0] = max(old, val);
+    return old;
+#elif __CUDA_ARCH__ >= 700
+    // 16-bit atomicCAS is available on compute capability >= 7.0
+    unsigned short int* address_as_ushort = reinterpret_cast<unsigned short int*>(buf);
+    unsigned short int old_val = *address_as_ushort;
+    unsigned short int assumed;
+
+    float val_f = bfloat16_to_float(val);
+    bfloat16 old_bf16;
+    old_bf16.u = old_val;
+    if (val_f > bfloat16_to_float(old_bf16)) {
+        do {
+            assumed = old_val;
+            old_bf16.u = assumed;
+            bfloat16 new_bf16 = float_to_bfloat16(max(bfloat16_to_float(old_bf16), val_f));
+            old_val = atomicCAS(address_as_ushort, assumed, new_bf16.u);
+        } while (assumed != old_val);
+    }
+    bfloat16 result;
+    result.u = old_val;
+    return result;
+#else
+    // No bfloat16 atomic support on compute capability < 7.0
+    return bfloat16(0);
+#endif
+}
+#endif  // WP_NO_BFLOAT16
 
 // default behavior for adjoint of atomic min/max operation that accumulates gradients for all elements matching the
 // min/max value
@@ -1943,6 +2487,9 @@ CUDA_CALLABLE inline void adj_lerp(const T& a, const T& b, T t, T& adj_a, T& adj
 }
 
 DECLARE_INTERP_FUNCS(float16)
+#ifndef WP_NO_BFLOAT16
+DECLARE_INTERP_FUNCS(bfloat16)
+#endif
 DECLARE_INTERP_FUNCS(float32)
 DECLARE_INTERP_FUNCS(float64)
 
@@ -2008,6 +2555,9 @@ template <typename T> inline CUDA_CALLABLE void adj_print(const T& x, const T& a
 
 // note: adj_print() only prints the adjoint value, since the value itself gets printed in replay print()
 inline CUDA_CALLABLE void adj_print(half x, half adj_x) { printf("adj: %g\n", half_to_float(adj_x)); }
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE void adj_print(bfloat16 x, bfloat16 adj_x) { printf("adj: %g\n", bfloat16_to_float(adj_x)); }
+#endif
 inline CUDA_CALLABLE void adj_print(float x, float adj_x) { printf("adj: %g\n", adj_x); }
 inline CUDA_CALLABLE void adj_print(double x, double adj_x) { printf("adj: %g\n", adj_x); }
 

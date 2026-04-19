@@ -3234,6 +3234,11 @@ def test_numpy_array_interface(test, device):
     scalar_types = wp._src.types.scalar_types
 
     for dtype in scalar_types:
+        if dtype is wp.bfloat16:
+            # bfloat16 has no native NumPy type; .numpy() returns uint16,
+            # so the round trip cannot recover the original dtype.
+            continue
+
         # test round trip
         a1 = wp.zeros(n, dtype=dtype, device="cpu")
         na = np.array(a1)

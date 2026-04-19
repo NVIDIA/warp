@@ -292,6 +292,8 @@ class StructInstance:
                 # scalar
                 if var.type == warp.float16:
                     npvalue.append(half_bits_to_float(value))
+                elif var.type == warp.bfloat16:
+                    npvalue.append(bfloat16_bits_to_float(value))
                 else:
                     npvalue.append(value)
 
@@ -406,9 +408,11 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             if is_warp_scalar:
                 # assigning warp type value (e.g.: wp.float32)
                 value = value.value
-            # float16 needs conversion to uint16 bits
+            # float16/bfloat16 needs conversion to uint16 bits
             if var_type == warp.float16:
                 setattr(inst._ctype, field, float_to_half_bits(value))
+            elif var_type == warp.bfloat16:
+                setattr(inst._ctype, field, float_to_bfloat16_bits(value))
             else:
                 setattr(inst._ctype, field, value)
 
@@ -471,8 +475,8 @@ class Struct:
             elif _is_texture_type(var.type):
                 fields.append((label, var.type._wp_ctype_))
             else:
-                # HACK: fp16 requires conversion functions from warp.so
-                if var.type is warp.float16:
+                # HACK: fp16/bf16 requires conversion functions from warp.so
+                if var.type is warp.float16 or var.type is warp.bfloat16:
                     warp.init()
                 fields.append((label, var.type._type_))
 
@@ -631,6 +635,8 @@ class Struct:
                 cvalue = ctypes.cast(ptr + offset, ctypes.POINTER(var.type._type_)).contents
                 if var.type == warp.float16:
                     setattr(instance, name, half_bits_to_float(cvalue.value))
+                elif var.type == warp.bfloat16:
+                    setattr(instance, name, bfloat16_bits_to_float(cvalue.value))
                 else:
                     setattr(instance, name, cvalue.value)
 
@@ -4437,9 +4443,10 @@ def constant_str(value):
     elif isinstance(value, ctypes.Array):
         if value_type._wp_scalar_type_ == float16:
             # special case for float16, which is stored as uint16 in the ctypes.Array
-            from warp._src.context import runtime  # noqa: PLC0415
-
-            scalar_value = runtime.core.wp_half_bits_to_float
+            scalar_value = warp._src.context.runtime.core.wp_half_bits_to_float
+        elif value_type._wp_scalar_type_ == bfloat16:
+            # special case for bfloat16, which is stored as uint16 in the ctypes.Array
+            scalar_value = warp._src.context.runtime.core.wp_bfloat16_bits_to_float
         else:
 
             def scalar_value(x):

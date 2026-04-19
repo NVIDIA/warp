@@ -49,6 +49,7 @@ Scalars
    :nosignatures:
    :toctree: _generated
 
+   bfloat16
    bool
    float16
    float32

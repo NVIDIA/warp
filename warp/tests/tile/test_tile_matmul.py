@@ -84,6 +84,10 @@ wp.overload(
     tile_gemm, {"A": wp.array2d(dtype=wp.float16), "B": wp.array2d(dtype=wp.float16), "C": wp.array2d(dtype=wp.float16)}
 )
 wp.overload(
+    tile_gemm,
+    {"A": wp.array2d(dtype=wp.bfloat16), "B": wp.array2d(dtype=wp.bfloat16), "C": wp.array2d(dtype=wp.bfloat16)},
+)
+wp.overload(
     tile_gemm, {"A": wp.array2d(dtype=wp.float32), "B": wp.array2d(dtype=wp.float32), "C": wp.array2d(dtype=wp.float32)}
 )
 wp.overload(
@@ -209,13 +213,74 @@ def test_tile_matmul_return_form(test, device):
         wp.config.verify_fp = old_verify_fp
 
 
+@wp.kernel(module="unique")
+def f32_to_bf16_kernel(input: wp.array2d(dtype=wp.float32), output: wp.array2d(dtype=wp.bfloat16)):
+    i, j = wp.tid()
+    output[i, j] = wp.bfloat16(input[i, j])
+
+
+@wp.kernel(module="unique")
+def bf16_to_f32_kernel(input: wp.array2d(dtype=wp.bfloat16), output: wp.array2d(dtype=wp.float32)):
+    i, j = wp.tid()
+    output[i, j] = wp.float32(input[i, j])
+
+
+def test_tile_gemm_bf16(test, device):
+    M = TILE_M * 7
+    K = TILE_K * 6
+    N = TILE_N * 5
+
+    rng = np.random.default_rng(42)
+    A = rng.random((M, K), dtype=np.float32)
+    B = rng.random((K, N), dtype=np.float32)
+
+    # Convert float32 numpy data to bfloat16 on device via kernels
+    A_f32 = wp.array(A, device=device)
+    B_f32 = wp.array(B, device=device)
+    A_wp = wp.zeros((M, K), dtype=wp.bfloat16, device=device)
+    B_wp = wp.zeros((K, N), dtype=wp.bfloat16, device=device)
+    C_wp = wp.zeros((M, N), dtype=wp.bfloat16, device=device)
+
+    wp.launch(f32_to_bf16_kernel, dim=(M, K), inputs=[A_f32, A_wp], device=device)
+    wp.launch(f32_to_bf16_kernel, dim=(K, N), inputs=[B_f32, B_wp], device=device)
+
+    wp.launch_tiled(
+        tile_gemm,
+        dim=(int(M / TILE_M), int(N / TILE_N)),
+        inputs=[A_wp, B_wp, C_wp],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    # Convert result back to float32 for comparison
+    C_f32 = wp.zeros((M, N), dtype=wp.float32, device=device)
+    wp.launch(bf16_to_f32_kernel, dim=(M, N), inputs=[C_wp, C_f32], device=device)
+
+    # Quantize reference inputs through bfloat16 to match what the kernel sees
+    A_ref = wp.zeros((M, K), dtype=wp.float32, device=device)
+    B_ref = wp.zeros((K, N), dtype=wp.float32, device=device)
+    wp.launch(bf16_to_f32_kernel, dim=(M, K), inputs=[A_wp, A_ref], device=device)
+    wp.launch(bf16_to_f32_kernel, dim=(K, N), inputs=[B_wp, B_ref], device=device)
+
+    np.testing.assert_allclose(C_f32.numpy(), A_ref.numpy() @ B_ref.numpy(), rtol=1.0e-2)
+
+
 class TestTileMatmul(unittest.TestCase):
     pass
 
 
 devices = get_test_devices()
 
+# bfloat16 requires CC >= 8.0 (Ampere+)
+bf16_devices = []
+if wp.is_cpu_available():
+    bf16_devices.append("cpu")
+for cuda_device in get_selected_cuda_test_devices():
+    if cuda_device.arch >= 80:
+        bf16_devices.append(cuda_device)
+
 add_function_test(TestTileMatmul, "test_tile_gemm_fp16", test_tile_gemm(wp.float16), devices=devices)
+add_function_test(TestTileMatmul, "test_tile_gemm_bf16", test_tile_gemm_bf16, devices=bf16_devices, check_output=False)
 add_function_test(TestTileMatmul, "test_tile_gemm_fp32", test_tile_gemm(wp.float32), devices=devices)
 add_function_test(TestTileMatmul, "test_tile_gemm_fp64", test_tile_gemm(wp.float64), devices=devices)
 add_function_test(TestTileMatmul, "test_tile_grouped_gemm", test_tile_grouped_gemm, devices=devices)

@@ -23,6 +23,7 @@ from warp._src.types import uint32 as uint32
 from warp._src.types import int64 as int64
 from warp._src.types import uint64 as uint64
 from warp._src.types import float16 as float16
+from warp._src.types import bfloat16 as bfloat16
 from warp._src.types import float32 as float32
 from warp._src.types import float64 as float64
 from warp._src.types import vec2 as vec2
@@ -6380,7 +6381,7 @@ def tile_matmul(
     Compute ``out = alpha * a*b``.
 
     Supported datatypes are:
-        * fp16, fp32, fp64 (real)
+        * fp16, bf16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
@@ -6410,7 +6411,7 @@ def tile_matmul(
     Compute ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
-        * fp16, fp32, fp64 (real)
+        * fp16, bf16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated

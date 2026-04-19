@@ -285,6 +285,13 @@ class float16(float_base):
     _type_ = ctypes.c_uint16
 
 
+class bfloat16(float_base):
+    """16-bit brain floating-point scalar type."""
+
+    _length_ = 1
+    _type_ = ctypes.c_uint16
+
+
 class float32(float_base):
     """32-bit single-precision floating-point scalar type."""
 
@@ -357,7 +364,7 @@ class uint64(int_base):
 
 # Scalar type tuples - defined here as canonical source, used by TypeVars below
 int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
-float_types = (float16, float32, float64)
+float_types = (float16, bfloat16, float32, float64)
 scalar_types = int_types + float_types
 scalar_and_bool_types = (*scalar_types, bool)
 
@@ -369,7 +376,7 @@ native_scalar_types = (int32, float32, bool)
 # Note: TypeVar constraints must be listed explicitly (Pyright doesn't support unpacking)
 # Keep these in sync with the tuples above when adding new scalar types
 Int = TypeVar("Int", int, int8, uint8, int16, uint16, int32, uint32, int64, uint64)
-Float = TypeVar("Float", float, float16, float32, float64)
+Float = TypeVar("Float", float, float16, bfloat16, float32, float64)
 Scalar = TypeVar(
     "Scalar",
     int,
@@ -383,6 +390,7 @@ Scalar = TypeVar(
     int64,
     uint64,
     float16,
+    bfloat16,
     float32,
     float64,
 )
@@ -601,12 +609,95 @@ def constant(x):
     return x
 
 
-def float_to_half_bits(value: float) -> int:
+def float_to_half_bits(value):
     return warp._src.context.runtime.core.wp_float_to_half_bits(value)
 
 
-def half_bits_to_float(value: int) -> float:
+def half_bits_to_float(value):
     return warp._src.context.runtime.core.wp_half_bits_to_float(value)
+
+
+def float_to_bfloat16_bits(value):
+    return warp._src.context.runtime.core.wp_float_to_bfloat16_bits(value)
+
+
+def bfloat16_bits_to_float(value):
+    return warp._src.context.runtime.core.wp_bfloat16_bits_to_float(value)
+
+
+_ml_dtypes_bfloat16 = _UNSET = object()
+
+
+def _get_ml_dtypes_bfloat16():
+    """Return ``ml_dtypes.bfloat16`` if the package is installed, otherwise ``None``.
+
+    The result is cached after the first call so the import is attempted at most once.
+    """
+    global _ml_dtypes_bfloat16
+    if _ml_dtypes_bfloat16 is _UNSET:
+        try:
+            import ml_dtypes  # noqa: PLC0415
+
+            _ml_dtypes_bfloat16 = ml_dtypes.bfloat16
+        except ImportError:
+            _ml_dtypes_bfloat16 = None
+    return _ml_dtypes_bfloat16
+
+
+def _np_float32_to_bfloat16_bits(arr_f32: np.ndarray) -> np.ndarray:
+    """Convert a float32 NumPy array to bfloat16 stored as uint16 (round-to-nearest-even).
+
+    This performs the same conversion as ``float_to_bfloat16_bits`` but operates on entire
+    NumPy arrays using vectorized operations, which is significantly faster for bulk data.
+
+    Uses ``ml_dtypes.bfloat16`` for the conversion when available, falling back to a
+    manual bit-manipulation implementation otherwise.
+    """
+    ml_bf16 = _get_ml_dtypes_bfloat16()
+    if ml_bf16 is not None:
+        return np.asarray(arr_f32, dtype=ml_bf16).view(np.uint16)
+    arr_f32 = np.asarray(arr_f32, dtype=np.float32)
+    bits = arr_f32.view(np.uint32)
+
+    # Handle NaN: preserve NaN payload but ensure it stays NaN after truncation.
+    # A float32 NaN has exponent=0xFF and a non-zero mantissa (23 bits).
+    # Truncating to bfloat16 keeps only the top 7 mantissa bits, which could become
+    # zero and turn the NaN into an infinity. Force the quiet-NaN bit (bit 22 of
+    # float32, i.e. bit 6 of the bfloat16 mantissa) so the value remains NaN.
+    nan_mask = np.isnan(arr_f32)
+    bits = np.where(nan_mask, bits | np.uint32(0x0040_0000), bits)
+
+    # Round-to-nearest-even: add rounding bias based on the LSB of the result.
+    # Skip rounding for NaN values because the quiet-NaN fixup can set many
+    # mantissa bits, and the rounding addition can then overflow out of the
+    # NaN encoding (e.g. 0x7FFFFFFF + 0x8000 = 0x80007FFF → negative zero).
+    rounding_bias = (bits >> 16) & np.uint32(1)
+    bits_rounded = bits + np.uint32(0x7FFF) + rounding_bias
+    bits_result = np.where(nan_mask, bits, bits_rounded)
+
+    return ((bits_result >> 16) & np.uint32(0xFFFF)).astype(np.uint16)
+
+
+def _np_bfloat16_bits_to_float32(arr_u16: np.ndarray) -> np.ndarray:
+    """Convert a bfloat16 (uint16) NumPy array back to float32.
+
+    This performs the same conversion as ``bfloat16_bits_to_float`` but operates on entire
+    NumPy arrays using vectorized operations.
+
+    Uses ``ml_dtypes.bfloat16`` for the conversion when available, falling back to a
+    manual bit-manipulation implementation otherwise.
+    """
+    ml_bf16 = _get_ml_dtypes_bfloat16()
+    if ml_bf16 is not None:
+        return np.asarray(arr_u16, dtype=np.uint16).view(ml_bf16).astype(np.float32)
+    arr_u16 = np.asarray(arr_u16, dtype=np.uint16)
+    bits = arr_u16.astype(np.uint32) << 16
+    return bits.view(np.float32)
+
+
+def _is_bit_converted_float(dtype):
+    """Check if a scalar type requires bit conversion (stored as uint16 internally)."""
+    return dtype is float16 or dtype is bfloat16
 
 
 def safe_len(obj):
@@ -780,13 +871,26 @@ def vector(length, dtype):
         _wp_generic_type_hint_ = Vector
         _wp_constructor_ = "vector"
 
-        # special handling for float16 type: in this case, data is stored
-        # as uint16 but it's actually half precision floating point
+        # special handling for float16/bfloat16 type: in this case, data is stored
+        # as uint16 but it's actually 16-bit floating-point
         # data. This means we need to convert each of the arguments
-        # to uint16s containing half float bits before storing them in
+        # to uint16s containing 16-bit float bits before storing them in
         # the array:
-        scalar_import = float_to_half_bits if _wp_scalar_type_ is float16 else lambda x: x
-        scalar_export = half_bits_to_float if _wp_scalar_type_ is float16 else lambda x: x
+        if _wp_scalar_type_ is float16:
+            scalar_import = float_to_half_bits
+            scalar_export = half_bits_to_float
+        elif _wp_scalar_type_ is bfloat16:
+            scalar_import = float_to_bfloat16_bits
+            scalar_export = bfloat16_bits_to_float
+        else:
+
+            def scalar_import(x):
+                return x
+
+            def scalar_export(x):
+                return x
+
+        _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
 
         def __init__(self, *args):
             num_args = len(args)
@@ -825,7 +929,7 @@ def vector(length, dtype):
                     return value
                 return self._wp_scalar_type_(value)
             elif isinstance(key, slice):
-                if self._wp_scalar_type_ is float16:
+                if self._wp_is_bit_converted_:
                     values = tuple(vec_t.scalar_export(x) for x in super().__getitem__(key))
                 else:
                     values = super().__getitem__(key)
@@ -858,14 +962,14 @@ def vector(length, dtype):
                         f"Expected to assign a slice from a sequence of values but got `{type(value).__name__}` instead"
                     ) from None
 
-                if self._wp_scalar_type_ is float16:
+                if self._wp_is_bit_converted_:
                     converted = []
                     try:
                         for x in value:
                             converted.append(vec_t.scalar_import(x))
-                    except (ctypes.ArgumentError, TypeError):
+                    except (TypeError, ctypes.ArgumentError):
                         raise TypeError(
-                            f"Expected to assign a slice from a sequence of `float16` values "
+                            f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
                             f"but got `{type(x).__name__}` instead"
                         ) from None
 
@@ -958,7 +1062,7 @@ def vector(length, dtype):
         def from_ptr(cls, ptr):
             if ptr:
                 # create a new vector instance and initialize the contents from the binary data
-                # this skips float16 conversions, assuming that float16 data is already encoded as uint16
+                # this skips float16/bfloat16 conversions, assuming that data is already encoded as uint16
                 value = cls()
                 ctypes.memmove(ctypes.byref(value), ptr, ctypes.sizeof(cls._type_) * cls._length_)
                 return value
@@ -1006,13 +1110,26 @@ def matrix(shape, dtype):
         _wp_row_type_ = vector(0 if shape[1] is Any else shape[1], dtype)
         _wp_col_type_ = vector(0 if shape[0] is Any else shape[0], dtype)
 
-        # special handling for float16 type: in this case, data is stored
-        # as uint16 but it's actually half precision floating point
+        # special handling for float16/bfloat16 type: in this case, data is stored
+        # as uint16 but it's actually 16-bit floating-point
         # data. This means we need to convert each of the arguments
-        # to uint16s containing half float bits before storing them in
+        # to uint16s containing 16-bit float bits before storing them in
         # the array:
-        scalar_import = float_to_half_bits if _wp_scalar_type_ is float16 else lambda x: x
-        scalar_export = half_bits_to_float if _wp_scalar_type_ is float16 else lambda x: x
+        if _wp_scalar_type_ is float16:
+            scalar_import = float_to_half_bits
+            scalar_export = half_bits_to_float
+        elif _wp_scalar_type_ is bfloat16:
+            scalar_import = float_to_bfloat16_bits
+            scalar_export = bfloat16_bits_to_float
+        else:
+
+            def scalar_import(x):
+                return x
+
+            def scalar_export(x):
+                return x
+
+        _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
 
         def __init__(self, *args):
             num_args = len(args)
@@ -1129,7 +1246,7 @@ def matrix(shape, dtype):
             row_start = r * self._shape_[1]
             row_end = row_start + self._shape_[1]
             row_data = super().__getitem__(slice(row_start, row_end))
-            if self._wp_scalar_type_ is float16:
+            if self._wp_is_bit_converted_:
                 return self._wp_row_type_(*[mat_t.scalar_export(x) for x in row_data])
             else:
                 return self._wp_row_type_(row_data)
@@ -1143,7 +1260,7 @@ def matrix(shape, dtype):
             col_end = col_start + self._shape_[0] * self._shape_[1]
             col_step = self._shape_[1]
             col_data = super().__getitem__(slice(col_start, col_end, col_step))
-            if self._wp_scalar_type_ is float16:
+            if self._wp_is_bit_converted_:
                 return self._wp_col_type_(*[mat_t.scalar_export(x) for x in col_data])
             else:
                 return self._wp_col_type_(col_data)
@@ -1170,14 +1287,14 @@ def matrix(shape, dtype):
                     f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
                 ) from None
 
-            if self._wp_scalar_type_ is float16:
+            if self._wp_is_bit_converted_:
                 converted = []
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except (ctypes.ArgumentError, TypeError):
+                except (TypeError, ctypes.ArgumentError):
                     raise TypeError(
-                        f"Expected to assign a slice from a sequence of `float16` values "
+                        f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
                         f"but got `{type(x).__name__}` instead"
                     ) from None
 
@@ -1207,14 +1324,14 @@ def matrix(shape, dtype):
                     f"Expected to assign a slice from a sequence of values but got `{type(v).__name__}` instead"
                 ) from None
 
-            if self._wp_scalar_type_ is float16:
+            if self._wp_is_bit_converted_:
                 converted = []
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except (ctypes.ArgumentError, TypeError):
+                except (TypeError, ctypes.ArgumentError):
                     raise TypeError(
-                        f"Expected to assign a slice from a sequence of `float16` values "
+                        f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
                         f"but got `{type(x).__name__}` instead"
                     ) from None
 
@@ -1388,7 +1505,7 @@ def matrix(shape, dtype):
         def from_ptr(cls, ptr):
             if ptr:
                 # create a new matrix instance and initialize the contents from the binary data
-                # this skips float16 conversions, assuming that float16 data is already encoded as uint16
+                # this skips float16/bfloat16 conversions, assuming that data is already encoded as uint16
                 value = cls()
                 ctypes.memmove(ctypes.byref(value), ptr, ctypes.sizeof(cls._type_) * cls._length_)
                 return value
@@ -1940,6 +2057,7 @@ warp_type_to_np_dtype = {
     uint32: np.uint32,
     uint64: np.uint64,
     float16: np.float16,
+    bfloat16: np.uint16,  # TODO: Use ml_dtypes.bfloat16 when available (see also _np_float32_to_bfloat16_bits)
     float32: np.float32,
     float64: np.float64,
 }
@@ -1952,8 +2070,11 @@ def dtype_from_numpy(numpy_dtype):
     wp_dtype = np_dtype_to_warp_type.get(numpy_dtype)
     if wp_dtype is not None:
         return wp_dtype
-    else:
-        raise TypeError(f"Cannot convert {numpy_dtype} to a Warp type")
+    # Check for ml_dtypes.bfloat16 (not in the static map because ml_dtypes is optional)
+    ml_bf16 = _get_ml_dtypes_bfloat16()
+    if ml_bf16 is not None and np.dtype(numpy_dtype) == np.dtype(ml_bf16):
+        return bfloat16
+    raise TypeError(f"Cannot convert {numpy_dtype} to a Warp type")
 
 
 def dtype_to_numpy(warp_dtype):
@@ -2364,6 +2485,8 @@ def type_typestr(dtype: type) -> str:
         return "|b1"
     elif dtype is float16:
         return "<f2"
+    elif dtype is bfloat16:
+        return "<u2"
     elif dtype is float32:
         return "<f4"
     elif dtype is float64:
@@ -2398,6 +2521,8 @@ def type_typestr(dtype: type) -> str:
 def scalar_short_name(t):
     if t is float16:
         return "h"
+    elif t is bfloat16:
+        return "bf"
     elif t is float32:
         return "f"
     elif t is float64:
@@ -3191,7 +3316,13 @@ class array(Array[DType, NDim]):
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
             if dtype is None:
-                raise RuntimeError(f"Unsupported input data dtype: {arr.dtype}")
+                # Check for ml_dtypes.bfloat16 (not in the static map)
+                ml_bf16 = _get_ml_dtypes_bfloat16()
+                if ml_bf16 is not None and arr.dtype == ml_bf16:
+                    dtype = bfloat16
+                    arr = arr.view(np.uint16)
+                else:
+                    raise RuntimeError(f"Unsupported input data dtype: {arr.dtype}")
         elif isinstance(dtype, warp._src.codegen.Struct):
             if isinstance(data, np.ndarray):
                 # construct from numpy structured array
@@ -3244,7 +3375,21 @@ class array(Array[DType, NDim]):
                     f"Failed to convert input data to an array with Warp type {warp._src.context.type_str(dtype)}"
                 )
             try:
-                arr = np.asarray(data, dtype=npdtype)
+                if scalar_dtype is bfloat16:
+                    # bfloat16 is stored as uint16 internally. When the input data is already
+                    # uint16 (e.g. pre-encoded bfloat16 bits from a numpy array), use it directly.
+                    # Also accept ml_dtypes.bfloat16 arrays directly via view.
+                    # Otherwise, convert float values to their bfloat16 bit representation rather
+                    # than just truncating to integer.
+                    ml_bf16 = _get_ml_dtypes_bfloat16()
+                    if isinstance(data, np.ndarray) and data.dtype == np.uint16:
+                        arr = data
+                    elif ml_bf16 is not None and isinstance(data, np.ndarray) and data.dtype == ml_bf16:
+                        arr = data.view(np.uint16)
+                    else:
+                        arr = _np_float32_to_bfloat16_bits(np.asarray(data, dtype=np.float32))
+                else:
+                    arr = np.asarray(data, dtype=npdtype)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
@@ -3895,8 +4040,9 @@ class array(Array[DType, NDim]):
                 # scalar
                 if type(value) in scalar_types:
                     value = value.value
-                if self.dtype is float16:
-                    cvalue = self.dtype._type_(float_to_half_bits(value))
+                if _is_bit_converted_float(self.dtype):
+                    import_fn = float_to_half_bits if self.dtype is float16 else float_to_bfloat16_bits
+                    cvalue = self.dtype._type_(import_fn(value))
                 else:
                     cvalue = self.dtype._type_(value)
         except Exception as e:
@@ -3928,18 +4074,36 @@ class array(Array[DType, NDim]):
         else:
             warp.copy(self, array(data=src, dtype=self.dtype, copy=False, device="cpu"))
 
-    def numpy(self):
+    def numpy(self, *, _suppress_bfloat16_warning=False):
         """Convert the array to a :class:`numpy.ndarray` (aliasing memory through the array interface protocol)
         If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be
         automatically performed to ensure that any outstanding work is completed.
         """
+        # Determine if this array contains bfloat16 data (scalar or compound type)
+        is_bf16 = self.dtype is bfloat16 or (
+            isinstance(self.dtype, type)
+            and issubclass(self.dtype, ctypes.Array)
+            and self.dtype._wp_scalar_type_ is bfloat16
+        )
+
+        if is_bf16 and not _suppress_bfloat16_warning:
+            ml_bf16 = _get_ml_dtypes_bfloat16()
+            if ml_bf16 is None:
+                warp._src.utils.warn(
+                    "bfloat16 arrays are returned as np.uint16 (raw bit representation) "
+                    "because NumPy does not natively support bfloat16. "
+                    "Use wp.to_torch() or wp.to_jax() for frameworks that support bfloat16 natively, "
+                    "or install ml-dtypes for a NumPy bfloat16 dtype.",
+                    once=True,
+                )
+
         if self.ptr:
             # use the CUDA default stream for synchronous behaviour with other streams
             with warp.ScopedStream(self.device.null_stream):
                 a = self.to("cpu", requires_grad=False)
             # convert through __array_interface__
             # Note: this handles arrays of structs using `descr`, so the result will be a structured NumPy array
-            return np.asarray(a)
+            result = np.asarray(a)
         else:
             # return an empty numpy array with the correct dtype and shape
             if isinstance(self.dtype, warp._src.codegen.Struct):
@@ -3951,7 +4115,15 @@ class array(Array[DType, NDim]):
             else:
                 npdtype = warp_type_to_np_dtype[self.dtype]
                 npshape = self.shape
-            return np.empty(npshape, dtype=npdtype)
+            result = np.empty(npshape, dtype=npdtype)
+
+        # If ml_dtypes is available, view as bfloat16 instead of returning raw uint16
+        if is_bf16:
+            ml_bf16 = _get_ml_dtypes_bfloat16()
+            if ml_bf16 is not None:
+                result = result.view(ml_bf16)
+
+        return result
 
     def cptr(self):
         """Return a ctypes cast of the array address.
@@ -3983,7 +4155,7 @@ class array(Array[DType, NDim]):
 
     def list(self):
         """Return a flattened list of items in the array as a Python list."""
-        a = self.numpy()
+        a = self.numpy(_suppress_bfloat16_warning=True)
 
         if isinstance(self.dtype, warp._src.codegen.Struct):
             # struct
@@ -3997,6 +4169,14 @@ class array(Array[DType, NDim]):
             data = a.ctypes.data
             stride = a.strides[0]
             return [self.dtype.from_ptr(data + i * stride) for i in range(self.size)]
+        elif self.dtype is bfloat16:
+            # When ml_dtypes is available, .numpy() returns ml_dtypes.bfloat16 values
+            # that can be converted to float directly. Otherwise, it returns uint16 (raw bits)
+            # that need bit-level conversion.
+            ml_bf16 = _get_ml_dtypes_bfloat16()
+            if ml_bf16 is not None:
+                return [bfloat16(float(x)) for x in a.flatten()]
+            return [bfloat16(bfloat16_bits_to_float(int(x))) for x in a.flatten()]
         else:
             # scalar
             return a.flatten().tolist()
@@ -4557,8 +4737,9 @@ class noncontiguous_array_base(Array[DType, NDim]):
                 # scalar
                 if type(value) in scalar_types:
                     value = value.value
-                if self.dtype is float16:
-                    cvalue = self.dtype._type_(float_to_half_bits(value))
+                if _is_bit_converted_float(self.dtype):
+                    import_fn = float_to_half_bits if self.dtype is float16 else float_to_bfloat16_bits
+                    cvalue = self.dtype._type_(import_fn(value))
                 else:
                     cvalue = self.dtype._type_(value)
         except Exception as e:
@@ -6920,6 +7101,7 @@ simple_type_codes = {
     uint32: "u4",
     uint64: "u8",
     float16: "f2",
+    bfloat16: "bf2",
     float32: "f4",
     float64: "f8",
     shape_t: "sh",

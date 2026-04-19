@@ -949,6 +949,62 @@ def test_torch_to_warp_types(test, device):
     test.assertEqual(list(t), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0])
 
 
+bf16_vec3 = wp.types.vector(3, dtype=wp.bfloat16)
+bf16_mat22 = wp.types.matrix(shape=(2, 2), dtype=wp.bfloat16)
+
+
+@wp.kernel
+def bf16_to_f32_kernel(input: wp.array[wp.bfloat16], output: wp.array[wp.float32]):
+    tid = wp.tid()
+    output[tid] = wp.float32(input[tid])
+
+
+def test_bf16_interop_torch(test, device):
+    import torch
+
+    wp_arr = wp.zeros(4, dtype=wp.bfloat16, device=device)
+    torch_tensor = wp.to_torch(wp_arr)
+    test.assertEqual(torch_tensor.dtype, torch.bfloat16)
+
+    torch_device = wp.device_to_torch(device)
+    t = torch.tensor([1.0, 2.0, 3.0, 4.0], dtype=torch.bfloat16, device=torch_device)
+    wp_from_torch = wp.from_torch(t)
+    test.assertEqual(wp_from_torch.dtype, wp.bfloat16)
+
+    # Verify values survive Warp -> Torch -> Warp round-trip
+    n = 4
+    input_data = np.array([1.0, 2.5, -3.0, 4.0], dtype=np.float32)
+    bf16_arr = wp.array(input_data, dtype=wp.bfloat16, device=device)
+
+    torch_rt = wp.to_torch(bf16_arr)
+    wp_rt = wp.from_torch(torch_rt)
+
+    result_f32 = wp.zeros(n, dtype=wp.float32, device=device)
+    wp.launch(bf16_to_f32_kernel, dim=n, inputs=[wp_rt, result_f32], device=device)
+    np.testing.assert_allclose(result_f32.numpy(), input_data, rtol=1e-2)
+
+
+def test_bf16_torch_compound_types(test, device):
+    """Test that compound bfloat16 types (vectors, matrices) round-trip correctly through Torch."""
+    import torch
+
+    # Test vector type
+    vec_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+    vec_arr = wp.array(vec_data, dtype=bf16_vec3, device=device)
+    torch_vec = wp.to_torch(vec_arr)
+    test.assertEqual(torch_vec.dtype, torch.bfloat16)
+    test.assertEqual(torch_vec.shape, (2, 3))
+    np.testing.assert_allclose(torch_vec.float().cpu().numpy(), vec_data, rtol=1e-2)
+
+    # Test matrix type
+    mat_data = np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=np.float32)
+    mat_arr = wp.array(mat_data, dtype=bf16_mat22, device=device)
+    torch_mat = wp.to_torch(mat_arr)
+    test.assertEqual(torch_mat.dtype, torch.bfloat16)
+    test.assertEqual(torch_mat.shape, (1, 2, 2))
+    np.testing.assert_allclose(torch_mat.float().cpu().numpy(), mat_data, rtol=1e-2)
+
+
 class TestTorch(unittest.TestCase):
     pass
 
@@ -1039,6 +1095,14 @@ try:
         add_function_test(TestTorch, "test_torch_mgpu_interop", test_torch_mgpu_interop)
 
     add_function_test(TestTorch, "test_torch_to_warp_types", test_torch_to_warp_types)
+
+    # bfloat16 tests require arch >= 80
+    bf16_torch_devices = [d for d in torch_compatible_devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]
+    if bf16_torch_devices:
+        add_function_test(TestTorch, "test_bf16_interop_torch", test_bf16_interop_torch, devices=bf16_torch_devices)
+        add_function_test(
+            TestTorch, "test_bf16_torch_compound_types", test_bf16_torch_compound_types, devices=bf16_torch_devices
+        )
 
 except Exception as e:
     print(f"Skipping Torch tests due to exception: {e}")

@@ -412,6 +412,8 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
     def cublasdx_type_map(dtype):
         if dtype == float16:
             return ("wp::float16", 3, 0)
+        if dtype == bfloat16:
+            return ("wp::bfloat16", 2, 0)  # COMMONDX_PRECISION_BF16
         if dtype == float32:
             return ("wp::float32", 5, 0)
         if dtype == float64:

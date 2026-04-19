@@ -430,6 +430,7 @@ def _optional_ctypes_event(event: wp.Event | None):
 
 _zero_value_masks = {
     wp.float16: 0x7FFF,
+    wp.bfloat16: 0x7FFF,
     wp.float32: 0x7FFFFFFF,
     wp.float64: 0x7FFFFFFFFFFFFFFF,
     wp.int8: 0xFF,

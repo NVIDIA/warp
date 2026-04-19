@@ -85,6 +85,7 @@ def dtype_to_torch(warp_dtype):
 
         dtype_to_torch.type_map = {
             warp.float16: torch.float16,
+            warp.bfloat16: torch.bfloat16,
             warp.float32: torch.float32,
             warp.float64: torch.float64,
             warp.int8: torch.int8,
@@ -111,8 +112,8 @@ def dtype_from_torch(torch_dtype):
 
     Args:
         torch_dtype: A ``torch.dtype`` that has a corresponding Warp data type.
-            Currently ``torch.bfloat16``, ``torch.complex64``, and
-            ``torch.complex128`` are not supported.
+            Currently ``torch.complex64`` and ``torch.complex128`` are not
+            supported.
 
     Raises:
         TypeError: Unable to find a corresponding Warp data type.
@@ -123,6 +124,7 @@ def dtype_from_torch(torch_dtype):
 
         dtype_from_torch.type_map = {
             torch.float16: warp.float16,
+            torch.bfloat16: warp.bfloat16,
             torch.float32: warp.float32,
             torch.float64: warp.float64,
             torch.int8: warp.int8,
@@ -132,7 +134,6 @@ def dtype_from_torch(torch_dtype):
             torch.uint8: warp.uint8,
             torch.bool: warp.bool,
             # currently unsupported by Warp
-            # torch.bfloat16:
             # torch.complex64:
             # torch.complex128:
         }
@@ -155,6 +156,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
             torch.float64: {warp.float64},
             torch.float32: {warp.float32},
             torch.float16: {warp.float16},
+            torch.bfloat16: {warp.bfloat16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
             torch.int64: {warp.int64, warp.uint64},
             torch.int32: {warp.int32, warp.uint32},
@@ -163,7 +165,6 @@ def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
             torch.uint8: {warp.uint8, warp.int8},
             torch.bool: {warp.bool, warp.uint8, warp.int8},
             # currently unsupported by Warp
-            # torch.bfloat16:
             # torch.complex64:
             # torch.complex128:
         }
@@ -335,6 +336,20 @@ def to_torch(a: warp.array, requires_grad: bool | None = None):
     # Torch does not support structured arrays
     if isinstance(a.dtype, warp._src.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to Torch.")
+
+    # bfloat16 is not representable via __array_interface__ or __cuda_array_interface__
+    # (it exposes as uint16), so use DLPack for a correct dtype round-trip.
+    # This also covers compound types (vectors/matrices) whose scalar type is bfloat16.
+    scalar_type = getattr(a.dtype, "_wp_scalar_type_", a.dtype)
+    if scalar_type is warp.bfloat16:
+        t = torch.from_dlpack(warp.to_dlpack(a))
+        t.requires_grad = requires_grad
+        if requires_grad and a.requires_grad:
+            t.grad = torch.from_dlpack(warp.to_dlpack(a.grad))
+            t.grad._warp_grad_array = a.grad
+        # prevent GC of the Warp array while the tensor is alive
+        t._warp_array = a
+        return t
 
     if a.device.is_cpu:
         # Torch has an issue wrapping CPU objects

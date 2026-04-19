@@ -102,6 +102,10 @@ float wp_half_bits_to_float(uint16_t u)
     return o.f;
 }
 
+uint16_t wp_float_to_bfloat16_bits(float x) { return wp::wp_float_to_bfloat16_bits_sw(x); }
+
+float wp_bfloat16_bits_to_float(uint16_t u) { return wp::wp_bfloat16_bits_to_float_sw(u); }
+
 int wp_init(const char* expected_version)
 {
     // Check version mismatch (guard against NULL expected_version)

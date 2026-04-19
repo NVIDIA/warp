@@ -1784,6 +1784,24 @@ def test_ffi_jax_kernel_subscript_autodiff(test, device):
     assert_np_equal(np.asarray(db), ref_db)
 
 
+def test_bf16_interop_jax(test, device):
+    import jax.numpy as jnp
+
+    input_data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    wp_arr = wp.array(input_data, dtype=wp.bfloat16, device=device)
+    jax_arr = wp.to_jax(wp_arr)
+    test.assertEqual(jax_arr.dtype, jnp.bfloat16)
+
+    # Verify values survived the conversion
+    np.testing.assert_allclose(np.asarray(jax_arr, dtype=np.float32), input_data, rtol=1e-2)
+
+    # Reverse direction: JAX bfloat16 -> Warp bfloat16
+    jax_bf16 = jnp.array(input_data, dtype=jnp.bfloat16)
+    wp_from_jax = wp.from_jax(jax_bf16, dtype=wp.bfloat16)
+    test.assertEqual(wp_from_jax.dtype, wp.bfloat16)
+    np.testing.assert_allclose(wp_from_jax.numpy().astype(np.float32), input_data, rtol=1e-2)
+
+
 class TestJax(unittest.TestCase):
     pass
 
@@ -2062,6 +2080,11 @@ try:
                 partial(test_ffi_vmap_lookup, vmap_method=vmap_method),
                 devices=jax_compatible_cuda_devices,
             )
+
+    # bfloat16 tests require arch >= 80
+    bf16_jax_devices = [d for d in jax_compatible_devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]
+    if bf16_jax_devices:
+        add_function_test(TestJax, "test_bf16_interop_jax", test_bf16_interop_jax, devices=bf16_jax_devices)
 
 except Exception as e:
     print(f"Skipping Jax tests due to exception: {e}")

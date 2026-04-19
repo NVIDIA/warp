@@ -27,6 +27,12 @@ def test_float_arg_support(test, device, dtype):
     value = 1.23
     expected = wp.sin(dtype(value))
 
+    if dtype is wp.bfloat16:
+        # NumPy has no native bfloat16; dtype_to_numpy returns uint16 which
+        # cannot be interpreted as a float by Warp builtins, so skip the
+        # NumPy scalar round-trip test.
+        return
+
     test.assertEqual(wp.sin(nps(np_type, value)), expected)
 
 

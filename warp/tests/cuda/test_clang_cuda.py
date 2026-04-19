@@ -92,6 +92,41 @@ def test_conditional_kernel(test, device):
     np.testing.assert_allclose(b.numpy(), np.abs(a_np))
 
 
+@wp.kernel
+def bf16_round_trip_kernel(input: wp.array[wp.float32], output: wp.array[wp.float32]):
+    i = wp.tid()
+    bf = wp.bfloat16(input[i])
+    output[i] = wp.float32(bf)
+
+
+@wp.kernel
+def bf16_arithmetic_kernel(
+    a: wp.array[wp.float32],
+    b: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+):
+    i = wp.tid()
+    output[i] = wp.float32(wp.bfloat16(a[i]) + wp.bfloat16(b[i]))
+
+
+def test_bf16_round_trip(test, device):
+    input_data = np.array([1.0, 2.0, -3.0, 0.5, 100.0], dtype=np.float32)
+    a = wp.array(input_data, device=device)
+    b = wp.zeros(5, dtype=float, device=device)
+    wp.launch(bf16_round_trip_kernel, dim=5, inputs=[a, b], device=device)
+    np.testing.assert_allclose(b.numpy(), input_data, rtol=1e-2)
+
+
+def test_bf16_arithmetic(test, device):
+    a_np = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    b_np = np.array([0.5, 1.5, 2.0, 0.25], dtype=np.float32)
+    a = wp.array(a_np, device=device)
+    b = wp.array(b_np, device=device)
+    out = wp.zeros(4, dtype=float, device=device)
+    wp.launch(bf16_arithmetic_kernel, dim=4, inputs=[a, b, out], device=device)
+    np.testing.assert_allclose(out.numpy(), a_np + b_np, rtol=1e-2)
+
+
 class TestClangCUDA(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -108,6 +143,9 @@ add_function_test(TestClangCUDA, "test_trivial_kernel", test_trivial_kernel, dev
 add_function_test(TestClangCUDA, "test_math_kernel", test_math_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_vec_kernel", test_vec_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_conditional_kernel", test_conditional_kernel, devices=devices)
+bf16_devices = [d for d in devices if d.arch >= 80]
+add_function_test(TestClangCUDA, "test_bf16_round_trip", test_bf16_round_trip, devices=bf16_devices)
+add_function_test(TestClangCUDA, "test_bf16_arithmetic", test_bf16_arithmetic, devices=bf16_devices)
 
 
 if __name__ == "__main__":

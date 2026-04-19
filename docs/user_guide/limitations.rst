@@ -22,7 +22,8 @@ Kernels and User Functions
 --------------------------
 
 * Strings cannot be passed into kernels.
-* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` on GPUs with compute capability below 7.0.
+* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` or
+  :class:`wp.bfloat16 <bfloat16>` on GPUs with compute capability below 7.0.
   On such devices, the function will return ``0.0`` without modifying the target memory.
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
 * Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
