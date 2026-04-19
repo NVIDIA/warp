@@ -56,20 +56,55 @@ def warp_showwarning(message, category, filename, lineno, file=None, line=None):
     sys.stdout.write(s)
 
 
+# Save the original showwarning handler so non-warp warnings are unaffected.
+_original_showwarning = warnings.showwarning
+
+# Thread-safe flag to indicate we're inside warp's warn().
+_warp_warn_active = threading.local()
+
+
+def _warp_showwarning_dispatch(message, category, filename, lineno, file=None, line=None):
+    """Route to warp_showwarning for warp-originated warnings, else fall through to original."""
+    if getattr(_warp_warn_active, "inside", False):
+        warp_showwarning(message, category, filename, lineno, file, line)
+    elif _original_showwarning is not None:
+        _original_showwarning(message, category, filename, lineno, file, line)
+    else:
+        sys.stderr.write(f"{category.__name__}: {message}\n")
+
+
+warnings.showwarning = _warp_showwarning_dispatch
+
+
 def warn(message, category=None, stacklevel=1, once=False):
     if (category, message) in warnings_seen:
         return
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("default")  # Change the filter in this process
-        warnings.showwarning = warp_showwarning
+    if category is None:
+        category = UserWarning
+
+    # Capture whether the warning was actually shown (not filtered out)
+    original_showwarning = warnings.showwarning
+    shown = [False]
+
+    def _tracking_showwarning(m, cat, fn, ln, file=None, line=None):
+        shown[0] = True
+        warp_showwarning(m, cat, fn, ln, file, line)
+
+    _warp_warn_active.inside = True
+    warnings.showwarning = _tracking_showwarning
+    try:
         warnings.warn(
             message,
             category,
-            stacklevel=stacklevel + 1,  # Increment stacklevel by 1 since we are in a wrapper
+            stacklevel=stacklevel + 1,
         )
+    finally:
+        warnings.showwarning = original_showwarning
+        _warp_warn_active.inside = False
 
-    if category is DeprecationWarning or once:
+    # Only mark as "seen" if the warning was actually shown (not filtered out)
+    if shown[0] and (category is DeprecationWarning or once):
         warnings_seen.add((category, message))
 
 
