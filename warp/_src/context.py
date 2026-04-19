@@ -9641,6 +9641,8 @@ def type_str(t):
         return "..."
     elif warp._src.types.is_tile(t):
         return f"Tile[{type_str(t.dtype)}, {type_str(t.shape)}]"
+    elif warp._src.types.is_tile_stack(t):
+        return f"TileStack[{type_str(t.dtype)}, {type_str(t.capacity)}]"
 
     return t.__name__
 
@@ -10058,6 +10060,7 @@ def export_stubs(file):  # pragma: no cover
     # NDim uses PEP 696 default so type checkers accept both array[dtype] and array[dtype, ndim]
     print('NDim = TypeVar("NDim", bound=int, default=int)', file=file)
     print('Shape = TypeVar("Shape")', file=file)
+    print('Capacity = TypeVar("Capacity", bound=int)', file=file)
 
     # Generic type stubs - must be proper class definitions, not type alias assignments.
     # Using "class Foo(Generic[...]): ..." syntax makes these valid types for Mypy.
@@ -10069,6 +10072,7 @@ def export_stubs(file):  # pragma: no cover
     print("class FabricArray(Generic[DType, NDim]): ...", file=file)
     print("class IndexedFabricArray(Generic[DType, NDim]): ...", file=file)
     print("class Tile(Generic[DType, Shape]): ...", file=file)
+    print("class TileStack(Generic[DType, Capacity]): ...", file=file)
 
     # =========================================================================
     # Step 3: Emit __init__.py non-import lines (docstring, __version__, __getattr__, etc.)

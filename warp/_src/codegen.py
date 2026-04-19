@@ -756,6 +756,8 @@ class Var:
             return f"{classstr}<{dtypestr}>"
         elif is_tile(t):
             return t.ctype()
+        elif is_tile_stack(t):
+            return t.ctype()
         elif isinstance(t, type) and issubclass(t, StructInstance):
             # ensure the actual Struct name is used instead of "NewStructInstance"
             return t.native_name
@@ -920,6 +922,7 @@ def get_arg_type(arg: Var | Any) -> type:
             tuple_t,
             slice_t,
             tile,
+            tile_stack,
         ),
     ):
         return arg
@@ -1146,6 +1149,8 @@ class Adjoint:
 
         for var in adj.variables:
             if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
+                total_shared += var.type.size_in_bytes()
+            elif is_tile_stack(var.type):
                 total_shared += var.type.size_in_bytes()
 
         return total_shared + adj.max_required_extra_shared_memory
@@ -4611,6 +4616,8 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     for var in adj.variables:
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=False)};\n"]
+        elif is_tile_stack(var.type):
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -4666,6 +4673,8 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     for var in adj.variables:
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=True)};\n"]
+        elif is_tile_stack(var.type):
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -4691,6 +4700,9 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
                 lines += [
                     f"{var.type.ctype()}& {name} = {var.emit()};\n"
                 ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
+        elif is_tile_stack(var.type):
+            # Adjoint pointers are intentionally uninitialized -- all adj_tile_stack_* stubs are empty no-ops.
+            lines += [f"{var.ctype()} {name};\n"]
         else:
             lines += [f"{ctype} {name} = {{}};\n"]
 
@@ -4771,7 +4783,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
 
     # forward args
     for i, arg in enumerate(adj.args):
-        if is_tile(arg.type):
+        if is_tile(arg.type) or is_tile_stack(arg.type):
             tname = f"tile_{arg.label}"
             template_params.append(tname)
             s = f"{tname}& {arg.emit()}"
@@ -4793,7 +4805,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
-        elif is_tile(arg.type):
+        elif is_tile(arg.type) or is_tile_stack(arg.type):
             tname = f"tile_{arg.label}"
             reverse_args.append(f"{tname} & adj_{arg.label}")
         else:
@@ -4806,7 +4818,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     # custom output reverse args (user-declared)
     if adj.custom_reverse_mode:
         for arg in adj.args[adj.custom_reverse_num_input_args :]:
-            if is_tile(arg.type):
+            if is_tile(arg.type) or is_tile_stack(arg.type):
                 tname = f"tile_{arg.label}"
                 reverse_args.append(f"{tname} & {arg.emit()}")
             else:

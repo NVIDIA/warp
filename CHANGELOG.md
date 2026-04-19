@@ -63,6 +63,9 @@
 - Extend vectorized float4 tile loads/stores to 3D and 4D tiles (previously
   2D-only), and add coalesced byte-copy path for large element types (>16 bytes)
   ([GH-1236](https://github.com/NVIDIA/warp/issues/1236)).
+- Add `wp.tile_stack()` cooperative thread-block stack for tile kernels, with `wp.tile_stack_push()`,
+  `wp.tile_stack_pop()`, `wp.tile_stack_clear()`, and `wp.tile_stack_count()` operations
+  ([GH-1287](https://github.com/NVIDIA/warp/issues/1287)).
 
 ### Removed
 

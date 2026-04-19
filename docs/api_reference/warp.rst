@@ -184,6 +184,7 @@ Arrays
    array4d
    fixedarray
    tile
+   tile_stack
    clone
    copy
    empty

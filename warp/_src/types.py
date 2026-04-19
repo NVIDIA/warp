@@ -40,6 +40,7 @@ T = TypeVar("T")
 Length = TypeVar("Length", bound=int)
 Rows = TypeVar("Rows", bound=int)
 Cols = TypeVar("Cols", bound=int)
+Capacity = TypeVar("Capacity", bound=int)
 DType = TypeVar("DType")
 Shape = TypeVar("Shape", bound=tuple[int, ...])
 
@@ -580,6 +581,10 @@ class Array(Generic[DType, NDim]):
 
 
 class Tile(Generic[DType, Shape]):
+    pass
+
+
+class TileStack(Generic[DType, Capacity]):
     pass
 
 
@@ -2761,6 +2766,13 @@ def types_equal_generic(a, b, match_generic=True):
 
     if is_tile(a):
         return type(a) is type(b) and types_equal_generic(a.dtype, b.dtype, match_generic=match_generic)
+
+    if is_tile_stack(a):
+        return (
+            is_tile_stack(b)
+            and a.capacity == b.capacity
+            and types_equal_generic(a.dtype, b.dtype, match_generic=match_generic)
+        )
 
     if is_slice(a):
         return type(a) is type(b)
@@ -5026,6 +5038,50 @@ def is_tile(t):
     return isinstance(t, tile)
 
 
+class tile_stack(TileStack):
+    """A Warp tile stack object.
+
+    Attributes:
+        dtype (DType): The data type of the stack elements
+        capacity (int): Maximum number of elements
+    """
+
+    def __init__(self, dtype, capacity):
+        # Allow Any for stub generation (pyi); validate otherwise
+        if capacity is not Any:
+            if isinstance(capacity, (bool, float, str)):
+                raise ValueError(f"capacity must be a positive integer, got {capacity}")
+            try:
+                capacity = int(capacity)
+            except (TypeError, ValueError):
+                raise ValueError(f"capacity must be a positive integer, got {capacity}") from None
+            if capacity <= 0:
+                raise ValueError(f"capacity must be a positive integer, got {capacity}")
+        self.dtype = type_to_warp(dtype)
+        self.capacity = capacity
+
+    def ctype(self):
+        from warp._src.codegen import Var  # noqa: PLC0415
+
+        return f"wp::tile_stack_t<{Var.type_to_ctype(self.dtype)}, {self.capacity}>"
+
+    def cinit(self):
+        from warp._src.codegen import Var  # noqa: PLC0415
+
+        return f"wp::tile_stack_alloc<{Var.type_to_ctype(self.dtype)}, {self.capacity}>()"
+
+    def __repr__(self):
+        return f"tile_stack(dtype={self.dtype}, capacity={self.capacity})"
+
+    def size_in_bytes(self):
+        return tile.round_up(type_size_in_bytes(self.dtype) * self.capacity) + tile.round_up(4)  # data + count
+
+
+def is_tile_stack(t):
+    """Return ``True`` if the value is a tile_stack instance."""
+    return isinstance(t, tile_stack)
+
+
 class BvhConstructor(enum.IntEnum):
     """BVH construction algorithm selection."""
 
@@ -6952,6 +7008,9 @@ def get_type_code(arg_type) -> str:
         storage = "s" if arg_type.storage == "shared" else "r"
         dtype_code = "?" if arg_type.dtype is Any else get_type_code(arg_type.dtype)
         return f"t{storage}{shape_string}{dtype_code}"
+    elif isinstance(arg_type, tile_stack):
+        dtype_code = get_type_code(arg_type.dtype)
+        return f"ts{arg_type.capacity}{dtype_code}"
     elif arg_type == Scalar:
         # generic scalar type
         return "s?"

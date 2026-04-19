@@ -222,6 +222,11 @@ Tile Primitives
    tile_scatter_masked
    tile_sort
    tile_squeeze
+   tile_stack
+   tile_stack_clear
+   tile_stack_count
+   tile_stack_pop
+   tile_stack_push
    tile_store
    tile_store_indexed
    tile_sum

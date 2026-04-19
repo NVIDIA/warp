@@ -450,6 +450,149 @@ Spatial Queries
 * :func:`tile_mesh_query_aabb_next <warp._src.lang.tile_mesh_query_aabb_next>`
 * :func:`tile_query_valid <warp._src.lang.tile_query_valid>`
 
+Stack
+^^^^^
+
+* :func:`tile_stack <warp._src.lang.tile_stack>`
+* :func:`tile_stack_push <warp._src.lang.tile_stack_push>`
+* :func:`tile_stack_pop <warp._src.lang.tile_stack_pop>`
+* :func:`tile_stack_clear <warp._src.lang.tile_stack_clear>`
+* :func:`tile_stack_count <warp._src.lang.tile_stack_count>`
+
+Tile Stack
+----------
+
+Tile stacks provide a cooperative, block-scoped stack data structure in shared memory.
+They enable patterns such as stream compaction and dynamic load balancing where threads
+within a block need to collectively build and consume a shared work-list.
+
+Most tile stack operations are **cooperative** — every thread in the block must call them,
+even if a particular thread has no data to contribute, because they contain internal
+synchronization barriers. The exception is :func:`wp.tile_stack_count
+<warp._src.lang.tile_stack_count>`, which contains no barrier and may be called by a
+single thread or from within a divergent branch.
+
+Creating a Stack
+^^^^^^^^^^^^^^^^
+
+Use :func:`wp.tile_stack() <warp._src.lang.tile_stack>` to allocate a stack in shared memory.
+The ``capacity`` must be a compile-time constant and ``dtype`` specifies the element type:
+
+.. code:: python
+
+    CAPACITY = wp.constant(256)
+
+    @wp.kernel
+    def my_kernel(data: wp.array(dtype=float)):
+        i, j = wp.tid()
+        s = wp.tile_stack(capacity=CAPACITY, dtype=float)
+        ...
+
+Push and Pop
+^^^^^^^^^^^^
+
+:func:`wp.tile_stack_push() <warp._src.lang.tile_stack_push>` conditionally pushes a value
+onto the stack. Each thread provides a value and a boolean ``has_value`` flag — only threads
+with ``has_value=True`` write to the stack. The function returns the slot index where the
+value was written, or ``-1`` if the thread did not push (either because ``has_value`` was
+``False`` or because the stack overflowed):
+
+.. code:: python
+
+    idx = wp.tile_stack_push(s, value, keep)
+
+:func:`wp.tile_stack_pop() <warp._src.lang.tile_stack_pop>` removes values from the stack.
+Each calling thread races for a slot. It returns a tuple ``(value, slot)`` where ``slot``
+identifies which stack slot was popped (in ``[0, capacity-1]`` when non-negative), or
+``-1`` if the stack was empty — consistent with
+:func:`wp.tile_stack_push() <warp._src.lang.tile_stack_push>` which also returns ``-1`` on failure:
+
+.. code:: python
+
+    value, slot = wp.tile_stack_pop(s)
+    if slot != -1:
+        out[slot] = value
+
+Clear and Count
+^^^^^^^^^^^^^^^
+
+:func:`wp.tile_stack_clear() <warp._src.lang.tile_stack_clear>` resets the stack count to zero,
+allowing it to be reused within the same kernel invocation:
+
+.. code:: python
+
+    wp.tile_stack_clear(s)
+
+:func:`wp.tile_stack_count() <warp._src.lang.tile_stack_count>` returns the current number of
+elements. Unlike the other operations it is **not** cooperative — it contains no
+synchronization barrier and may be called by a single thread or from within a divergent
+branch. It is safe to call after any push, pop, or clear, all of which end with a barrier
+that makes the count visible:
+
+.. code:: python
+
+    n = wp.tile_stack_count(s)
+
+.. code:: python
+
+    # may be called by a single thread or from within a branch
+    if j == 0:
+        n = wp.tile_stack_count(s)
+
+Example: Stream Compaction
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A common use case is filtering elements that satisfy a condition. Because
+``tile_stack`` is a within-block primitive, the slot returned by
+:func:`wp.tile_stack_pop() <warp._src.lang.tile_stack_pop>` is compact only
+within a single tile — for a single-tile launch this maps directly to a compact
+output array:
+
+.. code:: python
+
+    BLOCK_DIM = 256
+    CAPACITY = wp.constant(BLOCK_DIM)  # at most one output per thread
+
+    @wp.kernel
+    def compact_kernel(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+        _i, j = wp.tid()
+
+        val = data[j]
+        keep = val > 0.5
+
+        # Cooperative push — only threads with keep=True write to the stack
+        s = wp.tile_stack(capacity=CAPACITY, dtype=float)
+        wp.tile_stack_push(s, val, keep)
+
+        # Each thread races for a slot. The returned slot is a unique compact
+        # index in [0, capacity-1] — use it directly as the output index.
+        result, slot = wp.tile_stack_pop(s)
+        if slot != -1:
+            out[slot] = result
+
+    n = BLOCK_DIM
+    data = wp.array(..., dtype=float)
+    out = wp.zeros(n, dtype=float)  # sized to CAPACITY: safe for any filter result
+    wp.launch_tiled(compact_kernel, dim=[1], inputs=[data, out], block_dim=BLOCK_DIM)
+
+.. note::
+
+    In a multi-tile launch, each tile's pop slots are compact only within that
+    tile and would overlap across tiles. Multi-tile compaction requires additional
+    coordination, such as a 2D output array indexed by ``[tile, slot]`` or a
+    global atomic counter to claim output indices.
+
+.. note::
+
+    Tile stacks are allocated in shared memory, which is a limited resource.
+    The capacity should be chosen to avoid exceeding hardware limitations.
+    The stack supports any Warp data type including scalars, vectors, and matrices.
+
+.. note::
+
+    Tile stack operations are not differentiable and cannot be used in the
+    backward pass of a differentiable kernel.
+
 Tiles and SIMT Code
 -------------------
 

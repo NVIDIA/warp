@@ -7086,6 +7086,189 @@ adj_tile_diag_add(TileA& a, TileB& b, TileC& c, AdjTileA& adj_a, AdjTileB& adj_b
 }
 
 
+// ---------------------------------------------------------
+// Tile Stack
+// ---------------------------------------------------------
+
+template <typename T, int Capacity> struct tile_stack_t {
+    static_assert(Capacity > 0, "tile_stack_t capacity must be positive");
+
+    T* data;
+    int* count;
+
+    // Default constructor: null pointers so the destructor is a safe no-op.
+    // Used for adjoint variables which are never allocated.
+    inline CUDA_CALLABLE tile_stack_t()
+        : data(nullptr)
+        , count(nullptr)
+    {
+    }
+
+    // Move constructor: transfer ownership and nullify source so its destructor
+    // is a no-op. Required because the user-declared destructor suppresses
+    // implicit move generation, leaving only a copy constructor that would
+    // cause a double-free if NRVO is not applied in tile_stack_alloc().
+    inline CUDA_CALLABLE tile_stack_t(tile_stack_t&& other)
+        : data(other.data)
+        , count(other.count)
+    {
+        other.data = nullptr;
+        other.count = nullptr;
+    }
+
+    // Delete copy constructor: copying would duplicate the shared-memory
+    // pointers and cause a double-free when both objects are destroyed.
+    tile_stack_t(const tile_stack_t&) = delete;
+
+    // Assignment from int: initialize count and zero data.
+    // Follows the tile pattern where operator= handles initialization
+    // (cinit allocates, the forward call triggers init via assignment).
+    inline CUDA_CALLABLE tile_stack_t& operator=(int)
+    {
+        if (WP_TILE_THREAD_IDX == 0)
+            *count = 0;
+        for (int i = WP_TILE_THREAD_IDX; i < Capacity; i += WP_TILE_BLOCK_DIM)
+            data[i] = T {};
+        WP_TILE_SYNC();
+        return *this;
+    }
+
+    ~tile_stack_t()
+    {
+        // LIFO: free counter first (allocated last), then data.
+        // Null-pointer guard: adjoint variables are default-constructed with
+        // null pointers and must not decrement the allocator.
+        if (count)
+            tile_shared_storage_t::alloc(-tile_align(sizeof(int)));
+        if (data)
+            tile_shared_storage_t::alloc(-tile_align(sizeof(T) * Capacity));
+    }
+};
+
+// Allocate-only factory -- called from cinit() at declaration time.
+// Data and count are left uninitialized; the forward call initializes via operator=(int).
+template <typename T, int Capacity> inline CUDA_CALLABLE tile_stack_t<T, Capacity> tile_stack_alloc()
+{
+    tile_stack_t<T, Capacity> s;
+    s.data = (T*)tile_shared_storage_t::alloc(sizeof(T) * Capacity);
+    s.count = (int*)tile_shared_storage_t::alloc(sizeof(int));
+    return s;
+}
+
+// Forward call -- returns int{} (0); triggers operator=(int) on the already-allocated struct.
+template <typename T, int Capacity> inline CUDA_CALLABLE int tile_stack_init() { return int {}; }
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE void adj_tile_stack_init(tile_stack_t<T, Capacity>&, tile_stack_t<T, Capacity>&)
+{
+}
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE int tile_stack_push(tile_stack_t<T, Capacity>& s, T value, bool has_value)
+{
+    // Leading barrier: ensures any preceding tile_stack_count reads of s.count
+    // are complete before this thread writes to s.count via atomic_add.
+    // Without this, a count read and a push write could race across threads.
+    WP_TILE_SYNC();
+    int idx = -1;
+    if (has_value) {
+        int old = wp::atomic_add(s.count, 1);
+        idx = old;
+        if (idx < Capacity)
+            s.data[idx] = value;
+    }
+    // Barrier ensures all atomic increments and data writes are visible.
+    WP_TILE_SYNC();
+    // Non-atomic clamp is safe: the preceding barrier guarantees all atomics are
+    // complete, and the following barrier ensures all threads see the clamped value
+    // before any subsequent operation.
+    if (WP_TILE_THREAD_IDX == 0 && *s.count > Capacity)
+        *s.count = Capacity;
+    WP_TILE_SYNC();
+    return (has_value && idx >= 0 && idx < Capacity) ? idx : -1;
+}
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE void adj_tile_stack_push(
+    tile_stack_t<T, Capacity>& s,
+    T value,
+    bool has_value,
+    tile_stack_t<T, Capacity>& adj_s,
+    T& adj_value,
+    bool& adj_has_value,
+    int& adj_ret
+)
+{
+}
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE void tile_stack_pop(tile_stack_t<T, Capacity>& s, T& out_value, int& out_slot)
+{
+    // Leading barrier: see tile_stack_push comment.
+    WP_TILE_SYNC();
+    int old = wp::atomic_add(s.count, -1);
+    int slot = old - 1;
+    bool success = (slot >= 0 && slot < Capacity);
+    out_value = T {};
+    out_slot = success ? slot : -1;
+    if (success)
+        out_value = s.data[slot];
+    // Barrier ensures all atomic decrements and data reads are visible.
+    WP_TILE_SYNC();
+    // Count may be deeply negative (all threads decrement atomically).
+    // Non-atomic clamp is safe: barriers bracket this write (see push comment).
+    if (WP_TILE_THREAD_IDX == 0 && *s.count < 0)
+        *s.count = 0;
+    WP_TILE_SYNC();
+}
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE void adj_tile_stack_pop(
+    tile_stack_t<T, Capacity>& s,
+    T& out_value,
+    int& out_slot,
+    tile_stack_t<T, Capacity>& adj_s,
+    T& adj_out_value,
+    int& adj_out_slot
+)
+{
+}
+
+template <typename T, int Capacity> inline CUDA_CALLABLE void tile_stack_clear(tile_stack_t<T, Capacity>& s)
+{
+    // Leading barrier: see tile_stack_push comment.
+    WP_TILE_SYNC();
+    if (WP_TILE_THREAD_IDX == 0)
+        *s.count = 0;
+    WP_TILE_SYNC();
+}
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE void adj_tile_stack_clear(tile_stack_t<T, Capacity>& s, tile_stack_t<T, Capacity>& adj_s)
+{
+}
+
+template <typename T, int Capacity> inline CUDA_CALLABLE int tile_stack_count(tile_stack_t<T, Capacity>& s)
+{
+    // No WP_TILE_SYNC() needed here. Every operation that writes s.count
+    // (tile_stack_init, tile_stack_push, tile_stack_pop, tile_stack_clear)
+    // ends with WP_TILE_SYNC(), which acts as both a barrier and a shared
+    // memory fence. By the time any thread reaches this call the count is
+    // already stable and visible. Interleaved tile operations (tile_load,
+    // tile_matmul, etc.) also issue their own WP_TILE_SYNC() calls and
+    // cannot alias the stack's bump-allocated storage, so they do not
+    // invalidate this guarantee. Omitting the barriers means this function
+    // is not cooperative: it may be called by a single thread or from within
+    // a divergent branch without deadlocking.
+    return *s.count;
+}
+
+template <typename T, int Capacity>
+inline CUDA_CALLABLE void
+adj_tile_stack_count(tile_stack_t<T, Capacity>& s, tile_stack_t<T, Capacity>& adj_s, int& adj_ret)
+{
+}
+
 }  // namespace wp
 
 

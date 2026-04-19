@@ -144,6 +144,7 @@ from warp._src.types import array4d as array4d
 from warp._src.types import fixedarray as fixedarray
 
 from warp._src.types import tile as tile
+from warp._src.types import tile_stack as tile_stack
 
 from warp._src.types import from_ptr as from_ptr
 

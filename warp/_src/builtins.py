@@ -6949,6 +6949,375 @@ add_builtin(
 )
 
 
+# ---------------------------------------------------------
+# Tile Stack
+# ---------------------------------------------------------
+
+
+def tile_stack_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile_stack(dtype=Any, capacity=Any)
+
+    if "dtype" not in arg_values:
+        raise TypeError("tile_stack() missing required keyword argument 'dtype'")
+
+    if "capacity" not in arg_values:
+        raise TypeError("tile_stack() missing required keyword argument 'capacity'")
+
+    capacity = arg_values["capacity"]
+    if isinstance(capacity, Var):
+        capacity = capacity.constant
+    if capacity is None:
+        raise ValueError("tile_stack() requires capacity to be a compile-time constant.")
+
+    if isinstance(capacity, (builtins.bool, builtins.float, builtins.str)):
+        raise ValueError(f"tile_stack() requires capacity to be a positive integer, got {capacity!r}")
+    try:
+        capacity = builtins.int(capacity)
+    except (TypeError, ValueError):
+        raise ValueError(f"tile_stack() requires capacity to be a positive integer, got {capacity!r}") from None
+    if capacity <= 0:
+        raise ValueError(f"tile_stack() requires capacity to be a positive integer, got {capacity!r}")
+
+    return tile_stack(dtype=arg_values["dtype"], capacity=capacity)
+
+
+def tile_stack_dispatch_func(arg_types, return_type, arg_values):
+    # Match the tile_zeros pattern: pass dtype and capacity as template args.
+    # The C++ tile_stack_init<T, Capacity>() returns int{}, triggering operator=(int)
+    # on the already-allocated struct.
+    dtype = arg_values["dtype"]
+    capacity = arg_values["capacity"]
+    if isinstance(capacity, Var):
+        capacity = capacity.constant
+    return ([], [dtype, capacity])
+
+
+add_builtin(
+    "tile_stack",
+    input_types={"capacity": int, "dtype": Any},
+    value_func=tile_stack_value_func,
+    dispatch_func=tile_stack_dispatch_func,
+    native_func="tile_stack_init",
+    variadic=False,
+    is_differentiable=False,
+    doc="""Allocate a cooperative thread-block stack in shared memory.
+
+    Args:
+        capacity: Maximum number of elements (must be a compile-time constant)
+        dtype: Data type of stack elements
+
+    Returns:
+        A tile stack object for use with :func:`tile_stack_push`, :func:`tile_stack_pop`,
+        :func:`tile_stack_clear`, and :func:`tile_stack_count`.
+
+    Example:
+
+        .. code-block:: python
+
+            BLOCK = 8
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def compact_kernel(data: wp.array(dtype=int), out: wp.array(dtype=int), out_count: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+
+                val = data[j]
+                wp.tile_stack_push(s, val, val > 5)
+
+                if j == 0:
+                    out_count[0] = wp.tile_stack_count(s)
+
+                result, slot = wp.tile_stack_pop(s)
+                if slot != -1:
+                    out[slot] = result
+
+            data = wp.array([1, 8, 3, 7, 2, 9, 4, 6], dtype=int)
+            out = wp.zeros(BLOCK, dtype=int)
+            out_count = wp.zeros(1, dtype=int)
+            wp.launch_tiled(compact_kernel, dim=[1], inputs=[data, out, out_count], block_dim=BLOCK)
+
+            n = out_count.numpy()[0]
+            print(sorted(out.numpy()[:n].tolist()))
+
+        .. code-block:: text
+
+            [6, 7, 8, 9]""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_push_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return int
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_push() first argument must be a tile_stack, got {s_type!r}")
+
+    value_type = arg_types["value"]
+    if not types_equal(value_type, s_type.dtype):
+        raise TypeError(f"tile_stack_push() value type {value_type} does not match stack dtype {s_type.dtype}")
+
+    return int
+
+
+def tile_stack_push_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    value = arg_values["value"]
+    has_value = arg_values["has_value"]
+    return ((s, value, has_value), [])
+
+
+add_builtin(
+    "tile_stack_push",
+    input_types={"s": Any, "value": Any, "has_value": builtins.bool},
+    value_func=tile_stack_push_value_func,
+    dispatch_func=tile_stack_push_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Push a value onto a tile stack (cooperative).
+
+    All threads in the block must call this function. Only threads with
+    ``has_value=True`` write to the stack.
+
+    Args:
+        s: The tile stack
+        value: The value to push
+        has_value: Whether this thread has a value to push
+
+    Returns:
+        The slot index where the value was written, or ``-1`` if
+        ``has_value`` is ``False`` or the stack overflowed.
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def push_kernel(out_idx: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                idx = wp.tile_stack_push(s, j * 10, j < 4)
+                out_idx[j] = idx
+
+            out_idx = wp.full(8, -1, dtype=int)
+            wp.launch_tiled(push_kernel, dim=[1], inputs=[out_idx], block_dim=8)
+
+            idxs = out_idx.numpy()
+            print(sorted(idxs[idxs >= 0].tolist()))
+            print(sum(idxs == -1))
+
+        .. code-block:: text
+
+            [0, 1, 2, 3]
+            4""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_pop_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return (Any, int)
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_pop() argument must be a tile_stack, got {s_type!r}")
+
+    return (s_type.dtype, int)
+
+
+def tile_stack_pop_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    return ((s,), [])
+
+
+add_builtin(
+    "tile_stack_pop",
+    input_types={"s": Any},
+    value_func=tile_stack_pop_value_func,
+    dispatch_func=tile_stack_pop_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Pop a value from a tile stack (cooperative).
+
+    All threads in the block must call this function. Each calling thread
+    races for a slot.
+
+    Args:
+        s: The tile stack
+
+    Returns:
+        A tuple ``(value, slot)`` where ``value`` is the popped element
+        (or the default value if the stack was empty) and ``slot`` is the
+        index of the popped element (the slot it previously occupied), or
+        ``-1`` if the stack was empty. When non-negative, ``slot`` lies in
+        ``[0, capacity-1]``. Consistent with :func:`tile_stack_push`
+        which also uses ``-1`` to indicate failure.
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def pop_kernel(out: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                wp.tile_stack_push(s, j * 10, j < 4)
+
+                val, slot = wp.tile_stack_pop(s)
+                if slot != -1:
+                    out[slot] = val
+
+            out = wp.full(8, -1, dtype=int)
+            wp.launch_tiled(pop_kernel, dim=[1], inputs=[out], block_dim=8)
+
+            vals = out.numpy()
+            print(sorted(vals[vals >= 0].tolist()))
+
+        .. code-block:: text
+
+            [0, 10, 20, 30]""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_clear_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_clear() argument must be a tile_stack, got {s_type!r}")
+
+    return None
+
+
+def tile_stack_clear_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    return ((s,), [])
+
+
+add_builtin(
+    "tile_stack_clear",
+    input_types={"s": Any},
+    value_func=tile_stack_clear_value_func,
+    dispatch_func=tile_stack_clear_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Clear a tile stack, resetting the count to zero (cooperative).
+
+    All threads in the block must call this function.
+
+    Args:
+        s: The tile stack
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def clear_kernel(before: wp.array(dtype=int), after: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                wp.tile_stack_push(s, j, True)
+                if j == 0:
+                    before[0] = wp.tile_stack_count(s)
+                wp.tile_stack_clear(s)
+                if j == 0:
+                    after[0] = wp.tile_stack_count(s)
+
+            before = wp.zeros(1, dtype=int)
+            after = wp.zeros(1, dtype=int)
+            wp.launch_tiled(clear_kernel, dim=[1], inputs=[before, after], block_dim=8)
+
+            print(f"before: {before.numpy()[0]}, after: {after.numpy()[0]}")
+
+        .. code-block:: text
+
+            before: 8, after: 0""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_count_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return int
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_count() argument must be a tile_stack, got {s_type!r}")
+
+    return int
+
+
+def tile_stack_count_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    return ((s,), [])
+
+
+add_builtin(
+    "tile_stack_count",
+    input_types={"s": Any},
+    value_func=tile_stack_count_value_func,
+    dispatch_func=tile_stack_count_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Return the current number of elements in a tile stack.
+
+    Unlike the other tile stack operations this function is **not** cooperative
+    — it does not contain a synchronization barrier and may be called by a
+    single thread or from within a divergent branch. It is safe to call after
+    any :func:`tile_stack_push`, :func:`tile_stack_pop`, or
+    :func:`tile_stack_clear` *provided the preceding cooperative call has
+    completed on all threads in the block*. Those calls end with a barrier
+    that makes ``count`` stable and visible. Calling this after a divergent
+    push/pop/clear is undefined.
+
+    Args:
+        s: The tile stack
+
+    Returns:
+        The current number of elements in the stack.
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def count_kernel(out_count: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                wp.tile_stack_push(s, j, j % 2 == 0)
+                if j == 0:
+                    out_count[0] = wp.tile_stack_count(s)
+
+            out_count = wp.zeros(1, dtype=int)
+            wp.launch_tiled(count_kernel, dim=[1], inputs=[out_count], block_dim=8)
+
+            print(out_count.numpy()[0])
+
+        .. code-block:: text
+
+            4""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 add_builtin(
     "bvh_get_group_root",
     input_types={"id": uint64, "group": int},
