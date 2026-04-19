@@ -150,8 +150,9 @@ Building from Source
 
 For developers who want to build the library themselves the following tools are required:
 
-* Microsoft Visual Studio (Windows), minimum version 2019
-* GCC (Linux), minimum version 9.4
+* (Windows) Microsoft Visual Studio, minimum version 2019
+* (Linux) GCC, minimum version 9.4
+* (Linux) Python development headers, e.g. ``libpython3-dev`` (v3.10+)
 * `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_, minimum version 12.0
 * `Git Large File Storage <https://git-lfs.com>`_
 

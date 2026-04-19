@@ -518,6 +518,14 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
     native_dir = os.path.join(warp_home, "native")
 
+    # Validate Python development headers for fastcall.cpp
+    python_include_dir = sysconfig.get_path("include")
+    if not python_include_dir or not os.path.isfile(os.path.join(python_include_dir, "Python.h")):
+        raise RuntimeError(
+            f"Python development headers not found (looked in {python_include_dir}).\n"
+            f"Install the Python development package, e.g.: `sudo apt install libpython{sys.version_info.major}.{sys.version_info.minor}-dev`"
+        )
+
     if cu_paths:
         # check CUDA Toolkit version
         ctk_version = get_cuda_toolkit_version(cuda_home)
@@ -627,7 +635,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 if "clang/clang.cpp" in cpp_path.replace("\\", "/"):
                     extra_flags = " /wd4624"  # suppress C4624: destructor was implicitly defined as deleted
                 if "fastcall.cpp" in cpp_path:
-                    extra_flags += f' /I"{sysconfig.get_path("include")}" /DPy_LIMITED_API=0x030a0000'  # Python 3.10
+                    extra_flags += f' /I"{python_include_dir}" /DPy_LIMITED_API=0x030a0000'  # Python 3.10
                 cpp_cmd = f'"{args.host_compiler}" {cpp_flags}{extra_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
@@ -735,7 +743,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 ld_inputs.append(quote(cpp_out))
                 extra_flags = ""
                 if "fastcall.cpp" in cpp_path:
-                    extra_flags = f' -I"{sysconfig.get_path("include")}" -DPy_LIMITED_API=0x030a0000'  # Python 3.10
+                    extra_flags = f' -I"{python_include_dir}" -DPy_LIMITED_API=0x030a0000'  # Python 3.10
                 cpp_cmd = f'{cpp_compiler} {cpp_flags}{extra_flags} -c "{cpp_path}" -o "{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
