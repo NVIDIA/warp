@@ -251,6 +251,43 @@ def test_tile_view_shared_assign_column_backward(test, device):
     assert_np_equal(src.grad.numpy(), expected_grad, tol=1e-6)
 
 
+@wp.kernel
+def tile_view_non_dense_store_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    """Store a non-dense view to global memory.
+
+    Parent tile is (TILE_M, TILE_N) with shared strides (TILE_N, 1).
+    View is (TILE_M, TILE_O) with the parent's strides (TILE_N, 1),
+    so stride[0]=TILE_N != shape[1]=TILE_O — non-dense in shared memory.
+
+    Before the Dense guard fix, the vectorized path would read shared
+    memory linearly (ignoring the stride gap), producing wrong output.
+    """
+    a = wp.tile_load(src, shape=(TILE_M, TILE_N), storage="shared")
+    v = wp.tile_view(a, offset=(0, 0), shape=(TILE_M, TILE_O))
+    wp.tile_store(dst, v)
+
+
+def test_tile_view_non_dense_store(test, device):
+    """Regression test: tile_store of a non-dense shared view must use
+    the scalar path and produce correct results."""
+    rng = np.random.default_rng(42)
+    src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+    src = wp.array(src_np, dtype=float, device=device)
+    dst = wp.zeros((TILE_M, TILE_O), dtype=float, device=device)
+
+    wp.launch_tiled(
+        tile_view_non_dense_store_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=32,
+        device=device,
+    )
+
+    # The view selects the first TILE_O columns of each row.
+    expected = src_np[:, :TILE_O]
+    assert_np_equal(dst.numpy(), expected)
+
+
 devices = get_test_devices()
 
 
@@ -273,6 +310,12 @@ add_function_test(
     TestTileView,
     "test_tile_view_shared_assign_column_backward",
     test_tile_view_shared_assign_column_backward,
+    devices=devices,
+)
+add_function_test(
+    TestTileView,
+    "test_tile_view_non_dense_store",
+    test_tile_view_non_dense_store,
     devices=devices,
 )
 

@@ -3132,6 +3132,22 @@ def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mappin
     if arg_values["storage"] not in {"shared", "register"}:
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
 
+    if arg_values.get("aligned"):
+        if arg_values["storage"] == "register":
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_load() with aligned=True has no effect for storage='register'. "
+                "The aligned parameter only affects shared memory tiles."
+            )
+        elif arg_values["storage"] == "shared" and len(shape) < 2:
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_load() with aligned=True has no effect for 1D shared tiles. "
+                "The vectorized path requires 2D+ tiles."
+            )
+
     return tile(dtype=a.dtype, shape=shape, storage=arg_values["storage"])
 
 
@@ -3139,6 +3155,7 @@ def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: 
     a = args["a"]
     shape = extract_tuple(args["shape"], as_constant=True)
     bounds_check = args["bounds_check"]
+    aligned = args["aligned"]
 
     if None in shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
@@ -3149,7 +3166,10 @@ def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset)
-    template_args = (return_type.dtype, bounds_check.constant, *shape)
+    # Force aligned=False for register tiles — the template arg only affects shared tiles
+    # and passing True would generate a needless distinct instantiation.
+    aligned_val = aligned.constant if return_type.storage == "shared" else False
+    template_args = (return_type.dtype, bounds_check.constant, aligned_val, *shape)
 
     return (func_args, template_args)
 
@@ -3162,10 +3182,11 @@ add_builtin(
         "offset": tuple[int, ...],
         "storage": str,
         "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
     },
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
-    defaults={"offset": None, "storage": "register", "bounds_check": True},
+    defaults={"offset": None, "storage": "register", "bounds_check": True, "aligned": False},
     variadic=False,
     doc="""Load a tile from a global memory array.
 
@@ -3178,6 +3199,14 @@ add_builtin(
         storage: The storage location for the tile: ``"register"`` for registers
             (default) or ``"shared"`` for shared memory.
         bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
+        aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
+            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+            bounds. Address-alignment violations trap unconditionally (even in release
+            builds). Bounds and contiguity violations trigger debug-only asserts; in
+            release builds they cause silent data corruption.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.""",
@@ -3188,10 +3217,17 @@ add_builtin(
 # overload for scalar shape
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "shape": int, "offset": int, "storage": str, "bounds_check": builtins.bool},
+    input_types={
+        "a": array(dtype=Any),
+        "shape": int,
+        "offset": int,
+        "storage": str,
+        "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
+    },
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
-    defaults={"offset": None, "storage": "register", "bounds_check": True},
+    defaults={"offset": None, "storage": "register", "bounds_check": True, "aligned": False},
     doc="""Load a tile from a global memory array.""",
     group="Tile Primitives",
     export=False,
@@ -3375,6 +3411,22 @@ def tile_store_value_func(arg_types, arg_values):
             f"tile_store() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
         )
 
+    if arg_values.get("aligned"):
+        if t.storage == "register":
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_store() with aligned=True has no effect for register tiles. "
+                "The aligned parameter only affects shared memory tiles."
+            )
+        elif t.storage == "shared" and len(t.shape) < 2:
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_store() with aligned=True has no effect for 1D shared tiles. "
+                "The vectorized path requires 2D+ tiles."
+            )
+
     return None
 
 
@@ -3382,6 +3434,7 @@ def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
     a = args["a"]
     t = args["t"]
     bounds_check = args["bounds_check"]
+    aligned = args["aligned"]
 
     if "offset" in args:
         offset = extract_tuple(args["offset"])
@@ -3389,7 +3442,8 @@ def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset, t)
-    template_args = (a.type.dtype, bounds_check.constant)
+    aligned_val = aligned.constant if t.type.storage == "shared" else False
+    template_args = (a.type.dtype, bounds_check.constant, aligned_val)
 
     return (func_args, template_args)
 
@@ -3401,10 +3455,11 @@ add_builtin(
         "t": tile(dtype=Any, shape=tuple[int, ...]),
         "offset": tuple[int, ...],
         "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
     },
     value_func=tile_store_value_func,
     dispatch_func=tile_store_dispatch_func,
-    defaults={"offset": None, "bounds_check": True},
+    defaults={"offset": None, "bounds_check": True, "aligned": False},
     variadic=False,
     skip_replay=True,
     doc="""Store a tile to a global memory array.
@@ -3415,7 +3470,15 @@ add_builtin(
         a: The destination array in global memory
         t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
         offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.""",
+        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
+        aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
+            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+            bounds. Address-alignment violations trap unconditionally (even in release
+            builds). Bounds and contiguity violations trigger debug-only asserts; in
+            release builds they cause silent data corruption.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3428,10 +3491,11 @@ add_builtin(
         "t": tile(dtype=Any, shape=tuple[int, ...]),
         "offset": int,
         "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
     },
     value_func=tile_store_value_func,
     dispatch_func=tile_store_dispatch_func,
-    defaults={"offset": None, "bounds_check": True},
+    defaults={"offset": None, "bounds_check": True, "aligned": False},
     variadic=False,
     skip_replay=True,
     doc="""Store a tile to a global memory array.""",

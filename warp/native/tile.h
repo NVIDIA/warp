@@ -53,7 +53,6 @@ struct alignas(16) float4 {
 
 #endif
 
-#define WP_USE_ASYNC_PIPELINE 0
 #define WP_USE_REGISTER_GEMM 0
 
 // Type trait to detect null function placeholder (int literal 0).
@@ -147,9 +146,8 @@ template <> struct wp_is_null_func<int> {
 Notes on shared memory synchronization
 ======================================
 
-Currently operations that write to shared memory tiles (e.g.: tile_load())
-must synchronize before they return through WP_TILE_SYNC(), this
-ensures subsequent read operations from the tile do not cause a race condition.
+Synchronous loads call WP_TILE_SYNC() before returning, ensuring
+subsequent reads do not race with the write.
 
 For tile_shared_t adjoints, the gradient accumulation is done through shared
 memory atomics, i.e.: atomic_add(), since for broadcast tiles multiple threads
@@ -174,14 +172,6 @@ gradients to memory, and all updates must be visible at that point, e.g.:
 Generally synchronization to adjoint tiles will happen through the
 tile_shared_t::add() and tile_shared_t::assign() function automatically,
 but in some cases e.g.: tile_matmul() it is done manually.
-
-The current synchronization strategy is conservative, and can lead to more
-synchronization than necessary. A more sophisticated strategy would be
-to track the 'dirty' state of shared tiles, and synchronize only when
-necessary. In addition, custom synchronization for e.g.: tile_load()
-operations could be added through a SyncProvider template parameter on
-the tile_shared_t type, for example to support barrier synchronization
-for asynchronous global to shared loads.
 */
 
 namespace wp {
@@ -402,6 +392,172 @@ template <int D0, int D1, int D2, int D3> struct tile_shape_remove_dim<3, tile_s
 };
 
 
+// helper to convert a tile shape to float4 units (replaces last dimension D with D * ElemSize / sizeof(float4))
+// used by vectorized copy_from_global / copy_to_global
+template <typename Shape, int ElemSize> struct tile_shape_f4;
+
+template <int D0, int D1, int S> struct tile_shape_f4<tile_shape_t<D0, D1>, S> {
+    using type = tile_shape_t<D0, (D1 * S) / (int)sizeof(float4)>;
+};
+
+template <int D0, int D1, int D2, int S> struct tile_shape_f4<tile_shape_t<D0, D1, D2>, S> {
+    using type = tile_shape_t<D0, D1, (D2 * S) / (int)sizeof(float4)>;
+};
+
+template <int D0, int D1, int D2, int D3, int S> struct tile_shape_f4<tile_shape_t<D0, D1, D2, D3>, S> {
+    using type = tile_shape_t<D0, D1, D2, (D3 * S) / (int)sizeof(float4)>;
+};
+
+
+// Helper struct for checking vectorized load/store eligibility
+// Used by tile_shared_t::copy_from_global() and copy_to_global()
+template <typename T, typename Shape> struct tile_vectorized_check_t {
+    static constexpr int total_elements = Shape::size();
+    // Last dimension bytes must be a multiple of sizeof(float4) so that float4
+    // reads cover the dimension exactly with no partial elements at the boundary.
+    // E.g. vec3 (12B) with last_dim=4: 4*12=48, 48%16=0 → 3 float4s cover 4 vec3s exactly.
+    // But vec3 with last_dim=3: 3*12=36, 36%16≠0 → rejected (last float4 would overread).
+    static constexpr int last_dim_bytes = Shape::dim(Shape::N - 1) * (int)sizeof(T);
+    static constexpr bool size_aligned = last_dim_bytes % (int)sizeof(float4) == 0;
+    static constexpr int float4_count = (total_elements * sizeof(T)) / sizeof(float4);
+
+    // Runtime checks for vectorized path eligibility.
+    // Returns true only if ALL conditions are met for safe vectorized loads/stores.
+    // Uses a single accumulated predicate (no early returns) for simpler control
+    // flow and more predictable codegen.
+    template <typename Global> static CUDA_CALLABLE bool tile_can_vectorize(const Global& global)
+    {
+        constexpr int lastdim = Shape::N - 1;
+
+        // 1. Last dimension contiguous in global array
+        bool ok = global.data.strides[lastdim] == sizeof(T);
+
+        // 2. Global address aligned
+        tile_coord_t<Shape::N> zero_coord {};
+        const float4* global128 = (const float4*)&global.data.data[global.index_from_coord(zero_coord)];
+        ok = ok && (reinterpret_cast<uint64_t>(global128) % sizeof(float4) == 0);
+
+        // 3. All dimensions fit within bounds
+        WP_PRAGMA_UNROLL
+        for (int d = 0; d < Shape::N; ++d) {
+            ok = ok && (global.offset[d] + Shape::dim(d) <= global.data.shape[d]);
+        }
+
+        // 4. Remaining dimensions contiguous (dense row-major strides).
+        //    Last dimension already verified by check 1.
+        int expected = sizeof(T) * global.data.shape[lastdim];
+        WP_PRAGMA_UNROLL
+        for (int d = lastdim - 1; d >= 0; --d) {
+            ok = ok && (global.data.strides[d] == expected);
+            expected *= global.data.shape[d];
+        }
+
+        // 5. Outer dimension strides are float4-aligned so that
+        //    strides[d] / sizeof(float4) is exact (no integer truncation).
+        //    Without this, row offsets in float4 space are wrong when the
+        //    array's last dim is not a multiple of sizeof(float4)/sizeof(T).
+        WP_PRAGMA_UNROLL
+        for (int d = lastdim - 1; d >= 0; --d) {
+            ok = ok && (global.data.strides[d] % sizeof(float4) == 0);
+        }
+
+        return ok;
+    }
+
+    // Compile-time validation for aligned=True
+    static constexpr void validate_aligned_compile_time()
+    {
+        static_assert(size_aligned, "aligned=True requires (last_dim * sizeof(T)) % 16 == 0");
+        static_assert(float4_count > 0, "aligned=True requires at least one float4 worth of data");
+    }
+
+    // Runtime validation for aligned=True.
+    // Address alignment is always checked (negligible cost, prevents silent UB).
+    // Bounds and contiguity checks are debug-only.
+    template <typename Global> static CUDA_CALLABLE void validate_aligned_runtime(const Global& global)
+    {
+        tile_coord_t<Shape::N> zero_coord {};
+        const float4* global128 = (const float4*)&global.data.data[global.index_from_coord(zero_coord)];
+
+        // Always check address alignment — misaligned 128-bit loads are undefined behavior.
+        // Debug: assert fires with a diagnostic message.
+        // Release: assert is compiled out but __trap() is unconditional (not gated by NDEBUG).
+        // CPU: only assert (the vectorized call sites are GPU-only).
+        assert(
+            reinterpret_cast<uint64_t>(global128) % sizeof(float4) == 0
+            && "aligned=True but global address not 16-byte aligned"
+        );
+#if defined(__CUDA_ARCH__)
+        if (reinterpret_cast<uint64_t>(global128) % sizeof(float4) != 0)
+            __trap();
+#endif
+
+#ifndef NDEBUG
+        constexpr int lastdim = Shape::N - 1;
+
+        for (int d = 0; d < Shape::N; ++d) {
+            assert(
+                global.offset[d] + Shape::dim(d) <= global.data.shape[d]
+                && "aligned=True but tile extends past array bounds"
+            );
+        }
+
+        int expected = sizeof(T);
+        for (int d = lastdim; d >= 0; --d) {
+            assert(global.data.strides[d] == expected && "aligned=True but global array not contiguous");
+            expected *= global.data.shape[d];
+        }
+
+        for (int d = lastdim - 1; d >= 0; --d) {
+            assert(
+                global.data.strides[d] % sizeof(float4) == 0
+                && "aligned=True but outer dimension stride not float4-aligned"
+            );
+        }
+#endif  // NDEBUG
+    }
+};
+
+
+// Runtime check for coalesced byte-copy eligibility.
+// The coalesced path copies raw bytes (as float*) with thread-striped access,
+// which requires the tile's bytes to be contiguous in global memory.
+template <typename T, typename Shape, typename Global> inline CUDA_CALLABLE bool tile_can_coalesce(const Global& global)
+{
+    constexpr int lastdim = Shape::N - 1;
+    bool ok = true;
+
+    // 1. Array densely packed — strides match dense row-major layout.
+    //    Without this, there are padding bytes between rows that the
+    //    flat byte-copy would misinterpret as element data.
+    int expected = sizeof(T);
+    WP_PRAGMA_UNROLL
+    for (int d = lastdim; d >= 0; --d) {
+        ok = ok && (global.data.strides[d] == expected);
+        expected *= global.data.shape[d];
+    }
+
+    // 2. Tile fits within array bounds — no out-of-bounds reads/writes.
+    //    Partial tiles need the scalar path for zero-padding (loads)
+    //    or skipping (stores).
+    WP_PRAGMA_UNROLL
+    for (int d = 0; d < Shape::N; ++d) {
+        ok = ok && (global.offset[d] + Shape::dim(d) <= global.data.shape[d]);
+    }
+
+    // 3. Tile spans full inner dimensions — no stride gaps between rows.
+    //    E.g. a (3,4) tile from a (10,8) array has 4 elements per row but
+    //    8-element strides — bytes are NOT contiguous across row boundaries.
+    //    Only the outermost dimension may differ from the array shape.
+    WP_PRAGMA_UNROLL
+    for (int d = lastdim; d > 0; --d) {
+        ok = ok && (Shape::dim(d) == global.data.shape[d]);
+    }
+
+    return ok;
+}
+
+
 // helper to insert an axis value into a coordinate (inverse of removing dimension)
 // used for mapping output coordinates back to input coordinates during axis reduction
 template <int Axis, int N>
@@ -481,8 +637,8 @@ template <typename Shape> struct tile_coord_iter_t {
                 int carry = coord[d] / dim_size;
                 int new_cd = coord[d] - carry * dim_size;
                 // carry_delta = strides[d-1] - dim(d) * strides[d]
-                // this is 0 when strides[d-1] == tile_dim(d) * strides[d], i.e. the array
-                // is contiguous along dimensions d and d-1, so byte_offset needs no adjustment
+                // this is 0 when the tile spans the full extent of dimension d in a
+                // contiguous array, so byte_offset needs no gap adjustment
                 byte_offset += carry * (strides[d - 1] - dim_size * strides[d]);
                 coord[d] = new_cd;
                 coord[d - 1] += carry;
@@ -494,11 +650,15 @@ template <typename Shape> struct tile_coord_iter_t {
 // represents a tile stored in global memory with dynamic strides
 // used to represent the source and offset for tile loads to register/shared
 // BoundsCheck: when true (default), validates array access bounds; when false, skips validation for performance
-template <typename T, typename Shape_, bool BoundsCheck = true> struct tile_global_t {
+// Aligned: when true, the caller guarantees: (1) base address at tile offset is 16-byte aligned,
+//   (2) array is contiguous (dense row-major strides), (3) outer-dimension strides are multiples of
+//   16 bytes, and (4) tile fits entirely within array bounds. Skips runtime checks in tile_can_vectorize().
+template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = false> struct tile_global_t {
     using Type = T;
     using Shape = Shape_;
     using Coord = tile_coord_t<Shape::N>;
     static constexpr bool bounds_check = BoundsCheck;
+    static constexpr bool is_aligned = Aligned;
 
     array_t<T> data;
     Coord offset;
@@ -691,8 +851,8 @@ template <typename T, typename L> struct tile_register_t {
         *this = t.copy_to_register();
     }
 
-    template <bool BoundsCheck>
-    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape, BoundsCheck>& t)
+    template <bool BoundsCheck, bool Aligned>
+    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape, BoundsCheck, Aligned>& t)
     {
         copy_from_global(t);
         return *this;
@@ -1070,6 +1230,23 @@ template <typename Shape_, typename Stride_ = typename compute_strides<Shape_>::
 
     static constexpr bool Unique = is_unique();
 
+    // True when strides match dense row-major packing: stride[N-1]==1,
+    // stride[d]==shape[d+1]*stride[d+1].  Implies Unique (zero strides fail)
+    // and contiguous-last-dim.  False for tile_view of a larger parent whose
+    // outer strides exceed the view's shape.
+    static constexpr bool is_dense()
+    {
+        int expected = 1;
+        for (int d = Shape::N - 1; d >= 0; --d) {
+            if (Stride::dim(d) != expected)
+                return false;
+            expected *= Shape::dim(d);
+        }
+        return true;
+    }
+
+    static constexpr bool Dense = is_dense();
+
     static inline CUDA_CALLABLE bool valid(int linear) { return linear < Size; }
 };
 
@@ -1240,10 +1417,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
     // assign from a global tile (load)
 
-    template <bool BoundsCheck>
-    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape, BoundsCheck>& t)
+    template <bool BoundsCheck, bool Aligned>
+    inline CUDA_CALLABLE auto& operator=(const tile_global_t<T, typename Layout::Shape, BoundsCheck, Aligned>& t)
     {
-        copy_from_global(t);
+        copy_from_global<tile_global_t<T, typename Layout::Shape, BoundsCheck, Aligned>>(t);
         return *this;
     }
 
@@ -1533,42 +1710,80 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         return out;
     }
 
+    // Store a tile from shared memory to global memory.
+    // Same three-tier path cascade as copy_from_global (see that function for details).
     template <typename Global> inline CUDA_CALLABLE void copy_to_global(const Global& dest)
     {
 
 #if defined(__CUDA_ARCH__)
-        // vectorized loads for specific input/output shapes
-        if constexpr (Layout::Shape::N == 2) {
-            constexpr int lastdim = Layout::Shape::N - 1;
-            constexpr bool contiguous_src = Layout::Stride::dim(lastdim) == 1;
-            const bool contiguous_dest = dest.data.strides[lastdim] == sizeof(T);
-            const int elements = min(Layout::Shape::dim(1), (dest.data.shape[lastdim] - dest.offset[lastdim]));
-            const bool aligned_size = (elements * sizeof(T)) % sizeof(float4) == 0;
-            const bool aligned_stride = (dest.data.strides[0] / sizeof(T)) % Layout::Stride::dim(0) == 0;
+        if constexpr (Layout::Shape::N >= 2) {
+            using Check = tile_vectorized_check_t<T, typename Layout::Shape>;
 
-            float4* dest128 = (float4*)&dest.data.data[dest.index_from_coord(tile_coord(0, 0))];
-            const bool aligned_dst = (uint64_t)(dest128) % sizeof(float4) == 0;
+            if constexpr (Global::is_aligned) {
+                Check::validate_aligned_compile_time();
+                static_assert(
+                    Layout::Dense,
+                    "aligned=True requires dense shared layout (not transposed, broadcast, or a non-contiguous view)"
+                );
+            }
 
-            constexpr int M = Layout::Shape::dim(0);
-            constexpr int N = (Layout::Shape::dim(1) * sizeof(T)) / sizeof(float4);
+            if constexpr (Check::size_aligned && Layout::Dense) {
+                bool do_vectorized = Global::is_aligned || Check::tile_can_vectorize(dest);
 
-            if (contiguous_dest && contiguous_src && aligned_size && aligned_dst && aligned_stride && N) {
-                // alias of shared tile with 128bit type
-                using SrcLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, SrcLayout, false> src128((float4*)data.ptr);
-
-                assert(((uint64_t)(data.ptr)) % sizeof(float4) == 0);
-                assert(((uint64_t)(dest128)) % sizeof(float4) == 0);
-
-                const int stride_i = dest.data.strides[0] / sizeof(float4);
-                const int stride_j = 1;
-
-                WP_PRAGMA_UNROLL
-                for (int i = WP_TILE_THREAD_IDX; i < SrcLayout::Size; i += WP_TILE_BLOCK_DIM) {
-                    auto c = SrcLayout::coord_from_linear(i);
-
-                    dest128[stride_i * c[0] + stride_j * c[1]] = src128.data(i);
+                if constexpr (Global::is_aligned) {
+                    Check::validate_aligned_runtime(dest);
                 }
+
+                if (do_vectorized) {
+                    tile_coord_t<Layout::Shape::N> zero_coord {};
+                    float4* dest128 = (float4*)&dest.data.data[dest.index_from_coord(zero_coord)];
+                    assert(((uint64_t)data.ptr) % sizeof(float4) == 0 && "shared tile pointer not 16-byte aligned");
+                    const float4* src128 = (const float4*)data.ptr;
+
+                    using F4Layout
+                        = tile_layout_strided_t<typename tile_shape_f4<typename Layout::Shape, (int)sizeof(T)>::type>;
+
+                    WP_PRAGMA_UNROLL
+                    for (int i = WP_TILE_THREAD_IDX; i < F4Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                        auto c = F4Layout::coord_from_linear(i);
+                        int global_idx = c[Layout::Shape::N - 1];
+                        WP_PRAGMA_UNROLL
+                        for (int d = 0; d < Layout::Shape::N - 1; ++d) {
+                            global_idx += (dest.data.strides[d] / (int)sizeof(float4)) * c[d];
+                        }
+                        dest128[global_idx] = src128[i];
+                    }
+
+                    return;
+                }
+            }
+        }
+
+        // Coalesced byte-copy store: threads write contiguous floats for perfect
+        // memory coalescing. Only for large element types (>16 bytes) where the
+        // scalar path's per-element stores stride across multiple cache lines.
+        // Small types are already naturally coalesced in the scalar path, and the
+        // runtime eligibility checks add overhead that exceeds any benefit.
+        if constexpr (
+            sizeof(T) > sizeof(float4) && Layout::Dense && (Layout::Size * (int)sizeof(T)) % (int)sizeof(float) == 0
+        ) {
+            static_assert(
+                sizeof(T) % sizeof(float) == 0,
+                "Coalesced byte-copy requires sizeof(T) to be a multiple of sizeof(float)"
+            );
+            constexpr int total_bytes = Layout::Size * (int)sizeof(T);
+            constexpr int num_floats = total_bytes / (int)sizeof(float);
+
+            if (tile_can_coalesce<T, typename Layout::Shape>(dest)) {
+                int base_bytes = 0;
+                for (int d = 0; d < Layout::Shape::N; ++d)
+                    base_bytes += dest.offset[d] * dest.data.strides[d];
+
+                float* dst = reinterpret_cast<float*>(reinterpret_cast<char*>(dest.data.data) + base_bytes);
+                const float* src = reinterpret_cast<const float*>(data.ptr);
+
+                for (int i = WP_TILE_THREAD_IDX; i < num_floats; i += WP_TILE_BLOCK_DIM)
+                    dst[i] = src[i];
 
                 return;
             }
@@ -1576,12 +1791,12 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
 #endif  // defined(__CUDA_ARCH__)
 
-        // scalar path
+        // Scalar path: element-by-element, handles non-contiguous arrays,
+        // transposed shared tiles, and partial tiles with OOB skipping.
         {
             using Shape = typename Layout::Shape;
 
             if constexpr (Shape::N == 1) {
-                // 1D tiles: flat indexing with byte stride
                 const int byte_stride = dest.data.strides[0];
                 const int base_bytes = dest.offset[0] * byte_stride;
 
@@ -1598,11 +1813,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                             = data(i);
                 }
             } else {
-                // N-D tiles: incremental coordinate iteration
                 using Iter = tile_coord_iter_t<Shape>;
                 Iter iter;
-                // only initialize for threads that will enter the loop
-                // (coord_from_linear asserts linear < Size)
                 if (WP_TILE_THREAD_IDX < Layout::Size)
                     iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), dest.data.strides, dest.offset.indices);
 
@@ -1625,79 +1837,107 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         }
     }
 
-    inline CUDA_CALLABLE void cp_async_global_to_shared_128(float4* shared_dest, const float4* global_src)
-    {
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
-
-        unsigned long long saddr = 0ULL;
-        unsigned long long gaddr = 0ULL;
-
-        asm volatile("cvta.to.shared.u64 %0, %1;" : "=l"(saddr) : "l"(shared_dest));
-        asm volatile("cvta.to.global.u64 %0, %1;" : "=l"(gaddr) : "l"(global_src));
-
-        // Use cp.async on newer architectures
-        asm volatile("cp.async.ca.shared.global [%0], [%1], 16;\n" : : "l"(saddr), "l"(gaddr));
-#else
-        // use regular load/store through register on older arches
-        *shared_dest = *global_src;
-#endif
-    }
-
-    inline CUDA_CALLABLE void cp_async_commit_and_wait_all_128()
-    {
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
-        asm volatile("cp.async.commit_group;\n"
-                     "cp.async.wait_group 0;\n" ::);
-#endif
-    }
-
+    // Load a tile from global memory into shared memory.
+    //
+    // Three code paths are attempted in order (CUDA only; CPU always uses scalar):
+    //
+    //   1. Vectorized float4 (2D+ only)
+    //      Reinterprets both global and shared memory as float4 arrays for 128-bit
+    //      wide loads. Requires float4-aligned last dimension, contiguous array,
+    //      aligned base address, tile in-bounds, and non-transposed shared layout.
+    //      Gated on N >= 2 because 1D tiles see no benefit (the scalar flat-stride
+    //      path is already optimal, and including vectorization templates in the 1D
+    //      compilation unit degrades NVRTC's optimization of the scalar path).
+    //
+    //   2. Coalesced byte-copy (large element types only, sizeof(T) > 16)
+    //      Copies raw bytes as float* with thread-striped access for perfect memory
+    //      coalescing. Avoids the scalar path's per-element strided access pattern
+    //      which causes cache line waste for large types like mat33/mat44/mat66.
+    //      Requires contiguous array, tile in-bounds, tile spans full inner dims,
+    //      and non-transposed shared layout.
+    //
+    //   3. Scalar fallback (universal)
+    //      Per-element loads with bounds-checked zero-padding for OOB elements.
+    //      Handles non-contiguous arrays, partial tiles, transposed layouts, and
+    //      CPU execution. Uses flat byte-offset indexing for 1D, incremental
+    //      coordinate iteration (tile_coord_iter_t) for N-D.
+    //
     template <typename Global> inline CUDA_CALLABLE void copy_from_global(const Global& src)
     {
         if (initialized)
             WP_TILE_SYNC();
 
 #if defined(__CUDA_ARCH__)
+        if constexpr (Layout::Shape::N >= 2) {
+            using Check = tile_vectorized_check_t<T, typename Layout::Shape>;
 
-        // vectorized loads for specific input/output shapes
-        if constexpr (Layout::Shape::N == 2) {
-            constexpr int lastdim = Layout::Shape::N - 1;
-            constexpr bool contiguous_dest = Layout::Stride::dim(lastdim) == 1;
-            const bool contiguous_src = src.data.strides[lastdim] == sizeof(T);
-            const int elements = min(Layout::Shape::dim(1), (src.data.shape[lastdim] - src.offset[lastdim]));
-            const bool aligned_size = (elements * sizeof(T)) % sizeof(float4) == 0;
-            const bool aligned_stride = (src.data.strides[0] / sizeof(T)) % Layout::Stride::dim(0) == 0;
+            if constexpr (Global::is_aligned) {
+                Check::validate_aligned_compile_time();
+                static_assert(
+                    Layout::Dense,
+                    "aligned=True requires dense shared layout (not transposed, broadcast, or a non-contiguous view)"
+                );
+            }
 
-            float4* src128 = (float4*)&src.data.data[src.index_from_coord(tile_coord(0, 0))];
-            const bool aligned_src = (uint64_t)(src128) % sizeof(float4) == 0;
+            if constexpr (Check::size_aligned && Layout::Dense) {
+                bool do_vectorized = Global::is_aligned || Check::tile_can_vectorize(src);
 
-            constexpr int M = Layout::Shape::dim(0);
-            constexpr int N = (Layout::Shape::dim(1) * sizeof(T)) / sizeof(float4);
-
-            if (contiguous_dest && contiguous_src && aligned_size && aligned_src && aligned_stride && N) {
-                // alias of shared tile with 128bit type
-                using DestLayout = tile_layout_strided_t<tile_shape_t<M, N>>;
-                tile_shared_t<float4, DestLayout, false> dest128((float4*)data.ptr);
-
-                assert(((uint64_t)(dest128.data.ptr)) % sizeof(float4) == 0);
-                assert(((uint64_t)(src128)) % sizeof(float4) == 0);
-
-                const int stride_i = src.data.strides[0] / sizeof(float4);
-                const int stride_j = 1;
-
-                WP_PRAGMA_UNROLL
-                for (int i = WP_TILE_THREAD_IDX; i < DestLayout::Size; i += WP_TILE_BLOCK_DIM) {
-                    auto c = DestLayout::coord_from_linear(i);
-
-#if WP_USE_ASYNC_PIPELINE
-                    cp_async_global_to_shared_128(&dest128.data(i), &src128[stride_i * c[0] + stride_j * c[1]]);
-#else
-                    dest128.data(i) = src128[stride_i * c[0] + stride_j * c[1]];
-#endif  // WP_USE_ASYNC_PIPELINE
+                if constexpr (Global::is_aligned) {
+                    Check::validate_aligned_runtime(src);
                 }
 
-#if WP_USE_ASYNC_PIPELINE
-                cp_async_commit_and_wait_all_128();
-#endif  // WP_USE_ASYNC_PIPELINE
+                if (do_vectorized) {
+                    tile_coord_t<Layout::Shape::N> zero_coord {};
+                    const float4* src128 = (const float4*)&src.data.data[src.index_from_coord(zero_coord)];
+                    assert(((uint64_t)data.ptr) % sizeof(float4) == 0 && "shared tile pointer not 16-byte aligned");
+                    float4* dest128 = (float4*)data.ptr;
+
+                    using F4Layout
+                        = tile_layout_strided_t<typename tile_shape_f4<typename Layout::Shape, (int)sizeof(T)>::type>;
+
+                    WP_PRAGMA_UNROLL
+                    for (int i = WP_TILE_THREAD_IDX; i < F4Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                        auto c = F4Layout::coord_from_linear(i);
+                        int global_idx = c[Layout::Shape::N - 1];
+                        WP_PRAGMA_UNROLL
+                        for (int d = 0; d < Layout::Shape::N - 1; ++d) {
+                            global_idx += (src.data.strides[d] / (int)sizeof(float4)) * c[d];
+                        }
+                        dest128[i] = src128[global_idx];
+                    }
+
+                    initialized = true;
+                    WP_TILE_SYNC();
+                    return;
+                }
+            }
+        }
+
+        // Coalesced byte-copy load: threads load contiguous floats for perfect
+        // memory coalescing. Only for large element types (>16 bytes) where the
+        // scalar path's per-element loads stride across multiple cache lines.
+        // Small types are already naturally coalesced in the scalar path.
+        if constexpr (
+            sizeof(T) > sizeof(float4) && Layout::Dense && (Layout::Size * (int)sizeof(T)) % (int)sizeof(float) == 0
+        ) {
+            static_assert(
+                sizeof(T) % sizeof(float) == 0,
+                "Coalesced byte-copy requires sizeof(T) to be a multiple of sizeof(float)"
+            );
+            constexpr int total_bytes = Layout::Size * (int)sizeof(T);
+            constexpr int num_floats = total_bytes / (int)sizeof(float);
+
+            if (tile_can_coalesce<T, typename Layout::Shape>(src)) {
+                int base_bytes = 0;
+                for (int d = 0; d < Layout::Shape::N; ++d)
+                    base_bytes += src.offset[d] * src.data.strides[d];
+
+                const float* gsrc
+                    = reinterpret_cast<const float*>(reinterpret_cast<const char*>(src.data.data) + base_bytes);
+                float* dst = reinterpret_cast<float*>(data.ptr);
+
+                for (int i = WP_TILE_THREAD_IDX; i < num_floats; i += WP_TILE_BLOCK_DIM)
+                    dst[i] = gsrc[i];
 
                 initialized = true;
                 WP_TILE_SYNC();
@@ -1707,12 +1947,12 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
 #endif  // defined(__CUDA_ARCH__)
 
-        // scalar path
+        // Scalar path: element-by-element, handles non-contiguous arrays and
+        // partial tiles with out-of-bounds zero-padding.
         {
             using Shape = typename Layout::Shape;
 
             if constexpr (Shape::N == 1) {
-                // 1D tiles: flat indexing with byte stride
                 const int byte_stride = src.data.strides[0];
                 const int base_bytes = src.offset[0] * byte_stride;
 
@@ -1730,11 +1970,8 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                                     : T {};
                 }
             } else {
-                // N-D tiles: incremental coordinate iteration
                 using Iter = tile_coord_iter_t<Shape>;
                 Iter iter;
-                // only initialize for threads that will enter the loop
-                // (coord_from_linear asserts linear < Size)
                 if (WP_TILE_THREAD_IDX < Layout::Size)
                     iter.init(Layout::coord_from_linear(WP_TILE_THREAD_IDX), src.data.strides, src.offset.indices);
 
@@ -2368,10 +2605,11 @@ adj_tile_arange(T start, T stop, T step, T& adj_start, T& adj_stop, T& adj_step,
 }
 
 // entry point for load operations, these just return a reference to a global memory array + coordinate
-template <typename T, bool BoundsCheck, unsigned... Shape, typename... Offset>
+// Aligned: when true, indicates caller guarantees 16-byte alignment and full tile bounds (skips runtime checks)
+template <typename T, bool BoundsCheck, bool Aligned, unsigned... Shape, typename... Offset>
 inline CUDA_CALLABLE auto tile_load(array_t<T>& src, Offset... offset)
 {
-    return tile_global_t<T, tile_shape_t<Shape...>, BoundsCheck>(src, tile_coord(offset...));
+    return tile_global_t<T, tile_shape_t<Shape...>, BoundsCheck, Aligned>(src, tile_coord(offset...));
 }
 
 // used for indexed loads and stores
@@ -2427,33 +2665,29 @@ inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indice
     return out;
 }
 
-// // entry point for tile store operations
-// template <typename... Indices, typename T, typename Tile>
-// inline CUDA_CALLABLE void tile_store(array_t<T>& dest, Tile& src, Indices... x)
-// {
-//     src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape>(dest, tile_coord(x)));
-// }
 
 // entry point for tile store operations
-template <typename T, bool BoundsCheck, typename Tile>
+template <typename T, bool BoundsCheck, bool Aligned, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, Tile& src)
 {
-    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x)));
+    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck, Aligned>(dest, tile_coord(x)));
 }
-template <typename T, bool BoundsCheck, typename Tile>
+template <typename T, bool BoundsCheck, bool Aligned, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, Tile& src)
 {
-    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x, y)));
+    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck, Aligned>(dest, tile_coord(x, y)));
 }
-template <typename T, bool BoundsCheck, typename Tile>
+template <typename T, bool BoundsCheck, bool Aligned, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, Tile& src)
 {
-    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x, y, z)));
+    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck, Aligned>(dest, tile_coord(x, y, z)));
 }
-template <typename T, bool BoundsCheck, typename Tile>
+template <typename T, bool BoundsCheck, bool Aligned, typename Tile>
 inline CUDA_CALLABLE void tile_store(array_t<T>& dest, int x, int y, int z, int w, Tile& src)
 {
-    src.copy_to_global(tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck>(dest, tile_coord(x, y, z, w)));
+    src.copy_to_global(
+        tile_global_t<T, typename Tile::Layout::Shape, BoundsCheck, Aligned>(dest, tile_coord(x, y, z, w))
+    );
 }
 
 template <typename T, int M, typename Tile, typename Coord>

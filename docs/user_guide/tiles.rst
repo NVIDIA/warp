@@ -124,6 +124,30 @@ Otherwise, kernel compilation may fail.
 
 Note that shared memory tile allocations are guaranteed to be 16-byte aligned.
 
+Shared Tile Load Performance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When loading tiles into shared memory, Warp uses a three-tier cascade to maximize memory bandwidth:
+
+1. **Vectorized float4 (2D+ tiles)** — Reinterprets memory as 128-bit ``float4`` values for wide loads.
+   Requires the last dimension to be float4-aligned (``last_dim * sizeof(T) % 16 == 0``), a contiguous
+   source array, 16-byte aligned base address, tile in-bounds, and float4-aligned outer-dimension strides.
+   Use ``aligned=True`` on :func:`tile_load <warp._src.lang.tile_load>` to skip runtime alignment checks
+   when you can guarantee these conditions.
+
+2. **Coalesced byte-copy (large element types, ``sizeof(T) > 16``)** — For types like ``mat33``, ``mat44``,
+   and ``mat66``, copies raw bytes as ``float*`` with thread-striped access for perfect memory coalescing.
+   This avoids the scalar path's per-element strided access pattern where each element load strides across
+   multiple cache lines. Requires a contiguous source array, the tile must fit within array bounds, and the
+   tile must span the full inner dimensions.
+
+3. **Scalar fallback (universal)** — Per-element loads with bounds-checked zero-padding. Handles
+   non-contiguous arrays, partial tiles, transposed layouts, and CPU execution. 1D tiles do not use the
+   vectorized float4 path, but may use the coalesced byte-copy path for large element types.
+
+The same cascade applies to :func:`tile_store <warp._src.lang.tile_store>`.
+See :ref:`vectorized_tile_loads` for detailed conditions and optimization tips.
+
 Example: General Matrix Multiply (GEMM)
 ---------------------------------------
 
@@ -697,6 +721,220 @@ semantics for mutable objects. The reasons for pass-by-reference are:
    non-owning handle to the same shared memory, so element-level writes through either
    variable affect the same data. In-place assignments (``+=``, ``-=``, etc.) on the
    original parameter mutate the tile through the reference regardless of storage type.
+
+.. _vectorized_tile_loads:
+
+Vectorized Tile Loads
+---------------------
+
+When loading shared-memory tiles, Warp automatically attempts a **vectorized path**
+that uses 128-bit (``float4``) memory transactions instead of per-element loads. This
+gives up to 1.3× higher bandwidth because each thread issues fewer, wider loads.
+
+The vectorized path activates when **all** of the following hold:
+
+1. **Last-dimension alignment:** ``tile_last_dim × sizeof(element) % 16 == 0``.
+   For ``float32`` (4 bytes), the last dimension must be divisible by 4.
+   For ``vec3`` (12 bytes), it must be divisible by 4 (since 4 × 12 = 48, divisible by 16).
+   For ``float64`` (8 bytes), it must be divisible by 2.
+
+2. **Contiguous array:** the source array is densely packed (no gaps between rows).
+
+3. **16-byte aligned base address:** the start of the tile's data in global memory is
+   aligned to a 16-byte boundary. Warp GPU arrays are 256-byte aligned (CPU arrays are
+   64-byte aligned); either satisfies the 16-byte requirement for offset-zero tiles.
+   Offset tiles are aligned when the linear byte offset
+   ``sum(offset[d] * strides[d])`` is a multiple of 16.
+
+4. **Tile fits within array bounds:** the tile does not extend past the array dimensions.
+
+5. **2D or higher tile:** 1D tiles do not use the vectorized float4 path, but may use
+   the coalesced byte-copy path for large element types (``sizeof(T) > 16``).
+
+6. **Outer-dimension strides are float4-aligned:** all strides except the last dimension
+   must be multiples of 16 bytes. A contiguous ``float32`` array with ``shape[1]=35``
+   has ``strides[0]=140`` bytes, and ``140 % 16 != 0``, so vectorization is rejected
+   even if the tile's last dimension is aligned.
+
+When any condition fails, Warp tries a **coalesced byte-copy path** for large element
+types (``sizeof(T) > 16``) such as ``mat33``, ``mat44``, and ``mat66``. This path copies
+raw bytes as ``float*`` with thread-striped access for perfect memory coalescing, and works
+for both 1D and N-D tiles. If that path is also ineligible, Warp falls back to a **scalar
+load path** that handles arbitrary alignment, strides, and partial (out-of-bounds) tiles
+with zero-padding.
+
+**Padding for vectorized loads:** if your data dimensions are not naturally aligned, pad
+them to hit the vectorized path. For example, with ``float32`` tiles of width 30 (not
+divisible by 4), pad to 32:
+
+.. code:: python
+
+    # Pad array width from 30 → 32 for vectorized float4 loads
+    data_np = np.pad(data_np, ((0, 0), (0, 2)), mode='constant')
+    data = wp.array(data_np, dtype=float, device=device)
+
+    # Now tile_load with width=32 hits the fast vectorized path
+    t = wp.tile_load(data, shape=(8, 32), offset=(i * 8, 0), storage="shared")
+
+**The ``aligned`` parameter:** when you know all conditions above are met, pass
+``aligned=True`` to skip the runtime eligibility checks:
+
+.. code:: python
+
+    # Caller guarantees: contiguous array, 16-byte aligned, tile fits in bounds
+    t = wp.tile_load(data, shape=(8, 32), offset=(i * 8, 0), storage="shared", aligned=True)
+    wp.tile_store(out, t, offset=(i * 8, 0), aligned=True)
+
+This eliminates a small amount of per-load overhead from the runtime checks. The
+``aligned`` parameter is only meaningful for shared-memory tiles (register tiles do not
+use the vectorized path).
+
+.. warning::
+
+   Passing ``aligned=True`` when the conditions are not met results in undefined behavior
+   (incorrect results or GPU faults). Use it only when you can guarantee alignment. The
+   address alignment check is always active (even in release builds), but bounds and
+   contiguity checks are debug-only.
+
+
+.. _software_pipelining:
+
+Software Pipelining with Register Tiles
+----------------------------------------
+
+When a kernel iterates over many tiles, the default pattern — load, compute, store,
+repeat — leaves the GPU's memory pipeline idle during compute and the ALU idle during
+loads.
+
+**Sequential (baseline):** each iteration loads a tile, processes it, stores the result,
+then moves on. The next load cannot begin until the current store completes:
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    import time
+    import warp as wp
+    import numpy as np
+
+    @wp.func
+    def activation(x: float):
+        return wp.sin(x * 1.1 + 0.1)
+
+    @wp.func
+    def normalize(x: float):
+        return wp.exp(-wp.abs(x) * 0.5)
+
+    @wp.func
+    def transform(x: float):
+        return wp.sqrt(wp.abs(x) + 1.0)
+
+    @wp.func
+    def squash(x: float):
+        return wp.tanh(x * 0.7)
+
+    TILE_N = wp.constant(256)
+    N_ROWS = wp.constant(512)
+
+    @wp.kernel
+    def sequential(
+        inp: wp.array2d(dtype=float),
+        out: wp.array2d(dtype=float),
+    ):
+        for i in range(N_ROWS):
+            a = wp.tile_load(inp, shape=(1, TILE_N), offset=(i, 0), storage="register")
+            a = wp.tile_map(activation, a)
+            a = wp.tile_map(normalize, a)
+            a = wp.tile_map(transform, a)
+            a = wp.tile_map(squash, a)
+            wp.tile_store(out, a, offset=(i, 0))
+
+    @wp.kernel
+    def pipelined(
+        inp: wp.array2d(dtype=float),
+        out: wp.array2d(dtype=float),
+    ):
+        # Load first tile
+        a = wp.tile_load(inp, shape=(1, TILE_N), offset=(0, 0), storage="register")
+
+        for i in range(1, N_ROWS):
+            # Issue next load — GPU fetches in background during compute below
+            b = wp.tile_load(inp, shape=(1, TILE_N), offset=(i, 0), storage="register")
+
+            # Heavy compute overlaps with the memory fetch for b
+            a = wp.tile_map(activation, a)
+            a = wp.tile_map(normalize, a)
+            a = wp.tile_map(transform, a)
+            a = wp.tile_map(squash, a)
+            wp.tile_store(out, a, offset=(i - 1, 0))
+
+            a = b  # by now b's data has arrived
+
+        # Epilogue
+        a = wp.tile_map(activation, a)
+        a = wp.tile_map(normalize, a)
+        a = wp.tile_map(transform, a)
+        a = wp.tile_map(squash, a)
+        wp.tile_store(out, a, offset=(N_ROWS - 1, 0))
+
+    rng = np.random.default_rng(42)
+    device = wp.get_cuda_device()
+    inp = wp.array(rng.random((N_ROWS, TILE_N), dtype=np.float32), dtype=float, device=device)
+    out_seq = wp.zeros_like(inp)
+    out_pipe = wp.zeros_like(inp)
+
+    # Verify correctness
+    wp.launch_tiled(sequential, dim=[1], inputs=[inp, out_seq], block_dim=TILE_N, device=device)
+    wp.launch_tiled(pipelined, dim=[1], inputs=[inp, out_pipe], block_dim=TILE_N, device=device)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(out_seq.numpy(), out_pipe.numpy(), rtol=1e-5)
+
+    # Benchmark
+    for _ in range(10):
+        wp.launch_tiled(sequential, dim=[1], inputs=[inp, out_seq], block_dim=TILE_N, device=device)
+    wp.synchronize_device(device)
+    t0 = time.perf_counter()
+    for _ in range(100):
+        wp.launch_tiled(sequential, dim=[1], inputs=[inp, out_seq], block_dim=TILE_N, device=device)
+    wp.synchronize_device(device)
+    seq_ms = (time.perf_counter() - t0) / 100 * 1000
+
+    for _ in range(10):
+        wp.launch_tiled(pipelined, dim=[1], inputs=[inp, out_pipe], block_dim=TILE_N, device=device)
+    wp.synchronize_device(device)
+    t0 = time.perf_counter()
+    for _ in range(100):
+        wp.launch_tiled(pipelined, dim=[1], inputs=[inp, out_pipe], block_dim=TILE_N, device=device)
+    wp.synchronize_device(device)
+    pipe_ms = (time.perf_counter() - t0) / 100 * 1000
+
+    speedup = seq_ms / pipe_ms
+    print(f"Sequential: {seq_ms:.3f} ms")
+    print(f"Pipelined:  {pipe_ms:.3f} ms")
+    print(f"Speedup:    {speedup:.1f}x")
+
+.. testoutput::
+    :options: +ELLIPSIS
+
+    Sequential: ... ms
+    Pipelined:  ... ms
+    Speedup:    ...x
+
+The key insight: ``b = wp.tile_load(...)`` issues memory load instructions that enter the
+GPU's memory pipeline immediately, but the result registers are not read until ``a = b``
+on the next iteration. The GPU's instruction scheduler fills the gap with the ALU-heavy
+``tile_map`` calls, effectively hiding the memory latency for free.
+
+No special parameters or API calls are needed — the hardware pipeline handles the overlap
+automatically. The benefit scales with the amount of compute per tile: with four
+transcendental ``tile_map`` calls per iteration (as above), expect **1.2–1.6× speedup**
+depending on the GPU.
+
+.. note::
+
+   This pattern uses ``storage="register"`` (the default). Shared-memory tiles require
+   thread-block synchronization after each load, which prevents the same overlap. Use
+   register tiles for pipelined workloads.
+
 
 .. _mathdx:
 

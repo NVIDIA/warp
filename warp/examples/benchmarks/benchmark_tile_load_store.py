@@ -26,6 +26,9 @@ DTYPE_MAP = {
     "float32": wp.float32,
     "float64": wp.float64,
     "vec3": wp.vec3,
+    "mat33": wp.mat33,
+    "mat44": wp.mat44,
+    "mat66": wp.types.matrix(shape=(6, 6), dtype=float),
 }
 
 
@@ -93,14 +96,19 @@ def _round_to_tile(values, tile_size):
     return [n // tile_size * tile_size for n in values if n >= tile_size]
 
 
-def generate_sizes(ndim, tile_size):
+def generate_sizes(ndim, tile_size, elem_bytes=4):
     """Generate array edge lengths for the size sweep, based on dimensionality."""
+    # Cap total bytes at 2 GiB to stay within int32 stride limits
+    max_elements = min(2**31 // elem_bytes, 2**26)
+
     if ndim == 1:
-        raw = [2**p for p in range(16, 27)]
+        raw = [2**p for p in range(16, 27) if 2**p <= max_elements]
     elif ndim == 2:
-        raw = list(range(128, 4097, 128))
+        max_edge = int(max_elements**0.5)
+        raw = [n for n in range(128, 4097, 128) if n <= max_edge]
     else:
-        raw = list(range(16, 257, 16))
+        max_edge = int(max_elements ** (1 / 3))
+        raw = [n for n in range(16, 257, 16) if n <= max_edge]
     return _round_to_tile(raw, tile_size)
 
 
@@ -136,7 +144,8 @@ def _bandwidth_gibs(capacity_bytes, timing_results_ms):
 def run_benchmark(ndim, tile_size, dtype_name, block_dim, storage_modes, iterations):
     wp_dtype = DTYPE_MAP[dtype_name]
     create_kernel = KERNEL_CREATORS[ndim]
-    sizes = generate_sizes(ndim, tile_size)
+    elem_bytes = wp.types.type_size_in_bytes(wp_dtype)
+    sizes = generate_sizes(ndim, tile_size, elem_bytes)
 
     if not sizes:
         print("No valid sizes for the given tile size.")

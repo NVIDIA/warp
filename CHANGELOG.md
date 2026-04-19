@@ -57,6 +57,12 @@
   ``wp.tile_extract(wp.tile_sum(wp.tile_map(wp.tensordot, a, b)), 0)`` pattern
   ([GH-1364](https://github.com/NVIDIA/warp/issues/1364)).
 - Add pluggable allocator interface for custom GPU memory allocators, including built-in RMM support via ``wp.RmmAllocator`` ([GH-781](https://github.com/NVIDIA/warp/issues/781)).
+- Add `aligned` parameter to `tile_load()` and `tile_store()` to skip runtime
+  alignment checks when the caller guarantees 16-byte alignment
+  ([GH-1236](https://github.com/NVIDIA/warp/issues/1236)).
+- Extend vectorized float4 tile loads/stores to 3D and 4D tiles (previously
+  2D-only), and add coalesced byte-copy path for large element types (>16 bytes)
+  ([GH-1236](https://github.com/NVIDIA/warp/issues/1236)).
 
 ### Removed
 

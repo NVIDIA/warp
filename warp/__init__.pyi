@@ -2862,6 +2862,7 @@ def tile_load(
     offset: tuple[int, ...],
     storage: str,
     bounds_check: bool,
+    aligned: bool,
 ) -> Tile[Any, tuple[int, ...]]:
     """Load a tile from a global memory array.
 
@@ -2874,6 +2875,14 @@ def tile_load(
         storage: The storage location for the tile: ``"register"`` for registers
             (default) or ``"shared"`` for shared memory.
         bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
+        aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
+            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+            bounds. Address-alignment violations trap unconditionally (even in release
+            builds). Bounds and contiguity violations trigger debug-only asserts; in
+            release builds they cause silent data corruption.
 
     Returns:
         A tile with shape as specified and data type the same as the source array."""
@@ -2886,6 +2895,7 @@ def tile_load(
     offset: int32,
     storage: str,
     bounds_check: bool,
+    aligned: bool,
 ) -> Tile[Any, tuple[int, ...]]:
     """Load a tile from a global memory array."""
     ...
@@ -2956,7 +2966,13 @@ def tile_load_indexed(
     ...
 
 @over
-def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> None:
+def tile_store(
+    a: Array[Any],
+    t: Tile[Any, tuple[int, ...]],
+    offset: tuple[int, ...],
+    bounds_check: bool,
+    aligned: bool,
+) -> None:
     """Store a tile to a global memory array.
 
     This method will cooperatively store a tile to global memory using all threads in the block.
@@ -2965,11 +2981,19 @@ def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, 
         a: The destination array in global memory
         t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
         offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times."""
+        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
+        aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
+            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+            bounds. Address-alignment violations trap unconditionally (even in release
+            builds). Bounds and contiguity violations trigger debug-only asserts; in
+            release builds they cause silent data corruption."""
     ...
 
 @over
-def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool) -> None:
+def tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool, aligned: bool) -> None:
     """Store a tile to a global memory array."""
     ...
 

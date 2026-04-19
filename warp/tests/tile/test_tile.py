@@ -1217,11 +1217,12 @@ def test_tile_extract(test, device):
     assert_np_equal(a.grad.numpy(), expected_grad)
 
     # vector element test
+    # block_dim must equal dim so all threads in the block participate in tile ops
     x = wp.ones(TILE_M, dtype=wp.vec3, requires_grad=True, device=device)
     y = wp.zeros(TILE_M, dtype=float, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(test_tile_extract_vec_kernel, dim=[TILE_M], inputs=[x, y], block_dim=TILE_DIM, device=device)
+        wp.launch(test_tile_extract_vec_kernel, dim=[TILE_M], inputs=[x, y], block_dim=TILE_M, device=device)
 
     y.grad = wp.ones_like(y)
 
@@ -1234,11 +1235,12 @@ def test_tile_extract(test, device):
     assert_np_equal(y.numpy(), np.ones(TILE_M, dtype=float))
 
     # matrix element test
+    # block_dim must equal dim so all threads in the block participate in tile ops
     x = wp.ones(TILE_M, dtype=wp.mat33, requires_grad=True, device=device)
     y = wp.zeros(TILE_M, dtype=float, requires_grad=True, device=device)
 
     with wp.Tape() as tape:
-        wp.launch(test_tile_extract_mat_kernel, dim=[TILE_M], inputs=[x, y], block_dim=TILE_DIM, device=device)
+        wp.launch(test_tile_extract_mat_kernel, dim=[TILE_M], inputs=[x, y], block_dim=TILE_M, device=device)
 
     y.grad = wp.ones_like(y)
 

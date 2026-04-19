@@ -554,6 +554,52 @@ def test_tile_scatter_add_non_atomic_grad(test, device):
     assert_np_equal(inp.grad.numpy(), np.full(TILE_SIZE, 2.0))
 
 
+def test_tile_shared_coalesced_mat33(test, device):
+    """Shared tile load/store of mat33 exercises the coalesced byte-copy path (sizeof(mat33) = 36 > 16)."""
+    TILE_SIZE = 8
+    BLOCK_DIM = 64
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(
+        inp: wp.array(dtype=wp.mat33),
+        out: wp.array(dtype=wp.mat33),
+    ):
+        i = wp.tid()
+        t = wp.tile_load(inp, shape=TILE_SIZE, offset=0, storage="shared")
+        wp.tile_store(out, t, offset=0)
+
+    inp_np = np.arange(TILE_SIZE * 9, dtype=np.float32).reshape(TILE_SIZE, 3, 3)
+    inp = wp.array(inp_np, dtype=wp.mat33, device=device)
+    out = wp.zeros(TILE_SIZE, dtype=wp.mat33, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[inp, out], block_dim=BLOCK_DIM, device=device)
+
+    np.testing.assert_allclose(out.numpy(), inp_np)
+
+
+def test_tile_shared_coalesced_mat44(test, device):
+    """Shared tile load/store of mat44 exercises the coalesced byte-copy path (sizeof(mat44) = 64 > 16)."""
+    TILE_SIZE = 4
+    BLOCK_DIM = 64
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(
+        inp: wp.array(dtype=wp.mat44),
+        out: wp.array(dtype=wp.mat44),
+    ):
+        i = wp.tid()
+        t = wp.tile_load(inp, shape=TILE_SIZE, offset=0, storage="shared")
+        wp.tile_store(out, t, offset=0)
+
+    inp_np = np.arange(TILE_SIZE * 16, dtype=np.float32).reshape(TILE_SIZE, 4, 4)
+    inp = wp.array(inp_np, dtype=wp.mat44, device=device)
+    out = wp.zeros(TILE_SIZE, dtype=wp.mat44, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[inp, out], block_dim=BLOCK_DIM, device=device)
+
+    np.testing.assert_allclose(out.numpy(), inp_np)
+
+
 def test_tile_scatter_masked_basic(test, device):
     """Each thread writes its index; verify all values are visible after the call."""
     TILE_SIZE = 64
@@ -829,6 +875,18 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_scatter_add_non_atomic_grad",
     test_tile_scatter_add_non_atomic_grad,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_shared_coalesced_mat33",
+    test_tile_shared_coalesced_mat33,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_shared_coalesced_mat44",
+    test_tile_shared_coalesced_mat44,
     devices=devices,
 )
 add_function_test(
