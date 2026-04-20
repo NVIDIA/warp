@@ -162,6 +162,16 @@ def _det_closure_transform_b(x: wp.float32) -> wp.float32:
     return x + wp.float32(2.0)
 
 
+@wp.func
+def _det_func_scatter_add_leaf(arr: wp.array(dtype=wp.float32), idx: int, value: wp.float32):
+    wp.atomic_add(arr, idx, value)
+
+
+@wp.func
+def _det_func_scatter_add_wrapper(dst: wp.array(dtype=wp.float32), idx: int, value: wp.float32):
+    _det_func_scatter_add_leaf(dst, idx, value)
+
+
 def _make_deterministic_closure_kernel(transform_func):
     @wp.kernel(deterministic=True, module="unique")
     def _deterministic_closure_kernel(
@@ -172,6 +182,26 @@ def _make_deterministic_closure_kernel(transform_func):
         wp.atomic_add(output, tid % 8, transform_func(data[tid]))
 
     return _deterministic_closure_kernel
+
+
+@wp.kernel
+def func_scatter_add_kernel(
+    data: wp.array(dtype=wp.float32),
+    dest_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    _det_func_scatter_add_leaf(output, dest_indices[tid], data[tid])
+
+
+@wp.kernel
+def nested_func_scatter_add_kernel(
+    data: wp.array(dtype=wp.float32),
+    dest_indices: wp.array(dtype=wp.int32),
+    accum: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    _det_func_scatter_add_wrapper(accum, dest_indices[tid], data[tid])
 
 
 @wp.kernel
@@ -201,7 +231,7 @@ def loop_scatter_add_kernel(
         wp.atomic_add(output, 0, val)
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def mixed_reduce_op_same_array_kernel(
     data: wp.array(dtype=wp.float32),
     output: wp.array(dtype=wp.float32),
@@ -750,7 +780,7 @@ def test_loop_scatter_max_records_override(test, device):
 
 
 def test_mixed_reduce_ops_same_array(test, device):
-    """Verify add/max atomics targeting one array are reduced independently."""
+    """Verify mixed reduction families on one array are rejected in deterministic mode."""
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
@@ -758,9 +788,10 @@ def test_mixed_reduce_ops_same_array(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     output = wp.zeros(1, dtype=wp.float32, device=device)
 
-    wp.launch(mixed_reduce_op_same_array_kernel, dim=data_np.shape[0], inputs=[data], outputs=[output], device=device)
-
-    np.testing.assert_allclose(output.numpy(), np.array([1.0], dtype=np.float32), rtol=0.0, atol=0.0)
+    with test.assertRaisesRegex(Exception, "does not support mixing"):
+        wp.launch(
+            mixed_reduce_op_same_array_kernel, dim=data_np.shape[0], inputs=[data], outputs=[output], device=device
+        )
 
 
 def test_counter_reproducibility(test, device):
@@ -1017,6 +1048,60 @@ def test_deterministic_closure_kernel(test, device):
     test.assertFalse(np.array_equal(results_a[0], results_b[0]))
 
 
+def test_deterministic_func_kernel(test, device):
+    """Verify deterministic atomics inside ``@wp.func`` calls remain reproducible."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 512
+    out_size = 16
+    rng = np.random.default_rng(74)
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    results = []
+    for _ in range(3):
+        output = wp.zeros(out_size, dtype=wp.float32, device=device)
+        wp.launch(func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+        results.append(output.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(
+            result, _reference_scatter_add_float32(data_np, indices_np, out_size), rtol=1e-6, atol=1e-6
+        )
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_nested_deterministic_func_kernel(test, device):
+    """Verify deterministic helper args propagate through nested ``@wp.func`` calls."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 512
+    out_size = 16
+    rng = np.random.default_rng(75)
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    results = []
+    for _ in range(3):
+        accum = wp.zeros(out_size, dtype=wp.float32, device=device)
+        wp.launch(nested_func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[accum], device=device)
+        results.append(accum.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(
+            result, _reference_scatter_add_float32(data_np, indices_np, out_size), rtol=1e-6, atol=1e-6
+        )
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
 def test_record_cmd_deterministic_launch(test, device):
     """Verify ``record_cmd=True`` works for deterministic CUDA launches."""
     if device.is_cpu:
@@ -1102,6 +1187,36 @@ def test_graph_capture_deterministic_closure_kernel(test, device):
 
     with wp.ScopedCapture(device, force_module_load=False) as capture:
         wp.launch(kernel, dim=n, inputs=[data], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first = output.numpy().copy()
+
+    output.zero_()
+    wp.capture_launch(capture.graph)
+    second = output.numpy().copy()
+
+    np.testing.assert_array_equal(first, second)
+
+
+def test_graph_capture_deterministic_func_kernel(test, device):
+    """Verify deterministic ``@wp.func`` atomics remain capture-safe."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    n = 256
+    rng = np.random.default_rng(76)
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, 8, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(8, dtype=wp.float32, device=device)
+
+    wp.launch(func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+    output.zero_()
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
 
     wp.capture_launch(capture.graph)
     first = output.numpy().copy()
@@ -1229,6 +1344,15 @@ add_function_test(
 add_function_test(
     TestDeterministic, "test_mixed_reduce_ops_same_array", test_mixed_reduce_ops_same_array, devices=cuda_devices
 )
+add_function_test(
+    TestDeterministic, "test_deterministic_func_kernel", test_deterministic_func_kernel, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_nested_deterministic_func_kernel",
+    test_nested_deterministic_func_kernel,
+    devices=cuda_devices,
+)
 
 # Pattern B tests (counter).
 add_function_test(TestDeterministic, "test_counter_reproducibility", test_counter_reproducibility, devices=cuda_devices)
@@ -1269,6 +1393,12 @@ add_function_test(
     TestDeterministic,
     "test_graph_capture_deterministic_closure_kernel",
     test_graph_capture_deterministic_closure_kernel,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_graph_capture_deterministic_func_kernel",
+    test_graph_capture_deterministic_func_kernel,
     devices=cuda_devices,
 )
 add_function_test(
