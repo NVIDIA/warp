@@ -36,11 +36,11 @@ goto :eof
 
 :: Subroutines below
 :PYTHON_ENV_ERROR
-@echo User environment variable PM_PYTHON is not set! Please configure machine for packman or call configure.bat.
+@echo User environment variable PM_PYTHON is not set! Please configure machine for packman or call configure.ps1.
 exit /b 1
 
 :MODULE_ENV_ERROR
-@echo User environment variable PM_MODULE is not set! Please configure machine for packman or call configure.bat.
+@echo User environment variable PM_MODULE is not set! Please configure machine for packman or call configure.ps1.
 exit /b 1
 
 :VAR_ERROR
@@ -75,11 +75,17 @@ if %errorlevel% equ 0 (
 :: trim leading space (this is safe even when PM_OLD_CODE_PAGE has not been set)
 set PM_OLD_CODE_PAGE=%PM_OLD_CODE_PAGE:~1%
 if "%PM_OLD_CODE_PAGE%" equ "65001" (
-	chcp 437 > nul
-	set PM_RESTORE_CODE_PAGE=1
+	chcp 437 > nul 2>&1 && set PM_RESTORE_CODE_PAGE=1
 )
-call "%~dp0\bootstrap\configure.bat"
-set PM_CONFIG_ERRORLEVEL=%errorlevel%
+:: Capture configure.ps1 stdout directly via `for /f` instead of a shared file since those get messy
+:: and we can run into race conditions. The trailing `&& echo PM_CONFIGURE_OK=1` sentinel lets us
+:: recover the exit status that `for /f` would otherwise swallow.
+set PM_CONFIG_ERRORLEVEL=1
+for /f "delims=" %%A in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\bootstrap\configure.ps1" ^&^& echo PM_CONFIGURE_OK^=1') do set "%%A"
+if defined PM_CONFIGURE_OK (
+	set PM_CONFIG_ERRORLEVEL=0
+	set "PM_CONFIGURE_OK="
+)
 if defined PM_RESTORE_CODE_PAGE (
 	:: Restore code page
 	chcp %PM_OLD_CODE_PAGE% > nul
