@@ -26,7 +26,7 @@ deterministic without algorithm rewrites.
 | R3  | Both patterns work in the same kernel simultaneously | Must | Real workloads mix accumulation and allocation |
 | R4  | Integer atomics with unused return values incur no overhead | Must | Already associative+commutative |
 | R5  | CPU execution unaffected (already sequential/deterministic) | Must | Zero overhead on CPU |
-| R6  | Per-module and per-kernel granularity via ``module_options`` | Should | Allows selective opt-in |
+| R6  | Per-module and per-kernel granularity via ``module_options`` / unique kernels | Should | Allows selective opt-in |
 | R7  | Backward pass (autodiff) gradient accumulation is also deterministic | Should | Adjoint atomics are Pattern A |
 | R8  | Multiple target arrays in one kernel each get independent buffers | Must | Real kernels write to N arrays |
 
@@ -53,7 +53,9 @@ Deterministic mode can be enabled at three scopes:
   options such as ``enable_backward``.
 - **Per kernel**: use ``@wp.kernel(deterministic="run_to_run")`` and optionally set a
   per-target, per-thread scatter record limit with
-  ``deterministic_max_records=...``.
+  ``deterministic_max_records=...``. In practice determinism is a compilation
+  mode, so the cleanest way to opt in for only one kernel is to place it in a
+  unique module (for example with ``module="unique"``).
 
 For backward compatibility, ``True`` and ``False`` are still accepted at the
 module and kernel level as aliases for ``"run_to_run"`` and
@@ -62,6 +64,8 @@ module and kernel level as aliases for ``"run_to_run"`` and
 Like ``enable_backward``, the setting participates in module compilation and
 hashing. A kernel defined in a shared module inherits that module's
 ``deterministic`` option; a unique-module kernel can override it independently.
+This matters because deterministic lowering affects both kernels and any
+reachable ``@wp.func`` call graph compiled into the same module.
 
 ## Supported Operators
 
@@ -157,26 +161,48 @@ discarded, as in ``arr[i] += val`` or bare ``wp.atomic_add(...)``). Only
 intercepted. Integer atomics with unused return values are skipped entirely
 (already deterministic).
 
-**CPU/CUDA dual compilation** is handled with ``#ifdef __CUDA_ARCH__`` guards
-in the generated function body.  On CUDA the scatter or phase-branching code
-executes; on CPU the normal ``wp::atomic_add(...)`` call is emitted in the
-``#else`` branch.  This is necessary because Warp generates a single function
-body that compiles for both targets.
+**CPU/CUDA dual compilation** is handled inside deterministic atomic lowering.
+On CUDA, generated code uses the deterministic scatter or two-pass path. On
+CPU, generated code falls back to the normal Warp atomics so the CPU path
+remains unchanged and sequentially deterministic.
 
-**Hidden kernel parameters** are appended to the CUDA kernel signature by
-``codegen_kernel()`` after the user arguments.  Pattern B kernels get
-``_wp_det_phase``, ``_wp_det_contrib_N``, ``_wp_det_prefix_N``. Pattern A
-targets get ``_wp_scatter_keys_N``, ``_wp_scatter_vals_N``,
-``_wp_scatter_ctr_N``, ``_wp_scatter_overflow_N``, ``_wp_scatter_cap_N``, and
-``_wp_det_debug``. The launch system
-(``_launch_deterministic``) allocates these buffers and appends the
-corresponding ctypes params to the launch args.
+**Hidden deterministic ABI** now has two layers:
 
-**Multiple reduction buffers**: each distinct ``(target array, value type,
-reduction op)`` combination gets its own scatter buffer set. Multiple call
-sites with the same target and reduction op share one buffer. The
-``DeterministicMeta`` dataclass on the kernel's ``Adjoint`` tracks all scatter
-and counter targets discovered during codegen.
+- **Raw kernel-entry parameters**: CUDA kernels still receive raw launch-time
+  pointers and scalars appended after the user arguments. These include shared
+  execution state (phase, debug flag, one overflow flag) plus the raw storage
+  for each deterministic target.
+- **Structured helper objects**: immediately inside the generated kernel body,
+  Warp constructs small helper objects with readable names:
+  - ``det_ctx`` for shared execution state
+  - ``det_<array>`` for each scatter target as ``wp::det_scatter_buf<T>``
+  - ``det_<array>`` for each counter target as ``wp::det_counter_buf``
+
+This keeps kernel launches compatible with ctypes/raw parameter packing while
+making generated function calls much easier to read and propagate.
+
+**Deterministic ``@wp.func`` support** is implemented by threading the helper
+objects through the generated function signature, similar in spirit to how Warp
+threads hidden ``adj_*`` parameters for reverse-mode codegen. Only functions
+that directly or transitively need deterministic lowering receive the extra
+hidden arguments. A function containing no deterministic atomics keeps its
+normal signature.
+
+When a deterministic ``@wp.func`` is called, helper arguments are remapped from
+the callee's formal parameter names to the caller's actual array arguments. For
+example, a callee written as ``foo(arr, ...)`` may receive ``det_output`` or
+``det_force`` at a particular call site depending on which array is bound to
+``arr``. This avoids relying on anonymous ``_0`` / ``_1`` numbering and is the
+mechanism that makes nested deterministic ``@wp.func`` calls work.
+
+**Multiple reduction buffers**: within one function or kernel, each distinct
+target array gets at most one normalized deterministic family:
+``add`` (shared by ``atomic_add`` and ``atomic_sub``), ``min``, ``max``, or
+``counter``. Multiple call sites with the same target array and normalized
+family share one helper object and one postpass buffer set. The
+``DeterministicMeta`` dataclass on each ``Adjoint`` tracks the scatter and
+counter targets required by that function or kernel, and callers include the
+transitive requirements of any deterministic callees.
 
 **Scatter sizing**: each scatter target uses a fixed-capacity buffer sized from
 a code-generated lower bound (static records-per-thread analysis). The optional
@@ -184,8 +210,8 @@ a code-generated lower bound (static records-per-thread analysis). The optional
 users know a thread may revisit the same atomic site multiple times, for
 example inside a dynamic loop. Warp uses
 ``max(codegen_lower_bound, deterministic_max_records)`` records per thread for
-each target. On overflow, new records are truncated, a device-side overflow
-flag is set, and optional diagnostics may be emitted when
+each target. On overflow, new records are truncated, one shared device-side
+overflow flag is set, and optional diagnostics may be emitted when
 ``wp.config.deterministic_debug`` is enabled.
 
 **Counter total writeback**: after the prefix sum in Phase 0, the launch system
@@ -200,13 +226,35 @@ counter array so user code that reads it post-launch sees the correct value.
 | ``warp/_src/deterministic.py`` | Dataclasses, buffer allocation, sort-reduce orchestration |
 | ``warp/_src/codegen.py`` | Atomic classification, scatter/phase codegen, hidden kernel params |
 | ``warp/_src/context.py`` | Module option, ``_launch_deterministic()`` orchestrator, ctypes bindings |
-| ``warp/native/deterministic.h`` | Device-side ``wp::deterministic::scatter()`` template |
+| ``warp/native/deterministic.h`` | ``wp::det_ctx``, ``wp::det_scatter_buf<T>``, ``wp::det_counter_buf``, and device-side ``wp::deterministic::scatter()`` |
 | ``warp/native/deterministic.cu`` | CUB radix sort + ``ReduceByKey`` / segmented reduce kernels |
 | ``warp/native/deterministic.cpp`` | CPU stubs (linker satisfaction when CUDA unavailable) |
 
+## Current Limitations
+
+- Deterministic lowering is effectively a module compilation mode. It is
+  supported on shared modules via ``wp.set_module_options(...)`` and per-kernel
+  via unique modules, but mixed deterministic/non-deterministic call graphs
+  inside one shared compiled module are not the intended path.
+- Within one function or kernel, a given array may participate in only one
+  normalized deterministic family. ``atomic_add`` and ``atomic_sub`` share the
+  same family; ``min`` and ``max`` are separate. Mixing families such as
+  ``atomic_add(out, ...)`` and ``atomic_max(out, ...)`` on the same array in
+  deterministic mode is a compile-time error.
+- Phase 0 of the counter path suppresses normal side effects. Kernels whose
+  correctness depends on writes performed during the counting pass are outside
+  the supported model.
+- Scatter buffers are fixed-capacity and rely on a static lower bound plus the
+  optional ``deterministic_max_records`` override. Dynamic loops that exceed
+  that bound will truncate records.
+- ``"gpu_to_gpu"`` mode currently falls back to Warp's explicit segmented
+  reduction path for scalar scatter reductions. This is correct but much slower
+  than the ``"run_to_run"`` CUB ``ReduceByKey`` fast path in high-contention
+  cases.
+
 ## Testing Strategy
 
-31 tests in ``warp/tests/test_deterministic.py`` cover:
+35 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
@@ -219,8 +267,11 @@ counter array so user code that reads it post-launch sees the correct value.
   sequential CPU reference within ``rtol=1e-4``.
 - **Multiple arrays**: kernel that atomically adds to three different output
   arrays simultaneously.
-- **Mixed reduce ops on one array**: ``atomic_add`` and ``atomic_max`` targeting
-  the same destination array are reduced independently.
+- **Deterministic ``@wp.func`` propagation**: direct and nested ``@wp.func``
+  calls containing deterministic atomics compile and execute correctly, and
+  remain graph-capture-safe.
+- **Mixed reduce ops on one array**: deterministic mode rejects mixing
+  normalized reduction families on the same destination array.
 - **Multi-dimensional indexing**: 2D array ``atomic_add`` with row/col indices.
 - **Scatter capacity accounting**: kernels with more than two deterministic
   scatters per thread to the same target do not overflow a fixed heuristic

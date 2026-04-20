@@ -15,6 +15,25 @@
 // reduces values in that fixed order, guaranteeing bit-exact reproducibility.
 
 namespace wp {
+struct det_ctx {
+    int phase;
+    int debug;
+    size_t idx;
+    int* overflow;
+};
+
+template <typename T> struct det_scatter_buf {
+    int64_t* keys;
+    T* vals;
+    int* count;
+    int capacity;
+};
+
+struct det_counter_buf {
+    int* contrib;
+    int* prefix;
+};
+
 namespace deterministic {
 
 // Device-side function called from generated kernel code in deterministic mode.
@@ -25,40 +44,25 @@ namespace deterministic {
 // 64-bit radix sort, records targeting the same destination are grouped
 // together and ordered by thread ID, giving a deterministic reduction order.
 template <typename T>
-inline CUDA_CALLABLE void scatter(
-    int64_t* keys,
-    T* values,
-    int* counter,
-    int* overflow,
-    int capacity,
-    int debug_enabled,
-    int dest_flat_idx,
-    size_t thread_id,
-    T value
-)
+inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf<T>& buf, int dest_flat_idx, T value)
 {
 #ifdef __CUDA_ARCH__
-    int slot = atomicAdd(counter, 1);
-    if (slot < capacity) {
-        keys[slot] = (static_cast<int64_t>(dest_flat_idx) << 32)
-            | static_cast<int64_t>(static_cast<unsigned int>(thread_id & 0xFFFFFFFFu));
-        values[slot] = value;
-    } else if (overflow != nullptr) {
-        int prev = atomicCAS(overflow, 0, 1);
-        if (debug_enabled && prev == 0) {
-            printf("Warp deterministic scatter overflow: capacity=%d dest=%d\n", capacity, dest_flat_idx);
+    int slot = atomicAdd(buf.count, 1);
+    if (slot < buf.capacity) {
+        buf.keys[slot] = (static_cast<int64_t>(dest_flat_idx) << 32)
+            | static_cast<int64_t>(static_cast<unsigned int>(ctx.idx & 0xFFFFFFFFu));
+        buf.vals[slot] = value;
+    } else if (ctx.overflow != nullptr) {
+        int prev = atomicCAS(ctx.overflow, 0, 1);
+        if (ctx.debug && prev == 0) {
+            printf("Warp deterministic scatter overflow: capacity=%d dest=%d\n", buf.capacity, dest_flat_idx);
         }
     }
 #else
     // CPU path: direct accumulation (CPU kernels are sequential).
-    (void)keys;
-    (void)values;
-    (void)counter;
-    (void)overflow;
-    (void)capacity;
-    (void)debug_enabled;
+    (void)ctx;
+    (void)buf;
     (void)dest_flat_idx;
-    (void)thread_id;
     (void)value;
 #endif
 }
