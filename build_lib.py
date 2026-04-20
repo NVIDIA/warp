@@ -174,6 +174,10 @@ def find_libmathdx(cuda_toolkit_major_version: int, base_path: str) -> str | Non
         os.path.join(base_path, "deps", "libmathdx-deps.packman.xml"),
     ]
 
+    # Reuse the current interpreter so packman skips downloading its bundled Python,
+    # whose manylinux_2_35 build can't run on older-glibc CI images.
+    packman_env = {**os.environ, "PM_PYTHON_EXT": sys.executable}
+
     retry_delays = [10, 30, 60]
     max_attempts = 1 + len(retry_delays)
 
@@ -183,6 +187,7 @@ def find_libmathdx(cuda_toolkit_major_version: int, base_path: str) -> str | Non
                 packman_cmd,
                 stderr=subprocess.STDOUT,
                 text=True,
+                env=packman_env,
             )
             # Only print on verbose; caller controls this flag via build_dll.verbose_cmd
             if build_dll.verbose_cmd:

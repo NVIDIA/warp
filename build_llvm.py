@@ -36,6 +36,10 @@ def fetch_prebuilt_libraries(arch):
                 "x86_64": "18.1.3-linux-x86_64-gcc9.4",
             }
 
+    # Reuse the current interpreter so packman skips downloading its bundled Python,
+    # whose manylinux_2_35 build can't run on older-glibc CI images.
+    packman_env = {**os.environ, "PM_PYTHON_EXT": sys.executable}
+
     try:
         subprocess.check_output(
             [
@@ -48,6 +52,7 @@ def fetch_prebuilt_libraries(arch):
             ],
             stderr=subprocess.STDOUT,
             text=True,
+            env=packman_env,
         )
     except subprocess.CalledProcessError as e:
         print(e.output)
