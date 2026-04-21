@@ -133,6 +133,7 @@
   array writes (e.g. matrix component assignments) may be slower due to the additional zeroing. See
   the [differentiability guide](https://nvidia.github.io/warp/user_guide/differentiability.html)
   for details ([GH-1062](https://github.com/NVIDIA/warp/issues/1062)).
+- Allow `launch_dims` to be specified when `enable_backward=True` in `jax_kernel()` ([GH-1380](https://github.com/NVIDIA/warp/issues/1380)).
 
 ### Fixed
 

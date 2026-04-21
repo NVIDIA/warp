@@ -540,7 +540,59 @@ The autodiff functionality is considered experimental and is still a work in pro
 - Scalar inputs must be static arguments in JAX.
 - Gradients are returned for differentiable array inputs (static scalars are excluded from the gradient tuple).
 - Input-output arguments (``in_out_argnames``) are not supported when ``enable_backward=True``, because in-place modifications are not differentiable.
-- Custom launch and output dimensions (``launch_dims``, ``output_dims``) are not currently supported when ``enable_backward=True``, but the goal is to support them in the future. Launch dimensions are inferred from the shape of the first array argument, thus at least one input array is required.
+- ``output_dims`` is not currently supported when ``enable_backward=True`` (this requires separate output-buffer allocation logic; it is planned as a follow-up).
+- ``launch_dims`` **is** supported when ``enable_backward=True``. The captured value is used by both the forward and the adjoint launches. This is required for correct gradient values when the input array has more dimensions than the kernel's ``wp.tid()`` iteration space (for example, an LBM distribution ``(Q, nx, ny, nz)`` with a 3-D spatial ``tid`` or a batched volume ``(B, x, y, z)``). If ``launch_dims`` is omitted, the dimensions are inferred from the shape of the first array argument as before.
+
+Computing gradients with custom launch dimensions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When an input array has more dimensions than the kernel's ``wp.tid()``
+iteration space, ``launch_dims`` can be specified together with
+``enable_backward=True``. The same ``launch_dims`` is used for both the
+forward launch and the adjoint launch, so gradients computed via
+``jax.grad`` are scaled correctly.
+
+.. code-block:: python
+
+    import jax
+    import jax.numpy as jnp
+    import warp as wp
+    from warp.jax_experimental import jax_kernel
+
+    wp.init()
+
+
+    @wp.kernel
+    def scale(
+        a: wp.array4d(dtype=wp.float32),
+        b: wp.array4d(dtype=wp.float32),
+    ):
+        # tid is 3-D; the outer axis is iterated inside the kernel.
+        i, j, k = wp.tid()
+        for m in range(a.shape[0]):
+            b[m, i, j, k] = a[m, i, j, k] * 2.0
+
+
+    jax_func = jax_kernel(
+        scale,
+        num_outputs=1,
+        launch_dims=(16, 16, 16),   # spatial dimensions only
+        enable_backward=True,
+    )
+
+    a = jnp.ones((8, 16, 16, 16), dtype=jnp.float32)
+    grad = jax.grad(lambda x: jnp.sum(jax_func(x)[0]))(a)
+    # grad is 2.0 everywhere (analytical gradient)
+
+If ``launch_dims`` is omitted, Warp infers it from the shape of the first
+input array. For scalar-dtype arrays with ``array.ndim > kernel.tid_ndim``
+the inferred shape includes the outer axis. For kernels whose per-location
+write is idempotent (for example, ``b[i] = f(a[i])``), the forward kernel
+still produces the correct value; kernels using non-idempotent patterns
+(e.g. atomic accumulation into the output) may also see wrong forward
+values. In either case, the adjoint kernel over-accumulates gradients by
+a factor of the outer axis size via ``atomic_add``. Passing
+``launch_dims`` explicitly is the recommended way to avoid this.
 
 .. _jax-callable:
 

@@ -1474,6 +1474,240 @@ def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
     assert_np_equal(np.asarray(db), ref_db)
 
 
+# --- launch_dims + enable_backward=True tests (GH-1380) --------------------
+
+
+@wp.kernel
+def scale_extra_axis_kernel(
+    a: wp.array4d(dtype=wp.float32),
+    b: wp.array4d(dtype=wp.float32),
+):
+    """3-D tid but 4-D array; outer axis iterated inside the kernel body."""
+    i, j, k = wp.tid()
+    for m in range(a.shape[0]):
+        b[m, i, j, k] = a[m, i, j, k] * 2.0
+
+
+@wp.kernel
+def scale_outer_2d_kernel(
+    a: wp.array3d(dtype=wp.float32),
+    b: wp.array3d(dtype=wp.float32),
+):
+    """2-D tid with an outer axis iterated inside; used for the vmap test."""
+    i, j = wp.tid()
+    for m in range(a.shape[0]):
+        b[m, i, j] = a[m, i, j] * 2.0
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_launch_dims_autodiff_basic(test, device):
+    """launch_dims is accepted with enable_backward=True (GH-1380)."""
+    import jax
+    import jax.numpy as jnp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    N = 8
+    with jax.default_device(wp.device_to_jax(device)):
+        jax_func = jax_kernel(
+            scale_extra_axis_kernel,
+            num_outputs=1,
+            launch_dims=(N, N, N),
+            enable_backward=True,
+        )
+
+        a = jnp.ones((4, N, N, N), dtype=jnp.float32)
+        out = jax_func(a)
+        if isinstance(out, (list, tuple)):
+            out = out[0]
+
+        expected = 2.0 * np.ones((4, N, N, N), dtype=np.float32)
+        assert_np_equal(np.asarray(out), expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_launch_dims_autodiff_gradient(test, device):
+    """Gradient matches the analytical value when launch_dims is explicit (GH-1380).
+
+    Without this fix, auto-inference returns the full 4-D shape and the
+    adjoint kernel over-accumulates by a factor equal to the outer axis
+    size via atomic_add. Explicit launch_dims, shared between forward and
+    adjoint via the enclosing closure, prevents this.
+    """
+    import jax
+    import jax.numpy as jnp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    BATCH, N = 4, 8
+    with jax.default_device(wp.device_to_jax(device)):
+        jax_func = jax_kernel(
+            scale_extra_axis_kernel,
+            num_outputs=1,
+            launch_dims=(N, N, N),
+            enable_backward=True,
+        )
+
+        a = jnp.ones((BATCH, N, N, N), dtype=jnp.float32)
+
+        def loss(x):
+            """Sum of the kernel's output; analytical gradient is 2.0 everywhere."""
+            y = jax_func(x)
+            if isinstance(y, (list, tuple)):
+                y = y[0]
+            return jnp.sum(y)
+
+        grad = jax.grad(loss)(a)
+
+        expected = 2.0 * np.ones((BATCH, N, N, N), dtype=np.float32)
+        assert_np_equal(np.asarray(grad), expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_launch_dims_autodiff_separate_cache(test, device):
+    """Wrapping the same kernel with different launch_dims must not share
+    wrappers (GH-1380).
+
+    Regression guard for the _FFI_DIFF_KERNEL_REGISTRY cache key: without
+    launch_dims in the key, the second wrapper silently reuses the first
+    wrapper's closure, so the launch_dims passed to the second call is
+    ignored at runtime.
+    """
+    import jax
+    import jax.numpy as jnp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    with jax.default_device(wp.device_to_jax(device)):
+        ffi_small = jax_kernel(
+            scale_extra_axis_kernel,
+            num_outputs=1,
+            launch_dims=(4, 4, 4),
+            enable_backward=True,
+        )
+        ffi_large = jax_kernel(
+            scale_extra_axis_kernel,
+            num_outputs=1,
+            launch_dims=(8, 8, 8),
+            enable_backward=True,
+        )
+
+        a_small = jnp.ones((2, 4, 4, 4), dtype=jnp.float32)
+        a_large = jnp.ones((2, 8, 8, 8), dtype=jnp.float32)
+
+        out_small = ffi_small(a_small)
+        out_large = ffi_large(a_large)
+        if isinstance(out_small, (list, tuple)):
+            out_small = out_small[0]
+        if isinstance(out_large, (list, tuple)):
+            out_large = out_large[0]
+
+        test.assertEqual(out_small.shape, (2, 4, 4, 4))
+        test.assertEqual(out_large.shape, (2, 8, 8, 8))
+        assert_np_equal(
+            np.asarray(out_small),
+            2.0 * np.ones((2, 4, 4, 4), dtype=np.float32),
+        )
+        assert_np_equal(
+            np.asarray(out_large),
+            2.0 * np.ones((2, 8, 8, 8), dtype=np.float32),
+        )
+
+        # Also exercise the adjoint path: if the cache key were missing
+        # launch_dims, the second wrapper would silently reuse the first
+        # wrapper's closure and the gradient would be computed with the
+        # wrong launch dimensions (atomic_add over-accumulation).
+        def loss_small(x):
+            """Sum; analytical gradient is 2.0 everywhere."""
+            y = ffi_small(x)
+            if isinstance(y, (list, tuple)):
+                y = y[0]
+            return jnp.sum(y)
+
+        grad_small = jax.grad(loss_small)(a_small)
+        assert_np_equal(
+            np.asarray(grad_small),
+            2.0 * np.ones((2, 4, 4, 4), dtype=np.float32),
+        )
+
+        def loss_large(x):
+            """Sum; analytical gradient is 2.0 everywhere."""
+            y = ffi_large(x)
+            if isinstance(y, (list, tuple)):
+                y = y[0]
+            return jnp.sum(y)
+
+        grad_large = jax.grad(loss_large)(a_large)
+        assert_np_equal(
+            np.asarray(grad_large),
+            2.0 * np.ones((2, 8, 8, 8), dtype=np.float32),
+        )
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_output_dims_autodiff_still_blocked(test, device):
+    """output_dims with enable_backward=True remains a follow-up (still blocked)."""
+    from warp.jax_experimental.ffi import jax_kernel
+
+    @wp.kernel
+    def noop(a: wp.array1d(dtype=wp.float32), b: wp.array1d(dtype=wp.float32)):
+        """Identity copy; used only to trigger the output_dims guard path."""
+        i = wp.tid()
+        b[i] = a[i]
+
+    with test.assertRaises(NotImplementedError):
+        jax_kernel(
+            noop,
+            num_outputs=1,
+            output_dims={"b": (8,)},
+            enable_backward=True,
+        )
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_launch_dims_autodiff_vmap(test, device):
+    """launch_dims + enable_backward=True composes with jax.vmap (GH-1380).
+
+    The user-supplied launch_dims fixes the inner (kernel tid) iteration
+    space, and jax.vmap prefixes an additional outer axis which the FFI
+    layer handles via collapse_batch_dims/compute_batch_size. The two
+    operate on disjoint axes, so forward values and gradients remain
+    correct under vmap.
+    """
+    import jax
+    import jax.numpy as jnp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    OUTER, INNER, N = 3, 4, 8
+    with jax.default_device(wp.device_to_jax(device)):
+        jax_func = jax_kernel(
+            scale_outer_2d_kernel,
+            num_outputs=1,
+            launch_dims=(N, N),
+            enable_backward=True,
+        )
+        batched = jax.vmap(jax_func)
+
+        a = jnp.ones((OUTER, INNER, N, N), dtype=jnp.float32)
+        out = batched(a)
+        if isinstance(out, (list, tuple)):
+            out = out[0]
+
+        expected = 2.0 * np.ones((OUTER, INNER, N, N), dtype=np.float32)
+        assert_np_equal(np.asarray(out), expected)
+
+        def loss(x):
+            """Sum over all axes; analytical gradient is 2.0 everywhere."""
+            y = batched(x)
+            if isinstance(y, (list, tuple)):
+                y = y[0]
+            return jnp.sum(y)
+
+        grad = jax.grad(loss)(a)
+        assert_np_equal(np.asarray(grad), expected)
+
+
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_vmap_add(test, device, vmap_method):
     """Test basic batching over different input and output axes."""
@@ -2058,6 +2292,38 @@ try:
             "test_ffi_jax_kernel_autodiff_pmap_multi_output",
             test_ffi_jax_kernel_autodiff_pmap_multi_output,
             devices=None,
+        )
+
+        # launch_dims + enable_backward=True tests (GH-1380)
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_launch_dims_autodiff_basic",
+            test_ffi_jax_kernel_launch_dims_autodiff_basic,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_launch_dims_autodiff_gradient",
+            test_ffi_jax_kernel_launch_dims_autodiff_gradient,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_launch_dims_autodiff_separate_cache",
+            test_ffi_jax_kernel_launch_dims_autodiff_separate_cache,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_output_dims_autodiff_still_blocked",
+            test_ffi_jax_kernel_output_dims_autodiff_still_blocked,
+            devices=jax_compatible_cuda_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_launch_dims_autodiff_vmap",
+            test_ffi_jax_kernel_launch_dims_autodiff_vmap,
+            devices=jax_compatible_cuda_devices,
         )
 
         # vmap tests

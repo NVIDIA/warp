@@ -1226,11 +1226,11 @@ def jax_kernel(
             "jax_kernel(): Input-output arguments (in_out_argnames) are not supported when enable_backward=True."
         )
 
-    # TODO: we should support passing these to the forward and backward callables
-    if launch_dims is not None or output_dims is not None:
-        raise NotImplementedError(
-            "jax_kernel(): Custom dimensions (launch_dims, output_dims) are not supported when enable_backward=True."
-        )
+    # TODO: support output_dims with enable_backward=True (requires separate
+    # output-buffer allocation logic). launch_dims is supported below: the
+    # captured value is applied to both the forward and the adjoint launches.
+    if output_dims is not None:
+        raise NotImplementedError("jax_kernel(): output_dims is not yet supported when enable_backward=True.")
 
     # Differentiable path: build a custom VJP wrapper inline.
     # Infer the original kernel signature (names and annotations)
@@ -1250,8 +1250,17 @@ def jax_kernel(
             else:
                 raise TypeError(f"Invalid type for argument '{p.name}', expected array or scalar, got {type}")
 
+    # Capture an explicit user-supplied launch_dims so the same value is used
+    # for both the forward launch and the adjoint launch (required for
+    # correct gradient values when array.ndim > kernel.tid_ndim).
+    # Reuse `hashable_launch_dims` (computed above for the cache key path)
+    # so 1-D integer and sequence forms are normalized identically.
+    _user_launch_dims = hashable_launch_dims if launch_dims is not None else None
+
     def _resolve_launch_dims(call_args):
-        # determine launch dimensions from the shape of the first input array
+        if _user_launch_dims is not None:
+            return _user_launch_dims
+        # Fallback: determine launch dimensions from the shape of the first input array
         for i, p in enumerate(parameters[:num_inputs]):
             param_type = p.annotation
             if matches_array_class(param_type, wp.array):
@@ -1306,8 +1315,12 @@ def jax_kernel(
                     warn(f"Failed to zero gradient array: {e}", stacklevel=2)
                     raise e
 
-        # NOTE: We cannot use a passed launch_dims here, the backward rule doesn't receive it (and it could be wrong under pmap/vmap).
-        # We need to infer from the inputs.
+        # The same _resolve_launch_dims() is used here so that the adjoint
+        # kernel launches with exactly the same iteration space as the forward
+        # kernel (captured from the enclosing scope via _user_launch_dims when
+        # the caller supplied an explicit value, otherwise inferred from the
+        # inputs). This matches the forward path and avoids N x
+        # over-accumulation in atomic_add when array.ndim > kernel.tid_ndim.
         wp.launch(
             kernel,
             dim=_resolve_launch_dims(inputs),
@@ -1441,6 +1454,11 @@ def jax_kernel(
         vmap_method,
         module_preload_mode,
         has_side_effect,
+        # Include the normalized launch_dims so that wrapping the same kernel
+        # with different launch_dims produces independent cache entries.
+        # Reusing _user_launch_dims ensures int and 1-tuple forms of the same
+        # value map to the same key.
+        _user_launch_dims,
     )
 
     if static_args:
