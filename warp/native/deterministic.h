@@ -15,23 +15,23 @@
 // reduces values in that fixed order, guaranteeing bit-exact reproducibility.
 
 namespace wp {
-struct det_ctx {
-    int phase;
-    int debug;
-    size_t idx;
-    int* overflow;
-};
-
-template <typename T> struct det_scatter_buf {
+template <typename T> struct det_scatter_buf_t {
     int64_t* keys;
     T* vals;
     int* count;
     int capacity;
 };
 
-struct det_counter_buf {
+struct det_counter_buf_t {
     int* contrib;
     int* prefix;
+};
+
+struct det_ctx {
+    int phase;
+    int debug;
+    size_t idx;
+    int* overflow;
 };
 
 namespace deterministic {
@@ -44,7 +44,7 @@ namespace deterministic {
 // 64-bit radix sort, records targeting the same destination are grouped
 // together and ordered by thread ID, giving a deterministic reduction order.
 template <typename T>
-inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf<T>& buf, int dest_flat_idx, T value)
+inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf_t<T>& buf, int dest_flat_idx, T value)
 {
 #ifdef __CUDA_ARCH__
     int slot = atomicAdd(buf.count, 1);
@@ -67,5 +67,66 @@ inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf<T>& buf, int des
 #endif
 }
 
+template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_counter_buf_t& buf, T value)
+{
+#ifdef __CUDA_ARCH__
+    if (ctx.phase == 0) {
+        buf.contrib[ctx.idx] += value;
+        return T {};
+    }
+
+    T slot = static_cast<T>(buf.prefix[ctx.idx]);
+    buf.prefix[ctx.idx] += value;
+    return slot;
+#else
+    (void)ctx;
+    (void)buf;
+    (void)value;
+    return T {};
+#endif
+}
+
 }  // namespace deterministic
 }  // namespace wp
+
+#ifdef __CUDA_ARCH__
+#define WP_DET_SCATTER_OR_FALLBACK(det_ctx, helper, flat_idx, value, cpu_expr) \
+    do { \
+        if ((det_ctx).phase != 0) { \
+            wp::deterministic::scatter((det_ctx), (helper), static_cast<int>(flat_idx), (value)); \
+        } \
+    } while (0)
+
+#define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, value, cpu_expr) \
+    do { \
+        (out) = wp::deterministic::counter_add((det_ctx), (helper), (value)); \
+    } while (0)
+
+#define WP_DET_STORE_IF_ACTIVE(det_ctx, ...) \
+    do { \
+        if ((det_ctx).phase != 0) { \
+            wp::array_store(__VA_ARGS__); \
+        } \
+    } while (0)
+#else
+#define WP_DET_SCATTER_OR_FALLBACK(det_ctx, helper, flat_idx, value, cpu_expr) \
+    do { \
+        (void)(det_ctx); \
+        (void)(helper); \
+        cpu_expr; \
+    } while (0)
+
+#define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, value, cpu_expr) \
+    do { \
+        (void)(det_ctx); \
+        (void)(helper); \
+        (void)(value); \
+        cpu_expr; \
+    } while (0)
+
+#define WP_DET_STORE_IF_ACTIVE(det_ctx, ...) \
+    do { \
+        (void)(det_ctx); \
+        wp::array_store(__VA_ARGS__); \
+    } while (0)
+#endif

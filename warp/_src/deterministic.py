@@ -35,45 +35,29 @@ REDUCE_OP_ADD = 0
 REDUCE_OP_MIN = 1
 REDUCE_OP_MAX = 2
 
-DETERMINISM_NOT_GUARANTEED = "not_guaranteed"
-DETERMINISM_RUN_TO_RUN = "run_to_run"
-DETERMINISM_GPU_TO_GPU = "gpu_to_gpu"
+DETERMINISTIC_NOT_GUARANTEED = "not_guaranteed"
+DETERMINISTIC_RUN_TO_RUN = "run_to_run"
+DETERMINISTIC_GPU_TO_GPU = "gpu_to_gpu"
 
 DETERMINISTIC_FAMILY_ADD = "add"
 DETERMINISTIC_FAMILY_MIN = "min"
 DETERMINISTIC_FAMILY_MAX = "max"
 DETERMINISTIC_FAMILY_COUNTER = "counter"
 
-_VALID_DETERMINISM_MODES = {
-    DETERMINISM_NOT_GUARANTEED,
-    DETERMINISM_RUN_TO_RUN,
-    DETERMINISM_GPU_TO_GPU,
+_VALID_DETERMINISTIC_MODES = {
+    DETERMINISTIC_NOT_GUARANTEED,
+    DETERMINISTIC_RUN_TO_RUN,
+    DETERMINISTIC_GPU_TO_GPU,
 }
 
-_DETERMINISM_MODE_IDS = {
-    DETERMINISM_NOT_GUARANTEED: 0,
-    DETERMINISM_RUN_TO_RUN: 1,
-    DETERMINISM_GPU_TO_GPU: 2,
+_DETERMINISTIC_MODE_IDS = {
+    DETERMINISTIC_NOT_GUARANTEED: 0,
+    DETERMINISTIC_RUN_TO_RUN: 1,
+    DETERMINISTIC_GPU_TO_GPU: 2,
 }
 
-# Map from Warp builtin names to (is_accumulation, reduce_op).
-# Atomics whose return value is consumed are always Pattern B (counter);
-# this table is used only for Pattern A classification.
-_ATOMIC_OP_INFO = {
-    "atomic_add": (True, REDUCE_OP_ADD),
-    "atomic_sub": (True, REDUCE_OP_ADD),  # codegen negates value before scattering
-    "atomic_min": (True, REDUCE_OP_MIN),
-    "atomic_max": (True, REDUCE_OP_MAX),
-}
 
-# Atomics that are associative+commutative on integers (no transform needed).
-_ALREADY_DETERMINISTIC_OPS = {"atomic_and", "atomic_or", "atomic_xor"}
-
-# Atomics that are inherently order-dependent (cannot be made deterministic).
-_ORDER_DEPENDENT_OPS = {"atomic_cas", "atomic_exch"}
-
-
-def normalize_determinism_mode(value, option_name="deterministic", allow_none=False):
+def normalize_deterministic_mode(value, option_name="deterministic", allow_none=False):
     """Normalize user-facing deterministic mode values.
 
     The public API accepts the explicit mode strings plus ``True``/``False``
@@ -85,15 +69,15 @@ def normalize_determinism_mode(value, option_name="deterministic", allow_none=Fa
     if value is None:
         if allow_none:
             return None
-        return DETERMINISM_NOT_GUARANTEED
+        return DETERMINISTIC_NOT_GUARANTEED
 
     if isinstance(value, bool):
-        return DETERMINISM_RUN_TO_RUN if value else DETERMINISM_NOT_GUARANTEED
+        return DETERMINISTIC_RUN_TO_RUN if value else DETERMINISTIC_NOT_GUARANTEED
 
     if isinstance(value, str):
-        if value in _VALID_DETERMINISM_MODES:
+        if value in _VALID_DETERMINISTIC_MODES:
             return value
-        valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISM_MODES))
+        valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
         raise ValueError(f"{option_name} must be one of {valid_modes}, got {value!r}")
 
     raise TypeError(f"{option_name} must be a bool or string, got {type(value).__name__}")
@@ -101,12 +85,12 @@ def normalize_determinism_mode(value, option_name="deterministic", allow_none=Fa
 
 def is_deterministic_mode_enabled(value) -> bool:
     """Return ``True`` if a deterministic mode stronger than default is enabled."""
-    return normalize_determinism_mode(value) != DETERMINISM_NOT_GUARANTEED
+    return normalize_deterministic_mode(value) != DETERMINISTIC_NOT_GUARANTEED
 
 
-def determinism_mode_to_id(value) -> int:
+def deterministic_mode_to_id(value) -> int:
     """Map a normalized deterministic mode to the native enum id."""
-    return _DETERMINISM_MODE_IDS[normalize_determinism_mode(value)]
+    return _DETERMINISTIC_MODE_IDS[normalize_deterministic_mode(value)]
 
 
 def reduce_op_to_family(reduce_op: int) -> str:
@@ -130,43 +114,33 @@ def sanitize_det_name(name: str) -> str:
 
 
 def scatter_helper_name(array_var_label: str) -> str:
-    """Return the hidden deterministic scatter helper name for an array."""
+    """Return the deterministic scatter helper name for an array."""
     return f"det_{sanitize_det_name(array_var_label)}"
 
 
 def counter_helper_name(array_var_label: str) -> str:
-    """Return the hidden deterministic counter helper name for an array."""
+    """Return the deterministic counter helper name for an array."""
     return f"det_{sanitize_det_name(array_var_label)}"
 
 
 def scatter_cpp_type(target: ScatterTarget) -> str:
     """Return the C++ helper type for a scatter target."""
-    return f"wp::det_scatter_buf<{target.value_ctype}>"
+    return f"wp::det_scatter_buf_t<{target.value_ctype}>"
 
 
 def counter_cpp_type(_target: CounterTarget) -> str:
     """Return the C++ helper type for a counter target."""
-    return "wp::det_counter_buf"
+    return "wp::det_counter_buf_t"
 
 
 def kernel_raw_scatter_param_names(target: ScatterTarget) -> dict[str, str]:
     """Return raw kernel-entry parameter names for a scatter target."""
-    base = f"_wp_{target.helper_name}"
-    return {
-        "keys": f"{base}_keys",
-        "vals": f"{base}_vals",
-        "count": f"{base}_count",
-        "capacity": f"{base}_capacity",
-    }
+    return {"buf": f"_wp_{target.helper_name}"}
 
 
 def kernel_raw_counter_param_names(target: CounterTarget) -> dict[str, str]:
     """Return raw kernel-entry parameter names for a counter target."""
-    base = f"_wp_{target.helper_name}"
-    return {
-        "contrib": f"{base}_contrib",
-        "prefix": f"{base}_prefix",
-    }
+    return {"buf": f"_wp_{target.helper_name}"}
 
 
 @dataclass(eq=False)
@@ -415,5 +389,5 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
             target.reduce_op,
             scalar_type_id,
             getattr(target.value_dtype, "_length_", 1),
-            determinism_mode_to_id(determinism_mode),
+            deterministic_mode_to_id(determinism_mode),
         )

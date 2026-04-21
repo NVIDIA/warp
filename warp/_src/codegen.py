@@ -1288,14 +1288,14 @@ class Adjoint:
         args,
         args_out,
         use_initializer_list,
-        hidden_args=None,
+        extra_args=None,
         has_output_args=True,
         require_original_output_arg=False,
     ):
-        if hidden_args is None:
-            hidden_args = []
+        if extra_args is None:
+            extra_args = []
         formatted_var = adj.format_args("var", args_var)
-        formatted_hidden = adj.format_args("var", hidden_args)
+        formatted_extra = adj.format_args("var", extra_args)
         formatted_out = []
         if has_output_args and (require_original_output_arg or len(args_out) > 1):
             formatted_out = adj.format_args("var", args_out)
@@ -1311,18 +1311,16 @@ class Adjoint:
 
         if use_initializer_list:
             var_str = f"{{{', '.join(formatted_var)}}}"
-            hidden_str = ", ".join(formatted_hidden)
+            extra_str = ", ".join(formatted_extra)
             out_str = f"{{{', '.join(formatted_out)}}}"
             adj_str = f"{{{', '.join(formatted_var_adj)}}}"
             out_adj_str = ", ".join(formatted_out_adj)
             if len(args_out) > 1:
-                arg_str = ", ".join(x for x in [var_str, hidden_str, out_str, adj_str, out_adj_str] if x)
+                arg_str = ", ".join(x for x in [var_str, extra_str, out_str, adj_str, out_adj_str] if x)
             else:
-                arg_str = ", ".join(x for x in [var_str, hidden_str, adj_str, out_adj_str] if x)
+                arg_str = ", ".join(x for x in [var_str, extra_str, adj_str, out_adj_str] if x)
         else:
-            arg_str = ", ".join(
-                formatted_var + formatted_hidden + formatted_out + formatted_var_adj + formatted_out_adj
-            )
+            arg_str = ", ".join(formatted_var + formatted_extra + formatted_out + formatted_var_adj + formatted_out_adj)
         return arg_str
 
     def indent(adj):
@@ -1708,27 +1706,27 @@ class Adjoint:
 
             fwd_args.append(strip_reference(func_arg_var))
 
-        det_hidden_args = []
+        det_args = []
         if not func.is_builtin():
-            det_hidden_args = _deterministic_call_hidden_args(func.adj.det_meta, bound_args)
+            det_args = _deterministic_call_args(func.adj.det_meta, bound_args)
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_hidden_args, use_initializer_list)});"
+            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + det_hidden_args, use_initializer_list)});"
+                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
 
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_hidden_args, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + det_hidden_args, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
 
         else:
             # handle multiple value functions
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_hidden_args + output, use_initializer_list)});"
+            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args + output, use_initializer_list)});"
             replay_call = forward_call
 
         if func.skip_replay:
@@ -1750,7 +1748,7 @@ class Adjoint:
                 adj_args,
                 output_list,
                 use_initializer_list,
-                hidden_args=det_hidden_args,
+                extra_args=det_args,
                 has_output_args=reverse_has_output_args,
                 require_original_output_arg=func.require_original_output_arg,
             )
@@ -1812,18 +1810,7 @@ class Adjoint:
         value_ctype = Var.dtype_to_ctype(value_dtype)
         scalar_ctype = warp_type_to_ctype(scalar_dtype)
 
-        # C++ zero literal for the value type.
-        # Cannot use "float(0)" because Warp defines a macro #define float(x) cast_float(x).
-        _ZERO_LITERALS = {
-            "float": "0.0f",
-            "double": "0.0",
-            "wp::half": "wp::half(0)",
-            "int": "0",
-            "unsigned int": "0u",
-            "int64_t": "int64_t(0)",
-            "uint64_t": "uint64_t(0)",
-        }
-        zero_literal = _ZERO_LITERALS.get(scalar_ctype, f"{scalar_ctype}(0)")
+        zero_expr = _cinit_expr(return_type)
 
         # Map from builtin name to reduction op
         op_map = {
@@ -1863,20 +1850,10 @@ class Adjoint:
 
             val_loaded = loaded_args[-1]  # already loaded above
 
-            adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
             adj.add_forward(
-                f"if (det_ctx.phase == 0) {{ "
-                f"{helper_name}.contrib[det_ctx.idx] += var_{val_loaded}; "
-                f"var_{output} = {zero_literal}; "
-                f"}} else {{ "
-                f"var_{output} = static_cast<{scalar_ctype}>({helper_name}.prefix[det_ctx.idx]); "
-                f"{helper_name}.prefix[det_ctx.idx] += var_{val_loaded}; "
-                f"}}",
+                f"WP_DET_COUNTER_OR_FALLBACK(var_{output}, det_ctx, {helper_name}, var_{val_loaded}, {cpu_call});",
                 replay="// deterministic counter replay (skipped)",
             )
-            adj.add_forward("#else", skip_replay=True)
-            adj.add_forward(cpu_call, replay="// " + cpu_call)
-            adj.add_forward("#endif", skip_replay=True)
             return output
 
         # Pattern A: Accumulation (return value unused)
@@ -1921,20 +1898,12 @@ class Adjoint:
         if func.key == "atomic_sub":
             val_expr = f"(-{val_expr})"
 
-        adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
         adj.add_forward(
-            "if (det_ctx.phase != 0) { "
-            f"wp::deterministic::scatter("
-            f"det_ctx, {helper_name}, "
-            f"static_cast<int>({flat_idx_expr}), {val_expr});"
-            " }",
+            f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {helper_name}, {flat_idx_expr}, {val_expr}, {cpu_call});",
             replay="// deterministic scatter replay (skipped)",
         )
         if output is not None:
-            adj.add_forward(f"var_{output} = {zero_literal};")
-        adj.add_forward("#else", skip_replay=True)
-        adj.add_forward(cpu_call, replay="// " + cpu_call)
-        adj.add_forward("#endif", skip_replay=True)
+            adj.add_forward(f"var_{output} = {zero_expr};")
         return output
 
     def add_grad_call(adj, func, args, kwargs):
@@ -3470,14 +3439,8 @@ class Adjoint:
             # phase 0 so the counting pass does not introduce side effects.
             if adj.det_meta is not None and adj.det_meta.has_counter:
                 loaded_store_args = [adj.load(x) for x in (target, *indices, rhs)]
-                cpu_store_args = ", ".join(f"var_{x}" for x in loaded_store_args)
-                adj.add_forward("#ifdef __CUDA_ARCH__", skip_replay=True)
-                adj.add_forward("if (_wp_det_phase != 0) {", skip_replay=True)
-                adj.add_builtin_call("array_store", [target, *indices, rhs])
-                adj.add_forward("}", skip_replay=True)
-                adj.add_forward("#else", skip_replay=True)
-                adj.add_forward(f"wp::array_store({cpu_store_args});")
-                adj.add_forward("#endif", skip_replay=True)
+                store_args = ", ".join(f"var_{x}" for x in loaded_store_args)
+                adj.add_forward(f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});", skip_replay=True)
             else:
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
 
@@ -4947,9 +4910,9 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         forward_args.append(s)
         if not adj.custom_reverse_mode or i < adj.custom_reverse_num_input_args:
             reverse_args.append(s)
-    hidden_args = _deterministic_function_hidden_args(adj)
-    forward_args.extend(hidden_args)
-    reverse_args.extend(hidden_args)
+    det_args = _deterministic_function_args(adj)
+    forward_args.extend(det_args)
+    reverse_args.extend(det_args)
     if has_multiple_outputs:
         for i, arg in enumerate(adj.return_var):
             forward_args.append(arg.ctype() + " & ret_" + str(i))
@@ -5117,42 +5080,38 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     return s
 
 
-def _deterministic_function_hidden_args(adj):
+def _deterministic_function_args(adj):
     if adj.det_meta is None or not adj.det_meta.needs_deterministic:
         return []
 
     from warp._src.deterministic import counter_cpp_type, scatter_cpp_type  # noqa: PLC0415
 
-    hidden_args = ["wp::det_ctx det_ctx"]
+    det_args = ["wp::det_ctx det_ctx"]
     for target in adj.det_meta.counter_targets:
-        hidden_args.append(f"{counter_cpp_type(target)} {target.helper_name}")
+        det_args.append(f"{counter_cpp_type(target)} {target.helper_name}")
     for target in adj.det_meta.scatter_targets:
-        hidden_args.append(f"{scatter_cpp_type(target)} {target.helper_name}")
-    return hidden_args
+        det_args.append(f"{scatter_cpp_type(target)} {target.helper_name}")
+    return det_args
 
 
-def _deterministic_kernel_hidden_args(adj):
+def _deterministic_kernel_args(adj):
     if adj.det_meta is None or not adj.det_meta.needs_deterministic:
         return []
 
     from warp._src.deterministic import kernel_raw_counter_param_names, kernel_raw_scatter_param_names  # noqa: PLC0415
 
-    hidden_args = [
+    det_args = [
         "int _wp_det_phase",
         "int _wp_det_debug",
         "int* _wp_det_overflow",
     ]
     for target in adj.det_meta.counter_targets:
         names = kernel_raw_counter_param_names(target)
-        hidden_args.append(f"int* {names['contrib']}")
-        hidden_args.append(f"int* {names['prefix']}")
+        det_args.append(f"wp::det_counter_buf_t {names['buf']}")
     for target in adj.det_meta.scatter_targets:
         names = kernel_raw_scatter_param_names(target)
-        hidden_args.append(f"int64_t* {names['keys']}")
-        hidden_args.append(f"{target.value_ctype}* {names['vals']}")
-        hidden_args.append(f"int* {names['count']}")
-        hidden_args.append(f"int {names['capacity']}")
-    return hidden_args
+        det_args.append(f"wp::det_scatter_buf_t<{target.value_ctype}> {names['buf']}")
+    return det_args
 
 
 def _deterministic_kernel_locals(adj, device):
@@ -5167,22 +5126,19 @@ def _deterministic_kernel_locals(adj, device):
         ]
         for target in adj.det_meta.counter_targets:
             names = kernel_raw_counter_param_names(target)
-            decls.append(f"wp::det_counter_buf {target.helper_name}{{{names['contrib']}, {names['prefix']}}};")
+            decls.append(f"auto& {target.helper_name} = {names['buf']};")
         for target in adj.det_meta.scatter_targets:
             names = kernel_raw_scatter_param_names(target)
-            decls.append(
-                f"wp::det_scatter_buf<{target.value_ctype}> {target.helper_name}"
-                f"{{{names['keys']}, {names['vals']}, {names['count']}, {names['capacity']}}};"
-            )
+            decls.append(f"auto& {target.helper_name} = {names['buf']};")
     else:
         decls = [
             "wp::det_ctx det_ctx{0, 0, 0, nullptr};",
         ]
         for target in adj.det_meta.counter_targets:
-            decls.append(f"wp::det_counter_buf {target.helper_name}{{nullptr, nullptr}};")
+            decls.append(f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr}};")
         for target in adj.det_meta.scatter_targets:
             decls.append(
-                f"wp::det_scatter_buf<{target.value_ctype}> {target.helper_name}{{nullptr, nullptr, nullptr, 0}};"
+                f"wp::det_scatter_buf_t<{target.value_ctype}> {target.helper_name}{{nullptr, nullptr, nullptr, 0}};"
             )
     return "".join(f"    {line}\n" for line in decls)
 
@@ -5223,16 +5179,22 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
         get_or_create_counter_target(adj.det_registry, adj.det_meta, mapped_label, target.value_ctype)
 
 
-def _deterministic_call_hidden_args(meta, bound_args):
+def _deterministic_call_args(meta, bound_args):
     if meta is None or not meta.needs_deterministic:
         return []
 
-    hidden_args = ["det_ctx"]
+    det_args = ["det_ctx"]
     for target in meta.counter_targets:
-        hidden_args.append(f"det_{_deterministic_map_target_label(target.array_var_label, bound_args)}")
+        det_args.append(f"det_{_deterministic_map_target_label(target.array_var_label, bound_args)}")
     for target in meta.scatter_targets:
-        hidden_args.append(f"det_{_deterministic_map_target_label(target.array_var_label, bound_args)}")
-    return hidden_args
+        det_args.append(f"det_{_deterministic_map_target_label(target.array_var_label, bound_args)}")
+    return det_args
+
+
+def _cinit_expr(dtype):
+    if hasattr(dtype, "cinit"):
+        return dtype.cinit(requires_grad=False)
+    return f"{Var.type_to_ctype(dtype)}{{}}"
 
 
 def codegen_kernel(kernel, device, options):
@@ -5293,7 +5255,7 @@ def codegen_kernel(kernel, device, options):
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
 
-        forward_args.extend(_deterministic_kernel_hidden_args(adj))
+        forward_args.extend(_deterministic_kernel_args(adj))
 
     forward_body = ""
     forward_body += _deterministic_kernel_locals(adj, device)
@@ -5324,7 +5286,7 @@ def codegen_kernel(kernel, device, options):
                 else:
                     reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
-            reverse_args.extend(_deterministic_kernel_hidden_args(adj))
+            reverse_args.extend(_deterministic_kernel_args(adj))
 
         reverse_body = ""
         reverse_body += _deterministic_kernel_locals(adj, device)

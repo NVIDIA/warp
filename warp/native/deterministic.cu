@@ -28,9 +28,9 @@ __host__ __device__ __forceinline__ int dest_index_from_key(int64_t key)
 
 // Reduction op identifiers (must match the Python-side constants).
 enum ReduceOp {
-    REDUCE_ADD = 0,
-    REDUCE_MIN = 1,
-    REDUCE_MAX = 2,
+    REDUCE_OP_ADD = 0,
+    REDUCE_OP_MIN = 1,
+    REDUCE_OP_MAX = 2,
 };
 
 enum ScalarType {
@@ -44,9 +44,9 @@ enum ScalarType {
 };
 
 enum DeterminismLevel {
-    DETERMINISM_NOT_GUARANTEED = 0,
-    DETERMINISM_RUN_TO_RUN = 1,
-    DETERMINISM_GPU_TO_GPU = 2,
+    DETERMINISTIC_NOT_GUARANTEED = 0,
+    DETERMINISTIC_RUN_TO_RUN = 1,
+    DETERMINISTIC_GPU_TO_GPU = 2,
 };
 
 __global__ void init_record_indices_kernel(int* indices, int count)
@@ -63,11 +63,11 @@ template <typename T> struct ReduceByKeyOp {
     __host__ __device__ T operator()(const T& a, const T& b) const
     {
         switch (op) {
-        case REDUCE_ADD:
+        case REDUCE_OP_ADD:
             return a + b;
-        case REDUCE_MIN:
+        case REDUCE_OP_MIN:
             return wp::min(a, b);
-        case REDUCE_MAX:
+        case REDUCE_OP_MAX:
             return wp::max(a, b);
         default:
             return a;
@@ -98,13 +98,13 @@ __global__ void apply_reduced_runs_kernel(
         return;
 
     switch (op) {
-    case REDUCE_ADD:
+    case REDUCE_OP_ADD:
         dest_array[dest] = dest_array[dest] + aggregates[tid];
         break;
-    case REDUCE_MIN:
+    case REDUCE_OP_MIN:
         dest_array[dest] = wp::min(dest_array[dest], aggregates[tid]);
         break;
-    case REDUCE_MAX:
+    case REDUCE_OP_MAX:
         dest_array[dest] = wp::max(dest_array[dest], aggregates[tid]);
         break;
     }
@@ -155,26 +155,26 @@ __global__ void deterministic_reduce_kernel(
                 break;
             T val = values[sorted_indices[i] * components + c];
             switch (op) {
-            case REDUCE_ADD:
+            case REDUCE_OP_ADD:
                 accum = accum + val;
                 break;
-            case REDUCE_MIN:
+            case REDUCE_OP_MIN:
                 accum = wp::min(accum, val);
                 break;
-            case REDUCE_MAX:
+            case REDUCE_OP_MAX:
                 accum = wp::max(accum, val);
                 break;
             }
         }
 
         switch (op) {
-        case REDUCE_ADD:
+        case REDUCE_OP_ADD:
             dest_array[dest_base + c] = dest_array[dest_base + c] + accum;
             break;
-        case REDUCE_MIN:
+        case REDUCE_OP_MIN:
             dest_array[dest_base + c] = wp::min(dest_array[dest_base + c], accum);
             break;
-        case REDUCE_MAX:
+        case REDUCE_OP_MAX:
             dest_array[dest_base + c] = wp::max(dest_array[dest_base + c], accum);
             break;
         }
@@ -254,7 +254,7 @@ void deterministic_sort_reduce_device(
     if (count <= 0)
         return;
 
-    if (components == 1 && determinism_level == DETERMINISM_RUN_TO_RUN) {
+    if (components == 1 && determinism_level == DETERMINISTIC_RUN_TO_RUN) {
         deterministic_sort_reduce_device_scalar_run_to_run(keys, values, count, dest_array, dest_size, op);
         return;
     }
