@@ -166,7 +166,19 @@ Upon success, the script will output platform-specific binary files in ``warp/bi
 The build script will look for the CUDA Toolkit in its default installation path.
 This path can be overridden by setting the ``CUDA_PATH`` environment variable. Alternatively,
 the path to the CUDA Toolkit can be passed to the build command as
-``--cuda-path="..."``. After building, the Warp package should be installed using:
+``--cuda-path="..."``.
+
+By default, CUDA libraries (cudart, NVRTC, nvJitLink, MathDx) are linked statically
+to produce self-contained binaries. To link against shared CUDA libraries instead,
+pass ``--use-dynamic-cuda``:
+
+.. code-block:: console
+
+    $ python build_lib.py --use-dynamic-cuda
+
+The corresponding shared libraries must be available at runtime when using this option.
+
+After building, the Warp package should be installed using:
 
 .. code-block:: console
 
