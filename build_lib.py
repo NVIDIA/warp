@@ -321,6 +321,12 @@ def main(argv: list[str] | None = None) -> int:
         default=False,
         help="Fast build mode: compile for minimal GPU architectures (PTX-only for sm_75), disable CUDA forward compatibility",
     )
+    group_build.add_argument(
+        "--use-dynamic-cuda",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Link against shared CUDA libraries instead of embedding them statically; the corresponding shared libraries must be present at runtime",
+    )
 
     # Clang/LLVM options
     group_clang_llvm = parser.add_argument_group(
