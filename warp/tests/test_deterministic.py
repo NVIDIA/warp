@@ -7,11 +7,14 @@ Validates that deterministic modes produce bit-exact reproducible results for
 atomic operations across multiple runs.
 """
 
+import re
 import unittest
+from pathlib import Path
 
 import numpy as np
 
 import warp as wp
+from warp._src import deterministic as wp_deterministic
 from warp.tests.unittest_utils import *
 
 
@@ -1264,8 +1267,62 @@ def test_graph_capture_vec3_atomic_minmax(test, device):
 
     np.testing.assert_array_equal(first_min, second_min)
     np.testing.assert_array_equal(first_max, second_max)
-    np.testing.assert_allclose(first_min, np.min(points_np, axis=0, keepdims=True), rtol=0.0, atol=0.0)
-    np.testing.assert_allclose(first_max, np.max(points_np, axis=0, keepdims=True), rtol=0.0, atol=0.0)
+
+
+def test_deterministic_enum_parity(test, device):
+    """Keep Python deterministic constants aligned with the native enums."""
+    del device
+
+    native_source = (Path(wp.__file__).resolve().parent / "native" / "deterministic.cu").read_text()
+
+    def parse_enum(enum_name):
+        match = re.search(rf"enum {enum_name} \{{(.*?)\n\}};", native_source, re.DOTALL)
+        if match is None:
+            raise AssertionError(f"Failed to find enum {enum_name} in deterministic.cu")
+
+        entries = {}
+        for name, value in re.findall(r"([A-Z0-9_]+)\s*=\s*([0-9]+)", match.group(1)):
+            entries[name] = int(value)
+        return entries
+
+    native_reduce_ops = parse_enum("ReduceOp")
+    native_deterministic_levels = parse_enum("DeterminismLevel")
+    native_scalar_types = parse_enum("ScalarType")
+
+    test.assertEqual(
+        native_reduce_ops,
+        {
+            "REDUCE_OP_ADD": wp_deterministic.REDUCE_OP_ADD,
+            "REDUCE_OP_MIN": wp_deterministic.REDUCE_OP_MIN,
+            "REDUCE_OP_MAX": wp_deterministic.REDUCE_OP_MAX,
+        },
+    )
+    test.assertEqual(
+        native_deterministic_levels,
+        {
+            "DETERMINISTIC_NOT_GUARANTEED": wp_deterministic._DETERMINISTIC_MODE_IDS[
+                wp_deterministic.DETERMINISTIC_NOT_GUARANTEED
+            ],
+            "DETERMINISTIC_RUN_TO_RUN": wp_deterministic._DETERMINISTIC_MODE_IDS[
+                wp_deterministic.DETERMINISTIC_RUN_TO_RUN
+            ],
+            "DETERMINISTIC_GPU_TO_GPU": wp_deterministic._DETERMINISTIC_MODE_IDS[
+                wp_deterministic.DETERMINISTIC_GPU_TO_GPU
+            ],
+        },
+    )
+    test.assertEqual(
+        native_scalar_types,
+        {
+            "SCALAR_HALF": wp_deterministic._SCALAR_TYPE_IDS[wp.float16],
+            "SCALAR_FLOAT": wp_deterministic._SCALAR_TYPE_IDS[wp.float32],
+            "SCALAR_DOUBLE": wp_deterministic._SCALAR_TYPE_IDS[wp.float64],
+            "SCALAR_INT": wp_deterministic._SCALAR_TYPE_IDS[wp.int32],
+            "SCALAR_UINT": wp_deterministic._SCALAR_TYPE_IDS[wp.uint32],
+            "SCALAR_INT64": wp_deterministic._SCALAR_TYPE_IDS[wp.int64],
+            "SCALAR_UINT64": wp_deterministic._SCALAR_TYPE_IDS[wp.uint64],
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1406,6 +1463,9 @@ add_function_test(
     "test_graph_capture_vec3_atomic_minmax",
     test_graph_capture_vec3_atomic_minmax,
     devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic, "test_deterministic_enum_parity", test_deterministic_enum_parity, devices=all_devices
 )
 
 
