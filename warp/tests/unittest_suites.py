@@ -203,7 +203,12 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_struct import TestStruct
     from warp.tests.test_subscript_types import TestSubscriptTypes
     from warp.tests.test_tape import TestTape
-    from warp.tests.test_template_launch_bounds import TestTemplateLaunchBounds
+    from warp.tests.test_template_launch_bounds import (
+        TestBuildRankError,
+        TestPrepareLaunchDim,
+        TestTemplateLaunchBounds,
+        TestTidUnpack,
+    )
     from warp.tests.test_transient_module import TestTransientModule
     from warp.tests.test_triangle_closest_point import TestTriangleClosestPoint
     from warp.tests.test_types import TestTypes
@@ -349,7 +354,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStruct,
         TestSubscriptTypes,
         TestTape,
+        TestBuildRankError,
+        TestPrepareLaunchDim,
         TestTemplateLaunchBounds,
+        TestTidUnpack,
         TestTexture,
         TestTile,
         TestTileAtomicBitwise,

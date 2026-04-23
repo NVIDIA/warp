@@ -109,13 +109,14 @@
   ([GH-1297](https://github.com/NVIDIA/warp/issues/1297)).
 - Template `launch_bounds_t` on dimensionality (`launch_bounds_t<N>`) so that `launch_coord()` and `wp.tid()`
   use `if constexpr` instead of runtime dimension checks, eliminating dead branches and reducing register
-  pressure for lower-dimensional launches
-  ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
-  **Breaking:** Kernels that use fewer ``wp.tid()`` return values than launch dimensions now flatten
-  excess dimensions instead of unraveling them. For example, a kernel using ``i = wp.tid()`` launched
-  with ``dim=(3, 3)`` now yields thread IDs ``0, 1, …, 8`` instead of the previous ``0, 0, 0, 1, 1, 1,
-  2, 2, 2``. To preserve the old behavior, unpack all dimensions and discard the ones you don't need
-  (e.g. ``i, _ = wp.tid()`` to recover the previous first-dimension indexing).
+  pressure for lower-dimensional launches.
+  **Breaking:** `wp.launch()`, `Launch.set_dim()`, `wp.launch_tiled()`, and the experimental JAX FFI paths
+  now raise `ValueError` when the rank of `dim` does not match the kernel's `wp.tid()` unpack arity
+  (e.g. `i = wp.tid()` launched with `dim=(3, 3)`); the error message lists concrete migration options.
+  To recover the previous first-dimension indexing, unpack all dimensions and discard extras
+  (e.g. `i, _ = wp.tid()`). Kernels that do not call `wp.tid()` still accept any `dim`, flattened to
+  total thread count. `launch_tiled`'s rank-mismatch error changed from `RuntimeError` to `ValueError`
+  for consistency ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
 - Allow `wp.Volume.load_from_numpy()` and `wp.Volume.allocate()` to accept a 3-element sequence for `voxel_size`,
   enabling anisotropic voxel spacing ([GH-1193](https://github.com/NVIDIA/warp/issues/1193)).
 - Include the Warp version in kernel cache paths when a custom cache path is set,

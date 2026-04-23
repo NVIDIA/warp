@@ -17,6 +17,7 @@ import inspect
 import io
 import itertools
 import json
+import math
 import operator
 import os
 import platform
@@ -7884,6 +7885,7 @@ class Launch:
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
+        tiled: bool = False,
     ):
         # retain the module executable so it doesn't get unloaded
         self.module_exec = kernel.module.load(device, block_dim)
@@ -7951,14 +7953,28 @@ class Launch:
         self.adjoint: bool = adjoint
         """Whether to run the adjoint kernel instead of the forward kernel."""
 
+        self.tiled: bool = tiled
+        """True if this launch was created via :func:`wp.launch_tiled`. Used by
+        :meth:`set_dim` to route replays through the tiled dim-validation path.
+        Not the same as ``bounds.tiled``; see ``_construct_tiled_bounds`` for
+        when each is set.
+        """
+
     def set_dim(self, dim: int | list[int] | tuple[int, ...]):
         """Set the launch dimensions.
+
+        For recorded tiled launches (``self.tiled == True``), reconstructs
+        bounds via the same tiled path used at record time so the user-rank
+        semantics (block axis implicit or unpacked) are preserved.
 
         Args:
             dim: The dimensions of the launch.
         """
-        normalized = _normalize_launch_dim(dim, self.kernel.adj.kernel_dim)
-        self.bounds = launch_bounds_t(normalized)
+        if self.tiled:
+            self.bounds = _construct_tiled_bounds(dim, self.block_dim, self.kernel)
+        else:
+            normalized = _prepare_launch_dim(dim, self.kernel)
+            self.bounds = launch_bounds_t(normalized)
 
         # launch bounds always at index 0
         self.params[0] = self.bounds
@@ -8108,60 +8124,157 @@ def _canonicalize_dim(dim: int | Sequence[int]) -> tuple[int, ...]:
     return tuple(dim)
 
 
-def _normalize_launch_dim(dim: int | Sequence[int], kernel_dim: int) -> tuple[int, ...]:
-    """Reshape *dim* to exactly *kernel_dim* dimensions for ABI compatibility.
+_TID_NAMES = ("i", "j", "k", "l")  # canonical Warp tid-unpack variable names
 
-    The compiled C++ kernel expects ``launch_bounds_t<kernel_dim>``, so the
-    Python-side ctypes struct must have exactly *kernel_dim* shape elements.
-    Excess dimensions are folded into the last slot; missing dimensions are
-    padded with ones.
+
+def _tid_unpack(n: int) -> str:
+    """Render the canonical ``wp.tid()`` unpack syntax for an n-dimensional kernel.
+
+    Returns a string like ``"i, j = wp.tid()"``. Falls back to a generic
+    placeholder for ``n`` outside ``[1, len(_TID_NAMES)]`` — used when the user's
+    requested arity exceeds the standard tid naming (e.g. over-rank launches
+    with ``ndim == 5`` surfaced through :func:`_build_rank_error`).
+    """
+    if n <= 0 or n > len(_TID_NAMES):
+        return f"... = wp.tid()  # {n} variables"
+    if n == 1:
+        return "i = wp.tid()"
+    return f"{', '.join(_TID_NAMES[:n])} = wp.tid()"
+
+
+def _build_rank_error(
+    dim: tuple[int, ...],
+    kernel_dim: int,
+    kernel,
+    tiled: bool,
+) -> str:
+    """Compose the ValueError message for a launch-dim rank mismatch.
+
+    Lists concrete migration options with pre-computed values for the specific
+    call that triggered the error so users don't have to do a doc round-trip.
+    """
+    ndim = len(dim)
+    flat = math.prod(dim) if dim else 0
+    key = kernel.key
+
+    header = (
+        f"Launch dim {dim} has rank {ndim} but kernel '{key}' unpacks "
+        f"wp.tid() into {kernel_dim} variable{'s' if kernel_dim != 1 else ''} "
+        f"(kernel_dim={kernel_dim})."
+    )
+
+    if ndim > kernel_dim:
+        options = []
+        # Launch-side fixes only make sense when the kernel is already scalar.
+        # For kernel_dim >= 2, these would require a second (kernel-side) edit
+        # to actually succeed, so presenting them as single-step fixes would
+        # mislead the user.
+        if kernel_dim == 1:
+            options.append(f"  - flat linear index over {flat} threads: launch with dim={flat}")
+            options.append(f"  - first-dim index (0..{dim[0] - 1}, no repetition): launch with dim={dim[0]}")
+        # Kernel-side fixes are always applicable.
+        repeat_unpack = "i, " + ", ".join(["_"] * (ndim - 1)) + " = wp.tid()"
+        options.append(f"  - first-dim index with repetition: unpack as `{repeat_unpack}`")
+        options.append(f"  - per-dim indexing: unpack as `{_tid_unpack(ndim)}`")
+    else:
+        # ndim < kernel_dim: under-rank
+        padded = dim + (1,) * (kernel_dim - ndim)
+        options = [f"  - keep {kernel_dim}-D kernel, launch with matching rank: dim={padded}"]
+        # Tiled launches also accept len(dim) == kernel_dim - 1 (block_dim axis is implicit);
+        # offer that as a concrete alternative when it differs from the rank-matching option.
+        if tiled and kernel_dim >= 2:
+            padded_tiled = dim + (1,) * (kernel_dim - 1 - ndim)
+            options.append(
+                f"  - keep {kernel_dim}-D kernel with implicit block_dim axis, launch with dim={padded_tiled}"
+            )
+        # Kernel-side unpack hint only makes sense for non-empty dim; dim=() would
+        # render as `... = wp.tid()  # 0 variables`, which isn't actionable.
+        if ndim >= 1:
+            options.append(
+                f"  - change kernel to unpack {ndim} variable{'s' if ndim != 1 else ''}: `{_tid_unpack(ndim)}`"
+            )
+
+    tiled_note = (
+        "\n(For launch_tiled, dim may also match kernel_dim - 1; the block_dim axis is supplied implicitly.)"
+        if tiled
+        else ""
+    )
+
+    return "\n".join([header, "Pick the intended behavior:", *options]) + tiled_note
+
+
+def _prepare_launch_dim(
+    dim,  # int | Sequence[int]
+    kernel,
+    *,
+    tiled: bool = False,
+) -> tuple[int, ...]:
+    """Canonicalize ``dim`` and check its rank against the kernel's ``wp.tid()`` arity.
+
+    For kernels that do not call ``wp.tid()`` (``max_tid_dimensionality == 0``),
+    any ``dim`` is accepted and flattened to a 1-tuple total thread count, since
+    the kernel is dim-agnostic.
+
+    For kernels that call ``wp.tid()``, the rank of ``dim`` must equal
+    ``kernel.adj.kernel_dim`` (or ``kernel_dim - 1`` when ``tiled=True``, since
+    ``launch_tiled`` supplies the block_dim axis implicitly).
+
+    Args:
+        dim: An integer or sequence of integers giving the launch shape.
+        kernel: The target kernel; its ``adj.kernel_dim`` and
+          ``adj.max_tid_dimensionality`` attributes drive validation.
+        tiled: If ``True``, also accept ``len(dim) == kernel_dim - 1`` (the
+          ``launch_tiled`` path, which supplies the block_dim axis implicitly).
+
+    Returns:
+        The canonicalized ``dim`` tuple, ready to pass to ``launch_bounds_t(...)``.
+
+    Raises:
+        ValueError: The rank of ``dim`` does not match the kernel's ``wp.tid()``
+          arity. The message lists the valid migration options.
     """
     dim = _canonicalize_dim(dim)
-    ndim = len(dim)
-    if ndim == kernel_dim:
+    if kernel.adj.max_tid_dimensionality == 0:
+        # Kernel is dim-agnostic — collapse to total thread count so it fits the
+        # default launch_bounds_t<1> ABI. Not validation; a bypass.
+        return (math.prod(dim),) if dim else (0,)
+    expected = kernel.adj.kernel_dim
+    if tiled and len(dim) == expected - 1:
+        # launch_tiled: kernel_dim may legitimately be ndim+1 because block_dim
+        # adds the trailing axis implicitly.
         return dim
-    elif ndim < kernel_dim:
-        return dim + (1,) * (kernel_dim - ndim)
-    else:
-        head = dim[: kernel_dim - 1]
-        tail_product = 1
-        for d in dim[kernel_dim - 1 :]:
-            tail_product *= d
-        return (*head, tail_product)
+    if len(dim) == expected:
+        return dim
+    raise ValueError(_build_rank_error(dim, expected, kernel, tiled))
 
 
 def _construct_tiled_bounds(dim, block_dim, kernel):
     """Construct launch bounds for a tiled launch.
 
-    After compilation, kernel_dim tells us how many dimensions wp.tid() uses.
-    If it matches len(dim), the user's wp.tid() covers only the user-facing
-    dims and we set tiled=True so launch_coord divides out block_dim().
-    If it's len(dim)+1, the user explicitly covers the block_dim dimension
-    in their wp.tid() call, so we append block_dim to the shape.
+    Delegates rank validation to ``_prepare_launch_dim(tiled=True)``, which
+    either returns a canonicalized dim tuple with ``len(dim)`` in
+    ``{kernel_dim, kernel_dim - 1}`` (or ``(prod(dim),)`` for zero-tid
+    kernels), or raises ``ValueError``. Given that postcondition:
+
+    - ``len(dim) == kernel_dim``: user's ``wp.tid()`` covers only user dims;
+      set ``tiled=True`` so ``launch_coord()`` divides out ``block_dim()``.
+    - ``len(dim) == kernel_dim - 1``: user's ``wp.tid()`` explicitly covers
+      the ``block_dim`` axis; append ``block_dim`` to the shape.
     """
-    dim = _canonicalize_dim(dim)
-    ndim = len(dim)
+    dim = _prepare_launch_dim(dim, kernel, tiled=True)
     kernel_dim = kernel.adj.kernel_dim
+    ndim = len(dim)
 
-    if kernel.adj.max_tid_dimensionality == 0:
-        # No wp.tid() calls — flatten to 1D, only total thread count matters.
-        dim = _normalize_launch_dim(dim, 1)
-        ndim = 1
-
-    if kernel_dim == ndim:
+    # _prepare_launch_dim with tiled=True accepts ndim in (kernel_dim, kernel_dim-1)
+    # or flattens zero-tid kernels to a 1-tuple. After that call:
+    if ndim == kernel_dim:
         # wp.tid() returns user dims only — block_dim threads share coordinates
         bounds = launch_bounds_t(dim)
         bounds.size *= block_dim
         bounds.tiled = True
-    elif kernel_dim == ndim + 1:
-        # wp.tid() explicitly covers the block_dim dimension
-        bounds = launch_bounds_t((*dim, block_dim))
     else:
-        raise RuntimeError(
-            f"Tiled launch dimension mismatch for kernel '{kernel.key}': "
-            f"wp.tid() uses {kernel_dim} dimensions but launch_tiled was given {ndim} user dimensions. "
-            f"Expected kernel_dim to be {ndim} or {ndim + 1}."
-        )
+        # ndim == kernel_dim - 1: wp.tid() explicitly covers the block_dim dimension
+        bounds = launch_bounds_t((*dim, block_dim))
 
     return bounds
 
@@ -8276,7 +8389,7 @@ def launch(
         if tiled:
             bounds = _construct_tiled_bounds(dim, block_dim, kernel)
         else:
-            normalized = _normalize_launch_dim(dim, kernel.adj.kernel_dim)
+            normalized = _prepare_launch_dim(dim, kernel)
             bounds = launch_bounds_t(normalized)
 
         # first param is the number of threads
@@ -8321,6 +8434,7 @@ def launch(
                     device=device,
                     block_dim=block_dim,
                     adjoint=adjoint,
+                    tiled=tiled,
                 )
                 return launch
 
@@ -8398,6 +8512,7 @@ def launch(
                         max_blocks=max_blocks,
                         block_dim=block_dim,
                         adjoint=adjoint,
+                        tiled=tiled,
                     )
                     return launch
                 else:
@@ -8435,6 +8550,7 @@ def launch(
                         device=device,
                         max_blocks=max_blocks,
                         block_dim=block_dim,
+                        tiled=tiled,
                     )
                     return launch
                 else:

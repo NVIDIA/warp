@@ -15,7 +15,7 @@ import jax
 
 import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
-from warp._src.context import CudaMemcpyKind, _canonicalize_dim, _normalize_launch_dim
+from warp._src.context import CudaMemcpyKind, _canonicalize_dim, _prepare_launch_dim
 from warp._src.jax import get_jax_device
 from warp._src.types import (
     array_t,
@@ -418,7 +418,7 @@ class FfiKernel:
                         # roll batch size into the first launch dimension
                         launch_dims = (batch_size * launch_dims[0], *launch_dims[1:])
 
-                normalized = _normalize_launch_dim(launch_dims, self.kernel.adj.kernel_dim)
+                normalized = _prepare_launch_dim(launch_dims, self.kernel)
                 launch_bounds = launch_bounds_t(normalized)
                 kernel_params[0] = ctypes.addressof(launch_bounds)
 
