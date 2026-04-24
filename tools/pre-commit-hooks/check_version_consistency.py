@@ -69,7 +69,7 @@ def read_version_md(path: Path) -> str:
     """Read and validate version from VERSION.md."""
     with open(path) as f:
         version = f.readline().strip()
-    if not re.fullmatch(r"\d+\.\d+\.\d+(\.\w+)?", version):
+    if not re.fullmatch(r"\d+\.\d+\.\d+((a|b|rc)\d+)?(\.post\d+)?(\.dev\d+)?", version):
         raise ValueError(f"VERSION.md contains invalid version string: {version!r}")
     return version
 

@@ -16,7 +16,7 @@ For information on module-level and kernel-level settings, see :doc:`/user_guide
 
 _wp_module_name_ = "warp.config"
 
-version: str = "1.13.0.dev0"
+version: str = "1.13.0rc1"
 """Warp version string"""
 
 verify_fp: bool = False
