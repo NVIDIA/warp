@@ -2757,7 +2757,7 @@ float wp_cuda_event_elapsed_time(void* start_event, void* end_event)
     return elapsed;
 }
 
-bool wp_cuda_graph_begin_capture(void* context, void* stream, int external)
+bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode)
 {
     ContextGuard guard(context);
 
@@ -2778,8 +2778,16 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external)
             return false;
         }
     } else {
-        // start the capture
-        if (!check_cuda(cudaStreamBeginCapture(cuda_stream, cudaStreamCaptureModeThreadLocal)))
+        cudaStreamCaptureMode capture_mode;
+        switch (mode) {
+        case 0: capture_mode = cudaStreamCaptureModeGlobal; break;
+        case 1: capture_mode = cudaStreamCaptureModeThreadLocal; break;
+        case 2: capture_mode = cudaStreamCaptureModeRelaxed; break;
+        default:
+            wp::set_error_string("Warp error: invalid capture mode (expected 0=Global, 1=ThreadLocal, 2=Relaxed)");
+            return false;
+        }
+        if (!check_cuda(cudaStreamBeginCapture(cuda_stream, capture_mode)))
             return false;
     }
 

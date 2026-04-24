@@ -346,6 +346,7 @@ from warp._src.rmm_allocator import RmmAllocator as RmmAllocator
 
 # category: CUDA Graph Management
 
+from warp._src.context import CaptureMode as CaptureMode
 from warp._src.utils import ScopedCapture as ScopedCapture
 
 from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported

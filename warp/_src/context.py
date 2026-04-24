@@ -80,6 +80,20 @@ class CudaMemcpyKind(enum.IntEnum):
     Default = 4
 
 
+class CaptureMode(enum.IntEnum):
+    """CUDA stream capture mode; mirrors ``cudaStreamCaptureMode``.
+
+    Controls how strictly CUDA rejects capture-unsafe runtime APIs while a
+    capture is active. ``Relaxed`` is typically required when composing with
+    libraries that perform lazy / capture-unsafe runtime calls (e.g. context
+    initialization) during the capture.
+    """
+
+    Global = 0
+    ThreadLocal = 1
+    Relaxed = 2
+
+
 # represents either a built-in or user-defined function
 
 
@@ -5360,7 +5374,12 @@ class Runtime:
             self.core.wp_cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_event_elapsed_time.restype = ctypes.c_float
 
-            self.core.wp_cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_graph_begin_capture.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
             self.core.wp_cuda_graph_begin_capture.restype = ctypes.c_bool
             self.core.wp_cuda_graph_end_capture.argtypes = [
                 ctypes.c_void_p,
@@ -9191,6 +9210,7 @@ def capture_begin(
     force_module_load: bool | None = None,
     external: bool = False,
     apic: bool = False,
+    capture_mode: CaptureMode = CaptureMode.ThreadLocal,
 ):
     """Begin capture of a graph.
 
@@ -9218,6 +9238,13 @@ def capture_begin(
           CUDA this also enables APIC byte-stream recording during the capture;
           on CPU, recording happens regardless because it is the only
           replay mechanism.
+        capture_mode: The :class:`CaptureMode` (i.e. ``cudaStreamCaptureMode``)
+          used when Warp opens the capture. ``CaptureMode.Relaxed`` is
+          typically required when composing with libraries that
+          transparently call capture-unsafe runtime APIs during the
+          capture (e.g. lazy context initialization). Ignored when
+          ``external=True`` because the caller opened the capture and
+          therefore picked its mode.
 
     """
     from warp._src.apic.capture import APICapture  # noqa: PLC0415
@@ -9288,7 +9315,9 @@ def capture_begin(
             if force_module_load:
                 force_load(device)
 
-        if not runtime.core.wp_cuda_graph_begin_capture(device.context, stream.cuda_stream, int(external)):
+        if not runtime.core.wp_cuda_graph_begin_capture(
+            device.context, stream.cuda_stream, int(external), int(CaptureMode(capture_mode))
+        ):
             raise RuntimeError(runtime.get_error_string())
     except Exception:
         if apic_capture is not None:
