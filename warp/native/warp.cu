@@ -3273,12 +3273,24 @@ bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
 
     // Resume with the same capture mode the user picked at begin time so a
     // pause/resume cycle (driven by conditional/while graph nodes) does not
-    // silently downgrade Global/Relaxed captures to ThreadLocal.
-    cudaStreamCaptureMode resume_mode = cudaStreamCaptureModeThreadLocal;
-    if (StreamInfo* stream_info = get_stream_info(cuda_stream)) {
-        if (CaptureInfo* capture = stream_info->capture)
-            resume_mode = capture->mode;
+    // silently downgrade Global/Relaxed captures to ThreadLocal. The stream
+    // must already be known to Warp with an active CaptureInfo at this
+    // point because the resume path is only reached after a matching pause
+    // on a Warp-managed capture; if either is missing something is badly
+    // out of sync, fail fast rather than guess a mode.
+    StreamInfo* stream_info = get_stream_info(cuda_stream);
+    if (!stream_info) {
+        fprintf(stderr, "Warp error: resume_capture called on unknown stream %p\n", (void*)cuda_stream);
+        wp::set_error_string("Warp error: resume_capture called on unknown stream");
+        return false;
     }
+    CaptureInfo* capture = stream_info->capture;
+    if (!capture) {
+        fprintf(stderr, "Warp error: resume_capture called on stream %p with no active capture\n", (void*)cuda_stream);
+        wp::set_error_string("Warp error: resume_capture called on stream with no active capture");
+        return false;
+    }
+    cudaStreamCaptureMode resume_mode = capture->mode;
 
     if (!check_cuda(cudaStreamBeginCaptureToGraph(
             cuda_stream, cuda_graph, leaf_nodes.data(), nullptr, leaf_nodes.size(), resume_mode
