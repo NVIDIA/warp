@@ -9243,8 +9243,10 @@ def capture_begin(
           capture. ``CaptureMode.Relaxed`` is typically required when
           composing with libraries that transparently call capture-unsafe
           runtime APIs during the capture (e.g. lazy context
-          initialization). When ``external=True`` the caller already
-          opened the capture, so this value is not passed to
+          initialization). The value is ignored on CPU devices (which
+          record into an APIC byte stream rather than a CUDA stream
+          capture). When ``external=True`` the caller already opened the
+          capture, so this value is not passed to
           ``cudaStreamBeginCapture``; it is still recorded and used by
           ``capture_if`` / ``capture_while`` pause-resume cycles to
           re-open the capture in the same mode.
