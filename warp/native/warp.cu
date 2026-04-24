@@ -2771,9 +2771,15 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
 
     cudaStreamCaptureMode capture_mode;
     switch (mode) {
-    case WP_CUDA_GRAPH_CAPTURE_MODE_GLOBAL:       capture_mode = cudaStreamCaptureModeGlobal;      break;
-    case WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL: capture_mode = cudaStreamCaptureModeThreadLocal; break;
-    case WP_CUDA_GRAPH_CAPTURE_MODE_RELAXED:      capture_mode = cudaStreamCaptureModeRelaxed;     break;
+    case WP_CUDA_GRAPH_CAPTURE_MODE_GLOBAL:
+        capture_mode = cudaStreamCaptureModeGlobal;
+        break;
+    case WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL:
+        capture_mode = cudaStreamCaptureModeThreadLocal;
+        break;
+    case WP_CUDA_GRAPH_CAPTURE_MODE_RELAXED:
+        capture_mode = cudaStreamCaptureModeRelaxed;
+        break;
     default:
         wp::set_error_string("Warp error: invalid capture mode");
         return false;
