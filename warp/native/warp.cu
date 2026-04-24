@@ -175,6 +175,7 @@ struct CaptureInfo {
     CUstream stream = NULL;  // the main stream where capture begins and ends
     uint64_t id = 0;  // unique capture id from CUDA
     bool external = false;  // whether this is an external capture
+    cudaStreamCaptureMode mode = cudaStreamCaptureModeThreadLocal;  // mode used to open the capture (for pause/resume)
     std::vector<FreeInfo> tmp_allocs;  // temporary allocations owned by the graph (e.g., staged array fill values)
 };
 
@@ -2768,6 +2769,16 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
         return false;
     }
 
+    cudaStreamCaptureMode capture_mode;
+    switch (mode) {
+    case WP_CUDA_GRAPH_CAPTURE_MODE_GLOBAL:       capture_mode = cudaStreamCaptureModeGlobal;      break;
+    case WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL: capture_mode = cudaStreamCaptureModeThreadLocal; break;
+    case WP_CUDA_GRAPH_CAPTURE_MODE_RELAXED:      capture_mode = cudaStreamCaptureModeRelaxed;     break;
+    default:
+        wp::set_error_string("Warp error: invalid capture mode");
+        return false;
+    }
+
     if (external) {
         // if it's an external capture, make sure it's already active so we can get the capture id
         cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
@@ -2778,15 +2789,6 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
             return false;
         }
     } else {
-        cudaStreamCaptureMode capture_mode;
-        switch (mode) {
-        case 0: capture_mode = cudaStreamCaptureModeGlobal; break;
-        case 1: capture_mode = cudaStreamCaptureModeThreadLocal; break;
-        case 2: capture_mode = cudaStreamCaptureModeRelaxed; break;
-        default:
-            wp::set_error_string("Warp error: invalid capture mode (expected 0=Global, 1=ThreadLocal, 2=Relaxed)");
-            return false;
-        }
         if (!check_cuda(cudaStreamBeginCapture(cuda_stream, capture_mode)))
             return false;
     }
@@ -2797,6 +2799,7 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
     capture->stream = cuda_stream;
     capture->id = capture_id;
     capture->external = bool(external);
+    capture->mode = capture_mode;
 
     // update stream info
     stream_info->capture = capture;
@@ -3262,8 +3265,17 @@ bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph)
     if (!get_graph_leaf_nodes(cuda_graph, leaf_nodes))
         return false;
 
+    // Resume with the same capture mode the user picked at begin time so a
+    // pause/resume cycle (driven by conditional/while graph nodes) does not
+    // silently downgrade Global/Relaxed captures to ThreadLocal.
+    cudaStreamCaptureMode resume_mode = cudaStreamCaptureModeThreadLocal;
+    if (StreamInfo* stream_info = get_stream_info(cuda_stream)) {
+        if (CaptureInfo* capture = stream_info->capture)
+            resume_mode = capture->mode;
+    }
+
     if (!check_cuda(cudaStreamBeginCaptureToGraph(
-            cuda_stream, cuda_graph, leaf_nodes.data(), nullptr, leaf_nodes.size(), cudaStreamCaptureModeThreadLocal
+            cuda_stream, cuda_graph, leaf_nodes.data(), nullptr, leaf_nodes.size(), resume_mode
         )))
         return false;
 

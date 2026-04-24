@@ -1639,8 +1639,10 @@ class ScopedCapture:
             (i.e. ``cudaStreamCaptureMode``) used when Warp opens the
             capture. ``CaptureMode.Relaxed`` lets libraries that still
             perform lazy / capture-unsafe CUDA runtime calls compose inside
-            a Warp capture without invalidating it. Ignored when
-            ``external=True``.
+            a Warp capture without invalidating it. When ``external=True``
+            the caller already opened the capture, so this value is not
+            passed to ``cudaStreamBeginCapture``; it is still recorded and
+            used by pause-resume cycles in conditional / while graph nodes.
 
     Attributes:
         graph: The captured graph, available after context exit.

@@ -9238,13 +9238,16 @@ def capture_begin(
           CUDA this also enables APIC byte-stream recording during the capture;
           on CPU, recording happens regardless because it is the only
           replay mechanism.
-        capture_mode: The :class:`CaptureMode` (i.e. ``cudaStreamCaptureMode``)
-          used when Warp opens the capture. ``CaptureMode.Relaxed`` is
-          typically required when composing with libraries that
-          transparently call capture-unsafe runtime APIs during the
-          capture (e.g. lazy context initialization). Ignored when
-          ``external=True`` because the caller opened the capture and
-          therefore picked its mode.
+        capture_mode: The :class:`~warp.CaptureMode`
+          (i.e. ``cudaStreamCaptureMode``) used when Warp opens the
+          capture. ``CaptureMode.Relaxed`` is typically required when
+          composing with libraries that transparently call capture-unsafe
+          runtime APIs during the capture (e.g. lazy context
+          initialization). When ``external=True`` the caller already
+          opened the capture, so this value is not passed to
+          ``cudaStreamBeginCapture``; it is still recorded and used by
+          ``capture_if`` / ``capture_while`` pause-resume cycles to
+          re-open the capture in the same mode.
 
     """
     from warp._src.apic.capture import APICapture  # noqa: PLC0415

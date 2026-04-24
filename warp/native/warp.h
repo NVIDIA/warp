@@ -12,6 +12,12 @@
 
 #define WP_CURRENT_STREAM ((void*)0xffffffffffffffff)
 
+// Capture modes accepted by wp_cuda_graph_begin_capture. Values match
+// cudaStreamCaptureMode so the int can be passed straight through.
+#define WP_CUDA_GRAPH_CAPTURE_MODE_GLOBAL       0
+#define WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL 1
+#define WP_CUDA_GRAPH_CAPTURE_MODE_RELAXED      2
+
 struct timing_result_t;
 
 // this is the core runtime API exposed on the DLL level
