@@ -192,6 +192,17 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
 """
 
+enable_mathdx_trsm: bool = True
+"""Use libmathdx (cuSolverDx) for tile_cholesky_solve, tile_lower_solve, and
+tile_upper_solve on GPU when available.
+
+When False, these ops fall back to a cooperative shared-memory triangular solve
+that does not require libmathdx, at the cost of runtime performance.
+
+This setting can be overridden at the module level by setting the
+``"enable_mathdx_trsm"`` module option.
+"""
+
 cpu_compiler_flags: str | None = None
 """Flags controlling CPU kernel compilation.
 
