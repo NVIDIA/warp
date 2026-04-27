@@ -828,15 +828,28 @@ void wp_free_device_async(void* context, void* ptr)
         // check if the capture is still active
         auto capture_iter = g_captures.find(capture_id);
         if (capture_iter != g_captures.end()) {
-            // Add a mem free node.  Use all current leaf nodes as dependencies to ensure that all prior
-            // work completes before deallocating.  This works with both Warp-initiated and external captures
-            // and avoids the need to explicitly track all streams used during the capture.
+            // Add a mem free node depending on the current capture frontier of the
+            // capturing stream (rather than the leaves of the whole cudaGraph_t).
+            //
+            // Using cudaGraphGetNodes-derived leaves was correct as long as a graph
+            // held one capture at a time: "graph leaves" == "capture frontier".  With
+            // cudaStreamBeginCaptureToGraph (CUDA 12.3+), several independent captures
+            // can target the same cudaGraph_t (e.g. CUDASTF stackable contexts run two
+            // sibling tasks into one ctx_graph for parallel execution).  In that
+            // setting "graph leaves" includes leaves from sibling captures, and we end
+            // up wiring them as predecessors of this MEM_FREE -- a spurious cross-task
+            // edge that transitively serializes sibling captures behind each other.
+            //
+            // get_capture_dependencies() wraps cuStreamGetCaptureInfo and returns only
+            // the current capturing stream's frontier, so it ignores sibling captures
+            // sharing the same graph while still respecting any forked streams that
+            // have already been joined back into this capture.
             CaptureInfo* capture = capture_iter->second;
             cudaGraph_t graph = get_capture_graph(capture->stream);
-            std::vector<cudaGraphNode_t> leaf_nodes;
-            if (graph && get_graph_leaf_nodes(graph, leaf_nodes)) {
+            std::vector<cudaGraphNode_t> capture_deps;
+            if (graph && get_capture_dependencies(capture->stream, capture_deps)) {
                 cudaGraphNode_t free_node;
-                if (check_cuda(cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr))) {
+                if (check_cuda(cudaGraphAddMemFreeNode(&free_node, graph, capture_deps.data(), capture_deps.size(), ptr))) {
                     check_cu(cuStreamUpdateCaptureDependencies_f(
                         capture->stream, &free_node, 1, cudaStreamSetCaptureDependencies
                     ));
