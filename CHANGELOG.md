@@ -152,6 +152,8 @@
   ([newton#2363](https://github.com/newton-physics/newton/issues/2363)).
 - Fix `ValueError: Cell is empty` crash during eager module hashing when a kernel closure references a variable
   assigned later in the enclosing scope ([GH-913](https://github.com/NVIDIA/warp/issues/913)).
+- Fix wheels missing the bundled `libdevice.10.bc`, which caused all CUDA kernels compiled via the
+  Clang/LLVM toolchain (`llvm_cuda=True`) to fail when no system CUDA toolkit was available.
 
 ### Documentation
 

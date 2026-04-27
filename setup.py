@@ -216,6 +216,7 @@ setuptools.setup(
             "native/*.cu",
             "native/*.h",
             "native/clang/*.cpp",
+            "native/libdevice/*",
             "native/nanovdb/*.h",
             "tests/assets/*",
             "examples/assets/*",
