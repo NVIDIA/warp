@@ -2704,6 +2704,7 @@ inline CUDA_CALLABLE void adj_expect_near(
 #include "noise.h"
 #include "matnn.h"
 #include "tile.h"
+#include "tile_matmul.h"
 #include "tile_reduce.h"
 #include "tile_scan.h"
 #include "tile_radix_sort.h"
