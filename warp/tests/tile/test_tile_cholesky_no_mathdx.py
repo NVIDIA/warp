@@ -98,7 +98,7 @@ def test_cholesky_lower(test, device):
     L = wp.zeros((N, N), dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_cholesky_lower_kernel, dim=[1], inputs=[A, L], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(L.numpy(), L_ref, rtol=1e-10)
+    assert_np_equal(L.numpy(), L_ref, tol=1e-10)
 
 
 def test_cholesky_lower_inplace(test, device):
@@ -108,8 +108,8 @@ def test_cholesky_lower_inplace(test, device):
     wp.launch_tiled(tile_cholesky_lower_inplace_kernel, dim=[1], inputs=[A], block_dim=TILE_DIM, device=device)
     # The lower-triangular factor lives in the lower triangle (upper zeroed).
     A_out = A.numpy()
-    np.testing.assert_allclose(np.tril(A_out), L_ref, rtol=1e-10)
-    np.testing.assert_allclose(np.triu(A_out, k=1), np.zeros_like(A_out[np.triu_indices(N, k=1)]).reshape(-1)[0])
+    assert_np_equal(np.tril(A_out), L_ref, tol=1e-10)
+    assert_np_equal(np.triu(A_out, k=1), np.zeros((N, N)), tol=0.0)
 
 
 def test_cholesky_upper(test, device):
@@ -120,7 +120,7 @@ def test_cholesky_upper(test, device):
     U = wp.zeros((N, N), dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_cholesky_upper_kernel, dim=[1], inputs=[A, U], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(U.numpy(), U_ref, rtol=1e-10)
+    assert_np_equal(U.numpy(), U_ref, tol=1e-10)
 
 
 def test_cholesky_upper_inplace(test, device):
@@ -130,7 +130,7 @@ def test_cholesky_upper_inplace(test, device):
     A = wp.array(A_np.copy(), dtype=wp.float64, device=device)
     wp.launch_tiled(tile_cholesky_upper_inplace_kernel, dim=[1], inputs=[A], block_dim=TILE_DIM, device=device)
     A_out = A.numpy()
-    np.testing.assert_allclose(np.triu(A_out), U_ref, rtol=1e-10)
+    assert_np_equal(np.triu(A_out), U_ref, tol=1e-10)
 
 
 # -----------------------------------------------------------------------------
@@ -192,9 +192,9 @@ def test_cholesky_lower_backward(test, device):
 
     grad_A = A.grad.numpy()
     grad_A_ref = _cholesky_adjoint_numpy_lower(L_ref, adj_L)
-    np.testing.assert_allclose(L.numpy(), L_ref, atol=1e-10)
-    np.testing.assert_allclose(np.tril(grad_A), grad_A_ref, atol=1e-8)
-    np.testing.assert_allclose(np.triu(grad_A, k=1), 0.0, atol=0.0)
+    assert_np_equal(L.numpy(), L_ref, tol=1e-10)
+    assert_np_equal(np.tril(grad_A), grad_A_ref, tol=1e-8)
+    assert_np_equal(np.triu(grad_A, k=1), np.zeros((N, N)), tol=0.0)
 
 
 def test_cholesky_upper_backward(test, device):
@@ -212,9 +212,59 @@ def test_cholesky_upper_backward(test, device):
 
     grad_A = A.grad.numpy()
     grad_A_ref = _cholesky_adjoint_numpy_upper(U_ref, adj_U)
-    np.testing.assert_allclose(U.numpy(), U_ref, atol=1e-10)
-    np.testing.assert_allclose(np.triu(grad_A), grad_A_ref, atol=1e-8)
-    np.testing.assert_allclose(np.tril(grad_A, k=-1), 0.0, atol=0.0)
+    assert_np_equal(U.numpy(), U_ref, tol=1e-10)
+    assert_np_equal(np.triu(grad_A), grad_A_ref, tol=1e-8)
+    assert_np_equal(np.tril(grad_A, k=-1), np.zeros((N, N)), tol=0.0)
+
+
+# -----------------------------------------------------------------------------
+# Larger-N adjoint smoke -- exercises the cooperative_scalar_cholesky_adj
+# shared-mem scratch budget at a non-trivial tile size. Two __shared__ T W[n*n]
+# buffers in float64: 8 KiB at n=32, 32 KiB at n=64. Catch budget failures in
+# CI rather than at runtime.
+# -----------------------------------------------------------------------------
+
+N32 = 32
+
+
+@wp.kernel
+def tile_cholesky_lower_backward_n32_kernel(gA: wp.array2d(dtype=wp.float64), gL: wp.array2d(dtype=wp.float64)):
+    A = wp.tile_load(gA, shape=(N32, N32), storage="shared")
+    L = wp.tile_cholesky(A)
+    wp.tile_store(gL, L)
+
+
+def test_cholesky_lower_backward_n32(test, device):
+    A_np, L_ref = _spd(N32, seed=40)
+    rng = np.random.default_rng(41)
+    adj_L = rng.standard_normal((N32, N32))
+
+    A = wp.array(A_np, dtype=wp.float64, requires_grad=True, device=device)
+    L = wp.zeros((N32, N32), dtype=wp.float64, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_cholesky_lower_backward_n32_kernel, dim=[1], inputs=[A, L], block_dim=TILE_DIM, device=device
+        )
+    tape.backward(grads={L: wp.array(adj_L, dtype=wp.float64, device=device)})
+
+    grad_A = A.grad.numpy()
+    grad_A_ref = _cholesky_adjoint_numpy_lower(L_ref, adj_L)
+    assert_np_equal(L.numpy(), L_ref, tol=1e-10)
+    assert_np_equal(np.tril(grad_A), grad_A_ref, tol=1e-7)
+    assert_np_equal(np.triu(grad_A, k=1), np.zeros((N32, N32)), tol=0.0)
+
+
+# block_dim == 1 GPU smoke: thread-strided loops collapse to sequential, but
+# the GPU codegen path must still compile and run correctly.
+def test_cholesky_lower_block_dim_1(test, device):
+    A_np, L_ref = _spd(N, seed=42)
+
+    A = wp.array(A_np, dtype=wp.float64, device=device)
+    L = wp.zeros((N, N), dtype=wp.float64, device=device)
+
+    wp.launch_tiled(tile_cholesky_lower_kernel, dim=[1], inputs=[A, L], block_dim=1, device=device)
+    assert_np_equal(L.numpy(), L_ref, tol=1e-10)
 
 
 # -----------------------------------------------------------------------------
@@ -235,6 +285,8 @@ for name, func in [
     ("test_cholesky_upper_inplace", test_cholesky_upper_inplace),
     ("test_cholesky_lower_backward", test_cholesky_lower_backward),
     ("test_cholesky_upper_backward", test_cholesky_upper_backward),
+    ("test_cholesky_lower_backward_n32", test_cholesky_lower_backward_n32),
+    ("test_cholesky_lower_block_dim_1", test_cholesky_lower_block_dim_1),
 ]:
     add_function_test(TestTileCholeskyNoMathdx, name, func, devices=_devices, check_output=False)
 

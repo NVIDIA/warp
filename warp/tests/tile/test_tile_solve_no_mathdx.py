@@ -186,7 +186,7 @@ def test_lower_solve_vector(test, device):
     z = wp.zeros(N, dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_lower_solve_vec_kernel, dim=[1], inputs=[L, y, z], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(z.numpy(), z_ref, rtol=1e-10)
+    assert_np_equal(z.numpy(), z_ref, tol=1e-10)
 
 
 def test_lower_solve_matrix(test, device):
@@ -199,7 +199,7 @@ def test_lower_solve_matrix(test, device):
     z = wp.zeros((N, M_RHS), dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_lower_solve_mat_kernel, dim=[1], inputs=[L, y, z], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(z.numpy(), z_ref, rtol=1e-10)
+    assert_np_equal(z.numpy(), z_ref, tol=1e-10)
 
 
 def test_lower_solve_inplace_vector(test, device):
@@ -211,7 +211,7 @@ def test_lower_solve_inplace_vector(test, device):
     y = _make_arr(y_np, wp.float64, device)
 
     wp.launch_tiled(tile_lower_solve_inplace_vec_kernel, dim=[1], inputs=[L, y], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(y.numpy(), z_ref, rtol=1e-10)
+    assert_np_equal(y.numpy(), z_ref, tol=1e-10)
 
 
 def test_lower_solve_inplace_matrix(test, device):
@@ -223,7 +223,7 @@ def test_lower_solve_inplace_matrix(test, device):
     y = _make_arr(y_np, wp.float64, device)
 
     wp.launch_tiled(tile_lower_solve_inplace_mat_kernel, dim=[1], inputs=[L, y], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(y.numpy(), z_ref, rtol=1e-10)
+    assert_np_equal(y.numpy(), z_ref, tol=1e-10)
 
 
 def test_upper_solve_vector(test, device):
@@ -237,7 +237,7 @@ def test_upper_solve_vector(test, device):
     x = wp.zeros(N, dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_upper_solve_vec_kernel, dim=[1], inputs=[U, z, x], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(x.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(x.numpy(), x_ref, tol=1e-10)
 
 
 def test_upper_solve_matrix(test, device):
@@ -251,7 +251,7 @@ def test_upper_solve_matrix(test, device):
     x = wp.zeros((N, M_RHS), dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_upper_solve_mat_kernel, dim=[1], inputs=[U, z, x], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(x.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(x.numpy(), x_ref, tol=1e-10)
 
 
 def test_upper_solve_inplace_vector(test, device):
@@ -264,7 +264,7 @@ def test_upper_solve_inplace_vector(test, device):
     z = _make_arr(z_np, wp.float64, device)
 
     wp.launch_tiled(tile_upper_solve_inplace_vec_kernel, dim=[1], inputs=[U, z], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(z.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(z.numpy(), x_ref, tol=1e-10)
 
 
 def test_upper_solve_inplace_matrix(test, device):
@@ -277,7 +277,7 @@ def test_upper_solve_inplace_matrix(test, device):
     z = _make_arr(z_np, wp.float64, device)
 
     wp.launch_tiled(tile_upper_solve_inplace_mat_kernel, dim=[1], inputs=[U, z], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(z.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(z.numpy(), x_ref, tol=1e-10)
 
 
 def test_cholesky_solve_vector(test, device):
@@ -291,7 +291,7 @@ def test_cholesky_solve_vector(test, device):
     x = wp.zeros(N, dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_cholesky_solve_vec_kernel, dim=[1], inputs=[L, y, x], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(x.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(x.numpy(), x_ref, tol=1e-10)
 
 
 def test_cholesky_solve_matrix(test, device):
@@ -305,7 +305,7 @@ def test_cholesky_solve_matrix(test, device):
     x = wp.zeros((N, M_RHS), dtype=wp.float64, device=device)
 
     wp.launch_tiled(tile_cholesky_solve_mat_kernel, dim=[1], inputs=[L, y, x], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(x.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(x.numpy(), x_ref, tol=1e-10)
 
 
 def test_cholesky_solve_inplace_vector(test, device):
@@ -318,7 +318,7 @@ def test_cholesky_solve_inplace_vector(test, device):
     y = _make_arr(y_np, wp.float64, device)
 
     wp.launch_tiled(tile_cholesky_solve_inplace_vec_kernel, dim=[1], inputs=[L, y], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(y.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(y.numpy(), x_ref, tol=1e-10)
 
 
 def test_cholesky_solve_inplace_matrix(test, device):
@@ -331,7 +331,43 @@ def test_cholesky_solve_inplace_matrix(test, device):
     y = _make_arr(y_np, wp.float64, device)
 
     wp.launch_tiled(tile_cholesky_solve_inplace_mat_kernel, dim=[1], inputs=[L, y], block_dim=TILE_DIM, device=device)
-    np.testing.assert_allclose(y.numpy(), x_ref, rtol=1e-10)
+    assert_np_equal(y.numpy(), x_ref, tol=1e-10)
+
+
+# -----------------------------------------------------------------------------
+# block_dim == 1 smoke (GPU codegen for single-thread-block must compile and
+# produce correct results -- the cooperative scalar path's thread-strided loops
+# should collapse to sequential, exercising a different codegen path from
+# block_dim == TILE_DIM. CPU coverage is incidental via the per-device fanout
+# of the regular tests.)
+# -----------------------------------------------------------------------------
+
+
+def test_lower_solve_block_dim_1(test, device):
+    L_np = _spd_lower_factor(N, seed=30)
+    y_np = np.arange(1.0, N + 1.0)
+    z_ref = np.linalg.solve(L_np, y_np)
+
+    L = _make_arr(L_np, wp.float64, device)
+    y = _make_arr(y_np, wp.float64, device)
+    z = wp.zeros(N, dtype=wp.float64, device=device)
+
+    wp.launch_tiled(tile_lower_solve_vec_kernel, dim=[1], inputs=[L, y, z], block_dim=1, device=device)
+    assert_np_equal(z.numpy(), z_ref, tol=1e-10)
+
+
+def test_cholesky_solve_matrix_block_dim_1(test, device):
+    L_np = _spd_lower_factor(N, seed=31)
+    A_np = L_np @ L_np.T
+    y_np = np.arange(1.0, N * M_RHS + 1.0).reshape(N, M_RHS)
+    x_ref = np.linalg.solve(A_np, y_np)
+
+    L = _make_arr(L_np, wp.float64, device)
+    y = _make_arr(y_np, wp.float64, device)
+    x = wp.zeros((N, M_RHS), dtype=wp.float64, device=device)
+
+    wp.launch_tiled(tile_cholesky_solve_mat_kernel, dim=[1], inputs=[L, y, x], block_dim=1, device=device)
+    assert_np_equal(x.numpy(), x_ref, tol=1e-10)
 
 
 # -----------------------------------------------------------------------------
@@ -358,6 +394,8 @@ for name, func in [
     ("test_cholesky_solve_matrix", test_cholesky_solve_matrix),
     ("test_cholesky_solve_inplace_vector", test_cholesky_solve_inplace_vector),
     ("test_cholesky_solve_inplace_matrix", test_cholesky_solve_inplace_matrix),
+    ("test_lower_solve_block_dim_1", test_lower_solve_block_dim_1),
+    ("test_cholesky_solve_matrix_block_dim_1", test_cholesky_solve_matrix_block_dim_1),
 ]:
     add_function_test(TestTileSolveNoMathdx, name, func, devices=_devices, check_output=False)
 

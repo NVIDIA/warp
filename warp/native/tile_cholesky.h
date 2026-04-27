@@ -314,6 +314,9 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
     // CPU (block_dim == 1) or GPU-without-mathdx: cooperative scalar adjoint.
+    // Leading sync mirrors the libmathdx branch below: be defensive against
+    // upstream hazards on Out / adj_Out before Phase 1 reads from them.
+    WP_TILE_SYNC();
     partitioned_gemm::cooperative_scalar_cholesky_adj<Upper>(adj_A, adj_Out, Out);
 
 #else
@@ -322,6 +325,7 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
         // GPU with mathdx build but backward LTOs absent (e.g. enable_backward
         // disabled, or enable_mathdx_cholesky=False at the module level):
         // cooperative scalar adjoint.
+        WP_TILE_SYNC();
         partitioned_gemm::cooperative_scalar_cholesky_adj<Upper>(adj_A, adj_Out, Out);
     } else {
         __shared__ T W1[n * n];
