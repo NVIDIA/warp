@@ -5,20 +5,32 @@
 // adjoint, plus the tile_cholesky / tile_cholesky_inplace entry templates and
 // the tile_cholesky adjoint dispatch.
 //
-// Performance note: the cooperative scalar Cholesky factorization and adjoint
-// here are not solely a fallback for builds without libmathdx. For small tile
-// sizes they are expected to be competitive with or faster than cuSolverDx's
-// `potrf` because of the same LTO compilation and per-launch setup overhead
-// that motivates the scalar matmul path. Note however that Cholesky has more
-// inherent serialization than matmul (the outer column loop in factorization
-// is sequential -- only the row updates within a column distribute across
-// threads), so the crossover point is more conservative than for matmul. The
-// adjoint is a composition of one gemm and two trsms and inherits both
-// characters. Users can deliberately route a kernel through the scalar path
-// on a libmathdx-enabled build by setting the module option
+// Performance: cooperative scalar vs cuSolverDx (L40, sm_89, fp64, block_dim=32)
+//
+//   tile_cholesky  (factorization)
+//     n   mathdx (us)   scalar (us)   scalar/mathdx
+//     4         15.0          15.9         1.06x
+//     8         16.1          19.0         1.18x
+//    16         18.1          27.5         1.52x
+//    32         25.3          53.9         2.13x
+//    64         54.3         159.4         2.94x
+//
+//   adj_tile_cholesky  (Murray 2016 derivative, gemm + 2 trsm composition)
+//     measured indirectly via tile_cholesky_solve (n=8, m_rhs=8, batch=64):
+//     mathdx 16.7us, scalar 21.1us, 1.27x; widens to 4.4x at n=64.
+//
+// cuSolverDx wins at every size we measured. The gap is within noise at n<=8,
+// modest at n=16 (~1.5x), and grows quickly past that. Cholesky has more
+// inherent serialization than matmul (sequential outer column loop in
+// factorization, two sequential triangular solves in the adjoint), so the
+// matmul-style "scalar wins at small tiles" pattern does not appear here.
+//
+// The cooperative scalar path is therefore primarily a correctness fallback
+// for builds without libmathdx and for users who want to skip the slow LTO
+// compilation cost during development. Users can route a kernel through the
+// scalar path on a libmathdx-enabled build by setting the module option
 // `enable_mathdx_cholesky=False` (or globally via
-// `wp.config.enable_mathdx_cholesky = False`). Benchmark your specific
-// shape/dtype configuration.
+// `wp.config.enable_mathdx_cholesky = False`).
 
 #pragma once
 

@@ -5,15 +5,38 @@
 // substitution) and the tile_lower_solve / tile_upper_solve entry templates
 // (and inplace variants).
 //
-// Performance note: the cooperative scalar trsm path here is not solely a
-// fallback for builds without libmathdx. cuSolverDx's `trsm` carries the same
-// LTO compilation and per-launch setup overhead as cuBLASDx, so for small
-// tile sizes the cooperative shared-memory implementation is expected to
-// outperform it on the same dynamics matmul exhibits. Users can deliberately
-// route a kernel through the scalar path on a libmathdx-enabled build by
-// setting the module option `enable_mathdx_trsm=False` (or globally via
-// `wp.config.enable_mathdx_trsm = False`). The crossover point is shape- and
-// dtype-dependent -- benchmark your configuration.
+// Performance: cooperative scalar vs cuSolverDx (L40, sm_89, fp64,
+// block_dim=32, m_rhs=8, batch=64)
+//
+//   tile_lower_solve  (matrix RHS)
+//     n   mathdx (us)   scalar (us)   scalar/mathdx
+//     4         16.2          16.6         1.02x
+//     8         16.2          18.2         1.12x
+//    16         16.9          22.9         1.35x
+//    32         19.3          36.8         1.90x
+//    64         26.8          83.3         3.11x
+//
+//   tile_cholesky_solve  (full LL^T solve = forward + back substitution)
+//     n   mathdx (us)   scalar (us)   scalar/mathdx
+//     4         16.1          17.2         1.07x
+//     8         16.7          21.1         1.27x
+//    16         18.4          30.3         1.65x
+//    32         22.4          58.0         2.60x
+//    64         34.7         153.3         4.42x
+//
+// cuSolverDx wins at every size we measured. The gap is within noise at n<=8,
+// modest at n=16 (~1.4x for trsm, ~1.7x for cholesky_solve), and grows
+// quickly past that. Triangular solves are inherently serial in the row
+// dimension; cooperative parallelism only helps the inner dot product (vector
+// RHS) or the outer column dimension (matrix RHS), neither of which catches
+// the cuSolverDx LTO at the sizes measured here.
+//
+// The cooperative scalar path is therefore primarily a correctness fallback
+// for builds without libmathdx and for users who want to skip the slow LTO
+// compilation cost during development. Users can route a kernel through the
+// scalar path on a libmathdx-enabled build by setting the module option
+// `enable_mathdx_trsm=False` (or globally via
+// `wp.config.enable_mathdx_trsm = False`).
 
 #pragma once
 
