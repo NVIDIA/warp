@@ -115,10 +115,31 @@ inline CUDA_CALLABLE void scalar_cholesky_impl(TileA& A, TileOut& Out)
 }
 
 
-// Single-threaded Cholesky adjoint.
+// Cooperative scalar Cholesky adjoint, mirrors the libmathdx adjoint
+// structure but uses scalar inner kernels. Replaces the previous
+// single-threaded scalar_cholesky_adj_impl (which gated to thread 0 at the
+// call site -- correct but underutilized block_dim - 1 threads).
+//
+// Algorithm: Murray (2016) symmetric-matrix Cholesky derivative.
+// Six thread-strided phases over __shared__ scratch buffers, mirroring
+// adj_tile_cholesky_impl's libmathdx LTO path verbatim:
+//   1. gemm into W1   = adj_Out @ Out^T (Upper) or Out^T @ adj_Out (Lower)
+//   2. symmetrize W1, copy into W2 (mirror the stored triangle)
+//   3. first triangular solve in-place on W2:  L^T X = W2 (Lower) or U X = W2 (Upper)
+//   4. transpose W2 -> W1
+//   5. second triangular solve in-place on W1:  L^T B = W1 (Lower) or U B = W1 (Upper)
+//   6. accumulate W1 into adj_A.grad on the stored triangle, halving the diagonal.
+//
+// Each phase ends with WP_TILE_SYNC(). Intra-phase, every thread writes to a
+// unique address.
+//
+// CPU compile: __shared__ is replaced with stack arrays. WP_TILE_BLOCK_DIM == 1
+// makes thread-strided loops collapse to sequential. Behaviour matches the
+// previous single-threaded adjoint on CPU.
+//
 // Upper=false: A = L L^T, Upper=true: A = U^T U
 template <bool Upper, typename TileA, typename TileOut>
-inline CUDA_CALLABLE void scalar_cholesky_adj_impl(TileA& adj_A, TileOut& adj_Out, TileOut& Out)
+inline CUDA_CALLABLE void cooperative_scalar_cholesky_adj(TileA& adj_A, TileOut& adj_Out, TileOut& Out)
 {
     using T = typename TileA::Type;
     constexpr int n = TileA::Layout::Shape::dim(1);
@@ -127,59 +148,91 @@ inline CUDA_CALLABLE void scalar_cholesky_adj_impl(TileA& adj_A, TileOut& adj_Ou
     // Lower: Out(row, col), Upper: Out(col, row)
     auto idx = [](int row, int col) { return Upper ? tile_coord(col, row) : tile_coord(row, col); };
 
-    T buffer1[n][n];
-    T buffer2[n][n];
+#if defined(__CUDA_ARCH__)
+    __shared__ T W1[n * n];
+    __shared__ T W2[n * n];
+#else
+    T W1[n * n];
+    T W2[n * n];
+#endif
 
-    // P = adj_Out @ Out^T (upper) or Out^T @ adj_Out (lower)
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j < n; ++j) {
-            T s = T(0);
-            for (int k = 0; k < n; ++k)
-                if constexpr (Upper)
-                    s += adj_Out.grad(tile_coord(i, k)) * Out.data(tile_coord(j, k));
-                else
-                    s += Out.data(tile_coord(k, i)) * adj_Out.grad(tile_coord(k, j));
-            buffer1[i][j] = s;
-        }
-
-    // Symmetrize P: mirror the stored triangle to the other side (preserving the diagonal).
-    // Upper: keep triu, mirror to lower; Lower: keep tril, mirror to upper.
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j < i; ++j)
+    // Phase 1: gemm into W1.
+    //   Upper: W1[i,j] = sum_k adj_Out[i,k] * Out[j,k]
+    //   Lower: W1[i,j] = sum_k Out[k,i]    * adj_Out[k,j]
+    for (int ij = WP_TILE_THREAD_IDX; ij < n * n; ij += WP_TILE_BLOCK_DIM) {
+        int i = ij / n;
+        int j = ij % n;
+        T s = T(0);
+        for (int k = 0; k < n; ++k) {
             if constexpr (Upper)
-                buffer1[i][j] = buffer1[j][i];
+                s += adj_Out.grad(tile_coord(i, k)) * Out.data(tile_coord(j, k));
             else
-                buffer1[j][i] = buffer1[i][j];
+                s += Out.data(tile_coord(k, i)) * adj_Out.grad(tile_coord(k, j));
+        }
+        W1[ij] = s;
+    }
+    WP_TILE_SYNC();
 
-    // Solve L^T X = S (lower) or U X = S (upper)
-    for (int k = 0; k < n; ++k) {
+    // Phase 2: symmetrize W1 and copy into W2.
+    //   Upper: keep triu, mirror to lower (W2[i,j] = W1[j,i] for i > j; else W1[i,j])
+    //   Lower: keep tril, mirror to upper (W2[i,j] = W1[j,i] for i < j; else W1[i,j])
+    for (int ij = WP_TILE_THREAD_IDX; ij < n * n; ij += WP_TILE_BLOCK_DIM) {
+        int row = ij / n;
+        int col = ij % n;
+        bool mirror = Upper ? (row > col) : (row < col);
+        W2[ij] = mirror ? W1[col * n + row] : W1[ij];
+    }
+    WP_TILE_SYNC();
+
+    // Phase 3: solve L^T X = W2 (Lower) or U X = W2 (Upper) in-place into W2.
+    //   Distribute over k columns; sequential descending i within column.
+    for (int k = WP_TILE_THREAD_IDX; k < n; k += WP_TILE_BLOCK_DIM) {
         for (int i = n - 1; i >= 0; --i) {
-            T s = buffer1[i][k];
+            T s = W2[i * n + k];
             for (int j = i + 1; j < n; ++j)
-                s -= Out.data(idx(j, i)) * buffer2[j][k];
+                s -= Out.data(idx(j, i)) * W2[j * n + k];
             T diag = Out.data(tile_coord(i, i));
-            buffer2[i][k] = (diag != T(0.0f)) ? s / diag : s;
+            W2[i * n + k] = (diag != T(0.0f)) ? s / diag : s;
         }
     }
+    WP_TILE_SYNC();
 
-    // Solve L^T B = X^T (lower) or U B = X^T (upper)
-    for (int k = 0; k < n; ++k) {
+    // Phase 4: transpose W2 into W1.
+    for (int ij = WP_TILE_THREAD_IDX; ij < n * n; ij += WP_TILE_BLOCK_DIM) {
+        int row = ij / n;
+        int col = ij % n;
+        W1[ij] = W2[col * n + row];
+    }
+    WP_TILE_SYNC();
+
+    // Phase 5: solve L^T B = W1 (Lower) or U B = W1 (Upper) in-place into W1.
+    for (int k = WP_TILE_THREAD_IDX; k < n; k += WP_TILE_BLOCK_DIM) {
         for (int i = n - 1; i >= 0; --i) {
-            T s = buffer2[k][i];
+            T s = W1[i * n + k];
             for (int j = i + 1; j < n; ++j)
-                s -= Out.data(idx(j, i)) * buffer1[j][k];
+                s -= Out.data(idx(j, i)) * W1[j * n + k];
             T diag = Out.data(tile_coord(i, i));
-            buffer1[i][k] = (diag != T(0.0f)) ? s / diag : s;
+            W1[i * n + k] = (diag != T(0.0f)) ? s / diag : s;
         }
     }
+    WP_TILE_SYNC();
 
-    // Accumulate B into adj_A.grad (upper or lower triangle only).
-    // Diagonal halved because B = A_bar + A_bar^T double-counts it.
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j <= i; ++j) {
-            T scale = (i == j) ? T(0.5) : T(1);
-            adj_A.grad(idx(i, j)) += scale * buffer1[i][j];
+    // Phase 6: accumulate W1 into adj_A.grad on the stored triangle.
+    // Diagonal halved because B = A_bar + A_bar^T double-counts it. Writes via
+    // tile_coord(row, col) directly (no Upper-swap) -- W1 and adj_A share the
+    // same layout, so the gradient lands at the correct indices for both
+    // Upper and Lower (the in_triangle predicate selects which half is
+    // populated).
+    for (int ij = WP_TILE_THREAD_IDX; ij < n * n; ij += WP_TILE_BLOCK_DIM) {
+        int row = ij / n;
+        int col = ij % n;
+        bool in_triangle = Upper ? (row <= col) : (row >= col);
+        if (in_triangle) {
+            T scale = (row == col) ? T(0.5) : T(1);
+            adj_A.grad(tile_coord(row, col)) += scale * W1[row * n + col];
         }
+    }
+    WP_TILE_SYNC();
 }
 
 
@@ -260,16 +313,16 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
-    // CPU / GPU-without-mathdx: single-threaded solve
-    if (WP_TILE_THREAD_IDX == 0)
-        partitioned_gemm::scalar_cholesky_adj_impl<Upper>(adj_A, adj_Out, Out);
+    // CPU (block_dim == 1) or GPU-without-mathdx: cooperative scalar adjoint.
+    partitioned_gemm::cooperative_scalar_cholesky_adj<Upper>(adj_A, adj_Out, Out);
 
 #else
 
     if constexpr (wp_is_null_func<BkwdGemm>::value) {
-        // GPU with mathdx but no backward LTOs: scalar fallback
-        if (WP_TILE_THREAD_IDX == 0)
-            partitioned_gemm::scalar_cholesky_adj_impl<Upper>(adj_A, adj_Out, Out);
+        // GPU with mathdx build but backward LTOs absent (e.g. enable_backward
+        // disabled, or enable_mathdx_cholesky=False at the module level):
+        // cooperative scalar adjoint.
+        partitioned_gemm::cooperative_scalar_cholesky_adj<Upper>(adj_A, adj_Out, Out);
     } else {
         __shared__ T W1[n * n];
         __shared__ T W2[n * n];

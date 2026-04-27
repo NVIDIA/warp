@@ -28,7 +28,7 @@ wp.init()
 # Disable mathdx Cholesky for all kernels defined in this module. trsm stays
 # enabled (defaults to True) so tile_cholesky_solve in this file runs through
 # libmathdx; trsm coverage is in test_tile_solve_no_mathdx.py.
-wp.set_module_options({"enable_mathdx_cholesky": False, "enable_backward": False})
+wp.set_module_options({"enable_mathdx_cholesky": False})
 
 TILE_DIM = 32
 N = 8
@@ -39,14 +39,14 @@ N = 8
 # -----------------------------------------------------------------------------
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_cholesky_lower_kernel(gA: wp.array2d(dtype=wp.float64), gL: wp.array2d(dtype=wp.float64)):
     A = wp.tile_load(gA, shape=(N, N))
     L = wp.tile_cholesky(A)
     wp.tile_store(gL, L)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_cholesky_lower_inplace_kernel(gA: wp.array2d(dtype=wp.float64)):
     A = wp.tile_load(gA, shape=(N, N))
     wp.tile_cholesky_inplace(A)
@@ -58,14 +58,14 @@ def tile_cholesky_lower_inplace_kernel(gA: wp.array2d(dtype=wp.float64)):
 # -----------------------------------------------------------------------------
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_cholesky_upper_kernel(gA: wp.array2d(dtype=wp.float64), gU: wp.array2d(dtype=wp.float64)):
     A = wp.tile_load(gA, shape=(N, N))
     U = wp.tile_cholesky(A, fill_mode="upper")
     wp.tile_store(gU, U)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_cholesky_upper_inplace_kernel(gA: wp.array2d(dtype=wp.float64)):
     A = wp.tile_load(gA, shape=(N, N))
     wp.tile_cholesky_inplace(A, fill_mode="upper")
@@ -134,6 +134,90 @@ def test_cholesky_upper_inplace(test, device):
 
 
 # -----------------------------------------------------------------------------
+# Cholesky adjoint -- exercises cooperative_scalar_cholesky_adj via the
+# `enable_mathdx_cholesky=False` module setting. Kernels here are the same
+# shape as the lower/upper backward kernels in test_tile_cholesky.py.
+# -----------------------------------------------------------------------------
+
+
+@wp.kernel
+def tile_cholesky_lower_backward_kernel(gA: wp.array2d(dtype=wp.float64), gL: wp.array2d(dtype=wp.float64)):
+    A = wp.tile_load(gA, shape=(N, N), storage="shared")
+    L = wp.tile_cholesky(A)
+    wp.tile_store(gL, L)
+
+
+@wp.kernel
+def tile_cholesky_upper_backward_kernel(gA: wp.array2d(dtype=wp.float64), gU: wp.array2d(dtype=wp.float64)):
+    A = wp.tile_load(gA, shape=(N, N), storage="shared")
+    U = wp.tile_cholesky(A, fill_mode="upper")
+    wp.tile_store(gU, U)
+
+
+def _cholesky_adjoint_numpy_lower(L, adj_L):
+    P = L.T @ adj_L
+    P = np.tril(P)
+    P[np.diag_indices_from(P)] *= 0.5
+    S = P + P.T
+    X = np.linalg.solve(L.T, S)
+    B = np.linalg.solve(L.T, X.T)
+    grad_A = np.tril(B)
+    grad_A[np.diag_indices_from(grad_A)] *= 0.5
+    return grad_A
+
+
+def _cholesky_adjoint_numpy_upper(U, adj_U):
+    P = adj_U @ U.T
+    P = np.triu(P)
+    P[np.diag_indices_from(P)] *= 0.5
+    S = P + P.T
+    X = np.linalg.solve(U, S)
+    B = np.linalg.solve(U, X.T)
+    grad_A = np.triu(B)
+    grad_A[np.diag_indices_from(grad_A)] *= 0.5
+    return grad_A
+
+
+def test_cholesky_lower_backward(test, device):
+    A_np, L_ref = _spd(N, seed=20)
+    rng = np.random.default_rng(21)
+    adj_L = rng.standard_normal((N, N))
+
+    A = wp.array(A_np, dtype=wp.float64, requires_grad=True, device=device)
+    L = wp.zeros((N, N), dtype=wp.float64, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(tile_cholesky_lower_backward_kernel, dim=[1], inputs=[A, L], block_dim=TILE_DIM, device=device)
+    tape.backward(grads={L: wp.array(adj_L, dtype=wp.float64, device=device)})
+
+    grad_A = A.grad.numpy()
+    grad_A_ref = _cholesky_adjoint_numpy_lower(L_ref, adj_L)
+    np.testing.assert_allclose(L.numpy(), L_ref, atol=1e-10)
+    np.testing.assert_allclose(np.tril(grad_A), grad_A_ref, atol=1e-8)
+    np.testing.assert_allclose(np.triu(grad_A, k=1), 0.0, atol=0.0)
+
+
+def test_cholesky_upper_backward(test, device):
+    A_np, L_ref = _spd(N, seed=22)
+    U_ref = L_ref.T
+    rng = np.random.default_rng(23)
+    adj_U = rng.standard_normal((N, N))
+
+    A = wp.array(A_np, dtype=wp.float64, requires_grad=True, device=device)
+    U = wp.zeros((N, N), dtype=wp.float64, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(tile_cholesky_upper_backward_kernel, dim=[1], inputs=[A, U], block_dim=TILE_DIM, device=device)
+    tape.backward(grads={U: wp.array(adj_U, dtype=wp.float64, device=device)})
+
+    grad_A = A.grad.numpy()
+    grad_A_ref = _cholesky_adjoint_numpy_upper(U_ref, adj_U)
+    np.testing.assert_allclose(U.numpy(), U_ref, atol=1e-10)
+    np.testing.assert_allclose(np.triu(grad_A), grad_A_ref, atol=1e-8)
+    np.testing.assert_allclose(np.tril(grad_A, k=-1), 0.0, atol=0.0)
+
+
+# -----------------------------------------------------------------------------
 # Suite registration
 # -----------------------------------------------------------------------------
 
@@ -149,6 +233,8 @@ for name, func in [
     ("test_cholesky_lower_inplace", test_cholesky_lower_inplace),
     ("test_cholesky_upper", test_cholesky_upper),
     ("test_cholesky_upper_inplace", test_cholesky_upper_inplace),
+    ("test_cholesky_lower_backward", test_cholesky_lower_backward),
+    ("test_cholesky_upper_backward", test_cholesky_upper_backward),
 ]:
     add_function_test(TestTileCholeskyNoMathdx, name, func, devices=_devices, check_output=False)
 

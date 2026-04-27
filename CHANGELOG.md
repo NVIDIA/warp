@@ -73,6 +73,13 @@
   and loaded for execution from Python or standalone C++ via `capture_load()`. CPU graph
   capture supports replay through `capture_launch()`. Added `wp.handle` scalar type for mesh handle serialization
   ([GH-1349](https://github.com/NVIDIA/warp/issues/1349)).
+- Add cooperative GPU scalar fallbacks for `tile_cholesky`, `tile_cholesky_solve`,
+  `tile_lower_solve`, and `tile_upper_solve` (and their inplace variants), and for the
+  `tile_cholesky` adjoint, so they parallelise across `WP_TILE_BLOCK_DIM` threads when
+  libmathdx is unavailable or disabled.
+- Add `enable_mathdx_cholesky` and `enable_mathdx_trsm` config flags and module options
+  (parity with `enable_mathdx_gemm`). Setting either to `False` routes the relevant ops
+  through the cooperative scalar fallback.
 
 ### Removed
 
