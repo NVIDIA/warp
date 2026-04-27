@@ -13324,8 +13324,13 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_cholesky", True)
+    ):
+        # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
+        # branch via wp_is_null_func<Fwd>.
         if inplace:
             return ((0, a), [upper], [], 0)
         return ((0, 0, 0, a, out), [upper], [], 0)

@@ -2706,6 +2706,7 @@ inline CUDA_CALLABLE void adj_expect_near(
 #include "tile.h"
 #include "tile_matmul.h"
 #include "tile_solve.h"
+#include "tile_cholesky.h"
 #include "tile_reduce.h"
 #include "tile_scan.h"
 #include "tile_radix_sort.h"

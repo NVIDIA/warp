@@ -203,6 +203,18 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_trsm"`` module option.
 """
 
+enable_mathdx_cholesky: bool = True
+"""Use libmathdx (cuSolverDx) for tile_cholesky and its adjoint on GPU when
+available.
+
+When False, tile_cholesky and adj_tile_cholesky fall back to a cooperative
+shared-memory implementation that does not require libmathdx, at the cost of
+runtime performance.
+
+This setting can be overridden at the module level by setting the
+``"enable_mathdx_cholesky"`` module option.
+"""
+
 cpu_compiler_flags: str | None = None
 """Flags controlling CPU kernel compilation.
 
