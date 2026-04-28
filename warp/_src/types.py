@@ -976,7 +976,7 @@ def vector(length, dtype):
                     try:
                         for x in value:
                             converted.append(vec_t.scalar_import(x))
-                    except (TypeError, ctypes.ArgumentError):
+                    except ctypes.ArgumentError:
                         raise TypeError(
                             f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
                             f"but got `{type(x).__name__}` instead"
@@ -1301,7 +1301,7 @@ def matrix(shape, dtype):
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except (TypeError, ctypes.ArgumentError):
+                except ctypes.ArgumentError:
                     raise TypeError(
                         f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
                         f"but got `{type(x).__name__}` instead"
@@ -1338,7 +1338,7 @@ def matrix(shape, dtype):
                 try:
                     for x in v:
                         converted.append(mat_t.scalar_import(x))
-                except (TypeError, ctypes.ArgumentError):
+                except ctypes.ArgumentError:
                     raise TypeError(
                         f"Expected to assign a slice from a sequence of `{self._wp_scalar_type_.__name__}` values "
                         f"but got `{type(x).__name__}` instead"

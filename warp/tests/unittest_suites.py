@@ -158,7 +158,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     )
     from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_fast_math import TestFastMath
-    from warp.tests.test_fastcall import TestFastcall, TestFastcallAvailable
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
     from warp.tests.test_future_annotations import TestFutureAnnotations
@@ -272,8 +271,6 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestOptimExamples,
         TestFabricArray,
         TestFastMath,
-        TestFastcall,
-        TestFastcallAvailable,
         TestFemDiffusionExamples,
         TestFemExamples,
         TestFemField,
