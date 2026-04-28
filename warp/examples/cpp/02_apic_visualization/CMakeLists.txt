@@ -22,6 +22,42 @@ enable_testing()
 # Find CUDA
 find_package(CUDAToolkit REQUIRED)
 
+# Find Warp native directory
+# Default: assume repository checkout (examples are in warp/examples/cpp/)
+if(NOT DEFINED WARP_NATIVE_DIR)
+    set(WARP_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../native")
+endif()
+
+# Resolve to absolute path and verify
+get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
+if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
+    message(FATAL_ERROR
+        "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
+        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
+endif()
+
+# Find Warp library
+# Default: look in warp/bin directory (repository structure)
+if(NOT DEFINED WARP_BIN_DIR)
+    set(WARP_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin")
+endif()
+get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
+
+# Try to find warp library
+find_library(WARP_LIB
+    NAMES warp warp.so warp.dll
+    HINTS ${WARP_BIN_ABS}
+    PATHS ENV WARP_PATH
+    PATH_SUFFIXES bin lib
+)
+
+if(NOT WARP_LIB)
+    message(FATAL_ERROR
+        "Could not find Warp library (warp.dll / warp.so / libwarp.dylib)\n"
+        "Hints searched: ${WARP_BIN_ABS}\n"
+        "Set WARP_BIN_DIR to the directory containing the warp library")
+endif()
+
 # Find OpenGL (optional — skip this example on headless CI systems)
 find_package(OpenGL QUIET)
 if(NOT OPENGL_FOUND)
@@ -60,42 +96,6 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/wave_sim.wrp")
         "  python capture_wave.py\n"
         "or:\n"
         "  uv run capture_wave.py")
-endif()
-
-# Find Warp native directory
-# Default: assume repository checkout (examples are in warp/examples/cpp/)
-if(NOT DEFINED WARP_NATIVE_DIR)
-    set(WARP_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../native")
-endif()
-
-# Resolve to absolute path and verify
-get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
-if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
-    message(FATAL_ERROR
-        "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
-        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
-endif()
-
-# Find Warp library
-# Default: look in warp/bin directory (repository structure)
-if(NOT DEFINED WARP_BIN_DIR)
-    set(WARP_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin")
-endif()
-get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
-
-# Try to find warp library
-find_library(WARP_LIB
-    NAMES warp warp.dll
-    HINTS ${WARP_BIN_ABS}
-    PATHS ENV WARP_PATH
-    PATH_SUFFIXES bin lib
-)
-
-if(NOT WARP_LIB)
-    message(FATAL_ERROR
-        "Could not find Warp library (warp.dll / libwarp.so)\n"
-        "Hints searched: ${WARP_BIN_ABS}\n"
-        "Set WARP_BIN_DIR to the directory containing the warp library")
 endif()
 
 # Add executable

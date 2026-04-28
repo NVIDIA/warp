@@ -51,7 +51,7 @@ CXX_FLAGS := -std=c++17 \
 
 # Platform-specific linker flags
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS := -ldl -lGL -lglfw -L$(WARP_LIB) -lwarp -Wl,-rpath,$(WARP_LIB)
+    LDFLAGS := -ldl -lGL -lglfw -L$(WARP_LIB) -l:warp.so -Wl,-rpath,$(WARP_LIB)
 else ifeq ($(UNAME_S),Darwin)
     LDFLAGS := -ldl -framework OpenGL -lglfw -L$(WARP_LIB) -lwarp -Wl,-rpath,$(WARP_LIB)
 else

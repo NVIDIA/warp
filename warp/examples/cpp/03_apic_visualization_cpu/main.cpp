@@ -261,7 +261,7 @@ bool load_warp_clang()
     g_wp_load_obj = (wp_load_obj_fn)GetProcAddress(lib, "wp_load_obj");
     g_wp_lookup = (wp_lookup_fn)GetProcAddress(lib, "wp_lookup");
 #else
-    const char* lib_name = "libwarp-clang.so";
+    const char* lib_name = "warp-clang.so";
 #ifdef __APPLE__
     lib_name = "libwarp-clang.dylib";
 #endif

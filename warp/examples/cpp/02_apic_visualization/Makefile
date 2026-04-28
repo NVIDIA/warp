@@ -55,7 +55,7 @@ NVCC_FLAGS := -std=c++17 \
 
 # Platform-specific linker flags
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS := -lcuda -lcudart -lGL -lglfw -L$(WARP_LIB) -lwarp -Wl,-rpath,$(WARP_LIB)
+    LDFLAGS := -lcuda -lcudart -lGL -lglfw -L$(WARP_LIB) -l:warp.so -Wl,-rpath,$(WARP_LIB)
 else ifeq ($(UNAME_S),Darwin)
     $(error macOS is not supported - CUDA not available on macOS)
 else

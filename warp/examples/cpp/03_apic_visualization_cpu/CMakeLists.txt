@@ -6,6 +6,38 @@ project(apic_visualization_cpu CXX)
 
 enable_testing()
 
+# Find Warp native directory
+if(NOT DEFINED WARP_NATIVE_DIR)
+    set(WARP_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../native")
+endif()
+
+get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
+if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
+    message(FATAL_ERROR
+        "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
+        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
+endif()
+
+# Find Warp library
+if(NOT DEFINED WARP_BIN_DIR)
+    set(WARP_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin")
+endif()
+get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
+
+find_library(WARP_LIB
+    NAMES warp warp.so warp.dll
+    HINTS ${WARP_BIN_ABS}
+    PATHS ENV WARP_PATH
+    PATH_SUFFIXES bin lib
+)
+
+if(NOT WARP_LIB)
+    message(FATAL_ERROR
+        "Could not find Warp library (warp.dll / warp.so / libwarp.dylib)\n"
+        "Hints searched: ${WARP_BIN_ABS}\n"
+        "Set WARP_BIN_DIR to the directory containing the warp library")
+endif()
+
 # Find OpenGL (optional — skip this example on headless CI systems)
 find_package(OpenGL QUIET)
 if(NOT OPENGL_FOUND)
@@ -44,38 +76,6 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/wave_sim.wrp")
         "  python capture_wave.py\n"
         "or:\n"
         "  uv run capture_wave.py")
-endif()
-
-# Find Warp native directory
-if(NOT DEFINED WARP_NATIVE_DIR)
-    set(WARP_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../native")
-endif()
-
-get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
-if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
-    message(FATAL_ERROR
-        "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
-        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
-endif()
-
-# Find Warp library
-if(NOT DEFINED WARP_BIN_DIR)
-    set(WARP_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin")
-endif()
-get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
-
-find_library(WARP_LIB
-    NAMES warp warp.dll
-    HINTS ${WARP_BIN_ABS}
-    PATHS ENV WARP_PATH
-    PATH_SUFFIXES bin lib
-)
-
-if(NOT WARP_LIB)
-    message(FATAL_ERROR
-        "Could not find Warp library (warp.dll / libwarp.so)\n"
-        "Hints searched: ${WARP_BIN_ABS}\n"
-        "Set WARP_BIN_DIR to the directory containing the warp library")
 endif()
 
 # Add executable (pure C++ — no CUDA required)
