@@ -730,7 +730,7 @@ linux-x86_64 asv:
 # Ensure cpp examples compile and run
 linux-x86_64 cpp examples test:
   stage: test
-  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:12.9.1-ubuntu24.04
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:12.9.1-ubuntu24.04-gl
   needs: [linux-x86_64 build]
   extends:
     - .ipp_lnx_x86_64_gpu

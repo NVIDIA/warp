@@ -108,6 +108,15 @@ ENV PATH=/usr/local/cuda/bin:${PATH} \
 # Verify installations
 RUN nvcc --version && uv --version && cmake --version
 
+# Build dependencies for OpenGL/GLFW C++ examples
+# (02_apic_visualization, 03_apic_visualization_cpu). GLFW is fetched and built
+# from source via CMake FetchContent and needs X11 + GL development headers.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libgl1-mesa-dev \
+        xorg-dev \
+        libxkbcommon-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 
 # Metadata labels
