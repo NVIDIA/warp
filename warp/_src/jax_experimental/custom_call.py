@@ -211,6 +211,7 @@ def _create_jax_warp_primitive():
     def base_type_to_jax_ir(warp_dtype):
         warp_to_jax_dict = {
             wp.float16: ir.F16Type.get(),
+            wp.bfloat16: ir.BF16Type.get(),
             wp.float32: ir.F32Type.get(),
             wp.float64: ir.F64Type.get(),
             wp.int8: ir.IntegerType.get_signless(8),
@@ -232,6 +233,7 @@ def _create_jax_warp_primitive():
     def base_type_is_compatible(warp_type, jax_ir_type):
         jax_ir_to_warp = {
             "f16": wp.float16,
+            "bf16": wp.bfloat16,
             "f32": wp.float32,
             "f64": wp.float64,
             "i8": wp.int8,
