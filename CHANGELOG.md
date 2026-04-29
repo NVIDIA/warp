@@ -148,6 +148,8 @@
   assigned later in the enclosing scope ([GH-913](https://github.com/NVIDIA/warp/issues/913)).
 - Fix wheels missing the bundled `libdevice.10.bc`, which caused all CUDA kernels compiled via the
   Clang/LLVM toolchain (`llvm_cuda=True`) to fail when no system CUDA toolkit was available.
+- Fix a rare data corruption in peer-to-peer `wp.copy()` with non-contiguous sources
+  ([GH-1384](https://github.com/NVIDIA/warp/issues/1384)).
 
 ### Documentation
 

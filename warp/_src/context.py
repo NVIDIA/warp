@@ -10144,6 +10144,17 @@ def copy(
                     result = runtime.core.wp_memcpy_p2p(
                         dest.device.context, dst_ptr, src.device.context, src_ptr, bytes_to_copy, stream.cuda_stream
                     )
+                    # Order src.device.stream after the peer copy.  If src is a staging buffer
+                    # created above via src.contiguous(), its Python reference dies when this
+                    # function returns, triggering cudaFreeAsync on src.device's null stream.
+                    # That free is only ordered against src.device's streams, not against the
+                    # peer DMA pending on `stream` (the dest device's stream), so without this
+                    # barrier the src mempool can recycle the buffer while the DMA is still
+                    # reading it.  The race is easiest to hit when P2P is not available, because
+                    # cuMemcpyPeerAsync then stages through host memory and widens the window
+                    # between enqueue and the device-side read.
+                    if stream != src.device.stream:
+                        src.device.stream.wait_stream(stream)
             else:
                 result = runtime.core.wp_memcpy_h2d(
                     dest.device.context, dst_ptr, src_ptr, bytes_to_copy, stream.cuda_stream
