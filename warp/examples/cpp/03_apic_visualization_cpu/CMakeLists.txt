@@ -38,6 +38,16 @@ if(NOT WARP_LIB)
         "Set WARP_BIN_DIR to the directory containing the warp library")
 endif()
 
+# Wrap the resolved library path in an IMPORTED target so CMake passes the
+# full path to the linker verbatim. Otherwise CMake converts an absolute
+# path like /path/to/warp.so to "-L/path/to -lwarp", which fails on Linux
+# because the library lacks the conventional lib<name>.so prefix.
+add_library(warp::runtime UNKNOWN IMPORTED)
+set_target_properties(warp::runtime PROPERTIES
+    IMPORTED_LOCATION "${WARP_LIB}"
+    IMPORTED_NO_SONAME TRUE
+)
+
 # Find OpenGL (optional — skip this example on headless CI systems)
 find_package(OpenGL QUIET)
 if(NOT OPENGL_FOUND)
@@ -91,7 +101,7 @@ target_link_libraries(03_apic_visualization_cpu
     OpenGL::GL
     glfw
     glad
-    ${WARP_LIB}
+    warp::runtime
 )
 
 # On Windows, copy the warp DLLs to the output directory
@@ -110,3 +120,9 @@ endif()
 
 message(STATUS "Warp include: ${WARP_INCLUDE}")
 message(STATUS "Warp library: ${WARP_LIB}")
+
+# Add headless smoke test (uses --smoke to skip GUI).
+add_test(NAME apic_visualization_cpu_smoke
+    COMMAND $<TARGET_FILE:03_apic_visualization_cpu> --smoke
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+set_tests_properties(apic_visualization_cpu_smoke PROPERTIES LABELS "cpp_example")

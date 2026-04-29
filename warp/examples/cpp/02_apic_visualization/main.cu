@@ -273,9 +273,12 @@ int main(int argc, char** argv)
 
     // Parse command line
     const char* graph_path = "generated/wave_sim";
+    bool smoke = false;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--graph") == 0 && i + 1 < argc) {
             graph_path = argv[++i];
+        } else if (strcmp(argv[i], "--smoke") == 0) {
+            smoke = true;
         }
     }
 
@@ -313,6 +316,26 @@ int main(int argc, char** argv)
         const char* name = wp_apic_get_param_name(graph, i);
         size_t size = wp_apic_get_param_size(graph, name);
         printf("  [%d] %s: %zu bytes\n", i, name, size);
+    }
+
+    if (smoke) {
+        cudaGraphExec_t exec = (cudaGraphExec_t)wp_apic_get_cuda_graph_exec(graph);
+        if (!exec) {
+            fprintf(stderr, "Failed to get graph executable: %s\n", wp_get_error_string());
+            wp_apic_destroy_graph(graph);
+            return 1;
+        }
+        cudaStream_t stream;
+        CHECK_CUDA(cudaStreamCreate(&stream));
+        const int kSmokeIterations = 10;
+        for (int i = 0; i < kSmokeIterations; i++) {
+            CHECK_CUDA(cudaGraphLaunch(exec, stream));
+        }
+        CHECK_CUDA(cudaStreamSynchronize(stream));
+        CHECK_CUDA(cudaStreamDestroy(stream));
+        printf("smoke OK (%d graph launches)\n", kSmokeIterations);
+        wp_apic_destroy_graph(graph);
+        return 0;
     }
 
     // Initialize GLFW

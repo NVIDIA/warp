@@ -373,9 +373,12 @@ int main(int argc, char** argv)
     printf("=== APIC Wave Simulation Example (CPU) ===\n\n");
 
     const char* graph_path = "generated/wave_sim";
+    bool smoke = false;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--graph") == 0 && i + 1 < argc)
             graph_path = argv[++i];
+        else if (strcmp(argv[i], "--smoke") == 0)
+            smoke = true;
     }
 
     // Initialize Warp runtime
@@ -413,6 +416,20 @@ int main(int argc, char** argv)
         const char* name = wp_apic_get_param_name(graph, i);
         size_t size = wp_apic_get_param_size(graph, name);
         printf("  [%d] %s: %zu bytes\n", i, name, size);
+    }
+
+    if (smoke) {
+        const int kSmokeIterations = 10;
+        for (int i = 0; i < kSmokeIterations; i++) {
+            if (!wp_apic_cpu_replay_graph(graph)) {
+                fprintf(stderr, "CPU graph replay failed at iteration %d\n", i);
+                wp_apic_destroy_graph(graph);
+                return 1;
+            }
+        }
+        printf("smoke OK (%d replay iterations)\n", kSmokeIterations);
+        wp_apic_destroy_graph(graph);
+        return 0;
     }
 
     // Initialize GLFW
