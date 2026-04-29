@@ -2,9 +2,51 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.20)
-project(apic_visualization_cpu CXX)
+project(apic_visualization_cpu CXX C)
 
 enable_testing()
+
+# Find Warp native directory
+if(NOT DEFINED WARP_NATIVE_DIR)
+    set(WARP_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../native")
+endif()
+
+get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
+if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
+    message(FATAL_ERROR
+        "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
+        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
+endif()
+
+# Find Warp library
+if(NOT DEFINED WARP_BIN_DIR)
+    set(WARP_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin")
+endif()
+get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
+
+find_library(WARP_LIB
+    NAMES warp warp.so warp.dll
+    HINTS ${WARP_BIN_ABS}
+    PATHS ENV WARP_PATH
+    PATH_SUFFIXES bin lib
+)
+
+if(NOT WARP_LIB)
+    message(FATAL_ERROR
+        "Could not find Warp library (warp.dll / warp.so / libwarp.dylib)\n"
+        "Hints searched: ${WARP_BIN_ABS}\n"
+        "Set WARP_BIN_DIR to the directory containing the warp library")
+endif()
+
+# Wrap the resolved library path in an IMPORTED target so CMake passes the
+# full path to the linker verbatim. Otherwise CMake converts an absolute
+# path like /path/to/warp.so to "-L/path/to -lwarp", which fails on Linux
+# because the library lacks the conventional lib<name>.so prefix.
+add_library(warp::runtime UNKNOWN IMPORTED)
+set_target_properties(warp::runtime PROPERTIES
+    IMPORTED_LOCATION "${WARP_LIB}"
+    IMPORTED_NO_SONAME TRUE
+)
 
 # Find OpenGL (optional — skip this example on headless CI systems)
 find_package(OpenGL QUIET)
@@ -28,13 +70,20 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     glad
     GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-    GIT_TAG        v0.1.36
+    GIT_TAG        v2.0.8
+    SOURCE_SUBDIR  cmake
 )
-set(GLAD_PROFILE "core" CACHE STRING "" FORCE)
-set(GLAD_API "gl=3.3" CACHE STRING "" FORCE)
-set(GLAD_GENERATOR "c" CACHE STRING "" FORCE)
 
 FetchContent_MakeAvailable(glfw glad)
+
+# glad v2 doesn't create a target on its own — glad_add_library generates
+# the loader sources for the requested API. REPRODUCIBLE uses the GL spec
+# bundled with glad instead of fetching it from Khronos at build time.
+# The target name is shared across examples so the guard avoids a collision
+# when multiple examples are configured under the top-level CMakeLists.
+if(NOT TARGET glad)
+    glad_add_library(glad STATIC REPRODUCIBLE API gl:core=3.3)
+endif()
 
 # Check that the APIC graph exists
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/wave_sim.wrp")
@@ -44,38 +93,6 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated/wave_sim.wrp")
         "  python capture_wave.py\n"
         "or:\n"
         "  uv run capture_wave.py")
-endif()
-
-# Find Warp native directory
-if(NOT DEFINED WARP_NATIVE_DIR)
-    set(WARP_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../native")
-endif()
-
-get_filename_component(WARP_INCLUDE "${WARP_NATIVE_DIR}" ABSOLUTE)
-if(NOT EXISTS "${WARP_INCLUDE}/builtin.h")
-    message(FATAL_ERROR
-        "Could not find Warp native directory at: ${WARP_INCLUDE}\n"
-        "Set WARP_NATIVE_DIR to override (e.g., cmake -DWARP_NATIVE_DIR=/path/to/warp/native)")
-endif()
-
-# Find Warp library
-if(NOT DEFINED WARP_BIN_DIR)
-    set(WARP_BIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../bin")
-endif()
-get_filename_component(WARP_BIN_ABS "${WARP_BIN_DIR}" ABSOLUTE)
-
-find_library(WARP_LIB
-    NAMES warp warp.dll
-    HINTS ${WARP_BIN_ABS}
-    PATHS ENV WARP_PATH
-    PATH_SUFFIXES bin lib
-)
-
-if(NOT WARP_LIB)
-    message(FATAL_ERROR
-        "Could not find Warp library (warp.dll / libwarp.so)\n"
-        "Hints searched: ${WARP_BIN_ABS}\n"
-        "Set WARP_BIN_DIR to the directory containing the warp library")
 endif()
 
 # Add executable (pure C++ — no CUDA required)
@@ -91,7 +108,7 @@ target_link_libraries(03_apic_visualization_cpu
     OpenGL::GL
     glfw
     glad
-    ${WARP_LIB}
+    warp::runtime
 )
 
 # On Windows, copy the warp DLLs to the output directory
@@ -110,3 +127,14 @@ endif()
 
 message(STATUS "Warp include: ${WARP_INCLUDE}")
 message(STATUS "Warp library: ${WARP_LIB}")
+
+# Add headless smoke test (uses --smoke to skip GUI).
+# PASS_REGULAR_EXPRESSION asserts the iteration count actually ran — guards against
+# a future regression where the smoke branch silently exits 0 without replaying.
+add_test(NAME apic_visualization_cpu_smoke
+    COMMAND $<TARGET_FILE:03_apic_visualization_cpu> --smoke
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+set_tests_properties(apic_visualization_cpu_smoke PROPERTIES
+    LABELS "cpp_example"
+    PASS_REGULAR_EXPRESSION "smoke OK \\(10 replay iterations\\)"
+    TIMEOUT 60)

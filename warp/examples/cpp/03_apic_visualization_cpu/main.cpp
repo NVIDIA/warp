@@ -21,7 +21,7 @@
  */
 
 // clang-format off
-#include <glad/glad.h>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
 #include "apic.h"  // APIC graph loading and execution
@@ -261,7 +261,7 @@ bool load_warp_clang()
     g_wp_load_obj = (wp_load_obj_fn)GetProcAddress(lib, "wp_load_obj");
     g_wp_lookup = (wp_lookup_fn)GetProcAddress(lib, "wp_lookup");
 #else
-    const char* lib_name = "libwarp-clang.so";
+    const char* lib_name = "warp-clang.so";
 #ifdef __APPLE__
     lib_name = "libwarp-clang.dylib";
 #endif
@@ -373,9 +373,12 @@ int main(int argc, char** argv)
     printf("=== APIC Wave Simulation Example (CPU) ===\n\n");
 
     const char* graph_path = "generated/wave_sim";
+    bool smoke = false;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--graph") == 0 && i + 1 < argc)
             graph_path = argv[++i];
+        else if (strcmp(argv[i], "--smoke") == 0)
+            smoke = true;
     }
 
     // Initialize Warp runtime
@@ -415,6 +418,20 @@ int main(int argc, char** argv)
         printf("  [%d] %s: %zu bytes\n", i, name, size);
     }
 
+    if (smoke) {
+        const int kSmokeIterations = 10;
+        for (int i = 0; i < kSmokeIterations; i++) {
+            if (!wp_apic_cpu_replay_graph(graph)) {
+                fprintf(stderr, "CPU graph replay failed at iteration %d\n", i);
+                wp_apic_destroy_graph(graph);
+                return 1;
+            }
+        }
+        printf("smoke OK (%d replay iterations)\n", kSmokeIterations);
+        wp_apic_destroy_graph(graph);
+        return 0;
+    }
+
     // Initialize GLFW
     printf("\nInitializing GLFW/OpenGL...\n");
     if (!glfwInit()) {
@@ -443,7 +460,7 @@ int main(int argc, char** argv)
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGL(glfwGetProcAddress)) {
         fprintf(stderr, "Failed to initialize GLAD\n");
         glfwTerminate();
         return 1;
