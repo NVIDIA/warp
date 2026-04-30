@@ -416,6 +416,7 @@ CUDA Graph Management
    :nosignatures:
    :toctree: _generated
 
+   Graph
    ScopedCapture
    capture_begin
    capture_debug_dot_print

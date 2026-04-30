@@ -506,6 +506,39 @@ def test_save_load_alloc_only(test, device):
         np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) + 1.0)
 
 
+def test_get_param_ptr(test, device):
+    """get_param_ptr returns a non-zero int for a known name, None for an unknown
+    name, and raises RuntimeError on a non-loaded graph."""
+    n = 64
+    a = wp.array(np.ones(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "test_ptr")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+
+        loaded = wp.capture_load(path, device=device)
+
+        # Known name: should return a non-zero integer device pointer.
+        ptr = loaded.get_param_ptr("a")
+        test.assertIsInstance(ptr, int, "expected an integer device pointer")
+        test.assertNotEqual(ptr, 0, "expected a non-zero device pointer")
+
+        # Unknown name: should return None.
+        test.assertIsNone(loaded.get_param_ptr("nonexistent"))
+
+    # Non-loaded graph: should raise RuntimeError mentioning loaded APIC graphs.
+    with wp.ScopedCapture(device=device, force_module_load=False) as plain_capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 1.0], device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "loaded APIC"):
+        plain_capture.graph.get_param_ptr("a")
+
+
 devices = get_test_devices()
 
 add_function_test(TestApic, "test_save_apic_false_error", test_save_apic_false_error, devices=devices)
@@ -526,6 +559,7 @@ add_function_test(
     TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
 )  # CPU: wp_memtile_host not recorded
 add_function_test(TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices)
+add_function_test(TestApic, "test_get_param_ptr", test_get_param_ptr, devices=devices)
 
 
 if __name__ == "__main__":

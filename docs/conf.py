@@ -95,10 +95,10 @@ nitpick_ignore_regex = [
     (r"py:class", r"(warp|wp)\._src\..*"),
     # Ctypes-based geometric types that can't be documented as classes (vec*, mat*, quat, etc.)
     (r"py:class", r"(warp\.)?(vec\d*[ihfd]?|mat\d+[ihfd]?|quat[hfd]?|spatial_(vector|matrix)[hfd]?|transform[hfd]?)"),
-    # Type names used in FEM and internal annotations (e.g., Graph, Sample, Coords)
+    # Type names used in FEM and internal annotations (e.g., Sample, Coords)
     (
         r"py:class",
-        r"(Graph|Struct|BlockType|Rows|Cols|Sample|Coords|ElementIndex|"
+        r"(Struct|BlockType|Rows|Cols|Sample|Coords|ElementIndex|"
         r"ElementArg|ElementEvalArg|ElementIndexArg|TopologyArg|EvalArg|"
         r"BsrMatrixOrExpression|_Var|_FuncParams|FunctionMetadata|KernelHooks|"
         r"launch_bounds_t|FieldRestriction|scalar)",
