@@ -1309,6 +1309,10 @@ Graphs
 Launching kernels from Python introduces significant additional overhead compared to C++ or native programs.
 To address this, Warp exposes the concept of `CUDA graphs <https://developer.nvidia.com/blog/cuda-graphs/>`_
 to allow recording large batches of kernels and replaying them with very little CPU overhead.
+The same :func:`wp.capture_begin() <warp.capture_begin>` / :func:`wp.capture_end() <warp.capture_end>` /
+:func:`wp.capture_launch() <warp.capture_launch>` API also supports recording on CPU devices and
+serializing captured graphs to a file for later replay from Python or a standalone C++ program (see
+:ref:`cpu_graphs` and :ref:`apic_save_load` below).
 
 To record a series of kernel launches use the :func:`wp.capture_begin() <warp.capture_begin>` and
 :func:`wp.capture_end() <warp.capture_end>` API as follows:
@@ -1569,6 +1573,317 @@ The ``while_body`` callback will be executed as long as the condition is non-zer
 
 .. note::
     :func:`wp.capture_if <warp.capture_if>` and :func:`wp.capture_while <warp.capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
+
+
+.. _cpu_graphs:
+
+CPU Graphs
+##########
+
+.. admonition:: Experimental
+
+    CPU graph capture is an early MVP. The recorded operation set, file format, and
+    Python and C API are subject to change without a formal deprecation cycle.
+
+Graph capture works on CPU devices using exactly the same API as the CUDA path.
+Operations recorded between :func:`wp.capture_begin() <warp.capture_begin>` and
+:func:`wp.capture_end() <warp.capture_end>` are deferred until
+:func:`wp.capture_launch() <warp.capture_launch>` is called, at which point Warp
+replays them in a tight native loop. This eliminates the per-kernel Python
+dispatch overhead that otherwise dominates CPU launches:
+
+.. code:: python
+
+    import warp as wp
+
+    a = wp.zeros(N, dtype=float, device="cpu")
+    b = wp.zeros(N, dtype=float, device="cpu")
+
+    with wp.ScopedCapture(device="cpu") as capture:
+        for _ in range(steps):
+            wp.launch(my_kernel, dim=N, inputs=[a, b], device="cpu")
+
+    # Replay the entire batch with one native call into Warp
+    wp.capture_launch(capture.graph)
+
+The set of operations currently recorded on CPU mirrors the CUDA MVP: kernel
+launches (:func:`wp.launch <warp.launch>`, :func:`wp.launch_tiled <warp.launch_tiled>`),
+memory copies (:func:`wp.copy <warp.copy>`), and zero-initialization
+(:meth:`array.zero_() <warp.array.zero_>`). Other operations are not yet
+recorded.
+
+Current limitations of CPU graph capture:
+
+- :meth:`array.fill_() <warp.array.fill_>` is not recorded on CPU and is silently
+  dropped from the captured graph. Use :meth:`array.zero_() <warp.array.zero_>` or
+  a kernel launch instead.
+- Conditional graph nodes (:func:`wp.capture_if <warp.capture_if>`,
+  :func:`wp.capture_while <warp.capture_while>`) are CUDA-only and have no CPU
+  graph counterpart. They still work outside graph capture on CPU, evaluating the
+  condition immediately.
+- Nested captures are rejected on both CPU and CUDA — only one capture may be
+  active at a time on a given thread.
+- Arrays used during capture must remain alive for the lifetime of the captured
+  graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
+  CUDA capture defers frees automatically while a capture is in progress, but the
+  CPU path does not.
+
+
+.. _apic_save_load:
+
+Saving and Loading Graphs (APIC)
+################################
+
+.. admonition:: Experimental
+
+    APIC (API Capture) is an early MVP. The ``.wrp`` file format, the Python
+    :func:`capture_save <warp.capture_save>` / :func:`capture_load <warp.capture_load>`
+    surface, the C ``wp_apic_*`` API, and the recorded operation set are all
+    subject to change without a formal deprecation cycle. ``.wrp`` files written
+    by one version of Warp may not be loadable by another.
+
+APIC lets you serialize a captured graph to disk and load it back later — either
+from another Python program, or from a standalone C++ application that links only
+against the Warp native library. This is useful for shipping a precomputed
+simulation pipeline as part of a binary, or for amortizing capture cost across
+many runs.
+
+Capturing for serialization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To make a captured graph eligible for saving, pass ``apic=True`` to
+:func:`wp.capture_begin <warp.capture_begin>` (or :class:`wp.ScopedCapture <warp.ScopedCapture>`).
+On CUDA this enables APIC byte-stream recording alongside the native CUDA graph
+capture; on CPU the byte stream is always recorded (it is the only replay
+mechanism), and ``apic=True`` simply unlocks
+:func:`capture_save <warp.capture_save>`.
+
+.. code:: python
+
+    import warp as wp
+
+    positions = wp.zeros(N, dtype=wp.vec3, device="cuda")
+    results = wp.zeros(N, dtype=wp.vec3, device="cuda")
+
+    with wp.ScopedCapture(device="cuda", apic=True) as capture:
+        for _ in range(steps):
+            wp.launch(integrate, dim=N, inputs=[positions, results], device="cuda")
+
+    wp.capture_save(
+        capture.graph,
+        "simulation",
+        inputs={"positions": positions},
+        outputs={"results": results},
+    )
+
+This writes:
+
+- ``simulation.wrp`` — a binary file containing the recorded operation stream,
+  memory region snapshots, kernel and module metadata, and named bindings.
+- ``simulation_modules/`` — a directory containing the compiled kernel binaries
+  (``.cubin`` / ``.ptx`` for CUDA, ``.o`` for CPU) referenced by the operation
+  stream.
+
+The ``inputs`` and ``outputs`` arguments associate human-readable names with
+memory regions of the captured arrays. Those names are used at load time to
+update inputs and read outputs from the loaded graph (see below). The same array
+may appear in both ``inputs`` and ``outputs`` (e.g. for in-place operations) —
+both names will refer to the same memory region.
+
+Loading and replaying
+^^^^^^^^^^^^^^^^^^^^^
+
+:func:`wp.capture_load <warp.capture_load>` reads a ``.wrp`` file back into a
+:class:`Graph` object that can be launched with
+:func:`wp.capture_launch <warp.capture_launch>`. Inputs are updated by copying
+data into named memory regions with ``set_param``; outputs are read back with
+``get_param``:
+
+.. code:: python
+
+    import warp as wp
+
+    graph = wp.capture_load("simulation", device="cuda")
+
+    new_positions = ...   # produce or load an updated input array
+    output_array = wp.empty(N, dtype=wp.vec3, device="cuda")
+
+    graph.set_param("positions", new_positions)
+    wp.capture_launch(graph)
+    graph.get_param("results", output_array)
+
+A ``.wrp`` file captured on CUDA can be loaded on CUDA (the file is built
+against a specific compute architecture for ``.cubin``, or any architecture
+supported by the bundled PTX); a file captured on CPU can be loaded on CPU. The
+``device`` passed to :func:`capture_load <warp.capture_load>` must match the
+device family the graph was captured on.
+
+Standalone C++ replay
+^^^^^^^^^^^^^^^^^^^^^
+
+The same ``.wrp`` file can be loaded and launched from a C++ program with no
+Python runtime. The Warp native library exposes a small C API for this purpose,
+declared in ``warp/native/apic.h``. The core entry points are:
+
+.. code:: c
+
+    // Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.
+    // For CUDA, context is a CUcontext; for CPU it must be NULL.
+    APICGraph wp_apic_load_graph(void* context, const char* path, int device_type);
+
+    // Update or read named parameter regions on the loaded graph.
+    bool wp_apic_set_param(APICGraph graph, const char* name,
+                           const void* data, size_t size);
+    bool wp_apic_get_param(APICGraph graph, const char* name,
+                           void* data, size_t size);
+
+    // CUDA replay: get the CUDA graph executable (built lazily on first call)
+    // and launch it via cudaGraphLaunch().
+    void* wp_apic_get_cuda_graph_exec(APICGraph graph);
+
+    // CPU replay: walk the recorded operation stream and execute it directly.
+    bool wp_apic_cpu_replay_graph(APICGraph graph);
+
+    // Release the loaded graph and its associated allocations.
+    void wp_apic_destroy_graph(APICGraph graph);
+
+Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
+implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
+and both take their captured ``.wrp`` file from a Python ``capture_wave.py``
+script that writes ``generated/wave_sim.wrp`` plus a ``generated/wave_sim_modules/``
+directory of compiled kernels.
+
+CUDA replay (``02_apic_visualization``)
+"""""""""""""""""""""""""""""""""""""""
+
+This example captures a full simulation frame — one displacement kernel followed
+by 16 wave-equation integration substeps — as a single CUDA graph. C++ then
+launches the entire frame with one ``cudaGraphLaunch()`` per rendered frame:
+
+.. code:: cpp
+
+    #include "warp.h"
+
+    APICGraph graph = wp_apic_load_graph(context, "generated/wave_sim", 0);
+
+    // Build the executable on first call.
+    cudaGraphExec_t exec = (cudaGraphExec_t)wp_apic_get_cuda_graph_exec(graph);
+
+    while (!glfwWindowShouldClose(window))
+    {
+        // Update inputs each frame (mouse, double-buffered height fields).
+        cudaMemcpyAsync(d_mouse_pos, mouse_grid, 2 * sizeof(float),
+                        cudaMemcpyHostToDevice, stream);
+        wp_apic_set_param(graph, "heights",      d_heights[cur],     heights_size);
+        wp_apic_set_param(graph, "heights_prev", d_heights[1 - cur], heights_size);
+        wp_apic_set_param(graph, "mouse_pos",    d_mouse_pos,        2 * sizeof(float));
+
+        cudaGraphLaunch(exec, stream);
+
+        wp_apic_get_param(graph, "heights_out",      d_heights[1 - cur], heights_size);
+        wp_apic_get_param(graph, "heights_prev_out", d_heights[cur],     heights_size);
+
+        // ... render with OpenGL ...
+    }
+
+    wp_apic_destroy_graph(graph);
+
+The C++ side links against the Warp native library plus the CUDA Driver API
+(``cuda``) and Runtime API (``cudart``). It does not need to know how many
+kernels the graph contains or what their parameter signatures look like — that
+is all encoded in the ``.wrp`` file and the bundled module binaries.
+
+CPU replay (``03_apic_visualization_cpu``)
+""""""""""""""""""""""""""""""""""""""""""
+
+This example mirrors ``02_apic_visualization`` but captures and replays on the
+CPU device. ``main.cpp`` does not link against CUDA at all — replay goes through
+``wp_apic_cpu_replay_graph()`` and walks the recorded operation stream directly:
+
+.. code:: cpp
+
+    APICGraph graph = wp_apic_load_graph(nullptr, "generated/wave_sim", 1);
+
+    // ... resolve CPU kernel function pointers (see below) ...
+
+    while (!glfwWindowShouldClose(window))
+    {
+        wp_apic_set_param(graph, "heights",      h_heights[cur],     heights_size);
+        wp_apic_set_param(graph, "heights_prev", h_heights[1 - cur], heights_size);
+        wp_apic_set_param(graph, "mouse_pos",    h_mouse_pos,        2 * sizeof(float));
+
+        wp_apic_cpu_replay_graph(graph);
+
+        wp_apic_get_param(graph, "heights_out",      h_heights[1 - cur], heights_size);
+        wp_apic_get_param(graph, "heights_prev_out", h_heights[cur],     heights_size);
+
+        // ... render with OpenGL ...
+    }
+
+    wp_apic_destroy_graph(graph);
+
+CPU graph replay needs function pointers for each recorded kernel. These are
+resolved from the ``.o`` files in the companion ``_modules/`` directory by
+loading the ``warp-clang`` library at runtime and calling its ``wp_load_obj`` /
+``wp_lookup`` entry points, then registering each pointer with the loaded graph
+via ``wp_apic_register_loaded_cpu_kernel``. The example walks every kernel
+returned by ``wp_apic_get_num_kernels`` and ``wp_apic_get_kernel_key`` and does
+this resolution once at startup. The C API surface for this lookup is:
+
+.. code:: c
+
+    int         wp_apic_get_num_kernels(APICGraph graph);
+    const char* wp_apic_get_kernel_key(APICGraph graph, int index);
+    const char* wp_apic_get_kernel_forward_name(APICGraph graph, const char* key);
+    const char* wp_apic_get_kernel_backward_name(APICGraph graph, const char* key);
+    void        wp_apic_register_loaded_cpu_kernel(APICGraph graph, const char* key,
+                                                   void* forward_fn, void* backward_fn);
+
+Loading the ``.wrp`` file itself currently requires a CUDA-enabled build of the
+Warp native library, but graph replay (``wp_apic_cpu_replay_graph``) has no
+CUDA runtime dependency.
+
+Building and running
+""""""""""""""""""""
+
+Both examples ship with a ``Makefile`` (Unix/Linux) and a ``CMakeLists.txt``
+(cross-platform). The typical workflow is:
+
+.. code:: bash
+
+    cd warp/examples/cpp/02_apic_visualization     # or 03_apic_visualization_cpu
+
+    # 1. Capture the graph (requires Warp + Python)
+    uv run capture_wave.py
+
+    # 2. Build the C++ viewer
+    cmake -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --config Release
+
+    # 3. Run
+    ./build/02_apic_visualization                  # or 03_apic_visualization_cpu
+
+Each example directory contains a ``README.md`` with full prerequisites, build
+options, controls, and platform-specific notes.
+
+Current limitations of APIC:
+
+- The recorded operation set matches the MVP CPU graph set: kernel launches,
+  :func:`wp.copy <warp.copy>`, and :meth:`array.zero_() <warp.array.zero_>`.
+  :meth:`array.fill_() <warp.array.fill_>` is recorded on CUDA (it dispatches a
+  kernel that the CUDA driver captures) but not on CPU.
+- Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
+  :class:`wp.Volume <warp.Volume>` and :class:`wp.Bvh <warp.Bvh>` handles are not
+  yet supported.
+- ``.wrp`` files are not portable across CUDA compute architectures unless the
+  capture was built with PTX output (set ``warp.config.cuda_output = "ptx"``
+  before capture). Multi-GPU and cross-architecture loading are not yet
+  supported.
+- Loading a ``.wrp`` file currently requires a CUDA-enabled build of the Warp
+  native library even for CPU graphs, because the parser still lives in the CUDA
+  source. Replay itself is CPU-only and has no CUDA dependency.
+- Conditional and loop graph nodes, stream events, and texture array copies are
+  not recorded.
 
 
 Spatial Computing Primitives
