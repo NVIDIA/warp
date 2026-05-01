@@ -137,6 +137,20 @@ linux-x86_64 cuda 13 build:
     - mv warp/bin/warp.so warp/bin/linux-x86_64
     - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
 
+linux-x86_64 debug build:
+  stage: build
+  image: $WARP_BUILDER_IMAGE_CU12
+  extends:
+    - .save_warp_bin_artifact
+    - .ipp_lnx_x86_64_cpu_medium
+  before_script:
+    - gcc --version
+  script:
+    - uv run build_lib.py --cuda-path=/usr/local/cuda --mode=debug
+    - mkdir -p warp/bin/linux-x86_64
+    - mv warp/bin/warp.so warp/bin/linux-x86_64
+    - mv warp/bin/warp-clang.so warp/bin/linux-x86_64
+
 # ==============================================================================
 # Code Quality and Documentation Checks
 #
