@@ -1929,13 +1929,16 @@ class Adjoint:
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
 
-                adj.builder.build_function(func_arg_var)
+                if adj.builder is None:
+                    func_arg_var.build(None, adj.builder_options)
+                else:
+                    adj.builder.build_function(func_arg_var)
 
             fwd_args.append(strip_reference(func_arg_var))
 
         det_args = []
         if not func.is_builtin():
-            det_args = _deterministic_call_args(func.adj.det_meta, bound_args)
+            det_args = _deterministic_call_args(adj, func.adj.det_meta, bound_args)
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
@@ -2025,11 +2028,24 @@ class Adjoint:
         arr_var = args_list[0]  # the target array
         index_vars = args_list[1:-1]  # the index arguments (1-4 depending on ndim)
 
-        arr_type = arr_var.type
-        value_dtype = arr_type.dtype
-        scalar_dtype = value_dtype
-        if hasattr(scalar_dtype, "_wp_scalar_type_"):
-            scalar_dtype = scalar_dtype._wp_scalar_type_
+        try:
+            target_info = _deterministic_target_info(arr_var)
+            if target_info is None:
+                return None
+
+            target_root_label, target_attr_path, arr_type = target_info
+            if not is_array(arr_type):
+                return None
+
+            value_dtype = arr_type.dtype
+            scalar_dtype = value_dtype
+            if hasattr(scalar_dtype, "_wp_scalar_type_"):
+                scalar_dtype = scalar_dtype._wp_scalar_type_
+
+            if not any(arg.label == target_root_label for arg in adj.args):
+                return None
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return None
 
         # Determine if the return value is actually consumed by the caller.
         # When called from emit_AugAssign (arr[i] += val) or a bare expression,
@@ -2079,7 +2095,9 @@ class Adjoint:
         if return_is_consumed:
             # Pattern B: Counter/Allocator
             try:
-                target = get_or_create_counter_target(adj.det_registry, adj.det_meta, arr_var.label, scalar_ctype)
+                target = get_or_create_counter_target(
+                    adj.det_registry, adj.det_meta, target_root_label, scalar_ctype, attr_path=target_attr_path
+                )
             except ValueError as e:
                 raise WarpCodegenError(str(e)) from e
             helper_name = target.helper_name
@@ -2097,35 +2115,39 @@ class Adjoint:
             target = get_or_create_scatter_target(
                 adj.det_registry,
                 adj.det_meta,
-                arr_var.label,
+                target_root_label,
                 value_dtype,
                 value_ctype,
                 scalar_dtype,
                 reduce_op,
+                attr_path=target_attr_path,
             )
         except ValueError as e:
             raise WarpCodegenError(str(e)) from e
         helper_name = target.helper_name
 
-        arr_loaded = loaded_args[0]
         val_loaded = loaded_args[-1]
         idx_loaded_list = loaded_args[1:-1]
 
         ndim = len(index_vars)
+        target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
+        if target_expr is None:
+            return None
+
         if ndim == 1:
             flat_idx_expr = f"var_{idx_loaded_list[0]}"
         elif ndim == 2:
-            flat_idx_expr = f"(var_{idx_loaded_list[0]} * var_{arr_loaded}.shape[1] + var_{idx_loaded_list[1]})"
+            flat_idx_expr = f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] + var_{idx_loaded_list[1]})"
         elif ndim == 3:
             flat_idx_expr = (
-                f"(var_{idx_loaded_list[0]} * var_{arr_loaded}.shape[1] * var_{arr_loaded}.shape[2] "
-                f"+ var_{idx_loaded_list[1]} * var_{arr_loaded}.shape[2] + var_{idx_loaded_list[2]})"
+                f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] "
+                f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] + var_{idx_loaded_list[2]})"
             )
         elif ndim == 4:
             flat_idx_expr = (
-                f"(var_{idx_loaded_list[0]} * var_{arr_loaded}.shape[1] * var_{arr_loaded}.shape[2] * var_{arr_loaded}.shape[3] "
-                f"+ var_{idx_loaded_list[1]} * var_{arr_loaded}.shape[2] * var_{arr_loaded}.shape[3] "
-                f"+ var_{idx_loaded_list[2]} * var_{arr_loaded}.shape[3] + var_{idx_loaded_list[3]})"
+                f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] * {target_expr}.shape[3] "
+                f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] * {target_expr}.shape[3] "
+                f"+ var_{idx_loaded_list[2]} * {target_expr}.shape[3] + var_{idx_loaded_list[3]})"
             )
         else:
             flat_idx_expr = "0"
@@ -2791,6 +2813,18 @@ class Adjoint:
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}->{attr_var.label});")
                 else:
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}.{attr_var.label});")
+
+                det_root_label = None
+                det_attr_path = ()
+                if isinstance(aggregate, Var):
+                    det_root_label = getattr(aggregate, "_det_ref_root_label", aggregate.label)
+                    det_attr_path = (*getattr(aggregate, "_det_ref_attr_path", ()), attr_var.label)
+
+                if det_root_label is not None:
+                    attr._det_ref_root_label = det_root_label
+                    attr._det_ref_attr_path = det_attr_path
+                    if is_array(strip_reference(attr_type)):
+                        attr._det_ref_array_type = strip_reference(attr_type)
 
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
@@ -5794,16 +5828,82 @@ def _deterministic_kernel_locals(adj, device):
     return "".join(f"    {line}\n" for line in decls)
 
 
-def _deterministic_map_target_label(array_var_label, bound_args):
-    actual = bound_args.get(array_var_label)
+def _deterministic_reference_origin(var):
+    root_label = getattr(var, "_det_ref_root_label", None)
+    if root_label is None:
+        return None
+    return root_label, tuple(getattr(var, "_det_ref_attr_path", ()))
+
+
+def _deterministic_array_expr(adj, root_label, attr_path):
+    root = None
+    for arg in adj.args:
+        if arg.label == root_label:
+            root = arg
+            break
+
+    if root is None:
+        return None
+
+    expr = root.emit()
+    for attr in attr_path:
+        expr = f"{expr}.{attr}"
+    return expr
+
+
+def _deterministic_target_info(var):
+    var_type = getattr(var, "type", None)
+    if var_type is None:
+        return None
+
+    origin = _deterministic_reference_origin(var)
+    if origin is not None:
+        root_label, attr_path = origin
+        array_type = getattr(var, "_det_ref_array_type", strip_reference(var_type))
+        return root_label, attr_path, array_type
+
+    if is_reference(var_type):
+        return None
+
+    return var.label, (), var_type
+
+
+def _deterministic_bound_target(bound_var, extra_attr_path=()):
+    bound_type = getattr(bound_var, "type", None)
+    if bound_type is None:
+        return None
+
+    extra_attr_path = tuple(extra_attr_path)
+    origin = _deterministic_reference_origin(bound_var)
+    if origin is not None:
+        root_label, attr_path = origin
+        return root_label, attr_path + extra_attr_path
+
+    if is_reference(bound_type):
+        return None
+
+    return bound_var.label, extra_attr_path
+
+
+def _deterministic_map_target(target, bound_args):
+    attr_path = tuple(getattr(target, "attr_path", ()))
+    actual = bound_args.get(target.array_var_label)
     if actual is None:
-        return array_var_label
+        return target.array_var_label, attr_path
 
-    actual = strip_reference(actual)
-    if isinstance(actual, Var) and actual.label is not None:
-        return actual.label
+    mapped = _deterministic_bound_target(strip_reference(actual), attr_path)
+    if mapped is None:
+        return target.array_var_label, attr_path
 
-    return array_var_label
+    return mapped
+
+
+def _deterministic_find_target(targets, array_var_label, attr_path):
+    attr_path = tuple(attr_path)
+    for target in targets:
+        if target.array_var_label == array_var_label and tuple(getattr(target, "attr_path", ())) == attr_path:
+            return target
+    return None
 
 
 def _include_deterministic_call_meta(adj, meta, bound_args):
@@ -5813,7 +5913,7 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
     from warp._src.deterministic import get_or_create_counter_target, get_or_create_scatter_target  # noqa: PLC0415
 
     for target, count in meta.scatter_records_per_thread.items():
-        mapped_label = _deterministic_map_target_label(target.array_var_label, bound_args)
+        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
         mapped_target = get_or_create_scatter_target(
             adj.det_registry,
             adj.det_meta,
@@ -5822,23 +5922,30 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
             target.value_ctype,
             target.scalar_dtype,
             target.reduce_op,
+            attr_path=mapped_attr_path,
         )
         adj.det_meta.scatter_records_per_thread[mapped_target] += count - 1
 
     for target in meta.counter_targets:
-        mapped_label = _deterministic_map_target_label(target.array_var_label, bound_args)
-        get_or_create_counter_target(adj.det_registry, adj.det_meta, mapped_label, target.value_ctype)
+        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        get_or_create_counter_target(
+            adj.det_registry, adj.det_meta, mapped_label, target.value_ctype, attr_path=mapped_attr_path
+        )
 
 
-def _deterministic_call_args(meta, bound_args):
-    if meta is None or not meta.needs_deterministic:
+def _deterministic_call_args(adj, meta, bound_args):
+    if adj.det_meta is None or meta is None or not meta.needs_deterministic:
         return []
 
     det_args = ["det_ctx"]
     for target in meta.counter_targets:
-        det_args.append(f"det_{_deterministic_map_target_label(target.array_var_label, bound_args)}")
+        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        mapped_target = _deterministic_find_target(adj.det_meta.counter_targets, mapped_label, mapped_attr_path)
+        det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
     for target in meta.scatter_targets:
-        det_args.append(f"det_{_deterministic_map_target_label(target.array_var_label, bound_args)}")
+        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        mapped_target = _deterministic_find_target(adj.det_meta.scatter_targets, mapped_label, mapped_attr_path)
+        det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
     return det_args
 
 

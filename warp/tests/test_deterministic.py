@@ -175,6 +175,18 @@ def _det_func_scatter_add_wrapper(dst: wp.array(dtype=wp.float32), idx: int, val
     _det_func_scatter_add_leaf(dst, idx, value)
 
 
+@wp.struct
+class _DetStructCounterWriter:
+    counter: wp.array(dtype=wp.int32)
+    output: wp.array(dtype=wp.float32)
+
+
+@wp.func
+def _det_struct_counter_write(writer: _DetStructCounterWriter, value: wp.float32):
+    slot = wp.atomic_add(writer.counter, 0, 1)
+    writer.output[slot] = value
+
+
 def _make_deterministic_closure_kernel(transform_func):
     @wp.kernel(deterministic=True, module="unique")
     def _deterministic_closure_kernel(
@@ -185,6 +197,31 @@ def _make_deterministic_closure_kernel(transform_func):
         wp.atomic_add(output, tid % 8, transform_func(data[tid]))
 
     return _deterministic_closure_kernel
+
+
+@wp.kernel(deterministic=True, module="unique")
+def struct_field_counter_kernel(
+    data: wp.array(dtype=wp.float32),
+    counts: wp.array(dtype=wp.int32),
+    writer: _DetStructCounterWriter,
+):
+    tid = wp.tid()
+    count = counts[tid]
+    if count > 0:
+        base = wp.atomic_add(writer.counter, 0, count)
+        for i in range(count):
+            writer.output[base + i] = data[tid] + wp.float32(i) * wp.float32(0.5)
+
+
+@wp.kernel(deterministic=True, module="unique")
+def struct_field_helper_counter_kernel(
+    data: wp.array(dtype=wp.float32),
+    flags: wp.array(dtype=wp.int32),
+    writer: _DetStructCounterWriter,
+):
+    tid = wp.tid()
+    if flags[tid] != 0:
+        _det_struct_counter_write(writer, data[tid])
 
 
 @wp.kernel
@@ -792,9 +829,85 @@ def test_mixed_reduce_ops_same_array(test, device):
     output = wp.zeros(1, dtype=wp.float32, device=device)
 
     with test.assertRaisesRegex(Exception, "does not support mixing"):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def mixed_reduce_op_same_array_local_kernel(
+            data: wp.array(dtype=wp.float32),
+            output: wp.array(dtype=wp.float32),
+        ):
+            tid = wp.tid()
+            wp.atomic_add(output, 0, data[tid])
+            wp.atomic_max(output, 0, 1.0)
+
         wp.launch(
-            mixed_reduce_op_same_array_kernel, dim=data_np.shape[0], inputs=[data], outputs=[output], device=device
+            mixed_reduce_op_same_array_local_kernel,
+            dim=data_np.shape[0],
+            inputs=[data],
+            outputs=[output],
+            device=device,
         )
+
+
+def test_struct_field_counter_atomic(test, device):
+    """Verify deterministic counters work when the target array lives in a struct field."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    rng = np.random.default_rng(34)
+    data_np = rng.random(64, dtype=np.float32)
+    counts_np = rng.integers(0, 4, size=64, dtype=np.int32)
+    expected = []
+    for tid, count in enumerate(counts_np):
+        for i in range(int(count)):
+            expected.append(np.float32(data_np[tid] + np.float32(i) * np.float32(0.5)))
+    expected = np.asarray(expected, dtype=np.float32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    counts = wp.array(counts_np, dtype=wp.int32, device=device)
+
+    results = []
+    counter_values = []
+    for _ in range(3):
+        writer = _DetStructCounterWriter()
+        writer.counter = wp.zeros(1, dtype=wp.int32, device=device)
+        writer.output = wp.zeros(expected.shape[0] + 4, dtype=wp.float32, device=device)
+        wp.launch(struct_field_counter_kernel, dim=64, inputs=[data, counts, writer], device=device)
+        counter_values.append(int(writer.counter.numpy()[0]))
+        results.append(writer.output.numpy()[: expected.shape[0]].copy())
+
+    np.testing.assert_array_equal(np.array(counter_values), np.full(3, expected.shape[0], dtype=np.int32))
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_array_equal(results[0].view(np.uint32), expected.view(np.uint32))
+
+
+def test_struct_field_helper_counter_atomic(test, device):
+    """Verify helper-function counters work when the target array lives in a struct field."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    rng = np.random.default_rng(35)
+    data_np = rng.random(64, dtype=np.float32)
+    flags_np = (rng.random(64) > 0.4).astype(np.int32)
+    expected = data_np[flags_np != 0]
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    flags = wp.array(flags_np, dtype=wp.int32, device=device)
+
+    results = []
+    counter_values = []
+    for _ in range(3):
+        writer = _DetStructCounterWriter()
+        writer.counter = wp.zeros(1, dtype=wp.int32, device=device)
+        writer.output = wp.zeros(expected.shape[0] + 4, dtype=wp.float32, device=device)
+        wp.launch(struct_field_helper_counter_kernel, dim=64, inputs=[data, flags, writer], device=device)
+        counter_values.append(int(writer.counter.numpy()[0]))
+        results.append(writer.output.numpy()[: expected.shape[0]].copy())
+
+    np.testing.assert_array_equal(np.array(counter_values), np.full(3, expected.shape[0], dtype=np.int32))
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_array_equal(results[0].view(np.uint32), expected.view(np.uint32))
 
 
 def test_counter_reproducibility(test, device):
@@ -1410,6 +1523,15 @@ add_function_test(
     test_nested_deterministic_func_kernel,
     devices=cuda_devices,
 )
+add_function_test(
+    TestDeterministic, "test_struct_field_counter_atomic", test_struct_field_counter_atomic, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_struct_field_helper_counter_atomic",
+    test_struct_field_helper_counter_atomic,
+    devices=cuda_devices,
+)
 
 # Pattern B tests (counter).
 add_function_test(TestDeterministic, "test_counter_reproducibility", test_counter_reproducibility, devices=cuda_devices)
@@ -1470,5 +1592,4 @@ add_function_test(
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)

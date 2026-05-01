@@ -2312,7 +2312,7 @@ class ModuleHasher:
         from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
 
         if is_deterministic_mode_enabled(resolved_options.get("deterministic")) and not hasattr(kernel.adj, "det_meta"):
-            kernel.adj.build(None, resolved_options)
+            kernel.adj.build(None, resolved_options | {"output_arch": None})
 
         ch.update(bytes(kernel.key, "utf-8"))
         if kernel.options:
@@ -9135,6 +9135,29 @@ def _launch_deterministic(
             stream.cuda_stream,
         )
 
+    def resolve_det_target_array(target):
+        resolved = None
+        for j, arg in enumerate(kernel.adj.args):
+            if arg.label == target.array_var_label:
+                resolved = fwd_args[j]
+                break
+
+        if resolved is None:
+            return None
+
+        for attr in getattr(target, "attr_path", ()):
+            if resolved is None:
+                return None
+            if not hasattr(resolved, attr):
+                raise RuntimeError(
+                    "Deterministic target "
+                    f"{target.target_label!r} could not resolve attribute {attr!r} "
+                    f"on {type(resolved).__name__}"
+                )
+            resolved = getattr(resolved, attr)
+
+        return resolved
+
     if det_meta.has_counter:
         # === Two-pass execution ===
 
@@ -9158,13 +9181,19 @@ def _launch_deterministic(
             # Use inclusive scan's last element = total
             inclusive_out = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
             warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
-            # Find the counter array in fwd_args and add the total.
-            for j, arg in enumerate(kernel.adj.args):
-                if arg.label == ct.array_var_label:
-                    counter_arr = fwd_args[j]
-                    # Copy the total (last element of inclusive scan) to the counter.
-                    warp.copy(counter_arr, inclusive_out, dest_offset=0, src_offset=dim_size - 1, count=1)
-                    break
+
+            counter_arr = resolve_det_target_array(ct)
+            if counter_arr is None:
+                continue
+            if not hasattr(counter_arr, "ptr"):
+                raise RuntimeError(
+                    "Deterministic counter target "
+                    f"{ct.target_label!r} resolved to non-array object "
+                    f"({type(counter_arr).__name__})"
+                )
+
+            # Copy the total (last element of inclusive scan) to the counter.
+            warp.copy(counter_arr, inclusive_out, dest_offset=0, src_offset=dim_size - 1, count=1)
 
         # Phase 1: execution pass with deterministic slots.
         det_params_p1 = build_det_params(
@@ -9182,15 +9211,7 @@ def _launch_deterministic(
     # Post-kernel: sort-reduce for Pattern A scatter targets.
     if det_meta.has_scatter:
         # Identify the destination arrays from fwd_args.
-        dest_arrays = []
-        for st in det_meta.scatter_targets:
-            # Find the array argument whose label matches the scatter target.
-            dest_arr = None
-            for j, arg in enumerate(kernel.adj.args):
-                if arg.label == st.array_var_label:
-                    dest_arr = fwd_args[j]
-                    break
-            dest_arrays.append(dest_arr)
+        dest_arrays = [resolve_det_target_array(st) for st in det_meta.scatter_targets]
 
         run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device, determinism_mode)
 
