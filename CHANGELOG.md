@@ -163,6 +163,8 @@
 
 ### Documentation
 
+- Document the `wp.Graph` class returned by `wp.capture_end()` and `wp.capture_load()`, including the APIC parameter-binding methods (`set_param`, `get_param`, `get_param_ptr`) and the `params` and `is_loaded` properties.
+
 ## [1.12.1] - 2026-04-06
 
 ### Removed

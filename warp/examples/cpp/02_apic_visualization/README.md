@@ -81,6 +81,18 @@ cmake --build build --config Release          # Step 3: Build
 ./build/02_apic_visualization                 # Step 4: Run
 ```
 
+**Headless smoke mode**:
+
+The example also accepts `--smoke` as a single argv to run a headless
+sanity check that loads the graph, queries parameters, and replays the
+graph 10 times without opening a GLFW window. CTest registers this mode
+as `apic_visualization_smoke` so the example runs in CI on hosts without
+a display server.
+
+```bash
+./02_apic_visualization --smoke    # exits 0 with "smoke OK (10 graph launches)"
+```
+
 ## How It Works
 
 ### 1. Python: Capture Multi-Kernel Graph

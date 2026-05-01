@@ -30,7 +30,7 @@ makes no GPU or CUDA runtime calls. Porting the loading path into `apic.cpp`
 
 - `capture_wave.py` — Python script that captures the wave simulation graph on CPU
 - `main.cpp` — C++ program (pure C++, no CUDA) with OpenGL visualization
-- `CMakeLists.txt` — Build configuration (no CUDA language required)
+- `Makefile` / `CMakeLists.txt` — Build systems (Make for Unix, CMake for cross-platform; both fetch glad v2 and link `warp.so` directly)
 - `generated/` — Directory containing generated files:
   - `wave_sim.wrp` — Serialized graph (Warp Recorded Program)
   - `wave_sim_modules/` — Compiled CPU modules (.o files)
@@ -42,9 +42,11 @@ makes no GPU or CUDA runtime calls. Porting the loading path into `apic.cpp`
 - **Python 3.8+** with Warp installed
 - **CMake 3.20+**
 - **OpenGL 3.3** support
-- **Warp native library** (`warp.dll` / `libwarp.so`), built with CUDA support
-  so `wp_apic_load_graph()` is available
-- **Warp LLVM library** (`warp-clang.dll` / `libwarp-clang.so`) for CPU JIT
+- **Warp native library** (`warp.dll` on Windows, `warp.so` on Linux,
+  `libwarp.dylib` on macOS), built with CUDA support so
+  `wp_apic_load_graph()` is available
+- **Warp LLVM library** (`warp-clang.dll` on Windows, `warp-clang.so` on
+  Linux, `libwarp-clang.dylib` on macOS) for CPU JIT
 
 A GPU is not required at runtime — the graph replay is CPU-only — but the
 Warp library must have been built with CUDA enabled so that `.wrp` loading
@@ -52,6 +54,16 @@ is compiled in. Once that is moved to `apic.cpp` in a future update, this
 example will run on CPU-only builds too.
 
 ### Build and Run
+
+**Using Make (Unix/Linux)**:
+
+```bash
+cd warp/examples/cpp/03_apic_visualization_cpu
+make                            # auto-runs capture_wave.py and fetches glad v2
+./03_apic_visualization_cpu     # interactive run
+```
+
+**Using CMake (cross-platform)**:
 
 ```bash
 cd warp/examples/cpp/03_apic_visualization_cpu
@@ -65,6 +77,18 @@ cmake --build build --config Release
 
 # Step 3: Run
 ./build/03_apic_visualization_cpu
+```
+
+**Headless smoke mode**:
+
+The example also accepts `--smoke` as a single argv to run a headless
+sanity check that loads the graph, queries parameters, and replays it
+on the CPU 10 times without opening a GLFW window. CTest registers this
+mode as `apic_visualization_cpu_smoke` so the example runs in CI on
+hosts without a display server.
+
+```bash
+./03_apic_visualization_cpu --smoke    # exits 0 with "smoke OK (10 replay iterations)"
 ```
 
 ## Controls

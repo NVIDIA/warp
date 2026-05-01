@@ -83,22 +83,28 @@ for example_dir in "${SCRIPT_DIR}"/*/; do
     if [[ ! -d "${example_dir}" ]] || [[ "$(basename "${example_dir}")" = "build" ]]; then
         continue
     fi
-    
+
     example_name=$(basename "${example_dir}")
-    
-    # Only process examples that have a compile_kernel.py
+
+    # APIC examples ship capture_wave.py instead of compile_kernel.py;
+    # both are pre-build Python scripts that produce inputs the C++ build needs.
     if [[ -f "${example_dir}/compile_kernel.py" ]]; then
-        echo "- Compiling ${example_name}..."
-        cd "${example_dir}"
-        if command -v uv &> /dev/null; then
-            uv run compile_kernel.py || { echo "ERROR: Failed to compile kernel for ${example_name}" >&2; exit 1; }
-        else
-            python3 compile_kernel.py || { echo "ERROR: Failed to compile kernel for ${example_name}" >&2; exit 1; }
-        fi
-        cd "${SCRIPT_DIR}"
+        prebuild_script="compile_kernel.py"
+    elif [[ -f "${example_dir}/capture_wave.py" ]]; then
+        prebuild_script="capture_wave.py"
     else
-        echo "- Skipping ${example_name} (no compile_kernel.py)"
+        echo "- Skipping ${example_name} (no compile_kernel.py or capture_wave.py)"
+        continue
     fi
+
+    echo "- Running ${prebuild_script} for ${example_name}..."
+    cd "${example_dir}"
+    if command -v uv &> /dev/null; then
+        uv run "${prebuild_script}" || { echo "ERROR: ${prebuild_script} failed for ${example_name}" >&2; exit 1; }
+    else
+        python3 "${prebuild_script}" || { echo "ERROR: ${prebuild_script} failed for ${example_name}" >&2; exit 1; }
+    fi
+    cd "${SCRIPT_DIR}"
 done
 echo ""
 

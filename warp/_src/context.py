@@ -4242,6 +4242,21 @@ DeviceLike = Device | str | None
 
 
 class Graph:
+    """A handle to a captured graph of Warp operations.
+
+    Instances are returned by :func:`wp.capture_end` (after recording with
+    :func:`wp.capture_begin` or via :class:`wp.ScopedCapture`) or by
+    :func:`wp.capture_load` (after deserializing a ``.wrp`` file written by
+    :func:`wp.capture_save`). Use :func:`wp.capture_launch` to replay either
+    kind.
+
+    Graphs returned by :func:`wp.capture_load` additionally expose parameter
+    binding through :meth:`set_param`, :meth:`get_param`, and
+    :meth:`get_param_ptr`. These methods raise :class:`RuntimeError` on graphs
+    obtained from :func:`wp.capture_end`. Use :attr:`is_loaded` to distinguish
+    the two cases at runtime.
+    """
+
     def __init__(self, device: Device, capture_id: int = 0):
         self.device = device
         self.capture_id = capture_id
@@ -4304,7 +4319,7 @@ class Graph:
             pass
 
     # retain executable CUDA modules used by this graph, which prevents them from being unloaded
-    def retain_module_exec(self, module_exec: ModuleExec):
+    def _retain_module_exec(self, module_exec: ModuleExec):
         self.module_execs.add(module_exec)
 
     def _validate_param_array(self, name: str, arr) -> None:
@@ -4316,7 +4331,31 @@ class Graph:
             )
 
     def set_param(self, name: str, arr) -> None:
-        """Copy array data to a named parameter region (loaded APIC graphs only)."""
+        """Copy array data into a named parameter region of a loaded APIC graph.
+
+        Args:
+            name: The parameter name as registered in :func:`wp.capture_save`
+                (via its ``inputs`` or ``outputs`` argument).
+            arr: A Warp :class:`array` on the same device as the graph. The
+                array's underlying memory is copied into the parameter region.
+
+        Raises:
+            RuntimeError: If this graph was not loaded from a ``.wrp`` file
+                (use :attr:`is_loaded` to check), or if the runtime fails to
+                copy the data (including when ``arr``'s capacity does not match
+                the registered parameter size).
+            TypeError: If ``arr`` is not a Warp array.
+            ValueError: If ``arr`` is on a different device than the graph.
+
+        Example:
+            Load a graph and update an input parameter before each replay::
+
+                graph = wp.capture_load("simulation", device="cuda")
+                new_positions = wp.array(data, dtype=wp.vec3, device="cuda")
+
+                graph.set_param("positions", new_positions)
+                wp.capture_launch(graph)
+        """
         if self._native_graph is None:
             raise RuntimeError("set_param() is only supported on loaded APIC graphs")
         self._validate_param_array(name, arr)
@@ -4330,7 +4369,29 @@ class Graph:
             raise RuntimeError(f"Failed to set parameter '{name}': {runtime.get_error_string()}")
 
     def get_param(self, name: str, arr) -> None:
-        """Copy data from a named parameter region to an array (loaded APIC graphs only)."""
+        """Copy data from a named parameter region of a loaded APIC graph into an array.
+
+        Args:
+            name: The parameter name as registered in :func:`wp.capture_save`
+                (via its ``inputs`` or ``outputs`` argument).
+            arr: A Warp :class:`array` on the same device as the graph. The
+                parameter region is copied into the array's underlying memory.
+
+        Raises:
+            RuntimeError: If this graph was not loaded from a ``.wrp`` file
+                (use :attr:`is_loaded` to check), or if the runtime fails to
+                copy the data (including when ``arr``'s capacity does not match
+                the registered parameter size).
+            TypeError: If ``arr`` is not a Warp array.
+            ValueError: If ``arr`` is on a different device than the graph.
+
+        Example:
+            Read an output parameter back after a replay::
+
+                output = wp.empty(N, dtype=wp.vec3, device="cuda")
+                wp.capture_launch(graph)
+                graph.get_param("results", output)
+        """
         if self._native_graph is None:
             raise RuntimeError("get_param() is only supported on loaded APIC graphs")
         self._validate_param_array(name, arr)
@@ -4344,19 +4405,49 @@ class Graph:
             raise RuntimeError(f"Failed to get parameter '{name}': {runtime.get_error_string()}")
 
     def get_param_ptr(self, name: str):
-        """Get the device pointer for a named parameter region (loaded APIC graphs only)."""
+        """Return the device pointer of a named parameter region in a loaded APIC graph.
+
+        The returned pointer is owned by the graph and remains valid until the
+        graph is destroyed. Useful for zero-copy interop with other libraries
+        or for implementing custom replay loops in C++ via the ``wp_apic_*``
+        C API.
+
+        Args:
+            name: The parameter name registered when the graph was saved.
+
+        Returns:
+            The device pointer (as an integer) for the parameter region,
+            or ``None`` if ``name`` is not a registered parameter.
+
+        Raises:
+            RuntimeError: If this graph was not loaded from a ``.wrp`` file
+                (use :attr:`is_loaded` to check).
+        """
         if self._native_graph is None:
             raise RuntimeError("get_param_ptr() is only supported on loaded APIC graphs")
         return runtime.core.wp_apic_get_param_ptr(self._native_graph, name.encode("utf-8"))
 
     @property
     def params(self) -> dict:
-        """Parameter binding info (name -> {size})."""
+        """Mapping of parameter name to binding metadata for a loaded APIC graph.
+
+        Each value is a dict with a single ``"size"`` key giving the parameter
+        region's size in bytes. Empty for graphs that were not loaded from a
+        ``.wrp`` file.
+
+        Returns:
+            A dict of the form ``{"param_name": {"size": int}, ...}``.
+        """
         return dict(self._params)
 
     @property
     def is_loaded(self) -> bool:
-        """True if this graph was loaded from a .wrp file."""
+        """``True`` if this graph was loaded from a ``.wrp`` file.
+
+        Use this to distinguish graphs returned by :func:`wp.capture_load` (which
+        support :meth:`set_param`, :meth:`get_param`, and :meth:`get_param_ptr`)
+        from graphs returned by :func:`wp.capture_end` (which do not).
+        """
         return self._native_graph is not None
 
 
@@ -8069,7 +8160,7 @@ class Launch:
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
-                    graph.retain_module_exec(self.module_exec)
+                    graph._retain_module_exec(self.module_exec)
 
             if self.adjoint:
                 runtime.core.wp_cuda_launch_kernel(
@@ -8253,7 +8344,7 @@ def launch(
                 # (and therefore the kernel function pointers stored in
                 # APICCPUKernel) stays alive until the graph is destroyed.
                 if runtime._apic_graph is not None:
-                    runtime._apic_graph.retain_module_exec(module_exec)
+                    runtime._apic_graph._retain_module_exec(module_exec)
                 # Build ArgsStruct and route through C++ for execution + recording
                 args_struct, adj_args_struct = _build_cpu_args_structs(kernel, hooks, params, adjoint)
                 apic_info = apic_capture.build_launch_info(
@@ -8296,7 +8387,7 @@ def launch(
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
-                    graph.retain_module_exec(module_exec)
+                    graph._retain_module_exec(module_exec)
 
             if adjoint:
                 if hooks.backward is None:
@@ -9169,7 +9260,7 @@ def _unregister_capture(device: Device, stream: Stream, graph: Graph):
 def _register_capture(device: Device, stream: Stream, graph: Graph, capture_id: int):
     """Register a graph capture with the device and runtime.
 
-    Makes the graph discoverable through its capture_id so that retain_module_exec() can be called
+    Makes the graph discoverable through its capture_id so that _retain_module_exec() can be called
     when launching kernels during graph capture. This ensures modules are retained until graph execution completes.
 
     Args:
@@ -9559,7 +9650,7 @@ def capture_if(
     # capture if-graph
     if on_true is not None:
         # temporarily repurpose the main_graph python object such that all dependencies
-        # added through retain_module_exec() end up in the correct python graph object
+        # added through _retain_module_exec() end up in the correct python graph object
         main_graph.graph = graph_on_true
         capture_resume(main_graph, stream=stream)
         if isinstance(on_true, Callable):
@@ -9582,7 +9673,7 @@ def capture_if(
     # capture else-graph
     if on_false is not None:
         # temporarily repurpose the main_graph python object such that all dependencies
-        # added through retain_module_exec() end up in the correct python graph object
+        # added through _retain_module_exec() end up in the correct python graph object
         main_graph.graph = graph_on_false
         capture_resume(main_graph, stream=stream)
         if isinstance(on_false, Callable):
@@ -9691,7 +9782,7 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     main_graph_ptr = main_graph.graph
 
     # temporarily repurpose the main_graph python object such that all dependencies
-    # added through retain_module_exec() end up in the correct python graph object
+    # added through _retain_module_exec() end up in the correct python graph object
     main_graph.graph = body_graph
     capture_resume(main_graph, stream=stream)
 

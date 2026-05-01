@@ -20,17 +20,6 @@ project(warp_cpp_examples CUDA CXX)
 # Enable testing at the top level
 enable_testing()
 
-# Examples that are temporarily excluded from CI builds.
-# 02_apic_visualization and 03_apic_visualization_cpu fetch glad v0.1.36, which
-# declares cmake_minimum_required(VERSION 2.8.12) and fails under CMake 4.x
-# (now shipped in the warp-cpp-test-env image). Their warp.so link path is also
-# broken (find_library expects libwarp.so but build_lib.py emits warp.so).
-# Re-enable once both issues are resolved.
-set(EXCLUDED_EXAMPLES
-    02_apic_visualization
-    03_apic_visualization_cpu
-)
-
 # Find all example subdirectories that contain a CMakeLists.txt
 file(GLOB EXAMPLE_DIRS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*")
 
@@ -38,12 +27,8 @@ foreach(DIR ${EXAMPLE_DIRS})
     # Check if it's a directory and contains CMakeLists.txt
     if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}/CMakeLists.txt")
-            if(${DIR} IN_LIST EXCLUDED_EXAMPLES)
-                message(STATUS "Skipping example: ${DIR} (temporarily excluded)")
-            else()
-                message(STATUS "Adding example: ${DIR}")
-                add_subdirectory(${DIR})
-            endif()
+            message(STATUS "Adding example: ${DIR}")
+            add_subdirectory(${DIR})
         endif()
     endif()
 endforeach()
