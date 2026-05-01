@@ -409,8 +409,8 @@ CUDA Memory Management
    set_mempool_release_threshold
    set_peer_access_enabled
 
-CUDA Graph Management
----------------------
+Graph Management
+----------------
 
 .. autosummary::
    :nosignatures:

@@ -344,7 +344,7 @@ from warp._src.utils import ScopedAllocator as ScopedAllocator
 from warp._src.rmm_allocator import RmmAllocator as RmmAllocator
 
 
-# category: CUDA Graph Management
+# category: Graph Management
 
 from warp._src.utils import ScopedCapture as ScopedCapture
 
