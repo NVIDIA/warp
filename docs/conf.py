@@ -17,6 +17,9 @@ import sys
 
 import docutils
 import sphinx
+from sphinx import addnodes
+from sphinx.environment.adapters.toctree import note_toctree
+from sphinx.ext.autosummary import autosummary_toc
 from sphinx.ext.autosummary.generate import AutosummaryRenderer
 from sphinx.ext.napoleon.docstring import GoogleDocstring
 
@@ -165,6 +168,7 @@ html_theme_options = {
         },
     ],
     "navigation_depth": 2,
+    "sidebar_includehidden": False,
 }
 html_title = f"Warp {version}"
 html_context = {
@@ -601,6 +605,26 @@ def generate_reference_docs(app):
     docs.generate_reference.run()
 
 
+def drop_autosummary_toctrees(app, doctree):
+    # autosummary's `:toctree:` wraps its generated toctree in
+    # `autosummary_toc`, a `nodes.comment` subclass. HTML writers skip the
+    # wrapper, but Sphinx's TocTreeCollector still descends into it and
+    # copies the inner toctree into `env.tocs`, which is what populates the
+    # left sidebar. With navigation_depth=2 that exposes every generated
+    # stub under its parent API/Language reference page. Remove the wrapper
+    # so the toctree never reaches `env.tocs`; call `note_toctree` first so
+    # `env.toctree_includes` still records the stubs and they aren't flagged
+    # as orphan documents.
+    #
+    # Must run before TocTreeCollector (doctree-read, default priority 500;
+    # lower priority runs first), hence priority=400 in setup().
+    docname = app.env.docname
+    for asum in list(doctree.findall(autosummary_toc)):
+        for tocnode in asum.findall(addnodes.toctree):
+            note_toctree(app.env, docname, tocnode)
+        asum.parent.remove(asum)
+
+
 def setup(app):
     """Sphinx extension setup."""
     # Priority must be lower than autosummary's default (500) so that the
@@ -611,4 +635,8 @@ def setup(app):
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)
     app.connect("autodoc-process-signature", rewrite_wp_aliases)
     app.connect("missing-reference", resolve_wp_aliases)
+    # Lower priority runs first; this must precede TocTreeCollector
+    # (default 500) so the autosummary wrappers are gone before it
+    # populates `env.tocs`.
+    app.connect("doctree-read", drop_autosummary_toctrees, priority=400)
     app.connect("doctree-resolved", rewrite_internal_module_paths)

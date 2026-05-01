@@ -209,7 +209,7 @@ This approach is generally faster because it skips any stream synchronization, b
 The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`) are usually a better choice than DLPack when one exists, because DLPack does not carry gradient information. If autograd needs to flow between Warp and the other framework, use the direct converters. DLPack is most useful when no framework-specific converter exists, or when both producer and consumer are DLPack-native.
 
 .. toctree::
-   :hidden:
+   :titlesonly:
 
    interoperability_pytorch
    interoperability_jax
