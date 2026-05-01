@@ -41,6 +41,15 @@ Graph Coloring
    graph_coloring_balance
    graph_coloring_get_groups
 
+Allocators
+----------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   AllocatorRmm
+
 Misc
 ----
 

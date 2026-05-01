@@ -56,7 +56,7 @@
   ``wp.dot(a[i], b[i])`` for tiles of ``vec3f``). Replaces the longer
   ``wp.tile_sum(wp.tile_map(wp.tensordot, a, b))`` pattern
   ([GH-1364](https://github.com/NVIDIA/warp/issues/1364)).
-- Add pluggable allocator interface for custom GPU memory allocators, including built-in RMM support via ``wp.RmmAllocator`` ([GH-781](https://github.com/NVIDIA/warp/issues/781)).
+- Add pluggable allocator interface for custom GPU memory allocators, including built-in RMM support via ``wp.utils.AllocatorRmm`` ([GH-781](https://github.com/NVIDIA/warp/issues/781)).
 - Add `aligned` parameter to `tile_load()` and `tile_store()` to skip runtime
   alignment checks when the caller guarantees 16-byte alignment
   ([GH-1236](https://github.com/NVIDIA/warp/issues/1236)).

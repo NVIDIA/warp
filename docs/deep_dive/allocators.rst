@@ -336,7 +336,7 @@ RMM Integration
 ~~~~~~~~~~~~~~~
 
 `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ provides high-performance
-pooled allocators for CUDA. Warp includes a built-in adapter, :class:`RmmAllocator`, that
+pooled allocators for CUDA. Warp includes a built-in adapter, :class:`~warp.utils.AllocatorRmm`, that
 routes array allocations through RMM.
 
 Install RMM (Linux only):
@@ -359,7 +359,7 @@ Set up a shared RMM pool for PyTorch and Warp:
 
     # Route Warp through RMM
     import warp as wp
-    wp.set_cuda_allocator(wp.RmmAllocator())
+    wp.set_cuda_allocator(wp.utils.AllocatorRmm())
 
     # Now both frameworks share the same memory pool
     a = wp.zeros(1000, dtype=wp.float32, device="cuda:0")

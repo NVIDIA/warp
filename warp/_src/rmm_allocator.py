@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-class RmmAllocator:
+class AllocatorRmm:
     """Allocator that routes Warp device memory through RAPIDS Memory Manager (RMM).
 
     Each allocation delegates to ``rmm.DeviceBuffer``, which uses whichever
@@ -12,7 +12,7 @@ class RmmAllocator:
 
     Requires the ``rmm`` package (Linux only, ``pip install rmm-cu12``).
 
-    A single ``RmmAllocator`` instance can safely be shared across multiple
+    A single ``AllocatorRmm`` instance can safely be shared across multiple
     CUDA devices. Allocations always happen on the correct device because
     ``warp.array`` wraps each ``allocate()`` call in a ``device.context_guard``.
     This class is not thread-safe; concurrent calls from multiple threads
@@ -30,7 +30,7 @@ class RmmAllocator:
             import warp as wp
 
             rmm.reinitialize(pool_allocator=True, initial_pool_size=2**30)
-            wp.set_cuda_allocator(wp.RmmAllocator())
+            wp.set_cuda_allocator(wp.utils.AllocatorRmm())
             # All subsequent wp.array allocations go through the RMM pool
     """
 
@@ -80,10 +80,10 @@ class RmmAllocator:
             del self._buffers[ptr]
         except KeyError:
             raise RuntimeError(
-                f"RmmAllocator.deallocate called with unrecognized pointer {ptr:#x} "
+                f"AllocatorRmm.deallocate called with unrecognized pointer {ptr:#x} "
                 f"(size={size_in_bytes}). This may indicate a double-free or a "
-                f"pointer that was not allocated by this RmmAllocator instance."
+                f"pointer that was not allocated by this AllocatorRmm instance."
             ) from None
 
     def __repr__(self):
-        return f"RmmAllocator(active_buffers={len(self._buffers)})"
+        return f"AllocatorRmm(active_buffers={len(self._buffers)})"

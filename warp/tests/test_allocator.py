@@ -245,10 +245,10 @@ class TestRmmAllocator(unittest.TestCase):
     @unittest.skipUnless(rmm_available, "rmm not installed")
     @unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
     def test_rmm_allocator_multi_gpu(self):
-        """A single RmmAllocator instance works across multiple CUDA devices."""
+        """A single AllocatorRmm instance works across multiple CUDA devices."""
         rmm.reinitialize(pool_allocator=True, initial_pool_size=2**26)
 
-        alloc = wp.RmmAllocator()
+        alloc = wp.utils.AllocatorRmm()
         dev0 = wp.get_device("cuda:0")
         dev1 = wp.get_device("cuda:1")
         wp.set_cuda_allocator(alloc)
@@ -266,17 +266,17 @@ class TestRmmAllocator(unittest.TestCase):
 
     @unittest.skipIf(rmm_available, "rmm is installed")
     def test_rmm_allocator_import_error(self):
-        """RmmAllocator raises ImportError when rmm is not installed."""
+        """AllocatorRmm raises ImportError when rmm is not installed."""
         with self.assertRaises(ImportError):
-            wp.RmmAllocator()
+            wp.utils.AllocatorRmm()
 
 
 def test_rmm_allocator_basic(test, device):
-    """RmmAllocator routes allocations through RMM."""
+    """AllocatorRmm routes allocations through RMM."""
     rmm.reinitialize(pool_allocator=True, initial_pool_size=2**26)
 
     device = wp.get_device(device)
-    alloc = wp.RmmAllocator()
+    alloc = wp.utils.AllocatorRmm()
     wp.set_device_allocator(device, alloc)
     try:
         a = wp.zeros(1000, dtype=wp.float32, device=device)
@@ -300,7 +300,7 @@ def test_rmm_allocator_interop_torch(test, device):
     rmm.reinitialize(pool_allocator=True, initial_pool_size=2**26)
 
     device = wp.get_device(device)
-    alloc = wp.RmmAllocator()
+    alloc = wp.utils.AllocatorRmm()
     wp.set_device_allocator(device, alloc)
     try:
         a = wp.zeros(100, dtype=wp.float32, device=device)
@@ -315,7 +315,7 @@ def test_rmm_allocator_interop_torch(test, device):
 def test_rmm_allocator_double_free(test, device):
     """deallocate() raises RuntimeError for an already-freed or unknown pointer."""
     device = wp.get_device(device)
-    alloc = wp.RmmAllocator()
+    alloc = wp.utils.AllocatorRmm()
     wp.set_device_allocator(device, alloc)
     try:
         ptr = alloc.allocate(256)

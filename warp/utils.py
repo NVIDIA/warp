@@ -28,6 +28,11 @@ from warp._src.coloring import graph_coloring_balance as graph_coloring_balance
 from warp._src.coloring import graph_coloring_get_groups as graph_coloring_get_groups
 
 
+# category: Allocators
+
+from warp._src.rmm_allocator import AllocatorRmm as AllocatorRmm
+
+
 # category: Misc
 
 from warp._src.utils import create_warp_function as create_warp_function

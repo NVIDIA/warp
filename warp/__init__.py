@@ -341,7 +341,6 @@ from warp._src.context import get_device_allocator as get_device_allocator
 from warp._src.context import set_cuda_allocator as set_cuda_allocator
 from warp._src.context import set_device_allocator as set_device_allocator
 from warp._src.utils import ScopedAllocator as ScopedAllocator
-from warp._src.rmm_allocator import RmmAllocator as RmmAllocator
 
 
 # category: Graph Management
