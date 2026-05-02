@@ -285,20 +285,14 @@ def tile_bvh_query_aabb_kernel(
 ):
     query = wp.tile_bvh_query_aabb(bvh_id, lower, upper)
 
-    # Query returns a tile of indices, one per thread
-    result_tile = wp.tile_bvh_query_next(query)
-
-    # Continue querying while we have results
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_bvh_query_next(query)
         result_idx = wp.untile(result_tile)
 
         # Mark bounds as intersected using atomic add (skip -1 which means no result)
         # This ensures we can verify that each bound is only reported once
         if result_idx >= 0:
             wp.atomic_add(bounds_intersected, result_idx, 1)
-
-        result_tile = wp.tile_bvh_query_next(query)
 
 
 @wp.kernel
@@ -310,20 +304,14 @@ def tile_bvh_query_ray_kernel(
 ):
     query = wp.tile_bvh_query_ray(bvh_id, start, dir)
 
-    # Query returns a tile of indices, one per thread
-    result_tile = wp.tile_bvh_query_next(query)
-
-    # Continue querying while we have results
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_bvh_query_next(query)
         result_idx = wp.untile(result_tile)
 
         # Mark bounds as intersected using atomic add (skip -1 which means no result)
         # This ensures we can verify that each bound is only reported once
         if result_idx >= 0:
             wp.atomic_add(bounds_intersected, result_idx, 1)
-
-        result_tile = wp.tile_bvh_query_next(query)
 
 
 def test_tile_bvh_query(test, device):
@@ -399,6 +387,23 @@ def test_tile_bvh_query(test, device):
             "This indicates the parallel BVH query reported the same bound multiple times.",
         )
 
+    # Also test tile_query_valid-based loop
+    bounds_intersected_count = wp.zeros(shape=(num_bounds), dtype=int, device=device)
+    wp.launch_tiled(
+        kernel=tile_bvh_query_valid_aabb_kernel,
+        dim=1,
+        inputs=[bvh.id, query_lower, query_upper, bounds_intersected_count],
+        device=device,
+        block_dim=block_dim,
+    )
+    count_result = bounds_intersected_count.numpy()
+    for i in range(num_bounds):
+        test.assertEqual(
+            single_result[i],
+            count_result[i],
+            f"tile_query_valid mismatch at bound {i}: single={single_result[i]}, count={count_result[i]}",
+        )
+
 
 def test_tile_bvh_query_ray(test, device):
     """Test tile-based BVH ray query and compare with single-threaded version."""
@@ -464,6 +469,23 @@ def test_tile_bvh_query_ray(test, device):
             "This indicates the parallel BVH query reported the same bound multiple times.",
         )
 
+    # Also test tile_query_valid-based loop
+    bounds_intersected_count = wp.zeros(shape=(num_bounds), dtype=int, device=device)
+    wp.launch_tiled(
+        kernel=tile_bvh_query_valid_ray_kernel,
+        dim=1,
+        inputs=[bvh.id, query_start, query_dir, bounds_intersected_count],
+        device=device,
+        block_dim=block_dim,
+    )
+    count_result = bounds_intersected_count.numpy()
+    for i in range(num_bounds):
+        test.assertEqual(
+            single_result[i],
+            count_result[i],
+            f"tile_query_valid mismatch at bound {i}: single={single_result[i]}, count={count_result[i]}",
+        )
+
 
 # Tests for new bvh_query_*_tiled() API (primary naming convention)
 @wp.kernel
@@ -475,19 +497,13 @@ def bvh_query_aabb_tiled_kernel(
 ):
     query = wp.bvh_query_aabb_tiled(bvh_id, lower, upper)
 
-    # Query returns a tile of indices, one per thread
-    result_tile = wp.bvh_query_next_tiled(query)
-
-    # Continue querying while we have results
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.bvh_query_next_tiled(query)
         result_idx = wp.untile(result_tile)
 
         # Mark bounds as intersected using atomic add (skip -1 which means no result)
         if result_idx >= 0:
             wp.atomic_add(bounds_intersected, result_idx, 1)
-
-        result_tile = wp.bvh_query_next_tiled(query)
 
 
 @wp.kernel
@@ -499,19 +515,13 @@ def bvh_query_ray_tiled_kernel(
 ):
     query = wp.bvh_query_ray_tiled(bvh_id, start, dir)
 
-    # Query returns a tile of indices, one per thread
-    result_tile = wp.bvh_query_next_tiled(query)
-
-    # Continue querying while we have results
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.bvh_query_next_tiled(query)
         result_idx = wp.untile(result_tile)
 
         # Mark bounds as intersected using atomic add (skip -1 which means no result)
         if result_idx >= 0:
             wp.atomic_add(bounds_intersected, result_idx, 1)
-
-        result_tile = wp.bvh_query_next_tiled(query)
 
 
 def test_bvh_query_aabb_tiled(test, device):
@@ -649,6 +659,40 @@ def test_bvh_query_ray_tiled(test, device):
             f"Bound {i} was reported {tiled_result[i]} times, expected 0 or 1. "
             "This indicates the parallel BVH query reported the same bound multiple times.",
         )
+
+
+@wp.kernel
+def tile_bvh_query_valid_aabb_kernel(
+    bvh_id: wp.uint64,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    bounds_intersected: wp.array(dtype=int),
+):
+    query = wp.tile_bvh_query_aabb(bvh_id, lower, upper)
+
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_bvh_query_next(query)
+        result_idx = wp.untile(result_tile)
+
+        if result_idx >= 0:
+            wp.atomic_add(bounds_intersected, result_idx, 1)
+
+
+@wp.kernel
+def tile_bvh_query_valid_ray_kernel(
+    bvh_id: wp.uint64,
+    start: wp.vec3,
+    dir: wp.vec3,
+    bounds_intersected: wp.array(dtype=int),
+):
+    query = wp.tile_bvh_query_ray(bvh_id, start, dir)
+
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_bvh_query_next(query)
+        result_idx = wp.untile(result_tile)
+
+        if result_idx >= 0:
+            wp.atomic_add(bounds_intersected, result_idx, 1)
 
 
 devices = get_test_devices()

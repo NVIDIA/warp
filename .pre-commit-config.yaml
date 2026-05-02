@@ -11,9 +11,24 @@ ci:
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
+  - repo: local
+    hooks:
+      - id: warp-check-generated-files
+        name: "warp: regenerate generated files"
+        entry: python tools/pre-commit-hooks/check_generated_files.py
+        language: python
+        additional_dependencies: [numpy]
+        always_run: true
+        pass_filenames: false
+      - id: warp-check-version-consistency
+        name: "warp: check version consistency and regenerate version.h"
+        entry: python tools/pre-commit-hooks/check_version_consistency.py --verbose
+        language: python
+        always_run: true
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.15.6
+    rev: v0.15.9
     hooks:
       # Run the linter.
       - id: ruff
@@ -22,16 +37,16 @@ repos:
       - id: ruff-format
   - repo: https://github.com/astral-sh/uv-pre-commit
     # uv version.
-    rev: 0.9.21
+    rev: 0.11.3
     hooks:
       # Update the uv lockfile
       - id: uv-lock
   - repo: https://github.com/crate-ci/typos
-    rev: v1.41.0
+    rev: v1.45.0
     hooks:
       - id: typos
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: v21.1.8
+    rev: v22.1.2
     hooks:
       - id: clang-format
         types_or: [c++, c, cuda]

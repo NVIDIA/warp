@@ -9,7 +9,7 @@ from typing import Any, NamedTuple
 
 import warp as wp
 import warp._src.fem.operator as operator
-from warp._src.codegen import Struct, StructInstance, get_annotations
+from warp._src.codegen import Struct, StructInstance, get_annotations, resolve_closure_or_global
 from warp._src.fem import cache
 from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.field import (
@@ -77,14 +77,7 @@ def _resolve_path(func, node):
     if len(path) == 0:
         return None, path
 
-    name = path[0]
-    try:
-        # look up in closure variables
-        idx = func.__code__.co_freevars.index(name)
-        expr = func.__closure__[idx].cell_contents
-    except ValueError:
-        # look up in global variables
-        expr = func.__globals__.get(name)
+    expr = resolve_closure_or_global(func, path[0])
 
     for name in path[1:]:
         if expr is not None:

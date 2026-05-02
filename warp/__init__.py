@@ -36,7 +36,9 @@ from warp._src.types import int32 as int32
 from warp._src.types import uint32 as uint32
 from warp._src.types import int64 as int64
 from warp._src.types import uint64 as uint64
+from warp._src.types import handle as handle
 from warp._src.types import float16 as float16
+from warp._src.types import bfloat16 as bfloat16
 from warp._src.types import float32 as float32
 from warp._src.types import float64 as float64
 
@@ -144,6 +146,7 @@ from warp._src.types import array4d as array4d
 from warp._src.types import fixedarray as fixedarray
 
 from warp._src.types import tile as tile
+from warp._src.types import tile_stack as tile_stack
 
 from warp._src.types import from_ptr as from_ptr
 
@@ -333,16 +336,25 @@ from warp._src.context import is_peer_access_supported as is_peer_access_support
 from warp._src.context import is_peer_access_enabled as is_peer_access_enabled
 from warp._src.context import set_peer_access_enabled as set_peer_access_enabled
 
+from warp._src.context import Allocator as Allocator
+from warp._src.context import get_device_allocator as get_device_allocator
+from warp._src.context import set_cuda_allocator as set_cuda_allocator
+from warp._src.context import set_device_allocator as set_device_allocator
+from warp._src.utils import ScopedAllocator as ScopedAllocator
 
-# category: CUDA Graph Management
+
+# category: Graph Management
 
 from warp._src.utils import ScopedCapture as ScopedCapture
 
 from warp._src.context import is_conditional_graph_supported as is_conditional_graph_supported
 
+from warp._src.context import Graph as Graph
 from warp._src.context import capture_begin as capture_begin
 from warp._src.context import capture_end as capture_end
 from warp._src.context import capture_launch as capture_launch
+from warp._src.context import capture_save as capture_save
+from warp._src.context import capture_load as capture_load
 from warp._src.context import capture_if as capture_if
 from warp._src.context import capture_while as capture_while
 from warp._src.context import capture_debug_dot_print as capture_debug_dot_print
@@ -362,6 +374,10 @@ from warp._src.utils import TimingResult as TimingResult
 from warp._src.utils import timing_begin as timing_begin
 from warp._src.utils import timing_end as timing_end
 from warp._src.utils import timing_print as timing_print
+
+
+from warp._src.utils import ScopedMemoryTracker as ScopedMemoryTracker
+from warp._src.context import print_memory_report as print_memory_report
 
 
 # category: Profiling > Timing Flags
@@ -459,73 +475,3 @@ from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 
 
 __version__ = config.version
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import types as _types
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    if name == "mat":
-        return get_deprecated_api(_types, "warp", "matrix", old_attr_path="warp.mat")
-    elif name == "vec":
-        return get_deprecated_api(_types, "warp", "vector", old_attr_path="warp.vec")
-
-    # Lazy-import deprecated submodule namespaces (e.g., warp.torch -> warp._src.torch).
-    #
-    # A plain `return importlib.import_module(f".{name}", __package__)` isn't safe
-    # here because these deprecated wrapper modules call `warn_deprecated_namespace()`
-    # at module load time. That warning can be triggered by external introspection
-    # tools -- most notably CPython's pickle, whose `whichmodule()` iterates through
-    # every module in `sys.modules` calling `getattr(module, name)` to locate globals.
-    # When pickle probes `getattr(warp, "torch")`, this `__getattr__` fires, the
-    # submodule is imported, and its module-level deprecation warning is emitted.
-    # Depending on the warning configuration this can crash the caller (e.g.,
-    # PyTorch's inductor FX graph cache pickler, whose C implementation only catches
-    # `AttributeError` from `getattr` -- any other exception propagates and aborts
-    # compilation).
-    #
-    # To avoid this, we suppress `warn_deprecated_namespace()` when *we* are the ones
-    # triggering the import (via the `_importing_deprecated_namespace` flag). Explicit
-    # `import warp.torch` by user code bypasses `__getattr__` entirely, so the
-    # module-level warning still fires in that case. Per-symbol deprecation warnings
-    # (handled by each submodule's own `__getattr__` + `get_deprecated_api`) are
-    # unaffected.
-
-    if name in (
-        "build_dll",
-        "build",
-        "builtins",
-        "codegen",
-        "constants",
-        "context",
-        "dlpack",
-        "fabric",
-        "jax",
-        "marching_cubes",
-        "math",
-        "paddle",
-        "tape",
-        "torch",
-        "types",
-        "utils",
-    ):
-        import importlib  # noqa: PLC0415
-        import sys  # noqa: PLC0415
-
-        full_name = f"{__package__}.{name}"
-        if full_name in sys.modules:
-            return sys.modules[full_name]
-
-        from warp._src import utils as _warp_utils  # noqa: PLC0415
-
-        _warp_utils._importing_deprecated_namespace = True
-        try:
-            return importlib.import_module(f".{name}", __package__)
-        finally:
-            _warp_utils._importing_deprecated_namespace = False
-
-    raise AttributeError(f"module 'warp' has no attribute '{name}'")

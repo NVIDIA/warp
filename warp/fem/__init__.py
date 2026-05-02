@@ -159,14 +159,3 @@ from . import linalg as linalg
 from . import polynomial as polynomial
 from . import space as space
 from . import utils as utils
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import fem as _fem
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_fem, "warp", name)

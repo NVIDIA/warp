@@ -202,6 +202,8 @@ default:
     PARENT_COMMIT_BRANCH: $CI_COMMIT_BRANCH
     # Required for deployment jobs in warp-gitlab-ci that use commit reference names
     PARENT_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME
+    # Required for Artifactory metadata (commit SHA on published artifacts)
+    PARENT_COMMIT_SHA: $CI_COMMIT_SHA
     # Cache directories - must be explicitly passed to ensure consistent paths
     PM_PACKAGES_ROOT: "$PARENT_PROJECT_DIR/packman-repo"
     PIP_CACHE_DIR: "$PARENT_PROJECT_DIR/.cache/pip"

@@ -182,6 +182,7 @@ Tile Primitives
    tile_astype
    tile_atomic_add
    tile_atomic_add_indexed
+   tile_axpy
    tile_broadcast
    tile_bvh_query_aabb
    tile_bvh_query_next
@@ -191,6 +192,7 @@ Tile Primitives
    tile_cholesky_solve
    tile_cholesky_solve_inplace
    tile_diag_add
+   tile_dot
    tile_extract
    tile_fft
    tile_from_thread
@@ -207,6 +209,7 @@ Tile Primitives
    tile_mesh_query_aabb_next
    tile_min
    tile_ones
+   tile_query_valid
    tile_randf
    tile_randi
    tile_reduce
@@ -215,8 +218,15 @@ Tile Primitives
    tile_scan_inclusive
    tile_scan_max_inclusive
    tile_scan_min_inclusive
+   tile_scatter_add
+   tile_scatter_masked
    tile_sort
    tile_squeeze
+   tile_stack
+   tile_stack_clear
+   tile_stack_count
+   tile_stack_pop
+   tile_stack_push
    tile_store
    tile_store_indexed
    tile_sum

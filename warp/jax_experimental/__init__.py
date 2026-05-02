@@ -39,14 +39,3 @@ from warp._src.jax_experimental.ffi import (
 from warp._src.jax_experimental.ffi import (
     set_jax_callable_default_graph_cache_max as set_jax_callable_default_graph_cache_max,
 )
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import jax_experimental as _jax_experimental
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_jax_experimental, "warp", name)

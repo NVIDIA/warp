@@ -23,24 +23,3 @@ Usage:
 from warp._src.render.render_opengl import OpenGLRenderer as OpenGLRenderer
 
 from warp._src.render.render_usd import UsdRenderer as UsdRenderer
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import render as _render
-from warp._src.render import utils as _render_utils
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api, warn  # noqa: PLC0415
-
-    # Symbols from warp._src.render.utils that were previously accessible from warp.render
-    if name in ("bourke_color_map", "tab10_color_map", "solidify_mesh"):
-        warn(
-            f"The symbol `warp.render.{name}` will soon be removed from the public API. "
-            f"It can still be accessed from `warp._src.render.utils.{name}` but might be changed or removed without notice.",
-            DeprecationWarning,
-        )
-        return getattr(_render_utils, name)
-
-    return get_deprecated_api(_render, "warp", name)

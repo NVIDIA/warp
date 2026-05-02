@@ -69,14 +69,3 @@ from warp._src.fem.space.shape.triangle_shape_function import (
     TriangleRaviartThomasShapeFunctions as TriangleRaviartThomasShapeFunctions,
 )
 from warp._src.fem.space.shape.triangle_shape_function import TriangleShapeFunction as TriangleShapeFunction
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src.fem.space import shape as _shape
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_shape, "warp.fem.space", name)

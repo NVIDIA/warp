@@ -260,9 +260,6 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     void* context = wp_cuda_context_get_current();
     ContextGuard guard(context);
 
-    // Per-context cached temporary buffers
-    // BsrFromTripletsTemp& bsr_temp = g_bsr_from_triplets_temp_map[context];
-
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
 
     ScopedTemporary<BsrRowCol> combined_row_col(context, 2 * size_t(nnz));
@@ -271,8 +268,8 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     bool return_summed_blocks = tpl_block_offsets != nullptr && tpl_block_indices != nullptr;
     if (!return_summed_blocks) {
         // if not provided, allocate temporary offset and indices buffers
-        tpl_block_offsets = static_cast<int*>(wp_alloc_device(context, size_t(nnz) * sizeof(int)));
-        tpl_block_indices = static_cast<int*>(wp_alloc_device(context, size_t(nnz) * sizeof(int)));
+        tpl_block_offsets = static_cast<int*>(wp_alloc_device(context, size_t(nnz) * sizeof(int), "(native:sparse)"));
+        tpl_block_indices = static_cast<int*>(wp_alloc_device(context, size_t(nnz) * sizeof(int), "(native:sparse)"));
     }
 
 

@@ -49,8 +49,8 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     // allocate temporary buffers if not provided
     bool return_summed_blocks = tpl_block_offsets != nullptr && tpl_block_indices != nullptr;
     if (!return_summed_blocks) {
-        tpl_block_offsets = static_cast<int*>(wp_alloc_host(size_t(nnz) * sizeof(int)));
-        tpl_block_indices = static_cast<int*>(wp_alloc_host(size_t(nnz) * sizeof(int)));
+        tpl_block_offsets = static_cast<int*>(wp_alloc_host(size_t(nnz) * sizeof(int), "(native:sparse)"));
+        tpl_block_indices = static_cast<int*>(wp_alloc_host(size_t(nnz) * sizeof(int), "(native:sparse)"));
     }
 
     std::iota(tpl_block_indices, tpl_block_indices + nnz, 0);

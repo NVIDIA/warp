@@ -49,10 +49,12 @@ Scalars
    :nosignatures:
    :toctree: _generated
 
+   bfloat16
    bool
    float16
    float32
    float64
+   handle
    int8
    int16
    int32
@@ -184,6 +186,7 @@ Arrays
    array4d
    fixedarray
    tile
+   tile_stack
    clone
    copy
    empty
@@ -383,9 +386,12 @@ CUDA Memory Management
    :nosignatures:
    :toctree: _generated
 
+   Allocator
+   ScopedAllocator
    ScopedMempool
    ScopedMempoolAccess
    ScopedPeerAccess
+   get_device_allocator
    get_mempool_release_threshold
    get_mempool_used_mem_current
    get_mempool_used_mem_high
@@ -395,24 +401,29 @@ CUDA Memory Management
    is_mempool_supported
    is_peer_access_enabled
    is_peer_access_supported
+   set_cuda_allocator
+   set_device_allocator
    set_mempool_access_enabled
    set_mempool_enabled
    set_mempool_release_threshold
    set_peer_access_enabled
 
-CUDA Graph Management
----------------------
+Graph Management
+----------------
 
 .. autosummary::
    :nosignatures:
    :toctree: _generated
 
+   Graph
    ScopedCapture
    capture_begin
    capture_debug_dot_print
    capture_end
    capture_if
    capture_launch
+   capture_load
+   capture_save
    capture_while
    is_conditional_graph_supported
 
@@ -433,8 +444,10 @@ Profiling
    :nosignatures:
    :toctree: _generated
 
+   ScopedMemoryTracker
    ScopedTimer
    TimingResult
+   print_memory_report
    timing_begin
    timing_end
    timing_print

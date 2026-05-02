@@ -31,18 +31,32 @@ After the backward pass has completed, the gradients with respect to the inputs 
     # gradient of loss with respect to input a
     print(a.grad)
 
-Note that gradients are accumulated on the participating buffers, so if you wish to reuse the same buffers for multiple
-backward passes you should first zero the gradients using :meth:`Tape.zero()`.
+Note that output gradients are consumed (zeroed) by default during the backward pass.
+To preserve the gradient of an intermediate or output array for inspection after backward,
+create it with ``retain_grad=True``::
+
+    y = wp.zeros(1024, dtype=wp.vec3, device="cuda", requires_grad=True, retain_grad=True)
+
+.. warning::
+   ``retain_grad=True`` disables the zeroing that ensures only the final write to each
+   array element produces a gradient. If any element is written more than once during the
+   forward pass, whether across multiple kernels or within a single kernel, gradients will
+   be double-counted, producing incorrect results. Only use ``retain_grad=True`` on arrays
+   where each element is written at most once.
+
+If you wish to reuse the same buffers for multiple backward passes,
+you should first zero the input gradients using :meth:`Tape.zero()`.
 
 
 Array Overwrites
 ################
 
-To correctly compute gradients, automatic differentiation frameworks must store the intermediate results of 
+To correctly compute gradients, automatic differentiation frameworks must store the intermediate results of
 computations for backpropagation. Overwriting previously computed results can lead to incorrect gradient calculations.
 For this reason, frameworks like PyTorch and JAX implicitly allocate new memory for every operation output.
-In Warp, the user explicitly manages memory, and so should take care to avoid overwriting previous results 
-when using features like ``tape.backward()``.
+In Warp, the user explicitly manages memory. When an output array is overwritten by a subsequent kernel launch,
+Warp correctly propagates gradients only through the final write by zeroing the output gradient after
+reading it during the backward pass. This matches the behavior of PyTorch and JAX.
 
 Consider the following gradient calculation in PyTorch:
 

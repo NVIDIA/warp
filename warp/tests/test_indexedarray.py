@@ -42,6 +42,152 @@ def test_indexedarray_1d(test, device):
     wp.launch(kernel_1d, dim=iarr.size, inputs=[iarr, expected_arr], device=device)
 
 
+@wp.struct
+class IndexedArrayStruct:
+    iarr: wp.indexedarray(dtype=float)
+
+
+@wp.struct
+class NestedIndexedArrayStruct:
+    inner: IndexedArrayStruct
+
+
+@wp.kernel
+def kernel_indexedarray_in_struct(arg: IndexedArrayStruct, expected: wp.array(dtype=float)):
+    i = wp.tid()
+
+    wp.expect_eq(arg.iarr[i], expected[i])
+
+    arg.iarr[i] = 2.0 * arg.iarr[i]
+    wp.atomic_add(arg.iarr, i, 1.0)
+
+    wp.expect_eq(arg.iarr[i], 2.0 * expected[i] + 1.0)
+
+
+@wp.kernel
+def kernel_indexedarray_in_nested_struct(arg: NestedIndexedArrayStruct, expected: wp.array(dtype=float)):
+    i = wp.tid()
+
+    wp.expect_eq(arg.inner.iarr[i], expected[i])
+
+    arg.inner.iarr[i] = 2.0 * arg.inner.iarr[i]
+    wp.atomic_add(arg.inner.iarr, i, 1.0)
+
+    wp.expect_eq(arg.inner.iarr[i], 2.0 * expected[i] + 1.0)
+
+
+@wp.kernel
+def kernel_indexedarray_in_struct_array(args: wp.array(dtype=IndexedArrayStruct), expected: wp.array(dtype=float)):
+    i = wp.tid()
+
+    s = args[0]
+    wp.expect_eq(s.iarr[i], expected[i])
+
+    s.iarr[i] = 2.0 * s.iarr[i]
+    wp.atomic_add(s.iarr, i, 1.0)
+
+    wp.expect_eq(s.iarr[i], 2.0 * expected[i] + 1.0)
+
+
+def test_indexedarray_in_struct(test, device):
+    values = np.arange(10, dtype=np.float32)
+    arr = wp.array(data=values, device=device)
+
+    indices = wp.array([1, 3, 5, 7, 9], dtype=int, device=device)
+    iarr = wp.indexedarray1d(arr, [indices])
+
+    expected_arr = wp.array(data=[1, 3, 5, 7, 9], dtype=float, device=device)
+
+    s = IndexedArrayStruct()
+    s.iarr = iarr
+
+    wp.launch(kernel_indexedarray_in_struct, dim=iarr.size, inputs=[s, expected_arr], device=device)
+    wp.synchronize_device(device)
+
+
+def test_indexedarray_in_nested_struct(test, device):
+    values = np.arange(10, dtype=np.float32)
+    arr = wp.array(data=values, device=device)
+
+    indices = wp.array([1, 3, 5, 7, 9], dtype=int, device=device)
+    iarr = wp.indexedarray1d(arr, [indices])
+
+    expected_arr = wp.array(data=[1, 3, 5, 7, 9], dtype=float, device=device)
+
+    inner = IndexedArrayStruct()
+    inner.iarr = iarr
+
+    outer = NestedIndexedArrayStruct()
+    outer.inner = inner
+
+    wp.launch(kernel_indexedarray_in_nested_struct, dim=iarr.size, inputs=[outer, expected_arr], device=device)
+    wp.synchronize_device(device)
+
+
+def test_indexedarray_in_struct_array(test, device):
+    values = np.arange(10, dtype=np.float32)
+    arr = wp.array(data=values, device=device)
+
+    indices = wp.array([1, 3, 5, 7, 9], dtype=int, device=device)
+    iarr = wp.indexedarray1d(arr, [indices])
+
+    expected_arr = wp.array(data=[1, 3, 5, 7, 9], dtype=float, device=device)
+
+    s = IndexedArrayStruct()
+    s.iarr = iarr
+    struct_arr = wp.array([s], dtype=IndexedArrayStruct, device=device)
+
+    wp.launch(kernel_indexedarray_in_struct_array, dim=iarr.size, inputs=[struct_arr, expected_arr], device=device)
+    wp.synchronize_device(device)
+
+
+def test_indexedarray_in_struct_numpy(test, device):
+    values = np.arange(4, dtype=np.float32)
+    arr = wp.array(data=values, device=device)
+
+    indices = wp.array([0, 2], dtype=int, device=device)
+    iarr = wp.indexedarray1d(arr, [indices])
+
+    s = IndexedArrayStruct()
+    s.iarr = iarr
+
+    # Just ensure these are functional for structs embedding indexedarray_t
+    dtype = IndexedArrayStruct.numpy_dtype()
+    value = s.numpy_value()
+
+    test.assertIsInstance(dtype, dict)
+    test.assertEqual(dtype["names"], ["iarr"])
+    test.assertEqual(len(value), 1)
+
+
+def test_indexedarray_in_struct_to_device_transfer(test, device):
+    # This test only applies to CUDA target devices.
+    if not wp.is_cuda_available() or not wp.get_device(device).is_cuda:
+        test.skipTest("Requires CUDA")
+
+    # Create the indexedarray on CPU, then move the struct to CUDA.
+    values = np.arange(10, dtype=np.float32)
+    arr_cpu = wp.array(data=values, device="cpu")
+    indices_cpu = wp.array([1, 3, 5, 7, 9], dtype=int, device="cpu")
+    iarr_cpu = wp.indexedarray1d(arr_cpu, [indices_cpu])
+
+    s = IndexedArrayStruct()
+    s.iarr = iarr_cpu
+
+    s_cuda = s.to(device)
+    test.assertIsInstance(s_cuda.iarr, wp.indexedarray)
+    test.assertTrue(all(x is None for x in s_cuda.iarr.indices))
+    test.assertEqual(s_cuda.iarr.shape, iarr_cpu.shape)
+
+    expected_values = np.array([1, 3, 5, 7, 9], dtype=np.float32)
+    expected_arr = wp.array(data=expected_values, dtype=float, device=device)
+
+    wp.launch(kernel_indexedarray_in_struct, dim=s_cuda.iarr.size, inputs=[s_cuda, expected_arr], device=device)
+    # After the kernel: a[i] = 2*a[i] then atomic_add(a, i, 1) => 2*expected + 1
+    result = s_cuda.iarr.numpy()
+    assert_np_equal(result, 2.0 * expected_values + 1.0)
+
+
 @wp.kernel
 def kernel_2d(a: wp.indexedarray2d(dtype=float), expected: wp.array2d(dtype=float)):
     i, j = wp.tid()
@@ -1121,6 +1267,22 @@ add_function_test(TestIndexedArray, "test_indexedarray_fill_scalar", test_indexe
 add_function_test(TestIndexedArray, "test_indexedarray_fill_vector", test_indexedarray_fill_vector, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_fill_matrix", test_indexedarray_fill_matrix, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_fill_struct", test_indexedarray_fill_struct, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_in_struct", test_indexedarray_in_struct, devices=devices)
+add_function_test(
+    TestIndexedArray, "test_indexedarray_in_nested_struct", test_indexedarray_in_nested_struct, devices=devices
+)
+add_function_test(
+    TestIndexedArray, "test_indexedarray_in_struct_array", test_indexedarray_in_struct_array, devices=devices
+)
+add_function_test(
+    TestIndexedArray, "test_indexedarray_in_struct_numpy", test_indexedarray_in_struct_numpy, devices=devices
+)
+add_function_test(
+    TestIndexedArray,
+    "test_indexedarray_in_struct_to_device_transfer",
+    test_indexedarray_in_struct_to_device_transfer,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

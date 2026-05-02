@@ -80,8 +80,8 @@ To determine your GPU's compute capability, see `NVIDIA CUDA GPUs <https://devel
 
 * **CPU-only execution** is supported on all platforms for users without a GPU.
 
-Build requirements
-------------------
+Building from source
+--------------------
 
 To build Warp from source, you need:
 
@@ -119,6 +119,21 @@ Run ``python build_lib.py --help`` for build options like ``--cuda-path``, ``--m
 
 For detailed instructions, see :doc:`installation`.
 
+Build tools
+~~~~~~~~~~~
+
+The build script (``build_lib.py``) and related build infrastructure are developer-facing tools for building
+Warp from source. These scripts have no versioning guarantees:
+
+* **No API Stability**: Command-line options, arguments, and programmatic interfaces may change between
+  releases without advance notice or deprecation warnings.
+* **No Backward Compatibility**: Build processes that work with one version may require adjustments for
+  the next version.
+* **Self-Documentation**: Use ``python build_lib.py --help`` to see available options for your version.
+
+Users building Warp from source should expect build script interfaces to change between releases and
+use ``--help`` to discover current options.
+
 Support policies
 ================
 
@@ -129,14 +144,17 @@ upgrades and anticipate breaking changes.
 Versioning
 ----------
 
-Warp library versions take the format X.Y.Z, similar to `Python itself <https://devguide.python.org/developer-workflow/development-cycle/#devcycle>`__:
+Warp library versions take the format X.Y.Z, but Warp does not follow
+`Semantic Versioning <https://semver.org/>`__. In practice, only the Y and Z numbers are bumped:
 
-* Increments in X are reserved for major reworks of the Warp library causing disruptive incompatibility (or reaching the 1.0 milestone).
-* Increments in Y are for regular releases with a new set of features. May contain deprecations, breaking changes, and
-  removals.
-* Increments in Z are for bug fixes. In principle, there are no new features. Can be omitted if 0 or not relevant.
-
-This is similar to `Semantic Versioning <https://semver.org/>`_ minor versions if well-documented and gradually introduced.
+* **X** is a "marketing" number reserved for major reworks of the Warp library causing disruptive
+  incompatibility.
+* **Y** is bumped for a **feature release**, published on a regular monthly cadence. Feature releases
+  introduce new features and are the only releases that may contain deprecations, breaking changes,
+  and removals.
+* **Z** is bumped for a **bugfix release**. Bugfix releases are not regularly scheduled and are issued
+  only when an important issue cannot wait for the next feature release. They do not contain new
+  features, deprecations, or removals.
 
 **Prerelease versions**
 
@@ -144,8 +162,9 @@ In addition to stable releases, Warp uses the following prerelease version forma
 
 * **Development builds** (``X.Y.Z.dev0``): The version string used in the source code on the main branch between 
   stable releases (e.g., ``1.11.0.dev0``).
-* **Release candidates** (``X.Y.ZrcN``): Internal pre-release versions for QA testing before a stable release, 
-  starting with ``rc1`` and incrementing (e.g., ``1.10.0rc1``). Not published externally.
+* **Release candidates** (``X.Y.ZrcN``): Pre-release versions used for QA testing before a stable
+  release, starting with ``rc1`` and incrementing (e.g., ``1.10.0rc1``). Release candidates are not
+  regularly published externally, but may be at our discretion.
 * **Nightly builds** (``X.Y.Z.devYYYYMMDD``): Automated builds from the main branch published on the 
   `NVIDIA PyPI index <https://pypi.nvidia.com>`__ with the build date appended (e.g., ``1.11.0.dev20251030``).
 
@@ -157,7 +176,8 @@ Component states
 All supported components (e.g. API functions, Python versions, GPU architectures) exist in one of the following states:
 
 * **Experimental**: A new feature that is still under active development.
-  It is available for early adopters to test and provide feedback, but its design may change with little or no notice.
+  It is available for early adopters to test and provide feedback, but its design may change with little or no notice,
+  including in bugfix releases.
 * **Stable**: The default state for most features. Changes to stable features follow our deprecation timeline 
   and backward compatibility guarantees.
 * **Deprecated**: A feature that is scheduled for removal in a future release.
@@ -168,41 +188,27 @@ All supported components (e.g. API functions, Python versions, GPU architectures
 Deprecation timeline
 --------------------
 
-A feature will typically be maintained for two full minor release cycles after its deprecation. For example, a feature
-deprecated in ``v1.8.0`` will remain functional throughout the entire ``v1.8.x`` and ``v1.9.x`` series
-and will be removed in ``v1.10.0``. Note that deprecations and removals do not occur in patch releases
-(``.1``, ``.2``, etc.), only in major or minor releases (the ``.0`` version).
+A deprecated feature will typically be maintained for **at least 4 months** after its deprecation
+is announced. At the monthly feature release cadence, that gives users roughly 4 feature releases
+during which they will see a ``DeprecationWarning`` and can migrate. Deprecations and removals occur
+only in feature releases, never in bugfix releases.
 
-**Example timeline**
+**Example timeline** (assuming the monthly feature release cadence):
 
-* ``v1.8.0``: A feature is deprecated. Its deprecation is noted in changelog and using it will result in a
-  ``DeprecationWarning`` (if applicable). 
-* ``v1.8.1``: The deprecated feature remains fully functional.
-* ``v1.9.0``: The deprecated feature remains fully functional.
-  The release announcement may remind users of the feature's upcoming removal.
-* ``v1.9.1``: The deprecated feature remains fully functional.
-* ``v1.10.0``: Feature is removed. Using it will result in an error.
+* ``v1.8.0`` (month 0): A feature is deprecated. Its deprecation is noted in the changelog and using
+  it will result in a ``DeprecationWarning`` (if applicable).
+* ``v1.8.1`` (ad-hoc bugfix release, if issued): The deprecated feature remains fully functional.
+* ``v1.9.0`` (month 1): The deprecated feature remains fully functional.
+* ``v1.10.0`` (month 2): The deprecated feature remains fully functional.
+* ``v1.11.0`` (month 3): The deprecated feature remains fully functional. The release announcement
+  flags the upcoming removal in the next release.
+* ``v1.12.0`` (month 4): Feature is removed. Using it will result in an error.
 
 While we strive to abide by the above deprecation timeline, there may be circumstances in which a feature is removed
 with a briefer or longer deprecation period.
 
-Release support policy
-----------------------
-
-Warp follows a rolling release model where only the latest released version is actively maintained:
-
-* **Active Support**: Only the most recent version (e.g., ``v1.10.x``) receives bugfixes, improvements, and updates.
-* **Limited Backporting**: By default, when a new version is released, previous versions are no longer actively 
-  maintained and fixes are not backported to older release branches. However, in exceptional circumstances where 
-  users cannot upgrade to the latest version, we may consider backporting critical fixes on a case-by-case basis.
-* **Upgrade Path**: Users who encounter bugs or need fixes should generally upgrade to the latest version. We strive 
-  to make upgrades straightforward by following our deprecation timeline and clearly documenting breaking changes.
-
-This policy ensures that development efforts remain focused on improving the latest version while maintaining 
-a sustainable maintenance burden for the project.
-
 How deprecations are communicated
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
 We employ multiple channels to ensure users are aware of deprecated and removed features:
 
@@ -212,18 +218,50 @@ We employ multiple channels to ensure users are aware of deprecated and removed 
     and at :doc:`changelog`.
 
 **Runtime Warnings**
-    When you use a deprecated feature in your code, Warp will emit a ``DeprecationWarning`` to stdout
-    the first time the feature is used in your Python session. These warnings include information about
-    the deprecated feature and, when applicable, suggest an alternative.
+    When you use a deprecated feature in your code, Warp will emit a ``DeprecationWarning`` to
+    stdout the first time the feature is used in your Python session. These warnings include
+    information about the deprecated feature and, when applicable, suggest an alternative. To
+    include source file and line number information in the warning output, set
+    ``warp.config.verbose_warnings = True`` before calling into Warp.
 
 **API Documentation**
     Deprecated features are marked with ``.. deprecated:: X.Y`` directives in the API documentation,
     indicating the version in which deprecation was introduced.
 
 **GitHub Releases**
-    Release announcements on https://github.com/NVIDIA/warp/releases. When a deprecated
-    feature is approaching its removal date, we typically add reminders in the final
-    release series before removal occurs.
+    Release announcements on https://github.com/NVIDIA/warp/releases. When a deprecated feature is
+    scheduled for removal in the next feature release, the preceding release's announcement will flag
+    the upcoming removal.
+
+What to do when you see a deprecation warning
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Read the warning message for the suggested replacement, if any.
+2. Check the **Deprecated** section of :doc:`changelog` to find the release in which the
+   deprecation was first announced. Combined with the deprecation timeline above, this tells you
+   roughly when the feature will be removed.
+3. Migrate your code to the replacement API. The deprecated feature will remain functional for at
+   least 4 months, giving you multiple feature releases to complete the migration.
+4. If migration is blocked by a gap in the replacement, raise a `GitHub issue
+   <https://github.com/NVIDIA/warp/issues>`__.
+
+Your installed Warp version is available via ``warp.config.version`` (or ``warp.__version__``).
+
+Release support policy
+----------------------
+
+Only the latest feature release line is actively maintained:
+
+* **Active Support**: Only the most recent feature release line (e.g., ``v1.10.x``) is eligible to
+  receive bugfix releases. Bugfix releases are issued ad-hoc, only when an important issue cannot
+  wait for the next feature release.
+* **Limited Backporting**: By default, fixes are not backported to earlier feature release lines.
+  In exceptional cases where a user cannot upgrade, we may backport a critical fix on a
+  case-by-case basis. If this applies to you, raise a GitHub issue.
+* **Upgrade Path**: Users who encounter bugs or need fixes should upgrade to the latest feature
+  release. Because bugfix releases are not regularly scheduled, the next feature release is often
+  the fastest route to a fix. We document breaking changes and follow the deprecation timeline to
+  make upgrades predictable.
 
 Component-specific policies
 ---------------------------
@@ -239,7 +277,7 @@ Warp's **public API** consists of symbols that are documented in the :doc:`API r
 and accessible without underscore prefixes (e.g., ``warp.function_name()``, ``warp.fem.ClassName``).
 
 The public API is designed to be stable and backward compatible. Changes follow the deprecation
-timeline described earlier, with deprecated features maintained for at least two minor release cycles.
+timeline described earlier.
 
 **Private APIs**, such as anything under ``warp._src.*`` or any symbols with underscore prefixes 
 (e.g., ``warp._private_function()``), can change or be removed without following the deprecation timeline. 
@@ -251,12 +289,12 @@ Python versions
 Warp aims to support Python versions that are fully released (in "bugfix" or "security" status according
 to the `Python version lifecycle <https://devguide.python.org/versions/>`__). 
 
-Support for newly released Python versions is added in the next minor Warp release after the Python
-version's stable release (e.g., if Python 3.15.0 is released during the Warp 1.10.x series, support
-will be added in Warp 1.11.0).
+Support for newly released Python versions is added in the next Warp feature release after the
+Python version's stable release (e.g., if Python 3.15.0 is released during the Warp 1.10.x series,
+support will be added in Warp 1.11.0).
 
-When a Python version reaches end-of-life, we continue support for at least two additional minor
-Warp release cycles before dropping support, allowing users time to migrate.
+When a Python version reaches end-of-life, we follow the deprecation timeline described above
+before dropping support, allowing users time to migrate.
 
 Dependencies
 ~~~~~~~~~~~~
@@ -265,8 +303,8 @@ Dependencies
 
 NumPy is the only required runtime dependency for Warp. While we do not follow a strict version 
 support policy such as `SPEC 0 <https://scientific-python.org/specs/spec-0000/>`__, we generally 
-support a wide range of NumPy versions. The minimum supported NumPy version may be updated in 
-minor Warp releases following our standard deprecation practices.
+support a wide range of NumPy versions. The minimum supported NumPy version may be updated in
+Warp feature releases following our standard deprecation practices.
 
 **Optional dependencies**
 
@@ -286,27 +324,26 @@ integrations:
 
 * **Target Support**: We aim to support the latest stable release of each framework at the time of 
   a Warp release.
-* **Backward Compatibility**: We maintain backward compatibility with older framework versions until 
-  doing so becomes a significant maintenance burden. This is particularly relevant for rapidly evolving 
-  frameworks like JAX, where API changes may eventually require us to drop support for older versions.
-* **Testing**: Our CI/CD pipeline tests against recent versions of these frameworks, though we cannot 
+* **Backward Compatibility**: Older framework versions are supported where practical, but support
+  may be dropped over time (particularly for rapidly evolving frameworks like JAX). Any changes to
+  supported versions are noted in the changelog.
+* **Testing**: Our CI/CD pipeline tests against recent versions of these frameworks, though we cannot
   exhaustively test every version combination.
 
-When interoperability with a specific framework version is broken or deprecated, this will be noted in 
-the changelog. Users experiencing compatibility issues should consult the changelog and GitHub issues 
-for known problems and workarounds.
+Users experiencing compatibility issues should consult the changelog and GitHub issues for known
+problems and workarounds.
 
 CUDA versions
 ~~~~~~~~~~~~~
 
-Warp supports the two most recent CUDA major versions. Not all features may be available for all CUDA versions.
-The documentation will note if a feature has a specific CUDA version requirement.
+Warp supports the two most recent CUDA major versions. Features with specific CUDA version
+requirements are noted in the documentation.
 
 Pre-built wheels are available for the two supported CUDA major versions, although the specific minor version
 used is set at our discretion.
 
-There is currently no policy that controls how we choose the CUDA version that PyPI wheels are built with.
-Instead, the version used is selected according to what we believe is the most useful choice for the average user.
+The specific CUDA minor version used for PyPI wheels is selected at our discretion based on what we
+believe is most useful for the average user.
 
 NVIDIA driver compatibility
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -353,10 +390,11 @@ compilation process, see the
   explicitly compiled as cubins, the CUDA driver can JIT-compile the PTX intermediate representation to 
   native code for that architecture.
 
-* **Cubin Compilation**: Pre-built Warp packages include cubin binaries for a select set of common GPU 
-  architectures to minimize JIT compilation overhead. The specific architectures included are determined 
-  by build configuration and may change between minor or major releases, but not between patch releases 
-  (except when fixing a bug).
+* **Cubin Compilation**: Pre-built Warp packages include cubin binaries for a select set of common GPU
+  architectures to minimize JIT compilation overhead. The specific architectures included are determined
+  by build configuration and may change between feature releases. Within a feature release line, the
+  architecture list is stable, except when a bugfix release must adjust it to work around a compiler
+  or library issue affecting a specific architecture.
 
 **Changes to architecture support**
 
@@ -365,8 +403,8 @@ GPU architecture support can change in two ways:
 1. **Dropping CUDA Toolkit Support**: When Warp drops support for an older CUDA Toolkit major version 
    (typically coinciding with adding support for a new CUDA major version), the minimum supported compute 
    capability may increase to match the new minimum toolkit's requirements. Since CUDA Toolkit release 
-   timelines are beyond Warp's control, such changes may occur with limited advance notice, but will 
-   always happen in a minor or major Warp release, never in a patch release.
+   timelines are beyond Warp's control, such changes may occur with limited advance notice, but will
+   always happen in a Warp feature release, never in a bugfix release.
 
 2. **Changing PyPI Wheel Build Configuration**: When we decide to change the CUDA Toolkit version used to 
    build PyPI wheels, this affects the minimum GPU architecture supported by those wheels. Because this 
@@ -393,18 +431,3 @@ Warp's supported operating systems are primarily determined by the platforms sup
 
 * **macOS**: Support follows the platform requirements outlined in the Platform compatibility 
   Matrix and Runtime requirements sections above.
-
-Build tools
-~~~~~~~~~~~
-
-The build script (``build_lib.py``) and related build infrastructure are developer-facing tools for building 
-Warp from source. These scripts have no versioning guarantees:
-
-* **No API Stability**: Command-line options, arguments, and programmatic interfaces may change between 
-  releases without advance notice or deprecation warnings.
-* **No Backward Compatibility**: Build processes that work with one version may require adjustments for 
-  the next version.
-* **Self-Documentation**: Use ``python build_lib.py --help`` to see available options for your version.
-
-Users building Warp from source should expect build script interfaces to change between releases and 
-use ``--help`` to discover current options.

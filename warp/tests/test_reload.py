@@ -250,8 +250,13 @@ def test_module_unload_during_graph_capture(test, device):
     # preload module before graph capture
     wp.load_module(device=device)
 
-    # load another module to test unloading during graph capture
-    other_module = wp.get_module("warp.tests.aux_test_module_unload")
+    # Load another module whose kernel is also captured, so unloading it
+    # during capture exercises the retention path (on CPU, the APIC state
+    # holds raw function pointers into the module's loaded object; on CUDA,
+    # the captured graph retains the module_exec).
+    import warp.tests.aux_test_module_unload as aux  # noqa: PLC0415
+
+    other_module = wp.get_module(aux.__name__)
     other_module.load(device)
 
     with wp.ScopedDevice(device):
@@ -259,8 +264,10 @@ def test_module_unload_during_graph_capture(test, device):
 
         with wp.ScopedCapture(force_module_load=False) as capture:
             wp.launch(foo, dim=1, inputs=[a])
+            wp.launch(aux.k, dim=1, inputs=[])
 
-            # unloading a module during graph capture should be fine (deferred until capture completes)
+            # Unloading a module whose kernel was captured should be deferred
+            # until the graph is destroyed — the graph retains module_execs.
             other_module.unload()
 
         wp.capture_launch(capture.graph)
@@ -283,10 +290,10 @@ add_function_test(TestReload, "test_reload_class", test_reload_class, devices=de
 # TODO: test_reload_references sometimes has issues running on cuda:1
 add_function_test(TestReload, "test_reload_references", test_reload_references, devices=get_test_devices("basic"))
 add_function_test(
-    TestReload, "test_graph_launch_after_module_reload", test_graph_launch_after_module_reload, devices=cuda_devices
+    TestReload, "test_graph_launch_after_module_reload", test_graph_launch_after_module_reload, devices=devices
 )
 add_function_test(
-    TestReload, "test_module_unload_during_graph_capture", test_module_unload_during_graph_capture, devices=cuda_devices
+    TestReload, "test_module_unload_during_graph_capture", test_module_unload_during_graph_capture, devices=devices
 )
 
 

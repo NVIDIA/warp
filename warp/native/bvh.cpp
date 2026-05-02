@@ -248,17 +248,18 @@ void TopDownBVHBuilder::build(
     bvh.max_depth = 0;
     bvh.max_nodes = 2 * n - 1;
 
-    bvh.node_lowers = new BVHPackedNodeHalf[bvh.max_nodes];
-    bvh.node_uppers = new BVHPackedNodeHalf[bvh.max_nodes];
-    bvh.node_parents = new int[bvh.max_nodes];
+    bvh.node_lowers
+        = static_cast<BVHPackedNodeHalf*>(wp_alloc_host(sizeof(BVHPackedNodeHalf) * bvh.max_nodes, "(native:bvh)"));
+    bvh.node_uppers
+        = static_cast<BVHPackedNodeHalf*>(wp_alloc_host(sizeof(BVHPackedNodeHalf) * bvh.max_nodes, "(native:bvh)"));
+    bvh.node_parents = static_cast<int*>(wp_alloc_host(sizeof(int) * bvh.max_nodes, "(native:bvh)"));
     bvh.node_counts = nullptr;
     bvh.num_items = n;
 
-    // root is always in first slot for top down builders
-    bvh.root = new int[1];
+    bvh.root = static_cast<int*>(wp_alloc_host(sizeof(int), "(native:bvh)"));
     bvh.root[0] = 0;
 
-    bvh.primitive_indices = new int[n];
+    bvh.primitive_indices = static_cast<int*>(wp_alloc_host(sizeof(int) * n, "(native:bvh)"));
     for (int i = 0; i < n; ++i)
         bvh.primitive_indices[i] = i;
 
@@ -575,10 +576,14 @@ void reorder_top_down_bvh(BVH& bvh_host)
 {
     // reorder bvh_host such that its nodes are in the front
     // this is essential for the device refit
-    BVHPackedNodeHalf* node_lowers_reordered = new BVHPackedNodeHalf[bvh_host.max_nodes];
-    BVHPackedNodeHalf* node_uppers_reordered = new BVHPackedNodeHalf[bvh_host.max_nodes];
+    BVHPackedNodeHalf* node_lowers_reordered = static_cast<BVHPackedNodeHalf*>(
+        wp_alloc_host(sizeof(BVHPackedNodeHalf) * bvh_host.max_nodes, "(native:bvh)")
+    );
+    BVHPackedNodeHalf* node_uppers_reordered = static_cast<BVHPackedNodeHalf*>(
+        wp_alloc_host(sizeof(BVHPackedNodeHalf) * bvh_host.max_nodes, "(native:bvh)")
+    );
 
-    int* node_parents_reordered = new int[bvh_host.max_nodes];
+    int* node_parents_reordered = static_cast<int*>(wp_alloc_host(sizeof(int) * bvh_host.max_nodes, "(native:bvh)"));
 
     std::vector<int> old_to_new(bvh_host.max_nodes, -1);
 
@@ -678,9 +683,9 @@ void reorder_top_down_bvh(BVH& bvh_host)
         }
     }
 
-    delete[] bvh_host.node_lowers;
-    delete[] bvh_host.node_uppers;
-    delete[] bvh_host.node_parents;
+    wp_free_host(bvh_host.node_lowers);
+    wp_free_host(bvh_host.node_uppers);
+    wp_free_host(bvh_host.node_parents);
 
     bvh_host.node_lowers = node_lowers_reordered;
     bvh_host.node_uppers = node_uppers_reordered;
@@ -836,11 +841,11 @@ void bvh_create_host(
 
 void bvh_destroy_host(BVH& bvh)
 {
-    delete[] bvh.node_lowers;
-    delete[] bvh.node_uppers;
-    delete[] bvh.node_parents;
-    delete[] bvh.primitive_indices;
-    delete[] bvh.root;
+    wp_free_host(bvh.node_lowers);
+    wp_free_host(bvh.node_uppers);
+    wp_free_host(bvh.node_parents);
+    wp_free_host(bvh.primitive_indices);
+    wp_free_host(bvh.root);
 
     bvh.node_lowers = nullptr;
     bvh.node_uppers = nullptr;
@@ -961,7 +966,8 @@ void cubql_bvh_rebuild_host(CuBQLBVH&) { }
 
 uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size)
 {
-    BVH* bvh = new BVH();
+    BVH* bvh = static_cast<BVH*>(wp_alloc_host(sizeof(BVH), "(native:bvh)"));
+    memset(bvh, 0, sizeof(BVH));
     wp::bvh_create_host(lowers, uppers, num_items, constructor_type, groups, leaf_size, *bvh);
 
     return (uint64_t)bvh;
@@ -983,7 +989,7 @@ void wp_bvh_destroy_host(uint64_t id)
 {
     BVH* bvh = (BVH*)(id);
     wp::bvh_destroy_host(*bvh);
-    delete bvh;
+    wp_free_host(bvh);
 }
 
 uint64_t wp_cubql_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int leaf_size)

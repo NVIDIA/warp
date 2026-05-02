@@ -178,9 +178,9 @@ class Example:
         self.p1 = wp.zeros(shape, dtype=float)
         self.div = wp.zeros(shape, dtype=float)
 
-        # capture pressure solve as a CUDA graph
-        self.use_cuda_graph = wp.get_device().is_cuda
-        if self.use_cuda_graph:
+        # capture pressure solve as a graph
+        self.use_graph_capture = True
+        if self.use_graph_capture:
             with wp.ScopedCapture() as capture:
                 self.pressure_iterations()
             self.graph = capture.graph
@@ -206,7 +206,7 @@ class Example:
                 self.p0.zero_()
                 self.p1.zero_()
 
-                if self.use_cuda_graph:
+                if self.use_graph_capture:
                     wp.capture_launch(self.graph)
                 else:
                     self.pressure_iterations()

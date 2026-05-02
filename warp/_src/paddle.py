@@ -212,6 +212,7 @@ def from_paddle(
     requires_grad: bool | None = None,
     grad: paddle.Tensor | None = None,
     return_ctype: bool = False,
+    retain_grad: bool = False,
 ) -> warp.array:
     """Convert a Paddle tensor to a Warp array without copying the data.
 
@@ -221,6 +222,7 @@ def from_paddle(
         requires_grad (bool): Whether the resulting array should wrap the tensor's gradient, if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor's `requires_grad` value.
         grad (paddle.Tensor): The grad attached to given tensor. Defaults to None.
         return_ctype (bool): Whether to return a low-level array descriptor instead of a ``warp.array`` object (faster).  The descriptor can be passed to Warp kernels.
+        retain_grad (bool): Whether to preserve gradients during backward instead of zeroing after read.
 
     Returns:
         warp.array: The wrapped array or array descriptor.
@@ -321,6 +323,7 @@ def from_paddle(
             copy=False,
             grad=grad,
             requires_grad=requires_grad,
+            retain_grad=retain_grad,
         )
 
         # save a reference to the source tensor, otherwise it may get deallocated

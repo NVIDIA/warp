@@ -3,10 +3,16 @@
 
 """Functions to build Clang/LLVM from source and to build the CPU-only Warp library."""
 
+import hashlib
+import io
 import os
+import platform
 import shutil
+import stat
 import subprocess
 import sys
+import tarfile
+import urllib.request
 
 from warp._src.build_dll import *
 
@@ -36,22 +42,78 @@ def fetch_prebuilt_libraries(arch):
                 "x86_64": "18.1.3-linux-x86_64-gcc9.4",
             }
 
+    # Reuse the current interpreter so packman skips downloading its bundled Python,
+    # whose manylinux_2_35 build can't run on older-glibc CI images.
+    packman_env = {**os.environ, "PM_PYTHON_EXT": sys.executable}
+
+    packman_cmd = [
+        packman,
+        "install",
+        "-l",
+        os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}"),
+        "clang+llvm-warp",
+        packages[arch],
+    ]
+
+    def _run_packman_install():
+        subprocess.check_output(packman_cmd, stderr=subprocess.STDOUT, text=True, env=packman_env)
+
     try:
-        subprocess.check_output(
-            [
-                packman,
-                "install",
-                "-l",
-                os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}"),
-                "clang+llvm-warp",
-                packages[arch],
-            ],
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+        _run_packman_install()
     except subprocess.CalledProcessError as e:
-        print(e.output)
-        raise e
+        output = e.output or ""
+        is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
+        # Intel Mac runners cross-compile to aarch64 but can't exec the aarch64-only
+        # 7zz packman 8.2.2 installs. Remove this branch and
+        # _patch_packman_7zz_for_intel_mac once the internal Mac CI runners migrate
+        # off Intel.
+        if is_intel_mac and "Bad CPU type in executable" in output and "7zz" in output:
+            _patch_packman_7zz_for_intel_mac()
+            try:
+                _run_packman_install()
+            except subprocess.CalledProcessError as retry_err:
+                print(retry_err.output)
+                raise
+        else:
+            print(output)
+            raise
+
+
+# ip7z 25.01 universal2 (arm64 + x86_64) Mac release, used to replace the
+# aarch64-only 7zz that packman 8.2.2 installs. Pinned + hash-verified.
+_IP7Z_MAC_URL = "https://github.com/ip7z/7zip/releases/download/25.01/7z2501-mac.tar.xz"
+_IP7Z_MAC_SHA256 = "26aa75bc262bb10bf0805617b95569c3035c2c590a99f7db55c7e9607b2685e0"
+
+
+def _patch_packman_7zz_for_intel_mac():
+    """Overwrite packman's cached mac-arm/64/7zz with a universal2 binary.
+
+    Packman 8.2.2 ships only an aarch64 7zz for macOS, so Intel Mac runners
+    can't exec the 7z helper needed to decompress downstream .7z packages.
+    Delete this function and the ``is_intel_mac`` branch in
+    ``fetch_prebuilt_libraries`` once the internal Mac CI runners migrate
+    off Intel.
+    """
+    pm_root = os.environ.get("PM_PACKAGES_ROOT") or os.path.expanduser("~/Library/Application Support/packman-cache")
+    bad_7zz = os.path.join(pm_root, "chk", "7zz", "25.01", "mac-arm", "64", "7zz")
+    if not os.path.exists(bad_7zz):
+        raise RuntimeError(f"Expected packman to have extracted 7zz to {bad_7zz}, but it's missing.")
+
+    print(f"Patching {bad_7zz} with universal2 7zz from {_IP7Z_MAC_URL}")
+    with urllib.request.urlopen(_IP7Z_MAC_URL, timeout=30) as resp:
+        tarball = resp.read()
+    digest = hashlib.sha256(tarball).hexdigest()
+    if digest != _IP7Z_MAC_SHA256:
+        raise RuntimeError(f"SHA256 mismatch for {_IP7Z_MAC_URL}: expected {_IP7Z_MAC_SHA256}, got {digest}")
+
+    with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:xz") as tar:
+        member = tar.getmember("7zz")
+        extracted = tar.extractfile(member)
+        if extracted is None:
+            raise RuntimeError(f"Tarball at {_IP7Z_MAC_URL} does not contain a regular 7zz file")
+        with open(bad_7zz, "wb") as f:
+            shutil.copyfileobj(extracted, f)
+    os.chmod(bad_7zz, stat.S_IRUSR | stat.S_IXUSR)
 
 
 def check_build_dependencies(verbose: bool = False) -> None:

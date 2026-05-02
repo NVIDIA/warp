@@ -21,6 +21,19 @@ import warp.tests.aot.aux_test_mixed_generic_kernels
 import warp.tests.aot.aux_test_mixed_regular_and_generic
 from warp.tests.unittest_utils import *
 
+# Use generic (portable) CPU compilation for AOT tests — these tests exercise
+# caching/hashing behavior, not CPU ISA features, and the -march=native
+# portability warning would cause CheckOutput failures.
+for _mod in (
+    warp.tests.aot.aux_test_generic_multiple_overloads,
+    warp.tests.aot.aux_test_generic_no_overloads,
+    warp.tests.aot.aux_test_generic_one_overload,
+    warp.tests.aot.aux_test_hash_reload,
+    warp.tests.aot.aux_test_mixed_generic_kernels,
+    warp.tests.aot.aux_test_mixed_regular_and_generic,
+):
+    wp.set_module_options({"cpu_compiler_flags": ""}, _mod)
+
 ADD_KERNEL_START = """# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 import warp as wp

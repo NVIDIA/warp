@@ -17,6 +17,9 @@ import sys
 
 import docutils
 import sphinx
+from sphinx import addnodes
+from sphinx.environment.adapters.toctree import note_toctree
+from sphinx.ext.autosummary import autosummary_toc
 from sphinx.ext.autosummary.generate import AutosummaryRenderer
 from sphinx.ext.napoleon.docstring import GoogleDocstring
 
@@ -83,7 +86,7 @@ nitpick_ignore_regex = [
     # Internal meta-types used in builtin function signatures (not exported)
     (
         r"py:class",
-        r"(Vector|Quaternion|Matrix|Array|Transformation|Tile|IndexedArray|IndexedFabricArray|FabricArray|Shape|DType|Any)",
+        r"(Vector|Quaternion|Matrix|Array|Transformation|Tile|TileStack|IndexedArray|IndexedFabricArray|FabricArray|Shape|DType|Any)",
     ),
     # Array type parameters from warp.array() annotations (e.g., "dtype=warp.float32", "ndim=3")
     # Sphinx splits "warp.array(dtype=float, ndim=3)" and tries to resolve each part as a class.
@@ -95,10 +98,10 @@ nitpick_ignore_regex = [
     (r"py:class", r"(warp|wp)\._src\..*"),
     # Ctypes-based geometric types that can't be documented as classes (vec*, mat*, quat, etc.)
     (r"py:class", r"(warp\.)?(vec\d*[ihfd]?|mat\d+[ihfd]?|quat[hfd]?|spatial_(vector|matrix)[hfd]?|transform[hfd]?)"),
-    # Type names used in FEM and internal annotations (e.g., Graph, Sample, Coords)
+    # Type names used in FEM and internal annotations (e.g., Sample, Coords)
     (
         r"py:class",
-        r"(Graph|Struct|BlockType|Rows|Cols|Sample|Coords|ElementIndex|"
+        r"(Struct|BlockType|Rows|Cols|Sample|Coords|ElementIndex|"
         r"ElementArg|ElementEvalArg|ElementIndexArg|TopologyArg|EvalArg|"
         r"BsrMatrixOrExpression|_Var|_FuncParams|FunctionMetadata|KernelHooks|"
         r"launch_bounds_t|FieldRestriction|scalar)",
@@ -132,7 +135,7 @@ nitpick_ignore_regex = [
 
 # -- Options for source files ------------------------------------------------
 
-exclude_patterns = [".DS_Store", "Thumbs.db", "_build", "_src"]
+exclude_patterns = [".DS_Store", "Thumbs.db", "_build", "_src", "superpowers"]
 source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
@@ -148,6 +151,7 @@ templates_path = ["_templates"]
 
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
+    "announcement": "Warp v1.12.1 is now available. See the <a href='https://github.com/NVIDIA/warp/releases/tag/v1.12.1'>release notes</a>.",
     "secondary_sidebar_items": ["page-toc", "edit-this-page"],
     "article_header_end": ["view-page-source.html"],
     "use_edit_page_button": True,
@@ -163,7 +167,8 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
-    "navigation_depth": 1,
+    "navigation_depth": 2,
+    "sidebar_includehidden": False,
 }
 html_title = f"Warp {version}"
 html_context = {
@@ -336,7 +341,9 @@ intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "python": ("https://docs.python.org/3", None),
-    "pytorch": ("https://pytorch.org/docs/stable/", None),
+    # Pinned to 2.10 because the `stable` intersphinx inventory is broken upstream.
+    # See https://github.com/pytorch/pytorch/issues/182007 — revert once fixed.
+    "pytorch": ("https://docs.pytorch.org/docs/2.10", None),
 }
 
 
@@ -598,6 +605,26 @@ def generate_reference_docs(app):
     docs.generate_reference.run()
 
 
+def drop_autosummary_toctrees(app, doctree):
+    # autosummary's `:toctree:` wraps its generated toctree in
+    # `autosummary_toc`, a `nodes.comment` subclass. HTML writers skip the
+    # wrapper, but Sphinx's TocTreeCollector still descends into it and
+    # copies the inner toctree into `env.tocs`, which is what populates the
+    # left sidebar. With navigation_depth=2 that exposes every generated
+    # stub under its parent API/Language reference page. Remove the wrapper
+    # so the toctree never reaches `env.tocs`; call `note_toctree` first so
+    # `env.toctree_includes` still records the stubs and they aren't flagged
+    # as orphan documents.
+    #
+    # Must run before TocTreeCollector (doctree-read, default priority 500;
+    # lower priority runs first), hence priority=400 in setup().
+    docname = app.env.docname
+    for asum in list(doctree.findall(autosummary_toc)):
+        for tocnode in asum.findall(addnodes.toctree):
+            note_toctree(app.env, docname, tocnode)
+        asum.parent.remove(asum)
+
+
 def setup(app):
     """Sphinx extension setup."""
     # Priority must be lower than autosummary's default (500) so that the
@@ -608,4 +635,8 @@ def setup(app):
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)
     app.connect("autodoc-process-signature", rewrite_wp_aliases)
     app.connect("missing-reference", resolve_wp_aliases)
+    # Lower priority runs first; this must precede TocTreeCollector
+    # (default 500) so the autosummary wrappers are gone before it
+    # populates `env.tocs`.
+    app.connect("doctree-read", drop_autosummary_toctrees, priority=400)
     app.connect("doctree-resolved", rewrite_internal_module_paths)

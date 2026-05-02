@@ -3065,12 +3065,164 @@ def test_kernel_array_from_ptr_variable_shape(test, device):
     assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (0.0, 0.0, 0.0))))
 
 
+def test_array_shape_int_promotion(test, device):
+    # Verify that numpy integer shape elements are promoted to Python int
+    # to prevent 32-bit overflow in capacity calculations.
+    for dtype in (np.int32, np.int64):
+        arr = wp.zeros(np.array([4, 3, 2], dtype=dtype), dtype=wp.float32, device=device)
+        test.assertEqual(arr.shape, (4, 3, 2))
+        for s in arr.shape:
+            test.assertIsInstance(s, int)
+
+
+@wp.kernel
+def multiply_by_two(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    a = x[i]
+    b = 2.0 * a
+    y[i] = b
+
+
+@wp.kernel
+def multiply_by_three(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    c = x[i]
+    d = 3.0 * c
+    y[i] = d
+
+
+@wp.kernel
+def add_one(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    y[i] = x[i] + 1.0
+
+
+def test_array_overwrite(test, device):
+    N = 10
+
+    x_a = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    x_b = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(N, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(multiply_by_two, dim=N, inputs=[x_a, y], device=device)
+        wp.launch(multiply_by_three, dim=N, inputs=[x_b, y], device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    assert_np_equal(y.numpy(), np.full(N, fill_value=3.0, dtype=float))
+    assert_np_equal(x_a.grad.numpy(), np.zeros(N, dtype=float))
+    assert_np_equal(x_b.grad.numpy(), np.full(N, fill_value=3.0, dtype=float))
+    assert_np_equal(y.grad.numpy(), np.zeros(N, dtype=float))
+
+
+def test_retain_grad(test, device):
+    N = 10
+
+    x_a = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    x_b = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(N, dtype=float, requires_grad=True, retain_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(multiply_by_two, dim=N, inputs=[x_a, y], device=device)
+        wp.launch(multiply_by_three, dim=N, inputs=[x_b, y], device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    # Final value is from the last write (multiply_by_three)
+    assert_np_equal(y.numpy(), np.full(N, fill_value=3.0, dtype=float))
+    # With retain_grad=True, y.grad is NOT zeroed between kernel2 and kernel1 backward,
+    # so kernel1 also sees the gradient and propagates 2.0 * 1.0 = 2.0 to x_a.grad
+    assert_np_equal(x_a.grad.numpy(), np.full(N, fill_value=2.0, dtype=float))
+    # x_b.grad should be 3.0 (derivative of 3*x)
+    assert_np_equal(x_b.grad.numpy(), np.full(N, fill_value=3.0, dtype=float))
+    # y.grad should be preserved (not zeroed) because retain_grad=True
+    assert_np_equal(y.grad.numpy(), np.ones(N, dtype=float))
+
+
+def test_retain_grad_validation(test, device):
+    # retain_grad=True without requires_grad=True should raise
+    with test.assertRaises(ValueError):
+        wp.zeros(10, dtype=float, retain_grad=True, device=device)
+
+    # Setting retain_grad via property without requires_grad should raise
+    arr = wp.zeros(10, dtype=float, device=device)
+    with test.assertRaises(ValueError):
+        arr.retain_grad = True
+
+    # Setting retain_grad via property with requires_grad should work
+    arr.requires_grad = True
+    arr.retain_grad = True
+    test.assertTrue(arr.retain_grad)
+
+    # Setting requires_grad=False should clear retain_grad
+    arr.requires_grad = False
+    test.assertFalse(arr.retain_grad)
+
+
+def test_retain_grad_intermediate(test, device):
+    N = 10
+
+    x = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros(N, dtype=float, requires_grad=True, retain_grad=True, device=device)
+    z = wp.zeros(N, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(multiply_by_two, dim=N, inputs=[x, y], device=device)
+        wp.launch(add_one, dim=N, inputs=[y, z], device=device)
+
+    tape.backward(grads={z: wp.ones_like(z)})
+
+    # z = y + 1 = 2*x + 1, so dz/dx = 2
+    assert_np_equal(x.grad.numpy(), np.full(N, fill_value=2.0, dtype=float))
+    # y.grad should be preserved because retain_grad=True
+    # dz/dy = 1
+    assert_np_equal(y.grad.numpy(), np.ones(N, dtype=float))
+
+
+@wp.kernel
+def scale_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    y[i, j] = 2.0 * x[i, j]
+
+
+@wp.kernel
+def offset_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    i, j = wp.tid()
+    y[i, j] = x[i, j] + 1.0
+
+
+def test_retain_grad_2d(test, device):
+    M, N = 4, 3
+
+    x = wp.ones((M, N), dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((M, N), dtype=float, requires_grad=True, retain_grad=True, device=device)
+    z = wp.zeros((M, N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(scale_2d, dim=(M, N), inputs=[x, y], device=device)
+        wp.launch(offset_2d, dim=(M, N), inputs=[y, z], device=device)
+
+    tape.backward(grads={z: wp.ones_like(z)})
+
+    # z = y + 1 = 2*x + 1, so dz/dx = 2
+    assert_np_equal(x.grad.numpy(), np.full((M, N), fill_value=2.0, dtype=float))
+    # y.grad should be preserved because retain_grad=True; dz/dy = 1
+    assert_np_equal(y.grad.numpy(), np.ones((M, N), dtype=float))
+
+
 def test_array_from_int32_domain(test, device):
-    wp.zeros(np.array([1504, 1080, 520], dtype=np.int32), dtype=wp.float32, device=device)
+    expected_shape = (1504, 1080, 520)
+    arr = wp.zeros(np.array(expected_shape, dtype=np.int32), dtype=wp.float32, device=device)
+    test.assertEqual(arr.shape, expected_shape)
+    test.assertEqual(arr.dtype, wp.float32)
 
 
 def test_array_from_int64_domain(test, device):
-    wp.zeros(np.array([1504, 1080, 520], dtype=np.int64), dtype=wp.float32, device=device)
+    expected_shape = (1504, 1080, 520)
+    arr = wp.zeros(np.array(expected_shape, dtype=np.int64), dtype=wp.float32, device=device)
+    test.assertEqual(arr.shape, expected_shape)
+    test.assertEqual(arr.dtype, wp.float32)
 
 
 def test_numpy_array_interface(test, device):
@@ -3082,6 +3234,11 @@ def test_numpy_array_interface(test, device):
     scalar_types = wp._src.types.scalar_types
 
     for dtype in scalar_types:
+        if dtype is wp.bfloat16:
+            # bfloat16 has no native NumPy type; .numpy() returns uint16,
+            # so the round trip cannot recover the original dtype.
+            continue
+
         # test round trip
         a1 = wp.zeros(n, dtype=dtype, device="cpu")
         na = np.array(a1)
@@ -3864,9 +4021,13 @@ add_function_test(TestArray, "test_kernel_array_from_ptr_struct", test_kernel_ar
 add_function_test(
     TestArray, "test_kernel_array_from_ptr_variable_shape", test_kernel_array_from_ptr_variable_shape, devices=devices
 )
+add_function_test(TestArray, "test_array_overwrite", test_array_overwrite, devices=devices)
+add_function_test(TestArray, "test_retain_grad", test_retain_grad, devices=devices)
+add_function_test(TestArray, "test_retain_grad_validation", test_retain_grad_validation, devices=devices)
+add_function_test(TestArray, "test_retain_grad_intermediate", test_retain_grad_intermediate, devices=devices)
+add_function_test(TestArray, "test_retain_grad_2d", test_retain_grad_2d, devices=devices)
 
-add_function_test(TestArray, "test_array_from_int32_domain", test_array_from_int32_domain, devices=devices)
-add_function_test(TestArray, "test_array_from_int64_domain", test_array_from_int64_domain, devices=devices)
+add_function_test(TestArray, "test_array_shape_int_promotion", test_array_shape_int_promotion, devices=devices)
 add_function_test(TestArray, "test_indexing_types", test_indexing_types, devices=devices)
 
 add_function_test(TestArray, "test_alloc_strides", test_alloc_strides, devices=devices)

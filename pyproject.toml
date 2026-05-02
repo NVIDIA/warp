@@ -66,6 +66,8 @@ dev = [
     "warp-lang[docs]",
     "nvtx",
     "coverage[toml]",
+    "rmm-cu12 ; platform_system == 'Linux' and python_version < '3.14'",
+    "ml-dtypes>=0.5.4",
 ]
 
 [tool.setuptools.packages.find]
@@ -126,6 +128,7 @@ ignore = [
 convention = "google"
 
 [tool.ruff.format]
+exclude = ["warp/__init__.pyi"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
@@ -192,6 +195,7 @@ arange = "arange"
 commun = "commun"
 dout = "dout"
 iy = "iy"
+iz = "iz"
 nd = "nd"
 setp = "setp"
 transformd = "transformd"

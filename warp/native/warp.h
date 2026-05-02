@@ -6,6 +6,8 @@
 // defines all crt + builtin types
 #include "builtin.h"
 
+#include "apic_types.h"
+
 #include <cstdint>
 
 #define WP_CURRENT_STREAM ((void*)0xffffffffffffffff)
@@ -38,11 +40,14 @@ WP_API int wp_is_debug_enabled();
 WP_API uint16_t wp_float_to_half_bits(float x);
 WP_API float wp_half_bits_to_float(uint16_t u);
 
-WP_API void* wp_alloc_host(size_t s);
-WP_API void* wp_alloc_pinned(size_t s);
-WP_API void* wp_alloc_device(void* context, size_t s);  // uses cudaMallocAsync() if supported, cudaMalloc() otherwise
-WP_API void* wp_alloc_device_default(void* context, size_t s);  // uses cudaMalloc()
-WP_API void* wp_alloc_device_async(void* context, size_t s);  // uses cudaMallocAsync()
+WP_API uint16_t wp_float_to_bfloat16_bits(float x);
+WP_API float wp_bfloat16_bits_to_float(uint16_t u);
+
+WP_API void* wp_alloc_host(size_t s, const char* tag = nullptr);
+WP_API void* wp_alloc_pinned(size_t s, const char* tag = nullptr);
+WP_API void* wp_alloc_device(void* context, size_t s, const char* tag = nullptr);
+WP_API void* wp_alloc_device_default(void* context, size_t s, const char* tag = nullptr);
+WP_API void* wp_alloc_device_async(void* context, size_t s, const char* tag = nullptr);
 
 WP_API void wp_free_host(void* ptr);
 WP_API void wp_free_pinned(void* ptr);
@@ -60,8 +65,8 @@ wp_memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t
 WP_API bool
 wp_memcpy_batch(void* context, void** dsts, void** srcs, size_t* sizes, size_t count, void* stream = WP_CURRENT_STREAM);
 
-WP_API void wp_memset_host(void* dest, int value, size_t n);
-WP_API void wp_memset_device(void* context, void* dest, int value, size_t n);
+WP_API bool wp_memset_host(void* dest, int value, size_t n);
+WP_API bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stream = WP_CURRENT_STREAM);
 
 // takes srcsize bytes starting at src and repeats them n times at dst (writes srcsize * n bytes in total):
 WP_API void wp_memtile_host(void* dest, const void* src, size_t srcsize, size_t n);
@@ -577,6 +582,9 @@ WP_API bool wp_cuda_compile_solver(
     int num_threads
 );
 
+// CPU kernel launch with optional APIC recording
+WP_API void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, const APICLaunchInfo* apic_info);
+
 WP_API void* wp_cuda_load_module(void* context, const char* ptx);
 WP_API void wp_cuda_unload_module(void* context, void* module);
 WP_API void* wp_cuda_get_kernel(void* context, void* module, const char* name);
@@ -588,7 +596,8 @@ WP_API size_t wp_cuda_launch_kernel(
     int block_dim,
     int shared_memory_bytes,
     void** args,
-    void* stream
+    void* stream,
+    const APICLaunchInfo* apic_info
 );
 WP_API int wp_cuda_get_max_shared_memory(void* context);
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
@@ -619,5 +628,19 @@ WP_API int wp_graph_coloring(int num_nodes, wp::array_t<int> edges, int algorith
 WP_API float wp_balance_coloring(
     int num_nodes, wp::array_t<int> edges, int num_colors, float target_max_min_ratio, wp::array_t<int> node_colors
 );
+
+// allocation tracking
+WP_API void wp_alloc_tracker_enable(int enable);
+WP_API int wp_alloc_tracker_is_enabled();
+WP_API void wp_alloc_tracker_reset();
+WP_API void wp_alloc_tracker_set_tag(void* ptr, const char* tag);
+WP_API void wp_alloc_tracker_push_scope(const char* name);
+WP_API void wp_alloc_tracker_pop_scope();
+WP_API const char* wp_alloc_tracker_report(int sort_order = 0, int max_items = 10);
+WP_API size_t wp_alloc_tracker_get_current_bytes();
+WP_API size_t wp_alloc_tracker_get_peak_bytes();
+WP_API size_t wp_alloc_tracker_get_total_alloc_count();
+WP_API size_t wp_alloc_tracker_get_total_alloc_bytes();
+WP_API int wp_alloc_tracker_get_live_count();
 
 }  // extern "C"

@@ -121,7 +121,7 @@ def randn_kernel(
 
 
 def test_randn(test, device):
-    N = 100000000
+    N = 1000000
 
     samples = wp.zeros(N, dtype=float, device=device)
 

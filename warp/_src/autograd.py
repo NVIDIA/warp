@@ -1054,13 +1054,13 @@ def print_table(headers, cells):
     def sanitized_len(s):
         return len(re.sub(r"\033\[\d+m", "", str(s)))
 
-    col_widths = [max(sanitized_len(cell) for cell in col) for col in zip(headers, *cells, strict=False)]
-    for header, col_width in zip(headers, col_widths, strict=False):
+    col_widths = [max(sanitized_len(cell) for cell in col) for col in zip(headers, *cells, strict=True)]
+    for header, col_width in zip(headers, col_widths, strict=True):
         print(f"{header:{col_width}}", end=" | ")
     print()
     print("-" * (sum(col_widths) + 3 * len(col_widths) - 1))
     for cell_row in cells:
-        for cell, col_width in zip(cell_row, col_widths, strict=False):
+        for cell, col_width in zip(cell_row, col_widths, strict=True):
             print(f"{cell:{col_width}}", end=" | ")
         print()
 

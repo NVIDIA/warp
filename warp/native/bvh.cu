@@ -509,9 +509,9 @@ LinearBVHBuilderGPU::LinearBVHBuilderGPU()
     , total_upper(NULL)
     , total_inv_edges(NULL)
 {
-    total_lower = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_upper = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
-    total_inv_edges = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3));
+    total_lower = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3), "(native:bvh)");
+    total_upper = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3), "(native:bvh)");
+    total_inv_edges = (vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(vec3), "(native:bvh)");
 }
 
 LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
@@ -527,14 +527,17 @@ void LinearBVHBuilderGPU::build(
 )
 {
     // allocate temporary memory used during  building
-    indices = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_items * 2);  // *2 for radix sort
-    keys = (uint64_t*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(uint64_t) * num_items * 2);  // *2 for radix sort
+    indices
+        = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_items * 2, "(native:bvh)");  // *2 for radix sort
+    keys = (uint64_t*)wp_alloc_device(
+        WP_CURRENT_CONTEXT, sizeof(uint64_t) * num_items * 2, "(native:bvh)"
+    );  // *2 for radix sort
     deltas = (int*)wp_alloc_device(
-        WP_CURRENT_CONTEXT, sizeof(int) * num_items
+        WP_CURRENT_CONTEXT, sizeof(int) * num_items, "(native:bvh)"
     );  // highest differentiating bit between keys for item i and i+1
-    range_lefts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh.max_nodes);
-    range_rights = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh.max_nodes);
-    num_children = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh.max_nodes);
+    range_lefts = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh.max_nodes, "(native:bvh)");
+    range_rights = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh.max_nodes, "(native:bvh)");
+    num_children = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh.max_nodes, "(native:bvh)");
 
     // if total bounds supplied by the host then we just
     // compute our edge length and upload it to the GPU directly
@@ -622,7 +625,7 @@ void LinearBVHBuilderGPU::build(
 // buffer_size is the number of T, not the number of bytes
 template <typename T> T* make_device_buffer_of(void* context, T* host_buffer, size_t buffer_size)
 {
-    T* device_buffer = (T*)wp_alloc_device(context, sizeof(T) * buffer_size);
+    T* device_buffer = (T*)wp_alloc_device(context, sizeof(T) * buffer_size, "(native:bvh)");
     ;
     wp_memcpy_h2d(context, device_buffer, host_buffer, sizeof(T) * buffer_size);
 
@@ -644,7 +647,7 @@ void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_h
     bvh_device_on_host.max_depth = bvh_host.max_depth;
     bvh_device_on_host.leaf_size = bvh_host.leaf_size;
 
-    bvh_device_on_host.root = (int*)wp_alloc_device(context, sizeof(int));
+    bvh_device_on_host.root = (int*)wp_alloc_device(context, sizeof(int), "(native:bvh)");
     wp_memcpy_h2d(context, bvh_device_on_host.root, bvh_host.root, sizeof(int));
     bvh_device_on_host.context = context;
 
@@ -699,7 +702,7 @@ void bvh_create_device(
         bvh_device_on_host.item_groups = groups;
         // node_counts is not allocated for host tree
         bvh_device_on_host.node_counts
-            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
+            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes, "(native:bvh)");
         wp::bvh_destroy_host(bvh_host);
     } else if (constructor_type == BVH_CONSTRUCTOR_LBVH) {
         bvh_device_on_host.leaf_size = leaf_size;
@@ -707,25 +710,26 @@ void bvh_create_device(
         bvh_device_on_host.max_nodes = 2 * num_items - 1;
         bvh_device_on_host.num_leaf_nodes = num_items;
         bvh_device_on_host.node_lowers = (BVHPackedNodeHalf*)wp_alloc_device(
-            WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes
+            WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes, "(native:bvh)"
         );
         wp_memset_device(
             WP_CURRENT_CONTEXT, bvh_device_on_host.node_lowers, 0,
             sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes
         );
         bvh_device_on_host.node_uppers = (BVHPackedNodeHalf*)wp_alloc_device(
-            WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes
+            WP_CURRENT_CONTEXT, sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes, "(native:bvh)"
         );
         wp_memset_device(
             WP_CURRENT_CONTEXT, bvh_device_on_host.node_uppers, 0,
             sizeof(BVHPackedNodeHalf) * bvh_device_on_host.max_nodes
         );
         bvh_device_on_host.node_parents
-            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
+            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes, "(native:bvh)");
         bvh_device_on_host.node_counts
-            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes);
-        bvh_device_on_host.root = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
-        bvh_device_on_host.primitive_indices = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_items);
+            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes, "(native:bvh)");
+        bvh_device_on_host.root = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int), "(native:bvh)");
+        bvh_device_on_host.primitive_indices
+            = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * num_items, "(native:bvh)");
         bvh_device_on_host.item_lowers = lowers;
         bvh_device_on_host.item_uppers = uppers;
         bvh_device_on_host.item_groups = groups;
@@ -990,7 +994,7 @@ uint64_t wp_bvh_create_device(
     );
 
     // create device-side BVH descriptor
-    bvh_device_ptr = (wp::BVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH));
+    bvh_device_ptr = (wp::BVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH), "(native:bvh)");
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_ptr, &bvh_device_on_host, sizeof(wp::BVH));
 
     uint64_t bvh_id = (uint64_t)bvh_device_ptr;

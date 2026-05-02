@@ -41,7 +41,7 @@ class BsrMMFemMatrix:
         if quadrature is None:
             quadrature = fem.RegularQuadrature(u.domain, order=space.degree)
 
-        dof_size = wp.types.type_length(space.dtype)
+        dof_size = wp.types.type_size(space.dtype)
 
         self._mat = wps.bsr_zeros(
             rows_of_blocks=quadrature.total_point_count(),

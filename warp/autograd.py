@@ -21,14 +21,3 @@ from warp._src.autograd import gradcheck_tape as gradcheck_tape
 from warp._src.autograd import jacobian as jacobian
 from warp._src.autograd import jacobian_fd as jacobian_fd
 from warp._src.autograd import jacobian_plot as jacobian_plot
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import autograd as _autograd
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_autograd, "warp", name)

@@ -2,6 +2,7 @@
   global:
     # Symbols to be exported
     wp_*;
+    PyInit__warp_fastcall;
   local:
     # Hide all other symbols by default
     *;

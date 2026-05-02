@@ -597,6 +597,29 @@ def test_dlpack_jax_to_warp_v2(test, device):
         assert_np_equal(a2.numpy(), np.asarray(j))
 
 
+@wp.kernel
+def bf16_to_f32_kernel(input: wp.array[wp.bfloat16], output: wp.array[wp.float32]):
+    tid = wp.tid()
+    output[tid] = wp.float32(input[tid])
+
+
+def test_dlpack_bf16_round_trip(test, device):
+    n = 4
+    input_data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    arr = wp.array(input_data, dtype=wp.bfloat16, device=device)
+
+    # Round-trip through DLPack
+    dl = wp.to_dlpack(arr)
+    arr2 = wp.from_dlpack(dl)
+    test.assertEqual(arr2.dtype, wp.bfloat16)
+    test.assertEqual(arr2.shape, (n,))
+
+    # Verify values survived
+    result = wp.zeros(n, dtype=wp.float32, device=device)
+    wp.launch(bf16_to_f32_kernel, dim=n, inputs=[arr2, result], device=device)
+    np.testing.assert_allclose(result.numpy(), input_data, rtol=1e-2)
+
+
 class TestDLPack(unittest.TestCase):
     pass
 
@@ -606,6 +629,11 @@ devices = get_test_devices()
 add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_stream_arg", test_dlpack_stream_arg, devices=devices)
+
+# bfloat16 tests require arch >= 80
+bf16_devices = [d for d in devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]
+if bf16_devices:
+    add_function_test(TestDLPack, "test_dlpack_bf16_round_trip", test_dlpack_bf16_round_trip, devices=bf16_devices)
 
 # torch interop via dlpack
 try:

@@ -121,7 +121,7 @@ def site_data_dir(appname=None, appauthor=None, version=None, multipath=False):
         Unix:       /usr/local/share/<AppName> or /usr/share/<AppName>
         Win XP:     C:\Documents and Settings\All Users\Application Data\<AppAuthor>\<AppName>
         Vista:      (Fail! "C:\ProgramData" is a hidden *system* directory on Vista.)
-        Win 7:      C:\ProgramData\<AppAuthor>\<AppName>   # Hidden, but writeable on Win 7.
+        Win 7:      C:\ProgramData\<AppAuthor>\<AppName>   # Hidden, but writable on Win 7.
 
     For Unix, this is using the $XDG_DATA_DIRS[0] default.
 

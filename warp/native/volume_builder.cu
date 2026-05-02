@@ -27,8 +27,7 @@ public:
 
     static void* allocateAsync(size_t bytes, size_t, cudaStream_t stream)
     {
-        // In PointsToGrid, the stream argument always coincides with current stream, ignore
-        void* d_ptr = wp_alloc_device(WP_CURRENT_CONTEXT, bytes);
+        void* d_ptr = wp_alloc_device(WP_CURRENT_CONTEXT, bytes, "(native:volume_builder)");
         cudaCheckError();
         return d_ptr;
     }
@@ -145,11 +144,9 @@ public:
             this->clear(stream);
         NANOVDB_ASSERT(size > 0);
         if (device == cudaCpuDeviceId) {
-            mCpuData = wp_alloc_pinned(
-                size
-            );  // un-managed pinned memory on the host (can be slow to access!). Always 32B aligned
+            mCpuData = wp_alloc_pinned(size, "(native:volume_builder)");
         } else {
-            mGpuData = wp_alloc_device(WP_CURRENT_CONTEXT, size);
+            mGpuData = wp_alloc_device(WP_CURRENT_CONTEXT, size, "(native:volume_builder)");
         }
         cudaCheckError();
         mSize = size;

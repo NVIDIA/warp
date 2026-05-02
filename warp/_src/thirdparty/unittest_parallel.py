@@ -172,10 +172,16 @@ def main(argv=None):
 
     import warp as wp  # noqa: PLC0415 NVIDIA Modification
 
-    # Clear the Warp cache (NVIDIA Modification)
+    # Clear the Warp cache (NVIDIA Modification).  Honor WARP_CACHE_ROOT
+    # before the clear so concurrent worktrees pinned to the same Warp
+    # version do not wipe each other's default cache.  Workers key on the
+    # same env var.
+    if "WARP_CACHE_ROOT" in os.environ:
+        wp.config.kernel_cache_dir = os.environ["WARP_CACHE_ROOT"]
+
     wp.clear_lto_cache()
     wp.clear_kernel_cache()
-    print("Cleared Warp kernel cache")
+    print(f"Main process cleared Warp kernel cache: {wp.config.kernel_cache_dir}")
 
     # Create the temporary directory (for coverage files)
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -683,12 +689,14 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
         if args.warp_debug:
             wp.config.mode = "debug"
 
+        # init_kernel_cache() appends warp.config.version, so we set
+        # kernel_cache_dir to a base path and let Warp add the version segment.
         if args.no_shared_cache:
             if "WARP_CACHE_ROOT" in os.environ:
-                cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"{wp.config.version}-{worker_index:03d}")
+                cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"worker-{worker_index:03d}")
             else:
                 cache_root_dir = appdirs.user_cache_dir(
-                    appname="warp", appauthor="NVIDIA", version=f"{wp.config.version}-{worker_index:03d}"
+                    appname="warp", appauthor="NVIDIA", version=f"worker-{worker_index:03d}"
                 )
 
             wp.config.kernel_cache_dir = cache_root_dir
@@ -697,7 +705,7 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
             wp.clear_kernel_cache()
         elif "WARP_CACHE_ROOT" in os.environ:
             # Using a shared cache for all test processes
-            wp.config.kernel_cache_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), wp.config.version)
+            wp.config.kernel_cache_dir = os.getenv("WARP_CACHE_ROOT")
 
 
 if __name__ == "__main__":  # pragma: no cover

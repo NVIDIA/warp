@@ -649,6 +649,155 @@ template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_sum(Tile&
     adj_t.grad_add(adj_ret_reg);
 }
 
+// Fused element-wise multiply and cross-thread reduce (dot product).
+// Returns a single-element tile (same convention as tile_sum / tile_reduce).
+// Accesses each tile in its native storage without copying to registers.
+template <typename TileA, typename TileB> CUDA_CALLABLE auto tile_dot(TileA& a, TileB& b)
+{
+    using T = typename TileA::Type;
+    using ScalarT = decltype(tensordot(T {}, T {}));
+    using ShapeA = typename TileA::Layout::Shape;
+    using ShapeB = typename TileB::Layout::Shape;
+
+    static_assert(ShapeA::N == ShapeB::N, "Tile shapes must match for tile_dot");
+    static_assert(ShapeA::size() == ShapeB::size(), "Tile sizes must match for tile_dot");
+    static_assert(ShapeA::size() > 0, "tile_dot requires non-empty tiles");
+
+    auto output = tile_register_t<ScalarT, tile_layout_register_t<tile_shape_t<1>>>();
+
+    // Use the register layout to drive the per-thread iteration.
+    using RegLayout = tile_layout_register_t<ShapeA>;
+
+    // Phase 1: per-thread partial dot product — read each tile in native storage
+    ScalarT thread_sum = ScalarT(0);
+    bool has_data = false;
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < RegLayout::NumRegs; ++i) {
+        const int linear = RegLayout::linear_from_register(i);
+        if (!RegLayout::valid(linear))
+            break;
+
+        thread_sum += tensordot(tile_read(a, i, linear), tile_read(b, i, linear));
+        has_data = true;
+    }
+
+    // Phase 2: cross-thread reduction (same pattern as tile_reduce_impl)
+#if defined(__CUDA_ARCH__)
+    constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+    auto add_op = [](ScalarT x, ScalarT y) { return x + y; };
+
+    ScalarT result {};
+    if constexpr (warp_count == 1) {
+        unsigned int mask = __ballot_sync(0xFFFFFFFF, has_data);
+        if (has_data)
+            result = warp_reduce(thread_sum, add_op, mask);
+
+        int first_active = __ffs(mask) - 1;
+        if (threadIdx.x == first_active)
+            output.data[0] = result;
+    } else {
+        __shared__ ScalarT partials[warp_count];
+        __shared__ int active_warps;
+
+        if (threadIdx.x == 0)
+            active_warps = 0;
+        WP_TILE_SYNC();
+
+        result = block_combine_thread_results(thread_sum, has_data, add_op, partials, active_warps);
+
+        if (threadIdx.x == 0)
+            output.data[0] = result;
+    }
+#else
+    output.data[0] = thread_sum;
+#endif
+
+    return output;
+}
+
+// Adjoint for tile_dot: result = sum_i(tensordot(a[i], b[i]))
+// adj_a[i] += adj_ret * b[i]
+// adj_b[i] += adj_ret * a[i]
+// adj_ret is a single-element tile; broadcast its value to all threads
+// (same pattern as adj_tile_sum).
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjRet>
+CUDA_CALLABLE void adj_tile_dot(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjRet& adj_ret)
+{
+    using ScalarT = decltype(tensordot(typename TileA::Type {}, typename TileA::Type {}));
+
+    auto adj_reg = adj_ret.grad_to_register();
+
+#if !defined(__CUDA_ARCH__)
+    ScalarT scratch = adj_reg.data[0];
+#else
+    // broadcast incoming adjoint to block
+    __shared__ ScalarT scratch;
+    if (WP_TILE_THREAD_IDX == 0)
+        scratch = adj_reg.data[0];
+    WP_TILE_SYNC();
+#endif
+
+    auto a_reg = a.copy_to_register();
+    auto b_reg = b.copy_to_register();
+    auto adj_a_reg = tile_register_like<TileA>();
+    auto adj_b_reg = tile_register_like<TileB>();
+
+    using Layout = typename decltype(a_reg)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+        if (!Layout::valid(linear))
+            break;
+
+        adj_a_reg.data[i] += scratch * b_reg.data[i];
+        adj_b_reg.data[i] += scratch * a_reg.data[i];
+    }
+
+    adj_a.grad_add(adj_a_reg);
+    adj_b.grad_add(adj_b_reg);
+}
+
+// Adjoint for tile_axpy: dest += alpha * src
+// adj_src   += adj_dest * alpha       (per-register, no reduction)
+// adj_alpha += tile_dot(adj_dest, src) (cross-thread reduction via tile_dot)
+template <typename TileDest, typename TileSrc, typename AdjTileDest, typename AdjTileSrc>
+CUDA_CALLABLE void adj_tile_axpy(
+    decltype(tensordot(typename TileDest::Type {}, typename TileDest::Type {})) alpha,
+    TileSrc& src,
+    TileDest& dest,
+    decltype(tensordot(typename TileDest::Type {}, typename TileDest::Type {}))& adj_alpha,
+    AdjTileSrc& adj_src,
+    AdjTileDest& adj_dest
+)
+{
+    auto adj_dest_reg = adj_dest.grad_to_register();
+    auto src_reg = src.copy_to_register();
+    auto adj_src_reg = tile_register_like<TileSrc>();
+
+    using Layout = typename decltype(adj_dest_reg)::Layout;
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < Layout::NumRegs; ++i) {
+        const int linear = Layout::linear_from_register(i);
+        if (!Layout::valid(linear))
+            break;
+
+        adj_src_reg.data[i] += adj_dest_reg.data[i] * alpha;
+    }
+
+    adj_src.grad_add(adj_src_reg);
+
+    // adj_alpha needs a cross-thread reduction: dot(adj_dest, src).
+    // tile_dot returns a 1-element tile; only thread 0 holds the valid
+    // value, matching the convention that adj_alpha is a per-thread scalar
+    // flowing into adj_tile_extract (which uses atomic_add for shared tiles).
+    auto dot_result = tile_dot(adj_dest_reg, src_reg);
+    if (WP_TILE_THREAD_IDX == 0)
+        adj_alpha += dot_result.data[0];
+}
+
 // axis-specific sum
 template <int Axis, typename Tile> auto tile_sum(Tile& t)
 {

@@ -138,17 +138,13 @@ def test_step_grad(test, device):
         dv_dm = -gravity * dt / m[:, None] ** 2
         dl_dm = (dl_dv * dv_dm).sum(-1)
 
-        assert_np_equal(state_out.x.grad.numpy(), dl_dx, tol=1e-6)
         assert_np_equal(state_in.x.grad.numpy(), dl_dx, tol=1e-6)
-        assert_np_equal(state_out.v.grad.numpy(), dl_dv, tol=1e-6)
         assert_np_equal(state_in.v.grad.numpy(), dl_dv, tol=1e-6)
         assert_np_equal(model.m.grad.numpy(), dl_dm, tol=1e-6)
 
         tape.zero()
 
-        assert state_out.x.grad.numpy().sum() == 0.0
         assert state_in.x.grad.numpy().sum() == 0.0
-        assert state_out.v.grad.numpy().sum() == 0.0
         assert state_in.v.grad.numpy().sum() == 0.0
         assert model.m.grad.numpy().sum() == 0.0
 

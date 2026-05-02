@@ -6,7 +6,6 @@ import errno
 import hashlib
 import json
 import os
-import platform
 import shutil
 import threading
 import time
@@ -41,6 +40,8 @@ def build_cuda(
     ltoirs=None,
     fatbins=None,
     arch_suffix="",
+    llvm_cuda=False,
+    use_precompiled_headers=True,
 ) -> None:
     with open(cu_path, "rb") as src_file:
         src = src_file.read()
@@ -49,7 +50,7 @@ def build_cuda(
     inc_path = os.path.join(warp_home, "native").encode("utf-8")
     output_path = output_path.encode("utf-8")
 
-    if warp.config.llvm_cuda:
+    if llvm_cuda:
         warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
 
     else:
@@ -68,7 +69,7 @@ def build_cuda(
         arr_link_input_types = (ctypes.c_int * num_link)(*link_input_types)
         # Per-thread directory shared across module compilations for PCH reuse,
         # isolated between threads and processes to avoid .pch races.
-        pch_dir_bytes = pch_dir.encode("utf-8")
+        pch_dir_bytes = pch_dir.encode("utf-8") if pch_dir else None
         arch_suffix_bytes = arch_suffix.encode("utf-8")
         err = warp._src.context.runtime.core.wp_cuda_compile_program(
             src,
@@ -86,7 +87,7 @@ def build_cuda(
             fuse_fp,
             lineinfo,
             compile_time_trace,
-            warp.config.use_precompiled_headers,
+            use_precompiled_headers,
             output_path,
             pch_dir_bytes,
             num_link,
@@ -115,6 +116,11 @@ def build_cpu(
     fuse_fp=True,
     extra_flags="",
     optimization_level=2,
+    verbose=False,
+    use_precompiled_headers=False,
+    pch_dir=None,
+    block_dim=256,
+    enable_tiles_in_stack_memory=True,
 ):
     with open(cpp_path, "rb") as cpp:
         src = cpp.read()
@@ -122,14 +128,10 @@ def build_cpu(
     inc_path = os.path.join(warp_home, "native").encode("utf-8")
     obj_path = obj_path.encode("utf-8")
 
-    # Determine enable_tiles_in_stack_memory value
-    enable_tiles_in_stack = warp.config.enable_tiles_in_stack_memory
-    if enable_tiles_in_stack is None:
-        # Default to True on aarch64 (Linux ARM), False otherwise
-        enable_tiles_in_stack = platform.machine() == "aarch64"
-
     flags_list = extra_flags.split()
     flags_array = (ctypes.c_char_p * (len(flags_list) + 1))(*[f.encode("utf-8") for f in flags_list], None)
+
+    pch_dir_bytes = pch_dir.encode("utf-8") if pch_dir else None
 
     err = warp._src.context.runtime.llvm.wp_compile_cpp(
         src,
@@ -139,9 +141,13 @@ def build_cpu(
         mode == "debug",
         verify_fp,
         fuse_fp,
-        enable_tiles_in_stack,
+        enable_tiles_in_stack_memory,
         flags_array,
         optimization_level,
+        verbose,
+        use_precompiled_headers,
+        pch_dir_bytes,
+        block_dim,
     )
     if err != 0:
         raise Exception(f"CPU kernel build failed with error code {err}")
@@ -406,6 +412,8 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
     def cublasdx_type_map(dtype):
         if dtype == float16:
             return ("wp::float16", 3, 0)
+        if dtype == bfloat16:
+            return ("wp::bfloat16", 2, 0)  # COMMONDX_PRECISION_BF16
         if dtype == float32:
             return ("wp::float32", 5, 0)
         if dtype == float64:

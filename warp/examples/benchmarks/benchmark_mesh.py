@@ -50,19 +50,14 @@ def tile_mesh_query_aabb_kernel(
     i, _j = wp.tid()
     query = wp.tile_mesh_query_aabb(mesh_id, query_lowers[i], query_uppers[i])
 
-    result_tile = wp.tile_mesh_query_aabb_next(query)
-
-    # Continue querying while we have results
     # Each iteration, each thread in the block gets one result (or -1)
-    while wp.tile_max(result_tile)[0] >= 0:
-        # Each thread processes its result from the tile
+    while wp.tile_query_valid(query):
+        result_tile = wp.tile_mesh_query_aabb_next(query)
         result_idx = wp.untile(result_tile)
 
         # Atomically increment the count for each valid hit
         if result_idx >= 0:
             wp.atomic_add(hit_counts, i, 1)
-
-        result_tile = wp.tile_mesh_query_aabb_next(query)
 
 
 def benchmark_mesh_aabb(mesh, query_lowers, query_uppers, hit_counts, warm_up, iterations):

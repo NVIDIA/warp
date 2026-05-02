@@ -76,6 +76,7 @@ def dtype_to_jax(warp_dtype):
 
         dtype_to_jax.type_map = {
             warp.float16: jp.float16,
+            warp.bfloat16: jp.bfloat16,
             warp.float32: jp.float32,
             warp.float64: jp.float64,
             warp.int8: jp.int8,
@@ -109,6 +110,7 @@ def dtype_from_jax(jax_dtype):
         dtype_from_jax.type_map = {
             # Jax scalar types
             jp.float16: warp.float16,
+            jp.bfloat16: warp.bfloat16,
             jp.float32: warp.float32,
             jp.float64: warp.float64,
             jp.int8: warp.int8,
@@ -122,6 +124,7 @@ def dtype_from_jax(jax_dtype):
             jp.bool_: warp.bool,
             # Jax dtype objects
             jp.dtype(jp.float16): warp.float16,
+            jp.dtype(jp.bfloat16): warp.bfloat16,
             jp.dtype(jp.float32): warp.float32,
             jp.dtype(jp.float64): warp.float64,
             jp.dtype(jp.int8): warp.int8,

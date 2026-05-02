@@ -126,19 +126,30 @@ def values_check_equal(a, b):
         if len(a) != len(b):
             return False
 
-        return all(x == y for x, y in zip(a, b, strict=False))
+        return all(x == y for x, y in zip(a, b, strict=True))
 
     return a == b
 
 
-def get_closure_cell_contents(obj):
-    """Retrieve a closure's cell contents or `None` if it's empty."""
-    try:
-        return obj.cell_contents
-    except ValueError:
-        pass
+def get_closure_vars(func: Callable) -> dict[str, Any]:
+    """Return a dict of the function's closure variables, skipping empty cells."""
+    result = {}
+    closure = func.__closure__
+    if closure is not None:
+        for name, cell in zip(func.__code__.co_freevars, closure, strict=True):
+            try:
+                result[name] = cell.cell_contents
+            except ValueError:
+                pass
+    return result
 
-    return None
+
+def resolve_closure_or_global(func: Callable, name: str):
+    """Look up *name* in the function's closure variables, falling back to globals."""
+    closure_vars = get_closure_vars(func)
+    if name in closure_vars:
+        return closure_vars[name]
+    return func.__globals__.get(name)
 
 
 def get_annotations(obj: Any) -> Mapping[str, Any]:
@@ -149,12 +160,7 @@ def get_annotations(obj: Any) -> Mapping[str, Any]:
 def get_full_arg_spec(func: Callable) -> inspect.FullArgSpec:
     """Same as `inspect.getfullargspec()` but always returning un-stringized annotations."""
     spec = inspect.getfullargspec(func)
-    # Capture closure variables to handle cases like `foo.Data` where `foo` is a closure variable
-    closure_vars = dict(
-        zip(func.__code__.co_freevars, (get_closure_cell_contents(x) for x in (func.__closure__ or ())), strict=False)
-    )
-    # Filter out None values from empty cells
-    closure_vars = {k: v for k, v in closure_vars.items() if v is not None}
+    closure_vars = get_closure_vars(func)
     return spec._replace(annotations=inspect.get_annotations(func, eval_str=True, locals=closure_vars))
 
 
@@ -237,6 +243,11 @@ class StructInstance:
             if matches_array_class(var.type, array):
                 # array_t
                 setattr(dst, name, value.to(device))
+            elif matches_array_class(var.type, indexedarray):
+                # indexedarray_t
+                # `.to` returns an array if on different device, force to identity indexedarray
+                cloned = value.to(device)
+                setattr(dst, name, cloned if isinstance(cloned, indexedarray) else indexedarray(cloned))
             elif isinstance(var.type, Struct):
                 # nested struct
                 new_struct = var.type()
@@ -264,6 +275,9 @@ class StructInstance:
             if matches_array_class(var.type, array):
                 # array_t
                 npvalue.append(value.numpy_value())
+            elif matches_array_class(var.type, indexedarray):
+                # indexedarray_t
+                npvalue.append(value.numpy_value())
             elif isinstance(var.type, Struct):
                 # nested struct
                 npvalue.append(value.numpy_value())
@@ -278,6 +292,8 @@ class StructInstance:
                 # scalar
                 if var.type == warp.float16:
                     npvalue.append(half_bits_to_float(value))
+                elif var.type == warp.bfloat16:
+                    npvalue.append(bfloat16_bits_to_float(value))
                 else:
                     npvalue.append(value)
 
@@ -298,6 +314,8 @@ def _make_struct_field_constructor(field: str, var_type: type):
     if isinstance(var_type, Struct):
         return lambda ctype: var_type.instance_type(ctype=getattr(ctype, field))
     elif matches_array_class(var_type, warp._src.types.array):
+        return lambda ctype: None
+    elif matches_array_class(var_type, warp._src.types.indexedarray):
         return lambda ctype: None
     elif _is_texture_type(var_type):
         return lambda ctype: None
@@ -326,6 +344,27 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             # would be collected while the struct ctype still holds a reference to it
             if value.requires_grad:
                 cls.__setattr__(inst, "_" + field + "_grad", value.grad)
+
+        cls.__setattr__(inst, field, value)
+
+    def set_indexedarray_value(inst, value):
+        if value is None:
+            setattr(inst._ctype, field, var_type.__ctype__())
+        else:
+            assert isinstance(value, indexedarray)
+            assert types_equal(value.dtype, var_type.dtype), (
+                f"assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, got type {type_repr(value.dtype)}"
+            )
+            setattr(inst._ctype, field, value.__ctype__())
+
+        # workaround to prevent gradient buffers being garbage collected
+        # (indexedarray_t embeds an array_t)
+        grad_attr = "_" + field + "_grad"
+        if value is not None and value.data is not None and value.data.requires_grad:
+            cls.__setattr__(inst, grad_attr, value.data.grad)
+        else:
+            # clear any previous keepalive
+            cls.__setattr__(inst, grad_attr, None)
 
         cls.__setattr__(inst, field, value)
 
@@ -364,9 +403,11 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             if is_warp_scalar:
                 # assigning warp type value (e.g.: wp.float32)
                 value = value.value
-            # float16 needs conversion to uint16 bits
+            # float16/bfloat16 needs conversion to uint16 bits
             if var_type == warp.float16:
                 setattr(inst._ctype, field, float_to_half_bits(value))
+            elif var_type == warp.bfloat16:
+                setattr(inst._ctype, field, float_to_bfloat16_bits(value))
             else:
                 setattr(inst._ctype, field, value)
 
@@ -388,6 +429,8 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
 
     if matches_array_class(var_type, array):
         return set_array_value
+    elif matches_array_class(var_type, indexedarray):
+        return set_indexedarray_value
     elif isinstance(var_type, Struct):
         return set_struct_value
     elif _is_texture_type(var_type):
@@ -418,6 +461,8 @@ class Struct:
         for label, var in self.vars.items():
             if matches_array_class(var.type, array):
                 fields.append((label, array_t))
+            elif matches_array_class(var.type, indexedarray):
+                fields.append((label, indexedarray_t))
             elif isinstance(var.type, Struct):
                 fields.append((label, var.type.ctype))
             elif issubclass(var.type, ctypes.Array):
@@ -425,8 +470,8 @@ class Struct:
             elif _is_texture_type(var.type):
                 fields.append((label, var.type._wp_ctype_))
             else:
-                # HACK: fp16 requires conversion functions from warp.so
-                if var.type is warp.float16:
+                # HACK: fp16/bf16 requires conversion functions from warp.so
+                if var.type is warp.float16 or var.type is warp.bfloat16:
                     warp.init()
                 fields.append((label, var.type._type_))
 
@@ -533,6 +578,9 @@ class Struct:
             if matches_array_class(var.type, array):
                 # array_t
                 formats.append(array_t.numpy_dtype())
+            elif matches_array_class(var.type, indexedarray):
+                # indexedarray_t
+                formats.append(indexedarray_t.numpy_dtype())
             elif isinstance(var.type, Struct):
                 # nested struct
                 formats.append(var.type.numpy_dtype())
@@ -566,6 +614,9 @@ class Struct:
                 # no easy way to make a backref.
                 # Instead, we just create a stub annotation, which is not a fully usable array object.
                 setattr(instance, name, array(dtype=var.type.dtype, ndim=var.type.ndim))
+            elif matches_array_class(var.type, indexedarray):
+                # Same as regular arrays: return an annotation stub only.
+                setattr(instance, name, indexedarray(dtype=var.type.dtype, ndim=var.type.ndim))
             elif isinstance(var.type, Struct):
                 # nested struct
                 value = var.type.from_ptr(ptr + offset)
@@ -578,7 +629,9 @@ class Struct:
                 # scalar
                 cvalue = ctypes.cast(ptr + offset, ctypes.POINTER(var.type._type_)).contents
                 if var.type == warp.float16:
-                    setattr(instance, name, half_bits_to_float(cvalue))
+                    setattr(instance, name, half_bits_to_float(cvalue.value))
+                elif var.type == warp.bfloat16:
+                    setattr(instance, name, bfloat16_bits_to_float(cvalue.value))
                 else:
                     setattr(instance, name, cvalue.value)
 
@@ -704,6 +757,8 @@ class Var:
             return f"{classstr}<{dtypestr}>"
         elif is_tile(t):
             return t.ctype()
+        elif is_tile_stack(t):
+            return t.ctype()
         elif isinstance(t, type) and issubclass(t, StructInstance):
             # ensure the actual Struct name is used instead of "NewStructInstance"
             return t.native_name
@@ -746,7 +801,7 @@ class Var:
             return
 
         # detect if we are writing to an array after reading from it within the same kernel
-        if self.is_read and warp.config.verify_autograd_array_access:
+        if self.is_read and warp._src.codegen.options.get("verify_autograd_array_access", False):
             if "kernel_name" and "filename" and "lineno" in kwargs:
                 print(
                     f"Warning: Array passed to argument {self.label} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
@@ -815,7 +870,7 @@ def func_match_args(func, arg_types, kwarg_types):
     bound_arg_types = tuple(bound_arg_types.arguments.values())
 
     # Check the given argument types against the ones defined on the function.
-    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=False):
+    for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=True):
         # Let the `value_func` callback infer the type.
         if bound_arg_type is None:
             continue
@@ -868,6 +923,7 @@ def get_arg_type(arg: Var | Any) -> type:
             tuple_t,
             slice_t,
             tile,
+            tile_stack,
         ),
     ):
         return arg
@@ -1064,6 +1120,8 @@ class Adjoint:
 
         for var in adj.variables:
             if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
+                total_shared += var.type.size_in_bytes()
+            elif is_tile_stack(var.type):
                 total_shared += var.type.size_in_bytes()
 
         return total_shared + adj.max_required_extra_shared_memory
@@ -1358,11 +1416,11 @@ class Adjoint:
 
         # lineinfo is enabled by default in debug mode regardless of the builder option, don't want to unnecessarily
         # emit line directives in generated code if it's not being compiled with line information
-        build_mode = adj.builder_options.get("mode") or warp.config.mode
+        build_mode = adj.builder_options.get("mode", "release")
 
         lineinfo_enabled = adj.builder_options.get("lineinfo", False) or build_mode == "debug"
 
-        if relative_lineno is not None and lineinfo_enabled and warp.config.line_directives:
+        if relative_lineno is not None and lineinfo_enabled and adj.builder_options.get("line_directives", True):
             is_comment = statement.strip().startswith("//")
             if not is_comment:
                 line = relative_lineno + adj.fun_lineno
@@ -1416,7 +1474,7 @@ class Adjoint:
 
         prev_comp_var = None
 
-        for op, comp in zip(op_strings, comps, strict=False):
+        for op, comp in zip(op_strings, comps, strict=True):
             if prev_comp_var:
                 # We restrict chaining to operands of the same type
                 if prev_comp_var.type is comp.type:
@@ -1704,7 +1762,11 @@ class Adjoint:
                 require_original_output_arg=func.require_original_output_arg,
             )
             if arg_str is not None:
-                reverse_call = f"{func.namespace}adj_{func.native_func}({arg_str});"
+                if func.lto_dispatch_func is not None:
+                    adj_func_name = compute_type_str(func.native_func, template_args)
+                else:
+                    adj_func_name = func.native_func
+                reverse_call = f"{func.namespace}adj_{adj_func_name}({arg_str});"
                 adj.add_reverse(reverse_call)
 
         # update our smem roofline requirements based on any
@@ -2393,7 +2455,7 @@ class Adjoint:
     def emit_BinOp(adj, node):
         # evaluate binary operator arguments
 
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             # array overwrite tracking: in-place operators are a special case
             # x[tid] = x[tid] + 1 is a read followed by a write, but we only want to record the write
             # so we save the current arg read flags and restore them after lhs eval
@@ -2404,7 +2466,7 @@ class Adjoint:
         # evaluate lhs binary operator argument
         left = adj.eval(node.left)
 
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             # restore arg read flags
             for i, arg in enumerate(adj.args):
                 arg.is_read = is_read_states[i]
@@ -2546,7 +2608,7 @@ class Adjoint:
         # It is important to do that in one pass, so that if evaluating these arguments have side effects
         # the code does not get generated more than once
         range_args = [adj.eval_num(arg) for arg in loop.iter.args]
-        arg_is_numeric, arg_values = zip(*range_args, strict=False)
+        arg_is_numeric, arg_values = zip(*range_args, strict=True)
 
         if all(arg_is_numeric):
             # All argument are numeric constants
@@ -2572,10 +2634,7 @@ class Adjoint:
             # test if we're above max unroll count
             max_iters = abs(end - start) // abs(step)
 
-            if "max_unroll" in adj.builder_options:
-                max_unroll = adj.builder_options["max_unroll"]
-            else:
-                max_unroll = warp.config.max_unroll
+            max_unroll = adj.builder_options.get("max_unroll", 16)
 
             ok_to_unroll = True
 
@@ -2817,7 +2876,7 @@ class Adjoint:
 
         if is_array(target_type):
             builtin_name = "address"
-            if warp.config.verify_autograd_array_access:
+            if adj.builder_options.get("verify_autograd_array_access", False):
                 target.mark_read()
         else:
             builtin_name = "extract"
@@ -2952,7 +3011,7 @@ class Adjoint:
 
         out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
 
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             # Extract the types and values passed as arguments to the function call.
             arg_types = tuple(get_arg_type(x) for x in args)
             kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
@@ -3004,7 +3063,7 @@ class Adjoint:
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
 
-                if warp.config.verify_autograd_array_access:
+                if adj.builder_options.get("verify_autograd_array_access", False):
                     target.mark_read()
 
             else:
@@ -3026,7 +3085,7 @@ class Adjoint:
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
 
-                if warp.config.verify_autograd_array_access:
+                if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
                     out.parent = target
 
@@ -3178,7 +3237,7 @@ class Adjoint:
                 )
 
             out = rhs
-            for name, rhs in zip(names, out, strict=False):
+            for name, rhs in zip(names, out, strict=True):
                 if name in adj.symbols:
                     if not types_equal(rhs.type, adj.symbols[name].type):
                         raise WarpCodegenTypeError(
@@ -3248,7 +3307,7 @@ class Adjoint:
         if is_array(target_type):
             adj.add_builtin_call("array_store", [target, *indices, rhs])
 
-            if warp.config.verify_autograd_array_access:
+            if adj.builder_options.get("verify_autograd_array_access", False):
                 kernel_name = adj.fun_name
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
@@ -3286,7 +3345,7 @@ class Adjoint:
                         f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
                     )
             else:
-                if warp.config.enable_vector_component_overwrites:
+                if adj.builder_options.get("enable_vector_component_overwrites", False):
                     out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
 
                     # re-point target symbol to out var
@@ -3318,7 +3377,7 @@ class Adjoint:
                 attr = adj.add_builtin_call("indexref", [aggregate, index])
                 adj.add_builtin_call("store", [attr, rhs])
             else:
-                if warp.config.enable_vector_component_overwrites:
+                if adj.builder_options.get("enable_vector_component_overwrites", False):
                     out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
 
                     # re-point target symbol to out var
@@ -3391,7 +3450,7 @@ class Adjoint:
         registering as a read in the autograd verification system, since the
         overall operation is a write, not a read.
         """
-        if warp.config.verify_autograd_array_access:
+        if adj.builder_options.get("verify_autograd_array_access", False):
             is_read_states = [arg.is_read for arg in adj.args]
         else:
             is_read_states = None
@@ -3537,31 +3596,31 @@ class Adjoint:
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("atomic_add", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.Sub):
                     adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitAnd):
                     adj.add_builtin_call("atomic_and", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitOr):
                     adj.add_builtin_call("atomic_or", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
 
-                    if warp.config.verify_autograd_array_access:
+                    if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
                     if warp.config.verbose:
@@ -3702,16 +3761,8 @@ class Adjoint:
     # retrieves a dictionary of all closure and global variables and their values
     # to be used in the evaluation context of wp.static() expressions
     def get_static_evaluation_context(adj):
-        closure_vars = dict(
-            zip(
-                adj.func.__code__.co_freevars,
-                [c.cell_contents for c in (adj.func.__closure__ or [])],
-                strict=False,
-            )
-        )
-
         # variables captured in closure have precedence over global vars
-        vars_dict = adj.func.__globals__ | closure_vars
+        vars_dict = adj.func.__globals__ | get_closure_vars(adj.func)
 
         return vars_dict
 
@@ -4051,14 +4102,7 @@ class Adjoint:
         return None, path
 
     def resolve_external_reference(adj, name: str):
-        try:
-            # look up in closure variables
-            idx = adj.func.__code__.co_freevars.index(name)
-            obj = adj.func.__closure__[idx].cell_contents
-        except ValueError:
-            # look up in global variables
-            obj = adj.func.__globals__.get(name)
-        return obj
+        return resolve_closure_or_global(adj.func, name)
 
     # annotate generated code with the original source code line
     def set_lineno(adj, lineno):
@@ -4304,7 +4348,7 @@ extern "C" {{
 
 // Python CPU entry points
 WP_API void {name}_cpu_forward(
-    wp::launch_bounds_t dim,
+    wp::launch_bounds_t *dim,
     wp_args_{name} *_wp_args)
 {{
     wp::tile_shared_storage_t tile_mem;
@@ -4312,9 +4356,9 @@ WP_API void {name}_cpu_forward(
     wp::shared_tile_storage = &tile_mem;
 #endif
 
-    for (size_t task_index = 0; task_index < dim.size; ++task_index)
+    for (size_t task_index = 0; task_index < dim->size; ++task_index)
     {{
-        {name}_cpu_kernel_forward(dim, task_index, _wp_args);
+        {name}_cpu_kernel_forward(*dim, task_index, _wp_args);
     }}
 }}
 
@@ -4327,7 +4371,7 @@ cpu_module_template_backward = """
 extern "C" {{
 
 WP_API void {name}_cpu_backward(
-    wp::launch_bounds_t dim,
+    wp::launch_bounds_t *dim,
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
@@ -4336,9 +4380,9 @@ WP_API void {name}_cpu_backward(
     wp::shared_tile_storage = &tile_mem;
 #endif
 
-    for (size_t task_index = 0; task_index < dim.size; ++task_index)
+    for (size_t task_index = 0; task_index < dim->size; ++task_index)
     {{
-        {name}_cpu_kernel_backward(dim, task_index, _wp_args, _wp_adj_args);
+        {name}_cpu_kernel_backward(*dim, task_index, _wp_args, _wp_adj_args);
     }}
 }}
 
@@ -4364,9 +4408,10 @@ def constant_str(value):
     elif isinstance(value, ctypes.Array):
         if value_type._wp_scalar_type_ == float16:
             # special case for float16, which is stored as uint16 in the ctypes.Array
-            from warp._src.context import runtime  # noqa: PLC0415
-
-            scalar_value = runtime.core.wp_half_bits_to_float
+            scalar_value = warp._src.context.runtime.core.wp_half_bits_to_float
+        elif value_type._wp_scalar_type_ == bfloat16:
+            # special case for bfloat16, which is stored as uint16 in the ctypes.Array
+            scalar_value = warp._src.context.runtime.core.wp_bfloat16_bits_to_float
         else:
 
             def scalar_value(x):
@@ -4390,7 +4435,9 @@ def constant_str(value):
         # Unwrap the raw value and handle special floats before applying
         # C++ literal suffixes for wide integer types.
         raw = value.value
-        if isinstance(raw, builtins.float):
+        if isinstance(raw, (enum.IntEnum, enum.IntFlag)):
+            raw = int(raw)
+        elif isinstance(raw, builtins.float):
             if raw == math.inf:
                 return "INFINITY"
             if raw == -math.inf:
@@ -4541,6 +4588,8 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     for var in adj.variables:
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=False)};\n"]
+        elif is_tile_stack(var.type):
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -4596,6 +4645,8 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     for var in adj.variables:
         if is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=True)};\n"]
+        elif is_tile_stack(var.type):
+            lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -4621,6 +4672,9 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
                 lines += [
                     f"{var.type.ctype()}& {name} = {var.emit()};\n"
                 ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
+        elif is_tile_stack(var.type):
+            # Adjoint pointers are intentionally uninitialized -- all adj_tile_stack_* stubs are empty no-ops.
+            lines += [f"{var.ctype()} {name};\n"]
         else:
             lines += [f"{ctype} {name} = {{}};\n"]
 
@@ -4701,7 +4755,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
 
     # forward args
     for i, arg in enumerate(adj.args):
-        if is_tile(arg.type):
+        if is_tile(arg.type) or is_tile_stack(arg.type):
             tname = f"tile_{arg.label}"
             template_params.append(tname)
             s = f"{tname}& {arg.emit()}"
@@ -4723,7 +4777,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
-        elif is_tile(arg.type):
+        elif is_tile(arg.type) or is_tile_stack(arg.type):
             tname = f"tile_{arg.label}"
             reverse_args.append(f"{tname} & adj_{arg.label}")
         else:
@@ -4736,7 +4790,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     # custom output reverse args (user-declared)
     if adj.custom_reverse_mode:
         for arg in adj.args[adj.custom_reverse_num_input_args :]:
-            if is_tile(arg.type):
+            if is_tile(arg.type) or is_tile_stack(arg.type):
                 tname = f"tile_{arg.label}"
                 reverse_args.append(f"{tname} & {arg.emit()}")
             else:
@@ -4811,9 +4865,21 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     forward_args = []
     reverse_args = []
 
+    # Tile parameters use C++ template parameters (matching codegen_func)
+    # so that the same @wp.func_native can accept tiles with any storage
+    # type (register or shared).  They are passed by non-const reference
+    # for the same reasons as @wp.func: owning shared tiles cannot be
+    # copied, and adjoint built-ins expect non-const Tile& parameters.
+    template_params = []
+
     # forward args
     for _i, arg in enumerate(adj.args):
-        s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
+        if is_tile(arg.type):
+            tname = f"tile_{arg.label}"
+            template_params.append(tname)
+            s = f"{tname}& {arg.emit().replace('var_', '')}"
+        else:
+            s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
         forward_args.append(s)
         reverse_args.append(s)
 
@@ -4822,10 +4888,17 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         if matches_array_class(arg.type, indexedarray):
             _arg = Var(arg.label, array(dtype=arg.type.dtype, ndim=arg.type.ndim))
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
+        elif is_tile(arg.type):
+            reverse_args.append(f"tile_{arg.label} & adj_{arg.label}")
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
     if return_type != "void":
         reverse_args.append(return_type + " & adj_ret")
+
+    # build template prefix for snippets with tile parameters
+    template_prefix = ""
+    if template_params:
+        template_prefix = "template<" + ", ".join(f"typename {t}" for t in template_params) + ">\n"
 
     forward_template = cuda_forward_function_template
     replay_template = cuda_forward_function_template
@@ -4835,7 +4908,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
 
     # Pass 1: Forward and replay (both are "forward-like" functions)
     if not reverse_only:
-        s += forward_template.format(
+        s += template_prefix + forward_template.format(
             name=name,
             return_type=return_type,
             forward_args=indent(forward_args),
@@ -4846,7 +4919,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         )
 
         if replay_snippet is not None:
-            s += replay_template.format(
+            s += template_prefix + replay_template.format(
                 name="replay_" + name,
                 return_type=return_type,
                 forward_args=indent(forward_args),
@@ -4863,7 +4936,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
         else:
             reverse_body = ""
 
-        s += reverse_template.format(
+        s += template_prefix + reverse_template.format(
             name=name,
             return_type=return_type,
             reverse_args=indent(reverse_args),

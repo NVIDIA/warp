@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "alloc_tracker.h"
+#include "apic.h"
 #include "cuda_util.h"
 #include "error.h"
 #include "scan.h"
@@ -685,24 +687,30 @@ static inline const char* get_cuda_kernel_name(void* kernel)
 }
 
 
-void* wp_alloc_pinned(size_t s)
+void* wp_alloc_pinned(size_t s, const char* tag)
 {
     void* ptr = NULL;
     check_cuda(cudaMallocHost(&ptr, s));
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_PINNED, -1, tag);
     return ptr;
 }
 
-void wp_free_pinned(void* ptr) { cudaFreeHost(ptr); }
+void wp_free_pinned(void* ptr)
+{
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
+    cudaFreeHost(ptr);
+}
 
-void* wp_alloc_device(void* context, size_t s)
+void* wp_alloc_device(void* context, size_t s, const char* tag)
 {
     int ordinal = wp_cuda_context_get_device_ordinal(context);
 
-    // use stream-ordered allocator if available
     if (wp_cuda_device_is_mempool_supported(ordinal))
-        return wp_alloc_device_async(context, s);
+        return wp_alloc_device_async(context, s, tag);
     else
-        return wp_alloc_device_default(context, s);
+        return wp_alloc_device_default(context, s, tag);
 }
 
 void wp_free_device(void* context, void* ptr)
@@ -716,18 +724,23 @@ void wp_free_device(void* context, void* ptr)
         wp_free_device_default(context, ptr);
 }
 
-void* wp_alloc_device_default(void* context, size_t s)
+void* wp_alloc_device_default(void* context, size_t s, const char* tag)
 {
     ContextGuard guard(context);
 
     void* ptr = NULL;
     check_cuda(cudaMalloc(&ptr, s));
 
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
     return ptr;
 }
 
 void wp_free_device_default(void* context, void* ptr)
 {
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
+
     ContextGuard guard(context);
 
     // check if a capture is in progress
@@ -739,7 +752,7 @@ void wp_free_device_default(void* context, void* ptr)
     }
 }
 
-void* wp_alloc_device_async(void* context, size_t s)
+void* wp_alloc_device_async(void* context, size_t s, const char* tag)
 {
     // stream-ordered allocations don't rely on the current context,
     // but we set the context here for consistent behaviour
@@ -772,11 +785,16 @@ void* wp_alloc_device_async(void* context, size_t s)
         }
     }
 
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
     return ptr;
 }
 
 void wp_free_device_async(void* context, void* ptr)
 {
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_free(ptr);
+
     // stream-ordered allocators generally don't rely on the current context,
     // but we set the context here for consistent behaviour
     ContextGuard guard(context);
@@ -911,6 +929,26 @@ bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
     bool result = check_cuda(cudaMemcpyAsync(dest, src, n, cudaMemcpyDeviceToDevice, cuda_stream));
 
     end_cuda_range(WP_TIMING_MEMCPY, cuda_stream);
+
+    // APIC recording.
+    // TODO: When execution becomes fully deferred (like the CPU path), move
+    // CUDA-result checking to replay time (capture_launch / load+launch) and
+    // make recording unconditional at capture time. For now we still execute
+    // the CUDA op live under stream capture, but the record itself is API-
+    // intent only and doesn't depend on the live call's result.
+    APICState apic_state = wp_apic_get_recording_state();
+    if (apic_state) {
+        int32_t dst_region, src_region;
+        uint64_t dst_offset, src_offset;
+        bool dst_ok = apic_resolve_ptr(apic_state, (uint64_t)dest, &dst_region, &dst_offset);
+        bool src_ok = apic_resolve_ptr(apic_state, (uint64_t)src, &src_region, &src_offset);
+        if (!dst_ok)
+            fprintf(stderr, "APIC: Error - memcpy dst pointer not in any registered region\n");
+        if (!src_ok)
+            fprintf(stderr, "APIC: Error - memcpy src pointer not in any registered region\n");
+        if (dst_ok && src_ok)
+            apic_record_memcpy_d2d(apic_state, dst_region, dst_offset, src_region, src_offset, n);
+    }
 
     return result;
 }
@@ -1060,25 +1098,38 @@ __global__ void memset_kernel(int* dest, int value, size_t n)
     }
 }
 
-void wp_memset_device(void* context, void* dest, int value, size_t n)
+bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stream)
 {
     ContextGuard guard(context);
 
-    if (true)  // ((n%4) > 0)
-    {
-        cudaStream_t stream = get_current_stream();
+    cudaStream_t cuda_stream;
+    if (stream != WP_CURRENT_STREAM)
+        cuda_stream = static_cast<CUstream>(stream);
+    else
+        cuda_stream = get_current_stream();
 
-        begin_cuda_range(WP_TIMING_MEMSET, stream, context, "memset");
+    begin_cuda_range(WP_TIMING_MEMSET, cuda_stream, context, "memset");
 
-        // for unaligned lengths fallback to CUDA memset
-        check_cuda(cudaMemsetAsync(dest, value, n, stream));
+    bool result = check_cuda(cudaMemsetAsync(dest, value, n, cuda_stream));
 
-        end_cuda_range(WP_TIMING_MEMSET, stream);
-    } else {
-        // custom kernel to support 4-byte values (and slightly lower host overhead)
-        const size_t num_words = n / 4;
-        wp_launch_device(WP_CURRENT_CONTEXT, memset_kernel, num_words, ((int*)dest, value, num_words));
+    end_cuda_range(WP_TIMING_MEMSET, cuda_stream);
+
+    // APIC recording.
+    // TODO: When execution becomes fully deferred (like the CPU path), move
+    // CUDA-result checking to replay time (capture_launch / load+launch) and
+    // make recording unconditional at capture time. For now we still execute
+    // the CUDA op live under stream capture, but the record itself is API-
+    // intent only and doesn't depend on the live call's result.
+    APICState apic_state = wp_apic_get_recording_state();
+    if (apic_state) {
+        int32_t region_id;
+        uint64_t offset;
+        if (apic_resolve_ptr(apic_state, (uint64_t)dest, &region_id, &offset))
+            apic_record_memset(apic_state, region_id, offset, n, value);
+        else
+            fprintf(stderr, "APIC: Error - memset dst pointer not in any registered region\n");
     }
+    return result;
 }
 
 // fill memory buffer with a value: generic memtile kernel using memcpy for each element
@@ -4526,7 +4577,8 @@ size_t wp_cuda_launch_kernel(
     int block_dim,
     int shared_memory_bytes,
     void** args,
-    void* stream
+    void* stream,
+    const APICLaunchInfo* apic_info
 )
 {
     ContextGuard guard(context);
@@ -4571,6 +4623,36 @@ size_t wp_cuda_launch_kernel(
     check_cu(res);
 
     end_cuda_range(WP_TIMING_KERNEL, stream);
+
+    // APIC recording: record kernel launch to byte stream if capturing
+    if (apic_info) {
+        APICState state = wp_apic_get_recording_state();
+        if (state) {
+            // Read shape/ndim/size from the launch_bounds_t* in args[0] (see builtin.h).
+            int shape[APIC_LAUNCH_MAX_DIMS] = {};
+            int ndim = 0;
+            uint64_t launch_size = dim;
+            if (args && args[0]) {
+                const auto* lb = static_cast<const wp::launch_bounds_t*>(args[0]);
+                ndim = lb->ndim;
+                if (ndim < 1)
+                    ndim = 1;
+                if (ndim > APIC_LAUNCH_MAX_DIMS)
+                    ndim = APIC_LAUNCH_MAX_DIMS;
+                for (int d = 0; d < ndim; d++)
+                    shape[d] = lb->shape[d];
+                launch_size = lb->size;
+            } else {
+                ndim = 1;
+                shape[0] = (int)dim;
+            }
+
+            apic_record_kernel_launch(
+                state, apic_info->kernel_key, apic_info->module_hash, apic_info->is_forward, shape, ndim, launch_size,
+                max_blocks, block_dim, shared_memory_bytes, apic_info->params, apic_info->num_params
+            );
+        }
+    }
 
     return res;
 }
@@ -4712,3 +4794,6 @@ void wp_cuda_timing_end(timing_result_t* results, int size)
 
 // #include "spline.inl"
 // #include "volume.inl"
+
+// APIC (API Capture) implementation
+#include "apic.cu"

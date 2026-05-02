@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tests for subscript-style type annotations (wp.array[float], wp.types.Vector[float, Literal[3]], etc.)."""
+"""Tests for subscript-style type annotations on arrays and tiles, plus the internal Vector/Matrix/Quaternion/Transformation generics."""
 
 import unittest
 from typing import Any, Literal, TypeVar, get_origin
@@ -14,6 +14,10 @@ from warp._src.types import (
     ARRAY_TYPE_FABRIC_INDEXED,
     ARRAY_TYPE_INDEXED,
     ARRAY_TYPE_REGULAR,
+    Matrix,
+    Quaternion,
+    Transformation,
+    Vector,
     _ArrayAnnotation,
     _ArrayAnnotationBase,
     _IndexedArrayAnnotation,
@@ -48,7 +52,7 @@ def test_subscript_kernel_actually_runs(test, device):
 
 @wp.kernel
 def vector_kernel(
-    positions: wp.array[wp.types.Vector[wp.float32, Literal[3]]],
+    positions: wp.array[Vector[wp.float32, Literal[3]]],
     output: wp.array[float],
 ):
     i = wp.tid()
@@ -293,45 +297,45 @@ class TestSubscriptTypes(unittest.TestCase):
 
     def test_vector_subscript_syntax(self):
         """Test Vector subscript syntax."""
-        vec_type = wp.types.Vector[float, Literal[3]]
+        vec_type = Vector[float, Literal[3]]
         self.assertEqual(vec_type._length_, 3)
         self.assertIs(vec_type, wp.types.vector(3, wp.float32))
 
         # Bare integer (runtime only)
-        vec_type2 = wp.types.Vector[wp.float64, 4]
+        vec_type2 = Vector[wp.float64, 4]
         self.assertEqual(vec_type2._length_, 4)
 
     def test_matrix_subscript_syntax(self):
         """Test Matrix subscript syntax."""
-        mat_type = wp.types.Matrix[float, Literal[3], Literal[3]]
+        mat_type = Matrix[float, Literal[3], Literal[3]]
         self.assertEqual(mat_type._shape_, (3, 3))
         self.assertIs(mat_type, wp.types.matrix((3, 3), wp.float32))
 
         # Non-square matrix
-        mat_type2 = wp.types.Matrix[wp.float64, Literal[2], Literal[4]]
+        mat_type2 = Matrix[wp.float64, Literal[2], Literal[4]]
         self.assertEqual(mat_type2._shape_, (2, 4))
 
     def test_quaternion_subscript_syntax(self):
         """Test Quaternion subscript syntax."""
-        quat_type = wp.types.Quaternion[wp.float32]
+        quat_type = Quaternion[wp.float32]
         self.assertIs(quat_type, wp.types.quaternion(wp.float32))
 
-        quat_type2 = wp.types.Quaternion[wp.float64]
+        quat_type2 = Quaternion[wp.float64]
         self.assertIs(quat_type2, wp.types.quaternion(wp.float64))
 
         # Verify caching
-        self.assertIs(wp.types.Quaternion[wp.float32], wp.types.Quaternion[wp.float32])
+        self.assertIs(Quaternion[wp.float32], Quaternion[wp.float32])
 
     def test_transformation_subscript_syntax(self):
         """Test Transformation subscript syntax."""
-        xform_type = wp.types.Transformation[wp.float32]
+        xform_type = Transformation[wp.float32]
         self.assertIs(xform_type, wp.types.transformation(wp.float32))
 
-        xform_type2 = wp.types.Transformation[wp.float64]
+        xform_type2 = Transformation[wp.float64]
         self.assertIs(xform_type2, wp.types.transformation(wp.float64))
 
         # Verify caching
-        self.assertIs(wp.types.Transformation[wp.float32], wp.types.Transformation[wp.float32])
+        self.assertIs(Transformation[wp.float32], Transformation[wp.float32])
 
     def test_tile_subscript_syntax(self):
         """Test tile subscript annotation syntax."""
@@ -359,12 +363,12 @@ class TestSubscriptTypes(unittest.TestCase):
     def test_subscript_identity(self):
         """Test that subscript and factory functions return identical cached types."""
         # Literal and bare int return same cached type
-        self.assertIs(wp.types.Vector[wp.float32, Literal[3]], wp.types.Vector[wp.float32, 3])
-        self.assertIs(wp.types.Vector[wp.float32, Literal[3]], wp.types.vector(3, wp.float32))
+        self.assertIs(Vector[wp.float32, Literal[3]], Vector[wp.float32, 3])
+        self.assertIs(Vector[wp.float32, Literal[3]], wp.types.vector(3, wp.float32))
 
         # Matrix identity
         self.assertIs(
-            wp.types.Matrix[wp.float32, Literal[3], Literal[3]],
+            Matrix[wp.float32, Literal[3], Literal[3]],
             wp.types.matrix((3, 3), wp.float32),
         )
 
@@ -372,23 +376,23 @@ class TestSubscriptTypes(unittest.TestCase):
         """Test error handling for invalid subscript parameters."""
         # Vector errors
         with self.assertRaisesRegex(TypeError, r"requires 2 parameters"):
-            wp.types.Vector[float]
+            Vector[float]
 
         with self.assertRaisesRegex(TypeError, r"positive integer"):
-            wp.types.Vector[float, -1]
+            Vector[float, -1]
 
         with self.assertRaisesRegex(TypeError, r"positive integer"):
-            wp.types.Vector[float, 0]
+            Vector[float, 0]
 
         with self.assertRaisesRegex(TypeError, r"Expected a single Literal value"):
-            wp.types.Vector[float, Literal[2, 3]]
+            Vector[float, Literal[2, 3]]
 
         # Matrix errors
         with self.assertRaisesRegex(TypeError, r"requires 3 parameters"):
-            wp.types.Matrix[float, 3]
+            Matrix[float, 3]
 
         with self.assertRaisesRegex(TypeError, r"positive integer"):
-            wp.types.Matrix[float, -1, 3]
+            Matrix[float, -1, 3]
 
         # Array errors
         with self.assertRaisesRegex(TypeError, r"Expected a single Literal value"):
@@ -423,14 +427,14 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertTrue(is_array(wp.indexedfabricarray[float]))
 
         # Vector type has required attributes
-        vec_type = wp.types.Vector[float, Literal[3]]
+        vec_type = Vector[float, Literal[3]]
         self.assertTrue(type_is_vector(vec_type))
         self.assertTrue(hasattr(vec_type, "_wp_generic_type_hint_"))
         self.assertTrue(hasattr(vec_type, "_wp_type_params_"))
         self.assertTrue(hasattr(vec_type, "_wp_scalar_type_"))
 
         # Matrix type has required attributes
-        mat_type = wp.types.Matrix[float, Literal[3], Literal[3]]
+        mat_type = Matrix[float, Literal[3], Literal[3]]
         self.assertTrue(type_is_matrix(mat_type))
         self.assertTrue(hasattr(mat_type, "_wp_generic_type_hint_"))
 
@@ -502,6 +506,71 @@ class TestSubscriptTypes(unittest.TestCase):
         ia = wp.indexedarray[float]
         self.assertNotEqual(a1, ia)
 
+    def test_annotation_repr(self):
+        """repr() produces readable dtype names instead of raw class paths."""
+        # Built-in scalar dtypes
+        self.assertEqual(repr(wp.array[wp.float32]), "wp.array(dtype=wp.float32, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.uint32]), "wp.array(dtype=wp.uint32, ndim=1)")
+
+        # Higher-dimensional arrays
+        self.assertEqual(repr(wp.array4d[wp.uint32]), "wp.array(dtype=wp.uint32, ndim=4)")
+        self.assertEqual(repr(wp.array3d[wp.vec3f]), "wp.array(dtype=wp.vec3f, ndim=3)")
+        self.assertEqual(repr(wp.array2d[wp.float32]), "wp.array(dtype=wp.float32, ndim=2)")
+
+        # Vector/matrix/quaternion/transform dtypes with wp.* aliases
+        self.assertEqual(repr(wp.array[wp.vec3f]), "wp.array(dtype=wp.vec3f, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.mat44f]), "wp.array(dtype=wp.mat44f, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.quatf]), "wp.array(dtype=wp.quatf, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.transformf]), "wp.array(dtype=wp.transformf, ndim=1)")
+
+        # indexedarray uses its own class name
+        self.assertEqual(repr(wp.indexedarray[wp.float32]), "wp.indexedarray(dtype=wp.float32, ndim=1)")
+        self.assertEqual(
+            repr(wp.indexedarray[wp.float32, Literal[3]]),
+            "wp.indexedarray(dtype=wp.float32, ndim=3)",
+        )
+
+        # Any dtype / ndim
+        ann = _ArrayAnnotation(dtype=Any, ndim=4)
+        self.assertEqual(repr(ann), "wp.array(dtype=Any, ndim=4)")
+        ann = _ArrayAnnotation(dtype=wp.float32, ndim=Any)
+        self.assertEqual(repr(ann), "wp.array(dtype=wp.float32, ndim=Any)")
+
+        # Custom vector/matrix dtypes with no wp.* alias use type_repr
+        my_vec5 = wp.types.vector(length=5, dtype=wp.float32)
+        r = repr(wp.array[my_vec5])
+        self.assertIn("vector(length=5", r)
+        self.assertNotIn("<class", r)
+
+        my_mat7x7 = wp.types.matrix(shape=(7, 7), dtype=wp.float32)
+        r = repr(wp.array[my_mat7x7])
+        self.assertIn("matrix(shape=(7, 7)", r)
+        self.assertNotIn("<class", r)
+
+        # Struct dtype uses struct key, no wp. prefix
+        @wp.struct
+        class _ReprTestStruct:
+            x: wp.float32
+
+        r = repr(wp.array[_ReprTestStruct])
+        self.assertIn("_ReprTestStruct", r)
+        self.assertNotIn("wp._ReprTestStruct", r)
+        self.assertNotIn("<class", r)
+
+        # Dynamic types that resolve to a wp.* alias
+        vec3d_dynamic = wp.types.vector(3, dtype=wp.float64)
+        self.assertEqual(repr(wp.array[vec3d_dynamic]), "wp.array(dtype=wp.vec3d, ndim=1)")
+        mat44f_dynamic = wp.types.matrix((4, 4), dtype=wp.float32)
+        self.assertEqual(repr(wp.array[mat44f_dynamic]), "wp.array(dtype=wp.mat44f, ndim=1)")
+
+        # Custom passthrough dtype whose __name__ collides with a warp symbol
+        # should NOT get a wp. prefix (it's not the real wp.float32)
+        class float32:
+            pass
+
+        ann = _ArrayAnnotation(dtype=float32, ndim=1)
+        self.assertNotIn("wp.float32", repr(ann))
+
     def test_typevar_delegation(self):
         """Verify that TypeVar parameters delegate to Generic (preserves static typing)."""
         T = TypeVar("T")  # dtype
@@ -509,9 +578,9 @@ class TestSubscriptTypes(unittest.TestCase):
 
         # Should return a _GenericAlias, not a vec_t class
         # Note: dtype-first order (T=Scalar, N=Length)
-        result = wp.types.Vector[T, N]
+        result = Vector[T, N]
         self.assertTrue(hasattr(result, "__origin__"))
-        self.assertEqual(get_origin(result), wp.types.Vector)
+        self.assertEqual(get_origin(result), Vector)
 
     def test_array_type_id_with_annotations(self):
         """array_type_id() returns correct constants for annotation objects."""

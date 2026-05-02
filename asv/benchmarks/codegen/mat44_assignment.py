@@ -27,9 +27,9 @@ def component_assignment(a: wp.array2d(dtype=wp.mat44), b: wp.array2d(dtype=wp.m
     m1 = wp.mat44()
     m2 = a[i, j]
 
-    for i in range(4):
-        for j in range(4):
-            m1[i, j] = m2[i, j]
+    for ii in range(4):
+        for jj in range(4):
+            m1[ii, jj] = m2[ii, jj]
 
     b[i, j] = m1
 

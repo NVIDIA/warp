@@ -42,14 +42,3 @@ from warp._src.types import type_size as type_size
 from warp._src.types import type_size_in_bytes as type_size_in_bytes
 from warp._src.types import types_equal as types_equal
 from warp._src.types import vector as vector
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src import types as _types
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_types, "warp", name)

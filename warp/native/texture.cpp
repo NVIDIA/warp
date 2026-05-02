@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <new>
 
 // ============================================================================
 // CPU Host Texture Implementation
@@ -49,14 +50,15 @@ uint64_t wp_texture_create_host(
 
     Texture* tex = nullptr;
     if (ndim == 1) {
-        tex = new Texture(shape[0], num_channels, dtype, filter_mode, address_modes[0], use_normalized_coords);
+        tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)"))
+            Texture(shape[0], num_channels, dtype, filter_mode, address_modes[0], use_normalized_coords);
     } else if (ndim == 2) {
-        tex = new Texture(
+        tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)")) Texture(
             shape[0], shape[1], num_channels, dtype, filter_mode, address_modes[0], address_modes[1],
             use_normalized_coords
         );
     } else {
-        tex = new Texture(
+        tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)")) Texture(
             shape[0], shape[1], shape[2], num_channels, dtype, filter_mode, address_modes[0], address_modes[1],
             address_modes[2], use_normalized_coords
         );
@@ -69,7 +71,12 @@ uint64_t wp_texture_create_host(
     return reinterpret_cast<uint64_t>(tex);
 }
 
-void wp_texture_destroy_host(uint64_t tex_handle) { delete (Texture*)tex_handle; }
+void wp_texture_destroy_host(uint64_t tex_handle)
+{
+    Texture* tex = (Texture*)tex_handle;
+    tex->~Texture();
+    wp_free_host(tex);
+}
 
 #if WP_ENABLE_CUDA
 

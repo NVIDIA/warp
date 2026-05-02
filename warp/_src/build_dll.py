@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 import time
 
 from warp._src.utils import ScopedTimer
@@ -517,6 +518,14 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
     native_dir = os.path.join(warp_home, "native")
 
+    # Validate Python development headers for fastcall.cpp
+    python_include_dir = sysconfig.get_path("include")
+    if not python_include_dir or not os.path.isfile(os.path.join(python_include_dir, "Python.h")):
+        raise RuntimeError(
+            f"Python development headers not found (looked in {python_include_dir}).\n"
+            f"Install the Python development package, e.g.: `sudo apt install libpython{sys.version_info.major}.{sys.version_info.minor}-dev`"
+        )
+
     if cu_paths:
         # check CUDA Toolkit version
         ctk_version = get_cuda_toolkit_version(cuda_home)
@@ -544,6 +553,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             "-std=c++17",
             "-xcuda",
             f'--cuda-path="{cuda_home}"',
+            "-D_GLIBCXX_USE_CXX11_ABI=0",
         ]
 
         # CUDA 13+ moved CUB into CCCL directory structure
@@ -625,6 +635,8 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 extra_flags = ""
                 if "clang/clang.cpp" in cpp_path.replace("\\", "/"):
                     extra_flags = " /wd4624"  # suppress C4624: destructor was implicitly defined as deleted
+                if "fastcall.cpp" in cpp_path:
+                    extra_flags += f' /I"{python_include_dir}" /DPy_LIMITED_API=0x030a0000'  # Python 3.10
                 cpp_cmd = f'"{args.host_compiler}" {cpp_flags}{extra_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
@@ -677,6 +689,12 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 elapsed = (time.perf_counter_ns() - wall_clock) / 1000000.0
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
+        # Python stable ABI library for fastcall.cpp. /DELAYLOAD defers loading
+        # python3.dll until a Python C API function is actually called -- without
+        # it, warp.dll cannot be LoadLibrary'd from non-Python C++ hosts.
+        python_libs_dir = os.path.join(sys.base_prefix, "libs")
+        linkopts.append(f'python3.lib /LIBPATH:"{python_libs_dir}" /DELAYLOAD:python3.dll delayimp.lib')
+
         with ScopedTimer("link", active=args.verbose):
             link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
             run_cmd(link_cmd)
@@ -726,7 +744,16 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             for cpp_path in cpp_paths:
                 cpp_out = cpp_path + _obj_tag + ".o"
                 ld_inputs.append(quote(cpp_out))
-                cpp_cmd = f'{cpp_compiler} {cpp_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                extra_flags = ""
+                file_cpp_flags = cpp_flags
+                if "fastcall.cpp" in cpp_path:
+                    extra_flags = f' -I"{python_include_dir}" -DPy_LIMITED_API=0x030a0000'  # Python 3.10
+                    # -fkeep-inline-functions emits unused inline bodies from <Python.h> that
+                    # reference Python data symbols (PyType_Type, PyBool_Type, PyExc_*, ...);
+                    # those eager imports would prevent warp.so from loading in non-Python hosts.
+                    # The postlink check below (search "eagerly-resolved Py") enforces this.
+                    file_cpp_flags = cpp_flags.replace(" -fkeep-inline-functions", "")
+                cpp_cmd = f'{cpp_compiler} {file_cpp_flags}{extra_flags} -c "{cpp_path}" -o "{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
             if args.jobs <= 1:
@@ -747,9 +774,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
                     if cuda_compiler == "nvcc":
                         if mode == "debug":
-                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                         elif mode == "release":
-                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     else:
                         # Use Clang compiler
                         if mode == "debug":
@@ -785,19 +812,81 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 elapsed = (time.perf_counter_ns() - wall_clock) / 1000000.0
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
+        # Python C API function symbols from fastcall.cpp are left unresolved at link
+        # time and resolved lazily on first call by the interpreter. A post-link nm/readelf
+        # check (below) verifies no eagerly-resolved data symbols remain.
         if sys.platform == "darwin":
-            opt_no_undefined = "-Wl,-undefined,error"
+            # macOS linker rejects undefined symbols by default; this is the standard
+            # convention for Python extensions (used by CPython, pybind11).
+            opt_undefined = "-Wl,-undefined,dynamic_lookup"
             opt_exclude_libs = ""
             opt_static_runtime = ""
         else:
-            opt_no_undefined = "-Wl,--no-undefined"
+            # -z lazy: pin lazy PLT binding so dlopen(..., RTLD_LAZY) works for non-Python
+            # C++ hosts even on distros that flip the default to -z now via RELRO.
+            opt_undefined = "-Wl,-z,lazy"
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
             opt_static_runtime = f"-static-libstdc++ -static-libgcc -Wl,--version-script={native_dir}/warp.map"
 
         with ScopedTimer("link", active=args.verbose):
             origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_no_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
+
+            # Verify that only Python C API symbols are truly undefined.
+            # Platform-specific paths collect all undefined symbol names.
+            undefined = []
+            if sys.platform == "darwin":
+                # nm -m -u lists undefined symbols with source annotations. Symbols
+                # from linked libraries show "(from libName)", while symbols allowed
+                # through -undefined dynamic_lookup show "(dynamically looked up)".
+                nm_output = subprocess.check_output(["nm", "-m", "-u", dll_path])
+                for line in nm_output.decode().splitlines():
+                    if "(dynamically looked up)" not in line:
+                        continue
+                    # Format: "   (undefined) external _SymName (dynamically looked up)"
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        undefined.append(parts[2].lstrip("_"))
+            else:
+                # readelf --dyn-syms lists dynamic symbols with type info. Symbols
+                # from linked dependencies (glibc, libm) have type FUNC or OBJECT,
+                # while truly undefined symbols (e.g. Python C API) have type NOTYPE.
+                # Format: "  54: 0...0  0 NOTYPE  GLOBAL DEFAULT  UND PyFloat_FromDouble"
+                readelf_output = subprocess.check_output(["readelf", "-W", "--dyn-syms", dll_path])
+                for line in readelf_output.decode().splitlines():
+                    fields = line.split()
+                    if len(fields) < 8:
+                        continue
+                    sym_type, sym_bind, sym_ndx, sym_name = fields[3], fields[4], fields[6], fields[7]
+                    if sym_bind == "GLOBAL" and sym_ndx == "UND" and sym_type == "NOTYPE":
+                        undefined.append(sym_name)
+
+            unexpected = [sym for sym in undefined if not sym.startswith(("Py", "_Py"))]
+            if unexpected:
+                raise RuntimeError("Unexpected undefined symbols in " + dll_path + ":\n" + "\n".join(unexpected))
+
+            # Forbid eagerly-resolved Python data symbol references. Function imports
+            # go through PLT/GOT (R_*_JUMP_SLOT) and are lazily bound; data imports use
+            # R_*_GLOB_DAT and are resolved at load time, which would break dlopen()
+            # from non-Python C++ hosts.
+            if sys.platform != "darwin":
+                relocs_output = subprocess.check_output(["readelf", "-r", "--wide", dll_path])
+                eager_py_data = []
+                for line in relocs_output.decode().splitlines():
+                    fields = line.split()
+                    if len(fields) < 5 or "GLOB_DAT" not in fields[2]:
+                        continue
+                    sym_name = fields[4]
+                    if sym_name.startswith(("Py", "_Py")):
+                        eager_py_data.append(sym_name)
+                if eager_py_data:
+                    raise RuntimeError(
+                        "Eagerly-resolved Python data symbols in "
+                        + dll_path
+                        + " (would break loading from non-Python hosts):\n"
+                        + "\n".join(eager_py_data)
+                    )
 
             # Strip symbols to reduce the binary size
             if mode == "release":

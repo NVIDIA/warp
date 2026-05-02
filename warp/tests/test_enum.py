@@ -106,6 +106,30 @@ def test_intflag_compare(test, device):
         test.assertEqual(outs[5], 7)
 
 
+MY_INTENUM_CONST = wp.constant(wp.int32(MyIntEnum.A))
+MY_INTFLAG_CONST = wp.constant(wp.int32(MyIntFlag.B))
+
+
+def test_intenum_constant(test, device):
+    """wp.constant(wp.int32(IntEnum_value)) should emit the integer, not the symbolic name."""
+
+    @wp.kernel(module="unique")
+    def expect_intenum_constant():
+        wp.expect_eq(MY_INTENUM_CONST, 1)
+
+    wp.launch(expect_intenum_constant, dim=1, device=device)
+
+
+def test_intflag_constant(test, device):
+    """wp.constant(wp.int32(IntFlag_value)) should emit the integer, not the symbolic name."""
+
+    @wp.kernel(module="unique")
+    def expect_intflag_constant():
+        wp.expect_eq(MY_INTFLAG_CONST, 2)
+
+    wp.launch(expect_intflag_constant, dim=1, device=device)
+
+
 class TestEnum(unittest.TestCase):
     pass
 
@@ -117,6 +141,8 @@ add_function_test(TestEnum, "test_intflag_ints", test_intflag_ints, devices=devi
 add_function_test(TestEnum, "test_intflag_compare", test_intflag_compare, devices=devices)
 add_function_test(TestEnum, "test_alternative_accessors", test_alternative_accessors, devices=devices)
 add_function_test(TestEnum, "test_static_accessors", test_static_accessors, devices=devices)
+add_function_test(TestEnum, "test_intenum_constant", test_intenum_constant, devices=devices)
+add_function_test(TestEnum, "test_intflag_constant", test_intflag_constant, devices=devices)
 
 
 if __name__ == "__main__":

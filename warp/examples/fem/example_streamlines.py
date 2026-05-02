@@ -15,6 +15,7 @@ import numpy as np
 import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
+from warp._src.utils import warn
 from warp.examples.fem.example_apic_fluid import divergence_form, solve_incompressibility
 
 
@@ -213,7 +214,7 @@ class Example:
                     draw_axis=False,
                 )
             except Exception as err:
-                wp.utils.warn(f"Could not initialize OpenGL renderer: {err}")
+                warn(f"Could not initialize OpenGL renderer: {err}")
                 pass
 
     def step(self):

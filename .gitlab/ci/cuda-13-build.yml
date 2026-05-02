@@ -93,7 +93,7 @@ check un-namespaced symbols linux-x86_64:
           found_symbols="true"
           continue
         fi
-        output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^_?wp_/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
+        output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^(_?wp_|PyInit__warp_)/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
         
         if [ -n "$output" ]; then
           echo "ERROR: Found un-namespaced symbols in $lib:"

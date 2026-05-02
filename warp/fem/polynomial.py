@@ -12,14 +12,3 @@ and Lagrange polynomial scaling factors.
 
 from warp._src.fem.polynomial import quadrature_1d as quadrature_1d
 from warp._src.fem.polynomial import lagrange_scales as lagrange_scales
-
-
-# TODO: Remove after cleaning up the public API.
-
-from warp._src.fem import polynomial as _polynomial
-
-
-def __getattr__(name):
-    from warp._src.utils import get_deprecated_api  # noqa: PLC0415
-
-    return get_deprecated_api(_polynomial, "warp.fem", name)

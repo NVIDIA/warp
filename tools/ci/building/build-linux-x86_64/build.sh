@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-if [ "$GITLAB_CI" = "true" ]; then
-    echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
+if [[ "$GITLAB_CI" = "true" ]]; then
+    echo -e "\\e[0Ksection_start:$(date +%s):install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
 
     # Print out disk space info to diagnose runner issues
     df -h
@@ -10,7 +10,7 @@ fi
 
 USE_LINBUILD=1
 BUILD_MODE="release"
-SCRIPT_DIR=$(dirname ${BASH_SOURCE})
+SCRIPT_DIR="$(dirname "${BASH_SOURCE}")"
 CUDA_MAJOR_VER="12"
 
 # Function to display usage information
@@ -21,6 +21,7 @@ usage() {
     echo "  -d, --debug           Enable debug mode."
     echo "  --no-docker           Don't use Linbuild (Docker build)."
     echo "  --cuda MAJOR_VER      Build Warp with a specific major version of the CUDA toolkit."
+    return 0
 }
 
 # Parse command-line arguments
@@ -43,7 +44,7 @@ while [[ $# -gt 0 ]]; do
                 CUDA_MAJOR_VER="$2"
                 shift 2
             else
-                echo "Error: --cuda requires a value"
+                echo "Error: --cuda requires a value" >&2
                 usage
                 exit 1
             fi
@@ -74,14 +75,14 @@ CUDA="$SCRIPT_DIR/../../../../_build/target-deps/cuda"
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install --upgrade numpy gitpython cmake ninja
 
-if [ "$GITLAB_CI" = "true" ]; then
-    echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
+if [[ "$GITLAB_CI" = "true" ]]; then
+    echo -e "\\e[0Ksection_end:$(date +%s):install_dependencies\\r\\e[0K"
 fi
 
 if [[ "$os" = "macos" ]]; then
     $PYTHON "$SCRIPT_DIR/../../../../build_lib.py"
 else
-    if [ ${USE_LINBUILD} -ne 0 ]; then
+    if [[ ${USE_LINBUILD} -ne 0 ]]; then
         source "${SCRIPT_DIR}/../../../packman/packman" pull --platform "${platform}" "${SCRIPT_DIR}/../../../../deps/host-deps.packman.xml" --verbose
         LINBUILD="$SCRIPT_DIR/../../../../_build/host-deps/linbuild/linbuild.sh"
         # build with docker for increased compatibility

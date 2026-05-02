@@ -26,7 +26,7 @@ def seq_check_equal(seq_1, seq_2):
     if len(seq_1) != len(seq_2):
         return False
 
-    return all(x == y for x, y in zip(seq_1, seq_2, strict=False))
+    return all(x == y for x, y in zip(seq_1, seq_2, strict=True))
 
 
 def sametypes(arg_types: Mapping[str, Any]):
@@ -529,7 +529,7 @@ def _check_vars_match_dtype(arg_values, arg_types, dtype, msg):
     else:
         values = tuple(v for k, v in arg_values.items() if k not in skip_keys)
 
-    for t, v in zip(arg_types, values, strict=False):
+    for t, v in zip(arg_types, values, strict=True):
         if not isinstance(v, Var):
             continue  # compile-time constant — will be cast in dispatch
         # Extract the scalar type from compound types (vec, mat, quat).
@@ -3132,6 +3132,22 @@ def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mappin
     if arg_values["storage"] not in {"shared", "register"}:
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
 
+    if arg_values.get("aligned"):
+        if arg_values["storage"] == "register":
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_load() with aligned=True has no effect for storage='register'. "
+                "The aligned parameter only affects shared memory tiles."
+            )
+        elif arg_values["storage"] == "shared" and len(shape) < 2:
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_load() with aligned=True has no effect for 1D shared tiles. "
+                "The vectorized path requires 2D+ tiles."
+            )
+
     return tile(dtype=a.dtype, shape=shape, storage=arg_values["storage"])
 
 
@@ -3139,6 +3155,7 @@ def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: 
     a = args["a"]
     shape = extract_tuple(args["shape"], as_constant=True)
     bounds_check = args["bounds_check"]
+    aligned = args["aligned"]
 
     if None in shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
@@ -3149,7 +3166,10 @@ def tile_load_tuple_dispatch_func(input_types: Mapping[str, type], return_type: 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset)
-    template_args = (return_type.dtype, bounds_check.constant, *shape)
+    # Force aligned=False for register tiles — the template arg only affects shared tiles
+    # and passing True would generate a needless distinct instantiation.
+    aligned_val = aligned.constant if return_type.storage == "shared" else False
+    template_args = (return_type.dtype, bounds_check.constant, aligned_val, *shape)
 
     return (func_args, template_args)
 
@@ -3162,10 +3182,11 @@ add_builtin(
         "offset": tuple[int, ...],
         "storage": str,
         "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
     },
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
-    defaults={"offset": None, "storage": "register", "bounds_check": True},
+    defaults={"offset": None, "storage": "register", "bounds_check": True, "aligned": False},
     variadic=False,
     doc="""Load a tile from a global memory array.
 
@@ -3178,6 +3199,14 @@ add_builtin(
         storage: The storage location for the tile: ``"register"`` for registers
             (default) or ``"shared"`` for shared memory.
         bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
+        aligned: If True, skip runtime alignment checks for vectorized loads (shared memory,
+            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+            bounds. Address-alignment violations trap unconditionally (even in release
+            builds). Bounds and contiguity violations trigger debug-only asserts; in
+            release builds they cause silent data corruption.
 
     Returns:
         A tile with shape as specified and data type the same as the source array.""",
@@ -3188,10 +3217,17 @@ add_builtin(
 # overload for scalar shape
 add_builtin(
     "tile_load",
-    input_types={"a": array(dtype=Any), "shape": int, "offset": int, "storage": str, "bounds_check": builtins.bool},
+    input_types={
+        "a": array(dtype=Any),
+        "shape": int,
+        "offset": int,
+        "storage": str,
+        "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
+    },
     value_func=tile_load_tuple_value_func,
     dispatch_func=tile_load_tuple_dispatch_func,
-    defaults={"offset": None, "storage": "register", "bounds_check": True},
+    defaults={"offset": None, "storage": "register", "bounds_check": True, "aligned": False},
     doc="""Load a tile from a global memory array.""",
     group="Tile Primitives",
     export=False,
@@ -3375,6 +3411,22 @@ def tile_store_value_func(arg_types, arg_values):
             f"tile_store() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
         )
 
+    if arg_values.get("aligned"):
+        if t.storage == "register":
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_store() with aligned=True has no effect for register tiles. "
+                "The aligned parameter only affects shared memory tiles."
+            )
+        elif t.storage == "shared" and len(t.shape) < 2:
+            from warp._src.utils import warn  # noqa: PLC0415
+
+            warn(
+                "tile_store() with aligned=True has no effect for 1D shared tiles. "
+                "The vectorized path requires 2D+ tiles."
+            )
+
     return None
 
 
@@ -3382,6 +3434,7 @@ def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
     a = args["a"]
     t = args["t"]
     bounds_check = args["bounds_check"]
+    aligned = args["aligned"]
 
     if "offset" in args:
         offset = extract_tuple(args["offset"])
@@ -3389,7 +3442,8 @@ def tile_store_dispatch_func(input_types: Mapping[str, type], return_type: Any, 
         offset = (0,) * a.type.ndim
 
     func_args = (a, *offset, t)
-    template_args = (a.type.dtype, bounds_check.constant)
+    aligned_val = aligned.constant if t.type.storage == "shared" else False
+    template_args = (a.type.dtype, bounds_check.constant, aligned_val)
 
     return (func_args, template_args)
 
@@ -3401,10 +3455,11 @@ add_builtin(
         "t": tile(dtype=Any, shape=tuple[int, ...]),
         "offset": tuple[int, ...],
         "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
     },
     value_func=tile_store_value_func,
     dispatch_func=tile_store_dispatch_func,
-    defaults={"offset": None, "bounds_check": True},
+    defaults={"offset": None, "bounds_check": True, "aligned": False},
     variadic=False,
     skip_replay=True,
     doc="""Store a tile to a global memory array.
@@ -3415,7 +3470,15 @@ add_builtin(
         a: The destination array in global memory
         t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
         offset: Offset in the destination array (optional)
-        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.""",
+        bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
+        aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
+            2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+            guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+            (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+            strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+            bounds. Address-alignment violations trap unconditionally (even in release
+            builds). Bounds and contiguity violations trigger debug-only asserts; in
+            release builds they cause silent data corruption.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3428,10 +3491,11 @@ add_builtin(
         "t": tile(dtype=Any, shape=tuple[int, ...]),
         "offset": int,
         "bounds_check": builtins.bool,
+        "aligned": builtins.bool,
     },
     value_func=tile_store_value_func,
     dispatch_func=tile_store_dispatch_func,
-    defaults={"offset": None, "bounds_check": True},
+    defaults={"offset": None, "bounds_check": True, "aligned": False},
     variadic=False,
     skip_replay=True,
     doc="""Store a tile to a global memory array.""",
@@ -4620,6 +4684,262 @@ add_builtin(
 )
 
 
+def tile_scatter_add_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    t = arg_types["a"]
+    if not is_tile(t):
+        raise TypeError(f"tile_scatter_add() 'a' argument must be a tile, got {t!r}")
+
+    t.storage = "shared"
+
+    num_indices = sum(1 for k in arg_types if k in {"i", "j", "k", "l"})
+    if num_indices != len(t.shape):
+        raise IndexError(
+            f"tile_scatter_add: incorrect number of indices ({num_indices}) for tile shape {tuple(t.shape)}"
+        )
+
+    value_type = arg_types["value"]
+    if not types_equal(t.dtype, value_type):
+        raise TypeError(
+            f"tile_scatter_add() 'value' type must match tile dtype, got {value_type} and tile dtype {t.dtype}"
+        )
+
+    return None
+
+
+def tile_scatter_add_dispatch_func(input_types, return_type, args):
+    atomic = args["atomic"]
+    if atomic.constant is None:
+        raise ValueError(
+            "tile_scatter_add() 'atomic' must be a compile-time constant (True or False), not a runtime variable"
+        )
+    idx_names = [x for x in "ijkl" if args.get(x) is not None]
+    func_args = (args["a"], *(args[x] for x in idx_names), args["value"], args["has_value"])
+    if atomic.constant is False:
+        template_args = (False,)
+    else:
+        template_args = ()
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    doc="""Scatter-add a per-thread value into a shared-memory tile.
+
+    Cooperative operation -- all threads in the block must call this function.
+    Each thread whose ``has_value`` is ``True`` adds ``value`` at index ``i``.
+
+    A synchronization barrier is included so the updated values are visible to
+    all threads after the call returns.
+
+    Args:
+        a: A shared-memory tile to scatter-add into.
+        i: Index of the element to add to.
+        value: The value to add (must match the tile's dtype).
+        has_value: Whether this thread should perform the add.
+        atomic: If True (default), use atomic add for safe concurrent writes.
+            Set to False when indices are guaranteed unique across threads
+            (e.g., lane-parallel writes) for better performance.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def histogram(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+
+                bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
+                i = wp.tid()
+                # Bin values in [0, 8) into 4 bins of width 2
+                b = int(data[i] / 2.0)
+                wp.tile_scatter_add(bins, b, 1.0, True)
+                wp.tile_store(out, bins, offset=0)
+
+            data = wp.array([0.5, 1.0, 2.5, 3.0, 4.5, 5.0, 6.5, 7.0], dtype=float)
+            output = wp.zeros(4, dtype=float)
+            wp.launch_tiled(histogram, dim=[1], inputs=[data, output], block_dim=8)
+
+            print(output.numpy())
+
+        .. code-block:: text
+
+            [2. 2. 2. 2.]""",
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_add",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "value": Any,
+        "has_value": builtins.bool,
+        "atomic": builtins.bool,
+    },
+    value_func=tile_scatter_add_value_func,
+    dispatch_func=tile_scatter_add_dispatch_func,
+    defaults={"atomic": True},
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_scatter_masked_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    t = arg_types["a"]
+    if not is_tile(t):
+        raise TypeError(f"tile_scatter_masked() 'a' argument must be a tile, got {t!r}")
+
+    t.storage = "shared"
+
+    num_indices = len(arg_types) - 3  # subtract 'a', 'value', 'has_value'
+    if num_indices != len(t.shape):
+        raise IndexError(
+            f"tile_scatter_masked() incorrect number of indices ({num_indices}) for tile shape {tuple(t.shape)}"
+        )
+
+    value_type = arg_types["value"]
+    if not types_equal(t.dtype, value_type):
+        raise TypeError(
+            f"tile_scatter_masked() 'value' type must match tile dtype, got {value_type} and tile dtype {t.dtype}"
+        )
+
+    return None
+
+
+add_builtin(
+    "tile_scatter_masked",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any, "has_value": builtins.bool},
+    value_func=tile_scatter_masked_value_func,
+    doc="""Write a value into a shared-memory tile from the calling thread.
+
+    All threads in the block must call this function cooperatively.
+    Each thread whose ``has_value`` is ``True`` writes ``value`` at the
+    specified index.  A synchronization barrier is included so the written
+    values are visible to all threads after the call returns.
+
+    Each index should be written by at most one thread per call.  If multiple
+    threads write to the same index, the result is undefined (data race in the
+    forward pass, incorrect gradients in the backward pass).
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def write_kernel(out: wp.array[int]):
+                tile_idx, thread_idx = wp.tid()
+
+                # Allocate a shared-memory tile
+                t = wp.tile_zeros(shape=64, dtype=int, storage="shared")
+
+                # Each thread writes its own slot
+                wp.tile_scatter_masked(t, thread_idx, thread_idx + 1, True)
+
+                wp.tile_store(out, t)
+
+    Args:
+        a: The tile to write into (will use shared memory).
+        i: Index of the element to write.
+        value: The value to write (must match the tile's dtype).
+        has_value: Whether this thread should perform the write.""",
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+add_builtin(
+    "tile_scatter_masked",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "value": Any,
+        "has_value": builtins.bool,
+    },
+    value_func=tile_scatter_masked_value_func,
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_inplace_value_func(arg_types, arg_values):
     if not types_equal(arg_types["a"].dtype, arg_types["value"]):
         raise TypeError(
@@ -4986,6 +5306,141 @@ add_builtin(
 
             [256] = tile(shape=(1), storage=register)
     """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_dot_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=(1,))
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    if not is_tile(a):
+        raise TypeError(f"tile_dot() first argument must be a tile, got {a!r}")
+    if not is_tile(b):
+        raise TypeError(f"tile_dot() second argument must be a tile, got {b!r}")
+    if a.shape != b.shape:
+        raise TypeError(f"tile_dot() arguments must have the same shape, got {a.shape} and {b.shape}")
+    if not types_equal(a.dtype, b.dtype):
+        raise TypeError(f"tile_dot() arguments must have the same dtype, got {a.dtype} and {b.dtype}")
+
+    return tile(dtype=type_scalar_type(a.dtype), shape=(1,))
+
+
+add_builtin(
+    "tile_dot",
+    input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
+    value_func=tile_dot_value_func,
+    doc="""Compute the dot product of two tiles.
+
+    Computes a full contraction (tensordot) between corresponding elements
+    and sums the results. For scalar tiles this is the standard dot product;
+    for vector or matrix tiles each element pair is fully contracted
+    (e.g., ``wp.dot(a[i], b[i])`` for ``vec3`` elements).
+
+    Equivalent to ``wp.tile_sum(wp.tile_map(wp.tensordot, a, b))``
+    but without any intermediate tiles or shared-memory round trips.
+
+    Args:
+        a: First tile operand.
+        b: Second tile operand (must have same shape and dtype as ``a``).
+
+    Returns:
+        A single-element tile holding the dot-product result. Index the
+        tile at ``[0]`` to obtain the scalar value.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute():
+
+                a = wp.tile_ones(dtype=float, shape=64)
+                b = wp.tile_ones(dtype=float, shape=64) * 2.0
+                d = wp.tile_dot(a, b)
+
+                print(d)
+
+            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+        .. code-block:: text
+
+            [128] = tile(shape=(1), storage=register)""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_axpy_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    alpha = arg_types["alpha"]
+    src = arg_types["src"]
+    dest = arg_types["dest"]
+
+    if not is_tile(src):
+        raise TypeError(f"tile_axpy() 'src' argument must be a tile, got {src!r}")
+    if not is_tile(dest):
+        raise TypeError(f"tile_axpy() 'dest' argument must be a tile, got {dest!r}")
+    if dest.shape != src.shape:
+        raise TypeError(f"tile_axpy() 'dest' and 'src' must have the same shape, got {dest.shape} and {src.shape}")
+    if not types_equal(dest.dtype, src.dtype):
+        raise TypeError(f"tile_axpy() 'dest' and 'src' must have the same dtype, got {dest.dtype} and {src.dtype}")
+    if is_tile(alpha):
+        raise TypeError(f"tile_axpy() 'alpha' must be a scalar, got tile {alpha!r}")
+    if not type_is_scalar(alpha):
+        raise TypeError(f"tile_axpy() 'alpha' must be a scalar type, got {alpha}")
+    tile_scalar = type_scalar_type(dest.dtype)
+    if not types_equal(tile_scalar, alpha):
+        raise TypeError(
+            f"tile_axpy() 'alpha' must match the tile's scalar type, got {alpha} for tile scalar type {tile_scalar}"
+        )
+
+    return None
+
+
+add_builtin(
+    "tile_axpy",
+    input_types={
+        "alpha": Any,
+        "src": tile(dtype=Any, shape=tuple[int, ...]),
+        "dest": tile(dtype=Any, shape=tuple[int, ...]),
+    },
+    value_func=tile_axpy_value_func,
+    doc="""Scale ``src`` by ``alpha`` and accumulate into ``dest``.
+
+    Performs a fused multiply-add directly into the destination tile without
+    creating an intermediate scaled tile.
+
+    Args:
+        alpha: Scalar multiplier (must match the tile's underlying scalar type).
+        src: Source tile (must have same shape and dtype as ``dest``).
+        dest: Destination tile, modified in place.
+
+    Example:
+
+        .. code-block:: python
+
+            @wp.kernel
+            def compute():
+
+                dest = wp.tile_ones(dtype=float, shape=4) * 2.0
+                src = wp.tile_ones(dtype=float, shape=4) * 3.0
+                wp.tile_axpy(5.0, src, dest)
+
+                print(dest)
+
+            wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+
+        .. code-block:: text
+
+            [17 17 17 17] = tile(shape=(4), storage=register)""",
     group="Tile Primitives",
     export=False,
 )
@@ -6044,10 +6499,10 @@ def tile_n_map_value_func(arg_types, arg_values):
     if overload.value_func is None:
         overload.build(None)
 
-    arg_type_map = dict(zip(overload.input_types, dtypes, strict=False))
-    assert len(arg_type_map) == len(dtypes) == len(overload.input_types), (
+    assert len(dtypes) == len(overload.input_types), (
         f"Overload parameter count mismatch: expected {len(dtypes)}, got {len(overload.input_types)}"
     )
+    arg_type_map = dict(zip(overload.input_types, dtypes, strict=True))
     value_type = overload.value_func(arg_type_map, None)
 
     if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
@@ -6459,6 +6914,406 @@ add_builtin(
     native_func="tile_bvh_query_next",
     export=False,
     is_differentiable=False,
+)
+
+add_builtin(
+    "tile_query_valid",
+    input_types={"query": BvhQueryTiled},
+    value_type=bool,
+    group="Tile Primitives",
+    doc="""Return whether there are remaining results in a thread-block parallel BVH query.
+
+    This function returns ``True`` when the query has more results to process, and ``False``
+    when the query is fully exhausted. The value is uniform across all threads in the block.
+
+    This can be used as a loop condition instead of :func:`tile_max`:
+
+    .. code-block:: python
+
+        query = wp.tile_bvh_query_aabb(bvh_id, lower, upper)
+        while wp.tile_query_valid(query):
+            result_tile = wp.tile_bvh_query_next(query)
+            result_idx = wp.untile(result_tile)
+            if result_idx >= 0:
+                ...
+
+    Args:
+        query: The thread-block BVH query object
+
+    Returns:
+        ``True`` if more results are available, ``False`` if exhausted""",
+    native_func="tile_query_valid",
+    export=False,
+    is_differentiable=False,
+)
+
+
+# ---------------------------------------------------------
+# Tile Stack
+# ---------------------------------------------------------
+
+
+def tile_stack_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return tile_stack(dtype=Any, capacity=Any)
+
+    if "dtype" not in arg_values:
+        raise TypeError("tile_stack() missing required keyword argument 'dtype'")
+
+    if "capacity" not in arg_values:
+        raise TypeError("tile_stack() missing required keyword argument 'capacity'")
+
+    capacity = arg_values["capacity"]
+    if isinstance(capacity, Var):
+        capacity = capacity.constant
+    if capacity is None:
+        raise ValueError("tile_stack() requires capacity to be a compile-time constant.")
+
+    if isinstance(capacity, (builtins.bool, builtins.float, builtins.str)):
+        raise ValueError(f"tile_stack() requires capacity to be a positive integer, got {capacity!r}")
+    try:
+        capacity = builtins.int(capacity)
+    except (TypeError, ValueError):
+        raise ValueError(f"tile_stack() requires capacity to be a positive integer, got {capacity!r}") from None
+    if capacity <= 0:
+        raise ValueError(f"tile_stack() requires capacity to be a positive integer, got {capacity!r}")
+
+    return tile_stack(dtype=arg_values["dtype"], capacity=capacity)
+
+
+def tile_stack_dispatch_func(arg_types, return_type, arg_values):
+    # Match the tile_zeros pattern: pass dtype and capacity as template args.
+    # The C++ tile_stack_init<T, Capacity>() returns int{}, triggering operator=(int)
+    # on the already-allocated struct.
+    dtype = arg_values["dtype"]
+    capacity = arg_values["capacity"]
+    if isinstance(capacity, Var):
+        capacity = capacity.constant
+    return ([], [dtype, capacity])
+
+
+add_builtin(
+    "tile_stack",
+    input_types={"capacity": int, "dtype": Any},
+    value_func=tile_stack_value_func,
+    dispatch_func=tile_stack_dispatch_func,
+    native_func="tile_stack_init",
+    variadic=False,
+    is_differentiable=False,
+    doc="""Allocate a cooperative thread-block stack in shared memory.
+
+    Args:
+        capacity: Maximum number of elements (must be a compile-time constant)
+        dtype: Data type of stack elements
+
+    Returns:
+        A tile stack object for use with :func:`tile_stack_push`, :func:`tile_stack_pop`,
+        :func:`tile_stack_clear`, and :func:`tile_stack_count`.
+
+    Example:
+
+        .. code-block:: python
+
+            BLOCK = 8
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def compact_kernel(data: wp.array(dtype=int), out: wp.array(dtype=int), out_count: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+
+                val = data[j]
+                wp.tile_stack_push(s, val, val > 5)
+
+                if j == 0:
+                    out_count[0] = wp.tile_stack_count(s)
+
+                result, slot = wp.tile_stack_pop(s)
+                if slot != -1:
+                    out[slot] = result
+
+            data = wp.array([1, 8, 3, 7, 2, 9, 4, 6], dtype=int)
+            out = wp.zeros(BLOCK, dtype=int)
+            out_count = wp.zeros(1, dtype=int)
+            wp.launch_tiled(compact_kernel, dim=[1], inputs=[data, out, out_count], block_dim=BLOCK)
+
+            n = out_count.numpy()[0]
+            print(sorted(out.numpy()[:n].tolist()))
+
+        .. code-block:: text
+
+            [6, 7, 8, 9]""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_push_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return int
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_push() first argument must be a tile_stack, got {s_type!r}")
+
+    value_type = arg_types["value"]
+    if not types_equal(value_type, s_type.dtype):
+        raise TypeError(f"tile_stack_push() value type {value_type} does not match stack dtype {s_type.dtype}")
+
+    return int
+
+
+def tile_stack_push_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    value = arg_values["value"]
+    has_value = arg_values["has_value"]
+    return ((s, value, has_value), [])
+
+
+add_builtin(
+    "tile_stack_push",
+    input_types={"s": Any, "value": Any, "has_value": builtins.bool},
+    value_func=tile_stack_push_value_func,
+    dispatch_func=tile_stack_push_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Push a value onto a tile stack (cooperative).
+
+    All threads in the block must call this function. Only threads with
+    ``has_value=True`` write to the stack.
+
+    Args:
+        s: The tile stack
+        value: The value to push
+        has_value: Whether this thread has a value to push
+
+    Returns:
+        The slot index where the value was written, or ``-1`` if
+        ``has_value`` is ``False`` or the stack overflowed.
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def push_kernel(out_idx: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                idx = wp.tile_stack_push(s, j * 10, j < 4)
+                out_idx[j] = idx
+
+            out_idx = wp.full(8, -1, dtype=int)
+            wp.launch_tiled(push_kernel, dim=[1], inputs=[out_idx], block_dim=8)
+
+            idxs = out_idx.numpy()
+            print(sorted(idxs[idxs >= 0].tolist()))
+            print(sum(idxs == -1))
+
+        .. code-block:: text
+
+            [0, 1, 2, 3]
+            4""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_pop_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return (Any, int)
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_pop() argument must be a tile_stack, got {s_type!r}")
+
+    return (s_type.dtype, int)
+
+
+def tile_stack_pop_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    return ((s,), [])
+
+
+add_builtin(
+    "tile_stack_pop",
+    input_types={"s": Any},
+    value_func=tile_stack_pop_value_func,
+    dispatch_func=tile_stack_pop_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Pop a value from a tile stack (cooperative).
+
+    All threads in the block must call this function. Each calling thread
+    races for a slot.
+
+    Args:
+        s: The tile stack
+
+    Returns:
+        A tuple ``(value, slot)`` where ``value`` is the popped element
+        (or the default value if the stack was empty) and ``slot`` is the
+        index of the popped element (the slot it previously occupied), or
+        ``-1`` if the stack was empty. When non-negative, ``slot`` lies in
+        ``[0, capacity-1]``. Consistent with :func:`tile_stack_push`
+        which also uses ``-1`` to indicate failure.
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def pop_kernel(out: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                wp.tile_stack_push(s, j * 10, j < 4)
+
+                val, slot = wp.tile_stack_pop(s)
+                if slot != -1:
+                    out[slot] = val
+
+            out = wp.full(8, -1, dtype=int)
+            wp.launch_tiled(pop_kernel, dim=[1], inputs=[out], block_dim=8)
+
+            vals = out.numpy()
+            print(sorted(vals[vals >= 0].tolist()))
+
+        .. code-block:: text
+
+            [0, 10, 20, 30]""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_clear_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_clear() argument must be a tile_stack, got {s_type!r}")
+
+    return None
+
+
+def tile_stack_clear_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    return ((s,), [])
+
+
+add_builtin(
+    "tile_stack_clear",
+    input_types={"s": Any},
+    value_func=tile_stack_clear_value_func,
+    dispatch_func=tile_stack_clear_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Clear a tile stack, resetting the count to zero (cooperative).
+
+    All threads in the block must call this function.
+
+    Args:
+        s: The tile stack
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def clear_kernel(before: wp.array(dtype=int), after: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                wp.tile_stack_push(s, j, True)
+                if j == 0:
+                    before[0] = wp.tile_stack_count(s)
+                wp.tile_stack_clear(s)
+                if j == 0:
+                    after[0] = wp.tile_stack_count(s)
+
+            before = wp.zeros(1, dtype=int)
+            after = wp.zeros(1, dtype=int)
+            wp.launch_tiled(clear_kernel, dim=[1], inputs=[before, after], block_dim=8)
+
+            print(f"before: {before.numpy()[0]}, after: {after.numpy()[0]}")
+
+        .. code-block:: text
+
+            before: 8, after: 0""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
+def tile_stack_count_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return int
+
+    s_type = arg_types["s"]
+    if not is_tile_stack(s_type):
+        raise TypeError(f"tile_stack_count() argument must be a tile_stack, got {s_type!r}")
+
+    return int
+
+
+def tile_stack_count_dispatch_func(arg_types, return_type, arg_values):
+    s = arg_values["s"]
+    return ((s,), [])
+
+
+add_builtin(
+    "tile_stack_count",
+    input_types={"s": Any},
+    value_func=tile_stack_count_value_func,
+    dispatch_func=tile_stack_count_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Return the current number of elements in a tile stack.
+
+    Unlike the other tile stack operations this function is **not** cooperative
+    — it does not contain a synchronization barrier and may be called by a
+    single thread or from within a divergent branch. It is safe to call after
+    any :func:`tile_stack_push`, :func:`tile_stack_pop`, or
+    :func:`tile_stack_clear` *provided the preceding cooperative call has
+    completed on all threads in the block*. Those calls end with a barrier
+    that makes ``count`` stable and visible. Calling this after a divergent
+    push/pop/clear is undefined.
+
+    Args:
+        s: The tile stack
+
+    Returns:
+        The current number of elements in the stack.
+
+    Example:
+
+        .. code-block:: python
+
+            CAP = wp.constant(8)
+
+            @wp.kernel
+            def count_kernel(out_count: wp.array(dtype=int)):
+                _i, j = wp.tid()
+                s = wp.tile_stack(capacity=CAP, dtype=int)
+                wp.tile_stack_push(s, j, j % 2 == 0)
+                if j == 0:
+                    out_count[0] = wp.tile_stack_count(s)
+
+            out_count = wp.zeros(1, dtype=int)
+            wp.launch_tiled(count_kernel, dim=[1], inputs=[out_count], block_dim=8)
+
+            print(out_count.numpy()[0])
+
+        .. code-block:: text
+
+            4""",
+    group="Tile Primitives",
+    export=False,
 )
 
 
@@ -7157,6 +8012,37 @@ add_builtin(
         A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
             the result index for that thread (-1 if no result)""",
     native_func="tile_mesh_query_aabb_next",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "tile_query_valid",
+    input_types={"query": MeshQueryAABBTiled},
+    value_type=bool,
+    group="Tile Primitives",
+    doc="""Return whether there are remaining results in a thread-block parallel mesh AABB query.
+
+    This function returns ``True`` when the query has more results to process, and ``False``
+    when the query is fully exhausted. The value is uniform across all threads in the block.
+
+    This can be used as a loop condition instead of :func:`tile_max`:
+
+    .. code-block:: python
+
+        query = wp.tile_mesh_query_aabb(mesh_id, lower, upper)
+        while wp.tile_query_valid(query):
+            result_tile = wp.tile_mesh_query_aabb_next(query)
+            result_idx = wp.untile(result_tile)
+            if result_idx >= 0:
+                ...
+
+    Args:
+        query: The thread-block mesh query object
+
+    Returns:
+        ``True`` if more results are available, ``False`` if exhausted""",
+    native_func="tile_query_valid",
     export=False,
     is_differentiable=False,
 )
@@ -9001,16 +9887,17 @@ def create_atomic_op_value_func(op: str):
 
         scalar_type = getattr(arr_type.dtype, "_wp_scalar_type_", arr_type.dtype)
         if op in ("add", "sub"):
-            supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16)
+            supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16, warp.bfloat16)
             if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
-                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, float32, or float64 "
+                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float16, bfloat16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("min", "max"):
-            if not any(types_equal_generic(scalar_type, x) for x in SUPPORTED_ATOMIC_TYPES):
+            supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.bfloat16)
+            if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
                 raise RuntimeError(
-                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, float32, or float64 "
+                    f"atomic_{op}() operations only work on arrays with [u]int32, [u]int64, bfloat16, float32, or float64 "
                     f"as the underlying scalar types, but got {type_repr(arr_type.dtype)} (with scalar type {type_repr(scalar_type)})"
                 )
         elif op in ("cas", "exch"):
@@ -9036,7 +9923,7 @@ def create_atomic_op_value_func(op: str):
 
 def atomic_op_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # as this is a codegen callback, we can mark the fact that this func writes to an array here
-    if warp.config.verify_autograd_array_access:
+    if warp._src.codegen.options.get("verify_autograd_array_access", False):
         arr = args["arr"]
         arr.mark_write()
 
@@ -11995,9 +12882,9 @@ def tile_matmul_lto_dispatch_func(
     if not is_tile(out.type):
         raise TypeError(f"tile_matmul() 'out' argument must be a tile, got {out!r}")
 
-    if any(arg.type.dtype not in [float16, float32, float64, vec2h, vec2f, vec2d] for arg in [a, b, out]):
+    if any(arg.type.dtype not in [float16, bfloat16, float32, float64, vec2h, vec2f, vec2d] for arg in [a, b, out]):
         raise TypeError(
-            "tile_matmul() arguments must be tiles of float16, float32 or float64, vec2h, vec2f, vec2d entries"
+            "tile_matmul() arguments must be tiles of float16, bfloat16, float32 or float64, vec2h, vec2f, vec2d entries"
         )
 
     if (
@@ -12020,11 +12907,7 @@ def tile_matmul_lto_dispatch_func(
     if (
         arch is None
         or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
-        or not (
-            options.get("enable_mathdx_gemm")
-            if options.get("enable_mathdx_gemm") is not None
-            else warp.config.enable_mathdx_gemm
-        )
+        or not options.get("enable_mathdx_gemm", True)
     ):
         # CPU/no-MathDx dispatch (or mathdx GEMM disabled via module option)
         return ((0, 0, 0, a, b, out, alpha, beta), (), [], 0)
@@ -12035,6 +12918,8 @@ def tile_matmul_lto_dispatch_func(
                 return "colmajor"
             elif layout == "colmajor":
                 return "rowmajor"
+            else:
+                raise ValueError(f"unexpected layout {layout!r}")
 
         # generate the LTOs
         #    C += A * B
@@ -12124,7 +13009,7 @@ add_builtin(
     Compute ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
-        * fp16, fp32, fp64 (real)
+        * fp16, bf16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
@@ -12159,7 +13044,7 @@ add_builtin(
     Compute ``out = alpha * a*b``.
 
     Supported datatypes are:
-        * fp16, fp32, fp64 (real)
+        * fp16, bf16, fp32, fp64 (real)
         * vec2h, vec2f, vec2d (complex)
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
@@ -12441,7 +13326,9 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
         # CPU/no-MathDx dispatch
-        return ((0, a) if inplace else (0, a, out), [upper], [], 0)
+        if inplace:
+            return ((0, a), [upper], [], 0)
+        return ((0, 0, 0, a, out), [upper], [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
@@ -12454,8 +13341,10 @@ def _tile_cholesky_generic_lto_dispatch_func(
         req_smem_bytes = a.type.size * type_size_in_bytes(a.type.dtype)
         if not inplace:
             req_smem_bytes *= 2
+            if options["enable_backward"]:
+                req_smem_bytes += 2 * M * M * type_size_in_bytes(a.type.dtype)
 
-        # generate the LTO
+        # generate the forward LTO
         assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
@@ -12476,8 +13365,74 @@ def _tile_cholesky_generic_lto_dispatch_func(
             smem_estimate_bytes=req_smem_bytes,
         )
 
-        var = Var(lto_symbol, str, False, True, False)
-        return ((var, a) if inplace else (var, a, out), [upper], [lto_code_data], 0)
+        if inplace:
+            var = Var(lto_symbol, str, False, True, False)
+            return ((var, a), [upper], [lto_code_data], 0)
+
+        # for out-of-place Cholesky, build backward LTOs for adjoint
+        # we need a GEMM and two trsm solves for the adjoint
+        lto_list = [lto_code_data]
+        if options["enable_backward"]:
+
+            def tile_flip_layout(layout):
+                if layout == "rowmajor":
+                    return "colmajor"
+                elif layout == "colmajor":
+                    return "rowmajor"
+                else:
+                    raise ValueError(f"unexpected layout {layout!r}")
+
+            # LTO to calculate transpose(L).adj_L or adj_U.transpose(U)
+            # Lower: first operand (L) flipped -> L^T; Upper: second operand (U) flipped -> U^T
+            gemm_layout_a = out.type.layout if upper else tile_flip_layout(out.type.layout)
+            gemm_layout_b = tile_flip_layout(out.type.layout) if upper else out.type.layout
+            fun_bkwd_gemm, lto_bkwd_gemm = warp._src.build.build_lto_dot(
+                M,
+                M,
+                M,
+                a.type.dtype,
+                a.type.dtype,
+                a.type.dtype,
+                gemm_layout_a,
+                gemm_layout_b,
+                out.type.layout,
+                arch,
+                num_threads,
+                builder,
+            )
+            # LTO to solve L^T @ X = Y (lower) or U @ X = Y (upper)
+            fun_bkwd_trsm, lto_bkwd_trsm = warp._src.build.build_lto_solver(
+                M,
+                M,
+                1,
+                "trsm",
+                cusolver_function_map["trsm"],
+                cusolver_side_map["left"],
+                cusolver_diag_map["nounit"],
+                tile_flip_layout(out.type.layout) if not upper else out.type.layout,
+                out.type.layout,
+                cusolver_fill_mode_map["upper"],
+                arch,
+                precision_enum,
+                num_threads,
+                f"({dtype}*, {dtype}*)",
+                builder,
+                smem_estimate_bytes=req_smem_bytes,
+            )
+            lto_list.extend([lto_bkwd_gemm, lto_bkwd_trsm])
+        else:
+            fun_bkwd_gemm = 0
+            fun_bkwd_trsm = 0
+
+        var_fwd = Var(lto_symbol, str, False, True, False)
+        if options["enable_backward"]:
+            var_gemm = Var(fun_bkwd_gemm, str, False, True, False)
+            var_trsm = Var(fun_bkwd_trsm, str, False, True, False)
+        else:
+            var_gemm = 0
+            var_trsm = 0
+        result = ((var_fwd, var_gemm, var_trsm, a, out), [upper], lto_list, 0)
+        return result
 
 
 def tile_cholesky_generic_lto_dispatch_func(*args, **kwargs):
@@ -12502,7 +13457,9 @@ add_builtin(
 
     The ``fill_mode`` parameter must be a compile-time constant.
 
-    Note that computing the adjoint is not yet supported.
+    Backward propagation computes gradients with respect to the corresponding
+    triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
+    upper triangle when ``fill_mode="upper"``).
 
     Supported datatypes are:
         * float32
@@ -12516,7 +13473,7 @@ add_builtin(
         A triangular matrix ``L`` or ``U``.""",
     group="Tile Primitives",
     export=False,
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 

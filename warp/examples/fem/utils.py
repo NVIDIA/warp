@@ -12,6 +12,7 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
+from warp._src.utils import warn
 from warp.optim.linear import LinearOperator, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
 from warp.render import UsdRenderer
 from warp.sparse import BsrMatrix, bsr_get_diag, bsr_mv, bsr_transposed
@@ -715,7 +716,7 @@ class Plot:
             try:
                 return self._plot_matplotlib(options, save=save)
             except ModuleNotFoundError:
-                wp.utils.warn("pyvista or matplotlib must be installed to visualize solution results")
+                warn("pyvista or matplotlib must be installed to visualize solution results")
 
     def _plot_pyvista(self, options: dict[str, Any], save: str | None = None):
         import pyvista  # noqa: PLC0415
@@ -738,7 +739,7 @@ class Plot:
                 offsets = np.cumsum(counts)
                 ranges = np.array([offsets - counts, offsets]).T
                 faces = np.concatenate(
-                    [[count, *list(indices[beg:end])] for (count, (beg, end)) in zip(counts, ranges, strict=False)]
+                    [[count, *list(indices[beg:end])] for (count, (beg, end)) in zip(counts, ranges, strict=True)]
                 )
                 ref_geom = pyvista.PolyData(vertices, faces)
             else:

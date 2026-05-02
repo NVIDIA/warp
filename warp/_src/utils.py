@@ -21,7 +21,7 @@ import numpy as np
 import warp as wp
 import warp._src.context
 import warp._src.types
-from warp._src.context import DeviceLike
+from warp._src.context import Allocator, DeviceLike, _validate_allocator
 from warp._src.types import Array, DType, type_repr, types_equal
 
 _wp_module_name_ = "warp.utils"
@@ -460,8 +460,8 @@ def array_sum(
 
     stride = values.strides[axis]
     for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=False))
-        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=False))
+        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=True))
 
         native_func(
             values.ptr + val_offset,
@@ -573,9 +573,9 @@ def array_inner(
     stride_b = b.strides[axis]
 
     for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=False))
-        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=False))
-        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=False))
+        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=True))
+        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=True))
 
         native_func(
             a.ptr + a_offset,
@@ -1059,7 +1059,7 @@ def map(
 
         load_args = []
         kernel_args = []
-        for arg_name, inp in zip(arg_names, inputs, strict=False):
+        for arg_name, inp in zip(arg_names, inputs, strict=True):
             if is_array(inp):
                 arr_name = f"{arg_name}_array"
                 array_type_name = type(inp).__name__
@@ -1516,6 +1516,41 @@ class ScopedMempool:
         wp.set_mempool_enabled(self.device, self.saved_setting)
 
 
+class ScopedAllocator:
+    """Context manager to temporarily use a custom allocator on a device.
+
+    On context exit, the previous allocator setting is restored.
+
+    Args:
+        device: The CUDA device on which to set the allocator.
+        allocator: The allocator to use, or ``None`` to restore the built-in allocator.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedAllocator(device, my_allocator):
+                arr = wp.zeros(1000, dtype=wp.float32, device=device)
+
+    See Also:
+        :func:`set_cuda_allocator`, :func:`set_device_allocator`, :func:`get_device_allocator`
+    """
+
+    def __init__(self, device: DeviceLike, allocator: Allocator | None):
+        self.device = wp.get_device(device)
+        if not self.device.is_cuda:
+            raise RuntimeError("Custom allocators are only supported on CUDA devices")
+        _validate_allocator(allocator)
+        self.allocator = allocator
+
+    def __enter__(self):
+        self.saved = self.device._custom_allocator
+        self.device._custom_allocator = self.allocator
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.device._custom_allocator = self.saved
+
+
 # Allow temporarily enabling/disabling mempool access
 class ScopedMempoolAccess:
     """Context manager to temporarily enable or disable mempool access between devices.
@@ -1585,20 +1620,24 @@ class ScopedPeerAccess:
 
 
 class ScopedCapture:
-    """Context manager to capture a sequence of operations into a CUDA graph.
+    """Context manager to capture a sequence of operations into a graph.
 
-    CUDA graphs allow a sequence of GPU operations to be captured and replayed
-    with reduced launch overhead. The captured graph is available as the ``graph``
-    attribute after exiting the context.
+    Captures kernel launches, memory copies, and memsets for later replay
+    with reduced launch overhead. Works on both CPU and CUDA devices. The
+    captured graph is available as the ``graph`` attribute after exiting
+    the context.
 
     Args:
-        device: Device on which to capture operations.
-        stream: Stream on which to capture operations.
+        device: Device on which to capture operations (CPU or CUDA).
+        stream: Stream on which to capture operations (CUDA only).
         force_module_load: If ``True``, force all modules to load before capture begins.
         external: If ``True``, indicates an external graph capture is already active.
+        apic: If ``True``, enable APIC recording for serialization via
+            :func:`capture_save`. On CPU, recording always occurs regardless
+            of this flag (needed for CPU graph replay). Default is ``False``.
 
     Attributes:
-        graph: The captured CUDA graph, available after context exit.
+        graph: The captured graph, available after context exit.
         active: Whether capture is currently in progress.
 
     Example:
@@ -1614,18 +1653,25 @@ class ScopedCapture:
         :func:`capture_begin`, :func:`capture_end`, :func:`capture_launch`
     """
 
-    def __init__(self, device: DeviceLike = None, stream=None, force_module_load=None, external=False):
+    def __init__(
+        self, device: DeviceLike = None, stream=None, force_module_load=None, external=False, apic: bool = False
+    ):
         self.device = device
         self.stream = stream
         self.force_module_load = force_module_load
         self.external = external
+        self.apic = apic
         self.active = False
         self.graph = None
 
     def __enter__(self):
         try:
             wp.capture_begin(
-                device=self.device, stream=self.stream, force_module_load=self.force_module_load, external=self.external
+                device=self.device,
+                stream=self.stream,
+                force_module_load=self.force_module_load,
+                external=self.external,
+                apic=self.apic,
             )
             self.active = True
             return self
@@ -1825,91 +1871,119 @@ def timing_print(results: list[TimingResult], indent: str = "") -> None:
         print(f"{indent}{agg.elapsed:12.6f} ms | {agg.count:7d} | {device}")
 
 
-_importing_deprecated_namespace = False
+class ScopedMemoryTracker:
+    """Context manager that tracks memory allocations across all devices.
 
-
-def warn_deprecated_namespace(module_name):
-    if _importing_deprecated_namespace:
-        return
-    warn(
-        f"The namespace `warp.{'.'.join(module_name.split('.')[1:])}` will soon be removed from the public API. "
-        f"It can still be accessed from `warp._src.{'.'.join(module_name.split('.')[1:])}` but might be changed or removed without notice.",
-        DeprecationWarning,
-    )
-
-
-def get_deprecated_method(cls, cls_path, attr_name):
-    if hasattr(cls, f"_{attr_name}"):
-        warn(
-            f"The class method `{cls_path}.{attr_name}` will soon be removed from the public API. "
-            f"It can still be accessed from `{cls_path}._{attr_name}` but might be changed or removed without notice.",
-            DeprecationWarning,
-        )
-
-        return getattr(cls, f"_{attr_name}")
-
-    raise AttributeError(f"'{cls_path}' has no attribute '{attr_name}'")
-
-
-def get_deprecated_api(module, namespace, attr_name, old_attr_path=None):
-    """
-    Get a deprecated API symbol and issue a deprecation warning.
+    Tracking is performed in the C++ native layer by intercepting all
+    ``wp_alloc_*`` / ``wp_free_*`` calls, so both Python-originated and
+    C++ internal allocations (BVH, HashGrid, etc.) are captured.  C++
+    allocations are labeled with the originating subsystem (e.g.
+    ``(native:bvh)``), while Python allocations include the call-site
+    file, line, and function name.
 
     Args:
-        module: The module containing the symbol
-        namespace: The namespace prefix (e.g., "warp")
-        attr_name: The name of the attribute to retrieve
-        old_attr_path: Optional path for the old symbol location (for renames)
+        name: Scope name for grouping allocations.  Nested trackers form a
+            hierarchical scope path, e.g. ``"simulation/collision"``.
+        active: If ``False``, the tracker becomes a no-op.  This allows
+            keeping tracker calls in the code and toggling them without
+            changing the call sites.
+        print: If ``True`` (the default), print an allocation summary
+            on exit.
+        report_func: Optional callback ``(str) -> None`` for custom report
+            handling.  When set, the report text is passed to this function
+            instead of being printed to ``sys.stdout``.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedMemoryTracker("my_scope") as tracker:
+                a = wp.zeros(1000, dtype=wp.float32, device="cpu")
+                b = wp.zeros(1000, dtype=wp.float32, device="cuda:0")
+            # prints allocation summary automatically
+
+    See Also:
+        :attr:`warp.config.track_memory`
     """
-    import sys  # noqa: PLC0415
 
-    # Resolve the attribute first. If it doesn't exist in the underlying module,
-    # raise AttributeError immediately without warning. This prevents spurious
-    # deprecation warnings from introspection tools (pickle, hasattr, etc.) that
-    # probe for attributes that were never part of the API. For example, pickle's
-    # whichmodule() iterates sys.modules calling getattr(module, name) on each one,
-    # and its C implementation only catches AttributeError -- any other exception
-    # (e.g., from a warning handler) crashes the caller.
-    try:
-        value = getattr(module, attr_name)
-    except AttributeError:
-        module_name = module.__name__.split(".")[-1]
-        raise AttributeError(f"module '{namespace}.{module_name}' has no attribute '{attr_name}'") from None
+    def __init__(
+        self,
+        name: str = "root",
+        active: bool = True,
+        print: bool = True,
+        report_func: Callable[[str], None] | None = None,
+    ):
+        self.name = name
+        self.active = active
+        self.print = print
+        self.report_func = report_func
+        self._did_enable = False
 
-    # Suppress warnings for internal Warp introspection (e.g., codegen's hasattr/getattr checks).
-    # Check if caller (frame 2) is from warp/_src/ and return silently if so.
-    # Only catch ValueError (frame unavailable), not AttributeError (missing attribute must propagate).
-    try:
-        frame = sys._getframe(2)  # Get __getattr__'s immediate caller
-        if "/warp/_src/" in frame.f_code.co_filename or "\\warp\\_src\\" in frame.f_code.co_filename:
-            return value
-    except ValueError:
-        pass  # Frame unavailable, proceed with normal warning
+    def __enter__(self):
+        if not self.active:
+            return self
 
-    if not attr_name.startswith("_"):
-        module_name = module.__name__.split(".")[-1]
-        attr_path = f"{namespace}.{module_name}.{attr_name}"
+        wp.init()
+        from warp._src.context import runtime  # noqa: PLC0415
 
-        # Check if symbol exists directly in the namespace (e.g., promoted to warp.Module instead of warp.context.Module)
-        # Use __dict__ check to avoid triggering __getattr__ which could cause recursion
-        namespace_module = sys.modules.get(namespace)
-        if namespace_module is not None and attr_name in getattr(namespace_module, "__dict__", {}):
-            # Symbol has been promoted to the main namespace
-            public_path = f"{namespace}.{attr_name}"
-            warn(
-                f"The symbol `{attr_path}` will soon be removed from the public API. Use `{public_path}` instead.",
-                DeprecationWarning,
-            )
-        elif old_attr_path is None:
-            warn(
-                f"The symbol `{attr_path}` will soon be removed from the public API. "
-                f"It can still be accessed from `{module.__name__}.{attr_name}` but might be changed or removed without notice.",
-                DeprecationWarning,
-            )
-        else:
-            warn(
-                f"The symbol `{old_attr_path}` will soon be removed from the public API. Use `{attr_path}` instead.",
-                DeprecationWarning,
-            )
+        runtime.core.wp_alloc_tracker_push_scope(self.name.encode())
+        if not runtime.core.wp_alloc_tracker_is_enabled():
+            runtime.core.wp_alloc_tracker_enable(1)
+            self._did_enable = True
+        return self
 
-    return value
+    def __exit__(self, exc_type, exc_value, traceback):
+        if not self.active:
+            return
+
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_pop_scope()
+        try:
+            if self.print:
+                self.report()
+        finally:
+            if self._did_enable:
+                runtime.core.wp_alloc_tracker_enable(0)
+
+    def report(self, file=None, sort="size", max_items=10):
+        """Print an allocation report.
+
+        Can be called multiple times -- each call reflects the current state.
+
+        .. note::
+
+            Not safe to call concurrently from multiple threads.
+
+        Args:
+            file: File object to write to (defaults to ``sys.stdout``).
+            sort: Sort order for live allocations: ``"size"`` (default, largest
+                first) or ``"chronological"`` (oldest first).
+            max_items: Maximum number of individual allocations shown per
+                category (default ``10``).
+
+        Raises:
+            ValueError: If ``sort`` is not ``"size"`` or ``"chronological"``.
+        """
+        if sort not in ("size", "chronological"):
+            raise ValueError(f"Invalid sort order {sort!r}; expected 'size' or 'chronological'")
+
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        sort_order = 1 if sort == "chronological" else 0
+        text = runtime.core.wp_alloc_tracker_report(sort_order, max_items)
+        if text:
+            decoded = text.decode("utf-8")
+            if self.report_func is not None:
+                self.report_func(decoded)
+            else:
+                print(decoded, file=file or sys.stdout, end="")
+
+    def clear(self):
+        """Reset all tracking data while keeping the tracker active.
+
+        After calling this, subsequent :meth:`report` calls only reflect
+        allocations that occurred after the reset.
+        """
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        runtime.core.wp_alloc_tracker_reset()

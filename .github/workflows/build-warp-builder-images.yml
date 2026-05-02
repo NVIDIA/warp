@@ -12,14 +12,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  packages: write
-
 jobs:
   build:
     name: Build CUDA ${{ matrix.cuda_version }} (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -138,6 +137,9 @@ jobs:
     name: Test CUDA ${{ matrix.cuda_version }} (${{ matrix.arch }})
     needs: build
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: read
     strategy:
       fail-fast: false
       matrix:
@@ -226,6 +228,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: success()
+    permissions:
+      packages: write
     
     steps:
       - name: Log in to GitHub Container Registry

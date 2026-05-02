@@ -17,6 +17,8 @@ These examples show how to author and test GPU kernels in Python using Warp, the
 |---------|-------------|--------------|
 | **[00_cubin_launch](00_cubin_launch/)** | Runtime CUBIN loading with CUDA Driver API | SAXPY operation, CUBIN module loading, `cuLaunchKernel()`, architecture-specific binaries |
 | **[01_source_include](01_source_include/)** | Static source inclusion with autodiff | Gradient descent, automatic differentiation, forward/backward kernels, `<<<>>>` launch syntax, multi-architecture compilation |
+| **[02_apic_visualization](02_apic_visualization/)** | Interactive APIC graph replay (CUDA + GLFW) | Multi-kernel graph capture, `cudaGraphLaunch()`, dynamic parameters, real-time wave-equation visualization |
+| **[03_apic_visualization_cpu](03_apic_visualization_cpu/)** | APIC graph replay on CPU (no CUDA at runtime) | CPU-only `wp_apic_cpu_replay_graph()`, `dlopen("warp-clang.so")` for the JIT, GLFW visualization |
 
 ## Quick Start
 
@@ -34,8 +36,8 @@ make && ./01_source_include
 
 Both examples support dual build systems:
 
-- **Makefile** - Unix/Linux only (`make` auto-compiles kernels)
-- **CMake 3.20+** - Cross-platform: Linux and Windows (requires manual `python compile_kernel.py` first)
+- **Makefile** - Unix/Linux only (`make` auto-runs the example's Python setup script if needed)
+- **CMake 3.20+** - Cross-platform: Linux and Windows (run the example's Python setup script before `cmake -B build`: `compile_kernel.py` for the AOT examples, `capture_wave.py` for the APIC examples)
 
 **Make Targets**:
 - `make` - Build everything, auto-compile kernel if needed

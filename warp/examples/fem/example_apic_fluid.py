@@ -17,6 +17,7 @@ import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 import warp.render
+from warp._src.utils import warn
 from warp.fem import Domain, Field, Sample, at_node, div, grad, integrand
 from warp.sparse import BsrMatrix, bsr_mm, bsr_mv, bsr_transposed
 
@@ -237,7 +238,7 @@ class Example:
                     screen_height=1024,
                 )
         except Exception as err:
-            wp.utils.warn(f"Could not initialize OpenGL renderer: {err}.")
+            warn(f"Could not initialize OpenGL renderer: {err}.")
 
         try:
             if stage_path:

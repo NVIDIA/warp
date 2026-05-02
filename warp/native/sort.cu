@@ -41,7 +41,7 @@ template <typename KeyType> void radix_sort_reserve_internal(void* context, int 
 
     if (sort_temp_size > temp.size) {
         wp_free_device(WP_CURRENT_CONTEXT, temp.mem);
-        temp.mem = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
+        temp.mem = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size, "(native:sort)");
         temp.size = sort_temp_size;
     }
 
@@ -154,7 +154,7 @@ void segmented_sort_reserve(void* context, int n, int num_segments, void** mem_o
 
     if (sort_temp_size > temp.size) {
         wp_free_device(WP_CURRENT_CONTEXT, temp.mem);
-        temp.mem = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
+        temp.mem = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size, "(native:sort)");
         temp.size = sort_temp_size;
     }
 

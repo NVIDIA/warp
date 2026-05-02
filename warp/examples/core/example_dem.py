@@ -141,8 +141,8 @@ class Example:
         else:
             self.renderer = None
 
-        self.use_cuda_graph = wp.get_device().is_cuda
-        if self.use_cuda_graph:
+        self.use_graph_capture = True
+        if self.use_graph_capture:
             with wp.ScopedCapture() as capture:
                 self.simulate()
             self.graph = capture.graph
@@ -175,7 +175,7 @@ class Example:
             with wp.ScopedTimer("grid build", active=False):
                 self.grid.build(self.x, self.grid_cell_size)
 
-            if self.use_cuda_graph:
+            if self.use_graph_capture:
                 wp.capture_launch(self.graph)
             else:
                 self.simulate()

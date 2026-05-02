@@ -4,7 +4,7 @@
 ###########################################################################
 # Example Graph Capture
 #
-# Shows how to implement CUDA graph capture using wp.ScopedCapture().
+# Shows how to implement graph capture using wp.ScopedCapture().
 #
 ###########################################################################
 
@@ -57,13 +57,10 @@ class Example:
         self.frequency = 1.0
         self.amplitude = 1.0
 
-        # use graph capture if launching from a CUDA-capable device
-        self.use_cuda_graph = wp.get_device().is_cuda
-        if self.use_cuda_graph:
-            # record launches
-            with wp.ScopedCapture() as capture:
-                self.fbm()
-            self.graph = capture.graph
+        # use graph capture to reduce per-kernel launch overhead
+        with wp.ScopedCapture() as capture:
+            self.fbm()
+        self.graph = capture.graph
 
     def fbm(self):
         for _ in range(16):
@@ -84,10 +81,7 @@ class Example:
         with wp.ScopedTimer("step", active=True):
             wp.launch(kernel=slide, dim=self.width, inputs=[self.x, self.shift])
 
-            if self.use_cuda_graph:
-                wp.capture_launch(self.graph)
-            else:  # cpu path
-                self.fbm()
+            wp.capture_launch(self.graph)
 
     def step_and_render(self, frame_num=None, img=None):
         self.step()

@@ -35,7 +35,7 @@ class BsrMvFemMatrix:
     def __init__(self, use_graph: bool = True):
         self._use_graph = use_graph
 
-    def build_system(self, space: fem.FunctionSpace, integrand: fem.operator.Integrand):
+    def build_system(self, space: fem.FunctionSpace, integrand: fem.Integrand):
         u = fem.make_trial(space)
         v = fem.make_test(space)
 
