@@ -1,30 +1,27 @@
-#ifndef STRATIFIED_MATH_H
-#define STRATIFIED_MATH_H
+#pragma once
+#include <warp/native/builtin.h>
 
-#include <cuda_runtime.h>
-#include <math.h>
+namespace wp {
 
 struct StratifiedAccumulator {
-    float value;      // Tier 1+: Visible State
-    float phase_debt; // Tier 0: Foundational Remainder
+    float value = 0.0f;      // The running total
+    float phase_debt = 0.0f; // The compensation term (low-order bits)
 
-    __device__ __forceinline__ void add(float increment) {
-        // Capture the standard floating-point error
-        float total = value + increment;
-        float v_error = total - value;
-        float i_error = increment - v_error;
-        
-        // Accumulate the debt in the Tier 0 field
-        phase_debt += i_error;
-        
-        // Re-inject when the debt reaches machine epsilon
-        if (fabsf(phase_debt) >= 1.1920929e-7f) {
-            total += phase_debt;
-            phase_debt = 0.0f;
+    WP_DEVICE inline void add(float input) {
+        // Standard Kahan-Babuska-Neumaier logic
+        // Ensures the residual "debt" is reinjected into the next operation
+        float t = value + input;
+        if (wp::abs(value) >= wp::abs(input)) {
+            phase_debt += (value - t) + input;
+        } else {
+            phase_debt += (input - t) + value;
         }
-        
-        value = total;
+        value = t;
+    }
+
+    WP_DEVICE inline float get() const {
+        return value + phase_debt;
     }
 };
 
-#endif
+} // namespace wp
