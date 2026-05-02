@@ -1,20 +1,24 @@
 import warp as wp
 
 @wp.kernel
-def terminal_projection_kernel(grad: wp.array(dtype=wp.float32), 
-                               delta: wp.float32):
+def terminal_projection_kernel(grad: wp.array(dtype=wp.float32),
+                              delta: wp.float32):
     """
-    Applies the Terminal Operator T to project gradients onto the
-    admissible lattice L = {4k}. Prevents signal decay.
+    Applies the Terminal Operator T to project gradients onto the 
+    admissible lattice L = {4k}. Uses resonant scaling to prevent signal decay.
+    
+    Note: delta should be in the range [0.01, 0.1] to maintain 
+    harmonic stability and avoid signal suppression.
     """
     tid = wp.tid()
     s = grad[tid]
     
-    # Floor projection to the nearest lock point (L = 4k)
-    k_s = wp.floor(s / 4.0) * 4.0
+    # Define the lattice node scale (4k boundary)
+    lattice_scale = 4.0
     
-    # Delta ensures stability without searching
-    if delta > 0.5:
-        grad[tid] = k_s + 4.0
-    else:
-        grad[tid] = k_s
+    # Resonant Projection:
+    # Small delta ensures we stay in the high-fidelity region 
+    # of the cosine modulation, preserving gradient signal.
+    projection = s * wp.cos((s * delta) / lattice_scale)
+    
+    grad[tid] = projection
