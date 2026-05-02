@@ -7,7 +7,7 @@
 #include "builtin.h"
 
 #include "apic_types.h"
-#include "stratified_math.h"
+
 #include <cstdint>
 
 #define WP_CURRENT_STREAM ((void*)0xffffffffffffffff)
