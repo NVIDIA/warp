@@ -1,7 +1,7 @@
 import warp as wp
 import numpy as np
 import unittest
-
+from warp.optim.stratified_projection import terminal_projection_kernel
 class TestStratifiedOptim(unittest.TestCase):
     def test_terminal_projection_kernel(self):
         wp.init()
