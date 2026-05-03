@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cmath>
-
 namespace wp 
 {
 
@@ -25,10 +23,10 @@ CUDA_CALLABLE inline float stratified_analyze(float s, float delta)
 {
     float angle = (s * delta) / 4.0f;
     
-    // Safety clamp for numerical stability
     if (angle > 1.5707963f) angle = 1.5707963f;
     if (angle < -1.5707963f) angle = -1.5707963f;
     
+    // Using standard cosf which is available via builtin.h scope
     return s * cosf(angle);
 }
 
