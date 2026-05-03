@@ -1,5 +1,7 @@
 import unittest
+
 import numpy as np
+
 import warp as wp
 from warp.optim.stratified_projection import terminal_projection_kernel
 
@@ -12,22 +14,14 @@ class TestStratifiedOptim(unittest.TestCase):
         grads = wp.array(data, dtype=wp.float32)
         delta = 0.05
 
-        wp.launch(
-            kernel=terminal_projection_kernel,
-            dim=len(data),
-            inputs=[grads, wp.float32(delta)]
-        )
+        wp.launch(kernel=terminal_projection_kernel, dim=len(data), inputs=[grads, wp.float32(delta)])
         wp.synchronize_device()
 
         result = grads.numpy()
 
         # Ensure all constants stay in float32 to match kernel precision
         delta_f32 = np.float32(delta)
-        angles = np.clip(
-            (data * delta_f32) / np.float32(4.0),
-            np.float32(-1.5707963),
-            np.float32(1.5707963)
-        )
+        angles = np.clip((data * delta_f32) / np.float32(4.0), np.float32(-1.5707963), np.float32(1.5707963))
         expected = data * np.cos(angles).astype(np.float32)
 
         # Numerical admissibility check
@@ -44,4 +38,3 @@ def register(parent):
 if __name__ == "__main__":
     wp.init()
     unittest.main()
-    
