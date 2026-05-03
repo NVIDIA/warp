@@ -1,28 +1,35 @@
 #pragma once
 
-#include "builtin.h"
+#include <cmath>
 
-namespace wp {
+namespace wp 
+{
 
-struct StratifiedAccumulator {
-    float value = 0.0f;      
-    float phase_debt = 0.0f; 
+struct StratifiedAccumulator 
+{
+    float value;
+    float residual;
 
-    CUDA_CALLABLE inline void add(float input) {
-        // Standard Kahan-Babuska-Neumaier logic
-        // Ensures the residual "debt" is reinjected into the next operation
-        float t = value + input;
-        if (wp::abs(value) >= wp::abs(input)) {
-            phase_debt += (value - t) + input;
-        } else {
-            phase_debt += (input - t) + value;
-        }
+    CUDA_CALLABLE StratifiedAccumulator() : value(0.0f), residual(0.0f) {}
+
+    CUDA_CALLABLE void add(float delta) 
+    {
+        float y = delta - residual;
+        float t = value + y;
+        residual = (t - value) - y;
         value = t;
     }
-
-    CUDA_CALLABLE inline float get() const {
-        return value + phase_debt;
-    }
 };
+
+CUDA_CALLABLE inline float stratified_analyze(float s, float delta) 
+{
+    float angle = (s * delta) / 4.0f;
+    
+    // Safety clamp for numerical stability
+    if (angle > 1.5707963f) angle = 1.5707963f;
+    if (angle < -1.5707963f) angle = -1.5707963f;
+    
+    return s * cosf(angle);
+}
 
 } // namespace wp
