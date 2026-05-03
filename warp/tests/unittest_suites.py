@@ -229,7 +229,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_sort import TestTileSort
     from warp.tests.tile.test_tile_stack import TestTileStack
     from warp.tests.tile.test_tile_view import TestTileView
-
+    from warp.tests.test_stratified_optim import TestStratifiedOptim
     test_classes = [
         TestAdam,
         TestAllocTracker,
@@ -345,6 +345,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestSpecialValues,
         TestStatic,
         TestStreams,
+        TestStratifiedOptim,
         TestStruct,
         TestSubscriptTypes,
         TestTape,
