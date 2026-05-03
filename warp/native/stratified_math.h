@@ -31,7 +31,7 @@ CUDA_CALLABLE inline float stratified_analyze(float s, float delta)
         angle = -1.5707963f;
 
     // Using standard cosf which is available via builtin.h scope
-    return s * cosf(angle);
+    return s * ::cosf(angle);
 }
 
 }  // namespace wp
