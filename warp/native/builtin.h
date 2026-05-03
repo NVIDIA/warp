@@ -20,7 +20,7 @@
 #define CUDA_CALLABLE __host__ __device__
 #define CUDA_CALLABLE_DEVICE __device__
 #endif
-
+#include "stratified_math.h"
 // Tile block dimension used while building the warp core library
 #ifndef WP_TILE_BLOCK_DIM
 #define WP_TILE_BLOCK_DIM 256
