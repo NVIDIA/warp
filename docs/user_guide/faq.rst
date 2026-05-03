@@ -155,6 +155,13 @@ also support the following forms:
 - ``arr.fill_(1.23)``: sets the content of an existing float array to ``1.23``.
 - ``arr[:4].fill_(1.23)``: sets the four first values of an existing float array to ``1.23``.
 
+Where can I find frequently asked questions about tiles?
+--------------------------------------------------------
+
+The :doc:`tiles` page has a dedicated :ref:`FAQ section <tile_faq>` covering launch mechanics,
+CPU/GPU differences, cooperative-branch rules, register vs. shared storage, debugging,
+block/tile sizing, and more.
+
 How can I contact the Warp team directly?
 -----------------------------------------
 

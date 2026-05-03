@@ -154,6 +154,11 @@
 ### Documentation
 
 - Document the `wp.Graph` class returned by `wp.capture_end()` and `wp.capture_load()`, including the APIC parameter-binding methods (`set_param`, `get_param`, `get_param_ptr`) and the `params` and `is_loaded` properties.
+- Add a Frequently Asked Questions section to the Tiles user guide covering launch
+  mechanics, CPU/GPU differences, cooperative-branch rules, register vs. shared storage,
+  common causes of garbage/NaN output, block/tile sizing, out-of-bounds handling,
+  compile-time shape requirements, ``tile_load`` calling conventions, extracting values
+  from tiles, and ``tile_map`` usage.
 
 ## [1.12.1] - 2026-04-06
 

@@ -633,6 +633,8 @@ Similarly, we can `untile` tile objects back to their per-thread scalar equivale
 Extra consideration is needed when using tiles in SIMT kernels that are meant to run on both the GPU and the CPU.
 On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels using :func:`wp.tile() <warp._src.lang.tile>`. Consider the following example:
 
+.. _tile_reduce_blockwise_example:
+
 .. testcode::
     :skipif: wp.get_device() == "cpu" or wp.get_cuda_device_count() == 0
 
@@ -1110,5 +1112,247 @@ when running ``build_lib.py`` or by defining the path in the ``LIBMATHDX_HOME`` 
 Please note that CUDA Toolkit 12.6.3 or higher is required for full MathDx support when building Warp from source.
 Warp + MathDx will compile with earlier CUDA 12 versions, but matrix multiplication, triangular solves, Cholesky factorization,
 and the Cholesky solver will fail at runtime.
+
+.. _tile_faq:
+
+Frequently Asked Questions
+--------------------------
+
+``launch_tiled`` vs. ``launch``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*What is the difference between* ``wp.launch_tiled()`` *and* ``wp.launch()`` *?*
+
+The two forms are equivalent. :func:`~warp.launch_tiled` appends ``block_dim`` to the
+grid automatically, so the following launch the same kernel grid:
+
+.. code:: python
+
+    # These are equivalent:
+    wp.launch_tiled(kernel, dim=[M, N],     inputs=[...], block_dim=64)
+    wp.launch(      kernel, dim=[M, N, 64], inputs=[...], block_dim=64)
+
+:func:`~warp.launch_tiled` reduces boilerplate for tile-heavy kernels. Use plain
+:func:`~warp.launch` with ``block_dim`` when you are writing a SIMT kernel that
+occasionally drops into tile operations via :func:`wp.tile() <warp._src.lang.tile>` and
+:func:`wp.untile() <warp._src.lang.untile>`.
+
+:func:`wp.tid() <warp._src.lang.tid>` returns one value per launch dimension. Under
+:func:`~warp.launch_tiled`, you can unpack only what you need:
+
+.. code:: python
+
+    @wp.kernel
+    def compute():
+        i, j    = wp.tid()    # just the tile coordinates
+        # or:
+        i, j, t = wp.tid()    # also the intra-block thread id
+
+Unpacking the thread index ``t`` is useful when you need to mix cooperative tile
+operations with per-thread SIMT work. See `Tiles and SIMT Code`_ for more on mixing
+the two programming models.
+
+Tile operations (:func:`wp.tile_load() <warp._src.lang.tile_load>`,
+:func:`wp.tile_store() <warp._src.lang.tile_store>`,
+:func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`, etc.) work with either launch
+function. On CPU, Warp always forces ``block_dim=1``; see the next question for
+CPU-specific caveats.
+
+CPU vs. GPU behavior differences
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?*
+
+On CPU, Warp currently forces ``block_dim=1`` regardless of what you specify. This is a
+limitation of Warp's single-threaded CPU execution model. The consequences are:
+
+- :func:`wp.tile() <warp._src.lang.tile>` produces a 1-element tile instead of a
+  block-wide tile of ``block_dim`` elements.
+- Block-wide aggregation operations become effectively no-ops, because the "block"
+  is a single thread, so there is nothing to reduce or cooperate across.
+
+Kernels that use :func:`wp.tile() <warp._src.lang.tile>` to aggregate values across a
+block will produce per-thread results on CPU instead of block-aggregated results.
+
+To write kernels that produce consistent results on both devices, use
+:func:`wp.tile_atomic_add() <warp._src.lang.tile_atomic_add>` to accumulate each block's
+result into a global array rather than relying on
+:func:`wp.tile_store() <warp._src.lang.tile_store>` writing only from the first thread of
+each block. See the :ref:`blockwise reduction example <tile_reduce_blockwise_example>` in
+`Tiles and SIMT Code`_.
+
+Tile operations in divergent branches
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*Can I use tile operations inside* ``if`` *statements or loops with early exits?*
+
+Most tile operations are **cooperative**: every thread in the block must call them,
+because they contain internal synchronization barriers (analogous to CUDA's
+``__syncthreads()``). Calling a cooperative tile operation from a divergent branch, where
+only some threads execute it, will deadlock or produce undefined behavior.
+
+The rule of thumb: tile operations can be surrounded by arbitrary conditional logic,
+but the condition must evaluate identically for all threads in the block. That is,
+you can branch *around* a group of tile operations, but you cannot have some threads
+skip an individual tile operation that others execute.
+
+A handful of tile operations are explicitly non-cooperative and safe to call from a
+single thread or a divergent branch. Check an operation's docstring before relying on
+this. The default assumption should be that a tile op is cooperative.
+
+Register vs. shared memory tiles
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*How do I choose between register and shared memory for my tile?*
+
+**Register tiles** (the default) distribute data across threads: with 64 threads and a
+tile of 256 elements, each thread holds 4 elements. Register storage is the fastest on
+most hardware but does not support random per-element access, because a thread cannot
+directly read elements assigned to other threads. See `Register Tiles`_.
+
+**Shared memory tiles** store data in a region accessible by all threads in the block,
+enabling random access. They are required for operations such as
+:func:`wp.tile_matmul() <warp._src.lang.tile_matmul>` that need to read arbitrary
+elements. Shared memory is a limited per-block resource whose size varies by
+architecture. Query the budget for a specific device with
+:attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>`.
+Tiles that exceed the budget cause a kernel launch failure. See `Shared Memory Tiles`_.
+
+Warp migrates tiles from register to shared memory automatically when an operation
+requires it. For example, :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>` will
+move its operands to shared memory as needed. Writing to an individual tile element
+(``tile[row, col] = val``) also triggers migration to shared memory and emits a
+block-wide ``__syncthreads()`` barrier, so the usual cooperative-branch rules apply.
+
+You can specify storage explicitly:
+
+.. code:: python
+
+    t = wp.tile_load(a, shape=(TILE_M, TILE_N), storage="shared")
+
+As a guideline: register storage is fine (and often faster) for loads, element-wise
+maps, whole-tile reductions, and pipelined workloads (see `Software Pipelining with Register Tiles`_).
+Shared storage is needed for operations that require random cross-thread access (matmul,
+FFT, Cholesky, axis reductions, and element-level writes), though Warp migrates
+automatically in these cases.
+
+Debugging garbage or NaN output
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*My kernel produces garbage or NaNs. What are the most common causes?*
+
+1. **Uninitialized output tile passed to** :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>` **.**
+   :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>` accumulates into ``out``,
+   computing ``alpha * a @ b + beta * out``.
+   With the default ``beta=1.0``, an uninitialized ``out`` tile produces garbage. Always
+   initialize the accumulator with :func:`wp.tile_zeros() <warp._src.lang.tile_zeros>`
+   before calling :func:`~warp._src.lang.tile_matmul`.
+
+2. **aligned=True with unmet conditions.**
+   Passing ``aligned=True`` to :func:`wp.tile_load() <warp._src.lang.tile_load>` or
+   :func:`wp.tile_store() <warp._src.lang.tile_store>` skips runtime eligibility checks
+   for the vectorized load path. Address-alignment violations trap unconditionally (even
+   in release builds), but bounds and contiguity violations are caught only by debug-only
+   asserts; in release builds they cause silent data corruption. If you suspect this is
+   the cause, set ``wp.config.mode = "debug"`` to enable the bounds and contiguity
+   asserts. Only use ``aligned=True`` when you can guarantee all conditions listed in
+   :ref:`vectorized_tile_loads`.
+
+Shared memory overflow
+^^^^^^^^^^^^^^^^^^^^^^
+
+*Why does my kernel fail when I increase the tile size?*
+
+Tile sizes that exceed the device's per-block shared memory budget surface differently
+depending on the operation. For non-MathDx shared-storage tiles, you may see a load-time
+warning that the kernel's shared-memory configuration exceeds the device's per-block
+maximum, followed by ``CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES`` at launch. For MathDx-backed
+operations (:func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`,
+:func:`wp.tile_fft() <warp._src.lang.tile_fft>`,
+:func:`wp.tile_cholesky() <warp._src.lang.tile_cholesky>`), the failure surfaces at LTO
+compile time, typically as
+``Failed to compile LTO '...'. Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details.`` In both cases, reduce tile dimensions or switch to a smaller data type,
+and query :attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>`
+to see the budget. See :ref:`mathdx` for more details.
+
+Out-of-bounds handling
+^^^^^^^^^^^^^^^^^^^^^^
+
+*How do* ``wp.tile_load()`` *and* ``wp.tile_store()`` *handle out-of-bounds accesses?*
+
+:func:`wp.tile_load() <warp._src.lang.tile_load>` handles out-of-bounds accesses
+automatically: positions past the array edge are **zero-padded**, so boundary tiles are
+always safe to load without special handling. For
+:func:`wp.tile_store() <warp._src.lang.tile_store>`, out-of-bounds writes are silently
+dropped.
+
+These behaviors apply with the default ``aligned=False``. Passing ``aligned=True``
+disables bounds handling, and out-of-bounds access is undefined behavior in release builds
+(and will trip an assert in debug builds). See :ref:`vectorized_tile_loads` for details on
+the ``aligned`` parameter.
+
+Compile-time constant tile shapes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*Do tile shapes have to be compile-time constants?*
+
+Yes. Tile shapes passed to :func:`wp.tile_load() <warp._src.lang.tile_load>`,
+:func:`wp.tile_zeros() <warp._src.lang.tile_zeros>`,
+:func:`wp.tile_ones() <warp._src.lang.tile_ones>`, and other tile construction functions
+must be compile-time constants, since they are baked into the generated CUDA/C++ code.
+You can define them as module-level Python variables (Warp treats these as implicit
+constants), use :func:`wp.constant() <warp.constant>` explicitly, or hard-code the values
+directly:
+
+.. code:: python
+
+    # Both are valid:
+
+    TILE_M = 64
+    TILE_N = wp.constant(32)
+
+    @wp.kernel
+    def compute(a: wp.array2d[float]):
+        i, j = wp.tid()
+
+        t = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
+        # or:
+        t = wp.tile_load(a, shape=(64, 32), offset=(i * 64, j * 32))
+
+The key restriction is that tile shapes cannot be runtime values: kernel arguments,
+array dimensions, or values computed inside the kernel cannot be used as tile shapes.
+The same rule applies to the ``capacity`` argument of
+:func:`wp.tile_stack() <warp._src.lang.tile_stack>`.
+
+Reduction results and ``tile_extract``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*Why doesn't* ``wp.tile_sum()`` *return a scalar I can use directly?*
+
+Reductions like :func:`wp.tile_sum() <warp._src.lang.tile_sum>` return a single-element
+tile, not a Python scalar. Use :func:`wp.tile_extract() <warp._src.lang.tile_extract>`
+(or the shorthand ``tile[0]``) to extract the value. The extracted scalar is broadcast
+to all threads in the block:
+
+.. code:: python
+
+    s = wp.tile_sum(t)          # s is a single-element tile
+    val = s[0]                  # scalar available to all threads (calls tile_extract)
+
+Tile-to-global memory exit paths
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*How do I get a tile's data back into a global array or per-thread values?*
+
+Tiles are cooperative, opaque objects that cannot be returned from a kernel. There are
+three exit routes, each with a different use case:
+
+- :func:`wp.tile_store() <warp._src.lang.tile_store>`: cooperatively write the entire
+  tile back to a global memory array. This is the most common exit path.
+- :func:`wp.tile_atomic_add() <warp._src.lang.tile_atomic_add>`: cooperatively accumulate
+  the tile into a global memory array with atomic additions.
+- :func:`wp.untile() <warp._src.lang.untile>`: convert a tile back to per-thread scalar
+  values for continued SIMT work. See `Tiles and SIMT Code`_.
+
 
 .. [1] `Technical Blog: Introducing Tile-Based Programming in Warp 1.5.0 <https://developer.nvidia.com/blog/introducing-tile-based-programming-in-warp-1-5-0/>`_
