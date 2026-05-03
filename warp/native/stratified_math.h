@@ -34,7 +34,7 @@ CUDA_CALLABLE inline float stratified_analyze(float s, float delta)
     if (angle < -1.5707963f)
         angle = -1.5707963f;
 
-    // Global scope cosf is provided by the compiler/environment 
+    // Global scope cosf is provided by the compiler/environment
     // where this header is included (via builtin.h)
     return s * ::cosf(angle);
 }
