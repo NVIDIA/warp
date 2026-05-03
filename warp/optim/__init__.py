@@ -19,3 +19,4 @@ from warp._src.optim.adam import Adam as Adam
 from warp._src.optim.sgd import SGD as SGD
 
 from . import linear as linear
+from .stratified_projection import terminal_projection_kernel
