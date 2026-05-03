@@ -3,6 +3,7 @@ def register(parent):
     if wp.is_cuda_available():
         parent.add_class(TestStratifiedOptim)
 
+
 if __name__ == "__main__":
     wp.init()
     unittest.main()
