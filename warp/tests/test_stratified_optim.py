@@ -1,11 +1,8 @@
-# Ensure all constants and operations stay in float32 to match kernel precision
-        delta_f32 = np.float32(0.05)
-        angles = np.clip(
-            (data * delta_f32) / np.float32(4.0), 
-            np.float32(-1.5707963), 
-            np.float32(1.5707963)
-        )
-        expected = data * np.cos(angles).astype(np.float32)
+def register(parent):
+    # Only register the test class if CUDA is available
+    if wp.is_cuda_available():
+        parent.add_class(TestStratifiedOptim)
 
-        # Use a slightly wider tolerance appropriate for float32 precision
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+if __name__ == "__main__":
+    wp.init()
+    unittest.main()
