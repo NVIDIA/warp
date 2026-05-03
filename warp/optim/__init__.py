@@ -5,7 +5,8 @@
 
 This module provides gradient-based optimizers (:class:`Adam`, :class:`SGD`) for
 updating arrays based on computed gradients. The :mod:`warp.optim.linear` submodule
-provides iterative linear solvers.
+provides iterative linear solvers. The :func:`terminal_projection_kernel` function
+provides a stratified gradient projection using resonance-based cosine modulation.
 
 Usage:
     This module must be explicitly imported::
