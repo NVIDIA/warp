@@ -3596,13 +3596,18 @@ def tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
 def tile_dot(a: Tile[Any, tuple[int, ...]], b: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]:
     """Compute the dot product of two tiles.
 
-    Computes a full contraction (tensordot) between corresponding elements
-    and sums the results. For scalar tiles this is the standard dot product;
-    for vector or matrix tiles each element pair is fully contracted
-    (e.g., ``wp.dot(a[i], b[i])`` for ``vec3`` elements).
+    Computes a full contraction between corresponding elements and sums
+    the results. For scalar tiles this is the standard dot product; for
+    vector tiles each pair is contracted via ``wp.dot``; for matrix tiles
+    it is the Frobenius inner product (the sum of element-wise products
+    over all axes).
 
-    Equivalent to ``wp.tile_sum(wp.tile_map(wp.tensordot, a, b))``
-    but without any intermediate tiles or shared-memory round trips.
+    Equivalent in Python to ``wp.tile_sum(a * b)`` for scalar tiles and to
+    ``wp.tile_sum(wp.tile_map(wp.dot, a, b))`` for vector tiles, but
+    without the intermediate tile and shared-memory round trip the
+    explicit forms would require. Matrix-typed tiles have no
+    purely-elementwise Python equivalent because ``wp.dot`` is not
+    defined for matrices.
 
     Args:
         a: First tile operand.
