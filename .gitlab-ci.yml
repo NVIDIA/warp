@@ -772,7 +772,7 @@ trigger debug build and test pipeline:
   image: busybox
   extends:
     - .ipp_lnx_x86_64_cpu_micro
-  needs: []
+  needs: [linux-x86_64 debug build]
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
