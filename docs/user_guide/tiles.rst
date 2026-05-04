@@ -78,7 +78,7 @@ In Warp, tile objects are arrays of data where the tile elements may be scalars,
     TILE_THREADS = 64
 
     @wp.kernel
-    def compute(a: array2d(dtype=float)):
+    def compute(a: wp.array2d[float]):
         
         # obtain our 2d block index
         i, j = wp.tid()
@@ -483,7 +483,7 @@ The ``capacity`` must be a compile-time constant and ``dtype`` specifies the ele
     CAPACITY = wp.constant(256)
 
     @wp.kernel
-    def my_kernel(data: wp.array(dtype=float)):
+    def my_kernel(data: wp.array[float]):
         i, j = wp.tid()
         s = wp.tile_stack(capacity=CAPACITY, dtype=float)
         ...
@@ -554,7 +554,7 @@ output array:
     CAPACITY = wp.constant(BLOCK_DIM)  # at most one output per thread
 
     @wp.kernel
-    def compact_kernel(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compact_kernel(data: wp.array[float], out: wp.array[float]):
         _i, j = wp.tid()
 
         val = data[j]
@@ -982,8 +982,8 @@ then moves on. The next load cannot begin until the current store completes:
 
     @wp.kernel
     def sequential(
-        inp: wp.array2d(dtype=float),
-        out: wp.array2d(dtype=float),
+        inp: wp.array2d[float],
+        out: wp.array2d[float],
     ):
         for i in range(N_ROWS):
             a = wp.tile_load(inp, shape=(1, TILE_N), offset=(i, 0), storage="register")
@@ -995,8 +995,8 @@ then moves on. The next load cannot begin until the current store completes:
 
     @wp.kernel
     def pipelined(
-        inp: wp.array2d(dtype=float),
-        out: wp.array2d(dtype=float),
+        inp: wp.array2d[float],
+        out: wp.array2d[float],
     ):
         # Load first tile
         a = wp.tile_load(inp, shape=(1, TILE_N), offset=(0, 0), storage="register")

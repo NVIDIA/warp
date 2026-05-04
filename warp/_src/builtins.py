@@ -4758,7 +4758,7 @@ add_builtin(
         .. code-block:: python
 
             @wp.kernel
-            def histogram(data: wp.array(dtype=float), out: wp.array(dtype=float)):
+            def histogram(data: wp.array[float], out: wp.array[float]):
 
                 bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
                 i = wp.tid()
@@ -7018,7 +7018,7 @@ add_builtin(
             CAP = wp.constant(8)
 
             @wp.kernel
-            def compact_kernel(data: wp.array(dtype=int), out: wp.array(dtype=int), out_count: wp.array(dtype=int)):
+            def compact_kernel(data: wp.array[int], out: wp.array[int], out_count: wp.array[int]):
                 _i, j = wp.tid()
                 s = wp.tile_stack(capacity=CAP, dtype=int)
 
@@ -7098,7 +7098,7 @@ add_builtin(
             CAP = wp.constant(8)
 
             @wp.kernel
-            def push_kernel(out_idx: wp.array(dtype=int)):
+            def push_kernel(out_idx: wp.array[int]):
                 _i, j = wp.tid()
                 s = wp.tile_stack(capacity=CAP, dtype=int)
                 idx = wp.tile_stack_push(s, j * 10, j < 4)
@@ -7166,7 +7166,7 @@ add_builtin(
             CAP = wp.constant(8)
 
             @wp.kernel
-            def pop_kernel(out: wp.array(dtype=int)):
+            def pop_kernel(out: wp.array[int]):
                 _i, j = wp.tid()
                 s = wp.tile_stack(capacity=CAP, dtype=int)
                 wp.tile_stack_push(s, j * 10, j < 4)
@@ -7226,7 +7226,7 @@ add_builtin(
             CAP = wp.constant(8)
 
             @wp.kernel
-            def clear_kernel(before: wp.array(dtype=int), after: wp.array(dtype=int)):
+            def clear_kernel(before: wp.array[int], after: wp.array[int]):
                 _i, j = wp.tid()
                 s = wp.tile_stack(capacity=CAP, dtype=int)
                 wp.tile_stack_push(s, j, True)
@@ -7297,7 +7297,7 @@ add_builtin(
             CAP = wp.constant(8)
 
             @wp.kernel
-            def count_kernel(out_count: wp.array(dtype=int)):
+            def count_kernel(out_count: wp.array[int]):
                 _i, j = wp.tid()
                 s = wp.tile_stack(capacity=CAP, dtype=int)
                 wp.tile_stack_push(s, j, j % 2 == 0)
