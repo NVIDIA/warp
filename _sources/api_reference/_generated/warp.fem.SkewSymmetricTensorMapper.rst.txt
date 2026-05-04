@@ -1,0 +1,36 @@
+﻿warp.fem.SkewSymmetricTensorMapper
+==================================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: SkewSymmetricTensorMapper
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SkewSymmetricTensorMapper.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SkewSymmetricTensorMapper.dof_to_value
+      ~SkewSymmetricTensorMapper.dof_to_value_2d
+      ~SkewSymmetricTensorMapper.dof_to_value_3d
+      ~SkewSymmetricTensorMapper.value_to_dof
+      ~SkewSymmetricTensorMapper.value_to_dof_2d
+      ~SkewSymmetricTensorMapper.value_to_dof_3d
+      ~SkewSymmetricTensorMapper.value_dtype
+      ~SkewSymmetricTensorMapper.dof_dtype
+      ~SkewSymmetricTensorMapper.DOF_SIZE
+   
+   

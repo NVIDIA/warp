@@ -1,0 +1,43 @@
+﻿warp.fem.space.shape.SquareRaviartThomasShapeFunctions
+======================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: SquareRaviartThomasShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SquareRaviartThomasShapeFunctions.__init__
+      ~SquareRaviartThomasShapeFunctions.make_element_inner_weight
+      ~SquareRaviartThomasShapeFunctions.make_element_inner_weight_gradient
+      ~SquareRaviartThomasShapeFunctions.make_node_coords_in_element
+      ~SquareRaviartThomasShapeFunctions.make_node_quadrature_weight
+      ~SquareRaviartThomasShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SquareRaviartThomasShapeFunctions.EDGE_X
+      ~SquareRaviartThomasShapeFunctions.EDGE_Y
+      ~SquareRaviartThomasShapeFunctions.INTERIOR
+      ~SquareRaviartThomasShapeFunctions.VERTEX
+      ~SquareRaviartThomasShapeFunctions.name
+      ~SquareRaviartThomasShapeFunctions.value
+      ~SquareRaviartThomasShapeFunctions.VERTEX_NODE_COUNT
+      ~SquareRaviartThomasShapeFunctions.EDGE_NODE_COUNT
+      ~SquareRaviartThomasShapeFunctions.INTERIOR_NODE_COUNT
+      ~SquareRaviartThomasShapeFunctions.ORDER
+      ~SquareRaviartThomasShapeFunctions.NODES_PER_ELEMENT
+   
+   

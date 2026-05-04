@@ -1,0 +1,47 @@
+﻿warp.fem.ExplicitGeometryPartition
+==================================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ExplicitGeometryPartition
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ExplicitGeometryPartition.__init__
+      ~ExplicitGeometryPartition.boundary_side_count
+      ~ExplicitGeometryPartition.cell_arg_value
+      ~ExplicitGeometryPartition.cell_count
+      ~ExplicitGeometryPartition.compute_side_indices_from_cells
+      ~ExplicitGeometryPartition.fill_cell_arg
+      ~ExplicitGeometryPartition.fill_side_arg
+      ~ExplicitGeometryPartition.frontier_side_count
+      ~ExplicitGeometryPartition.rebuild
+      ~ExplicitGeometryPartition.side_arg_value
+      ~ExplicitGeometryPartition.side_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ExplicitGeometryPartition.CellArg
+      ~ExplicitGeometryPartition.SideArg
+      ~ExplicitGeometryPartition.boundary_side_index
+      ~ExplicitGeometryPartition.cell_index
+      ~ExplicitGeometryPartition.frontier_side_index
+      ~ExplicitGeometryPartition.name
+      ~ExplicitGeometryPartition.partition_cell_index
+      ~ExplicitGeometryPartition.side_index
+      ~ExplicitGeometryPartition.side_to_cell_arg
+      ~ExplicitGeometryPartition.geometry
+   
+   

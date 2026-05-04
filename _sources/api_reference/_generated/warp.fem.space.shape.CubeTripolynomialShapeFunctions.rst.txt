@@ -1,0 +1,43 @@
+﻿warp.fem.space.shape.CubeTripolynomialShapeFunctions
+====================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: CubeTripolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CubeTripolynomialShapeFunctions.__init__
+      ~CubeTripolynomialShapeFunctions.element_node_hexes
+      ~CubeTripolynomialShapeFunctions.element_node_tets
+      ~CubeTripolynomialShapeFunctions.element_vtk_cells
+      ~CubeTripolynomialShapeFunctions.make_element_inner_weight
+      ~CubeTripolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~CubeTripolynomialShapeFunctions.make_node_coords_in_element
+      ~CubeTripolynomialShapeFunctions.make_node_quadrature_weight
+      ~CubeTripolynomialShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CubeTripolynomialShapeFunctions.EDGE
+      ~CubeTripolynomialShapeFunctions.FACE
+      ~CubeTripolynomialShapeFunctions.INTERIOR
+      ~CubeTripolynomialShapeFunctions.VERTEX
+      ~CubeTripolynomialShapeFunctions.name
+      ~CubeTripolynomialShapeFunctions.value
+      ~CubeTripolynomialShapeFunctions.ORDER
+      ~CubeTripolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

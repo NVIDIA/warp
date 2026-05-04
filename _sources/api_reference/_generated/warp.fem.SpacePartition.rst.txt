@@ -1,0 +1,38 @@
+﻿warp.fem.SpacePartition
+=======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: SpacePartition
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SpacePartition.__init__
+      ~SpacePartition.fill_partition_arg
+      ~SpacePartition.interior_node_count
+      ~SpacePartition.node_count
+      ~SpacePartition.owned_node_count
+      ~SpacePartition.partition_arg_value
+      ~SpacePartition.partition_node_index
+      ~SpacePartition.rebuild
+      ~SpacePartition.space_node_indices
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SpacePartition.name
+      ~SpacePartition.space_topology
+      ~SpacePartition.geo_partition
+   
+   

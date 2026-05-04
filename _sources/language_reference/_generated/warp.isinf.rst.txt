@@ -1,0 +1,41 @@
+﻿warp.isinf
+==========
+
+.. function:: warp._src.lang.isinf(a: Float) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if ``a`` is positive or negative infinity.
+
+.. function:: warp._src.lang.isinf(a: Vector[Float, Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.
+
+.. function:: warp._src.lang.isinf(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.
+
+.. function:: warp._src.lang.isinf(a: Matrix[Float, Any, Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is positive or negative infinity.

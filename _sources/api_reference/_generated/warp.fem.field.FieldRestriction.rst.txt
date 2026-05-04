@@ -1,0 +1,22 @@
+﻿warp.fem.field.FieldRestriction
+===============================
+
+.. currentmodule:: warp.fem.field
+
+.. autoclass:: FieldRestriction
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FieldRestriction.__init__
+   
+   
+
+   
+   
+   
