@@ -827,18 +827,54 @@ void wp_free_device_async(void* context, void* ptr)
         // check if the capture is still active
         auto capture_iter = g_captures.find(capture_id);
         if (capture_iter != g_captures.end()) {
-            // Add a mem free node.  Use all current leaf nodes as dependencies to ensure that all prior
-            // work completes before deallocating.  This works with both Warp-initiated and external captures
-            // and avoids the need to explicitly track all streams used during the capture.
+            // Add a mem free node. Prefer per-caller-stream capture dependencies so frees
+            // are ordered with respect to work recorded on the stream where the free
+            // occurs (handles forked substreams correctly).  Fall back to using the
+            // graph's leaf nodes if per-stream info isn't available.
             CaptureInfo* capture = capture_iter->second;
-            cudaGraph_t graph = get_capture_graph(capture->stream);
-            std::vector<cudaGraphNode_t> leaf_nodes;
-            if (graph && get_graph_leaf_nodes(graph, leaf_nodes)) {
+            cudaGraph_t begin_graph = get_capture_graph(capture->stream);
+
+            // get the caller stream (the stream on which wp_free_device_async was invoked)
+            CUstream caller_cuda_stream = get_current_stream();
+
+            cudaGraph_t caller_graph = nullptr;
+            const cudaGraphNode_t* capture_deps = nullptr;
+            size_t dep_count = 0;
+            CUstreamCaptureStatus capture_status = CU_STREAM_CAPTURE_STATUS_NONE;
+
+            bool added = false;
+            bool node_inserted = false;
+
+            // Query per-stream capture info into separate variables so we don't
+            // clobber the begin_graph value used for the fallback.
+            if (begin_graph
+                && check_cu(cuStreamGetCaptureInfo_f(
+                    caller_cuda_stream, &capture_status, nullptr, &caller_graph, &capture_deps, &dep_count
+                ))
+                && caller_graph == begin_graph && capture_status == CU_STREAM_CAPTURE_STATUS_ACTIVE) {
                 cudaGraphNode_t free_node;
-                if (check_cuda(cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr))) {
-                    check_cu(cuStreamUpdateCaptureDependencies_f(
-                        capture->stream, &free_node, 1, cudaStreamSetCaptureDependencies
-                    ));
+                if (check_cuda(cudaGraphAddMemFreeNode(&free_node, caller_graph, capture_deps, dep_count, ptr))) {
+                    node_inserted = true;
+                    if (check_cu(cuStreamUpdateCaptureDependencies_f(
+                            caller_cuda_stream, &free_node, 1, cudaStreamSetCaptureDependencies
+                        ))) {
+                        added = true;
+                    }
+                }
+            }
+
+            // Fallback: use the graph leaf nodes from the original capture if needed
+            if (!added && !node_inserted && begin_graph) {
+                std::vector<cudaGraphNode_t> leaf_nodes;
+                if (get_graph_leaf_nodes(begin_graph, leaf_nodes)) {
+                    cudaGraphNode_t free_node;
+                    if (check_cuda(
+                            cudaGraphAddMemFreeNode(&free_node, begin_graph, leaf_nodes.data(), leaf_nodes.size(), ptr)
+                        )) {
+                        check_cu(cuStreamUpdateCaptureDependencies_f(
+                            capture->stream, &free_node, 1, cudaStreamSetCaptureDependencies
+                        ));
+                    }
                 }
             }
 
