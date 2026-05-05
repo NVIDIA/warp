@@ -239,8 +239,8 @@ class AtomicAddDeterminismOverhead:
     - ``65536``: lower contention, closer to a scatter workload.
     """
 
-    params = (["normal", "deterministic"], [1, 65536], DETERMINISTIC_BENCHMARK_SIZES)
-    param_names = ["mode", "num_outputs", "num_elements"]
+    params = (("normal", "deterministic"), (1, 65536), tuple(DETERMINISTIC_BENCHMARK_SIZES))
+    param_names = ("mode", "num_outputs", "num_elements")
 
     repeat = 10
     number = 5
@@ -314,8 +314,8 @@ class AtomicCounterDeterminismOverhead:
     state inside the captured graph so the benchmark isolates device work.
     """
 
-    params = (["normal", "deterministic"], DETERMINISTIC_BENCHMARK_SIZES)
-    param_names = ["mode", "num_elements"]
+    params = (("normal", "deterministic"), tuple(DETERMINISTIC_BENCHMARK_SIZES))
+    param_names = ("mode", "num_elements")
 
     repeat = 10
     number = 5

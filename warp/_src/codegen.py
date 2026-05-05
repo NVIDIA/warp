@@ -39,9 +39,6 @@ _DET_INTERCEPTABLE_ATOMICS = frozenset(
     }
 )
 
-# Atomics that are inherently order-dependent (warn but don't intercept).
-_DET_ORDER_DEPENDENT_ATOMICS = frozenset({"atomic_cas", "atomic_exch"})
-
 
 def get_node_name_safe(node):
     """Safely get a string representation of an AST node for error messages.
