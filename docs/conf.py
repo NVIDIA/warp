@@ -151,7 +151,7 @@ templates_path = ["_templates"]
 
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
-    "announcement": "Warp v1.12.1 is now available. See the <a href='https://github.com/NVIDIA/warp/releases/tag/v1.12.1'>release notes</a>.",
+    "announcement": "Warp v1.13.0 is now available. See the <a href='https://github.com/NVIDIA/warp/releases/tag/v1.13.0'>release notes</a>.",
     "secondary_sidebar_items": ["page-toc", "edit-this-page"],
     "article_header_end": ["view-page-source.html"],
     "use_edit_page_button": True,
@@ -341,9 +341,7 @@ intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "python": ("https://docs.python.org/3", None),
-    # Pinned to 2.10 because the `stable` intersphinx inventory is broken upstream.
-    # See https://github.com/pytorch/pytorch/issues/182007 — revert once fixed.
-    "pytorch": ("https://docs.pytorch.org/docs/2.10", None),
+    "pytorch": ("https://pytorch.org/docs/stable", None),
 }
 
 

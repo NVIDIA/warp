@@ -76,6 +76,11 @@ def test_suffix_f_requires_same_family(test, device):
 def test_output_name_includes_suffix(test, device):
     if device.arch < 90:
         test.skipTest("Device arch < 90")
+    if device.get_cuda_compile_arch() != device.arch:
+        test.skipTest(
+            f"Device arch sm_{device.arch} not in NVRTC supported list; "
+            f"output arch is sm_{device.get_cuda_compile_arch()}"
+        )
 
     module = add_one.module
 
@@ -92,6 +97,11 @@ def test_output_name_includes_suffix(test, device):
 def test_compile_kernel_with_suffix_a(test, device):
     if device.arch < 90:
         test.skipTest("Device arch < 90")
+    if device.get_cuda_compile_arch() != device.arch:
+        test.skipTest(
+            f"Device arch sm_{device.arch} not in NVRTC supported list; "
+            f"output arch is sm_{device.get_cuda_compile_arch()}"
+        )
 
     wp.config.cuda_arch_suffix = "a"
 
@@ -109,6 +119,11 @@ def test_compile_kernel_with_suffix_f(test, device):
     tk = device.runtime.toolkit_version
     if tk is not None and tk < (12, 9):
         test.skipTest("CUDA toolkit < 12.9")
+    if device.get_cuda_compile_arch() != device.arch:
+        test.skipTest(
+            f"Device arch sm_{device.arch} not in NVRTC supported list; "
+            f"output arch is sm_{device.get_cuda_compile_arch()}"
+        )
 
     wp.config.cuda_arch_suffix = "f"
 

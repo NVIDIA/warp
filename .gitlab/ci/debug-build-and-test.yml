@@ -89,6 +89,9 @@ linux-x86_64 test:
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 debug build
+  timeout: 24h
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
@@ -132,6 +135,9 @@ create pypi wheels:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 debug build
     - windows-x86_64 build
+  timeout: 24h
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   before_script:

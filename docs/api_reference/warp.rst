@@ -415,6 +415,7 @@ Graph Management
    :nosignatures:
    :toctree: _generated
 
+   CaptureMode
    Graph
    ScopedCapture
    capture_begin
