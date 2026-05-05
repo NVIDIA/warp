@@ -42,9 +42,6 @@ _DET_INTERCEPTABLE_ATOMICS = frozenset(
     }
 )
 
-# Atomics that are inherently order-dependent (warn but don't intercept).
-_DET_ORDER_DEPENDENT_ATOMICS = frozenset({"atomic_cas", "atomic_exch"})
-
 
 def _escape_line_directive_filename(filename: str) -> str:
     """Return ``filename`` escaped for the quoted filename field of a C/CUDA ``#line`` directive."""

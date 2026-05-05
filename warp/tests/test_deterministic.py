@@ -181,6 +181,11 @@ class _DetStructCounterWriter:
     output: wp.array(dtype=wp.float32)
 
 
+@wp.struct
+class _DetNameCollisionStruct:
+    b: wp.array(dtype=wp.float32)
+
+
 @wp.func
 def _det_struct_counter_write(writer: _DetStructCounterWriter, value: wp.float32):
     slot = wp.atomic_add(writer.counter, 0, 1)
@@ -222,6 +227,17 @@ def struct_field_helper_counter_kernel(
     tid = wp.tid()
     if flags[tid] != 0:
         _det_struct_counter_write(writer, data[tid])
+
+
+@wp.kernel(deterministic=True, module="unique")
+def helper_name_collision_kernel(
+    a_b: wp.array(dtype=wp.float32),
+    a: _DetNameCollisionStruct,
+    data: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    wp.atomic_add(a_b, 0, data[tid])
+    wp.atomic_add(a.b, 0, data[tid] * wp.float32(2.0))
 
 
 @wp.kernel
@@ -269,6 +285,18 @@ def loop_scatter_add_kernel(
     count = counts[tid]
     for _ in range(count):
         wp.atomic_add(output, 0, val)
+
+
+@wp.kernel(deterministic=True, deterministic_max_records=1)
+def underprovisioned_loop_scatter_kernel(
+    data: wp.array(dtype=wp.float32),
+    counts: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    count = counts[tid]
+    for _ in range(count):
+        wp.atomic_add(output, 0, data[tid])
 
 
 @wp.kernel(module="unique")
@@ -819,6 +847,20 @@ def test_loop_scatter_max_records_override(test, device):
         np.testing.assert_array_equal(results[0], results[i])
 
 
+def test_scatter_overflow_reports_error(test, device):
+    """Verify an underprovisioned dynamic scatter reports overflow to the host."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 2048
+    data = wp.ones(n, dtype=wp.float32, device=device)
+    counts = wp.full(n, value=2, dtype=wp.int32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "Deterministic scatter buffer overflow"):
+        wp.launch(underprovisioned_loop_scatter_kernel, dim=n, inputs=[data, counts], outputs=[output], device=device)
+
+
 def test_mixed_reduce_ops_same_array(test, device):
     """Verify mixed reduction families on one array are rejected in deterministic mode."""
     if device.is_cpu:
@@ -908,6 +950,24 @@ def test_struct_field_helper_counter_atomic(test, device):
     for i in range(1, len(results)):
         np.testing.assert_array_equal(results[0], results[i])
     np.testing.assert_array_equal(results[0].view(np.uint32), expected.view(np.uint32))
+
+
+def test_helper_name_collision(test, device):
+    """Verify deterministic helpers stay unique for labels with the same sanitized form."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    data_np = np.linspace(0.25, 2.0, 32, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    direct = wp.zeros(1, dtype=wp.float32, device=device)
+    field = wp.zeros(1, dtype=wp.float32, device=device)
+    holder = _DetNameCollisionStruct()
+    holder.b = field
+
+    wp.launch(helper_name_collision_kernel, dim=data_np.shape[0], inputs=[direct, holder, data], device=device)
+
+    np.testing.assert_allclose(direct.numpy(), np.array([data_np.sum()], dtype=np.float32), rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(field.numpy(), np.array([2.0 * data_np.sum()], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 
 def test_counter_reproducibility(test, device):
@@ -1512,6 +1572,12 @@ add_function_test(
     devices=cuda_devices,
 )
 add_function_test(
+    TestDeterministic,
+    "test_scatter_overflow_reports_error",
+    test_scatter_overflow_reports_error,
+    devices=cuda_devices,
+)
+add_function_test(
     TestDeterministic, "test_mixed_reduce_ops_same_array", test_mixed_reduce_ops_same_array, devices=cuda_devices
 )
 add_function_test(
@@ -1530,6 +1596,12 @@ add_function_test(
     TestDeterministic,
     "test_struct_field_helper_counter_atomic",
     test_struct_field_helper_counter_atomic,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_helper_name_collision",
+    test_helper_name_collision,
     devices=cuda_devices,
 )
 

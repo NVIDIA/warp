@@ -113,14 +113,14 @@ def sanitize_det_name(name: str) -> str:
     return sanitized
 
 
-def scatter_helper_name(array_var_label: str) -> str:
+def scatter_helper_name(array_var_label: str, index: int) -> str:
     """Return the deterministic scatter helper name for an array."""
-    return f"det_{sanitize_det_name(array_var_label)}"
+    return f"det_scatter_{index}_{sanitize_det_name(array_var_label)}"
 
 
-def counter_helper_name(array_var_label: str) -> str:
+def counter_helper_name(array_var_label: str, index: int) -> str:
     """Return the deterministic counter helper name for an array."""
-    return f"det_{sanitize_det_name(array_var_label)}"
+    return f"det_counter_{index}_{sanitize_det_name(array_var_label)}"
 
 
 def target_label(array_var_label: str, attr_path=()) -> str:
@@ -235,6 +235,7 @@ class DeterministicRegistry:
     counter_targets: list[CounterTarget] = field(default_factory=list)
     _scatter_targets_by_array: dict[tuple[str, tuple[str, ...]], ScatterTarget] = field(default_factory=dict)
     _counter_targets_by_array: dict[tuple[str, tuple[str, ...]], CounterTarget] = field(default_factory=dict)
+    _next_target_index: int = 0
 
 
 def get_or_create_scatter_target(
@@ -275,15 +276,17 @@ def get_or_create_scatter_target(
                 f"within the same reduction family."
             )
     else:
+        index = registry._next_target_index
+        registry._next_target_index += 1
         target = ScatterTarget(
             array_var_label=array_var_label,
-            helper_name=scatter_helper_name(label),
+            helper_name=scatter_helper_name(label, index),
             family=family,
             value_dtype=value_dtype,
             value_ctype=value_ctype,
             scalar_dtype=scalar_dtype,
             reduce_op=reduce_op,
-            index=len(registry.scatter_targets),
+            index=index,
             attr_path=attr_path,
         )
         registry.scatter_targets.append(target)
@@ -305,11 +308,13 @@ def get_or_create_counter_target(registry, meta, array_var_label, value_ctype, a
         )
     target = registry._counter_targets_by_array.get(key)
     if target is None:
+        index = registry._next_target_index
+        registry._next_target_index += 1
         target = CounterTarget(
             array_var_label=array_var_label,
-            helper_name=counter_helper_name(label),
+            helper_name=counter_helper_name(label, index),
             value_ctype=value_ctype,
-            index=len(registry.counter_targets),
+            index=index,
             attr_path=attr_path,
         )
         registry.counter_targets.append(target)

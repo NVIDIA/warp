@@ -9033,6 +9033,11 @@ class DeterministicLaunch(Launch):
         if not adjoint and index < len(self.fwd_args):
             self.fwd_args[index] = value
 
+    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
+        super().set_param_at_index_from_ctype(index, value)
+        if index < len(self.fwd_args):
+            self.fwd_args[index] = value
+
     def launch(self, stream: Stream | None = None) -> None:
         if stream is None:
             stream = self.device.stream
@@ -9067,11 +9072,17 @@ def _launch_deterministic(
         run_sort_reduce,
     )
 
+    if hooks is None or hooks.forward is None:
+        raise RuntimeError(
+            f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+        )
+
     dim_size = bounds.size
     options = kernel.module.resolve_options(warp.config) | kernel.options
     determinism_mode = normalize_deterministic_mode(options.get("deterministic"), option_name="deterministic")
     max_scatter_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
     det_debug = int(warp.config.deterministic_debug)
+    stream_is_capturing = len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
 
     # Allocate buffers.
     scatter_bufs = (
@@ -9114,11 +9125,7 @@ def _launch_deterministic(
         kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params_list]
         kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
-        if (
-            module_exec is not None
-            and len(runtime.captures) > 0
-            and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
-        ):
+        if module_exec is not None and stream_is_capturing:
             capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
             graph = runtime.captures.get(capture_id)
             if graph is not None:
@@ -9220,6 +9227,12 @@ def _launch_deterministic(
     except Exception as e:
         print(f"Error in deterministic kernel launch: {kernel.key} on device {device}")
         raise e
+
+    if overflow_buf is not None and not stream_is_capturing and int(overflow_buf.numpy()[0]) != 0:
+        raise RuntimeError(
+            f"Deterministic scatter buffer overflow in kernel '{kernel.key}'. "
+            "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+        )
 
 
 def launch(
@@ -9342,6 +9355,10 @@ def launch(
         # Deterministic mode: redirect to multi-pass launcher for CUDA forward pass.
         det_meta = getattr(kernel.adj, "det_meta", None)
         if det_meta is not None and det_meta.needs_deterministic and device.is_cuda and not adjoint:
+            if hooks.forward is None:
+                raise RuntimeError(
+                    f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                )
             if stream is None:
                 stream = device.stream
             if record_cmd:
