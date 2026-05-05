@@ -2,18 +2,23 @@
 
 namespace wp {
 
-// Note: Do not use in modules compiled with fast_math enabled.
-// The Kahan compensation relies on strict floating-point ordering.
+/// Kahan compensated summation accumulator for high-precision floating-point addition.
+/// Tracks a residual correction term to minimize accumulated rounding error.
+/// Note: Do not use in modules compiled with fast_math enabled.
+/// The Kahan compensation relies on strict floating-point ordering.
 struct StratifiedAccumulator {
     float value;
     float residual;
 
+    /// Default constructor initializes the accumulator to zero.
     CUDA_CALLABLE inline StratifiedAccumulator()
         : value(0.0f)
         , residual(0.0f)
     {
     }
 
+    /// Adds a value using Kahan summation to minimize floating-point error.
+    /// @param delta The value to accumulate.
     CUDA_CALLABLE inline void add(float delta)
     {
         float y = delta - residual;
@@ -23,6 +28,12 @@ struct StratifiedAccumulator {
     }
 };
 
+/// Applies a resonance-based cosine scaling to a gradient value.
+/// Computes a stratified angle from the input and delta, clamps it to [-pi/2, pi/2]
+/// to prevent gradient sign inversion, and returns the cosine-scaled result.
+/// @param s The input gradient value.
+/// @param delta The scaling factor.
+/// @return The cosine-scaled gradient value.
 CUDA_CALLABLE inline float stratified_analyze(float s, float delta)
 {
     // Strategic resonance-based scaling
