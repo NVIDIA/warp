@@ -84,10 +84,6 @@ wp.overload(
     tile_gemm, {"A": wp.array2d(dtype=wp.float16), "B": wp.array2d(dtype=wp.float16), "C": wp.array2d(dtype=wp.float16)}
 )
 wp.overload(
-    tile_gemm,
-    {"A": wp.array2d(dtype=wp.bfloat16), "B": wp.array2d(dtype=wp.bfloat16), "C": wp.array2d(dtype=wp.bfloat16)},
-)
-wp.overload(
     tile_gemm, {"A": wp.array2d(dtype=wp.float32), "B": wp.array2d(dtype=wp.float32), "C": wp.array2d(dtype=wp.float32)}
 )
 wp.overload(
@@ -225,6 +221,27 @@ def bf16_to_f32_kernel(input: wp.array2d(dtype=wp.bfloat16), output: wp.array2d(
     output[i, j] = wp.float32(input[i, j])
 
 
+# bfloat16 inputs require a wider accumulator: cuBLASDx allows only float16, float32, or float64
+# as the accumulator precision. The kernel goes in its own module with enable_backward=False so
+# that backward LTOs (which would use bfloat16 accumulators for adjA, adjB) are not generated.
+@wp.kernel(module="unique", module_options={"enable_backward": False})
+def tile_gemm_bf16(A: wp.array2d(dtype=wp.bfloat16), B: wp.array2d(dtype=wp.bfloat16), C: wp.array2d(dtype=wp.float32)):
+    i, j = wp.tid()
+
+    sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
+
+    K = A.shape[1]
+    count = int(K / TILE_K)
+
+    for k in range(0, count):
+        a = wp.tile_load(A, shape=(TILE_M, TILE_K), offset=(i * TILE_M, k * TILE_K))
+        b = wp.tile_load(B, shape=(TILE_K, TILE_N), offset=(k * TILE_K, j * TILE_N))
+
+        wp.tile_matmul(a, b, sum)
+
+    wp.tile_store(C, sum, offset=(i * TILE_M, j * TILE_N))
+
+
 def test_tile_gemm_bf16(test, device):
     M = TILE_M * 7
     K = TILE_K * 6
@@ -239,22 +256,18 @@ def test_tile_gemm_bf16(test, device):
     B_f32 = wp.array(B, device=device)
     A_wp = wp.zeros((M, K), dtype=wp.bfloat16, device=device)
     B_wp = wp.zeros((K, N), dtype=wp.bfloat16, device=device)
-    C_wp = wp.zeros((M, N), dtype=wp.bfloat16, device=device)
+    C_wp = wp.zeros((M, N), dtype=wp.float32, device=device)
 
     wp.launch(f32_to_bf16_kernel, dim=(M, K), inputs=[A_f32, A_wp], device=device)
     wp.launch(f32_to_bf16_kernel, dim=(K, N), inputs=[B_f32, B_wp], device=device)
 
     wp.launch_tiled(
-        tile_gemm,
+        tile_gemm_bf16,
         dim=(int(M / TILE_M), int(N / TILE_N)),
         inputs=[A_wp, B_wp, C_wp],
         block_dim=TILE_DIM,
         device=device,
     )
-
-    # Convert result back to float32 for comparison
-    C_f32 = wp.zeros((M, N), dtype=wp.float32, device=device)
-    wp.launch(bf16_to_f32_kernel, dim=(M, N), inputs=[C_wp, C_f32], device=device)
 
     # Quantize reference inputs through bfloat16 to match what the kernel sees
     A_ref = wp.zeros((M, K), dtype=wp.float32, device=device)
@@ -262,7 +275,7 @@ def test_tile_gemm_bf16(test, device):
     wp.launch(bf16_to_f32_kernel, dim=(M, K), inputs=[A_wp, A_ref], device=device)
     wp.launch(bf16_to_f32_kernel, dim=(K, N), inputs=[B_wp, B_ref], device=device)
 
-    np.testing.assert_allclose(C_f32.numpy(), A_ref.numpy() @ B_ref.numpy(), rtol=1.0e-2)
+    np.testing.assert_allclose(C_wp.numpy(), A_ref.numpy() @ B_ref.numpy(), rtol=1.0e-2)
 
 
 class TestTileMatmul(unittest.TestCase):

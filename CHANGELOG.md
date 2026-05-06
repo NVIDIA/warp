@@ -31,6 +31,14 @@
 
 ### Fixed
 
+- Reject `bfloat16` accumulator tiles in `wp.tile_matmul()` uniformly across the cuBLASDx and scalar
+  matmul backends. cuBLASDx allows only `float16`, `float32`, or `float64` as the accumulator
+  precision, and the scalar fallback's bf16 accumulator was silently lossy for non-trivial K. The
+  `out` tile is always an accumulator. When the backward pass is enabled, `a` and `b` are also
+  accumulators for `adjA` and `adjB`. As a consequence, `bfloat16` `a`/`b` inputs are not supported
+  together with the backward pass in `wp.tile_matmul()`
+  ([GH-1427](https://github.com/NVIDIA/warp/issues/1427)).
+
 ### Documentation
 
 ## [1.13.0] - 2026-05-04
