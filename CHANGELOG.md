@@ -160,6 +160,7 @@
 - Fix unresolved Python C API symbols in `warp.so`/`warp.dll`/`libwarp.dylib`, allowing the library
   to be loaded from non-Python C++ applications via `dlopen(..., RTLD_LAZY)` / `LoadLibrary()`
   ([GH-1399](https://github.com/NVIDIA/warp/issues/1399)).
+- Fix Raise a `WarpCodegenTypeError` when a kernel specifies a non-`None` return type annotation but contains only a bare return.
 
 ### Documentation
 
