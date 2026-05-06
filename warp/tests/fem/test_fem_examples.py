@@ -21,6 +21,7 @@ from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import (
     add_function_test,
     get_selected_cuda_test_devices,
+    get_selected_cuda_test_devices_with_mempool,
 )
 
 
@@ -101,6 +102,7 @@ def add_fem_example_test(
 
 
 cuda_devices = get_selected_cuda_test_devices(mode="basic")
+cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool(mode="basic")
 
 
 class TestFemExamples(unittest.TestCase):
@@ -116,7 +118,7 @@ if check_p2p():
     add_fem_example_test(
         TestFemDiffusionExamples,
         name="fem.example_diffusion_mgpu",
-        devices=cuda_devices,
+        devices=cuda_devices_with_mempool,
         test_options={"headless": True},
     )
 
@@ -231,19 +233,19 @@ add_fem_example_test(
 add_fem_example_test(
     TestFemExamples,
     name="fem.example_taylor_green",
-    devices=cuda_devices,
+    devices=cuda_devices_with_mempool,
     test_options={"num_frames": 10, "resolution": 10, "headless": True},
 )
 add_fem_example_test(
     TestFemExamples,
     name="fem.example_shallow_water",
-    devices=cuda_devices,
+    devices=cuda_devices_with_mempool,
     test_options={"num_frames": 10, "resolution": 10, "headless": True},
 )
 add_fem_example_test(
     TestFemExamples,
     name="fem.example_kelvin_helmholtz",
-    devices=cuda_devices,
+    devices=cuda_devices_with_mempool,
     test_options={"num_frames": 25, "resolution": 20, "headless": True},
 )
 

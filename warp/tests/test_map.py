@@ -9,7 +9,12 @@ import warp as wp
 import warp.tests.aux_test_name_clash1 as name_clash_module_1
 import warp.tests.aux_test_name_clash2 as name_clash_module_2
 from warp._src.utils import map_cache
-from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_cuda_test_devices, get_test_devices
+from warp.tests.unittest_utils import (
+    add_function_test,
+    assert_np_equal,
+    get_cuda_test_devices_with_mempool,
+    get_test_devices,
+)
 
 
 @wp.struct
@@ -579,7 +584,7 @@ def test_cache_broadcasting(test, device):
 
 
 devices = get_test_devices("basic")
-cuda_test_devices = get_cuda_test_devices()
+cuda_test_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
 class TestMap(unittest.TestCase):
@@ -598,7 +603,7 @@ add_function_test(TestMap, "test_broadcasting", test_broadcasting, devices=devic
 add_function_test(TestMap, "test_input_validity", test_input_validity, devices=devices)
 add_function_test(TestMap, "test_output_validity", test_output_validity, devices=devices)
 add_function_test(TestMap, "test_kernel_creation", test_kernel_creation, devices=devices)
-add_function_test(TestMap, "test_graph_capture", test_graph_capture, devices=cuda_test_devices)
+add_function_test(TestMap, "test_graph_capture", test_graph_capture, devices=cuda_test_devices_with_mempool)
 add_function_test(TestMap, "test_renamed_warp_module", test_renamed_warp_module, devices=devices)
 add_function_test(TestMap, "test_cache_same_types_shapes", test_cache_same_types_shapes, devices=devices)
 add_function_test(TestMap, "test_cache_different_shapes", test_cache_different_shapes, devices=devices)

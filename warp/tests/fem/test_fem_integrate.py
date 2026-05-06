@@ -560,6 +560,7 @@ def test_capturability(test, device):
 
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
+cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestFemIntegrate(unittest.TestCase):
@@ -573,7 +574,7 @@ add_function_test(TestFemIntegrate, "test_tensor_divergence_theorem", test_tenso
 add_function_test(TestFemIntegrate, "test_grad_decomposition", test_grad_decomposition, devices=devices)
 add_function_test(TestFemIntegrate, "test_integrate_high_order", test_integrate_high_order, devices=cuda_devices)
 add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpolate_reduction, devices=devices)
-add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices)
+add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

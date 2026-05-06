@@ -224,7 +224,10 @@ def test_mesh_query_ray(test, device):
     if device.is_cpu:
         constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh", "cubql"]
+        constructors = ["sah", "median", "lbvh"]
+        # cuBQL allocates via cudaMallocAsync, which requires CUDA mempool support.
+        if device.is_mempool_supported:
+            constructors.append("cubql")
 
     leaf_sizes = [1, 2, 4]
 
@@ -316,7 +319,10 @@ def test_mesh_refit(test, device):
     if device.is_cpu:
         constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh", "cubql"]
+        constructors = ["sah", "median", "lbvh"]
+        # cuBQL allocates via cudaMallocAsync, which requires CUDA mempool support.
+        if device.is_mempool_supported:
+            constructors.append("cubql")
 
     # Ray aimed at the origin — hits the unit cube centered there
     origin = wp.vec3(0.0, 5.0, 0.0)
@@ -430,6 +436,7 @@ def test_mesh_exceptions(test, device):
 
 
 devices = get_test_devices()
+cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestMesh(unittest.TestCase):
@@ -444,7 +451,7 @@ add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devi
 add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_grouped_mesh_query_ray", test_grouped_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit", test_mesh_refit, devices=devices)
-add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=get_selected_cuda_test_devices())
+add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=cuda_devices_with_mempool)
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 
 

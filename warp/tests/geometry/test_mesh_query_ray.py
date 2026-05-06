@@ -208,7 +208,10 @@ def test_mesh_query_ray_grad(test, device):
     if device.is_cpu:
         constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh", "cubql"]
+        constructors = ["sah", "median", "lbvh"]
+        # cuBQL allocates via cudaMallocAsync, which requires CUDA mempool support.
+        if device.is_mempool_supported:
+            constructors.append("cubql")
 
     leaf_sizes = [1, 2, 4]
 
@@ -400,7 +403,10 @@ def test_mesh_query_ray_count_intersections(test, device):
     if device.is_cpu:
         constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh", "cubql"]
+        constructors = ["sah", "median", "lbvh"]
+        # cuBQL allocates via cudaMallocAsync, which requires CUDA mempool support.
+        if device.is_mempool_supported:
+            constructors.append("cubql")
 
     leaf_sizes = [1, 2, 4]
 
@@ -673,7 +679,10 @@ def test_mesh_query_ray_edge(test, device):
     if device.is_cpu:
         constructors = ["sah", "median", "cubql"]
     else:
-        constructors = ["sah", "median", "lbvh", "cubql"]
+        constructors = ["sah", "median", "lbvh"]
+        # cuBQL allocates via cudaMallocAsync, which requires CUDA mempool support.
+        if device.is_mempool_supported:
+            constructors.append("cubql")
 
     leaf_sizes = [1, 2, 4]
 

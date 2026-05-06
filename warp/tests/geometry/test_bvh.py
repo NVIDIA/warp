@@ -697,6 +697,7 @@ def tile_bvh_query_valid_ray_kernel(
 
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
+cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
 class TestBvh(unittest.TestCase):
@@ -741,7 +742,7 @@ add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, d
 add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=cuda_devices)
 add_function_test(TestBvh, "test_bvh_query_ray_tiled", test_bvh_query_ray_tiled, devices=cuda_devices)
 
-add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices)
+add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices_with_mempool)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

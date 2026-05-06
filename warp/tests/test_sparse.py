@@ -796,6 +796,7 @@ def test_bsr_alloc(test, device):
 
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
+cuda_test_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestSparse(unittest.TestCase):
@@ -863,7 +864,7 @@ add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
-add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices)
+add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices_with_mempool)
 add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)
 
 add_function_test(TestSparse, "test_bsr_alloc", test_bsr_alloc, devices=devices)

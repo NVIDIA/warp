@@ -1048,6 +1048,7 @@ def test_error_alloc_while_subgraph(test, device):
 
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
+cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
 class TestConditionalCaptures(unittest.TestCase):
@@ -1107,17 +1108,32 @@ add_function_test(
     TestConditionalCaptures, "test_graph_debug_dot_print", test_graph_debug_dot_print, devices=cuda_devices
 )
 
-add_function_test(TestConditionalCaptures, "test_error_alloc_if", test_error_alloc_if, devices=cuda_devices)
-add_function_test(TestConditionalCaptures, "test_error_alloc_else", test_error_alloc_else, devices=cuda_devices)
-add_function_test(TestConditionalCaptures, "test_error_alloc_while", test_error_alloc_while, devices=cuda_devices)
 add_function_test(
-    TestConditionalCaptures, "test_error_alloc_if_subgraph", test_error_alloc_if_subgraph, devices=cuda_devices
+    TestConditionalCaptures, "test_error_alloc_if", test_error_alloc_if, devices=cuda_devices_with_mempool
 )
 add_function_test(
-    TestConditionalCaptures, "test_error_alloc_else_subgraph", test_error_alloc_else_subgraph, devices=cuda_devices
+    TestConditionalCaptures, "test_error_alloc_else", test_error_alloc_else, devices=cuda_devices_with_mempool
 )
 add_function_test(
-    TestConditionalCaptures, "test_error_alloc_while_subgraph", test_error_alloc_while_subgraph, devices=cuda_devices
+    TestConditionalCaptures, "test_error_alloc_while", test_error_alloc_while, devices=cuda_devices_with_mempool
+)
+add_function_test(
+    TestConditionalCaptures,
+    "test_error_alloc_if_subgraph",
+    test_error_alloc_if_subgraph,
+    devices=cuda_devices_with_mempool,
+)
+add_function_test(
+    TestConditionalCaptures,
+    "test_error_alloc_else_subgraph",
+    test_error_alloc_else_subgraph,
+    devices=cuda_devices_with_mempool,
+)
+add_function_test(
+    TestConditionalCaptures,
+    "test_error_alloc_while_subgraph",
+    test_error_alloc_while_subgraph,
+    devices=cuda_devices_with_mempool,
 )
 
 

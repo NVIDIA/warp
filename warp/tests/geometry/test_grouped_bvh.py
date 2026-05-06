@@ -518,7 +518,7 @@ def test_capture_bvh_rebuild_grouped(test, device):
 
 
 devices = get_test_devices()
-cuda_devices = get_cuda_test_devices()
+cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
 class TestGroupedBvh(unittest.TestCase):
@@ -556,7 +556,10 @@ add_function_test(
 )
 
 add_function_test(
-    TestGroupedBvh, "test_grouped_capture_bvh_rebuild", test_capture_bvh_rebuild_grouped, devices=cuda_devices
+    TestGroupedBvh,
+    "test_grouped_capture_bvh_rebuild",
+    test_capture_bvh_rebuild_grouped,
+    devices=cuda_devices_with_mempool,
 )
 
 if __name__ == "__main__":

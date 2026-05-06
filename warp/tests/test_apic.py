@@ -10,7 +10,12 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
+from warp.tests.unittest_utils import (
+    add_function_test,
+    get_cuda_test_devices,
+    get_test_devices,
+    get_test_devices_with_mempool,
+)
 
 
 @wp.kernel
@@ -540,6 +545,7 @@ def test_get_param_ptr(test, device):
 
 
 devices = get_test_devices()
+devices_with_mempool = get_test_devices_with_mempool()
 
 add_function_test(TestApic, "test_save_apic_false_error", test_save_apic_false_error, devices=devices)
 add_function_test(TestApic, "test_save_single_kernel", test_save_single_kernel, devices=devices)
@@ -550,15 +556,20 @@ add_function_test(TestApic, "test_save_load_memset", test_save_load_memset, devi
 add_function_test(TestApic, "test_bindings_param_update", test_bindings_param_update, devices=devices)
 add_function_test(TestApic, "test_array_slicing", test_array_slicing, devices=devices)
 add_function_test(TestApic, "test_complex_pipeline", test_complex_pipeline, devices=devices)
-add_function_test(TestApic, "test_internal_allocation", test_internal_allocation, devices=devices)
-add_function_test(TestApic, "test_multiple_internal_allocations", test_multiple_internal_allocations, devices=devices)
+add_function_test(TestApic, "test_internal_allocation", test_internal_allocation, devices=devices_with_mempool)
+add_function_test(
+    TestApic,
+    "test_multiple_internal_allocations",
+    test_multiple_internal_allocations,
+    devices=devices_with_mempool,
+)
 add_function_test(TestApic, "test_graph_execution_unchanged", test_graph_execution_unchanged, devices=devices)
 add_function_test(TestApic, "test_save_load_with_param_update", test_save_load_with_param_update, devices=devices)
 add_function_test(TestApic, "test_save_load_memcpy_and_kernel", test_save_load_memcpy_and_kernel, devices=devices)
 add_function_test(
     TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
 )  # CPU: wp_memtile_host not recorded
-add_function_test(TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices)
+add_function_test(TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices_with_mempool)
 add_function_test(TestApic, "test_get_param_ptr", test_get_param_ptr, devices=devices)
 
 
