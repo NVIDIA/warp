@@ -93,7 +93,7 @@ jobs:
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
       
 
-  test-warp:
+  test-warp-cpu:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ${{ matrix.os }}
     needs: build-warp
@@ -178,13 +178,75 @@ jobs:
           show: "fail"
         if: always()
 
-  test-warp-gpu:
-    runs-on: linux-amd64-gpu-h100-latest-1
-    needs: build-warp
-    # Only run on PRs (pull-request branches) or scheduled runs
-    if: github.repository == 'NVIDIA/warp' && (startsWith(github.ref, 'refs/heads/pull-request/') || github.event_name == 'schedule')
+  # Compute whether the changes on a pull-request/* branch touch files relevant
+  # to GPU testing or to doctest. Always runs (cheap). Downstream jobs read the
+  # outputs to decide whether to run on PR branches; non-PR events (schedule,
+  # workflow_dispatch, push to main / release-* / tag) bypass these outputs via
+  # the dependent jobs' own `if:` blocks.
+  gpu-changes:
+    if: github.repository == 'NVIDIA/warp'
+    runs-on: ubuntu-latest
+    # Stay green for dependents on failure; combined with the `|| 'true'` fallback
+    # on the outputs below, this keeps PR-style branches from silently skipping
+    # GPU testing or doctest when the filter has a transient error.
+    continue-on-error: true
     permissions:
       contents: read
+    outputs:
+      gpu_relevant: ${{ steps.filter-gpu.outputs.any_changed || 'true' }}
+      docs_relevant: ${{ steps.filter-docs.outputs.any_changed || 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch main for diff base
+        run: git fetch --depth=1 origin main
+
+      - name: Detect GPU-relevant changes
+        id: filter-gpu
+        uses: step-security/changed-files@2e07db73e5ccdb319b9a6c7766bd46d39d304bad  # v47.0.5
+        with:
+          base_sha: origin/main
+          files: |
+            .github/workflows/ci.yml
+            .python-version
+            warp/**
+            pyproject.toml
+            tools/**
+            deps/*
+            build_lib.py
+            build_llvm.py
+            uv.lock
+
+      - name: Detect doctest-relevant changes
+        id: filter-docs
+        uses: step-security/changed-files@2e07db73e5ccdb319b9a6c7766bd46d39d304bad  # v47.0.5
+        with:
+          base_sha: origin/main
+          files: docs/**
+
+  test-warp-gpu-linux:
+    runs-on: ${{ matrix.runner-label }}
+    needs: [build-warp, gpu-changes]
+    if: |
+      github.repository == 'NVIDIA/warp' && (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release-') ||
+        needs.gpu-changes.outputs.gpu_relevant == 'true'
+      )
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner-label: linux-amd64-gpu-h100-latest-1
+            gpu-name: h100
+          - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
+            gpu-name: rtxpro6000
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
@@ -200,7 +262,167 @@ jobs:
         with:
           enable-apt: true
 
-      - name: Install git and git-lfs
+      - name: Install system dependencies
+        # curl and gpg are required by codecov/codecov-action@v6 to download and verify the uploader.
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs curl gpg
+          git lfs install
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          version: "0.11.3"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-x86_64
+          path: warp/bin/
+
+      - name: Run Tests
+        run: uv run --extra dev --extra torch-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+
+      - name: Test Summary
+        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        continue-on-error: true  # codecov upload is best-effort; do not fail the job on upload errors.
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2  # v6.0.0
+        with:
+          disable_search: true
+          files: ./rspec.xml
+          report_type: test_results
+          flags: unittests,linux,${{ matrix.gpu-name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage reports to Codecov
+        if: ${{ !cancelled() }}
+        continue-on-error: true  # codecov upload is best-effort; do not fail the job on upload errors.
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2  # v6.0.0
+        with:
+          disable_search: true
+          files: ./coverage.xml
+          flags: unittests,linux,${{ matrix.gpu-name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-warp-gpu-windows:
+    runs-on: windows-amd64-gpu-rtxpro6000-latest-1
+    needs: [build-warp, gpu-changes]
+    if: |
+      github.repository == 'NVIDIA/warp' && (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release-') ||
+        needs.gpu-changes.outputs.gpu_relevant == 'true'
+      )
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    steps:
+      - name: Display GPU information
+        run: nvidia-smi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          version: "0.11.3"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-windows
+          path: warp/bin/
+
+      - name: Run Tests
+        # Pin usd-core to 25.5.1 to work around a frequent loading crash on Windows.
+        run: uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+
+      - name: Test Summary
+        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        continue-on-error: true  # codecov upload is best-effort; do not fail the job on upload errors.
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2  # v6.0.0
+        with:
+          disable_search: true
+          files: ./rspec.xml
+          report_type: test_results
+          flags: unittests,windows,rtxpro6000
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage reports to Codecov
+        if: ${{ !cancelled() }}
+        continue-on-error: true  # codecov upload is best-effort; do not fail the job on upload errors.
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2  # v6.0.0
+        with:
+          disable_search: true
+          files: ./coverage.xml
+          flags: unittests,windows,rtxpro6000
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Validate Sphinx doctests (RST testcode blocks and autodoc-extracted docstrings)
+  # against a real GPU. PR-style branches gate on the same filter as the GPU test
+  # rows, plus a docs/** filter for RST-only doctest changes.
+  test-warp-doctest:
+    runs-on: linux-amd64-gpu-l4-latest-1
+    needs: [build-warp, gpu-changes]
+    if: |
+      github.repository == 'NVIDIA/warp' && (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release-') ||
+        needs.gpu-changes.outputs.gpu_relevant == 'true' ||
+        needs.gpu-changes.outputs.docs_relevant == 'true'
+      )
+    container:
+      image: ubuntu:24.04
+      options: -u root --security-opt seccomp=unconfined --shm-size 16g
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - name: Display GPU information
+        run: nvidia-smi
+
+      - name: Setup proxy cache
+        uses: nv-gha-runners/setup-proxy-cache@main
+        with:
+          enable-apt: true
+
+      - name: Install system dependencies
         run: |
           apt-get update
           apt-get install -y git git-lfs
@@ -215,25 +437,18 @@ jobs:
         uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
         with:
           version: "0.11.3"
-      
+
       - name: Set up Python
         run: uv python install
-      
+
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-ubuntu-x86_64
           path: warp/bin/
-      
-      - name: Run Tests
-        run: uv run --extra dev --extra torch-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect
-      
-      - name: Test Summary
-        uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
-        with:
-          paths: "rspec.xml"
-          show: "fail"
-        if: always()
+
+      - name: Run doctest
+        run: uv run --extra docs build_docs.py --doctest --no-html
 
   build-docs:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
