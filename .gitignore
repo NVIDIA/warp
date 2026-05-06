@@ -35,6 +35,7 @@ CLAUDE.local.md
 *.dll
 *.lib
 *.cpp.obj
+*.cpp.warp*.obj
 *.pdb
 *.log
 *.bak

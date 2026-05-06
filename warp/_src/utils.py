@@ -21,7 +21,7 @@ import numpy as np
 import warp as wp
 import warp._src.context
 import warp._src.types
-from warp._src.context import Allocator, DeviceLike, _validate_allocator
+from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator
 from warp._src.types import Array, DType, type_repr, types_equal
 
 _wp_module_name_ = "warp.utils"
@@ -1632,9 +1632,14 @@ class ScopedCapture:
         stream: Stream on which to capture operations (CUDA only).
         force_module_load: If ``True``, force all modules to load before capture begins.
         external: If ``True``, indicates an external graph capture is already active.
+            The ``capture_mode`` argument should specify the mode that was used to
+            initiate the external capture.
         apic: If ``True``, enable APIC recording for serialization via
             :func:`capture_save`. On CPU, recording always occurs regardless
             of this flag (needed for CPU graph replay). Default is ``False``.
+        capture_mode: The :class:`~warp.CaptureMode` to use when opening
+            the capture. Defaults to :attr:`CaptureMode.THREAD_LOCAL`.
+            See :func:`capture_begin` for details.
 
     Attributes:
         graph: The captured graph, available after context exit.
@@ -1654,13 +1659,20 @@ class ScopedCapture:
     """
 
     def __init__(
-        self, device: DeviceLike = None, stream=None, force_module_load=None, external=False, apic: bool = False
+        self,
+        device: DeviceLike = None,
+        stream=None,
+        force_module_load=None,
+        external=False,
+        apic: bool = False,
+        capture_mode: CaptureMode = CaptureMode.THREAD_LOCAL,
     ):
         self.device = device
         self.stream = stream
         self.force_module_load = force_module_load
         self.external = external
         self.apic = apic
+        self.capture_mode = capture_mode
         self.active = False
         self.graph = None
 
@@ -1672,6 +1684,7 @@ class ScopedCapture:
                 force_module_load=self.force_module_load,
                 external=self.external,
                 apic=self.apic,
+                capture_mode=self.capture_mode,
             )
             self.active = True
             return self

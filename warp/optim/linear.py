@@ -10,7 +10,12 @@ residual (CR), and generalized minimal residual (GMRES) methods.
 
 # isort: skip_file
 
+from warp._src.optim.linear import BiCGSTAB as BiCGSTAB
+from warp._src.optim.linear import CG as CG
+from warp._src.optim.linear import CR as CR
+from warp._src.optim.linear import GMRES as GMRES
 from warp._src.optim.linear import LinearOperator as LinearOperator
+from warp._src.optim.linear import LinearSolverState as LinearSolverState
 from warp._src.optim.linear import aslinearoperator as aslinearoperator
 from warp._src.optim.linear import bicgstab as bicgstab
 from warp._src.optim.linear import cg as cg

@@ -80,6 +80,36 @@ class CudaMemcpyKind(enum.IntEnum):
     Default = 4
 
 
+class CaptureMode(enum.IntEnum):
+    """CUDA stream capture mode; mirrors ``cudaStreamCaptureMode``.
+
+    Controls how strictly CUDA rejects capture-unsafe runtime APIs while a
+    capture is active. ``RELAXED`` is typically required when composing with
+    libraries that perform lazy / capture-unsafe runtime calls (e.g. context
+    initialization) during the capture.
+
+    The default mode used by :func:`capture_begin` and :class:`~warp.ScopedCapture`
+    is :attr:`THREAD_LOCAL`, which preserves the historical Warp behavior.
+    """
+
+    GLOBAL = 0
+    """Capture-unsafe runtime APIs called from *any* thread invalidate the
+    capture. This is the strictest mode and matches
+    ``cudaStreamCaptureModeGlobal``."""
+
+    THREAD_LOCAL = 1
+    """Capture-unsafe runtime APIs called from the *capturing thread*
+    invalidate the capture, but other threads are unaffected. Matches
+    ``cudaStreamCaptureModeThreadLocal``. This is the default Warp uses."""
+
+    RELAXED = 2
+    """Capture-unsafe runtime APIs are tolerated and do not invalidate the
+    capture. Matches ``cudaStreamCaptureModeRelaxed``. Useful when composing
+    with libraries that still perform lazy / capture-unsafe CUDA runtime
+    calls (e.g. ``cudaFree(0)`` during lazy context / allocator init) during
+    the capture."""
+
+
 # represents either a built-in or user-defined function
 
 
@@ -5451,7 +5481,12 @@ class Runtime:
             self.core.wp_cuda_event_elapsed_time.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_event_elapsed_time.restype = ctypes.c_float
 
-            self.core.wp_cuda_graph_begin_capture.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_cuda_graph_begin_capture.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
             self.core.wp_cuda_graph_begin_capture.restype = ctypes.c_bool
             self.core.wp_cuda_graph_end_capture.argtypes = [
                 ctypes.c_void_p,
@@ -9282,6 +9317,7 @@ def capture_begin(
     force_module_load: bool | None = None,
     external: bool = False,
     apic: bool = False,
+    capture_mode: CaptureMode = CaptureMode.THREAD_LOCAL,
 ):
     """Begin capture of a graph.
 
@@ -9305,11 +9341,18 @@ def capture_begin(
           ``None``, then the behavior inherits from ``wp.config.enable_graph_capture_module_load_by_default`` if the
           driver is older than CUDA 12.3.
         external: Whether the capture was already started externally (CUDA only).
+          The ``capture_mode`` argument should specify the mode that was used to
+          initiate the external capture.
         apic: Whether to allow :func:`capture_save` on the captured graph. On
           CUDA this also enables APIC byte-stream recording during the capture;
           on CPU, recording happens regardless because it is the only
           replay mechanism.
-
+        capture_mode: The :class:`~warp.CaptureMode` (i.e.
+          ``cudaStreamCaptureMode``) used when Warp opens the capture.
+          Defaults to :attr:`CaptureMode.THREAD_LOCAL`. Use
+          :attr:`CaptureMode.RELAXED` when composing with libraries that
+          may call capture-unsafe CUDA runtime APIs during the capture
+          (e.g. lazy context initialization). Ignored on CPU devices.
     """
     from warp._src.apic.capture import APICapture  # noqa: PLC0415
 
@@ -9379,7 +9422,9 @@ def capture_begin(
             if force_module_load:
                 force_load(device)
 
-        if not runtime.core.wp_cuda_graph_begin_capture(device.context, stream.cuda_stream, int(external)):
+        if not runtime.core.wp_cuda_graph_begin_capture(
+            device.context, stream.cuda_stream, int(external), int(CaptureMode(capture_mode))
+        ):
             raise RuntimeError(runtime.get_error_string())
     except Exception:
         if apic_capture is not None:

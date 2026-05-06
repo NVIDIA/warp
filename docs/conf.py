@@ -151,7 +151,7 @@ templates_path = ["_templates"]
 
 html_theme = "nvidia_sphinx_theme"
 html_theme_options = {
-    "announcement": "Warp v1.12.1 is now available. See the <a href='https://github.com/NVIDIA/warp/releases/tag/v1.12.1'>release notes</a>.",
+    "announcement": "Warp v1.13.0 is now available. See the <a href='https://github.com/NVIDIA/warp/releases/tag/v1.13.0'>release notes</a>.",
     "secondary_sidebar_items": ["page-toc", "edit-this-page"],
     "article_header_end": ["view-page-source.html"],
     "use_edit_page_button": True,
@@ -231,6 +231,12 @@ autosummary_filename_map = {
     "warp.launch": "warp.launch_function",
     "warp.fem.cells": "warp.fem.cells_function",
     "warp.fem.integrand": "warp.fem.integrand_decorator",
+    # Linear solver functions share names with their functor classes (cg vs CG, etc.);
+    # suffix the function stubs so they don't collide on case-insensitive filesystems.
+    "warp.optim.linear.cg": "warp.optim.linear.cg_function",
+    "warp.optim.linear.cr": "warp.optim.linear.cr_function",
+    "warp.optim.linear.bicgstab": "warp.optim.linear.bicgstab_function",
+    "warp.optim.linear.gmres": "warp.optim.linear.gmres_function",
 }
 
 # Map internal builtin function paths to public names for output filenames.
@@ -341,9 +347,7 @@ intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "python": ("https://docs.python.org/3", None),
-    # Pinned to 2.10 because the `stable` intersphinx inventory is broken upstream.
-    # See https://github.com/pytorch/pytorch/issues/182007 — revert once fixed.
-    "pytorch": ("https://docs.pytorch.org/docs/2.10", None),
+    "pytorch": ("https://pytorch.org/docs/stable", None),
 }
 
 

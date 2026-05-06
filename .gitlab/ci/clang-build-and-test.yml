@@ -55,6 +55,9 @@ stages:
 
 linux-x86_64 build:
   image: ${CI_REGISTRY_IMAGE}/cuda:12.8.1-devel-ubuntu24.04
+  timeout: 24h
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .build_linux_base
     - .ipp_lnx_x86_64_cpu_medium
@@ -71,6 +74,9 @@ linux-x86_64 build:
 
 linux-x86_64 build cuda 13:
   image: ${CI_REGISTRY_IMAGE}/cuda:13.0.1-devel-ubuntu24.04
+  timeout: 24h
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .build_linux_base
     - .ipp_lnx_x86_64_cpu_medium
@@ -88,6 +94,9 @@ linux-x86_64 test:
   stage: test
   image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
+  timeout: 24h
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact

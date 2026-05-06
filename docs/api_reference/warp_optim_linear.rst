@@ -13,7 +13,12 @@ API
    :nosignatures:
    :toctree: _generated
 
+   BiCGSTAB
+   CG
+   CR
+   GMRES
    LinearOperator
+   LinearSolverState
    aslinearoperator
    bicgstab
    cg

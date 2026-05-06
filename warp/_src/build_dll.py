@@ -624,6 +624,16 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         if args.fast_math:
             cpp_flags += ' /fp:fast /D "WP_FAST_MATH"'
 
+        if args.sanitize:
+            cpp_flags += f" /fsanitize={args.sanitize}"
+            # MSVC ASan-instrumented STL headers emit annotate_string/annotate_vector
+            # symbols; the uninstrumented .cu objects emit the same symbols with the
+            # opposite value and link.exe rejects the mix (LNK2038). Disabling the
+            # container annotations realigns both sides at the cost of std::string /
+            # std::vector unused-capacity overflow detection only.
+            if args.sanitize == "address":
+                cpp_flags += " /D_DISABLE_STRING_ANNOTATION=1 /D_DISABLE_VECTOR_ANNOTATION=1"
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
             futures, wall_clock = [], time.perf_counter_ns()
 
@@ -701,8 +711,8 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
     else:
         # Unix compilation
-        cuda_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else "nvcc"
-        cpp_compiler = "clang++" if getattr(args, "clang_build_toolchain", False) else args.host_compiler
+        cuda_compiler = "clang++" if args.clang_build_toolchain else "nvcc"
+        cpp_compiler = "clang++" if args.clang_build_toolchain else args.host_compiler
 
         # Build include paths for LLVM and CUDA
         llvm_include_paths = get_llvm_include_paths(args, warp_home_path, mode, arch)
@@ -735,6 +745,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
         if args.fast_math:
             cpp_flags += " -ffast-math -DWP_FAST_MATH"
 
+        if args.sanitize:
+            cpp_flags += f" -fsanitize={args.sanitize}"
+
         ld_inputs = []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
@@ -745,9 +758,15 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 cpp_out = cpp_path + _obj_tag + ".o"
                 ld_inputs.append(quote(cpp_out))
                 extra_flags = ""
+                file_cpp_flags = cpp_flags
                 if "fastcall.cpp" in cpp_path:
                     extra_flags = f' -I"{python_include_dir}" -DPy_LIMITED_API=0x030a0000'  # Python 3.10
-                cpp_cmd = f'{cpp_compiler} {cpp_flags}{extra_flags} -c "{cpp_path}" -o "{cpp_out}"'
+                    # -fkeep-inline-functions emits unused inline bodies from <Python.h> that
+                    # reference Python data symbols (PyType_Type, PyBool_Type, PyExc_*, ...);
+                    # those eager imports would prevent warp.so from loading in non-Python hosts.
+                    # The postlink check below (search "eagerly-resolved Py") enforces this.
+                    file_cpp_flags = cpp_flags.replace(" -fkeep-inline-functions", "")
+                cpp_cmd = f'{cpp_compiler} {file_cpp_flags}{extra_flags} -c "{cpp_path}" -o "{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
             if args.jobs <= 1:
@@ -822,9 +841,11 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             opt_exclude_libs = "-Wl,--exclude-libs,ALL"
             opt_static_runtime = f"-static-libstdc++ -static-libgcc -Wl,--version-script={native_dir}/warp.map"
 
+        sanitize_ld = f" -fsanitize={args.sanitize}" if args.sanitize else ""
+
         with ScopedTimer("link", active=args.verbose):
             origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exclude_libs} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exclude_libs}{sanitize_ld} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
             # Verify that only Python C API symbols are truly undefined.

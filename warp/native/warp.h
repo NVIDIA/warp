@@ -12,6 +12,12 @@
 
 #define WP_CURRENT_STREAM ((void*)0xffffffffffffffff)
 
+// Capture modes accepted by wp_cuda_graph_begin_capture. Values match
+// cudaStreamCaptureMode so the int can be passed straight through.
+#define WP_CUDA_GRAPH_CAPTURE_MODE_GLOBAL       0
+#define WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL 1
+#define WP_CUDA_GRAPH_CAPTURE_MODE_RELAXED      2
+
 struct timing_result_t;
 
 // this is the core runtime API exposed on the DLL level
@@ -475,7 +481,7 @@ WP_API void wp_cuda_event_record(void* event, void* stream, bool external = fals
 WP_API void wp_cuda_event_synchronize(void* event);
 WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event);
 
-WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external);
+WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode);
 WP_API bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret);
 WP_API bool wp_cuda_graph_create_exec(void* context, void* stream, void* graph, void** graph_exec_ret);
 WP_API bool wp_cuda_graph_launch(void* graph, void* stream);

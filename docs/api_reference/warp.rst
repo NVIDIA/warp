@@ -387,7 +387,6 @@ CUDA Memory Management
    :toctree: _generated
 
    Allocator
-   RmmAllocator
    ScopedAllocator
    ScopedMempool
    ScopedMempoolAccess
@@ -416,6 +415,7 @@ Graph Management
    :nosignatures:
    :toctree: _generated
 
+   CaptureMode
    Graph
    ScopedCapture
    capture_begin

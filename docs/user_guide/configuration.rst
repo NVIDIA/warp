@@ -159,7 +159,7 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
 
 
     @wp.kernel(module_options={"fast_math": True}, module="unique")
-    def fast_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+    def fast_kernel(a: wp.array[float], b: wp.array[float]):
         # fast_math is applied to this kernel's unique module
         tid = wp.tid()
         b[tid] = a[tid] + 1.0
