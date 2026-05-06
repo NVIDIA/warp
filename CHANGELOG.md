@@ -30,6 +30,8 @@
   ([GH-1380](https://github.com/NVIDIA/warp/issues/1380)).
 
 ### Fixed
+- Fix Raise a `WarpCodegenTypeError` when a kernel specifies a non-`None` return type annotation but contains only a bare return.
+  ([GH-1411](https://github.com/NVIDIA/warp/pull/1411)).
 
 ### Documentation
 
