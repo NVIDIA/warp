@@ -508,6 +508,11 @@ with per-batch convergence checks (<a class="reference external" href="https://g
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">--sanitize=&lt;name&gt;</span></code> build option to <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>, enabling AddressSanitizer builds of
 <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code> on Windows, Linux, and macOS
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
+<li><p>Add analytic backward passes for <code class="docutils literal notranslate"><span class="pre">wp.curlnoise()</span></code> (2D, 3D, 4D). Previously
+the adjoints were stubbed as no-ops and <code class="docutils literal notranslate"><span class="pre">is_differentiable=False</span></code>, so
+gradients silently dropped through curl-noise force fields in
+differentiable simulations
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1012">GH-1012</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -524,10 +529,23 @@ requires <code class="docutils literal notranslate"><span class="pre">libpython3
 actionable error when missing (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>
 <li><p>Allow <code class="docutils literal notranslate"><span class="pre">launch_dims</span></code> to be specified when <code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code> in <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental.jax_kernel()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1380">GH-1380</a>).</p></li>
+<li><p>Build the native library with <code class="docutils literal notranslate"><span class="pre">-Og</span> <span class="pre">-g</span></code> instead of <code class="docutils literal notranslate"><span class="pre">-O0</span> <span class="pre">-g</span> <span class="pre">-fkeep-inline-functions</span></code> on Linux/macOS debug builds.
+This enables debug-friendly optimizations, restores <code class="docutils literal notranslate"><span class="pre">-Wuninitialized</span></code> dataflow analysis, and avoids leaking
+unused inline function bodies from <code class="docutils literal notranslate"><span class="pre">&lt;Python.h&gt;</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1414">GH-1414</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Suppress the <code class="docutils literal notranslate"><span class="pre">+avx10.1-256</span></code> “invalid feature combination” warning emitted on every CPU kernel
+compile on Intel Granite Rapids hosts (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1426">GH-1426</a>).</p></li>
+<li><p>Reject <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> <code class="docutils literal notranslate"><span class="pre">out</span></code> tiles in <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code>. The underlying libmathdx
+GEMM backend requires <code class="docutils literal notranslate"><span class="pre">out</span></code> to be <code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or <code class="docutils literal notranslate"><span class="pre">float64</span></code>. When the
+backward pass is enabled, <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> tiles are also rejected (the
+backward pass uses them as accumulators for <code class="docutils literal notranslate"><span class="pre">adjA</span></code> and <code class="docutils literal notranslate"><span class="pre">adjB</span></code>). Set
+<code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> on the kernel’s module if gradients are not needed
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1427">GH-1427</a>).</p></li>
+</ul>
 </section>
 <section id="documentation">
 <h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h3>

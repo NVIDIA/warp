@@ -8,6 +8,7 @@
 
       * Kernel
       * Python
+      * Differentiable
 
    Divergence-free vector field based on Perlin noise.
    
@@ -21,6 +22,7 @@
 
       * Kernel
       * Python
+      * Differentiable
 
    Divergence-free vector field based on Perlin noise.
    
@@ -34,6 +36,7 @@
 
       * Kernel
       * Python
+      * Differentiable
 
    Divergence-free vector field based on Perlin noise.
    
