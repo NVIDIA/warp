@@ -1,0 +1,6 @@
+﻿warp.print\_memory\_report
+==========================
+
+.. currentmodule:: warp
+
+.. autofunction:: print_memory_report

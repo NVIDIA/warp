@@ -1,0 +1,45 @@
+﻿warp.fem.space.shape.TrianglePolynomialShapeFunctions
+=====================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TrianglePolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TrianglePolynomialShapeFunctions.__init__
+      ~TrianglePolynomialShapeFunctions.element_node_triangulation
+      ~TrianglePolynomialShapeFunctions.element_vtk_cells
+      ~TrianglePolynomialShapeFunctions.make_element_inner_weight
+      ~TrianglePolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~TrianglePolynomialShapeFunctions.make_node_coords_in_element
+      ~TrianglePolynomialShapeFunctions.make_node_quadrature_weight
+      ~TrianglePolynomialShapeFunctions.make_trace_node_quadrature_weight
+      ~TrianglePolynomialShapeFunctions.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TrianglePolynomialShapeFunctions.EDGE
+      ~TrianglePolynomialShapeFunctions.INTERIOR
+      ~TrianglePolynomialShapeFunctions.VERTEX
+      ~TrianglePolynomialShapeFunctions.name
+      ~TrianglePolynomialShapeFunctions.value
+      ~TrianglePolynomialShapeFunctions.VERTEX_NODE_COUNT
+      ~TrianglePolynomialShapeFunctions.EDGE_NODE_COUNT
+      ~TrianglePolynomialShapeFunctions.INTERIOR_NODE_COUNT
+      ~TrianglePolynomialShapeFunctions.ORDER
+      ~TrianglePolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

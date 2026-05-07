@@ -1,0 +1,46 @@
+﻿warp.fem.LinearGeometryPartition
+================================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: LinearGeometryPartition
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LinearGeometryPartition.__init__
+      ~LinearGeometryPartition.boundary_side_count
+      ~LinearGeometryPartition.cell_arg_value
+      ~LinearGeometryPartition.cell_count
+      ~LinearGeometryPartition.compute_side_indices_from_cells
+      ~LinearGeometryPartition.fill_cell_arg
+      ~LinearGeometryPartition.fill_side_arg
+      ~LinearGeometryPartition.frontier_side_count
+      ~LinearGeometryPartition.side_arg_value
+      ~LinearGeometryPartition.side_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LinearGeometryPartition.CellArg
+      ~LinearGeometryPartition.SideArg
+      ~LinearGeometryPartition.boundary_side_index
+      ~LinearGeometryPartition.cell_index
+      ~LinearGeometryPartition.frontier_side_index
+      ~LinearGeometryPartition.name
+      ~LinearGeometryPartition.partition_cell_index
+      ~LinearGeometryPartition.side_index
+      ~LinearGeometryPartition.side_to_cell_arg
+      ~LinearGeometryPartition.geometry
+   
+   

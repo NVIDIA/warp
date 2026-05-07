@@ -1,0 +1,54 @@
+﻿warp.fem.FunctionSpace
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: FunctionSpace
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FunctionSpace.__init__
+      ~FunctionSpace.divergence_valid
+      ~FunctionSpace.dof_value
+      ~FunctionSpace.gradient_valid
+      ~FunctionSpace.local_value_map_inner
+      ~FunctionSpace.local_value_map_outer
+      ~FunctionSpace.make_field
+      ~FunctionSpace.node_basis_element
+      ~FunctionSpace.node_count
+      ~FunctionSpace.space_divergence
+      ~FunctionSpace.space_gradient
+      ~FunctionSpace.space_value
+      ~FunctionSpace.trace
+      ~FunctionSpace.value_basis_element
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~FunctionSpace.basis
+      ~FunctionSpace.degree
+      ~FunctionSpace.dimension
+      ~FunctionSpace.element_kind
+      ~FunctionSpace.geometry
+      ~FunctionSpace.name
+      ~FunctionSpace.topology
+      ~FunctionSpace.dtype
+      ~FunctionSpace.dof_dtype
+      ~FunctionSpace.weight_dtype
+      ~FunctionSpace.LocalValueMap
+      ~FunctionSpace.VALUE_DOF_COUNT
+      ~FunctionSpace.NODE_DOF_COUNT
+      ~FunctionSpace.ORDER
+   
+   

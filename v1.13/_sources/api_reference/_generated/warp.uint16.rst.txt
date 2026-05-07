@@ -1,0 +1,22 @@
+﻿warp.uint16
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: uint16
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~uint16.__init__
+   
+   
+
+   
+   
+   

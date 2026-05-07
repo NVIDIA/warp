@@ -1,9 +1,14 @@
 [
   {
+    "version": "1.13",
+    "url": "https://nvidia.github.io/warp/v1.13/",
+    "name": "1.13 (stable)",
+    "preferred": true
+  },
+  {
     "version": "1.12",
     "url": "https://nvidia.github.io/warp/v1.12/",
-    "name": "1.12 (stable)",
-    "preferred": true
+    "name": "1.12"
   },
   {
     "version": "1.11",
