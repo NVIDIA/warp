@@ -1,0 +1,12 @@
+﻿warp.sin
+========
+
+.. function:: warp._src.lang.sin(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the sine of ``x`` in radians.

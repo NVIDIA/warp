@@ -1,0 +1,50 @@
+﻿warp.Texture1D
+==============
+
+.. currentmodule:: warp
+
+.. autoclass:: Texture1D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Texture1D.__init__
+      ~Texture1D.copy_from_array
+      ~Texture1D.copy_to_array
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Texture1D.ADDRESS_BORDER
+      ~Texture1D.ADDRESS_CLAMP
+      ~Texture1D.ADDRESS_MIRROR
+      ~Texture1D.ADDRESS_WRAP
+      ~Texture1D.FILTER_LINEAR
+      ~Texture1D.FILTER_POINT
+      ~Texture1D.address_mode_u
+      ~Texture1D.address_mode_v
+      ~Texture1D.address_mode_w
+      ~Texture1D.cuda_array
+      ~Texture1D.cuda_surface
+      ~Texture1D.cuda_texture
+      ~Texture1D.depth
+      ~Texture1D.dtype
+      ~Texture1D.height
+      ~Texture1D.id
+      ~Texture1D.ndim
+      ~Texture1D.normalized_coords
+      ~Texture1D.num_channels
+      ~Texture1D.vars
+      ~Texture1D.width
+   
+   

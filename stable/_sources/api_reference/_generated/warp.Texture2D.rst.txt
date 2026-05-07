@@ -1,0 +1,50 @@
+﻿warp.Texture2D
+==============
+
+.. currentmodule:: warp
+
+.. autoclass:: Texture2D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Texture2D.__init__
+      ~Texture2D.copy_from_array
+      ~Texture2D.copy_to_array
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Texture2D.ADDRESS_BORDER
+      ~Texture2D.ADDRESS_CLAMP
+      ~Texture2D.ADDRESS_MIRROR
+      ~Texture2D.ADDRESS_WRAP
+      ~Texture2D.FILTER_LINEAR
+      ~Texture2D.FILTER_POINT
+      ~Texture2D.address_mode_u
+      ~Texture2D.address_mode_v
+      ~Texture2D.address_mode_w
+      ~Texture2D.cuda_array
+      ~Texture2D.cuda_surface
+      ~Texture2D.cuda_texture
+      ~Texture2D.depth
+      ~Texture2D.dtype
+      ~Texture2D.height
+      ~Texture2D.id
+      ~Texture2D.ndim
+      ~Texture2D.normalized_coords
+      ~Texture2D.num_channels
+      ~Texture2D.vars
+      ~Texture2D.width
+   
+   

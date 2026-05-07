@@ -1,0 +1,22 @@
+﻿warp.ScopedStream
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedStream
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedStream.__init__
+   
+   
+
+   
+   
+   

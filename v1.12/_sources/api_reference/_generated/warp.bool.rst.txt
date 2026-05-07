@@ -1,0 +1,22 @@
+﻿warp.bool
+=========
+
+.. currentmodule:: warp
+
+.. autoclass:: bool
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~bool.__init__
+   
+   
+
+   
+   
+   

@@ -1,0 +1,6 @@
+﻿warp.E
+======
+
+.. currentmodule:: warp
+
+.. autodata:: E

@@ -1,0 +1,47 @@
+﻿warp.Texture
+============
+
+.. currentmodule:: warp
+
+.. autoclass:: Texture
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Texture.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Texture.ADDRESS_BORDER
+      ~Texture.ADDRESS_CLAMP
+      ~Texture.ADDRESS_MIRROR
+      ~Texture.ADDRESS_WRAP
+      ~Texture.FILTER_LINEAR
+      ~Texture.FILTER_POINT
+      ~Texture.address_mode_u
+      ~Texture.address_mode_v
+      ~Texture.address_mode_w
+      ~Texture.cuda_array
+      ~Texture.cuda_surface
+      ~Texture.cuda_texture
+      ~Texture.depth
+      ~Texture.dtype
+      ~Texture.height
+      ~Texture.id
+      ~Texture.ndim
+      ~Texture.normalized_coords
+      ~Texture.num_channels
+      ~Texture.width
+   
+   

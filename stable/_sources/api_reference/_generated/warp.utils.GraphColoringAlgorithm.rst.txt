@@ -1,0 +1,40 @@
+﻿warp.utils.GraphColoringAlgorithm
+=================================
+
+.. currentmodule:: warp.utils
+
+.. autoclass:: GraphColoringAlgorithm
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GraphColoringAlgorithm.conjugate
+      ~GraphColoringAlgorithm.bit_length
+      ~GraphColoringAlgorithm.bit_count
+      ~GraphColoringAlgorithm.to_bytes
+      ~GraphColoringAlgorithm.from_bytes
+      ~GraphColoringAlgorithm.as_integer_ratio
+      ~GraphColoringAlgorithm.is_integer
+      ~GraphColoringAlgorithm.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GraphColoringAlgorithm.real
+      ~GraphColoringAlgorithm.imag
+      ~GraphColoringAlgorithm.numerator
+      ~GraphColoringAlgorithm.denominator
+      ~GraphColoringAlgorithm.MCS
+      ~GraphColoringAlgorithm.GREEDY
+   
+   

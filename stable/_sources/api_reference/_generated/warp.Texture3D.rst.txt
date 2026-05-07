@@ -1,0 +1,50 @@
+﻿warp.Texture3D
+==============
+
+.. currentmodule:: warp
+
+.. autoclass:: Texture3D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Texture3D.__init__
+      ~Texture3D.copy_from_array
+      ~Texture3D.copy_to_array
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Texture3D.ADDRESS_BORDER
+      ~Texture3D.ADDRESS_CLAMP
+      ~Texture3D.ADDRESS_MIRROR
+      ~Texture3D.ADDRESS_WRAP
+      ~Texture3D.FILTER_LINEAR
+      ~Texture3D.FILTER_POINT
+      ~Texture3D.address_mode_u
+      ~Texture3D.address_mode_v
+      ~Texture3D.address_mode_w
+      ~Texture3D.cuda_array
+      ~Texture3D.cuda_surface
+      ~Texture3D.cuda_texture
+      ~Texture3D.depth
+      ~Texture3D.dtype
+      ~Texture3D.height
+      ~Texture3D.id
+      ~Texture3D.ndim
+      ~Texture3D.normalized_coords
+      ~Texture3D.num_channels
+      ~Texture3D.vars
+      ~Texture3D.width
+   
+   

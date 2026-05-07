@@ -1,0 +1,71 @@
+﻿warp.fem.geometry.DeformedGeometry
+==================================
+
+.. currentmodule:: warp.fem.geometry
+
+.. autoclass:: DeformedGeometry
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DeformedGeometry.__init__
+      ~DeformedGeometry.boundary_side_count
+      ~DeformedGeometry.boundary_side_index
+      ~DeformedGeometry.build_bvh
+      ~DeformedGeometry.bvh_id
+      ~DeformedGeometry.cell_arg_value
+      ~DeformedGeometry.cell_count
+      ~DeformedGeometry.cell_deformation_gradient
+      ~DeformedGeometry.cell_inverse_deformation_gradient
+      ~DeformedGeometry.cell_measure
+      ~DeformedGeometry.cell_normal
+      ~DeformedGeometry.cell_position
+      ~DeformedGeometry.fill_cell_arg
+      ~DeformedGeometry.fill_side_arg
+      ~DeformedGeometry.fill_side_index_arg
+      ~DeformedGeometry.make_filtered_cell_lookup
+      ~DeformedGeometry.reference_cell
+      ~DeformedGeometry.reference_side
+      ~DeformedGeometry.side_arg_value
+      ~DeformedGeometry.side_count
+      ~DeformedGeometry.side_deformation_gradient
+      ~DeformedGeometry.side_from_cell_coords
+      ~DeformedGeometry.side_index_arg_value
+      ~DeformedGeometry.side_inner_cell_coords
+      ~DeformedGeometry.side_inner_cell_index
+      ~DeformedGeometry.side_inner_inverse_deformation_gradient
+      ~DeformedGeometry.side_measure
+      ~DeformedGeometry.side_measure_ratio
+      ~DeformedGeometry.side_normal
+      ~DeformedGeometry.side_outer_cell_coords
+      ~DeformedGeometry.side_outer_cell_index
+      ~DeformedGeometry.side_outer_inverse_deformation_gradient
+      ~DeformedGeometry.side_position
+      ~DeformedGeometry.side_to_cell_arg
+      ~DeformedGeometry.supports_cell_lookup
+      ~DeformedGeometry.update_bvh
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DeformedGeometry.base
+      ~DeformedGeometry.cell_dimension
+      ~DeformedGeometry.cell_lookup
+      ~DeformedGeometry.cell_measure_ratio
+      ~DeformedGeometry.dimension
+      ~DeformedGeometry.name
+      ~DeformedGeometry.CellArg
+      ~DeformedGeometry.SideArg
+      ~DeformedGeometry.SideIndexArg
+   
+   
