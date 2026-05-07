@@ -488,6 +488,8 @@ def main(argv: list[str] | None = None) -> int:
         # build warp.dll
         cpp_sources = [
             "native/warp.cpp",
+            "native/bvh.cpp",
+            "native/scan.cpp",
             "native/apic.cpp",
             "native/alloc_tracker.cpp",
             "native/crt.cpp",

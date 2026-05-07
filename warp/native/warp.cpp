@@ -945,12 +945,6 @@ WP_API void wp_array_fill_host(void* arr_ptr, int arr_type, const void* value_pt
 }
 
 
-// impl. files
-// TODO: compile as separate translation units
-#include "bvh.cpp"
-#include "scan.cpp"
-
-
 // stubs for platforms where there is no CUDA
 #if !WP_ENABLE_CUDA
 
