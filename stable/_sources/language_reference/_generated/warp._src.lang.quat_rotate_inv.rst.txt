@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_rotate\_inv
+=================================
+
+.. function:: warp._src.lang.quat_rotate_inv(quat: Quaternion[Float], vec: Vector[Literal[3],Float]) -> Vector[Literal[3],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Rotate a vector by the inverse of a quaternion.

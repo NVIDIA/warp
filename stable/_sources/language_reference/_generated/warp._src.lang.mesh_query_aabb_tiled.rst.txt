@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.mesh\_query\_aabb\_tiled
+========================================
+
+.. function:: warp._src.lang.mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
+   
+   This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+   
+   :param id: The mesh identifier
+   :param low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
+   :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)
+   

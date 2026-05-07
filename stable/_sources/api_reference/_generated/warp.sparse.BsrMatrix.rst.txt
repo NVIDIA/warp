@@ -1,0 +1,40 @@
+﻿warp.sparse.BsrMatrix
+=====================
+
+.. currentmodule:: warp.sparse
+
+.. autoclass:: BsrMatrix
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BsrMatrix.__init__
+      ~BsrMatrix.copy_nnz_async
+      ~BsrMatrix.nnz_sync
+      ~BsrMatrix.notify_nnz_changed
+      ~BsrMatrix.transpose
+      ~BsrMatrix.uncompress_rows
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BsrMatrix.block_shape
+      ~BsrMatrix.block_size
+      ~BsrMatrix.device
+      ~BsrMatrix.dtype
+      ~BsrMatrix.requires_grad
+      ~BsrMatrix.scalar_type
+      ~BsrMatrix.scalar_values
+      ~BsrMatrix.shape
+   
+   

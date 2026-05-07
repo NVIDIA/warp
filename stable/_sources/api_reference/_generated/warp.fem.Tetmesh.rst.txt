@@ -1,0 +1,81 @@
+﻿warp.fem.Tetmesh
+================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Tetmesh
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Tetmesh.__init__
+      ~Tetmesh.boundary_side_count
+      ~Tetmesh.build_bvh
+      ~Tetmesh.bvh_id
+      ~Tetmesh.cell_arg_value
+      ~Tetmesh.cell_count
+      ~Tetmesh.cell_measure
+      ~Tetmesh.cell_normal
+      ~Tetmesh.edge_count
+      ~Tetmesh.fill_cell_arg
+      ~Tetmesh.fill_side_arg
+      ~Tetmesh.fill_side_index_arg
+      ~Tetmesh.make_filtered_cell_lookup
+      ~Tetmesh.reference_cell
+      ~Tetmesh.reference_side
+      ~Tetmesh.side_arg_value
+      ~Tetmesh.side_count
+      ~Tetmesh.side_index_arg_value
+      ~Tetmesh.side_inner_inverse_deformation_gradient
+      ~Tetmesh.side_measure
+      ~Tetmesh.side_measure_ratio
+      ~Tetmesh.side_normal
+      ~Tetmesh.side_outer_inverse_deformation_gradient
+      ~Tetmesh.supports_cell_lookup
+      ~Tetmesh.update_bvh
+      ~Tetmesh.vertex_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Tetmesh.CellArg
+      ~Tetmesh.SideArg
+      ~Tetmesh.SideIndexArg
+      ~Tetmesh.base
+      ~Tetmesh.boundary_side_index
+      ~Tetmesh.cell_bounds
+      ~Tetmesh.cell_bvh_id
+      ~Tetmesh.cell_closest_point
+      ~Tetmesh.cell_deformation_gradient
+      ~Tetmesh.cell_dimension
+      ~Tetmesh.cell_inverse_deformation_gradient
+      ~Tetmesh.cell_lookup
+      ~Tetmesh.cell_measure_ratio
+      ~Tetmesh.cell_position
+      ~Tetmesh.dimension
+      ~Tetmesh.face_tet_indices
+      ~Tetmesh.face_to_tet_coords
+      ~Tetmesh.face_vertex_indices
+      ~Tetmesh.name
+      ~Tetmesh.side_closest_point
+      ~Tetmesh.side_deformation_gradient
+      ~Tetmesh.side_from_cell_coords
+      ~Tetmesh.side_inner_cell_coords
+      ~Tetmesh.side_inner_cell_index
+      ~Tetmesh.side_outer_cell_coords
+      ~Tetmesh.side_outer_cell_index
+      ~Tetmesh.side_position
+      ~Tetmesh.side_to_cell_arg
+      ~Tetmesh.tet_edge_indices
+   
+   

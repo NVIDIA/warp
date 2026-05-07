@@ -1,0 +1,20 @@
+﻿warp.\_src.lang.tile\_transpose
+===============================
+
+.. function:: warp._src.lang.tile_transpose(a: Tile[Any,tuple[int, int]]) -> Tile[Any,tuple[int, int]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Transpose a tile.
+   
+   For shared memory tiles, this operation will alias the input tile.
+   Register tiles will first be transferred to shared memory before transposition.
+   
+   :param a: Tile to transpose with ``shape=(M,N)``
+   
+   :returns: Tile with ``shape=(N,M)``.
+   

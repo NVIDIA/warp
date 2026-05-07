@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_slerp
+===========================
+
+.. function:: warp._src.lang.quat_slerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Linearly interpolate between two quaternions.

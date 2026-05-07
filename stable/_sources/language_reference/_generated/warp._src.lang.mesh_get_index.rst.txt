@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.mesh\_get\_index
+================================
+
+.. function:: warp._src.lang.mesh_get_index(id: uint64, index: int32) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the point-index of the mesh given a face-vertex index.

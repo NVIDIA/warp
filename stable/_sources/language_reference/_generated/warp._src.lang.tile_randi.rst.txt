@@ -1,0 +1,115 @@
+﻿warp.\_src.lang.tile\_randi
+===========================
+
+.. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, storage: str) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Generate a tile of random integers.
+   
+   :param shape: Shape of the output tile
+   :param rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   (default) or ``"shared"`` for shared memory.
+   
+   :returns: A tile of random integers with the specified shape.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       TILE_M, TILE_N = 2, 2
+       M, N = 2, 2
+       seed = 42
+   
+       @wp.kernel
+       def rand_kernel(seed: int, x: wp.array2d(dtype=int)):
+           i, j = wp.tid()
+           rng = wp.rand_init(seed, i * TILE_M + j)
+           t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng)
+           wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+   
+       x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+       wp.launch_tiled(rand_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+       print(x.numpy())
+   
+   .. testoutput::
+   
+       [[  798497746  1803297529  -955788638    17806966]
+        [ 1788185933  1320194893  2073257406 -2009156320]
+        [ -257534450 -1138585923  1145322783  -321794125]
+        [-2096177388 -1835610841  1159339128  -652221052]]
+   
+
+.. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, storage: str) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Generate a tile of random integers.
+
+.. function:: warp._src.lang.tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Generate a tile of random integers.
+   
+   Sample values in the range [min, max).
+   
+   :param shape: Shape of the output tile
+   :param rng: Random number generator state, typically from :func:`~warp._src.lang.rand_init`
+   :param min: Minimum value (inclusive) for random integers
+   :param max: Maximum value (exclusive) for random integers
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   (default) or ``"shared"`` for shared memory.
+   
+   :returns: A tile of random integers in the range [min, max) with the specified shape.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       TILE_M, TILE_N = 2, 2
+       M, N = 2, 2
+       seed = 42
+   
+       @wp.kernel
+       def rand_range_kernel(seed: int, x: wp.array2d(dtype=int)):
+           i, j = wp.tid()
+           rng = wp.rand_init(seed, i * TILE_M + j)
+           t = wp.tile_randi(shape=(TILE_M, TILE_N), rng=rng, min=-5, max=5)
+           wp.tile_store(x, t, offset=(i * TILE_M, j * TILE_N))
+   
+       x = wp.zeros(shape=(M * TILE_M, N * TILE_N), dtype=int)
+       wp.launch_tiled(rand_range_kernel, dim=[M, N], inputs=[seed, x], block_dim=32)
+       print(x.numpy())
+   
+   .. testoutput::
+   
+       [[ 1  4  3  1]
+        [-2 -2  1  1]
+        [ 1 -2 -2 -4]
+        [ 3  0  3 -1]]
+   
+
+.. function:: warp._src.lang.tile_randi(shape: int32, rng: uint32, min: int32, max: int32, storage: str) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Generate a tile of random integers.
+   
+   Sample values in the range [min, max).

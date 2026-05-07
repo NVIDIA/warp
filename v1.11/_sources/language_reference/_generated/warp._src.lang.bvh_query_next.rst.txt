@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.bvh\_query\_next
+================================
+
+.. function:: warp._src.lang.bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Move to the next bound returned by the query.
+   
+   The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bounds.
+   The maximum distance along a ray query to check for intersections can be set using ``max_dist``. It is not effective
+   for aabb query.
+   
+   Note that increasing ``max_dist`` may result in missing intersections. Since previously rejected subtrees will never be
+   revisited even if it intersects with the new, longer ray. In other words, it's only safe to monotonically
+   reduce ``max_dist`` during a query.
+   
+   :param query: The query to move to the next bound
+   :param index: The index of the current bound
+   :param max_dist: The maximum distance along the ray to check for intersections for ray queries. Not effective for aabb query.
+   

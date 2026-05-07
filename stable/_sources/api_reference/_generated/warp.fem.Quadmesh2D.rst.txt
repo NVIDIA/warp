@@ -1,0 +1,79 @@
+﻿warp.fem.Quadmesh2D
+===================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Quadmesh2D
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Quadmesh2D.__init__
+      ~Quadmesh2D.boundary_side_count
+      ~Quadmesh2D.build_bvh
+      ~Quadmesh2D.bvh_id
+      ~Quadmesh2D.cell_arg_value
+      ~Quadmesh2D.cell_count
+      ~Quadmesh2D.cell_inverse_deformation_gradient
+      ~Quadmesh2D.cell_measure
+      ~Quadmesh2D.cell_normal
+      ~Quadmesh2D.fill_cell_arg
+      ~Quadmesh2D.fill_cell_topo_arg
+      ~Quadmesh2D.fill_side_arg
+      ~Quadmesh2D.fill_side_index_arg
+      ~Quadmesh2D.fill_side_topo_arg
+      ~Quadmesh2D.make_filtered_cell_lookup
+      ~Quadmesh2D.reference_cell
+      ~Quadmesh2D.reference_side
+      ~Quadmesh2D.side_arg_value
+      ~Quadmesh2D.side_count
+      ~Quadmesh2D.side_index_arg_value
+      ~Quadmesh2D.side_inner_inverse_deformation_gradient
+      ~Quadmesh2D.side_measure
+      ~Quadmesh2D.side_measure_ratio
+      ~Quadmesh2D.side_normal
+      ~Quadmesh2D.side_outer_inverse_deformation_gradient
+      ~Quadmesh2D.supports_cell_lookup
+      ~Quadmesh2D.update_bvh
+      ~Quadmesh2D.vertex_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Quadmesh2D.CellArg
+      ~Quadmesh2D.SideArg
+      ~Quadmesh2D.SideIndexArg
+      ~Quadmesh2D.base
+      ~Quadmesh2D.boundary_side_index
+      ~Quadmesh2D.cell_bounds
+      ~Quadmesh2D.cell_bvh_id
+      ~Quadmesh2D.cell_deformation_gradient
+      ~Quadmesh2D.cell_dimension
+      ~Quadmesh2D.cell_lookup
+      ~Quadmesh2D.cell_measure_ratio
+      ~Quadmesh2D.cell_position
+      ~Quadmesh2D.dimension
+      ~Quadmesh2D.edge_quad_indices
+      ~Quadmesh2D.edge_vertex_indices
+      ~Quadmesh2D.name
+      ~Quadmesh2D.side_closest_point
+      ~Quadmesh2D.side_deformation_gradient
+      ~Quadmesh2D.side_from_cell_coords
+      ~Quadmesh2D.side_inner_cell_coords
+      ~Quadmesh2D.side_inner_cell_index
+      ~Quadmesh2D.side_outer_cell_coords
+      ~Quadmesh2D.side_outer_cell_index
+      ~Quadmesh2D.side_position
+      ~Quadmesh2D.side_to_cell_arg
+   
+   

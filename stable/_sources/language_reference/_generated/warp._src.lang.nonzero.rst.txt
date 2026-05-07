@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.nonzero
+=======================
+
+.. function:: warp._src.lang.nonzero(x: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute 1.0 if ``x`` is not equal to zero, otherwise 0.0.

@@ -1,0 +1,17 @@
+﻿warp.\_src.lang.tile\_assign
+============================
+
+.. function:: warp._src.lang.tile_assign(dst: Tile[Any,tuple[int, ...]], src: Tile[Any,tuple[int, ...]], offset: tuple[int, ...]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Assign a tile to a subrange of a destination tile.
+   
+   :param dst: The destination tile to assign to
+   :param src: The source tile to read values from
+   :param offset: Offset in the destination tile to write to.
+   

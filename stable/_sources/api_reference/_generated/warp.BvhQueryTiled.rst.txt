@@ -1,0 +1,22 @@
+﻿warp.BvhQueryTiled
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: BvhQueryTiled
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BvhQueryTiled.__init__
+   
+   
+
+   
+   
+   

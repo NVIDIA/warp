@@ -1,0 +1,61 @@
+﻿warp.\_src.lang.tile\_atomic\_add\_indexed
+==========================================
+
+.. function:: warp._src.lang.tile_atomic_add_indexed(a: Array[Any], indices: Tile[int32,tuple[int]], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], axis: int32) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Atomically add a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.
+   
+   :param a: The destination array in global memory
+   :param indices: A 1D tile of integer indices mapping to elements in ``a``.
+   :param t: The source tile to extract data from, must have the same data type and number of dimensions as the destination array, and along ``axis``, it must have the same number of elements as the ``indices`` tile.
+   :param offset: Offset in the destination array (optional)
+   :param axis: Axis of ``a`` that indices refer to.
+   
+   .. rubric:: Example
+   
+   This example shows how to compute a blocked, row-wise reduction.
+   
+   .. code-block:: python
+   
+       TILE_M = wp.constant(2)
+       TILE_N = wp.constant(2)
+   
+       @wp.kernel
+       def tile_atomic_add_indexed(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+           i, j = wp.tid()
+   
+           t = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(i*TILE_M, j*TILE_N), storage="register")
+   
+           zeros = wp.tile_zeros(TILE_M, dtype=int, storage="shared")
+   
+           wp.tile_atomic_add_indexed(y, indices=zeros, t=t, offset=(i, j*TILE_N), axis=0)
+   
+       M = TILE_M * 2
+       N = TILE_N * 2
+   
+       arr = np.arange(M * N, dtype=float).reshape(M, N)
+   
+       x = wp.array(arr, dtype=float, requires_grad=True, device=device)
+       y = wp.zeros((2, N), dtype=float, requires_grad=True, device=device)
+   
+       wp.launch_tiled(tile_atomic_add_indexed, dim=[2,2], inputs=[x], outputs=[y], block_dim=32, device=device)
+   
+       print(x.numpy())
+       print(y.numpy())
+   
+   .. code-block:: text
+   
+       [[ 0.  1.  2.  3.]
+           [ 4.  5.  6.  7.]
+           [ 8.  9. 10. 11.]
+           [12. 13. 14. 15.]]
+   
+       [[ 4.  6.  8. 10.]
+           [20. 22. 24. 26.]]
+   

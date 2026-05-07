@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.length
+======================
+
+.. function:: warp._src.lang.length(a: Vector[Any,Float]) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the length of ``a``.
+   
+   Compute the length of a floating-point vector.
+
+.. function:: warp._src.lang.length(a: Quaternion[Float]) -> Float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the length of ``a``.
+   
+   Compute the length of a quaternion.

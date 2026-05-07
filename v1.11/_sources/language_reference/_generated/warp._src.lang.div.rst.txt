@@ -1,0 +1,94 @@
+﻿warp.\_src.lang.div
+===================
+
+.. function:: warp._src.lang.div(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+
+.. function:: warp._src.lang.div(a: Vector[Any,Scalar], b: Scalar) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+   
+   Divide a vector by a scalar.
+
+.. function:: warp._src.lang.div(a: Scalar, b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+   
+   Divide a scalar by each element of a vector.
+
+.. function:: warp._src.lang.div(a: Matrix[Any,Any,Scalar], b: Scalar) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+   
+   Divide a matrix by a scalar.
+
+.. function:: warp._src.lang.div(a: Scalar, b: Matrix[Any,Any,Scalar]) -> Matrix[Any,Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+   
+   Divide a scalar by each element of a matrix.
+
+.. function:: warp._src.lang.div(a: Quaternion[Float], b: Scalar) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+   
+   Divide a quaternion by a scalar.
+   
+   The result is unnormalized.
+
+.. function:: warp._src.lang.div(a: Scalar, b: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Divide two values.
+   
+   Divide a scalar by a quaternion.
+   
+   The result is unnormalized.

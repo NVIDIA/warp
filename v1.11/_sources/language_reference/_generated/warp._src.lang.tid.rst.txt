@@ -1,0 +1,93 @@
+﻿warp.\_src.lang.tid
+===================
+
+.. function:: warp._src.lang.tid() -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the current thread index or indices.
+   
+   The return type is determined by the unpacking syntax used:
+   
+   - ``i = wp.tid()`` - Returns the first thread index as ``int``
+   - ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+   - ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+   - ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+   
+   The indices correspond to the thread's position in the kernel launch grid.
+   If fewer indices are requested than the launch dimensionality, only the
+   leading indices are returned.
+   
+   This function may not be called from user-defined Warp functions.
+
+.. function:: warp._src.lang.tid() -> tuple[int, int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the current thread index or indices.
+   
+   The return type is determined by the unpacking syntax used:
+   
+   - ``i = wp.tid()`` - Returns the first thread index as ``int``
+   - ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+   - ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+   - ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+   
+   The indices correspond to the thread's position in the kernel launch grid.
+   If fewer indices are requested than the launch dimensionality, only the
+   leading indices are returned.
+   
+   This function may not be called from user-defined Warp functions.
+
+.. function:: warp._src.lang.tid() -> tuple[int, int, int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the current thread index or indices.
+   
+   The return type is determined by the unpacking syntax used:
+   
+   - ``i = wp.tid()`` - Returns the first thread index as ``int``
+   - ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+   - ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+   - ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+   
+   The indices correspond to the thread's position in the kernel launch grid.
+   If fewer indices are requested than the launch dimensionality, only the
+   leading indices are returned.
+   
+   This function may not be called from user-defined Warp functions.
+
+.. function:: warp._src.lang.tid() -> tuple[int, int, int, int]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the current thread index or indices.
+   
+   The return type is determined by the unpacking syntax used:
+   
+   - ``i = wp.tid()`` - Returns the first thread index as ``int``
+   - ``i, j = wp.tid()`` - Returns the first two indices as ``tuple[int, int]``
+   - ``i, j, k = wp.tid()`` - Returns the first three indices as ``tuple[int, int, int]``
+   - ``i, j, k, l = wp.tid()`` - Returns all four indices as ``tuple[int, int, int, int]``
+   
+   The indices correspond to the thread's position in the kernel launch grid.
+   If fewer indices are requested than the launch dimensionality, only the
+   leading indices are returned.
+   
+   This function may not be called from user-defined Warp functions.

@@ -1,0 +1,35 @@
+﻿warp.\_src.lang.tile\_argmin
+============================
+
+.. function:: warp._src.lang.tile_argmin(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Int,tuple[Literal[1]]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Cooperatively compute the index of the minimum element in the tile using all threads in the block.
+   
+   :param a: The tile to compute the argmin from
+   
+   :returns: A single-element tile holding the index of the minimum value.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           t = wp.tile_arange(64, 128)
+           s = wp.tile_argmin(t)
+   
+           print(s)
+   
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [0] = tile(shape=(1), storage=register)
+   

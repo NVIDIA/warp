@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.argmin
+======================
+
+.. function:: warp._src.lang.argmin(a: Vector[Any,Scalar]) -> uint32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the index of the minimum element of vector ``a``.

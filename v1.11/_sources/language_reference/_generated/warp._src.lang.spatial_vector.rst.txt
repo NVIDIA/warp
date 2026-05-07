@@ -1,0 +1,40 @@
+﻿warp.\_src.lang.spatial\_vector
+===============================
+
+.. function:: warp._src.lang.spatial_vector(dtype: Float) -> Vector[Literal[6],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a 6D screw vector.
+   
+   Zero-initialize the vector.
+
+.. function:: warp._src.lang.spatial_vector(w: Vector[Literal[3],Float], v: Vector[Literal[3],Float], dtype: Float) -> Vector[Literal[6],Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a 6D screw vector.
+   
+   Use two 3D vectors.
+
+.. function:: warp._src.lang.spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float, dtype: Float) -> Vector[Literal[6],Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a 6D screw vector.
+   
+   Use six scalar values.

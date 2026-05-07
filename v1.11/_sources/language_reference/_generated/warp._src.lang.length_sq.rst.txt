@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.length\_sq
+==========================
+
+.. function:: warp._src.lang.length_sq(a: Vector[Any,Scalar]) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the squared length of ``a``.
+   
+   Compute the squared length of a vector.
+
+.. function:: warp._src.lang.length_sq(a: Quaternion[Float]) -> Float
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the squared length of ``a``.
+   
+   Compute the squared length of a quaternion.

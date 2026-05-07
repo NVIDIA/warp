@@ -1,0 +1,6 @@
+﻿warp.get\_event\_elapsed\_time
+==============================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_event_elapsed_time

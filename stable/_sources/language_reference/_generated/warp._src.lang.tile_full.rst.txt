@@ -1,0 +1,30 @@
+﻿warp.\_src.lang.tile\_full
+==========================
+
+.. function:: warp._src.lang.tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Allocate a tile filled with the specified value.
+   
+   :param shape: Shape of the output tile
+   :param value: Value to fill the tile with
+   :param dtype: Data type of output tile's elements
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   (default) or ``"shared"`` for shared memory.
+   
+   :returns: A tile filled with the specified value.
+   
+
+.. function:: warp._src.lang.tile_full(shape: int32, value: Any, dtype: Any, storage: str) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Allocate a tile filled with the specified value.

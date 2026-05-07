@@ -1,0 +1,33 @@
+﻿warp.\_src.lang.transform\_decompose
+====================================
+
+.. function:: warp._src.lang.transform_decompose(m: Matrix[Literal[4],Literal[4],float32]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Decompose a 4x4 transformation matrix into 3D position, quaternion orientation, and 3D scale.
+   
+   .. math::
+       M = \begin{bmatrix}
+       s_x R_{00} & s_y R_{01} & s_z R_{02} & p_x \\
+       s_x R_{10} & s_y R_{11} & s_z R_{12} & p_y \\
+       s_x R_{20} & s_y R_{21} & s_z R_{22} & p_z \\
+       0 & 0 & 0 & 1
+       \end{bmatrix}
+   
+   Where:
+   
+   * :math:`R` is the 3x3 rotation matrix created from the orientation quaternion of the input transform.
+   * :math:`p` is the 3D position vector :math:`[p_x, p_y, p_z]` of the input transform.
+   * :math:`s` is the 3D scale vector :math:`[s_x, s_y, s_z]` of the input transform.
+   
+   :param m: The matrix to decompose.
+   :type m: Matrix[4, 4, Float]
+   
+   :returns: A tuple containing the position vector, quaternion orientation, and scale vector.
+   :rtype: Tuple[Vector[3, Float], Quaternion[Float], Vector[3, Float]]
+   

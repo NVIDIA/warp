@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.quat\_from\_matrix
+==================================
+
+.. function:: warp._src.lang.quat_from_matrix(mat: Matrix[Literal[3],Literal[3],Float]) -> Quaternion[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a quaternion from a matrix.
+   
+   If the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.
+
+.. function:: warp._src.lang.quat_from_matrix(mat: Matrix[Literal[4],Literal[4],Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a quaternion from a matrix.
+   
+   If the top-left 3x3 block of the matrix is not a pure rotation, but for example includes scaling or skewing, the result is undefined.

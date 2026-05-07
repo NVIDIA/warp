@@ -1,0 +1,13 @@
+﻿warp.\_src.lang.hash\_grid\_query
+=================================
+
+.. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Construct a point query against a :class:`warp.HashGrid`.
+   
+   This query can be used to iterate over all neighboring point within a fixed radius from the query point.

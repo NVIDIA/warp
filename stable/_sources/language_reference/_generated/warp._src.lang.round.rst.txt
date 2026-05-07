@@ -1,0 +1,15 @@
+﻿warp.\_src.lang.round
+=====================
+
+.. function:: warp._src.lang.round(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the nearest integer value to ``x``, rounding halfway cases away from zero.
+   
+   This is the most intuitive form of rounding in the colloquial sense, but can be slower than other options like
+   :func:`~warp._src.lang.rint`.
+   Differs from :func:`numpy.round`, which behaves the same way as :func:`numpy.rint`.

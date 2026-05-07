@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.sample\_cdf
+===========================
+
+.. function:: warp._src.lang.sample_cdf(state: uint32, cdf: Array[float32]) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Inverse-transform sample a cumulative distribution function.

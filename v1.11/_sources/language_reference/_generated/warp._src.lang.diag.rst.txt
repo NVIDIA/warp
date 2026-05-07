@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.diag
+====================
+
+.. function:: warp._src.lang.diag(vec: Vector[Any,Scalar]) -> Matrix[Any,Any,Scalar]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a matrix with the components of vector ``vec`` on the diagonal.

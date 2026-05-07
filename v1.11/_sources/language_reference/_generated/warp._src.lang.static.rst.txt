@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.static
+======================
+
+.. function:: warp._src.lang.static(expr: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Evaluate a static Python expression and replaces it with its result.
+   
+   See the :ref:`code generation guide <static_expressions>` for more details.
+   
+   The inner expression must only reference variables that are available from the current scope where the Warp kernel or function containing the expression is defined,
+   which includes constant variables and variables captured in the current closure in which the function or kernel is implemented.
+   The return type of the expression must be either a Warp function, a string, or a type that is supported inside Warp kernels and functions
+   (excluding Warp arrays since they cannot be created in a Warp kernel at the moment).

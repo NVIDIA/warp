@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.block\_dim
+==========================
+
+.. function:: warp._src.lang.block_dim() -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Query the number of threads in the current block.

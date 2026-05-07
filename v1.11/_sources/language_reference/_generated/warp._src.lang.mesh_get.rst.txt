@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.mesh\_get
+=========================
+
+.. function:: warp._src.lang.mesh_get(id: uint64) -> Mesh
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Retrieve the mesh given its index.

@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_adjoint
+================================
+
+.. function:: warp._src.lang.spatial_adjoint(r: Matrix[Literal[3],Literal[3],Float], s: Matrix[Literal[3],Literal[3],Float]) -> Matrix[Literal[6],Literal[6],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Construct a 6x6 spatial inertial matrix from two 3x3 diagonal blocks.

@@ -1,0 +1,16 @@
+﻿warp.\_src.lang.hash\_grid\_point\_id
+=====================================
+
+.. function:: warp._src.lang.hash_grid_point_id(id: uint64, index: int32) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Query the index of a point in the :class:`warp.HashGrid`.
+   
+   This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
+   
+   :returns: -1 if the :class:`warp.HashGrid` has not been reserved.
+   

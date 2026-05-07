@@ -1,0 +1,111 @@
+﻿warp.\_src.lang.where
+=====================
+
+.. function:: warp._src.lang.where(cond: bool, value_if_true: Any, value_if_false: Any) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: int8, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: uint8, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: int16, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: uint16, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: int32, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: uint32, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: int64, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(cond: uint64, value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``cond`` is ``True`` then return ``value_if_true``, otherwise return ``value_if_false``.
+
+.. function:: warp._src.lang.where(arr: Array[Any], value_if_true: Any, value_if_false: Any) -> Any
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Select between two arguments, if ``arr`` is not null then return ``value_if_true``, otherwise return ``value_if_false``.

@@ -1,0 +1,40 @@
+﻿warp.\_src.lang.min
+===================
+
+.. function:: warp._src.lang.min(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the minimum value.
+
+.. function:: warp._src.lang.min(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the minimum value.
+   
+   :returns: The element-wise minimum of ``a`` and ``b``.
+   
+
+.. function:: warp._src.lang.min(a: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the minimum value.
+   
+   :returns: The minimum element of ``a``.
+   

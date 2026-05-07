@@ -1,0 +1,6 @@
+﻿warp.fem.borrow\_temporary\_like
+================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: borrow_temporary_like

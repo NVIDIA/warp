@@ -1,0 +1,40 @@
+﻿warp.\_src.lang.max
+===================
+
+.. function:: warp._src.lang.max(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum value.
+
+.. function:: warp._src.lang.max(a: Vector[Any,Scalar], b: Vector[Any,Scalar]) -> Vector[Any,Scalar]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum value.
+   
+   :returns: The element-wise maximum of ``a`` and ``b``.
+   
+
+.. function:: warp._src.lang.max(a: Vector[Any,Scalar]) -> Scalar
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum value.
+   
+   :returns: The maximum element of ``a``.
+   

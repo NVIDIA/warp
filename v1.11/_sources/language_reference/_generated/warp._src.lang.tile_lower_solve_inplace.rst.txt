@@ -1,0 +1,24 @@
+﻿warp.\_src.lang.tile\_lower\_solve\_inplace
+===========================================
+
+.. function:: warp._src.lang.tile_lower_solve_inplace(L: Tile[Float,tuple[int, int]], y: Tile[Float,tuple[int]]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix by overwriting ``y`` with ``z``.
+   
+   This performs general forward substitution for a lower triangular system inplace.
+   
+   Note: This inplace variant does not support automatic differentiation (adjoint computation),
+   but avoids allocating shared memory for the output ``z`` by reusing ``y``'s memory.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param L: A square, non-singular, lower triangular matrix
+   :param y: A 1D or 2D tile with compatible shape that gets overwritten by ``z`` where ``Lz = y``.
+   

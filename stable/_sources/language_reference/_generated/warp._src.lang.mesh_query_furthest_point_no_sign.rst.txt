@@ -1,0 +1,19 @@
+﻿warp.\_src.lang.mesh\_query\_furthest\_point\_no\_sign
+======================================================
+
+.. function:: warp._src.lang.mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the furthest point on the :class:`warp.Mesh` with identifier ``id`` to the given point in space.
+   
+   This method does not compute the sign of the point (inside/outside).
+   
+   :param id: The mesh identifier
+   :param point: The point in space to query
+   :param min_dist: Mesh faces below this distance will not be considered by the query.
+   

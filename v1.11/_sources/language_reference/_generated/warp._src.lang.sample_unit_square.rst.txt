@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.sample\_unit\_square
+====================================
+
+.. function:: warp._src.lang.sample_unit_square(state: uint32) -> vec2f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Uniformly sample a unit square.

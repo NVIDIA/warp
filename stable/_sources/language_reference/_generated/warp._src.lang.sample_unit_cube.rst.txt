@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.sample\_unit\_cube
+==================================
+
+.. function:: warp._src.lang.sample_unit_cube(state: uint32) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Uniformly sample a unit cube.

@@ -1,0 +1,11 @@
+﻿warp.\_src.lang.floordiv
+========================
+
+.. function:: warp._src.lang.floordiv(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Divide two scalars using floor division.

@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_inverse
+=============================
+
+.. function:: warp._src.lang.quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute quaternion conjugate.

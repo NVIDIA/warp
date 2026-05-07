@@ -1,0 +1,6 @@
+﻿warp.array1d
+============
+
+.. currentmodule:: warp
+
+.. autofunction:: array1d

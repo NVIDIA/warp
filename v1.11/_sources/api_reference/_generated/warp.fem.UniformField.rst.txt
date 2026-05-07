@@ -1,0 +1,54 @@
+﻿warp.fem.UniformField
+=====================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: UniformField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~UniformField.__init__
+      ~UniformField.divergence_valid
+      ~UniformField.eval_arg_value
+      ~UniformField.eval_degree
+      ~UniformField.eval_div_inner
+      ~UniformField.eval_div_outer
+      ~UniformField.eval_grad_inner
+      ~UniformField.eval_grad_outer
+      ~UniformField.eval_inner
+      ~UniformField.eval_outer
+      ~UniformField.eval_reference_grad_inner
+      ~UniformField.eval_reference_grad_outer
+      ~UniformField.fill_eval_arg
+      ~UniformField.gradient_valid
+      ~UniformField.make_deformed_geometry
+      ~UniformField.notify_operator_usage
+      ~UniformField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~UniformField.degree
+      ~UniformField.divergence_dtype
+      ~UniformField.dtype
+      ~UniformField.element_kind
+      ~UniformField.geometry
+      ~UniformField.gradient_dtype
+      ~UniformField.name
+      ~UniformField.reference_gradient_dtype
+      ~UniformField.value
+      ~UniformField.EvalArg
+      ~UniformField.ElementEvalArg
+   
+   

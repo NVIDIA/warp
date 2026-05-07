@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.tile\_reshape
+=============================
+
+.. function:: warp._src.lang.tile_reshape(t: Tile[Any,tuple[int, ...]], shape: tuple[int, ...]) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Create a reshaped view of a tile with the same data.
+   
+   :param t: Input tile to reshape
+   :param shape: New shape for the tile
+   
+   :returns: A tile containing the same data as the input tile, but arranged in a new shape.
+   

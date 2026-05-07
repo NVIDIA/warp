@@ -1,0 +1,14 @@
+﻿warp.\_src.lang.asin
+====================
+
+.. function:: warp._src.lang.asin(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute arcsin of ``x`` in radians.
+   
+   Inputs are automatically clamped to [-1.0, 1.0].

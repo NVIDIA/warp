@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.clamp
+=====================
+
+.. function:: warp._src.lang.clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Clamp the value of ``x`` to the range [low, high].

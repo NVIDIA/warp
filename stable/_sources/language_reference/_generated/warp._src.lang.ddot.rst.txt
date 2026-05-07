@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.ddot
+====================
+
+.. function:: warp._src.lang.ddot(a: Matrix[Any,Any,Scalar], b: Matrix[Any,Any,Scalar]) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the double dot product between two matrices.

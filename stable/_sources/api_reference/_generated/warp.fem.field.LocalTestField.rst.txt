@@ -1,0 +1,62 @@
+﻿warp.fem.field.LocalTestField
+=============================
+
+.. currentmodule:: warp.fem.field
+
+.. autoclass:: LocalTestField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LocalTestField.__init__
+      ~LocalTestField.divergence_valid
+      ~LocalTestField.eval_arg_value
+      ~LocalTestField.eval_degree
+      ~LocalTestField.eval_div_inner
+      ~LocalTestField.eval_div_outer
+      ~LocalTestField.eval_grad_inner
+      ~LocalTestField.eval_grad_outer
+      ~LocalTestField.eval_inner
+      ~LocalTestField.eval_outer
+      ~LocalTestField.eval_reference_grad_inner
+      ~LocalTestField.eval_reference_grad_outer
+      ~LocalTestField.fill_eval_arg
+      ~LocalTestField.gradient_valid
+      ~LocalTestField.make_deformed_geometry
+      ~LocalTestField.notify_operator_usage
+      ~LocalTestField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LocalTestField.DOF_TYPE_COUNT
+      ~LocalTestField.EvalArg
+      ~LocalTestField.INNER_DOF
+      ~LocalTestField.INNER_GRAD_DOF
+      ~LocalTestField.OUTER_DOF
+      ~LocalTestField.OUTER_GRAD_DOF
+      ~LocalTestField.degree
+      ~LocalTestField.divergence_dtype
+      ~LocalTestField.dof_dtype
+      ~LocalTestField.dtype
+      ~LocalTestField.element_kind
+      ~LocalTestField.geometry
+      ~LocalTestField.gradient_dtype
+      ~LocalTestField.name
+      ~LocalTestField.reference_gradient_dtype
+      ~LocalTestField.space
+      ~LocalTestField.space_partition
+      ~LocalTestField.space_restriction
+      ~LocalTestField.ElementEvalArg
+   
+   

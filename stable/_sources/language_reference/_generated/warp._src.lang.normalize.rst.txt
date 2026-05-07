@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.normalize
+=========================
+
+.. function:: warp._src.lang.normalize(a: Vector[Any,Float]) -> Vector[Any,Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the normalized value of ``a``.
+   
+   If ``length(a)`` is 0, the zero vector is returned.
+
+.. function:: warp._src.lang.normalize(a: Quaternion[Float]) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the normalized value of ``a``.
+   
+   If ``length(a)`` is 0, the zero quaternion is returned.

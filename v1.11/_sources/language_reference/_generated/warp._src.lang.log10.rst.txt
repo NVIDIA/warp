@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.log10
+=====================
+
+.. function:: warp._src.lang.log10(x: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the common logarithm (base-10) of ``x``, where ``x`` is positive.

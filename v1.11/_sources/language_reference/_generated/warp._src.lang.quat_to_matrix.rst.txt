@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.quat\_to\_matrix
+================================
+
+.. function:: warp._src.lang.quat_to_matrix(quat: Quaternion[Float]) -> Matrix[Literal[3],Literal[3],Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Convert a quaternion to a 3x3 rotation matrix.

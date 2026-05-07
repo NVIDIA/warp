@@ -1,0 +1,18 @@
+﻿warp.\_src.lang.tile\_astype
+============================
+
+.. function:: warp._src.lang.tile_astype(t: Tile[Scalar,tuple[int, ...]], dtype: Scalar) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Create a new tile with the same data as the input tile, but with a different data type.
+   
+   :param t: Input tile
+   :param dtype: New data type for the tile
+   
+   :returns: A tile with the same data as the input tile, but with a different data type.
+   

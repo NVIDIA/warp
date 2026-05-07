@@ -1,0 +1,46 @@
+﻿warp.fem.Temporary
+==================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Temporary
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Temporary.__init__
+      ~Temporary.assign
+      ~Temporary.contiguous
+      ~Temporary.cptr
+      ~Temporary.fill_
+      ~Temporary.flatten
+      ~Temporary.ipc_handle
+      ~Temporary.list
+      ~Temporary.mark_init
+      ~Temporary.mark_read
+      ~Temporary.mark_write
+      ~Temporary.numpy
+      ~Temporary.reshape
+      ~Temporary.to
+      ~Temporary.transpose
+      ~Temporary.view
+      ~Temporary.zero_
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Temporary.grad
+      ~Temporary.requires_grad
+      ~Temporary.vars
+   
+   

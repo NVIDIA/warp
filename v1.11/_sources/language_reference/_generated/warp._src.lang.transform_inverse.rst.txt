@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.transform\_inverse
+==================================
+
+.. function:: warp._src.lang.transform_inverse(xform: Transformation[Float]) -> Transformation[Float]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the inverse of the transformation ``xform``.

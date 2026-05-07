@@ -1,0 +1,43 @@
+﻿warp.fem.space.shape.TriangleRaviartThomasShapeFunctions
+========================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: TriangleRaviartThomasShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TriangleRaviartThomasShapeFunctions.__init__
+      ~TriangleRaviartThomasShapeFunctions.make_element_inner_weight
+      ~TriangleRaviartThomasShapeFunctions.make_element_inner_weight_gradient
+      ~TriangleRaviartThomasShapeFunctions.make_node_coords_in_element
+      ~TriangleRaviartThomasShapeFunctions.make_node_quadrature_weight
+      ~TriangleRaviartThomasShapeFunctions.make_trace_node_quadrature_weight
+      ~TriangleRaviartThomasShapeFunctions.node_type_and_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TriangleRaviartThomasShapeFunctions.EDGE
+      ~TriangleRaviartThomasShapeFunctions.INTERIOR
+      ~TriangleRaviartThomasShapeFunctions.VERTEX
+      ~TriangleRaviartThomasShapeFunctions.name
+      ~TriangleRaviartThomasShapeFunctions.value
+      ~TriangleRaviartThomasShapeFunctions.VERTEX_NODE_COUNT
+      ~TriangleRaviartThomasShapeFunctions.EDGE_NODE_COUNT
+      ~TriangleRaviartThomasShapeFunctions.INTERIOR_NODE_COUNT
+      ~TriangleRaviartThomasShapeFunctions.ORDER
+      ~TriangleRaviartThomasShapeFunctions.NODES_PER_ELEMENT
+   
+   

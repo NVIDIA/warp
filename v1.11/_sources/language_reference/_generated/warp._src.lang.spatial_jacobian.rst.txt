@@ -1,0 +1,12 @@
+﻿warp.\_src.lang.spatial\_jacobian
+=================================
+
+.. function:: warp._src.lang.spatial_jacobian(S: Array[Vector[Literal[6],Float]], joint_parents: Array[int32], joint_qd_start: Array[int32], joint_start: int32, joint_count: int32, J_start: int32, J_out: Array[Float]) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the spatial Jacobian matrix for a kinematic chain.

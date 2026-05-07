@@ -1,0 +1,22 @@
+﻿warp.fem.Operator
+=================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Operator
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Operator.__init__
+   
+   
+
+   
+   
+   

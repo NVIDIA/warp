@@ -1,0 +1,26 @@
+﻿warp.fem.ElementBasis
+=====================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ElementBasis
+
+   
+   .. automethod:: __init__
+
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ElementBasis.LAGRANGE
+      ~ElementBasis.SERENDIPITY
+      ~ElementBasis.NONCONFORMING_POLYNOMIAL
+      ~ElementBasis.NEDELEC_FIRST_KIND
+      ~ElementBasis.RAVIART_THOMAS
+   
+   

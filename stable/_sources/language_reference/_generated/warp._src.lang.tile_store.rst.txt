@@ -1,0 +1,31 @@
+﻿warp.\_src.lang.tile\_store
+===========================
+
+.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any,tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Store a tile to a global memory array.
+   
+   This method will cooperatively store a tile to global memory using all threads in the block.
+   
+   :param a: The destination array in global memory
+   :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
+   :param offset: Offset in the destination array (optional)
+   :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
+   
+
+.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any,tuple[int, ...]], offset: int32, bounds_check: bool) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Store a tile to a global memory array.

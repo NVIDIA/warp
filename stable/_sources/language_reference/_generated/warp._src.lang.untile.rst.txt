@@ -1,0 +1,51 @@
+﻿warp.\_src.lang.untile
+======================
+
+.. function:: warp._src.lang.untile(a: Tile[Any,tuple[int, ...]]) -> Any
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Convert a tile back to per-thread values.
+   
+   This function converts a block-wide tile back to per-thread values.
+   
+   * If the input tile is 1D, then the resulting value will be a per-thread scalar
+   * If the input tile is 2D, then the resulting value will be a per-thread vector of length M
+   
+   :param a: A tile with dimensions ``shape=(M, block_dim)``
+   
+   :returns: A single value per-thread with the same data type as the tile.
+   
+   .. rubric:: Example
+   
+   This example shows how to create a linear sequence from thread variables:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+           i = wp.tid()
+   
+           # create block-wide tile
+           t = wp.tile(i)*2
+   
+           # convert back to per-thread values
+           s = wp.untile(t)
+   
+           print(s)
+   
+       wp.launch(compute, dim=16, inputs=[], block_dim=16)
+   
+   .. code-block:: text
+   
+       0
+       2
+       4
+       6
+       8
+       ...
+   

@@ -1,0 +1,27 @@
+﻿warp.\_src.lang.randu
+=====================
+
+.. function:: warp._src.lang.randu(state: uint32) -> uint32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random unsigned integer.
+   
+   Sample in the range [0, 2^32).
+
+.. function:: warp._src.lang.randu(state: uint32, low: uint32, high: uint32) -> uint32
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Generate a random unsigned integer.
+   
+   Sample in the range [low, high).

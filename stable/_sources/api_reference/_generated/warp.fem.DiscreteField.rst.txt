@@ -1,0 +1,58 @@
+﻿warp.fem.DiscreteField
+======================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: DiscreteField
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DiscreteField.__init__
+      ~DiscreteField.divergence_valid
+      ~DiscreteField.eval_arg_value
+      ~DiscreteField.eval_degree
+      ~DiscreteField.eval_div_inner
+      ~DiscreteField.eval_div_outer
+      ~DiscreteField.eval_grad_inner
+      ~DiscreteField.eval_grad_outer
+      ~DiscreteField.eval_inner
+      ~DiscreteField.eval_outer
+      ~DiscreteField.eval_reference_grad_inner
+      ~DiscreteField.eval_reference_grad_outer
+      ~DiscreteField.fill_eval_arg
+      ~DiscreteField.gradient_valid
+      ~DiscreteField.make_deformed_geometry
+      ~DiscreteField.notify_operator_usage
+      ~DiscreteField.set_node_value
+      ~DiscreteField.trace
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DiscreteField.degree
+      ~DiscreteField.divergence_dtype
+      ~DiscreteField.dof_dtype
+      ~DiscreteField.dof_values
+      ~DiscreteField.dtype
+      ~DiscreteField.element_kind
+      ~DiscreteField.geometry
+      ~DiscreteField.gradient_dtype
+      ~DiscreteField.name
+      ~DiscreteField.reference_gradient_dtype
+      ~DiscreteField.space
+      ~DiscreteField.space_partition
+      ~DiscreteField.EvalArg
+      ~DiscreteField.ElementEvalArg
+   
+   

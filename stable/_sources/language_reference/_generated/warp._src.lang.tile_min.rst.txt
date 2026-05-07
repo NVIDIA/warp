@@ -1,0 +1,35 @@
+﻿warp.\_src.lang.tile\_min
+=========================
+
+.. function:: warp._src.lang.tile_min(a: Tile[Scalar,tuple[int, ...]]) -> Tile[Scalar,tuple[Literal[1]]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Cooperatively compute the minimum of the tile elements using all threads in the block.
+   
+   :param a: The tile to compute the minimum of
+   
+   :returns: A single-element tile holding the minimum value.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def compute():
+   
+           t = wp.tile_arange(64, 128)
+           s = wp.tile_min(t)
+   
+           print(s)
+   
+   
+       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+   
+   .. code-block:: text
+   
+       [64] = tile(shape=(1), storage=register)
+   

@@ -1,0 +1,56 @@
+﻿warp.\_src.lang.lerp
+====================
+
+.. function:: warp._src.lang.lerp(a: Float, b: Float, t: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: warp._src.lang.lerp(a: Vector[Any,Float], b: Vector[Any,Float], t: Float) -> Vector[Any,Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: warp._src.lang.lerp(a: Matrix[Any,Any,Float], b: Matrix[Any,Any,Float], t: Float) -> Matrix[Any,Any,Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: warp._src.lang.lerp(a: Quaternion[Float], b: Quaternion[Float], t: Float) -> Quaternion[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.
+
+.. function:: warp._src.lang.lerp(a: Transformation[Float], b: Transformation[Float], t: Float) -> Transformation[Float]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Linearly interpolate two values ``a`` and ``b`` using factor ``t``, computed as ``a*(1-t) + b*t``.

@@ -1,0 +1,35 @@
+﻿warp.\_src.lang.tile\_load
+==========================
+
+.. function:: warp._src.lang.tile_load(a: Array[Any], shape: tuple[int, ...], offset: tuple[int, ...], storage: str, bounds_check: bool) -> Tile[Any,tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Load a tile from a global memory array.
+   
+   This method will cooperatively load a tile from global memory using all threads in the block.
+   
+   :param a: The source array in global memory
+   :param shape: Shape of the tile to load, must have the same number of dimensions as ``a``
+   :param offset: Offset in the source array to begin reading from (optional)
+   :param storage: The storage location for the tile: ``"register"`` for registers
+                   (default) or ``"shared"`` for shared memory.
+   :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster load times
+   
+   :returns: A tile with shape as specified and data type the same as the source array.
+   
+
+.. function:: warp._src.lang.tile_load(a: Array[Any], shape: int32, offset: int32, storage: str, bounds_check: bool) -> Tile[Any,tuple[int, ...]]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Load a tile from a global memory array.

@@ -1,0 +1,36 @@
+﻿warp.fem.space.shape.SquareNonConformingPolynomialShapeFunctions
+================================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: SquareNonConformingPolynomialShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SquareNonConformingPolynomialShapeFunctions.__init__
+      ~SquareNonConformingPolynomialShapeFunctions.make_element_inner_weight
+      ~SquareNonConformingPolynomialShapeFunctions.make_element_inner_weight_gradient
+      ~SquareNonConformingPolynomialShapeFunctions.make_node_coords_in_element
+      ~SquareNonConformingPolynomialShapeFunctions.make_node_quadrature_weight
+      ~SquareNonConformingPolynomialShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SquareNonConformingPolynomialShapeFunctions.name
+      ~SquareNonConformingPolynomialShapeFunctions.value
+      ~SquareNonConformingPolynomialShapeFunctions.ORDER
+      ~SquareNonConformingPolynomialShapeFunctions.NODES_PER_ELEMENT
+   
+   

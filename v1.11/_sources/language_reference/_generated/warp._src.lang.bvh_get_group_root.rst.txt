@@ -1,0 +1,20 @@
+﻿warp.\_src.lang.bvh\_get\_group\_root
+=====================================
+
+.. function:: warp._src.lang.bvh_get_group_root(id: uint64, group: int32) -> int
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Get the root of a group in a BVH.
+   
+   :param id: The BVH identifier
+   :param group: The group identifier
+   
+   :returns:
+   
+             The root node index for the specified group. If the group does not exist, returns ``-1``
+                 (sentinel for the BVH global root). Pass ``-1`` to BVH queries to traverse from the global root.
+   
