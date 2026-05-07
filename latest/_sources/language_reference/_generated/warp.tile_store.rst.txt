@@ -1,0 +1,39 @@
+﻿warp.tile\_store
+================
+
+.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: tuple[int, ...], bounds_check: bool, aligned: bool) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Store a tile to a global memory array.
+   
+   This method will cooperatively store a tile to global memory using all threads in the block.
+   
+   :param a: The destination array in global memory
+   :param t: The source tile to store data from, must have the same data type and number of dimensions as the destination array
+   :param offset: Offset in the destination array (optional)
+   :param bounds_check: Needed for unaligned tiles, but can disable for memory-aligned tiles for faster write times.
+   :param aligned: If True, skip runtime alignment checks for vectorized stores (shared memory,
+                   2D+ tiles only). Has no effect for 1D tiles or register storage. Use when you
+                   guarantee that: (1) the base address at the tile offset is 16-byte aligned,
+                   (2) the array is contiguous (dense row-major strides), (3) all outer-dimension
+                   strides are multiples of 16 bytes, and (4) the tile fits entirely within array
+                   bounds. Address-alignment violations trap unconditionally (even in release
+                   builds). Bounds and contiguity violations trigger debug-only asserts; in
+                   release builds they cause silent data corruption.
+   
+
+.. function:: warp._src.lang.tile_store(a: Array[Any], t: Tile[Any, tuple[int, ...]], offset: int32, bounds_check: bool, aligned: bool) -> None
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Store a tile to a global memory array.

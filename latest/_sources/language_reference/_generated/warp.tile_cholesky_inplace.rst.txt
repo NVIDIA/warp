@@ -1,0 +1,29 @@
+﻿warp.tile\_cholesky\_inplace
+============================
+
+.. function:: warp._src.lang.tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str) -> None
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
+   
+   When ``fill_mode="lower"`` (default), the lower triangle of ``A`` is replaced by ``L``
+   such that ``LL^T = A``; the upper triangle is set to zero.
+   When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
+   such that ``U^T U = A``; the lower triangle is set to zero.
+   
+   The ``fill_mode`` parameter must be a compile-time constant.
+   
+   Note: This inplace variant does not support automatic differentiation (adjoint computation),
+   but offers improved performance and uses half the shared memory compared to the standard version.
+   
+   Supported datatypes are:
+       * float32
+       * float64
+   
+   :param A: A square, symmetric positive-definite matrix.
+   :param fill_mode: ``"lower"`` (default) or ``"upper"``. Must be a compile-time constant.
+   

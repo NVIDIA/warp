@@ -1,0 +1,41 @@
+﻿warp.isnan
+==========
+
+.. function:: warp._src.lang.isnan(a: Float) -> bool
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if ``a`` is NaN.
+
+.. function:: warp._src.lang.isnan(a: Vector[Float, Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is NaN.
+
+.. function:: warp._src.lang.isnan(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is NaN.
+
+.. function:: warp._src.lang.isnan(a: Matrix[Float, Any, Any]) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Check if any element of ``a`` is NaN.

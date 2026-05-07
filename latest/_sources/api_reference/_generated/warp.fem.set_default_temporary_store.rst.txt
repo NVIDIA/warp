@@ -1,0 +1,6 @@
+﻿warp.fem.set\_default\_temporary\_store
+=======================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: set_default_temporary_store

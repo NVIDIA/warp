@@ -1,0 +1,25 @@
+﻿warp.fem.Coords
+===============
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Coords
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Coords.__init__
+      ~Coords.from_ptr
+      ~Coords.scalar_export
+      ~Coords.scalar_import
+   
+   
+
+   
+   
+   

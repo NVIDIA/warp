@@ -1,0 +1,6 @@
+﻿warp.jax\_experimental.ffi.set\_jax\_callable\_default\_graph\_cache\_max
+=========================================================================
+
+.. currentmodule:: warp.jax_experimental.ffi
+
+.. autofunction:: set_jax_callable_default_graph_cache_max

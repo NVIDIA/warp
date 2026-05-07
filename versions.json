@@ -1,5 +1,10 @@
 [
   {
+    "name": "latest (main)",
+    "version": "latest",
+    "url": "https://nvidia.github.io/warp/latest/"
+  },
+  {
     "version": "1.13",
     "url": "https://nvidia.github.io/warp/v1.13/",
     "name": "1.13 (stable)",

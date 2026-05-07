@@ -1,0 +1,22 @@
+﻿warp.sparse.bsr\_mm\_work\_arrays
+=================================
+
+.. currentmodule:: warp.sparse
+
+.. autoclass:: bsr_mm_work_arrays
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~bsr_mm_work_arrays.__init__
+   
+   
+
+   
+   
+   

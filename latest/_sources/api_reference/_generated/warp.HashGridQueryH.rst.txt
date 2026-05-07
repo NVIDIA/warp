@@ -1,0 +1,22 @@
+﻿warp.HashGridQueryH
+===================
+
+.. currentmodule:: warp
+
+.. autoclass:: HashGridQueryH
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~HashGridQueryH.__init__
+   
+   
+
+   
+   
+   
