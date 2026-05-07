@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Page not found &middot; Warp</title>
+  <script>
+(function () {
+  var prefix = "/warp/";
+  var path = location.pathname;
+  if (path.indexOf(prefix) === 0) {
+    path = path.slice(prefix.length);
+  }
+  // Already under a known version: this is a genuine 404 within that
+  // version. Fall through to the not-found body below.
+  if (/^(stable|latest|v\d+\.\d+)(\/|$)/.test(path)) {
+    return;
+  }
+  // Pre-versioning URL: rewrite under the current default version.
+  location.replace(prefix + "stable/" + path + location.search + location.hash);
+})();
+  </script>
+  <style>
+    body {
+      background: #f1f1f1;
+      color: #222;
+      font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      margin: 0;
+    }
+    .container {
+      margin: 0 auto;
+      max-width: 600px;
+      padding: 20px 0 40px;
+      text-align: center;
+    }
+    h1 {
+      color: #222;
+      font-size: 144px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      margin: 0;
+    }
+    h2 {
+      color: #5a5a5a;
+      font-size: 24px;
+      font-weight: 400;
+      margin: 12px 0 24px;
+    }
+    p {
+      color: #5a5a5a;
+      font-size: 14px;
+      margin: 0.5em 0;
+    }
+    a { color: #76b900; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>404</h1>
+    <h2>File not found.</h2>
+    <p>The page you requested does not exist in this version of the Warp documentation.</p>
+    <p><a href="/warp/stable/">Latest stable docs</a> &nbsp;&middot;&nbsp; <a href="/warp/latest/">Development docs</a></p>
+  </div>
+</body>
+</html>
