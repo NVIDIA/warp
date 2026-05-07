@@ -1,6 +1,0 @@
-﻿warp.set\_stream
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: set_stream

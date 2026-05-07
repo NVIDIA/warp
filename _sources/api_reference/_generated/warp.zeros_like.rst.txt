@@ -1,6 +1,0 @@
-﻿warp.zeros\_like
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: zeros_like

@@ -1,6 +1,0 @@
-﻿warp.config.lineinfo
-====================
-
-.. currentmodule:: warp.config
-
-.. autodata:: lineinfo

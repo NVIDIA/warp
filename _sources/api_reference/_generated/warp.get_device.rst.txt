@@ -1,6 +1,0 @@
-﻿warp.get\_device
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: get_device

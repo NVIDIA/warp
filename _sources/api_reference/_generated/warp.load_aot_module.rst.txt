@@ -1,6 +1,0 @@
-﻿warp.load\_aot\_module
-======================
-
-.. currentmodule:: warp
-
-.. autofunction:: load_aot_module

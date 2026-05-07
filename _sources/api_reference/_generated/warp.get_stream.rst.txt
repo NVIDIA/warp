@@ -1,6 +1,0 @@
-﻿warp.get\_stream
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: get_stream

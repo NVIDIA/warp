@@ -1,6 +1,0 @@
-﻿warp.constant
-=============
-
-.. currentmodule:: warp
-
-.. autofunction:: constant

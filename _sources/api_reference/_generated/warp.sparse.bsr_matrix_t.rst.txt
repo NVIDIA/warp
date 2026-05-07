@@ -1,6 +1,0 @@
-﻿warp.sparse.bsr\_matrix\_t
-==========================
-
-.. currentmodule:: warp.sparse
-
-.. autofunction:: bsr_matrix_t

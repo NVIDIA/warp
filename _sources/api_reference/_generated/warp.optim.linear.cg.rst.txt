@@ -1,6 +1,0 @@
-﻿warp.optim.linear.cg
-====================
-
-.. currentmodule:: warp.optim.linear
-
-.. autofunction:: cg

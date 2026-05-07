@@ -1,6 +1,0 @@
-﻿warp.device\_to\_paddle
-=======================
-
-.. currentmodule:: warp
-
-.. autofunction:: device_to_paddle

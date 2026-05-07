@@ -1,6 +1,0 @@
-﻿warp.utils.graph\_coloring\_assign
-==================================
-
-.. currentmodule:: warp.utils
-
-.. autofunction:: graph_coloring_assign

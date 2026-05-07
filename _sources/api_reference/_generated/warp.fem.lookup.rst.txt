@@ -1,6 +1,0 @@
-﻿warp.fem.lookup
-===============
-
-.. currentmodule:: warp.fem
-
-.. autodata:: lookup

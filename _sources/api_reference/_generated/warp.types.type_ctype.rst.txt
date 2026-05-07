@@ -1,6 +1,0 @@
-﻿warp.types.type\_ctype
-======================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: type_ctype

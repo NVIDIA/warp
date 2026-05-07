@@ -1,6 +1,0 @@
-﻿warp.fem.node\_index
-====================
-
-.. currentmodule:: warp.fem
-
-.. autodata:: node_index

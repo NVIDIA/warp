@@ -1,6 +1,0 @@
-﻿warp.fem.polynomial.lagrange\_scales
-====================================
-
-.. currentmodule:: warp.fem.polynomial
-
-.. autofunction:: lagrange_scales

@@ -1,6 +1,0 @@
-﻿warp.fem.element\_coordinates
-=============================
-
-.. currentmodule:: warp.fem
-
-.. autodata:: element_coordinates

@@ -1,6 +1,0 @@
-﻿warp.config.compile\_time\_trace
-================================
-
-.. currentmodule:: warp.config
-
-.. autodata:: compile_time_trace

@@ -1,6 +1,0 @@
-﻿warp.LN2
-========
-
-.. currentmodule:: warp
-
-.. autodata:: LN2

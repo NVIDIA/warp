@@ -1,6 +1,0 @@
-﻿warp.config.enable\_vector\_component\_overwrites
-=================================================
-
-.. currentmodule:: warp.config
-
-.. autodata:: enable_vector_component_overwrites

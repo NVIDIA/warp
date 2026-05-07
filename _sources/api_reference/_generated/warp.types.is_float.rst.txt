@@ -1,6 +1,0 @@
-﻿warp.types.is\_float
-====================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: is_float

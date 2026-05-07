@@ -1,6 +1,0 @@
-﻿warp.autograd.jacobian
-======================
-
-.. currentmodule:: warp.autograd
-
-.. autofunction:: jacobian

@@ -1,6 +1,0 @@
-﻿warp.TIMING\_MEMCPY
-===================
-
-.. currentmodule:: warp
-
-.. autodata:: TIMING_MEMCPY

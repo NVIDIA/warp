@@ -1,6 +1,0 @@
-﻿warp.sparse.bsr\_identity
-=========================
-
-.. currentmodule:: warp.sparse
-
-.. autofunction:: bsr_identity

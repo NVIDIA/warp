@@ -1,6 +1,0 @@
-﻿warp.is\_mempool\_access\_supported
-===================================
-
-.. currentmodule:: warp
-
-.. autofunction:: is_mempool_access_supported

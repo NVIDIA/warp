@@ -1,6 +1,0 @@
-﻿warp.is\_peer\_access\_supported
-================================
-
-.. currentmodule:: warp
-
-.. autofunction:: is_peer_access_supported

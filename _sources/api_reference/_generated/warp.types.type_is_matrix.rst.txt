@@ -1,6 +1,0 @@
-﻿warp.types.type\_is\_matrix
-===========================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: type_is_matrix

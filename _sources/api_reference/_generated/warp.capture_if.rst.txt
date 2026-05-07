@@ -1,6 +1,0 @@
-﻿warp.capture\_if
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: capture_if

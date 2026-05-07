@@ -1,6 +1,0 @@
-﻿warp.types.type\_size
-=====================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: type_size

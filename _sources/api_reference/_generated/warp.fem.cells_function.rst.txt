@@ -1,6 +1,0 @@
-﻿warp.fem.cells
-==============
-
-.. currentmodule:: warp.fem
-
-.. autodata:: cells

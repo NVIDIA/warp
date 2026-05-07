@@ -1,6 +1,0 @@
-﻿warp.is\_conditional\_graph\_supported
-======================================
-
-.. currentmodule:: warp
-
-.. autofunction:: is_conditional_graph_supported

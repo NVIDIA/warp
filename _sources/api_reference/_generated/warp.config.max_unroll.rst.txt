@@ -1,6 +1,0 @@
-﻿warp.config.max\_unroll
-=======================
-
-.. currentmodule:: warp.config
-
-.. autodata:: max_unroll

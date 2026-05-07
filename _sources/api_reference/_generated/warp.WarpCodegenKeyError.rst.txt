@@ -1,6 +1,0 @@
-﻿warp.WarpCodegenKeyError
-========================
-
-.. currentmodule:: warp
-
-.. autoexception:: WarpCodegenKeyError

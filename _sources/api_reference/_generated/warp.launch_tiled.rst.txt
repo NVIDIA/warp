@@ -1,6 +1,0 @@
-﻿warp.launch\_tiled
-==================
-
-.. currentmodule:: warp
-
-.. autofunction:: launch_tiled

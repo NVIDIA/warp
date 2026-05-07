@@ -1,6 +1,0 @@
-﻿warp.ones
-=========
-
-.. currentmodule:: warp
-
-.. autofunction:: ones

@@ -1,6 +1,0 @@
-﻿warp.optim.linear.aslinearoperator
-==================================
-
-.. currentmodule:: warp.optim.linear
-
-.. autofunction:: aslinearoperator

@@ -1,6 +1,0 @@
-﻿warp.clear\_kernel\_cache
-=========================
-
-.. currentmodule:: warp
-
-.. autofunction:: clear_kernel_cache

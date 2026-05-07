@@ -1,6 +1,0 @@
-﻿warp.log2e
-==========
-
-.. currentmodule:: warp
-
-.. autodata:: log2e

@@ -1,6 +1,0 @@
-﻿warp.clone
-==========
-
-.. currentmodule:: warp
-
-.. autofunction:: clone

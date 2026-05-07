@@ -1,6 +1,0 @@
-﻿warp.fem.adaptive\_nanogrid\_from\_hierarchy
-============================================
-
-.. currentmodule:: warp.fem
-
-.. autofunction:: adaptive_nanogrid_from_hierarchy

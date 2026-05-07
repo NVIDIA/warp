@@ -1,6 +1,0 @@
-﻿warp.init
-=========
-
-.. currentmodule:: warp
-
-.. autofunction:: init

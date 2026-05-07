@@ -1,6 +1,0 @@
-﻿warp.fem.make\_discrete\_field
-==============================
-
-.. currentmodule:: warp.fem
-
-.. autofunction:: make_discrete_field

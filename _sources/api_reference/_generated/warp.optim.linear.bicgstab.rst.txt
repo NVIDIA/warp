@@ -1,6 +1,0 @@
-﻿warp.optim.linear.bicgstab
-==========================
-
-.. currentmodule:: warp.optim.linear
-
-.. autofunction:: bicgstab

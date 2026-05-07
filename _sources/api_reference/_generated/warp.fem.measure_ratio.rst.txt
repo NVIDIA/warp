@@ -1,6 +1,0 @@
-﻿warp.fem.measure\_ratio
-=======================
-
-.. currentmodule:: warp.fem
-
-.. autodata:: measure_ratio

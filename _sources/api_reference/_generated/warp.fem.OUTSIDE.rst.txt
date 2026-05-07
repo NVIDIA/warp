@@ -1,6 +1,0 @@
-﻿warp.fem.OUTSIDE
-================
-
-.. currentmodule:: warp.fem
-
-.. autodata:: OUTSIDE

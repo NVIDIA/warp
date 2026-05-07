@@ -1,6 +1,0 @@
-﻿warp.sparse.bsr\_set\_transpose
-===============================
-
-.. currentmodule:: warp.sparse
-
-.. autofunction:: bsr_set_transpose

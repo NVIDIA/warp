@@ -1,6 +1,0 @@
-﻿warp.struct
-===========
-
-.. currentmodule:: warp
-
-.. autofunction:: struct

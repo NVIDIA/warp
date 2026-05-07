@@ -1,6 +1,0 @@
-﻿warp.to\_paddle
-===============
-
-.. currentmodule:: warp
-
-.. autofunction:: to_paddle

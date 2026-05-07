@@ -1,6 +1,0 @@
-﻿warp.print\_diagnostics
-=======================
-
-.. currentmodule:: warp
-
-.. autofunction:: print_diagnostics

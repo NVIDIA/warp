@@ -1,6 +1,0 @@
-﻿warp.fem.make\_polynomial\_space
-================================
-
-.. currentmodule:: warp.fem
-
-.. autofunction:: make_polynomial_space

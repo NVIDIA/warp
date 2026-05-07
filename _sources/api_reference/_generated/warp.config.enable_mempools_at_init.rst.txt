@@ -1,6 +1,0 @@
-﻿warp.config.enable\_mempools\_at\_init
-======================================
-
-.. currentmodule:: warp.config
-
-.. autodata:: enable_mempools_at_init

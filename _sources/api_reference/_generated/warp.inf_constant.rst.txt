@@ -1,6 +1,0 @@
-﻿warp.inf
-========
-
-.. currentmodule:: warp
-
-.. autodata:: inf

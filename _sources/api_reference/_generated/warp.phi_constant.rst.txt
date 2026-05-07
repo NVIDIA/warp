@@ -1,6 +1,0 @@
-﻿warp.phi
-========
-
-.. currentmodule:: warp
-
-.. autodata:: phi

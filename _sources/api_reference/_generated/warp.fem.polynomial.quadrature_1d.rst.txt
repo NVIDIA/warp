@@ -1,6 +1,0 @@
-﻿warp.fem.polynomial.quadrature\_1d
-==================================
-
-.. currentmodule:: warp.fem.polynomial
-
-.. autofunction:: quadrature_1d

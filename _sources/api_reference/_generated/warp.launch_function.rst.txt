@@ -1,6 +1,0 @@
-﻿warp.launch
-===========
-
-.. currentmodule:: warp
-
-.. autofunction:: launch

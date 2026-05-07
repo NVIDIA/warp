@@ -1,6 +1,0 @@
-﻿warp.types.quaternion
-=====================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: quaternion

@@ -1,6 +1,0 @@
-﻿warp.fem.linalg.generalized\_outer
-==================================
-
-.. currentmodule:: warp.fem.linalg
-
-.. autodata:: generalized_outer

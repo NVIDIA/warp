@@ -1,6 +1,0 @@
-﻿warp.fem.project\_linear\_system
-================================
-
-.. currentmodule:: warp.fem
-
-.. autofunction:: project_linear_system

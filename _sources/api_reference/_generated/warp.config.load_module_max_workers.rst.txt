@@ -1,6 +1,0 @@
-﻿warp.config.load\_module\_max\_workers
-======================================
-
-.. currentmodule:: warp.config
-
-.. autodata:: load_module_max_workers

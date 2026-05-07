@@ -1,6 +1,0 @@
-﻿warp.sparse.bsr\_set\_zero
-==========================
-
-.. currentmodule:: warp.sparse
-
-.. autofunction:: bsr_set_zero

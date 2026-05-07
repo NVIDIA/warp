@@ -1,6 +1,0 @@
-﻿warp.types.matrix
-=================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: matrix

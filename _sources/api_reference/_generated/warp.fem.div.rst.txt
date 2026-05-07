@@ -1,6 +1,0 @@
-﻿warp.fem.div
-============
-
-.. currentmodule:: warp.fem
-
-.. autodata:: div

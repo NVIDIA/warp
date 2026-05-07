@@ -1,6 +1,0 @@
-﻿warp.config.llvm\_cuda
-======================
-
-.. currentmodule:: warp.config
-
-.. autodata:: llvm_cuda

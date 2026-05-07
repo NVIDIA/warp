@@ -1,6 +1,0 @@
-﻿warp.get\_cuda\_supported\_archs
-================================
-
-.. currentmodule:: warp
-
-.. autofunction:: get_cuda_supported_archs

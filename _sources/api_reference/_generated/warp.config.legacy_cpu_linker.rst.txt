@@ -1,6 +1,0 @@
-﻿warp.config.legacy\_cpu\_linker
-===============================
-
-.. currentmodule:: warp.config
-
-.. autodata:: legacy_cpu_linker

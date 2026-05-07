@@ -1,6 +1,0 @@
-﻿warp.NAN
-========
-
-.. currentmodule:: warp
-
-.. autodata:: NAN

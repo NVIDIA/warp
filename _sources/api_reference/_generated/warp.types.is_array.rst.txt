@@ -1,6 +1,0 @@
-﻿warp.types.is\_array
-====================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: is_array

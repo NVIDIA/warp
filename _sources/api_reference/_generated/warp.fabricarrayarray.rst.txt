@@ -1,6 +1,0 @@
-﻿warp.fabricarrayarray
-=====================
-
-.. currentmodule:: warp
-
-.. autofunction:: fabricarrayarray

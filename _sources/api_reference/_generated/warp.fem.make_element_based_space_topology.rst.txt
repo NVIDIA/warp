@@ -1,6 +1,0 @@
-﻿warp.fem.make\_element\_based\_space\_topology
-==============================================
-
-.. currentmodule:: warp.fem
-
-.. autofunction:: make_element_based_space_topology

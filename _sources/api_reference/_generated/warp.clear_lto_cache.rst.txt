@@ -1,6 +1,0 @@
-﻿warp.clear\_lto\_cache
-======================
-
-.. currentmodule:: warp
-
-.. autofunction:: clear_lto_cache

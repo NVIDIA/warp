@@ -1,6 +1,0 @@
-﻿warp.types.transformation
-=========================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: transformation

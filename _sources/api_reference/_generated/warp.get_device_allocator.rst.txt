@@ -1,6 +1,0 @@
-﻿warp.get\_device\_allocator
-===========================
-
-.. currentmodule:: warp
-
-.. autofunction:: get_device_allocator

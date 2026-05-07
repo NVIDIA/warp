@@ -1,6 +1,0 @@
-﻿warp.stream\_from\_paddle
-=========================
-
-.. currentmodule:: warp
-
-.. autofunction:: stream_from_paddle

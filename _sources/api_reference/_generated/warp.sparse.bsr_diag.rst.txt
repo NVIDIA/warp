@@ -1,6 +1,0 @@
-﻿warp.sparse.bsr\_diag
-=====================
-
-.. currentmodule:: warp.sparse
-
-.. autofunction:: bsr_diag

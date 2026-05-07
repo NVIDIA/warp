@@ -1,6 +1,0 @@
-﻿warp.utils.runlength\_encode
-============================
-
-.. currentmodule:: warp.utils
-
-.. autofunction:: runlength_encode

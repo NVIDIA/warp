@@ -1,6 +1,0 @@
-﻿warp.device\_to\_jax
-====================
-
-.. currentmodule:: warp
-
-.. autofunction:: device_to_jax

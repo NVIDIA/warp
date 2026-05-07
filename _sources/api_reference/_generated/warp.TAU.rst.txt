@@ -1,6 +1,0 @@
-﻿warp.TAU
-========
-
-.. currentmodule:: warp
-
-.. autodata:: TAU

@@ -1,6 +1,0 @@
-﻿warp.types.type\_repr
-=====================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: type_repr

@@ -1,6 +1,0 @@
-﻿warp.fem.make\_test
-===================
-
-.. currentmodule:: warp.fem
-
-.. autofunction:: make_test

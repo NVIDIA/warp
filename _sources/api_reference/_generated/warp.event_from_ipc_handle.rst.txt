@@ -1,6 +1,0 @@
-﻿warp.event\_from\_ipc\_handle
-=============================
-
-.. currentmodule:: warp
-
-.. autofunction:: event_from_ipc_handle

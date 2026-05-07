@@ -1,6 +1,0 @@
-﻿warp.func\_native
-=================
-
-.. currentmodule:: warp
-
-.. autofunction:: func_native

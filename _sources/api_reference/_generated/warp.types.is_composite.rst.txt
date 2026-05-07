@@ -1,6 +1,0 @@
-﻿warp.types.is\_composite
-========================
-
-.. currentmodule:: warp.types
-
-.. autofunction:: is_composite

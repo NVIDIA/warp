@@ -1,6 +1,0 @@
-﻿warp.indexedfabricarrayarray
-============================
-
-.. currentmodule:: warp
-
-.. autofunction:: indexedfabricarrayarray

@@ -1,6 +1,0 @@
-﻿warp.fem.linalg.solve\_triangular
-=================================
-
-.. currentmodule:: warp.fem.linalg
-
-.. autodata:: solve_triangular

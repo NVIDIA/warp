@@ -1,6 +1,0 @@
-﻿warp.synchronize\_stream
-========================
-
-.. currentmodule:: warp
-
-.. autofunction:: synchronize_stream

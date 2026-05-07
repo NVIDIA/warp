@@ -1,6 +1,0 @@
-﻿warp.DeviceLike
-===============
-
-.. currentmodule:: warp
-
-.. autodata:: DeviceLike

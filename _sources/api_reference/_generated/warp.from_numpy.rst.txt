@@ -1,6 +1,0 @@
-﻿warp.from\_numpy
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: from_numpy

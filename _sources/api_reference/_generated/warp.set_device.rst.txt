@@ -1,6 +1,0 @@
-﻿warp.set\_device
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: set_device

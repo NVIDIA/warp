@@ -1,6 +1,0 @@
-﻿warp.get\_module
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: get_module

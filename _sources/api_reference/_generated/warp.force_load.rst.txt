@@ -1,6 +1,0 @@
-﻿warp.force\_load
-================
-
-.. currentmodule:: warp
-
-.. autofunction:: force_load

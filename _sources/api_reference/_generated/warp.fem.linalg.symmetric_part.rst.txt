@@ -1,6 +1,0 @@
-﻿warp.fem.linalg.symmetric\_part
-===============================
-
-.. currentmodule:: warp.fem.linalg
-
-.. autodata:: symmetric_part

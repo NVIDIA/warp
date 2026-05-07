@@ -1,6 +1,0 @@
-﻿warp.to\_jax
-============
-
-.. currentmodule:: warp
-
-.. autofunction:: to_jax

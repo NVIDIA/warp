@@ -1,6 +1,0 @@
-﻿warp.to\_dlpack
-===============
-
-.. currentmodule:: warp
-
-.. autofunction:: to_dlpack

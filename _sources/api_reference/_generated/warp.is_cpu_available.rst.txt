@@ -1,6 +1,0 @@
-﻿warp.is\_cpu\_available
-=======================
-
-.. currentmodule:: warp
-
-.. autofunction:: is_cpu_available

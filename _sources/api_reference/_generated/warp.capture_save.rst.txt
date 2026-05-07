@@ -1,6 +1,0 @@
-﻿warp.capture\_save
-==================
-
-.. currentmodule:: warp
-
-.. autofunction:: capture_save
