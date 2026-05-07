@@ -52,7 +52,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'changelog';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.17.1';
-        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://christophercrouzet.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.4';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
@@ -508,16 +508,16 @@
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support for a new <code class="docutils literal notranslate"><span class="pre">wp.static(expr)</span></code> function that allows arbitrary Python expressions to be evaluated at the time of
-function/kernel definition (<a class="reference external" href="https://nvidia.github.io/warp/codegen.html#static-expressions">docs</a>).</p></li>
+function/kernel definition (<a class="reference external" href="https://christophercrouzet.github.io/warp/codegen.html#static-expressions">docs</a>).</p></li>
 <li><p>Support for stream priorities to hint to the device that it should process pending work
 in high-priority streams over pending work in low-priority streams when possible
-(<a class="reference external" href="https://nvidia.github.io/warp/modules/concurrency.html#stream-priorities">docs</a>).</p></li>
-<li><p>Adaptive sparse grid geometry to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/modules/fem.html#adaptivity">docs</a>).</p></li>
+(<a class="reference external" href="https://christophercrouzet.github.io/warp/modules/concurrency.html#stream-priorities">docs</a>).</p></li>
+<li><p>Adaptive sparse grid geometry to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> (<a class="reference external" href="https://christophercrouzet.github.io/warp/modules/fem.html#adaptivity">docs</a>).</p></li>
 <li><p>Support for defining <code class="docutils literal notranslate"><span class="pre">wp.kernel</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> objects from within closures.</p></li>
 <li><p>Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.</p></li>
 <li><p>Support for default argument values for user functions decorated with <code class="docutils literal notranslate"><span class="pre">wp.func</span></code>.</p></li>
 <li><p>Allow passing custom launch dimensions to <code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/310">GH-310</a>).</p></li>
-<li><p>JAX interoperability examples for sharding and matrix multiplication (<a class="reference external" href="https://nvidia.github.io/warp/modules/interoperability.html#using-shardmap-for-distributed-computation">docs</a>).</p></li>
+<li><p>JAX interoperability examples for sharding and matrix multiplication (<a class="reference external" href="https://christophercrouzet.github.io/warp/modules/interoperability.html#using-shardmap-for-distributed-computation">docs</a>).</p></li>
 <li><p>Interoperability support for the PaddlePaddle ML framework (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/318">GH-318</a>).</p></li>
 <li><p>Support <code class="docutils literal notranslate"><span class="pre">wp.mod()</span></code> for vector types (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/282">GH-282</a>).</p></li>
 <li><p>Expose the modulo operator <code class="docutils literal notranslate"><span class="pre">%</span></code> to Python’s runtime scalar and vector types.</p></li>
@@ -527,8 +527,8 @@ in high-priority streams over pending work in low-priority streams when possible
 <li><p>Support for redefining function overloads.</p></li>
 <li><p>Add an ocean sample to the <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.sim.VBDIntegrator</span></code> now supports body-particle collision.</p></li>
-<li><p>Add a <a class="reference external" href="https://nvidia.github.io/warp/modules/contribution_guide.html">contributing guide</a> to the Sphinx docs .</p></li>
-<li><p>Add documentation for dynamic code generation (<a class="reference external" href="https://nvidia.github.io/warp/codegen.html#dynamic-kernel-creation">docs</a>).</p></li>
+<li><p>Add a <a class="reference external" href="https://christophercrouzet.github.io/warp/modules/contribution_guide.html">contributing guide</a> to the Sphinx docs .</p></li>
+<li><p>Add documentation for dynamic code generation (<a class="reference external" href="https://christophercrouzet.github.io/warp/codegen.html#dynamic-kernel-creation">docs</a>).</p></li>
 </ul>
 </section>
 <section id="id5">
@@ -659,8 +659,8 @@ loaded <code class="docutils literal notranslate"><span class="pre">(error)</spa
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.autograd</span></code> improvements:</p>
 <ul>
-<li><p>New <code class="docutils literal notranslate"><span class="pre">warp.autograd</span></code> module with utility functions <code class="docutils literal notranslate"><span class="pre">gradcheck()</span></code>, <code class="docutils literal notranslate"><span class="pre">jacobian()</span></code>, and <code class="docutils literal notranslate"><span class="pre">jacobian_fd()</span></code> for debugging kernel Jacobians (<a class="reference external" href="https://nvidia.github.io/warp/modules/differentiability.html#measuring-gradient-accuracy">docs</a>)</p></li>
-<li><p>Add array overwrite detection, if <code class="docutils literal notranslate"><span class="pre">wp.config.verify_autograd_array_access</span></code> is true in-place operations on arrays on the Tape that could break gradient computation will be detected (<a class="reference external" href="https://nvidia.github.io/warp/modules/differentiability.html#array-overwrite-tracking">docs</a>)</p></li>
+<li><p>New <code class="docutils literal notranslate"><span class="pre">warp.autograd</span></code> module with utility functions <code class="docutils literal notranslate"><span class="pre">gradcheck()</span></code>, <code class="docutils literal notranslate"><span class="pre">jacobian()</span></code>, and <code class="docutils literal notranslate"><span class="pre">jacobian_fd()</span></code> for debugging kernel Jacobians (<a class="reference external" href="https://christophercrouzet.github.io/warp/modules/differentiability.html#measuring-gradient-accuracy">docs</a>)</p></li>
+<li><p>Add array overwrite detection, if <code class="docutils literal notranslate"><span class="pre">wp.config.verify_autograd_array_access</span></code> is true in-place operations on arrays on the Tape that could break gradient computation will be detected (<a class="reference external" href="https://christophercrouzet.github.io/warp/modules/differentiability.html#array-overwrite-tracking">docs</a>)</p></li>
 <li><p>Fix bug where modification of <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code> functions and native snippets would not trigger module recompilation</p></li>
 <li><p>Add documentation for dynamic loop autograd limitations</p></li>
 </ul>
@@ -1108,7 +1108,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">wp.volume_sample_grad_f()</span></code> which returns the value + gradient efficiently from an NVDB volume</p></li>
 <li><p>Add support for LLVM fp16 intrinsics for half-precision arithmetic</p></li>
 <li><p>Add implementation of stochastic gradient descent, see <code class="docutils literal notranslate"><span class="pre">wp.optim.SGD</span></code></p></li>
-<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.fem</span></code> framework for solving weak-form PDE problems (see https://nvidia.github.io/warp/modules/fem.html)</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.fem</span></code> framework for solving weak-form PDE problems (see https://christophercrouzet.github.io/warp/modules/fem.html)</p></li>
 <li><p>Optimizations for <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension load time (2.2s to 625ms cold start)</p></li>
 <li><p>Make all <code class="docutils literal notranslate"><span class="pre">omni.ui</span></code> dependencies optional so that Warp unit tests can run headless</p></li>
 <li><p>Deprecation of <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code> outside of kernel functions, users should pass <code class="docutils literal notranslate"><span class="pre">tid()</span></code> values to <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> functions explicitly</p></li>
