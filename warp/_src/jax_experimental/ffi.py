@@ -225,7 +225,7 @@ class FfiKernel:
 
         self.callback_func_host = FFI_CCALLFUNC(lambda call_frame: self.ffi_callback(call_frame, platform="Host"))
         ffi_ccall_address_host = ctypes.cast(self.callback_func_host, ctypes.c_void_p)
-        ffi_capsule_host = jax.ffi.pycapsule(ffi_capsule_host.value)
+        ffi_capsule_host = jax.ffi.pycapsule(ffi_ccall_address_host.value)
         jax.ffi.register_ffi_target(self.name, ffi_capsule_host, platform="Host")
 
     def __call__(self, *args, output_dims=None, launch_dims=None, vmap_method=None):
@@ -1773,7 +1773,7 @@ def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = Tr
     ffi_capsule_cuda = jax.ffi.pycapsule(ffi_ccall_address_cuda.value)
     jax.ffi.register_ffi_target(name, ffi_capsule_cuda, platform="CUDA")
     ffi_ccall_address_host = ctypes.cast(callback_func_host, ctypes.c_void_p)
-    ffi_capsule_host = jax.ffi.pycapsule(ffi_capsule_host.value)
+    ffi_capsule_host = jax.ffi.pycapsule(ffi_ccall_address_host.value)
     jax.ffi.register_ffi_target(name, ffi_capsule_host, platform="Host")
 
 
