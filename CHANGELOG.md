@@ -278,6 +278,9 @@
   reproducibility across runs. Counter/allocator atomics (where the return value is used)
   use automatic two-pass execution with prefix-sum-based slot assignment. Configurable at
   the global, module, and kernel level.
+- Add deterministic atomic execution mode via `wp.config.deterministic = True`, with global, module,
+  and kernel-level control for reproducible CUDA results
+  ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Add double-precision (`wp.float64`) support to `warp.fem`.
   Precision is selected via the geometry (e.g. `scalar_type=wp.float64` on grid constructors)
   and propagated automatically to function spaces, quadrature, fields, and integration kernels
