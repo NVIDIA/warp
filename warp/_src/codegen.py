@@ -1786,8 +1786,12 @@ class Adjoint:
         )
 
         args_list = list(bound_args.values())
-        arr_var = args_list[0]  # the target array
-        index_vars = args_list[1:-1]  # the index arguments (1-4 depending on ndim)
+        arr_var = args_list[0]  # the target array, possibly a view such as arr[i]
+        view_prefix_vars = []
+
+        while getattr(arr_var, "_det_view_parent", None) is not None:
+            view_prefix_vars = list(arr_var._det_view_indices) + view_prefix_vars
+            arr_var = arr_var._det_view_parent
 
         try:
             target_info = _deterministic_target_info(arr_var)
@@ -1888,9 +1892,10 @@ class Adjoint:
         helper_name = target.helper_name
 
         val_loaded = loaded_args[-1]
-        idx_loaded_list = loaded_args[1:-1]
+        loaded_prefix = [adj.load(var) for var in view_prefix_vars]
+        idx_loaded_list = loaded_prefix + list(loaded_args[1:-1])
 
-        ndim = len(index_vars)
+        ndim = len(idx_loaded_list)
         target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
         if target_expr is None:
             return None
@@ -1923,6 +1928,18 @@ class Adjoint:
         )
         if output is not None:
             adj.add_forward(f"var_{output} = {zero_expr};")
+
+        target_adj_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path, adjoint=True)
+        if target_adj_expr is None:
+            return output
+
+        original_val_arg = args_list[-1]
+        fwd_parts = [target_expr] + [f"var_{var}" for var in idx_loaded_list] + [f"var_{val_loaded}"]
+        adj_ret_str = f"adj_{output}" if output is not None else zero_expr
+        adj_parts = (
+            [target_adj_expr] + [f"adj_{var}" for var in idx_loaded_list] + [f"adj_{original_val_arg}", adj_ret_str]
+        )
+        adj.add_reverse(f"wp::adj_{func.native_func}({', '.join(fwd_parts + adj_parts)});")
         return output
 
     def add_grad_call(adj, func, args, kwargs):
@@ -3222,6 +3239,11 @@ class Adjoint:
                     target.mark_read()
 
             else:
+                det_view_indices = tuple(indices)
+                det_view_indices_are_int = all(
+                    warp._src.types.type_is_int(strip_reference(index.type)) for index in det_view_indices
+                )
+
                 if warp._src.types.matches_array_class(target_type, warp._src.types.array):
                     # In order to reduce the number of overloads needed in the C
                     # implementation to support combinations of int/slice indices,
@@ -3239,6 +3261,10 @@ class Adjoint:
 
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
+
+                if det_view_indices_are_int:
+                    out._det_view_parent = target
+                    out._det_view_indices = det_view_indices
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
@@ -5145,13 +5171,13 @@ def _deterministic_kernel_args(adj):
     return det_args
 
 
-def _deterministic_kernel_locals(adj, device):
+def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
     if adj.det_meta is None or not adj.det_meta.needs_deterministic:
         return ""
 
     from warp._src.deterministic import kernel_raw_counter_param_names, kernel_raw_scatter_param_names  # noqa: PLC0415
 
-    if device == "cuda":
+    if device == "cuda" and use_launch_buffers:
         decls = [
             "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow};",
         ]
@@ -5181,7 +5207,7 @@ def _deterministic_reference_origin(var):
     return root_label, tuple(getattr(var, "_det_ref_attr_path", ()))
 
 
-def _deterministic_array_expr(adj, root_label, attr_path):
+def _deterministic_array_expr(adj, root_label, attr_path, adjoint=False):
     root = None
     for arg in adj.args:
         if arg.label == root_label:
@@ -5191,7 +5217,7 @@ def _deterministic_array_expr(adj, root_label, attr_path):
     if root is None:
         return None
 
-    expr = root.emit()
+    expr = root.emit_adj() if adjoint else root.emit()
     for attr in attr_path:
         expr = f"{expr}.{attr}"
     return expr
@@ -5390,10 +5416,12 @@ def codegen_kernel(kernel, device, options):
                 else:
                     reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
-            reverse_args.extend(_deterministic_kernel_args(adj))
-
         reverse_body = ""
-        reverse_body += _deterministic_kernel_locals(adj, device)
+        # Backward kernels are not launched through the deterministic multi-pass
+        # wrapper, but reverse code generated for deterministic functions still
+        # references the deterministic context and helper buffers. Declare inert
+        # locals instead of adding hidden deterministic launch parameters.
+        reverse_body += _deterministic_kernel_locals(adj, device, use_launch_buffers=False)
         reverse_body += codegen_func_reverse(adj, func_type="kernel", device=device)
         template_fmt_args.update(
             {

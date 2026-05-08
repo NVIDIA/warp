@@ -17,6 +17,7 @@
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 
 #include <cub/cub.cuh>
+#include <thrust/iterator/transform_iterator.h>
 
 namespace {
 
@@ -216,8 +217,7 @@ void deterministic_sort_reduce_device_scalar_run_to_run(
     ScopedTemporary<int> unique_dests(WP_CURRENT_CONTEXT, count);
     ScopedTemporary<T> aggregates(WP_CURRENT_CONTEXT, count);
     ScopedTemporary<int> num_runs(WP_CURRENT_CONTEXT, 1);
-    auto dest_keys
-        = cub::TransformInputIterator<int, DestIndexTransform, const int64_t*>(d_keys.Current(), DestIndexTransform {});
+    auto dest_keys = thrust::make_transform_iterator(d_keys.Current(), DestIndexTransform {});
 
     size_t reduce_temp_size = 0;
     ReduceByKeyOp<T> reduce_op { op };

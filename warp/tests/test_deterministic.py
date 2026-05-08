@@ -99,6 +99,48 @@ def atomic_add_2d_kernel(
 
 
 @wp.kernel
+def sliced_2d_atomic_add_kernel(
+    data: wp.array(dtype=wp.float32),
+    row_indices: wp.array(dtype=wp.int32),
+    col_indices: wp.array(dtype=wp.int32),
+    output: wp.array2d(dtype=wp.float32),
+):
+    """Atomic add through a sliced ``output[row]`` view."""
+    tid = wp.tid()
+    row = row_indices[tid]
+    col = col_indices[tid]
+    wp.atomic_add(output[row], col, data[tid])
+
+
+@wp.kernel
+def sliced_3d_atomic_add_kernel(
+    data: wp.array(dtype=wp.float32),
+    row_indices: wp.array(dtype=wp.int32),
+    col_indices: wp.array(dtype=wp.int32),
+    depth_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32, ndim=3),
+):
+    """Atomic add through a sliced ``output[row, col]`` view."""
+    tid = wp.tid()
+    row = row_indices[tid]
+    col = col_indices[tid]
+    depth = depth_indices[tid]
+    wp.atomic_add(output[row, col], depth, data[tid])
+
+
+@wp.kernel
+def atomic_half_kernel(
+    data: wp.array(dtype=wp.float16),
+    dest_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float16),
+):
+    """Atomic add with float16."""
+    tid = wp.tid()
+    idx = dest_indices[tid]
+    wp.atomic_add(output, idx, data[tid])
+
+
+@wp.kernel
 def atomic_double_kernel(
     data: wp.array(dtype=wp.float64),
     dest_indices: wp.array(dtype=wp.int32),
@@ -662,6 +704,119 @@ def test_atomic_add_2d(test, device):
             atomic_add_2d_kernel,
             dim=n,
             inputs=[data, row_idx, col_idx],
+            outputs=[output],
+            device=device,
+        )
+        results.append(output.numpy().copy())
+
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_sliced_2d_array_atomic_add(test, device):
+    """Verify deterministic atomics through a sliced ``arr[row]`` view."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 2048
+    rows, cols = 16, 16
+    rng = np.random.default_rng(101)
+
+    data_np = rng.random(n, dtype=np.float32)
+    row_np = rng.integers(0, rows, size=n, dtype=np.int32)
+    col_np = rng.integers(0, cols, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    row_idx = wp.array(row_np, dtype=wp.int32, device=device)
+    col_idx = wp.array(col_np, dtype=wp.int32, device=device)
+
+    expected = np.zeros((rows, cols), dtype=np.float32)
+    for i in range(n):
+        expected[row_np[i], col_np[i]] = np.float32(expected[row_np[i], col_np[i]] + data_np[i])
+
+    results = []
+    for _ in range(5):
+        output = wp.zeros(shape=(rows, cols), dtype=wp.float32, device=device)
+        wp.launch(
+            sliced_2d_atomic_add_kernel,
+            dim=n,
+            inputs=[data, row_idx, col_idx],
+            outputs=[output],
+            device=device,
+        )
+        results.append(output.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_sliced_3d_array_atomic_add(test, device):
+    """Verify deterministic atomics through a sliced ``arr[row, col]`` view."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 2048
+    rows, cols, depth = 8, 8, 8
+    rng = np.random.default_rng(102)
+
+    data_np = rng.random(n, dtype=np.float32)
+    row_np = rng.integers(0, rows, size=n, dtype=np.int32)
+    col_np = rng.integers(0, cols, size=n, dtype=np.int32)
+    depth_np = rng.integers(0, depth, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    row_idx = wp.array(row_np, dtype=wp.int32, device=device)
+    col_idx = wp.array(col_np, dtype=wp.int32, device=device)
+    depth_idx = wp.array(depth_np, dtype=wp.int32, device=device)
+
+    expected = np.zeros((rows, cols, depth), dtype=np.float32)
+    for i in range(n):
+        expected[row_np[i], col_np[i], depth_np[i]] = np.float32(
+            expected[row_np[i], col_np[i], depth_np[i]] + data_np[i]
+        )
+
+    results = []
+    for _ in range(5):
+        output = wp.zeros(shape=(rows, cols, depth), dtype=wp.float32, device=device)
+        wp.launch(
+            sliced_3d_atomic_add_kernel,
+            dim=n,
+            inputs=[data, row_idx, col_idx, depth_idx],
+            outputs=[output],
+            device=device,
+        )
+        results.append(output.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_atomic_half_deterministic(test, device):
+    """Verify deterministic mode with float16 atomics."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 1024
+    out_size = 16
+    rng = np.random.default_rng(78)
+
+    data_np = rng.random(n, dtype=np.float32).astype(np.float16)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float16, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(5):
+        output = wp.zeros(out_size, dtype=wp.float16, device=device)
+        wp.launch(
+            atomic_half_kernel,
+            dim=n,
+            inputs=[data, indices],
             outputs=[output],
             device=device,
         )
@@ -1345,6 +1500,44 @@ def test_graph_capture_deterministic_launch(test, device):
     np.testing.assert_array_equal(first, second)
 
 
+def test_graph_capture_sliced_array(test, device):
+    """Verify deterministic sliced-array atomics can be captured and replayed."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    # TestDeterministic.setUpClass enables run-to-run deterministic mode for
+    # every registered test in this module.
+    test.assertEqual(wp.config.deterministic, "run_to_run")
+
+    n = 256
+    rows, cols = 8, 8
+    rng = np.random.default_rng(201)
+
+    data_np = rng.random(n, dtype=np.float32)
+    row_np = rng.integers(0, rows, size=n, dtype=np.int32)
+    col_np = rng.integers(0, cols, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    row_idx = wp.array(row_np, dtype=wp.int32, device=device)
+    col_idx = wp.array(col_np, dtype=wp.int32, device=device)
+    output = wp.zeros(shape=(rows, cols), dtype=wp.float32, device=device)
+
+    wp.launch(sliced_2d_atomic_add_kernel, dim=n, inputs=[data, row_idx, col_idx], outputs=[output], device=device)
+    output.zero_()
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(sliced_2d_atomic_add_kernel, dim=n, inputs=[data, row_idx, col_idx], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first = output.numpy().copy()
+
+    output.zero_()
+    wp.capture_launch(capture.graph)
+    second = output.numpy().copy()
+
+    np.testing.assert_array_equal(first, second)
+
+
 def test_graph_capture_deterministic_closure_kernel(test, device):
     """Verify deterministic closure kernels can be captured and replayed."""
     if device.is_cpu:
@@ -1440,6 +1633,65 @@ def test_graph_capture_vec3_atomic_minmax(test, device):
 
     np.testing.assert_array_equal(first_min, second_min)
     np.testing.assert_array_equal(first_max, second_max)
+
+
+def test_graph_capture_consumed_return_counter(test, device):
+    """Verify consumed-return atomic counters can be captured and replayed."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    n = 64
+    rng = np.random.default_rng(202)
+    data_np = rng.random(n, dtype=np.float32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device)
+
+    wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+    counter.zero_()
+    output.zero_()
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first = output.numpy().copy()
+    first_count = int(counter.numpy()[0])
+
+    counter.zero_()
+    output.zero_()
+    wp.capture_launch(capture.graph)
+    second = output.numpy().copy()
+    second_count = int(counter.numpy()[0])
+
+    test.assertEqual(first_count, n)
+    test.assertEqual(second_count, n)
+    np.testing.assert_array_equal(first, second)
+
+
+def test_deterministic_backward_scatter_add(test, device):
+    """Verify deterministic scatter-add kernels launch backward and propagate value gradients."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 512
+    out_size = 16
+    rng = np.random.default_rng(300)
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(out_size, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(tape.gradients[data].numpy(), np.ones(n, dtype=np.float32), rtol=0, atol=0)
 
 
 def test_deterministic_enum_parity(test, device):
@@ -1545,6 +1797,15 @@ add_function_test(
 )
 add_function_test(TestDeterministic, "test_atomic_add_2d", test_atomic_add_2d, devices=cuda_devices)
 add_function_test(
+    TestDeterministic, "test_sliced_2d_array_atomic_add", test_sliced_2d_array_atomic_add, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic, "test_sliced_3d_array_atomic_add", test_sliced_3d_array_atomic_add, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic, "test_atomic_half_deterministic", test_atomic_half_deterministic, devices=cuda_devices
+)
+add_function_test(
     TestDeterministic, "test_atomic_double_deterministic", test_atomic_double_deterministic, devices=cuda_devices
 )
 add_function_test(
@@ -1642,6 +1903,12 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic,
+    "test_graph_capture_sliced_array",
+    test_graph_capture_sliced_array,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
     "test_graph_capture_deterministic_closure_kernel",
     test_graph_capture_deterministic_closure_kernel,
     devices=cuda_devices,
@@ -1656,6 +1923,18 @@ add_function_test(
     TestDeterministic,
     "test_graph_capture_vec3_atomic_minmax",
     test_graph_capture_vec3_atomic_minmax,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_graph_capture_consumed_return_counter",
+    test_graph_capture_consumed_return_counter,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_backward_scatter_add",
+    test_deterministic_backward_scatter_add,
     devices=cuda_devices,
 )
 add_function_test(
