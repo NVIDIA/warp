@@ -8,6 +8,10 @@ on:
     branches:
       - main
       - release-*
+    tags:
+      # Tags gate /stable/ promotion. Branch pushes deploy /vX.Y/ but
+      # don't touch /stable/ until a corresponding vX.Y.* tag exists.
+      - 'v*'
   workflow_dispatch:
 
 concurrency:
@@ -27,6 +31,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+          # deploy_doc.py uses historical vX.Y.N tags to decide which
+          # deployed versions are released and eligible for /stable/.
+          fetch-depth: 0
       - name: Fetch gh-pages branch
         # Skip the fetch on a fresh repo where origin has no gh-pages yet
         # (deploy_doc.py's orphan path handles that bootstrap case). When the
@@ -39,6 +46,42 @@ jobs:
           else
             echo "origin has no gh-pages branch yet — skipping fetch (bootstrap deploy)"
           fi
+      - name: Determine doc version + mode
+        # Three trigger flavours:
+        #   - main / release-X.Y / workflow_dispatch on a branch → full
+        #     build, deploy /vX.Y/ (or /latest/) from the branch tip.
+        #   - vX.Y.* tag → tag gates /stable/ promotion. If /vX.Y/ already
+        #     exists on gh-pages (the branch ran first and put it there),
+        #     skip the build and run deploy_doc.py --metadata-only to refresh
+        #     /stable/ + versions.json without regressing /vX.Y/'s content
+        #     to the tagged commit. If /vX.Y/ doesn't exist yet (tag pushed
+        #     before any branch deploy), fall back to a full build from the
+        #     tag commit so the version folder gets populated.
+        id: dv
+        run: |
+          ref="${GITHUB_REF}"
+          if [[ "$ref" == "refs/heads/main" ]]; then
+            version="latest"
+            metadata_only="false"
+          elif [[ "$ref" =~ ^refs/heads/release-([0-9]+\.[0-9]+)$ ]]; then
+            version="${BASH_REMATCH[1]}"
+            metadata_only="false"
+          elif [[ "$ref" =~ ^refs/tags/v([0-9]+\.[0-9]+)(\.|$) ]]; then
+            version="${BASH_REMATCH[1]}"
+            if git rev-parse --verify gh-pages >/dev/null 2>&1 \
+               && git ls-tree --name-only "gh-pages" \
+                  | grep -qE "^v${version}\$"; then
+              metadata_only="true"
+            else
+              metadata_only="false"
+            fi
+          else
+            echo "::error::Unsupported ref '$ref'"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "metadata_only=$metadata_only" >> "$GITHUB_OUTPUT"
+          echo "Doc version: $version  (metadata_only=$metadata_only)"
       - name: Install uv
         uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
         with:
@@ -46,24 +89,15 @@ jobs:
       - name: Set up Python
         run: uv python install
       - name: Build Warp without CUDA Support
+        if: steps.dv.outputs.metadata_only != 'true'
         run: |
           uv run build_lib.py --no-cuda
-      - name: Determine doc version
-        run: |
-          ref_name="${{ github.ref_name }}"
-          if [[ "$ref_name" == "main" ]]; then
-            echo "latest" > .doc_version
-          elif [[ "$ref_name" =~ ^release-([0-9]+\.[0-9]+)$ ]]; then
-            echo "${BASH_REMATCH[1]}" > .doc_version
-          else
-            echo "::error::Unsupported ref '$ref_name'. Expected 'main' or 'release-MAJOR.MINOR'."
-            exit 1
-          fi
-          echo "Doc version: $(cat .doc_version)"
       - name: Build Sphinx documentation
+        if: steps.dv.outputs.metadata_only != 'true'
         run: |
-          DOC_VERSION=$(cat .doc_version) uv run --extra docs build_docs.py
+          DOC_VERSION=${{ steps.dv.outputs.version }} uv run --extra docs build_docs.py
       - name: Upload artifacts
+        if: steps.dv.outputs.metadata_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: html-docs
@@ -71,5 +105,9 @@ jobs:
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
       - name: Deploy to gh-pages
         run: |
-          uv run tools/ci/deploy_doc.py --version "$(cat .doc_version)"
+          flag=""
+          if [[ "${{ steps.dv.outputs.metadata_only }}" == "true" ]]; then
+            flag="--metadata-only"
+          fi
+          uv run tools/ci/deploy_doc.py --version "${{ steps.dv.outputs.version }}" $flag
           git push origin gh-pages

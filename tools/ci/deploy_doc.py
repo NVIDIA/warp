@@ -87,11 +87,43 @@ def discover_versions(gh_pages_dir: Path) -> List[str]:
     return versions
 
 
+def is_released(version: str) -> bool:
+    """Whether a final ``v{version}.N`` tag exists in the local repo.
+
+    Used to gate ``/stable/`` promotion on an actual release rather than the
+    mere existence of a ``release-X.Y`` branch (which is created during the
+    RC phase, before the tag is published). Requires the workflow's checkout
+    step to have fetched tags (``fetch-depth: 0``).
+
+    Pre-release / post-release tags such as ``v1.9.0rc1``, ``v1.0.0-beta.3``,
+    or ``v1.7.2.post1`` are deliberately excluded: they don't represent a
+    published stable release. The git glob is broad to keep the candidate
+    list small, then a strict regex enforces ``vX.Y.N`` only.
+    """
+    result = subprocess.run(
+        ("git", "tag", "-l", f"v{version}.*"),
+        capture_output=True, text=True, check=False,
+    )
+    pattern = re.compile(rf"^v{re.escape(version)}\.\d+$")
+    return any(pattern.fullmatch(tag) for tag in result.stdout.splitlines())
+
+
 # Content Generation
 # ---------------------------------------------------------------------------
 
-def generate_versions_json(gh_pages_dir: Path, versions: List[str], has_latest: bool) -> None:
-    """Write versions.json for the PyData Sphinx theme version switcher."""
+def generate_versions_json(
+    gh_pages_dir: Path,
+    versions: List[str],
+    released: List[str],
+    has_latest: bool,
+) -> None:
+    """Write versions.json for the PyData Sphinx theme version switcher.
+
+    The highest *released* version is flagged ``preferred`` (and labeled
+    "stable"). Versions deployed without a corresponding tag are labeled
+    "(prerelease)" so RC reviewers can find them in the dropdown without
+    them being treated as stable.
+    """
     entries = []
 
     if has_latest:
@@ -101,14 +133,19 @@ def generate_versions_json(gh_pages_dir: Path, versions: List[str], has_latest: 
             "url": f"{BASE_URL}/latest/",
         })
 
-    for i, ver in enumerate(versions):
+    released_set = set(released)
+    preferred = released[0] if released else None
+
+    for ver in versions:
         entry: dict = {
             "version": ver,
             "url": f"{BASE_URL}/v{ver}/",
         }
-        if i == 0:
+        if ver == preferred:
             entry["name"] = f"{ver} (stable)"
             entry["preferred"] = True
+        elif ver not in released_set:
+            entry["name"] = f"{ver} (prerelease)"
         else:
             entry["name"] = ver
         entries.append(entry)
@@ -247,11 +284,19 @@ def update_stable(gh_pages_dir: Path, stable_version: str) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def run(version: str) -> None:
-    folder = resolve_version_folder(version)
-    print(f"Deploying to /{folder}/")
+def run(version: str, metadata_only: bool = False) -> None:
+    """Deploy the built docs (or, with ``metadata_only``, just refresh
+    ``/stable/`` and ``versions.json`` against the existing ``/vX.Y/``).
 
-    if not HTML_DIR.exists():
+    The metadata-only path is for the tag-trigger workflow: a tag is gating
+    ``/stable/`` promotion but the version folder content is whatever the
+    ``release-X.Y`` branch line currently has. Rebuilding from the tag
+    commit could regress ``/vX.Y/`` if the branch is ahead of the tag.
+    """
+    folder = resolve_version_folder(version)
+    print(f"Deploying to /{folder}/  (metadata_only={metadata_only})")
+
+    if not metadata_only and not HTML_DIR.exists():
         raise FileNotFoundError(f"Built docs not found at {HTML_DIR}")
 
     branch_exists = bool(git_run_cmd("branch", "--list", "gh-pages"))
@@ -291,34 +336,51 @@ def run(version: str) -> None:
             git_run_cmd("rm", "-rf", ".", cwd=wt)
 
         try:
-            # 1. Deploy the built HTML into the target version folder.
+            # 1. Deploy the built HTML into the target version folder, or
+            # (metadata-only) assert the folder is already there. Tag-trigger
+            # runs use metadata-only when /vX.Y/ exists; if it doesn't, the
+            # workflow falls back to a full deploy from the tag commit.
             target = wt / folder
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(HTML_DIR, target, ignore=_DEPLOY_EXCLUDE)
-            print(f"Copied {HTML_DIR} -> {target}")
+            if metadata_only:
+                if not target.exists():
+                    raise RuntimeError(
+                        f"--metadata-only: /{folder}/ doesn't exist on "
+                        f"gh-pages (deploy the branch first to populate it)"
+                    )
+            else:
+                if target.exists():
+                    shutil.rmtree(target)
+                shutil.copytree(HTML_DIR, target, ignore=_DEPLOY_EXCLUDE)
+                print(f"Copied {HTML_DIR} -> {target}")
 
-            # 2. Discover all deployed release versions.
+            # 2. Discover all deployed release versions, and the released
+            # subset (those with a v{X.Y}.* tag in the repo). Only released
+            # versions are eligible to back /stable/; RC pushes to a
+            # release-X.Y branch deploy to /vX.Y/ but don't touch /stable/.
             versions = discover_versions(wt)
+            released = [v for v in versions if is_released(v)]
             has_latest = (wt / "latest").is_dir()
-            print(f"Deployed versions: {versions}  (has latest: {has_latest})")
+            print(
+                f"Deployed versions: {versions}  released: {released}  "
+                f"(has latest: {has_latest})"
+            )
 
             # 3. Update /stable/ and root + 404 redirects.
-            if versions:
-                update_stable(wt, versions[0])
+            if released:
+                update_stable(wt, released[0])
                 generate_root_redirect(wt, "stable/")
                 generate_404_redirect(wt, "stable/")
             else:
                 stable_dir = wt / "stable"
                 if stable_dir.exists():
                     shutil.rmtree(stable_dir)
-                    print("Removed stale /stable/ (no versioned folders left)")
+                    print("Removed stale /stable/ (no released versions)")
                 if has_latest:
                     generate_root_redirect(wt, "latest/")
                     generate_404_redirect(wt, "latest/")
 
             # 4. Generate versions.json for the version switcher.
-            generate_versions_json(wt, versions, has_latest)
+            generate_versions_json(wt, versions, released, has_latest)
 
             # 5. Ensure .nojekyll exists at the root.
             (wt / ".nojekyll").touch()
@@ -364,9 +426,20 @@ if __name__ == "__main__":
             "deploys to /vMAJOR.MINOR/."
         ),
     )
+    parser.add_argument(
+        "--metadata-only",
+        action="store_true",
+        help=(
+            "Skip the HTML deploy and only refresh /stable/, /index.html, "
+            "/404.html, and /versions.json against the existing /vX.Y/ "
+            "content. Fails if the version folder doesn't already exist. "
+            "Used by the tag-push trigger to advance /stable/ without "
+            "regressing /vX.Y/ to the tagged commit's content."
+        ),
+    )
     args = parser.parse_args()
     try:
-        run(args.version)
+        run(args.version, metadata_only=args.metadata_only)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
