@@ -3490,54 +3490,6 @@ class Adjoint:
         else:
             raise WarpCodegenError("Error, unsupported assignment statement.")
 
-    def _add_deterministic_array_store(adj, target, indices, rhs):
-        store_args_raw = (target, *indices, rhs)
-        store_func = adj.resolve_func(
-            warp._src.context.builtin_functions["array_store"],
-            tuple(get_arg_type(x) for x in store_args_raw),
-            {},
-            min_outputs=None,
-        )
-        bound_args = store_func.signature.bind(*store_args_raw)
-        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.arguments.items()}
-        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.arguments.items()}
-        return_type = store_func.value_func(
-            {k: strip_reference(v) for k, v in bound_arg_types.items()},
-            bound_arg_values,
-        )
-
-        if store_func.dispatch_func is not None:
-            func_args, template_args = store_func.dispatch_func(store_func.input_types, return_type, bound_args)
-        else:
-            func_args = tuple(bound_args.arguments.values())
-            template_args = ()
-
-        func_args = tuple(adj.register_var(x) for x in func_args)
-        func_name = compute_type_str(store_func.native_func, template_args)
-        use_initializer_list = store_func.initializer_list_func(bound_args, return_type)
-
-        fwd_args = []
-        for func_arg in func_args:
-            loaded_arg = func_arg
-            if not isinstance(func_arg, (Reference, warp._src.context.Function)):
-                loaded_arg = adj.load(func_arg)
-            fwd_args.append(strip_reference(loaded_arg))
-
-        store_args = ", ".join(f"var_{x}" for x in fwd_args)
-        adj.add_forward(f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});", skip_replay=True)
-
-        if store_func.is_differentiable:
-            adj_args = tuple(strip_reference(x) for x in func_args)
-            arg_str = adj.format_reverse_call_args(
-                fwd_args,
-                adj_args,
-                [],
-                use_initializer_list,
-                has_output_args=False,
-            )
-            if arg_str is not None:
-                adj.add_reverse(f"{store_func.namespace}adj_{func_name}({arg_str});")
-
     def _store_subscript(adj, lhs, target, indices, rhs):
         """Store ``rhs`` into a subscript target using pre-evaluated ``target`` and ``indices``.
 
@@ -3550,7 +3502,7 @@ class Adjoint:
             # Deterministic two-pass mode must suppress normal array writes in
             # phase 0 so the counting pass does not introduce side effects.
             if adj.det_meta is not None and adj.det_meta.has_counter:
-                adj._add_deterministic_array_store(target, indices, rhs)
+                _add_deterministic_array_store(adj, target, indices, rhs)
             else:
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
 
@@ -5291,6 +5243,55 @@ def _deterministic_target_info(var):
         return None
 
     return var.label, (), var_type
+
+
+def _add_deterministic_array_store(adj, target, indices, rhs):
+    store_args_raw = (target, *indices, rhs)
+    store_func = adj.resolve_func(
+        warp._src.context.builtin_functions["array_store"],
+        tuple(get_arg_type(x) for x in store_args_raw),
+        {},
+        min_outputs=None,
+    )
+    bound_args = store_func.signature.bind(*store_args_raw)
+    bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.arguments.items()}
+    bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.arguments.items()}
+    return_type = store_func.value_func(
+        {k: strip_reference(v) for k, v in bound_arg_types.items()},
+        bound_arg_values,
+    )
+
+    if store_func.dispatch_func is not None:
+        func_args, template_args = store_func.dispatch_func(store_func.input_types, return_type, bound_args)
+    else:
+        func_args = tuple(bound_args.arguments.values())
+        template_args = ()
+
+    func_args = tuple(adj.register_var(x) for x in func_args)
+    func_name = compute_type_str(store_func.native_func, template_args)
+    use_initializer_list = store_func.initializer_list_func(bound_args, return_type)
+
+    fwd_args = []
+    for func_arg in func_args:
+        loaded_arg = func_arg
+        if not isinstance(func_arg, (Reference, warp._src.context.Function)):
+            loaded_arg = adj.load(func_arg)
+        fwd_args.append(strip_reference(loaded_arg))
+
+    store_args = ", ".join(f"var_{x}" for x in fwd_args)
+    adj.add_forward(f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});", skip_replay=True)
+
+    if store_func.is_differentiable:
+        adj_args = tuple(strip_reference(x) for x in func_args)
+        arg_str = adj.format_reverse_call_args(
+            fwd_args,
+            adj_args,
+            [],
+            use_initializer_list,
+            has_output_args=False,
+        )
+        if arg_str is not None:
+            adj.add_reverse(f"{store_func.namespace}adj_{func_name}({arg_str});")
 
 
 def _deterministic_counter_indices_are_zero(indices):

@@ -4175,9 +4175,6 @@ class Graph:
     def retain_module_exec(self, module_exec: ModuleExec):
         self.module_execs.add(module_exec)
 
-    def retain_deterministic_buffers(self, *buffers: Any):
-        self._deterministic_buffer_refs.extend(buffer for buffer in buffers if buffer is not None)
-
 
 class Runtime:
     def __init__(self):
@@ -7788,11 +7785,15 @@ def _launch_deterministic(
         run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device, determinism_mode)
 
     if capture_graph is not None:
-        capture_graph.retain_deterministic_buffers(
-            *scatter_bufs,
-            *counter_bufs,
-            overflow_buf,
-            *counter_total_bufs,
+        capture_graph._deterministic_buffer_refs.extend(
+            buffer
+            for buffer in (
+                *scatter_bufs,
+                *counter_bufs,
+                overflow_buf,
+                *counter_total_bufs,
+            )
+            if buffer is not None
         )
 
     try:
