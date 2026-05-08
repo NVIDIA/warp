@@ -131,7 +131,8 @@ The kernel runs twice:
    Counter atomics record per-thread contributions to a scratch array instead
    of performing the actual atomic.
 2. *Prefix sum*: ``wp.utils.array_scan(contrib, prefix, inclusive=False)``
-   computes deterministic per-thread offsets.
+   computes deterministic per-thread offsets. The total count is
+   ``prefix[-1] + contrib[-1]``.
 3. *Phase 1 (execution)*: The kernel re-executes. Counter atomics return the
    deterministic offset from the prefix sum. All other operations (including
    Pattern A scatters) execute normally.
@@ -214,9 +215,11 @@ each target. On overflow, new records are truncated, one shared device-side
 overflow flag is set, and optional diagnostics may be emitted when
 ``wp.config.deterministic_debug`` is enabled.
 
-**Counter total writeback**: after the prefix sum in Phase 0, the launch system
-copies the total count (last element of the inclusive scan) back to the actual
-counter array so user code that reads it post-launch sees the correct value.
+**Counter total writeback**: after the exclusive prefix sum in Phase 0, the
+launch system copies the total count back to the actual counter array so user
+code that reads it post-launch sees the correct value. The total is
+``prefix[-1] + contrib[-1]``; the implementation may materialize that value via
+an inclusive scan scratch buffer to keep the writeback capture-friendly.
 
 **Files added/modified**:
 
