@@ -9002,7 +9002,7 @@ def _build_launch_bounds(dim: int | Sequence[int], kernel_dim: int) -> LaunchBou
 
 
 class DeterministicLaunch(Launch):
-    """Recorded launch wrapper for deterministic forward CUDA kernels."""
+    """Recorded launch wrapper that replays through the deterministic launcher."""
 
     def __init__(
         self,
@@ -9065,7 +9065,8 @@ def _launch_deterministic(
     """Orchestrate a deterministic kernel launch with scatter-sort-reduce and/or two-pass execution.
 
     This is called from launch() when deterministic mode is active and the
-    kernel has atomic operations that require deterministic treatment.
+    kernel has atomic operations that require deterministic treatment. Pattern
+    A uses one kernel pass plus sort-reduce; Pattern B adds a counter pass.
     """
     from warp._src.deterministic import (  # noqa: PLC0415
         allocate_counter_buffers,
@@ -9116,8 +9117,10 @@ def _launch_deterministic(
         for i, _ct in enumerate(det_meta.counter_targets):
             contrib, prefix = counter_bufs[i]
             if phase == 0:
+                # Count per-thread contributions; prefix is produced after phase 0.
                 det_params.append(det_counter_buf_t(contrib.ptr, 0))
             else:
+                # Phase 1 consumes and advances the exclusive prefix slots.
                 det_params.append(det_counter_buf_t(0, prefix.ptr))
         for i, _st in enumerate(det_meta.scatter_targets):
             if use_scatter and i < len(scatter_bufs):
@@ -9238,6 +9241,8 @@ def _launch_deterministic(
         run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device, determinism_mode)
 
     if capture_graph is not None:
+        # Captured graphs replay after this function returns, so keep temporary
+        # deterministic buffers alive for the lifetime of the graph object.
         capture_graph._deterministic_buffer_refs.extend(
             buffer
             for buffer in (
