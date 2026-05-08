@@ -5143,6 +5143,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
 
 
 def _deterministic_function_args(adj):
+    """Return hidden deterministic parameters for generated ``@wp.func`` calls."""
     if adj.det_meta is None or not adj.det_meta.needs_deterministic:
         return []
 
@@ -5157,6 +5158,7 @@ def _deterministic_function_args(adj):
 
 
 def _deterministic_kernel_args(adj):
+    """Return raw deterministic launch parameters for generated CUDA kernels."""
     if adj.det_meta is None or not adj.det_meta.needs_deterministic:
         return []
 
@@ -5177,6 +5179,7 @@ def _deterministic_kernel_args(adj):
 
 
 def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
+    """Declare ``det_ctx`` plus helper aliases/stand-ins inside generated kernels."""
     if adj.det_meta is None or not adj.det_meta.needs_deterministic:
         return ""
 
@@ -5206,6 +5209,7 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
 
 
 def _deterministic_reference_origin(var):
+    """Return the root argument and field path for a tracked array reference."""
     root_label = getattr(var, "_det_ref_root_label", None)
     if root_label is None:
         return None
@@ -5213,6 +5217,7 @@ def _deterministic_reference_origin(var):
 
 
 def _deterministic_array_expr(adj, root_label, attr_path, adjoint=False):
+    """Build a generated C++ expression for a direct or struct-field array."""
     root = None
     for arg in adj.args:
         if arg.label == root_label:
@@ -5229,6 +5234,7 @@ def _deterministic_array_expr(adj, root_label, attr_path, adjoint=False):
 
 
 def _deterministic_target_info(var):
+    """Return ``(root_arg, attr_path, array_type)`` for a deterministic target."""
     var_type = getattr(var, "type", None)
     if var_type is None:
         return None
@@ -5246,6 +5252,7 @@ def _deterministic_target_info(var):
 
 
 def _add_deterministic_array_store(adj, target, indices, rhs):
+    """Emit ``array_store`` guarded so Pattern B phase 0 has no side effects."""
     store_args_raw = (target, *indices, rhs)
     store_func = adj.resolve_func(
         warp._src.context.builtin_functions["array_store"],
@@ -5271,6 +5278,8 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
     func_name = compute_type_str(store_func.native_func, template_args)
     use_initializer_list = store_func.initializer_list_func(bound_args, return_type)
 
+    # Reuse normal array_store dispatch/loading so references, views, and
+    # adjoint code match the non-deterministic path exactly.
     fwd_args = []
     for func_arg in func_args:
         loaded_arg = func_arg
@@ -5307,6 +5316,7 @@ def _deterministic_counter_indices_are_zero(indices):
 
 
 def _deterministic_bound_target(bound_var, extra_attr_path=()):
+    """Map a formal target to the actual bound argument at a call site."""
     bound_type = getattr(bound_var, "type", None)
     if bound_type is None:
         return None
@@ -5324,6 +5334,7 @@ def _deterministic_bound_target(bound_var, extra_attr_path=()):
 
 
 def _deterministic_map_target(target, bound_args):
+    """Remap callee metadata targets into the caller's argument namespace."""
     attr_path = tuple(getattr(target, "attr_path", ()))
     actual = bound_args.get(target.array_var_label)
     if actual is None:
@@ -5345,6 +5356,7 @@ def _deterministic_find_target(targets, array_var_label, attr_path):
 
 
 def _include_deterministic_call_meta(adj, meta, bound_args):
+    """Merge deterministic requirements from a called ``@wp.func`` into ``adj``."""
     if adj.det_meta is None or adj.det_registry is None or meta is None or not meta.needs_deterministic:
         return
 
@@ -5372,6 +5384,7 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
 
 
 def _deterministic_call_args(adj, meta, bound_args):
+    """Return helper arguments to pass from a caller into a deterministic ``@wp.func``."""
     if adj.det_meta is None or meta is None or not meta.needs_deterministic:
         return []
 

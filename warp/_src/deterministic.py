@@ -153,7 +153,11 @@ def kernel_raw_counter_param_names(target: CounterTarget) -> dict[str, str]:
 
 @dataclass(eq=False)
 class ScatterTarget:
-    """Stable scatter target identity shared across a deterministic module build."""
+    """Canonical Pattern A target identity for one module build.
+
+    A target is the destination array, or struct-field array, whose atomics are
+    scattered and later reduced. The registry owns the stable helper name.
+    """
 
     array_var_label: str
     helper_name: str
@@ -172,7 +176,7 @@ class ScatterTarget:
 
 @dataclass(eq=False)
 class CounterTarget:
-    """Stable counter target identity shared across a deterministic module build."""
+    """Canonical Pattern B counter identity for one module build."""
 
     array_var_label: str
     helper_name: str
@@ -187,7 +191,11 @@ class CounterTarget:
 
 @dataclass
 class DeterministicMeta:
-    """Deterministic requirements accumulated while building an ``Adjoint``."""
+    """Per-adjoint deterministic requirements discovered during codegen.
+
+    Nested ``@wp.func`` adjoints each collect local requirements here; callers
+    remap and merge those requirements when emitting the call site.
+    """
 
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
@@ -229,12 +237,13 @@ class DeterministicMeta:
 
 @dataclass
 class DeterministicRegistry:
-    """Stable deterministic target registry shared across one build context."""
+    """Build-wide registry that assigns stable helper names to targets."""
 
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
     _scatter_targets_by_array: dict[tuple[str, tuple[str, ...]], ScatterTarget] = field(default_factory=dict)
     _counter_targets_by_array: dict[tuple[str, tuple[str, ...]], CounterTarget] = field(default_factory=dict)
+    # Scatter and counter helpers share one namespace in generated C++.
     _next_target_index: int = 0
 
 
