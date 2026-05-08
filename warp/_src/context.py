@@ -2077,8 +2077,12 @@ class ModuleHasher:
         # metadata it would have received on a fresh compile.
         from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
 
-        if is_deterministic_mode_enabled(resolved_options.get("deterministic")) and not hasattr(kernel.adj, "det_meta"):
-            kernel.adj.build(None, resolved_options | {"output_arch": None})
+        if is_deterministic_mode_enabled(resolved_options.get("deterministic")):
+            if getattr(kernel.adj, "det_meta", None) is None:
+                kernel.adj.build(None, resolved_options | {"output_arch": None})
+        else:
+            kernel.adj.det_meta = None
+            kernel.adj.det_registry = None
 
         ch.update(bytes(kernel.key, "utf-8"))
         if kernel.options:
@@ -2802,7 +2806,9 @@ class Module:
     def get_module_hash(self, block_dim: int | None = None) -> bytes:
         """Get the hash of the module for the current block_dim.
 
-        If a hash has not been computed for the current block_dim, it will be computed and cached.
+        If a hash has not been computed for the current block_dim, or if
+        resolved module/config options have changed, it will be computed and
+        cached.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
@@ -2813,8 +2819,11 @@ class Module:
             _ = ModuleBuilder(self, builder_options)
             self.has_unresolved_static_expressions = False
 
-        if block_dim not in self.hashers:
-            options = self.resolve_options(warp.config)
+        options = self.resolve_options(warp.config)
+        if options["block_dim"] != block_dim:
+            options = options | {"block_dim": block_dim}
+
+        if block_dim not in self.hashers or self.resolved_options.get(block_dim) != options:
             self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
             self.resolved_options[block_dim] = options
 
