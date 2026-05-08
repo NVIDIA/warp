@@ -545,6 +545,14 @@ backward pass is enabled, <code class="docutils literal notranslate"><span class
 backward pass uses them as accumulators for <code class="docutils literal notranslate"><span class="pre">adjA</span></code> and <code class="docutils literal notranslate"><span class="pre">adjB</span></code>). Set
 <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> on the kernel’s module if gradients are not needed
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1427">GH-1427</a>).</p></li>
+<li><p>Fix adjoint computation for in-place composite-component writes on arrays.
+Writes of the form <code class="docutils literal notranslate"><span class="pre">arr[i].y</span> <span class="pre">=</span> <span class="pre">rhs</span></code>, <code class="docutils literal notranslate"><span class="pre">arr[i].field</span> <span class="pre">=</span> <span class="pre">rhs</span></code> (scalar
+struct field), <code class="docutils literal notranslate"><span class="pre">m[i][r,</span> <span class="pre">c]</span> <span class="pre">=</span> <span class="pre">rhs</span></code>, <code class="docutils literal notranslate"><span class="pre">t[i].p</span> <span class="pre">=</span> <span class="pre">v</span></code>, <code class="docutils literal notranslate"><span class="pre">t[i].q</span> <span class="pre">=</span> <span class="pre">q</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">state[i].position</span> <span class="pre">=</span> <span class="pre">rhs</span></code> (composite-valued struct field) now correctly
+propagate gradients instead of silently dropping them.
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/583">GH-583</a>,
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/248">GH-248</a>,
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1174">GH-1174</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
