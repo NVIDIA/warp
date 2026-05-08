@@ -65,6 +65,29 @@ def _escape_line_directive_filename(filename: str) -> str:
     return "".join(escaped)
 
 
+def _deterministic_call_name(node):
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    if isinstance(node, ast.Name):
+        return node.id
+    return None
+
+
+def _deterministic_contains_atomic_call(node):
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call) and _deterministic_call_name(child.func) in _DET_INTERCEPTABLE_ATOMICS:
+            return True
+    return False
+
+
+def _deterministic_has_consumed_atomic(tree):
+    """Return whether codegen will treat any atomic return value as consumed."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and _deterministic_contains_atomic_call(node.value):
+            return True
+    return False
+
+
 def get_node_name_safe(node):
     """Safely get a string representation of an AST node for error messages.
 
@@ -1352,9 +1375,11 @@ class Adjoint:
         if is_deterministic_mode_enabled(adj.builder_options.get("deterministic")):
             adj.det_meta = DeterministicMeta()
             adj.det_registry = DeterministicRegistry()
+            adj._det_has_consumed_atomic = _deterministic_has_consumed_atomic(adj.tree)
         else:
             adj.det_meta = None
             adj.det_registry = None
+            adj._det_has_consumed_atomic = False
         adj._det_in_assign = False
 
         adj.symbols = {}  # map from symbols to adjoint variables
@@ -2055,11 +2080,6 @@ class Adjoint:
         # the return is captured → Pattern B.
         return_is_consumed = getattr(adj, "_det_in_assign", False)
 
-        # Integer atomics with associative+commutative ops (add/sub/min/max)
-        # that don't use the return value are already deterministic — skip.
-        if not is_float_type(scalar_dtype) and not return_is_consumed:
-            return None  # fall through to normal codegen
-
         value_ctype = Var.dtype_to_ctype(value_dtype)
         scalar_ctype = warp_type_to_ctype(scalar_dtype)
 
@@ -2092,6 +2112,16 @@ class Adjoint:
             cpu_call = f"var_{output} = wp::{func.native_func}({cpu_args_str});"
         else:
             cpu_call = f"wp::{func.native_func}({cpu_args_str});"
+
+        # Integer accumulation atomics are deterministic in a single pass, but
+        # in two-pass counter kernels they are side effects and must not run
+        # during phase 0.  The pre-scan handles atomics that appear before the
+        # counter atomic in source order.
+        if not is_float_type(scalar_dtype) and not return_is_consumed:
+            if getattr(adj, "_det_has_consumed_atomic", False):
+                adj.add_forward(f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {cpu_call});")
+                return output
+            return None  # fall through to normal codegen
 
         if return_is_consumed:
             # Pattern B: Counter/Allocator
@@ -4065,7 +4095,7 @@ class Adjoint:
         if is_array(target_type):
             # Deterministic two-pass mode must suppress normal array writes in
             # phase 0 so the counting pass does not introduce side effects.
-            if adj.det_meta is not None and adj.det_meta.has_counter:
+            if adj.det_meta is not None and (adj.det_meta.has_counter or adj._det_has_consumed_atomic):
                 _add_deterministic_array_store(adj, target, indices, rhs)
             else:
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
