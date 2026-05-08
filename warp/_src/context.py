@@ -5404,13 +5404,19 @@ class Runtime:
             ]
 
             self.core.wp_radix_sort_pairs_int_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int_host.restype = None
             self.core.wp_radix_sort_pairs_int_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int_device.restype = None
 
             self.core.wp_radix_sort_pairs_float_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_float_host.restype = None
             self.core.wp_radix_sort_pairs_float_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_float_device.restype = None
 
             self.core.wp_radix_sort_pairs_int64_host.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int64_host.restype = None
             self.core.wp_radix_sort_pairs_int64_device.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int]
+            self.core.wp_radix_sort_pairs_int64_device.restype = None
 
             self.core.wp_segmented_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
@@ -5420,6 +5426,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_int_host.restype = None
             self.core.wp_segmented_sort_pairs_int_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5428,6 +5435,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_int_device.restype = None
 
             self.core.wp_segmented_sort_pairs_float_host.argtypes = [
                 ctypes.c_uint64,
@@ -5437,6 +5445,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_float_host.restype = None
             self.core.wp_segmented_sort_pairs_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5445,6 +5454,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_float_device.restype = None
 
             self.core.wp_runlength_encode_int_host.argtypes = [
                 ctypes.c_uint64,
@@ -5474,6 +5484,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_deterministic_sort_reduce_device.restype = None
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
             self.core.wp_bvh_create_host.argtypes = [

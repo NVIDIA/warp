@@ -9,6 +9,10 @@
   and tile-using kernels, plus kernel parameters of any size and `@wp.struct` /
   `wp.indexedarray` arguments containing pointers
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Add deterministic execution mode for atomic operations via `wp.config.deterministic = True`. Floating-point atomic
+  accumulations use a scatter-sort-reduce strategy for bit-exact reproducibility across runs, and counter/allocator
+  atomics where the return value is used run with automatic two-pass prefix-sum slot assignment. Configurable at the
+  global, module, and kernel level ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 - Add pre-allocated functors for `warp.optim.linear` solvers. Passing `run=False` to `cg`, `cr`, `bicgstab`, or `gmres`
@@ -273,14 +277,6 @@
   to `wp.Texture1D`, `wp.Texture2D`, or `wp.Texture3D` via the new `cuda_array=` parameter,
   or register an OpenGL texture for CUDA-OpenGL interop via the new `wp.GLTextureResource`
   class ([GH-1238](https://github.com/NVIDIA/warp/issues/1238)).
-- Add deterministic execution mode for atomic operations via `wp.config.deterministic = True`.
-  Floating-point atomic accumulations use a scatter-sort-reduce strategy for bit-exact
-  reproducibility across runs. Counter/allocator atomics (where the return value is used)
-  use automatic two-pass execution with prefix-sum-based slot assignment. Configurable at
-  the global, module, and kernel level.
-- Add deterministic atomic execution mode via `wp.config.deterministic = True`, with global, module,
-  and kernel-level control for reproducible CUDA results
-  ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 - Add pre-allocated functors for `warp.optim.linear` solvers. Passing `run=False` to `cg`, `cr`, `bicgstab`, or `gmres`

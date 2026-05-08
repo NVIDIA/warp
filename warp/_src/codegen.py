@@ -2189,7 +2189,10 @@ class Adjoint:
                 f"+ var_{idx_loaded_list[2]} * {target_expr}.shape[3] + var_{idx_loaded_list[3]})"
             )
         else:
-            flat_idx_expr = "0"
+            raise WarpCodegenError(
+                f"Deterministic mode currently supports arrays up to 4 dimensions, got {ndim}D indexing for "
+                f"{target_expr}."
+            )
 
         val_expr = f"var_{val_loaded}"
         if func.key == "atomic_sub":
