@@ -49,10 +49,10 @@ jobs:
           path: warp/bin/
           retention-days: 1
 
-  test-tile-cpu-h100:
+  test-tile-serial:
     runs-on: linux-amd64-gpu-h100-latest-1
     needs: build-warp
-    if: github.repository == 'NVIDIA/warp' || github.repository == 'shi-eric/warp'
+    if: github.repository == 'NVIDIA/warp'
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
@@ -97,29 +97,68 @@ jobs:
           name: build-artifact-ubuntu-x86_64
           path: warp/bin/
 
-      - name: Run tile tests ONLY (serial, with per-test timeout)
+      - name: Run tile tests serial (j=1) - baseline
         run: |
           uv run --extra dev python -m warp.tests \
             -k "test_tile" \
             -j 1 \
             --failfast \
             -s autodetect
-        timeout-minutes: 20
+        timeout-minutes: 25
 
-      - name: Run tile tests ONLY (parallel j=4, stress test)
-        if: success()
+  test-tile-parallel:
+    runs-on: linux-amd64-gpu-h100-latest-1
+    needs: build-warp
+    if: github.repository == 'NVIDIA/warp'
+    container:
+      image: ubuntu:24.04
+      options: -u root --security-opt seccomp=unconfined --shm-size 16g
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    timeout-minutes: 30
+    steps:
+      - name: Display system info
+        run: |
+          cat /proc/cpuinfo | grep "model name" | head -1
+          nproc
+          free -h
+          nvidia-smi || true
+
+      - name: Setup proxy cache
+        uses: nv-gha-runners/setup-proxy-cache@main
+        with:
+          enable-apt: true
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs
+          git lfs install
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+        with:
+          version: "0.11.3"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifact-ubuntu-x86_64
+          path: warp/bin/
+
+      - name: Run tile tests parallel (j=0, all cores) - contention test
         run: |
           uv run --extra dev python -m warp.tests \
             -k "test_tile" \
-            -j 4 \
+            -j 0 \
             --failfast \
             -s autodetect
-        timeout-minutes: 20
-
-      - name: Run full test suite (parallel, reproduce CI conditions)
-        if: success()
-        run: |
-          uv run --extra dev python -m warp.tests \
-            --failfast \
-            -s autodetect
-        timeout-minutes: 40
+        timeout-minutes: 25
