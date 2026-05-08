@@ -495,7 +495,7 @@
 <h1>warp.Event<a class="headerlink" href="#warp-event" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Event">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3482-L3601"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3485-L3604"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event" title="Link to this definition">#</a></dt>
 <dd><p>A CUDA event that can be recorded onto a stream.</p>
 <p>Events can be used for device-side synchronization, which do not block
 the host thread.</p>
@@ -510,7 +510,7 @@ the host thread.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">interprocess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3502-L3546"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3505-L3549"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Initialize the event on a CUDA device.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -559,7 +559,7 @@ recorded onto streams.</p></li>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Event.Flags">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Flags</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3490-L3495"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.Flags" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Flags</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3493-L3498"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.Flags" title="Link to this definition">#</a></dt>
 <dd><dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Event.Flags.DEFAULT">
 <span class="sig-name descname"><span class="pre">DEFAULT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.Event.Flags.DEFAULT" title="Link to this definition">#</a></dt>
@@ -584,7 +584,7 @@ recorded onto streams.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Event.ipc_handle">
-<span class="sig-name descname"><span class="pre">ipc_handle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3547-L3580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.ipc_handle" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ipc_handle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3550-L3583"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.ipc_handle" title="Link to this definition">#</a></dt>
 <dd><p>Return a CUDA IPC handle of the event as a 64-byte <code class="docutils literal notranslate"><span class="pre">bytes</span></code> object.</p>
 <p>The event must have been created with <code class="docutils literal notranslate"><span class="pre">interprocess=True</span></code> in order to
 obtain a valid interprocess handle.</p>
@@ -607,7 +607,7 @@ obtain a valid interprocess handle.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Event.is_complete">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_complete</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3581-L3591"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.is_complete" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_complete</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3584-L3594"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Event.is_complete" title="Link to this definition">#</a></dt>
 <dd><p>A boolean indicating whether all work on the stream when the event was recorded has completed.</p>
 <p>This property may not be accessed during a graph capture on any stream.</p>
 </dd></dl>

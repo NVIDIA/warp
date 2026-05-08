@@ -513,6 +513,12 @@ the adjoints were stubbed as no-ops and <code class="docutils literal notranslat
 gradients silently dropped through curl-noise force fields in
 differentiable simulations
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1012">GH-1012</a>).</p></li>
+<li><p>Add cooperative GPU scalar fallbacks for <code class="docutils literal notranslate"><span class="pre">tile_cholesky</span></code>, <code class="docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code>,
+<code class="docutils literal notranslate"><span class="pre">tile_lower_solve</span></code>, and <code class="docutils literal notranslate"><span class="pre">tile_upper_solve</span></code> (and their inplace variants) and for the
+<code class="docutils literal notranslate"><span class="pre">tile_cholesky</span></code> adjoint, so they run on GPU when libmathdx is unavailable. Add the
+<code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code> config flag and module option (parity with <code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code>)
+to route these ops through the fallback when libmathdx is available
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1402">GH-1402</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -532,6 +538,12 @@ actionable error when missing (<a class="reference external" href="https://githu
 <li><p>Build the native library with <code class="docutils literal notranslate"><span class="pre">-Og</span> <span class="pre">-g</span></code> instead of <code class="docutils literal notranslate"><span class="pre">-O0</span> <span class="pre">-g</span> <span class="pre">-fkeep-inline-functions</span></code> on Linux/macOS debug builds.
 This enables debug-friendly optimizations, restores <code class="docutils literal notranslate"><span class="pre">-Wuninitialized</span></code> dataflow analysis, and avoids leaking
 unused inline function bodies from <code class="docutils literal notranslate"><span class="pre">&lt;Python.h&gt;</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1414">GH-1414</a>).</p></li>
+<li><p>The differentiated <code class="docutils literal notranslate"><span class="pre">tile_cholesky</span></code> GPU path on builds without libmathdx now uses the cooperative
+shared-memory adjoint instead of the prior thread-0 scalar adjoint with local scratch. Behaviour
+and accuracy are preserved, but the path now allocates two <code class="docutils literal notranslate"><span class="pre">__shared__</span> <span class="pre">T[n*n]</span></code> scratch buffers
+(e.g. 16 KiB at <code class="docutils literal notranslate"><span class="pre">n=32</span></code>, 64 KiB at <code class="docutils literal notranslate"><span class="pre">n=64</span></code> in <code class="docutils literal notranslate"><span class="pre">float64</span></code>), so large differentiated Cholesky tiles can
+hit shared-memory limits where the previous path would not
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1402">GH-1402</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">

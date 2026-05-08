@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.clone &#8212; Warp 1.14.0.dev0</title>
+    <title>warp.config.enable_mathdx_solver &#8212; Warp 1.14.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.clone';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.config.enable_mathdx_solver';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.copy" href="warp.copy.html" />
-    <link rel="prev" title="warp.tile_stack" href="warp.tile_stack.html" />
+    <link rel="next" title="warp.config.enable_mempools_at_init" href="warp.config.enable_mempools_at_init.html" />
+    <link rel="prev" title="warp.config.enable_mathdx_gemm" href="warp.config.enable_mathdx_gemm.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -459,9 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../warp_config.html" class="nav-link">warp.config</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.clone</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.config.enable_mathdx_solver</span></li>
   </ul>
 </nav>
 </div>
@@ -474,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.clone.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.config.enable_mathdx_solver.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -491,39 +491,20 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-clone">
-<h1>warp.clone<a class="headerlink" href="#warp-clone" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.clone">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clone</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">retain_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7459-L7484"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.clone" title="Link to this definition">#</a></dt>
-<dd><p>Clone an existing array, allocating a copy of the src memory.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – The source array to copy</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The device where the new array will be created (defaults to src.device)</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
-<li><p><strong>retain_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to preserve gradients during backward instead of zeroing after read</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A warp.array object representing the allocation</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
-</dd>
-</dl>
+  <section id="warp-config-enable-mathdx-solver">
+<h1>warp.config.enable_mathdx_solver<a class="headerlink" href="#warp-config-enable-mathdx-solver" title="Link to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="warp.config.enable_mathdx_solver">
+<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_mathdx_solver</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#warp.config.enable_mathdx_solver" title="Link to this definition">#</a></dt>
+<dd><p>Use libmathdx (cuSolverDx) for tile solver ops on GPU when available.</p>
+<p>Controls all cuSolverDx-backed ops: <a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a>
+(and its adjoint), <a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky_solve.html#warp._src.lang.tile_cholesky_solve" title="warp._src.lang.tile_cholesky_solve"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code></a>,
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_lower_solve.html#warp._src.lang.tile_lower_solve" title="warp._src.lang.tile_lower_solve"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_lower_solve</span></code></a>, and
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a>.</p>
+<p>When False, these ops fall back to cooperative shared-memory implementations
+that do not require libmathdx, at the cost of runtime performance.</p>
+<p>This setting can be overridden at the module level by setting the
+<code class="docutils literal notranslate"><span class="pre">&quot;enable_mathdx_solver&quot;</span></code> module option.</p>
 </dd></dl>
 
 </section>
@@ -539,20 +520,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.tile_stack.html"
+       href="warp.config.enable_mathdx_gemm.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.tile_stack</p>
+        <p class="prev-next-title">warp.config.enable_mathdx_gemm</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.copy.html"
+       href="warp.config.enable_mempools_at_init.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.copy</p>
+        <p class="prev-next-title">warp.config.enable_mempools_at_init</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -577,7 +558,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.clone"><code class="docutils literal notranslate"><span class="pre">clone()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.config.enable_mathdx_solver"><code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -585,7 +566,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.clone.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.config.enable_mathdx_solver.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
