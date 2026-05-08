@@ -6,14 +6,14 @@
 This module implements the scatter-sort-reduce and two-pass strategies for
 making atomic operations produce bit-exact reproducible results.
 
-Two patterns of atomic usage are supported:
+Two forms of atomic usage are supported:
 
-Pattern A -- Accumulation (return value unused):
+Scatter/reduce atomics (return value unused):
     ``wp.atomic_add(arr, idx, value)`` or ``arr[idx] += value``
     Strategy: scatter records to a temporary buffer during kernel execution,
     then sort by ``(dest_index, thread_id)`` and reduce in fixed order.
 
-Pattern B -- Counter/Allocator (return value used):
+Consumed-return counter atomics (return value used):
     ``slot = wp.atomic_add(counter, 0, 1)``
     Strategy: two-pass execution. Phase 0 records each thread's contribution
     with all side effects suppressed. Prefix sum computes deterministic
@@ -153,7 +153,7 @@ def kernel_raw_counter_param_names(target: CounterTarget) -> dict[str, str]:
 
 @dataclass(eq=False)
 class ScatterTarget:
-    """Canonical Pattern A target identity for one module build.
+    """Canonical scatter/reduce target identity for one module build.
 
     A target is the destination array, or struct-field array, whose atomics are
     scattered and later reduced. The registry owns the stable helper name.
@@ -176,7 +176,7 @@ class ScatterTarget:
 
 @dataclass(eq=False)
 class CounterTarget:
-    """Canonical Pattern B counter identity for one module build."""
+    """Canonical consumed-return counter identity for one module build."""
 
     array_var_label: str
     helper_name: str
@@ -384,7 +384,7 @@ def warp_scalar_type_to_id(dtype) -> int:
 
 
 def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_records=0):
-    """Allocate scatter buffers for Pattern A targets.
+    """Allocate buffers for atomics reduced after the kernel finishes.
 
     Returns a list of ``(keys, values, counter, capacity)`` tuples, one per
     scatter target in ``scatter_targets``.
@@ -401,7 +401,7 @@ def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_record
 
 
 def allocate_counter_buffers(counter_targets, dim_size, device):
-    """Allocate counter buffers for Pattern B targets."""
+    """Allocate per-thread contribution and prefix buffers for counter targets."""
     buffers = []
     for _target in counter_targets:
         contrib = warp.zeros(shape=(dim_size,), dtype=warp.int32, device=device)
@@ -411,7 +411,7 @@ def allocate_counter_buffers(counter_targets, dim_size, device):
 
 
 def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode):
-    """Execute post-kernel sort-reduce for all Pattern A scatter targets."""
+    """Execute post-kernel sort-reduce for all scatter targets."""
     for i, target in enumerate(scatter_targets):
         keys, values, _counter, capacity = scatter_buffers[i]
         dest_arr = dest_arrays[i]

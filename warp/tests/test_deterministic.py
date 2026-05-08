@@ -28,7 +28,7 @@ def _reference_scatter_add_float32(data_np, indices_np, out_size):
 
 
 # ---------------------------------------------------------------------------
-# Pattern A kernels: accumulation (return value unused)
+# Scatter/reduce kernels: return value unused.
 # ---------------------------------------------------------------------------
 
 
@@ -354,7 +354,7 @@ def mixed_reduce_op_same_array_kernel(
 
 
 # ---------------------------------------------------------------------------
-# Pattern B kernels: counter/allocator (return value used)
+# Counter kernels: return value used.
 # ---------------------------------------------------------------------------
 
 
@@ -399,7 +399,7 @@ def counter_side_effect_kernel(
 
 
 # ---------------------------------------------------------------------------
-# Mixed kernels: both patterns in one kernel
+# Mixed kernels: counter plus scatter/reduce atomics.
 # ---------------------------------------------------------------------------
 
 
@@ -414,11 +414,11 @@ def mixed_pattern_kernel(
     tid = wp.tid()
     val = data[tid]
 
-    # Pattern B: allocate slot
+    # Allocate a deterministic slot from a consumed-return atomic.
     slot = wp.atomic_add(counter, 0, 1)
     output[slot] = val
 
-    # Pattern A: accumulate
+    # Accumulate through the scatter/reduce path.
     wp.atomic_add(accum, tid % 8, val)
 
 
@@ -1140,7 +1140,7 @@ def test_helper_name_collision(test, device):
 
 
 def test_counter_reproducibility(test, device):
-    """Verify counter/allocator pattern produces deterministic slot assignments."""
+    """Verify consumed-return counters produce deterministic slot assignments."""
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
@@ -1187,7 +1187,7 @@ def test_counter_phase0_suppresses_array_writes(test, device):
 
 
 def test_counter_correctness(test, device):
-    """Verify counter pattern writes all data (no lost elements)."""
+    """Verify consumed-return counters write all data (no lost elements)."""
     n = 512
     rng = np.random.default_rng(44)
     data_np = rng.random(n, dtype=np.float32)
@@ -1236,7 +1236,7 @@ def test_counter_nonzero_index_rejected(test, device):
 
 
 def test_conditional_counter(test, device):
-    """Verify stream compaction pattern with conditional counter."""
+    """Verify stream compaction with a conditional counter."""
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
@@ -1895,7 +1895,7 @@ class TestDeterministic(unittest.TestCase):
         wp.config.deterministic = cls._old_deterministic
 
 
-# Pattern A tests (accumulation).
+# Scatter/reduce atomic tests.
 add_function_test(
     TestDeterministic, "test_scatter_add_reproducibility", test_scatter_add_reproducibility, devices=cuda_devices
 )
@@ -1990,7 +1990,7 @@ add_function_test(
     devices=cuda_devices,
 )
 
-# Pattern B tests (counter).
+# Consumed-return counter tests.
 add_function_test(TestDeterministic, "test_counter_reproducibility", test_counter_reproducibility, devices=cuda_devices)
 add_function_test(
     TestDeterministic,
@@ -2007,7 +2007,7 @@ add_function_test(
 )
 add_function_test(TestDeterministic, "test_conditional_counter", test_conditional_counter, devices=cuda_devices)
 
-# Mixed pattern tests.
+# Mixed counter and scatter/reduce tests.
 add_function_test(TestDeterministic, "test_mixed_pattern", test_mixed_pattern, devices=cuda_devices)
 add_function_test(
     TestDeterministic,

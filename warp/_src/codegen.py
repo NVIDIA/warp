@@ -2075,9 +2075,9 @@ class Adjoint:
 
         # Determine if the return value is actually consumed by the caller.
         # When called from emit_AugAssign (arr[i] += val) or a bare expression,
-        # the return is discarded → Pattern A.
+        # the return is discarded and the atomic can be handled by scatter/reduce.
         # When called from emit_Assign (slot = wp.atomic_add(...)),
-        # the return is captured → Pattern B.
+        # the return is captured and must be handled by a deterministic counter.
         return_is_consumed = getattr(adj, "_det_in_assign", False)
 
         value_ctype = Var.dtype_to_ctype(value_dtype)
@@ -2094,8 +2094,8 @@ class Adjoint:
         }
         reduce_op = op_map.get(func.key, REDUCE_OP_ADD)
 
-        # Classify: if the return value is consumed, this is Pattern B (counter).
-        # Otherwise, it's Pattern A (accumulation).
+        # Classify whether this atomic needs deterministic slot assignment or
+        # can be deferred into the post-kernel scatter/reduce pass.
         # All deterministic codegen is wrapped in #ifdef __CUDA_ARCH__ so that
         # CPU compilation falls through to normal atomic calls (CPU execution
         # is already sequential/deterministic).
@@ -2124,7 +2124,7 @@ class Adjoint:
             return None  # fall through to normal codegen
 
         if return_is_consumed:
-            # Pattern B: Counter/Allocator
+            # Consumed-return counter: assign slots by replaying after a prefix sum.
             counter_indices = [*view_prefix_vars, *args_list[1:-1]]
             if not _deterministic_counter_indices_are_zero(counter_indices):
                 raise WarpCodegenError(
@@ -2148,7 +2148,7 @@ class Adjoint:
             )
             return output
 
-        # Pattern A: Accumulation (return value unused)
+        # Return value unused: record the update and reduce it after the kernel.
         try:
             target = get_or_create_scatter_target(
                 adj.det_registry,
@@ -3677,8 +3677,8 @@ class Adjoint:
             node.value.expects = len(lhs.elts)
 
         # evaluate rhs
-        # Mark that return values are consumed (used by deterministic atomic
-        # classification to distinguish Pattern B from Pattern A).
+        # Mark that return values are consumed so deterministic atomics know
+        # whether they need counter semantics or scatter/reduce semantics.
         adj._det_in_assign = True
         try:
             if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
@@ -5933,7 +5933,7 @@ def _deterministic_target_info(var):
 
 
 def _add_deterministic_array_store(adj, target, indices, rhs):
-    """Emit ``array_store`` guarded so Pattern B phase 0 has no side effects."""
+    """Emit ``array_store`` guarded so counter phase 0 has no side effects."""
     store_args_raw = (target, *indices, rhs)
     store_func = adj.resolve_func(
         warp._src.context.builtin_functions["array_store"],

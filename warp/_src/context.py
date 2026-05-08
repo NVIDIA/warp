@@ -9075,8 +9075,9 @@ def _launch_deterministic(
     """Orchestrate a deterministic kernel launch with scatter-sort-reduce and/or two-pass execution.
 
     This is called from launch() when deterministic mode is active and the
-    kernel has atomic operations that require deterministic treatment. Pattern
-    A uses one kernel pass plus sort-reduce; Pattern B adds a counter pass.
+    kernel has atomic operations that require deterministic treatment.
+    Scatter/reduce atomics use one kernel pass plus sort-reduce; consumed-return
+    counter atomics add a counting pass.
     """
     from warp._src.deterministic import (  # noqa: PLC0415
         allocate_counter_buffers,
@@ -9243,7 +9244,7 @@ def _launch_deterministic(
         params_all = [*user_params, *det_params]
         do_cuda_launch(hooks.forward, params_all)
 
-    # Post-kernel: sort-reduce for Pattern A scatter targets.
+    # Post-kernel: reduce scatter records in a fixed order.
     if det_meta.has_scatter:
         # Identify the destination arrays from fwd_args.
         dest_arrays = [resolve_det_target_array(st) for st in det_meta.scatter_targets]
