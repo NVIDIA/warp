@@ -27,7 +27,6 @@
   `enable_mathdx_solver` config flag and module option (parity with `enable_mathdx_gemm`)
   to route these ops through the fallback when libmathdx is available
   ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
-- Add JAX FFI Host support, allowing JAX FFI callbacks to run on CPU (Host) in addition to CUDA.
 
 ### Removed
 
