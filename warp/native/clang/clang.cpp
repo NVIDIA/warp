@@ -220,13 +220,12 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
     }
 
 #if LLVM_VERSION_MAJOR >= 21
-    clang::DiagnosticOptions diagnostic_options;
-    std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer
-        = std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), diagnostic_options);
-    clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
-    std::unique_ptr<clang::DiagnosticsEngine> diagnostic_engine = std::make_unique<clang::DiagnosticsEngine>(
-        diagnostic_ids, diagnostic_options, text_diagnostic_printer.release()
+    clang::DiagnosticOptions temp_diag_opts;
+    auto temp_diag_engine = clang::CompilerInstance::createDiagnostics(
+        *llvm::vfs::getRealFileSystem(), temp_diag_opts,
+        new clang::IgnoringDiagConsumer()
     );
+    compiler_instance.setDiagnostics(real_diag_engine);
 #else
     clang::IntrusiveRefCntPtr<clang::DiagnosticOptions> diagnostic_options = new clang::DiagnosticOptions();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer
@@ -676,7 +675,7 @@ static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
     } else {
         builder.setObjectLinkingLayerCreator(
 #if LLVM_VERSION_MAJOR >= 21
-            [](llvm::orc::ExecutionSession& session)
+            [&](llvm::orc::ExecutionSession& session, llvm::jitlink::JITLinkMemoryManager&)
 #else
             [](llvm::orc::ExecutionSession& session, const llvm::Triple& triple)
 #endif
