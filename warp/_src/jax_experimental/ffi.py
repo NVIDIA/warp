@@ -214,9 +214,7 @@ class FfiKernel:
         self.input_output_aliases = input_output_aliases
 
         # register the callback
-        FFI_CCALLFUNC = ctypes.CFUNCTYPE(
-                ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame)
-        )
+        FFI_CCALLFUNC = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame))
 
         self.callback_func_cuda = FFI_CCALLFUNC(lambda call_frame: self.ffi_callback(call_frame, platform="CUDA"))
         ffi_ccall_address_cuda = ctypes.cast(self.callback_func_cuda, ctypes.c_void_p)
