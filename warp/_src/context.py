@@ -2312,8 +2312,12 @@ class ModuleHasher:
         # metadata it would have received on a fresh compile.
         from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
 
-        if is_deterministic_mode_enabled(resolved_options.get("deterministic")) and not hasattr(kernel.adj, "det_meta"):
-            kernel.adj.build(None, resolved_options | {"output_arch": None})
+        if is_deterministic_mode_enabled(resolved_options.get("deterministic")):
+            if getattr(kernel.adj, "det_meta", None) is None:
+                kernel.adj.build(None, resolved_options | {"output_arch": None})
+        else:
+            kernel.adj.det_meta = None
+            kernel.adj.det_registry = None
 
         ch.update(bytes(kernel.key, "utf-8"))
         if kernel.options:
@@ -3112,10 +3116,13 @@ class Module:
         """Get the hash of the module for a block_dim variant.
 
         If ``block_dim`` is ``None``, use the module-level default. If the
-        variant hash has not been computed yet, compute and cache it.
+        variant hash has not been computed yet, or if resolved module/config
+        options have changed, compute and cache it.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
+
+        options = self.resolve_options(warp.config, block_dim=block_dim)
 
         # Both branches below mutate shared ``@wp.func`` adjoint state
         # (``ModuleBuilder`` runs ``adj.build`` to resolve deferred
@@ -3126,16 +3133,19 @@ class Module:
         # block. Splitting the lock per stage opens a window where
         # another thread can re-run ``adj.build`` on a shared helper
         # and clobber the state this thread is about to hash.
-        if self.has_unresolved_static_expressions or block_dim not in self.hashers:
+        if (
+            self.has_unresolved_static_expressions
+            or block_dim not in self.hashers
+            or self.resolved_options.get(block_dim) != options
+        ):
             with _codegen_lock:
+                options = self.resolve_options(warp.config, block_dim=block_dim)
                 if self.has_unresolved_static_expressions:
-                    options = self.resolve_options(warp.config)
                     builder_options = options | {"output_arch": None}
                     _ = ModuleBuilder(self, builder_options)
                     self.has_unresolved_static_expressions = False
 
-                if block_dim not in self.hashers:
-                    options = self.resolve_options(warp.config, block_dim=block_dim)
+                if block_dim not in self.hashers or self.resolved_options.get(block_dim) != options:
                     self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
                     self.resolved_options[block_dim] = options
 

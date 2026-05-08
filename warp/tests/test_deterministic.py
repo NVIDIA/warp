@@ -1369,6 +1369,51 @@ def test_kernel_decorator_override(test, device):
         wp.config.deterministic = old_det
 
 
+def test_deterministic_config_toggle_reloads_module(test, device):
+    """Changing global deterministic mode reloads kernels and updates metadata."""
+    if device.is_cpu:
+        test.skipTest("Deterministic launch switching requires CUDA")
+
+    @wp.kernel(module="unique")
+    def config_toggle_kernel(data: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+        tid = wp.tid()
+        wp.atomic_add(output, 0, data[tid])
+
+    def launch_and_get_hash():
+        output.zero_()
+        wp.launch(config_toggle_kernel, dim=n, inputs=[data], outputs=[output], device=device)
+        output.numpy()
+        module_exec = config_toggle_kernel.module.execs.get(
+            (device.context, config_toggle_kernel.module.options["block_dim"])
+        )
+        test.assertIsNotNone(module_exec)
+        return module_exec.module_hash
+
+    n = 64
+    data = wp.ones(n, dtype=wp.float32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "not_guaranteed"
+        hash_off = launch_and_get_hash()
+        test.assertIsNone(getattr(config_toggle_kernel.adj, "det_meta", None))
+
+        wp.config.deterministic = "run_to_run"
+        hash_on = launch_and_get_hash()
+        test.assertNotEqual(hash_off, hash_on)
+        det_meta = getattr(config_toggle_kernel.adj, "det_meta", None)
+        test.assertIsNotNone(det_meta)
+        test.assertTrue(det_meta.needs_deterministic)
+
+        wp.config.deterministic = "not_guaranteed"
+        hash_off_again = launch_and_get_hash()
+        test.assertEqual(hash_off, hash_off_again)
+        test.assertIsNone(getattr(config_toggle_kernel.adj, "det_meta", None))
+    finally:
+        wp.config.deterministic = old_det
+
+
 def test_deterministic_closure_kernel(test, device):
     """Verify deterministic closure kernels remain reproducible and distinct."""
     if device.is_cpu:
@@ -1941,6 +1986,12 @@ add_function_test(TestDeterministic, "test_int_atomic_passthrough", test_int_ato
 add_function_test(TestDeterministic, "test_module_option_override", test_module_option_override, devices=all_devices)
 add_function_test(
     TestDeterministic, "test_kernel_decorator_override", test_kernel_decorator_override, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_config_toggle_reloads_module",
+    test_deterministic_config_toggle_reloads_module,
+    devices=cuda_devices,
 )
 add_function_test(
     TestDeterministic, "test_deterministic_closure_kernel", test_deterministic_closure_kernel, devices=cuda_devices
