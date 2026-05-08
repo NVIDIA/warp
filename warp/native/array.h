@@ -86,6 +86,17 @@ namespace wp {
         FP_ASSERT_ADJ(value, adj_value); \
     }
 
+// Slot-only variant: forward ``value`` is not captured by the slot-level
+// adjoint path, so only ``adj_value`` is checked.
+#define FP_VERIFY_ADJ_SLOT(adj_value) \
+    if (!isfinite(adj_value)) \
+    { \
+        printf("%s:%d - %s(arr, ...) ",  __FILE__, __LINE__, __FUNCTION__); \
+        print(adj_value); \
+        printf(")\n"); \
+        assert(0); \
+    }
+
 
 #else
 
@@ -100,6 +111,7 @@ namespace wp {
 #define FP_VERIFY_ADJ_2(value, adj_value) {}
 #define FP_VERIFY_ADJ_3(value, adj_value) {}
 #define FP_VERIFY_ADJ_4(value, adj_value) {}
+#define FP_VERIFY_ADJ_SLOT(adj_value) {}
 
 #endif  // WP_FP_CHECK
 
@@ -1386,6 +1398,38 @@ adj_array_store(const array_t<T>& buf, int i, T value, const array_t<T>& adj_buf
 
     FP_VERIFY_ADJ_1(value, adj_value)
 }
+
+// Slot-level variant of adj_array_store. Reads and (optionally) zeros a
+// specific slot within an array element, rather than treating the whole
+// element as the adjoint value. Used to give in-place composite-component
+// writes (``arr[i].y = rhs``, ``arr[i][r, c] = rhs``, ``arr[i].field = rhs``)
+// a correct O(1) backward pass that matches the O(1) single-slot forward
+// instead of the whole-element cost the full ``adj_array_store`` incurs.
+//
+// The ``access`` functor maps an element ``T&`` to the slot reference
+// within it — encode any composite-component access chain at codegen
+// time via a short lambda. Variadic ``Ints`` carries the array indices
+// so this template handles 1-D through N-D arrays uniformly.
+template <typename T, typename Accessor, typename AdjSlot, typename... Ints>
+inline CUDA_CALLABLE void adj_array_store_slot(
+    const array_t<T>& buf, const array_t<T>& adj_buf, AdjSlot& adj_value, Accessor access, Ints... indices
+)
+{
+    if (adj_buf.data) {
+        AdjSlot& slot = access(index(adj_buf, indices...));
+        adj_value += slot;
+        if (buf.grad && adj_buf.data == buf.grad && !(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            slot = AdjSlot {};
+    } else if (buf.grad) {
+        AdjSlot& slot = access(index_grad(buf, indices...));
+        adj_value += slot;
+        if (!(buf.flags & ARRAY_FLAG_RETAIN_GRAD))
+            slot = AdjSlot {};
+    }
+
+    FP_VERIFY_ADJ_SLOT(adj_value)
+}
+
 template <typename T>
 inline CUDA_CALLABLE void adj_array_store(
     const array_t<T>& buf, int i, int j, T value, const array_t<T>& adj_buf, int adj_i, int adj_j, T& adj_value

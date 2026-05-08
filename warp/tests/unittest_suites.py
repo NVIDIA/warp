@@ -143,6 +143,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compilation import TestCompilation
     from warp.tests.test_compile_consts import TestConstants
+    from warp.tests.test_composite_component_adjoint import TestCompositeComponentAdjoint
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
@@ -256,6 +257,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCodeGen,
         TestCodeGenInstancing,
         TestCompilation,
+        TestCompositeComponentAdjoint,
         TestConstants,
         TestConditional,
         TestConstantPrecision,
@@ -418,6 +420,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_codegen import TestCodeGen
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compile_consts import TestConstants
+    from warp.tests.test_composite_component_adjoint import TestCompositeComponentAdjoint
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_enum import TestEnum
@@ -452,6 +455,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestBuiltinsResolution,
         TestCodeGen,
         TestCodeGenInstancing,
+        TestCompositeComponentAdjoint,
         TestConditional,
         TestConstants,
         TestConstantPrecision,

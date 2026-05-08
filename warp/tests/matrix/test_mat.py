@@ -1653,7 +1653,6 @@ def test_mat_array_extract(test, device):
     assert_np_equal(x.grad.numpy(), np.array([[[[1.0, 1.0], [2.0, 2.0]]]], dtype=float))
 
 
-""" TODO: gradient propagation for in-place array assignment
 @wp.kernel
 def mat_array_assign_element(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.mat22)):
     i, j = wp.tid()
@@ -1664,12 +1663,14 @@ def mat_array_assign_element(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.
     y[i, j][1, 1] = 4.0 * x[i, j]
 
 
-@wp.kernel
-def mat_array_assign_row(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.types.matrix(shape=(2, 3), dtype=float))):
-    i, j = wp.tid()
-
-    y[i, j][0] = 1.0 * x[i, j]
-    y[i, j][1] = 2.0 * x[i, j]
+# TODO: mat row/slice writes (y[i,j][0] = vec) fall back to the legacy
+# path and do not yet propagate gradients correctly.
+# @wp.kernel
+# def mat_array_assign_row(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.types.matrix(shape=(2, 3), dtype=float))):
+#     i, j = wp.tid()
+#
+#     y[i, j][0] = 1.0 * x[i, j]
+#     y[i, j][1] = 2.0 * x[i, j]
 
 
 def test_mat_array_assign(test, device):
@@ -1686,21 +1687,6 @@ def test_mat_array_assign(test, device):
 
     assert_np_equal(y.numpy(), np.array([[[[1.0, 2.0], [3.0, 4.0]]]], dtype=float))
     assert_np_equal(x.grad.numpy(), np.array([[10.0]], dtype=float))
-
-    # matrix row
-    x = wp.ones((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
-    y = wp.zeros((1, 1), dtype=wp.types.matrix(shape=(2, 3), dtype=float), requires_grad=True, device=device)
-
-    tape = wp.Tape()
-    with tape:
-        wp.launch(mat_array_assign_row, (1, 1), inputs=[x], outputs=[y], device=device)
-
-    y.grad = wp.ones_like(y)
-    tape.backward()
-
-    assert_np_equal(y.numpy(), np.array([[[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]]], dtype=float))
-    assert_np_equal(x.grad.numpy(), np.array([[[3.0, 3.0, 3.0]]], dtype=float))
-"""
 
 
 @wp.kernel
@@ -3471,7 +3457,7 @@ add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
 add_function_test(TestMat, "test_mat_extract", test_mat_extract, devices=devices)
 add_function_test(TestMat, "test_mat_assign", test_mat_assign, devices=devices)
 add_function_test(TestMat, "test_mat_array_extract", test_mat_array_extract, devices=devices)
-# add_function_test(TestMat, "test_mat_array_assign", test_mat_array_assign, devices=devices)
+add_function_test(TestMat, "test_mat_array_assign", test_mat_array_assign, devices=devices)
 add_function_test(TestMat, "test_mat_add_inplace", test_mat_add_inplace, devices=devices)
 add_function_test(TestMat, "test_mat_sub_inplace", test_mat_sub_inplace, devices=devices)
 add_function_test(TestMat, "test_mat_array_add_inplace", test_mat_array_add_inplace, devices=devices)

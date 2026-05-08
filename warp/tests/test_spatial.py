@@ -2273,12 +2273,14 @@ def transform_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(d
     y[i, j][6] = 7.0 * x[i, j]
 
 
-# @wp.kernel
-# def transform_array_assign_attribute(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.quat), z: wp.array2d(dtype=wp.transform)):
-#     i, j = wp.tid()
+@wp.kernel
+def transform_array_assign_attribute(
+    x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.quat), z: wp.array2d(dtype=wp.transform)
+):
+    i, j = wp.tid()
 
-#     z[i, j].p = x[i, j]
-#     z[i, j].q = y[i, j]
+    z[i, j].p = x[i, j]
+    z[i, j].q = y[i, j]
 
 
 def test_transform_array_assign(test, device):
@@ -2289,20 +2291,26 @@ def test_transform_array_assign(test, device):
     with tape:
         wp.launch(transform_array_assign_subscript, (1, 1), inputs=[x], outputs=[y], device=device)
 
+    y.grad = wp.ones_like(y)
+    tape.backward()
+
     assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]]], dtype=float))
-    # TODO: gradient propagation for in-place array assignment
+    assert_np_equal(x.grad.numpy(), np.array([[28.0]], dtype=float))
 
     x = wp.ones((1, 1), dtype=wp.vec3, requires_grad=True, device=device)
     y = wp.ones((1, 1), dtype=wp.quat, requires_grad=True, device=device)
     z = wp.zeros((1, 1), dtype=wp.transform, requires_grad=True, device=device)
 
-    # TODO: transform_array_assign_attribute
-    # tape = wp.Tape()
-    # with tape:
-    #     wp.launch(transform_array_assign_attribute, (1, 1), inputs=[x, y], outputs=[z], device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(transform_array_assign_attribute, (1, 1), inputs=[x, y], outputs=[z], device=device)
 
-    # assert_np_equal(z.numpy(), np.array([[[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]], dtype=float))
-    # TODO: gradient propagation for in-place array assignment
+    z.grad = wp.ones_like(z)
+    tape.backward()
+
+    assert_np_equal(z.numpy(), np.array([[[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([[[1.0, 1.0, 1.0]]], dtype=float))
+    assert_np_equal(y.grad.numpy(), np.array([[[1.0, 1.0, 1.0, 1.0]]], dtype=float))
 
 
 @wp.kernel

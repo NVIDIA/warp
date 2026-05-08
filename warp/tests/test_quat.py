@@ -2119,8 +2119,7 @@ def test_quat_array_assign(test, device):
         tape.backward()
 
         assert_np_equal(y.numpy(), np.array([[[1.0, 2.0, 3.0, 4.0]]], dtype=float))
-        # TODO: gradient propagation for in-place array assignment
-        # assert_np_equal(x.grad.numpy(), np.array([[10.0]], dtype=float))
+        assert_np_equal(x.grad.numpy(), np.array([[10.0]], dtype=float))
 
     run(quat_array_assign_subscript)
     run(quat_array_assign_attribute)
