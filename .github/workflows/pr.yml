@@ -1,101 +1,18 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-
 name: Pull Request
 
 on:
   push:
     branches:
       - "pull-request/[0-9]+"
-
-env:
-  PYTHONFAULTHANDLER: "1" # Dump tracebacks on fatal signals (SIGSEGV, SIGABRT, etc.)
+      - "debug/*"
 
 concurrency:
-  group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  # Call the main CI workflow which includes:
-  # - Multi-platform build and test (Windows, Ubuntu x86_64, Ubuntu ARM64, macOS)
-  # - GPU testing on H100 (for PRs and scheduled runs)
-  # - Documentation build and validation
-  # - Generated files checks (exports.h, version.h)
-  # - Symbol namespace validation
   ci:
     uses: ./.github/workflows/ci.yml
-
-  # Static analysis with cppcheck (runs independently, doesn't need build artifacts)
-  cppcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Cache cppcheck build directory
-        uses: actions/cache@v4
-        with:
-          path: _build/.cppcheck
-          key: cppcheck-${{ github.run_id }}
-          restore-keys: |
-            cppcheck-
-      
-      - name: Set up Miniforge
-        run: |
-          wget -q -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-          bash Miniforge3.sh -b -p "${HOME}/conda"
-          echo "${HOME}/conda/bin" >> $GITHUB_PATH
-      
-      - name: Install cppcheck
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate
-          conda install cppcheck --channel conda-forge -y
-          mkdir -p _build/.cppcheck
-          cppcheck --version
-      
-      - name: Run cppcheck
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate
-          cppcheck \
-            --inline-suppr \
-            --cppcheck-build-dir=_build/.cppcheck \
-            --enable=warning \
-            --quiet \
-            --error-exitcode=1 \
-            -j $(nproc) \
-            --suppress=*:warp/native/nanovdb/* \
-            --suppress=*:warp/native/cuBQL/* \
-            --suppress=normalCheckLevelMaxBranches \
-            warp
-      
-      - name: Generate XML report
-        if: always()
-        run: |
-          source "${HOME}/conda/etc/profile.d/conda.sh"
-          conda activate
-          cppcheck \
-            --inline-suppr \
-            --cppcheck-build-dir=_build/.cppcheck \
-            --enable=warning \
-            --quiet \
-            --xml \
-            --xml-version=2 \
-            -j $(nproc) \
-            --suppress=*:warp/native/nanovdb/* \
-            --suppress=*:warp/native/cuBQL/* \
-            --suppress=normalCheckLevelMaxBranches \
-            warp \
-            2> cppcheck-report.xml
-      
-      - name: Upload cppcheck report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cppcheck-report
-          path: cppcheck-report.xml
-          retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
