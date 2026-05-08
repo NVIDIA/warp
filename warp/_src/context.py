@@ -4691,6 +4691,7 @@ class Graph:
         self.device = device
         self.capture_id = capture_id
         self.module_execs: set[ModuleExec] = set()
+        self._deterministic_buffer_refs: list[Any] = []
         self.graph_exec: ctypes.c_void_p | None = None
         self.graph: ctypes.c_void_p | None = None
 
@@ -4879,6 +4880,9 @@ class Graph:
         from graphs returned by :func:`wp.capture_end` (which do not).
         """
         return self._native_graph is not None
+
+    def retain_deterministic_buffers(self, *buffers: Any):
+        self._deterministic_buffer_refs.extend(buffer for buffer in buffers if buffer is not None)
 
 
 class Runtime:
@@ -9084,6 +9088,10 @@ def _launch_deterministic(
     max_scatter_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
     det_debug = int(warp.config.deterministic_debug)
     stream_is_capturing = len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
+    capture_graph = None
+    if stream_is_capturing:
+        capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+        capture_graph = runtime.captures.get(capture_id)
 
     # Allocate buffers.
     scatter_bufs = (
@@ -9099,6 +9107,7 @@ def _launch_deterministic(
     )
     counter_bufs = allocate_counter_buffers(det_meta.counter_targets, dim_size, device) if det_meta.has_counter else []
     overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if det_meta.has_scatter else None
+    counter_total_bufs = []
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
     def build_det_params(phase, scatter_bufs, counter_bufs, use_scatter):
@@ -9126,14 +9135,11 @@ def _launch_deterministic(
         kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params_list]
         kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
-        if module_exec is not None and stream_is_capturing:
-            capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
-            graph = runtime.captures.get(capture_id)
-            if graph is not None:
-                retain_module_exec = getattr(graph, "_retain_module_exec", None)
-                if retain_module_exec is None:
-                    retain_module_exec = graph.retain_module_exec
-                retain_module_exec(module_exec)
+        if module_exec is not None and capture_graph is not None:
+            retain_module_exec = getattr(capture_graph, "_retain_module_exec", None)
+            if retain_module_exec is None:
+                retain_module_exec = capture_graph.retain_module_exec
+            retain_module_exec(module_exec)
 
         launch_args = [
             device.context,
@@ -9198,6 +9204,7 @@ def _launch_deterministic(
             # Total = exclusive_prefix[-1] + contrib[-1].
             # Use inclusive scan's last element = total
             inclusive_out = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
+            counter_total_bufs.append(inclusive_out)
             warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
 
             counter_arr = resolve_det_target_array(ct)
@@ -9232,6 +9239,14 @@ def _launch_deterministic(
         dest_arrays = [resolve_det_target_array(st) for st in det_meta.scatter_targets]
 
         run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device, determinism_mode)
+
+    if capture_graph is not None:
+        capture_graph.retain_deterministic_buffers(
+            *scatter_bufs,
+            *counter_bufs,
+            overflow_buf,
+            *counter_total_bufs,
+        )
 
     try:
         runtime.verify_cuda_device(device)

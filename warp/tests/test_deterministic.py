@@ -7,6 +7,7 @@ Validates that deterministic modes produce bit-exact reproducible results for
 atomic operations across multiple runs.
 """
 
+import gc
 import re
 import unittest
 from pathlib import Path
@@ -1199,6 +1200,28 @@ def test_counter_correctness(test, device):
     np.testing.assert_allclose(result, expected, rtol=1e-6)
 
 
+def test_counter_nonzero_index_rejected(test, device):
+    """Verify unsupported nonzero consumed-return counter indices fail clearly."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    with test.assertRaisesRegex(Exception, "counter index is the literal 0"):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def counter_nonzero_index_kernel(
+            counter: wp.array(dtype=wp.int32),
+            output: wp.array(dtype=wp.float32),
+        ):
+            """Unsupported consumed-return counter using a nonzero counter index."""
+            tid = wp.tid()
+            slot = wp.atomic_add(counter, 1, 1)
+            output[slot] = float(tid)
+
+        counter = wp.zeros(2, dtype=wp.int32, device=device)
+        output = wp.zeros(8, dtype=wp.float32, device=device)
+        wp.launch(counter_nonzero_index_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
+
+
 def test_conditional_counter(test, device):
     """Verify stream compaction pattern with conditional counter."""
     if device.is_cpu:
@@ -1490,6 +1513,9 @@ def test_graph_capture_deterministic_launch(test, device):
     with wp.ScopedCapture(device, force_module_load=False) as capture:
         wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
 
+    test.assertGreater(len(capture.graph._deterministic_buffer_refs), 0)
+    gc.collect()
+
     wp.capture_launch(capture.graph)
     first = output.numpy().copy()
 
@@ -1655,6 +1681,9 @@ def test_graph_capture_consumed_return_counter(test, device):
     with wp.ScopedCapture(device, force_module_load=False) as capture:
         wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
 
+    test.assertGreater(len(capture.graph._deterministic_buffer_refs), 0)
+    gc.collect()
+
     wp.capture_launch(capture.graph)
     first = output.numpy().copy()
     first_count = int(counter.numpy()[0])
@@ -1688,6 +1717,27 @@ def test_deterministic_backward_scatter_add(test, device):
     tape = wp.Tape()
     with tape:
         wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(tape.gradients[data].numpy(), np.ones(n, dtype=np.float32), rtol=0, atol=0)
+
+
+def test_deterministic_backward_counter_store(test, device):
+    """Verify counter-mode array stores preserve ``array_store`` adjoints."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 64
+    data_np = np.arange(n, dtype=np.float32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device, requires_grad=True)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
 
     tape.backward(grads={output: wp.ones_like(output)})
 
@@ -1875,6 +1925,12 @@ add_function_test(
     devices=cuda_devices,
 )
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)
+add_function_test(
+    TestDeterministic,
+    "test_counter_nonzero_index_rejected",
+    test_counter_nonzero_index_rejected,
+    devices=cuda_devices,
+)
 add_function_test(TestDeterministic, "test_conditional_counter", test_conditional_counter, devices=cuda_devices)
 
 # Mixed pattern tests.
@@ -1935,6 +1991,12 @@ add_function_test(
     TestDeterministic,
     "test_deterministic_backward_scatter_add",
     test_deterministic_backward_scatter_add,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_backward_counter_store",
+    test_deterministic_backward_counter_store,
     devices=cuda_devices,
 )
 add_function_test(
