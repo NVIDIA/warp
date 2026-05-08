@@ -2577,6 +2577,7 @@ class Module:
             "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
             "enable_mathdx_gemm": None,
+            "enable_mathdx_solver": None,
             "fast_math": False,
             "fuse_fp": True,
             "lineinfo": warp.config.lineinfo,
@@ -2621,9 +2622,11 @@ class Module:
             options["cpu_compiler_flags"], config.cpu_compiler_flags
         )
 
-        # Resolve None-means-inherit for enable_mathdx_gemm
+        # Resolve None-means-inherit for enable_mathdx_* flags
         if options["enable_mathdx_gemm"] is None:
             options["enable_mathdx_gemm"] = config.enable_mathdx_gemm
+        if options["enable_mathdx_solver"] is None:
+            options["enable_mathdx_solver"] = config.enable_mathdx_solver
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -9242,6 +9245,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
     * **enable_backward**: Whether to generate the backward pass for kernels, defaults to the value of ``warp.config.enable_backward``.
     * **enable_mathdx_gemm**: Use libmathdx (cuBLASDx) for ``tile_matmul`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_gemm`` at compile time.
+    * **enable_mathdx_solver**: Use libmathdx (cuSolverDx) for ``tile_cholesky``, ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_solver`` at compile time.
     * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``.
     * **fuse_fp**: Enable floating-point contraction (FMA fusion) during compilation, defaults to ``True``.
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.

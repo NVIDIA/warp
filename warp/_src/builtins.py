@@ -13344,8 +13344,13 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
+        # branch via wp_is_null_func<Fwd>.
         if inplace:
             return ((0, a), [upper], [], 0)
         return ((0, 0, 0, a, out), [upper], [], 0)
@@ -13621,8 +13626,13 @@ def _tile_cholesky_solve_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
+        # branch via wp_is_null_func<Fwd>.
         return ((0, L, y) if inplace else (0, L, y, x), [upper], [], 0)
     else:
         NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
@@ -13831,8 +13841,13 @@ def _tile_lower_solve_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
+        # branch via wp_is_null_func<Fwd>.
         return ((0, L, y) if inplace else (0, L, y, z), [], [], 0)
     else:
         NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
@@ -14026,8 +14041,13 @@ def _tile_upper_solve_generic_lto_dispatch_func(
 
     arch = options["output_arch"]
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
+        # branch via wp_is_null_func<Fwd>.
         return ((0, U, z) if inplace else (0, U, z, x), [], [], 0)
     else:
         NRHS = z.type.shape[1] if len(z.type.shape) > 1 else 1

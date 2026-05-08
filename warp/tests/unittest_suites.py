@@ -219,6 +219,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile import TestTile
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
     from warp.tests.tile.test_tile_cholesky import TestTileCholesky
+    from warp.tests.tile.test_tile_cholesky_no_mathdx import TestTileCholeskyNoMathdx
     from warp.tests.tile.test_tile_fft import TestTileFFT
     from warp.tests.tile.test_tile_func_arg import TestTileFuncArg
     from warp.tests.tile.test_tile_fused_ops import TestTileFusedOps
@@ -228,6 +229,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathdx
     from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_shared_memory import TestTileSharedMemory
+    from warp.tests.tile.test_tile_solve import TestTileSolve
+    from warp.tests.tile.test_tile_solve_no_mathdx import TestTileSolveNoMathdx
     from warp.tests.tile.test_tile_sort import TestTileSort
     from warp.tests.tile.test_tile_stack import TestTileStack
     from warp.tests.tile.test_tile_view import TestTileView
@@ -356,6 +359,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTile,
         TestTileAtomicBitwise,
         TestTileCholesky,
+        TestTileCholeskyNoMathdx,
         TestTileFFT,
         TestTileFuncArg,
         TestTileFusedOps,
@@ -365,6 +369,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileMatmulNoMathdx,
         TestTileReduce,
         TestTileSharedMemory,
+        TestTileSolve,
+        TestTileSolveNoMathdx,
         TestTileSort,
         TestTileStack,
         TestTileView,

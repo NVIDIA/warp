@@ -192,6 +192,21 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
 """
 
+enable_mathdx_solver: bool = True
+"""Use libmathdx (cuSolverDx) for tile solver ops on GPU when available.
+
+Controls all cuSolverDx-backed ops: :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+(and its adjoint), :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`,
+:func:`tile_lower_solve <warp._src.lang.tile_lower_solve>`, and
+:func:`tile_upper_solve <warp._src.lang.tile_upper_solve>`.
+
+When False, these ops fall back to cooperative shared-memory implementations
+that do not require libmathdx, at the cost of runtime performance.
+
+This setting can be overridden at the module level by setting the
+``"enable_mathdx_solver"`` module option.
+"""
+
 cpu_compiler_flags: str | None = None
 """Flags controlling CPU kernel compilation.
 

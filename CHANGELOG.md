@@ -21,6 +21,12 @@
   gradients silently dropped through curl-noise force fields in
   differentiable simulations
   ([GH-1012](https://github.com/NVIDIA/warp/issues/1012)).
+- Add cooperative GPU scalar fallbacks for `tile_cholesky`, `tile_cholesky_solve`,
+  `tile_lower_solve`, and `tile_upper_solve` (and their inplace variants) and for the
+  `tile_cholesky` adjoint, so they run on GPU when libmathdx is unavailable. Add the
+  `enable_mathdx_solver` config flag and module option (parity with `enable_mathdx_gemm`)
+  to route these ops through the fallback when libmathdx is available
+  ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
 
 ### Removed
 
@@ -36,6 +42,12 @@
 - Build the native library with `-Og -g` instead of `-O0 -g -fkeep-inline-functions` on Linux/macOS debug builds.
   This enables debug-friendly optimizations, restores `-Wuninitialized` dataflow analysis, and avoids leaking
   unused inline function bodies from `<Python.h>` ([GH-1414](https://github.com/NVIDIA/warp/issues/1414)).
+- The differentiated `tile_cholesky` GPU path on builds without libmathdx now uses the cooperative
+  shared-memory adjoint instead of the prior thread-0 scalar adjoint with local scratch. Behaviour
+  and accuracy are preserved, but the path now allocates two `__shared__ T[n*n]` scratch buffers
+  (e.g. 16 KiB at `n=32`, 64 KiB at `n=64` in `float64`), so large differentiated Cholesky tiles can
+  hit shared-memory limits where the previous path would not
+  ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
 
 ### Fixed
 
