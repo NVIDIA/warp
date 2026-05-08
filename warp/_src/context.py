@@ -111,22 +111,6 @@ class CaptureMode(enum.IntEnum):
     the capture."""
 
 
-class det_scatter_buf_t(ctypes.Structure):
-    _fields_ = [
-        ("keys", ctypes.c_void_p),
-        ("vals", ctypes.c_void_p),
-        ("count", ctypes.c_void_p),
-        ("capacity", ctypes.c_int),
-    ]
-
-
-class det_counter_buf_t(ctypes.Structure):
-    _fields_ = [
-        ("contrib", ctypes.c_void_p),
-        ("prefix", ctypes.c_void_p),
-    ]
-
-
 # represents either a built-in or user-defined function
 
 
@@ -153,6 +137,23 @@ def get_function_args(func):
 
 complex_type_hints = (Any, Callable, tuple)
 sequence_types = (list, tuple)
+
+
+class det_scatter_buf_t(ctypes.Structure):
+    _fields_ = [
+        ("keys", ctypes.c_void_p),
+        ("vals", ctypes.c_void_p),
+        ("count", ctypes.c_void_p),
+        ("capacity", ctypes.c_int),
+    ]
+
+
+class det_counter_buf_t(ctypes.Structure):
+    _fields_ = [
+        ("contrib", ctypes.c_void_p),
+        ("prefix", ctypes.c_void_p),
+    ]
+
 
 function_key_counts: dict[str, int] = {}
 
@@ -9129,9 +9130,12 @@ def _launch_deterministic(
             capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
             graph = runtime.captures.get(capture_id)
             if graph is not None:
-                graph.retain_module_exec(module_exec)
+                retain_module_exec = getattr(graph, "_retain_module_exec", None)
+                if retain_module_exec is None:
+                    retain_module_exec = graph.retain_module_exec
+                retain_module_exec(module_exec)
 
-        runtime.core.wp_cuda_launch_kernel(
+        launch_args = [
             device.context,
             hook,
             bounds.size,
@@ -9140,7 +9144,14 @@ def _launch_deterministic(
             hooks.forward_smem_bytes,
             kernel_params,
             stream.cuda_stream,
-        )
+        ]
+        launch_argtypes = getattr(runtime.core.wp_cuda_launch_kernel, "argtypes", None)
+        if launch_argtypes is None and hasattr(runtime.core, "ctypes"):
+            launch_argtypes = getattr(runtime.core.ctypes.wp_cuda_launch_kernel, "argtypes", None)
+        if launch_argtypes is not None and len(launch_argtypes) > len(launch_args):
+            launch_args.append(None)
+
+        runtime.core.wp_cuda_launch_kernel(*launch_args)
 
     def resolve_det_target_array(target):
         resolved = None
