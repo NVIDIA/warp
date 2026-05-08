@@ -422,6 +422,19 @@ def mixed_pattern_kernel(
     wp.atomic_add(accum, tid % 8, val)
 
 
+@wp.kernel
+def mixed_counter_int_atomic_kernel(
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+    accum: wp.array(dtype=wp.int32),
+):
+    """Integer side-effect atomic must not run during counter phase 0."""
+    tid = wp.tid()
+    wp.atomic_add(accum, tid % 8, 1)
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
 # ---------------------------------------------------------------------------
 # Integer atomic kernels (should pass through unchanged when return unused)
 # ---------------------------------------------------------------------------
@@ -1289,6 +1302,22 @@ def test_mixed_pattern(test, device):
         np.testing.assert_array_equal(results_accum[0], results_accum[i])
 
 
+def test_counter_with_integer_accumulation(test, device):
+    """Verify integer atomics in counter kernels do not run during phase 0."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 512
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.int32, device=device)
+    accum = wp.zeros(8, dtype=wp.int32, device=device)
+
+    wp.launch(mixed_counter_int_atomic_kernel, dim=n, inputs=[counter], outputs=[output, accum], device=device)
+
+    np.testing.assert_array_equal(counter.numpy(), [n])
+    np.testing.assert_array_equal(accum.numpy(), np.full(8, n // 8, dtype=np.int32))
+
+
 def test_int_atomic_passthrough(test, device):
     """Verify integer atomics (return unused) work without overhead."""
     n = 1024
@@ -1980,6 +2009,12 @@ add_function_test(TestDeterministic, "test_conditional_counter", test_conditiona
 
 # Mixed pattern tests.
 add_function_test(TestDeterministic, "test_mixed_pattern", test_mixed_pattern, devices=cuda_devices)
+add_function_test(
+    TestDeterministic,
+    "test_counter_with_integer_accumulation",
+    test_counter_with_integer_accumulation,
+    devices=cuda_devices,
+)
 
 # Passthrough / override tests.
 add_function_test(TestDeterministic, "test_int_atomic_passthrough", test_int_atomic_passthrough, devices=all_devices)

@@ -108,6 +108,13 @@ template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_count
             wp::array_store(__VA_ARGS__); \
         } \
     } while (0)
+
+#define WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, ...) \
+    do { \
+        if ((det_ctx).phase != 0) { \
+            __VA_ARGS__ \
+        } \
+    } while (0)
 #else
 #define WP_DET_SCATTER_OR_FALLBACK(det_ctx, helper, flat_idx, value, cpu_expr) \
     do { \
@@ -128,5 +135,11 @@ template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_count
     do { \
         (void)(det_ctx); \
         wp::array_store(__VA_ARGS__); \
+    } while (0)
+
+#define WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, ...) \
+    do { \
+        (void)(det_ctx); \
+        __VA_ARGS__ \
     } while (0)
 #endif
