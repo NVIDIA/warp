@@ -259,6 +259,11 @@ For Pattern 1, Warp allocates temporary scatter buffers.  The default capacity
 comes from a static estimate of how many deterministic atomic records each
 thread can emit.
 
+Warp keeps a small floor of 1024 records per scatter target.  Very small
+launches can therefore allocate more scatter storage than their exact record
+count would require.  This keeps the common path simple and gives repeated
+launches enough room without adding another tuning parameter.
+
 If a thread can revisit the same atomic site inside a dynamic loop, Warp may
 not be able to prove the maximum number of records.  In that case, provide a
 per-target, per-thread upper bound:
