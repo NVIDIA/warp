@@ -433,16 +433,20 @@ Performance
 
 Deterministic mode changes the algorithm, so there is no single overhead
 number.  The important question is which pattern the kernel uses and how much
-contention the atomics have.
+contention the atomics have.  The measurements below use CUDA event timing in
+both cases so they measure GPU work rather than Python wall-clock time.
 
-Pattern 1 accumulation atomics can get faster when many threads write to the
+Pattern A: Accumulation Atomics
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Accumulation atomics can get faster when many threads write to the
 same output element.  Normal floating-point atomics serialize at the hot
 address.  Deterministic ``"run_to_run"`` mode instead writes temporary records,
 sorts them by destination, and reduces each group.  That extra work is not free,
 but it can remove enough atomic contention to win.  Sparse atomics usually slow
 down because there is little contention to remove.
 
-The benchmark kernel for Pattern 1 is deliberately small:
+The benchmark kernel for Pattern A is deliberately small:
 
 .. code:: python
 
@@ -467,12 +471,13 @@ The benchmark kernel for Pattern 1 is deliberately small:
 
 To compare modes, the benchmark uses the same kernel body compiled normally,
 with ``deterministic="run_to_run"``, and with ``deterministic="gpu_to_gpu"``.
-The timed path is CUDA graph replay of the output zeroing plus the kernel launch.
+The timed path is CUDA graph replay of the output zeroing plus the kernel launch,
+measured with CUDA events.
 
 The table below is one local measurement, not a performance guarantee.  It was
 measured on an NVIDIA GeForce RTX 4090 with CUDA 12.4.  Each number is median
-GPU time in milliseconds.  ``outputs=1`` means every thread writes to the same
-element; ``outputs=65,536`` uses random output indices and much lower
+CUDA event time in milliseconds.  ``outputs=1`` means every thread writes to the
+same element; ``outputs=65,536`` uses random output indices and much lower
 contention.
 
 .. list-table::
@@ -527,7 +532,10 @@ low-contention case: normal atomics are already cheap, so sorting dominates.
 The ``"gpu_to_gpu"`` mode preserves a stricter order and is intentionally more
 expensive for one long destination segment.
 
-Pattern 2 slot allocation has a different shape.  The kernel is:
+Pattern B: Slot Allocation Counters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Slot allocation has a different shape.  The kernel is:
 
 .. code:: python
 
@@ -547,8 +555,8 @@ Pattern 2 slot allocation has a different shape.  The kernel is:
 
 Deterministic mode turns this into a counting pass, an exclusive scan, and an
 execution pass.  ``"run_to_run"`` and ``"gpu_to_gpu"`` use the same slot
-allocation algorithm.  Pattern 2 is currently not supported in CUDA graph
-capture, so this table uses direct launches with CUDA event timing.
+allocation algorithm.  Pattern B is currently not supported in CUDA graph
+capture, so this table uses direct launches measured with CUDA events.
 
 .. list-table::
    :header-rows: 1
