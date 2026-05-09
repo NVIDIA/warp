@@ -428,6 +428,154 @@ There are a few details to know:
   kernels.  Use ordinary CUDA graph capture or disable deterministic mode for
   APIC-captured kernels.
 
+Performance
+-----------
+
+Deterministic mode changes the algorithm, so there is no single overhead
+number.  The important question is which pattern the kernel uses and how much
+contention the atomics have.
+
+Pattern 1 accumulation atomics can get faster when many threads write to the
+same output element.  Normal floating-point atomics serialize at the hot
+address.  Deterministic ``"run_to_run"`` mode instead writes temporary records,
+sorts them by destination, and reduces each group.  That extra work is not free,
+but it can remove enough atomic contention to win.  Sparse atomics usually slow
+down because there is little contention to remove.
+
+The benchmark kernel for Pattern 1 is deliberately small:
+
+.. code:: python
+
+    @wp.kernel
+    def atomic_add_kernel(
+        values: wp.array(dtype=wp.float32),
+        indices: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        wp.atomic_add(out, indices[tid], values[tid])
+
+
+    out.zero_()
+    wp.launch(
+        atomic_add_kernel,
+        dim=num_writes,
+        inputs=[values, indices],
+        outputs=[out],
+        device="cuda",
+    )
+
+To compare modes, the benchmark uses the same kernel body compiled normally,
+with ``deterministic="run_to_run"``, and with ``deterministic="gpu_to_gpu"``.
+The timed path is CUDA graph replay of the output zeroing plus the kernel launch.
+
+The table below is one local measurement, not a performance guarantee.  It was
+measured on an NVIDIA GeForce RTX 4090 with CUDA 12.4.  Each number is median
+GPU time in milliseconds.  ``outputs=1`` means every thread writes to the same
+element; ``outputs=65,536`` uses random output indices and much lower
+contention.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Writes
+     - Outputs
+     - ``"not_guaranteed"``
+     - ``"run_to_run"``
+     - ``"gpu_to_gpu"``
+     - ``"run_to_run"`` ratio
+   * - 65,536
+     - 1
+     - 0.099 ms
+     - 0.075 ms
+     - 7.66 ms
+     - 0.76x
+   * - 262,144
+     - 1
+     - 0.364 ms
+     - 0.096 ms
+     - 31.0 ms
+     - 0.26x
+   * - 1,048,576
+     - 1
+     - 1.46 ms
+     - 0.193 ms
+     - 172 ms
+     - 0.13x
+   * - 65,536
+     - 65,536
+     - 0.0058 ms
+     - 0.079 ms
+     - 0.076 ms
+     - 13.6x
+   * - 262,144
+     - 65,536
+     - 0.0081 ms
+     - 0.192 ms
+     - 0.187 ms
+     - 23.9x
+   * - 1,048,576
+     - 65,536
+     - 0.020 ms
+     - 0.201 ms
+     - 0.228 ms
+     - 10.0x
+
+The first three rows are the high-contention case: ``"run_to_run"`` gets faster
+as the number of writes to the one output grows.  The last three rows are the
+low-contention case: normal atomics are already cheap, so sorting dominates.
+The ``"gpu_to_gpu"`` mode preserves a stricter order and is intentionally more
+expensive for one long destination segment.
+
+Pattern 2 slot allocation has a different shape.  The kernel is:
+
+.. code:: python
+
+    @wp.kernel
+    def counter_kernel(
+        values: wp.array(dtype=wp.float32),
+        count: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        slot = wp.atomic_add(count, 0, 1)
+        out[slot] = values[tid]
+
+
+    count.zero_()
+    wp.launch(counter_kernel, dim=num_writes, inputs=[values, count], outputs=[out], device="cuda")
+
+Deterministic mode turns this into a counting pass, an exclusive scan, and an
+execution pass.  ``"run_to_run"`` and ``"gpu_to_gpu"`` use the same slot
+allocation algorithm.  Pattern 2 is currently not supported in CUDA graph
+capture, so this table uses direct launches with CUDA event timing.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Writes
+     - ``"not_guaranteed"``
+     - Deterministic
+     - Ratio
+   * - 65,536
+     - 0.020 ms
+     - 0.129 ms
+     - 6.3x
+   * - 262,144
+     - 0.024 ms
+     - 0.144 ms
+     - 6.0x
+   * - 1,048,576
+     - 0.022 ms
+     - 0.165 ms
+     - 7.6x
+
+These counter numbers measure the device work only.  Application wall time can
+be higher because this direct-launch path still allocates temporary scan buffers
+around the launch.  The practical advice is to use deterministic slot allocation
+where stable ordering matters, and benchmark it in the workload that matters to
+you.
+
 Limitations
 -----------
 
@@ -519,53 +667,6 @@ Large launches
     index in one 64-bit value.  Deterministic counter launches are limited to
     at most ``2**31 - 1`` threads because their prefix buffers store
     per-thread contributions as ``int32`` values.
-
-Performance cost
-    Deterministic mode adds algorithmic work and temporary storage.
-    Accumulation atomics sort and reduce temporary records.  Slot allocation
-    runs an extra counting pass and a scan.  Wall time depends on the atomic
-    pattern: highly contended floating-point atomics can get faster with
-    deterministic reduction because Warp sorts the updates, groups equal
-    destinations, and then reduces each group without making every thread
-    contend on the same hardware atomic.  Sparse atomics usually pay a clear
-    overhead because there is little contention to remove.
-
-    The table below is one local measurement, not a performance guarantee.  It
-    uses a single ``atomic_add`` kernel with 262,144 records on an NVIDIA
-    GeForce RTX 4090, CUDA 12.4.  Each number is the median direct launch time
-    over 40 runs, including output zeroing and synchronization.
-
-    .. list-table::
-       :header-rows: 1
-
-       * - Output bins
-         - Contention
-         - ``"not_guaranteed"``
-         - ``"run_to_run"``
-         - ``"gpu_to_gpu"``
-       * - 1
-         - all threads hit one element
-         - 388 us (1.00x)
-         - 317 us (0.82x)
-         - 31.9 ms (82.2x)
-       * - 1,024
-         - about 256 records per bin
-         - 23.7 us (1.00x)
-         - 320 us (13.5x)
-         - 391 us (16.5x)
-       * - 65,536
-         - about 4 records per bin
-         - 22.9 us (1.00x)
-         - 318 us (13.9x)
-         - 379 us (16.6x)
-
-    The one-bin ``"run_to_run"`` case is the important crossover: even in this
-    end-to-end measurement, deterministic reduction is faster than direct
-    floating-point atomics.  Kernel-only microbenchmarks of the same pattern can
-    show a larger speedup as the number of writes to one output grows.  The
-    one-bin ``"gpu_to_gpu"`` case is intentionally a worst case: the segmented
-    reducer preserves a strict order for one long destination run.  Benchmark
-    your workload with its real output shape and contention pattern.
 
 Checklist
 ---------
