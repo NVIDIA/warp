@@ -2576,6 +2576,7 @@ class Module:
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
         self.hashers = {}
         self.resolved_options = {}
+        self.deterministic_options_signatures = {}
 
         # LLVM executable modules are identified using strings.  Since it's possible for multiple
         # executable versions to be loaded at the same time, we need a way to ensure uniqueness.
@@ -2615,6 +2616,17 @@ class Module:
 
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
+
+    def _deterministic_options_signature(self, block_dim: int) -> tuple:
+        """Return a cheap signature of inputs that affect deterministic hashing."""
+        options = self.options
+        return (
+            block_dim,
+            options["block_dim"],
+            options["deterministic"],
+            options["deterministic_max_records"],
+            warp.config.deterministic,
+        )
 
     def resolve_options(self, config) -> dict:
         """Return a fully-resolved copy of the module options.
@@ -2828,8 +2840,7 @@ class Module:
         """Get the hash of the module for the current block_dim.
 
         If a hash has not been computed for the current block_dim, or if
-        resolved module/config options have changed, it will be computed and
-        cached.
+        deterministic options have changed, it will be computed and cached.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
@@ -2840,13 +2851,18 @@ class Module:
             _ = ModuleBuilder(self, builder_options)
             self.has_unresolved_static_expressions = False
 
-        options = self.resolve_options(warp.config)
-        if options["block_dim"] != block_dim:
-            options = options | {"block_dim": block_dim}
+        signature = self._deterministic_options_signature(block_dim)
 
-        if block_dim not in self.hashers or self.resolved_options.get(block_dim) != options:
-            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
-            self.resolved_options[block_dim] = options
+        if block_dim not in self.hashers or self.deterministic_options_signatures.get(block_dim) != signature:
+            options = self.resolve_options(warp.config)
+            if options["block_dim"] != block_dim:
+                options = options | {"block_dim": block_dim}
+
+            if block_dim not in self.hashers or self.resolved_options.get(block_dim) != options:
+                self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+                self.resolved_options[block_dim] = options
+
+            self.deterministic_options_signatures[block_dim] = signature
 
         return self.hashers[block_dim].get_hash()
 
@@ -3286,6 +3302,7 @@ class Module:
         # clear hash data
         self.hashers = {}
         self.resolved_options = {}
+        self.deterministic_options_signatures = {}
 
         # clear build failures
         self.failed_builds = set()
