@@ -132,6 +132,10 @@ sort/reduce path. CUB sorts the signed sentinel key before valid non-negative
 destination keys; the reducer paths ignore records with invalid destinations,
 so sentinel records do not affect outputs.
 
+Scatter buffers use a minimum capacity of 1024 records per target. This can
+over-allocate for tiny launches, but it avoids a separate small-allocation path
+and keeps graph-capture workspace sizing stable.
+
 Because the sort key reserves 32 bits for the linear thread index,
 deterministic scatter launches are limited to at most ``2**32`` threads.
 
