@@ -264,8 +264,8 @@ void deterministic_sort_reduce_device(
 
     // --- Sort by key ---
     // The input buffers have a fixed capacity. Unused slots are initialized
-    // with key == -1, which sorts to the end and is ignored by the reduce
-    // kernel.
+    // with key == -1. CUB orders that signed key before valid non-negative
+    // destination keys, and the reduce kernels ignore invalid destinations.
     // Sort keys together with record indices, then reduce from the original
     // value buffer component-wise.
     ScopedTemporary<int64_t> alt_keys(WP_CURRENT_CONTEXT, count);
