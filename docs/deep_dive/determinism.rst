@@ -240,11 +240,24 @@ Picking the Right Mode
 ----------------------
 
 Start with ``"run_to_run"``.  It gives bit-exact repeated runs on the same GPU
-architecture and uses the fastest deterministic path for scalar reductions.
+architecture and is the fastest deterministic mode.  For scalar accumulation
+atomics, Warp writes scatter records, sorts them by destination and linear
+thread index, and then uses `CUB DeviceReduce`_ reduce-by-key to combine
+records with the same destination.  This is stable for repeated runs on the
+same GPU architecture, but the internal reduction tree may vary across
+architectures.
 
-Use ``"gpu_to_gpu"`` when you need a stronger guarantee across GPU
-architectures.  This is more expensive because Warp avoids relying on reduction
-orders that may change with architecture-specific CUB policies.
+Use ``"gpu_to_gpu"`` when the same kernel should produce the same result across
+GPU architectures.  Warp still uses CUB radix sort to group records, but it
+does not use CUB's scalar reduce-by-key path.  Instead, Warp launches a
+segmented reduction kernel that walks each sorted destination segment in
+thread-index order.  That fixed accumulation order is more conservative and can
+be slower, especially when many threads contribute to the same destination.
+
+Composite values such as vectors, matrices, quaternions, transforms, and
+``wp.Struct`` fields already use Warp's segmented reduction path in both modes.
+Pattern 2 slot allocation uses the same count-scan-write algorithm in both
+enabled modes.
 
 The mode names match the determinism vocabulary used by NVIDIA CCCL.  Recent
 CCCL releases also expose determinism controls for some CUB reductions; see
@@ -335,8 +348,8 @@ There are a few details to know:
   kernels.  Use ordinary CUDA graph capture or disable deterministic mode for
   APIC-captured kernels.
 
-Common Limitations
-------------------
+Limitations
+-----------
 
 Deterministic mode is intentionally narrow.  It supports common reproducibility
 patterns without pretending that every parallel program can be made
@@ -346,12 +359,27 @@ Unsupported atomics
     ``wp.atomic_cas()``, ``wp.atomic_exch()``, and tile atomics such as
     ``wp.tile_atomic_add()`` are not transformed.
 
+    .. code:: python
+
+        @wp.kernel(deterministic="run_to_run")
+        def not_rewritten(lock: wp.array(dtype=wp.int32)):
+            # Compare-and-swap is still the ordinary Warp atomic.
+            wp.atomic_cas(lock, 0, 0, 1)
+
 One reduction family per target
     A single output array cannot mix different deterministic families inside
     one function or kernel.  For example, using ``wp.atomic_add(out, ...)`` and
     ``wp.atomic_max(out, ...)`` on the same array in the same deterministic
     kernel is rejected.  Write to separate arrays or split the work into
     separate kernels.
+
+    .. code:: python
+
+        @wp.kernel(deterministic="run_to_run")
+        def rejected(values: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)):
+            tid = wp.tid()
+            wp.atomic_add(out, 0, values[tid])
+            wp.atomic_max(out, 0, values[tid])
 
 Side effects in the counting pass
     Pattern 2 runs the kernel once just to count.  During this pass, Warp
@@ -360,10 +388,36 @@ Side effects in the counting pass
     writes performed earlier in the same kernel, rewrite the code to use local
     variables or input arrays for that decision.
 
+    .. code:: python
+
+        @wp.kernel(deterministic="run_to_run")
+        def avoid_scratch_dependency(
+            values: wp.array(dtype=wp.float32),
+            scratch: wp.array(dtype=wp.float32),
+            count: wp.array(dtype=wp.int32),
+            out: wp.array(dtype=wp.float32),
+        ):
+            tid = wp.tid()
+            scratch[tid] = values[tid]
+
+            # During the counting pass, the scratch write is suppressed.
+            if scratch[tid] > 0.0:
+                slot = wp.atomic_add(count, 0, 1)
+                out[slot] = scratch[tid]
+
 Fixed scatter capacity
     Pattern 1 uses fixed-capacity scatter buffers.  Dynamic loops that emit
     more records than the static estimate or ``deterministic_max_records`` can
     overflow.
+
+    .. code:: python
+
+        @wp.kernel(deterministic="run_to_run", deterministic_max_records=4)
+        def can_overflow(loop_counts: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.float32)):
+            tid = wp.tid()
+
+            for i in range(loop_counts[tid]):
+                wp.atomic_add(out, 0, 1.0)
 
 Large launches
     Deterministic scatter launches are limited to at most ``2**32`` threads.
@@ -398,8 +452,8 @@ When enabling deterministic mode in a new kernel:
 Related NVIDIA Libraries
 ------------------------
 
-Warp's implementation builds on CUDA and CUB concepts rather than inventing a
-new vocabulary:
+Warp's implementation is inspired by CUDA and CUB patterns that are already
+familiar in NVIDIA libraries:
 
 * `CUB`_ is part of `NVIDIA CCCL`_ and provides optimized device-wide building
   blocks such as radix sort, reduce-by-key, and scan.
