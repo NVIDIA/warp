@@ -318,8 +318,9 @@ class AtomicAddDeterminismOverhead:
 class AtomicCounterDeterminismOverhead:
     """Benchmark the overhead of deterministic counter/allocator atomics.
 
-    The timed path uses CUDA graph replay and includes resetting the output
-    state inside the captured graph so the benchmark isolates device work.
+    The normal path uses CUDA graph replay. Deterministic consumed-return
+    counters are timed with direct launches because they are not supported
+    during CUDA graph capture.
     """
 
     params = (DETERMINISTIC_BENCHMARK_MODES, tuple(DETERMINISTIC_BENCHMARK_SIZES))
@@ -340,7 +341,28 @@ class AtomicCounterDeterminismOverhead:
         self.counter = wp.zeros(shape=(1,), dtype=wp.int32, device=self.device)
         self.out = wp.zeros(shape=(num_elements,), dtype=wp.float32, device=self.device)
 
+        self.num_elements = num_elements
         self.kernel = counter_kernel_deterministic if mode == "deterministic" else counter_kernel
+        self.graph = None
+        self._launch_counter()
+        wp.synchronize_device(self.device)
+
+        if mode == "deterministic":
+            for _ in range(5):
+                self._launch_counter()
+            wp.synchronize_device(self.device)
+            return
+
+        with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
+            self._launch_counter()
+
+        self.graph = capture.graph
+
+        for _ in range(5):
+            wp.capture_launch(self.graph)
+        wp.synchronize_device(self.device)
+
+    def _launch_counter(self):
         wp.launch(
             zero_int_array_kernel,
             dim=1,
@@ -349,46 +371,21 @@ class AtomicCounterDeterminismOverhead:
         )
         wp.launch(
             zero_float_array_kernel,
-            dim=num_elements,
+            dim=self.num_elements,
             inputs=[self.out],
             device=self.device,
         )
         wp.launch(
             self.kernel,
-            (num_elements,),
+            (self.num_elements,),
             inputs=[self.vals, self.counter],
             outputs=[self.out],
             device=self.device,
         )
-        wp.synchronize_device(self.device)
-
-        with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
-            wp.launch(
-                zero_int_array_kernel,
-                dim=1,
-                inputs=[self.counter],
-                device=self.device,
-            )
-            wp.launch(
-                zero_float_array_kernel,
-                dim=num_elements,
-                inputs=[self.out],
-                device=self.device,
-            )
-            wp.launch(
-                self.kernel,
-                (num_elements,),
-                inputs=[self.vals, self.counter],
-                outputs=[self.out],
-                device=self.device,
-            )
-
-        self.graph = capture.graph
-
-        for _ in range(5):
-            wp.capture_launch(self.graph)
-        wp.synchronize_device(self.device)
 
     def time_cuda(self, vals_np, mode, num_elements):
-        wp.capture_launch(self.graph)
+        if self.graph is None:
+            self._launch_counter()
+        else:
+            wp.capture_launch(self.graph)
         wp.synchronize_device(self.device)
