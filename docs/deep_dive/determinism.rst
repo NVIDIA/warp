@@ -236,6 +236,86 @@ This pattern currently supports only:
 Consumed-return ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are rejected
 because their semantics are not prefix-sum slot allocation.
 
+Writing Manual Deterministic Code
+---------------------------------
+
+Warp's deterministic mode is a convenience layer.  You can also write the
+deterministic algorithm directly when you want tighter control over memory,
+launch boundaries, or performance.
+
+For small output spaces, the simplest deterministic accumulation is to give
+each output element one thread and visit the inputs in a fixed order:
+
+.. code:: python
+
+    @wp.kernel
+    def reduce_by_bin(
+        values: wp.array(dtype=wp.float32),
+        bins: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.float32),
+        n: int,
+    ):
+        bin_id = wp.tid()
+        total = wp.float32(0.0)
+
+        for i in range(n):
+            if bins[i] == bin_id:
+                total += values[i]
+
+        out[bin_id] = total
+
+This avoids atomics entirely and accumulates each bin in input-index order.  It
+is easy to reason about, but it is ``O(num_bins * num_values)``, so it is most
+useful for debugging, validation, or small numbers of output bins.
+
+For slot allocation, write the count-scan-write pattern explicitly:
+
+.. code:: python
+
+    @wp.kernel
+    def count_positive(
+        values: wp.array(dtype=wp.float32),
+        counts: wp.array(dtype=wp.int32),
+    ):
+        tid = wp.tid()
+        counts[tid] = wp.int32(values[tid] > 0.0)
+
+
+    @wp.kernel
+    def write_positive(
+        values: wp.array(dtype=wp.float32),
+        offsets: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+
+        if values[tid] > 0.0:
+            out[offsets[tid]] = values[tid]
+
+
+    counts = wp.empty(n, dtype=wp.int32, device="cuda")
+    offsets = wp.empty(n, dtype=wp.int32, device="cuda")
+
+    wp.launch(
+        count_positive,
+        dim=n,
+        inputs=[values],
+        outputs=[counts],
+        device="cuda",
+    )
+    wp.utils.array_scan(counts, offsets, inclusive=False)
+    wp.launch(
+        write_positive,
+        dim=n,
+        inputs=[values, offsets],
+        outputs=[compacted],
+        device="cuda",
+    )
+
+This is the same basic lowering that deterministic consumed-return counters use
+internally.  If you also need the final count, it is ``offsets[n - 1] +
+counts[n - 1]``.
+
 Picking the Right Mode
 ----------------------
 
@@ -381,6 +461,20 @@ One reduction family per target
             wp.atomic_add(out, 0, values[tid])
             wp.atomic_max(out, 0, values[tid])
 
+    One workaround is to write each reduction family to a separate target:
+
+    .. code:: python
+
+        @wp.kernel(deterministic="run_to_run")
+        def allowed(
+            values: wp.array(dtype=wp.float32),
+            sum_out: wp.array(dtype=wp.float32),
+            max_out: wp.array(dtype=wp.float32),
+        ):
+            tid = wp.tid()
+            wp.atomic_add(sum_out, 0, values[tid])
+            wp.atomic_max(max_out, 0, values[tid])
+
 Side effects in the counting pass
     Pattern 2 runs the kernel once just to count.  During this pass, Warp
     suppresses side effects such as array writes, non-counter atomics, and
@@ -427,9 +521,44 @@ Large launches
     per-thread contributions as ``int32`` values.
 
 Performance cost
-    Deterministic mode adds work.  Accumulation atomics sort and reduce
-    temporary records.  Slot allocation runs an extra counting pass and a scan.
-    Use it where reproducibility matters, not as a default performance mode.
+    Deterministic mode adds algorithmic work and temporary storage.
+    Accumulation atomics sort and reduce temporary records.  Slot allocation
+    runs an extra counting pass and a scan.  Wall time depends on the atomic
+    pattern: high-contention atomics can be faster after sorting, while sparse
+    atomics usually pay a clear overhead.
+
+    The table below is one local measurement, not a performance guarantee.  It
+    uses a single ``atomic_add`` kernel with 262,144 records on an NVIDIA
+    GeForce RTX 4090, CUDA 12.4.  Each number is the median direct launch time
+    over 40 runs, including output zeroing and synchronization.
+
+    .. list-table::
+       :header-rows: 1
+
+       * - Output bins
+         - Contention
+         - ``"not_guaranteed"``
+         - ``"run_to_run"``
+         - ``"gpu_to_gpu"``
+       * - 1
+         - all threads hit one element
+         - 388 us (1.00x)
+         - 317 us (0.82x)
+         - 31.9 ms (82.2x)
+       * - 1,024
+         - about 256 records per bin
+         - 23.7 us (1.00x)
+         - 320 us (13.5x)
+         - 391 us (16.5x)
+       * - 65,536
+         - about 4 records per bin
+         - 22.9 us (1.00x)
+         - 318 us (13.9x)
+         - 379 us (16.6x)
+
+    The one-bin ``"gpu_to_gpu"`` case is intentionally a worst case: the
+    segmented reducer preserves a strict order for one long destination run.
+    Benchmark your workload with its real output shape and contention pattern.
 
 Checklist
 ---------
