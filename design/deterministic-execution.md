@@ -124,6 +124,9 @@ Unused buffer slots are initialized with an invalid sentinel key and sort to
 the end. This avoids host-side scatter count readbacks and keeps the path
 compatible with CUDA graph capture.
 
+Because the sort key reserves 32 bits for the linear thread index,
+deterministic scatter launches are limited to at most ``2**32`` threads.
+
 **Pattern B --- Two-Pass Execution** (counter/allocator, return value used):
 
 The kernel runs twice:
@@ -251,13 +254,17 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
 - ``"gpu_to_gpu"`` mode currently falls back to Warp's explicit segmented
-  reduction path for scalar scatter reductions. This is correct but much slower
-  than the ``"run_to_run"`` CUB ``ReduceByKey`` fast path in high-contention
-  cases.
+  reduction path for scalar scatter reductions. Each segment head accumulates
+  its segment serially so the accumulation order is fully controlled by Warp.
+  This is correct but much slower than the ``"run_to_run"`` CUB ``ReduceByKey``
+  fast path in high-contention cases.
+- Deterministic scatter launches are limited to ``2**32`` threads because the
+  sort key packs the destination index and the linear thread index into one
+  64-bit key.
 
 ## Testing Strategy
 
-35 tests in ``warp/tests/test_deterministic.py`` cover:
+53 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all

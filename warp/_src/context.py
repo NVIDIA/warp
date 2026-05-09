@@ -4702,6 +4702,7 @@ class Graph:
         self.capture_id = capture_id
         self.module_execs: set[ModuleExec] = set()
         self._deterministic_buffer_refs: list[Any] = []
+        self._deterministic_overflow_buffers: list[tuple[str, Any]] = []
         self.graph_exec: ctypes.c_void_p | None = None
         self.graph: ctypes.c_void_p | None = None
 
@@ -9103,6 +9104,12 @@ def _launch_deterministic(
         )
 
     dim_size = bounds.size
+    if det_meta.has_scatter and dim_size > (1 << 32):
+        raise RuntimeError(
+            "Deterministic scatter atomics support launch sizes up to 2^32 threads because sort keys pack the "
+            "linear thread index into 32 bits."
+        )
+
     options = kernel.module.resolve_options(warp.config) | kernel.options
     determinism_mode = normalize_deterministic_mode(options.get("deterministic"), option_name="deterministic")
     max_scatter_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
@@ -9258,11 +9265,29 @@ def _launch_deterministic(
     # Post-kernel: reduce scatter records in a fixed order.
     if det_meta.has_scatter:
         # Identify the destination arrays from fwd_args.
-        dest_arrays = [resolve_det_target_array(st) for st in det_meta.scatter_targets]
+        scatter_targets = []
+        scatter_buffers = []
+        dest_arrays = []
+        for scatter_target, scatter_buffer in zip(det_meta.scatter_targets, scatter_bufs, strict=True):
+            dest_array = resolve_det_target_array(scatter_target)
+            if dest_array is None:
+                continue
+            if not hasattr(dest_array, "ptr"):
+                raise RuntimeError(
+                    "Deterministic scatter target "
+                    f"{scatter_target.target_label!r} resolved to non-array object "
+                    f"({type(dest_array).__name__})"
+                )
+            scatter_targets.append(scatter_target)
+            scatter_buffers.append(scatter_buffer)
+            dest_arrays.append(dest_array)
 
-        run_sort_reduce(runtime, det_meta.scatter_targets, scatter_bufs, dest_arrays, device, determinism_mode)
+        run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode)
 
     if capture_graph is not None:
+        if overflow_buf is not None:
+            capture_graph._deterministic_overflow_buffers.append((kernel.key, overflow_buf))
+
         # Captured graphs replay after this function returns, so keep temporary
         # deterministic buffers alive for the lifetime of the graph object.
         capture_graph._deterministic_buffer_refs.extend(
@@ -11091,6 +11116,15 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     capture_resume(main_graph, stream=stream)
 
 
+def _check_deterministic_graph_overflow(graph: Graph):
+    for kernel_key, overflow_buf in graph._deterministic_overflow_buffers:
+        if int(overflow_buf.numpy()[0]) != 0:
+            raise RuntimeError(
+                f"Deterministic scatter buffer overflow in captured kernel '{kernel_key}'. "
+                "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+            )
+
+
 def capture_launch(graph: Graph, stream: Stream | None = None):
     """Launch a previously captured graph.
 
@@ -11153,6 +11187,8 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 
     if not runtime.core.wp_cuda_graph_launch(graph.graph_exec, stream.cuda_stream):
         raise RuntimeError(f"Graph launch error: {runtime.get_error_string()}")
+
+    _check_deterministic_graph_overflow(graph)
 
 
 def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: dict | None = None):
