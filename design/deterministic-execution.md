@@ -111,8 +111,9 @@ the user:
 Instead of performing ``atomic_add`` in-place during kernel execution, each
 thread writes a ``(sort_key, value)`` record to a temporary scatter buffer. The
 sort key packs ``(dest_index << 32 | thread_id)``. After the kernel completes,
-a CUB radix sort orders the fixed-capacity scatter buffer by key and record
-index. The post-sort reduction depends on the selected determinism guarantee:
+Warp reads the emitted record count outside CUDA graph capture and a CUB radix
+sort orders the valid scatter record prefix by key and record index. The
+post-sort reduction depends on the selected determinism guarantee:
 
 - ``"run_to_run"``: scalar reductions use CUB ``DeviceReduce::ReduceByKey`` on
   destination indices for better performance.
@@ -120,11 +121,12 @@ index. The post-sort reduction depends on the selected determinism guarantee:
   the left-to-right accumulation order is explicit in Warp's own code.
 - Composite leaf types always use the segmented kernel.
 
-Unused buffer slots are initialized with the invalid sentinel key ``-1``. CUB
-sorts that signed key before valid non-negative destination keys; the reducer
-paths ignore records with invalid destinations, so sentinel records do not
-affect outputs. Sorting the fixed-capacity buffer avoids host-side scatter
-count readbacks and keeps the path compatible with CUDA graph capture.
+During CUDA graph capture, host-side scatter count readbacks are not allowed.
+Captured launches therefore still initialize unused buffer slots with the
+invalid sentinel key ``-1`` and sort the full fixed-capacity buffer. CUB sorts
+that signed key before valid non-negative destination keys; the reducer paths
+ignore records with invalid destinations, so sentinel records do not affect
+outputs.
 
 Because the sort key reserves 32 bits for the linear thread index,
 deterministic scatter launches are limited to at most ``2**32`` threads.
@@ -219,10 +221,12 @@ example inside a dynamic loop. Warp uses
 each target. On overflow, new records are truncated, one shared device-side
 overflow flag is set, and optional diagnostics may be emitted when
 ``wp.config.deterministic_debug`` is enabled. Outside CUDA graph capture, Warp
-checks the overflow flag after the deterministic launch. During CUDA graph
-capture and replay, Warp deliberately skips host-side overflow checks because
-reading the device flag would synchronize every graph launch and defeat the
-asynchronous graph replay path.
+reads each target's emitted-record counter before the postpass so sort/reduce
+work is proportional to actual records rather than static capacity, and checks
+the overflow flag after the deterministic launch. During CUDA graph capture
+and replay, Warp deliberately skips host-side count readbacks and overflow
+checks because reading device flags would synchronize every graph launch and
+defeat the asynchronous graph replay path.
 
 **CUDA graph capture support**: deterministic launch orchestration allocates
 scatter buffers, counter buffers, and CUB sort/reduce workspaces from Python.
@@ -271,10 +275,10 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
-- Pattern A currently sorts each target's full fixed-capacity scatter buffer,
-  including unused sentinel records, to avoid host-side count readbacks and keep
-  the path compatible with CUDA graph capture. This can waste sort/reduce work
-  when the static capacity is much larger than the number of emitted records.
+- During CUDA graph capture, Pattern A sorts each target's full fixed-capacity
+  scatter buffer, including unused sentinel records, because graph replay cannot
+  insert host-side count readbacks. This can waste sort/reduce work when the
+  static capacity is much larger than the number of emitted records.
 - Deterministic scatter buffer capacity is limited to ``2**31 - 1`` records
   because the native scatter buffer metadata and CUB sort/reduce counts use
   32-bit signed integers.
@@ -306,7 +310,7 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 
 ## Testing Strategy
 
-57 tests in ``warp/tests/test_deterministic.py`` cover:
+59 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
@@ -327,7 +331,8 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - **Multi-dimensional indexing**: 2D array ``atomic_add`` with row/col indices.
 - **Scatter capacity accounting**: kernels with more than two deterministic
   scatters per thread to the same target do not overflow a fixed heuristic
-  buffer.
+  buffer, and the native postpass receives the emitted record count instead of
+  full scatter capacity outside CUDA graph capture.
 - **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, 0, 1);
   output[slot] = data[tid]`` produces identical output arrays across 10 runs.
 - **Phase 0 side-effect suppression**: non-counter array writes are skipped in

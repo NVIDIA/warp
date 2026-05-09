@@ -7713,6 +7713,7 @@ def _launch_deterministic(
     from warp._src.deterministic import (  # noqa: PLC0415
         allocate_counter_buffers,
         allocate_scatter_buffers,
+        get_scatter_record_count,
         normalize_deterministic_mode,
         run_sort_reduce,
     )
@@ -7753,6 +7754,7 @@ def _launch_deterministic(
             dim_size,
             device,
             max_records=max_scatter_records,
+            initialize_unused=stream_is_capturing,
         )
         if det_meta.has_scatter
         else []
@@ -7881,6 +7883,7 @@ def _launch_deterministic(
         scatter_targets = []
         scatter_buffers = []
         dest_arrays = []
+        record_counts = []
         for scatter_target, scatter_buffer in zip(det_meta.scatter_targets, scatter_bufs, strict=True):
             dest_array = resolve_det_target_array(scatter_target)
             if dest_array is None:
@@ -7894,10 +7897,17 @@ def _launch_deterministic(
             scatter_targets.append(scatter_target)
             scatter_buffers.append(scatter_buffer)
             dest_arrays.append(dest_array)
+            record_counts.append(get_scatter_record_count(scatter_buffer, stream_is_capturing=stream_is_capturing))
 
         with warp.ScopedStream(stream, sync_enter=False):
             sort_reduce_workspaces = run_sort_reduce(
-                runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode
+                runtime,
+                scatter_targets,
+                scatter_buffers,
+                dest_arrays,
+                device,
+                determinism_mode,
+                record_counts=record_counts,
             )
 
     if capture_graph is not None:

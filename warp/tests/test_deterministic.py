@@ -2023,6 +2023,81 @@ def test_deterministic_enum_parity(test, device):
     )
 
 
+def test_run_sort_reduce_uses_emitted_record_count(test, device):
+    """Verify the postpass uses emitted records instead of full scatter capacity."""
+    del device
+
+    class FakeCore:
+        def __init__(self):
+            self.workspace_counts = []
+            self.device_counts = []
+
+        def wp_deterministic_sort_reduce_workspace_size(
+            self, count, _op, _scalar_type, _components, _determinism_level
+        ):
+            self.workspace_counts.append(count)
+            return 1
+
+        def wp_deterministic_sort_reduce_device(
+            self,
+            _keys,
+            _values,
+            count,
+            _dest_array,
+            _dest_size,
+            _op,
+            _scalar_type,
+            _components,
+            _determinism_level,
+            _workspace,
+            _workspace_size,
+        ):
+            self.device_counts.append(count)
+
+    class FakeRuntime:
+        def __init__(self):
+            self.core = FakeCore()
+
+    runtime = FakeRuntime()
+    device = wp.get_device("cpu")
+    keys = wp.empty(1024, dtype=wp.int64, device=device)
+    values = wp.empty(1024, dtype=wp.float32, device=device)
+    counter = wp.array(np.array([3], dtype=np.int32), dtype=wp.int32, device=device)
+    dest = wp.zeros(1, dtype=wp.float32, device=device)
+    target = wp_deterministic.ScatterTarget(
+        array_var_label="dest",
+        helper_name="det_dest",
+        family=wp_deterministic.DETERMINISTIC_FAMILY_ADD,
+        value_dtype=wp.float32,
+        value_ctype="float",
+        scalar_dtype=wp.float32,
+        reduce_op=wp_deterministic.REDUCE_OP_ADD,
+    )
+
+    record_count = wp_deterministic.get_scatter_record_count((keys, values, counter, 1024))
+    workspaces = wp_deterministic.run_sort_reduce(
+        runtime,
+        [target],
+        [(keys, values, counter, 1024)],
+        [dest],
+        device,
+        wp_deterministic.DETERMINISTIC_RUN_TO_RUN,
+        record_counts=[record_count],
+    )
+
+    test.assertEqual(record_count, 3)
+    test.assertEqual(runtime.core.workspace_counts, [3])
+    test.assertEqual(runtime.core.device_counts, [3])
+    test.assertEqual(len(workspaces), 1)
+
+
+def test_scatter_record_count_capture_uses_capacity(test, device):
+    """Verify graph-capture launches avoid host-side scatter count readbacks."""
+    del device
+    record_count = wp_deterministic.get_scatter_record_count((None, None, None, 1024), stream_is_capturing=True)
+    test.assertEqual(record_count, 1024)
+
+
 # ---------------------------------------------------------------------------
 # Test class registration
 # ---------------------------------------------------------------------------
@@ -2272,6 +2347,18 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic, "test_deterministic_enum_parity", test_deterministic_enum_parity, devices=all_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_run_sort_reduce_uses_emitted_record_count",
+    test_run_sort_reduce_uses_emitted_record_count,
+    devices=[wp.get_device("cpu")],
+)
+add_function_test(
+    TestDeterministic,
+    "test_scatter_record_count_capture_uses_capacity",
+    test_scatter_record_count_capture_uses_capacity,
+    devices=[wp.get_device("cpu")],
 )
 
 
