@@ -2420,15 +2420,9 @@ try:
         add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
 
         # ffi Host (CPU) tests
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_host_add", test_ffi_jax_kernel_host_add, devices=None
-        )
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_host_sincos", test_ffi_jax_kernel_host_sincos, devices=None
-        )
-        add_function_test(
-            TestJax, "test_ffi_jax_kernel_host_in_out", test_ffi_jax_kernel_host_in_out, devices=None
-        )
+        add_function_test(TestJax, "test_ffi_jax_kernel_host_add", test_ffi_jax_kernel_host_add, devices=None)
+        add_function_test(TestJax, "test_ffi_jax_kernel_host_sincos", test_ffi_jax_kernel_host_sincos, devices=None)
+        add_function_test(TestJax, "test_ffi_jax_kernel_host_in_out", test_ffi_jax_kernel_host_in_out, devices=None)
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_host_scale_vec_constant",
