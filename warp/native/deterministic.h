@@ -40,9 +40,11 @@ namespace deterministic {
 // Writes a (key, value) record to the scatter buffer.
 //
 // The sort key packs the destination flat index in the upper 32 bits and the
-// thread_id (_idx from the grid-stride loop) in the lower 32 bits.  After a
-// 64-bit radix sort, records targeting the same destination are grouped
-// together and ordered by thread ID, giving a deterministic reduction order.
+// thread_id (_idx from the grid-stride loop) in the lower 32 bits. Launches
+// larger than 2^32 threads are rejected by the Python launcher before this
+// path is used. After a 64-bit radix sort, records targeting the same
+// destination are grouped together and ordered by thread ID, giving a
+// deterministic reduction order.
 template <typename T>
 inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf_t<T>& buf, int dest_flat_idx, T value)
 {

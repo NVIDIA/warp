@@ -148,7 +148,9 @@ __global__ void deterministic_reduce_kernel(
     int base = sorted_indices[tid] * components;
     int dest_base = my_dest * components;
 
-    // Accumulate the segment sequentially (deterministic left-to-right order).
+    // Accumulate each segment sequentially to preserve a deterministic
+    // left-to-right order. This intentionally favors reproducibility over
+    // throughput for highly contended destinations in gpu_to_gpu mode.
     for (int c = 0; c < components; ++c) {
         T accum = values[base + c];
         for (int i = tid + 1; i < num_records; ++i) {
@@ -206,13 +208,12 @@ void deterministic_sort_reduce_device_scalar_run_to_run(
         )
     );
 
-    void* sort_temp = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
+    ScopedTemporary<> sort_temp(WP_CURRENT_CONTEXT, sort_temp_size);
     check_cuda(
         cub::DeviceRadixSort::SortPairs(
-            sort_temp, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+            sort_temp.buffer(), sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
         )
     );
-    wp_free_device(WP_CURRENT_CONTEXT, sort_temp);
 
     ScopedTemporary<int> unique_dests(WP_CURRENT_CONTEXT, count);
     ScopedTemporary<T> aggregates(WP_CURRENT_CONTEXT, count);
@@ -228,14 +229,13 @@ void deterministic_sort_reduce_device_scalar_run_to_run(
         )
     );
 
-    void* reduce_temp = wp_alloc_device(WP_CURRENT_CONTEXT, reduce_temp_size);
+    ScopedTemporary<> reduce_temp(WP_CURRENT_CONTEXT, reduce_temp_size);
     check_cuda(
         cub::DeviceReduce::ReduceByKey(
-            reduce_temp, reduce_temp_size, dest_keys, unique_dests.buffer(), d_values.Current(), aggregates.buffer(),
-            num_runs.buffer(), reduce_op, count, stream
+            reduce_temp.buffer(), reduce_temp_size, dest_keys, unique_dests.buffer(), d_values.Current(),
+            aggregates.buffer(), num_runs.buffer(), reduce_op, count, stream
         )
     );
-    wp_free_device(WP_CURRENT_CONTEXT, reduce_temp);
 
     const int block_size = 256;
     const int num_blocks = (count + block_size - 1) / block_size;
@@ -286,13 +286,12 @@ void deterministic_sort_reduce_device(
         )
     );
 
-    void* sort_temp = wp_alloc_device(WP_CURRENT_CONTEXT, sort_temp_size);
+    ScopedTemporary<> sort_temp(WP_CURRENT_CONTEXT, sort_temp_size);
     check_cuda(
         cub::DeviceRadixSort::SortPairs(
-            sort_temp, sort_temp_size, d_keys, d_indices, count, 0, sizeof(int64_t) * 8, stream
+            sort_temp.buffer(), sort_temp_size, d_keys, d_indices, count, 0, sizeof(int64_t) * 8, stream
         )
     );
-    wp_free_device(WP_CURRENT_CONTEXT, sort_temp);
 
     // --- Segmented reduce ---
     deterministic_reduce_kernel<T><<<num_blocks, block_size, 0, stream>>>(

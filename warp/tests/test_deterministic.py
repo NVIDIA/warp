@@ -1030,6 +1030,42 @@ def test_scatter_overflow_reports_error(test, device):
         wp.launch(underprovisioned_loop_scatter_kernel, dim=n, inputs=[data, counts], outputs=[output], device=device)
 
 
+def test_graph_capture_scatter_overflow_reports_error(test, device):
+    """Verify captured deterministic scatter overflows are reported after replay."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    n = 2048
+    data = wp.ones(n, dtype=wp.float32, device=device)
+    counts = wp.full(n, value=2, dtype=wp.int32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(underprovisioned_loop_scatter_kernel, dim=n, inputs=[data, counts], outputs=[output], device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "Deterministic scatter buffer overflow"):
+        wp.capture_launch(capture.graph)
+
+
+def test_scatter_large_launch_rejected(test, device):
+    """Verify scatter key packing fails clearly before oversized launches."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    data = wp.ones(1, dtype=wp.float32, device=device)
+    indices = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "up to 2\\^32 threads"):
+        wp.launch(
+            scatter_add_kernel,
+            dim=(65536, 65537),
+            inputs=[data, indices],
+            outputs=[output],
+            device=device,
+        )
+
+
 def test_mixed_reduce_ops_same_array(test, device):
     """Verify mixed reduction families on one array are rejected in deterministic mode."""
     if device.is_cpu:
@@ -1960,6 +1996,18 @@ add_function_test(
     TestDeterministic,
     "test_scatter_overflow_reports_error",
     test_scatter_overflow_reports_error,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_graph_capture_scatter_overflow_reports_error",
+    test_graph_capture_scatter_overflow_reports_error,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_scatter_large_launch_rejected",
+    test_scatter_large_launch_rejected,
     devices=cuda_devices,
 )
 add_function_test(
