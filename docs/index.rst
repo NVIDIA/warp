@@ -194,6 +194,7 @@ warp/examples/tile
     :caption: Deep Dive
 
     deep_dive/codegen
+    deep_dive/determinism
     deep_dive/allocators
     deep_dive/concurrency
     deep_dive/profiling
