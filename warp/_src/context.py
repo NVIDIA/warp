@@ -9117,12 +9117,28 @@ class DeterministicLaunch(Launch):
         self.det_meta = det_meta
         self.fwd_args = list(fwd_args)
 
+    def _is_deterministic_target_arg(self, index: int) -> bool:
+        if index < 0 or index >= len(self.kernel.adj.args):
+            return False
+
+        arg_label = self.kernel.adj.args[index].label
+        targets = (*self.det_meta.scatter_targets, *self.det_meta.counter_targets)
+        return any(target.array_var_label == arg_label for target in targets)
+
     def set_param_at_index(self, index: int, value: Any, adjoint: bool = False):
         super().set_param_at_index(index, value, adjoint)
         if not adjoint and index < len(self.fwd_args):
             self.fwd_args[index] = value
 
     def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
+        if self._is_deterministic_target_arg(index):
+            arg_label = self.kernel.adj.args[index].label
+            raise RuntimeError(
+                "Updating deterministic target argument "
+                f"'{arg_label}' from a raw ctypes value is not supported. "
+                "Use set_param_at_index() with a Warp array or struct object instead."
+            )
+
         super().set_param_at_index_from_ctype(index, value)
         if index < len(self.fwd_args):
             self.fwd_args[index] = value
