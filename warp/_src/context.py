@@ -4702,7 +4702,6 @@ class Graph:
         self.capture_id = capture_id
         self.module_execs: set[ModuleExec] = set()
         self._deterministic_buffer_refs: list[Any] = []
-        self._deterministic_overflow_buffers: list[tuple[str, Any]] = []
         self.graph_exec: ctypes.c_void_p | None = None
         self.graph: ctypes.c_void_p | None = None
 
@@ -9285,9 +9284,6 @@ def _launch_deterministic(
         run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode)
 
     if capture_graph is not None:
-        if overflow_buf is not None:
-            capture_graph._deterministic_overflow_buffers.append((kernel.key, overflow_buf))
-
         # Captured graphs replay after this function returns, so keep temporary
         # deterministic buffers alive for the lifetime of the graph object.
         capture_graph._deterministic_buffer_refs.extend(
@@ -11116,15 +11112,6 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     capture_resume(main_graph, stream=stream)
 
 
-def _check_deterministic_graph_overflow(graph: Graph):
-    for kernel_key, overflow_buf in graph._deterministic_overflow_buffers:
-        if int(overflow_buf.numpy()[0]) != 0:
-            raise RuntimeError(
-                f"Deterministic scatter buffer overflow in captured kernel '{kernel_key}'. "
-                "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
-            )
-
-
 def capture_launch(graph: Graph, stream: Stream | None = None):
     """Launch a previously captured graph.
 
@@ -11187,8 +11174,6 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 
     if not runtime.core.wp_cuda_graph_launch(graph.graph_exec, stream.cuda_stream):
         raise RuntimeError(f"Graph launch error: {runtime.get_error_string()}")
-
-    _check_deterministic_graph_overflow(graph)
 
 
 def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: dict | None = None):

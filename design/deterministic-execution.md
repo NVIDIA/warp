@@ -216,7 +216,11 @@ example inside a dynamic loop. Warp uses
 ``max(codegen_lower_bound, deterministic_max_records)`` records per thread for
 each target. On overflow, new records are truncated, one shared device-side
 overflow flag is set, and optional diagnostics may be emitted when
-``wp.config.deterministic_debug`` is enabled.
+``wp.config.deterministic_debug`` is enabled. Outside CUDA graph capture, Warp
+checks the overflow flag after the deterministic launch. During CUDA graph
+capture and replay, Warp deliberately skips host-side overflow checks because
+reading the device flag would synchronize every graph launch and defeat the
+asynchronous graph replay path.
 
 **Counter total writeback**: after the exclusive prefix sum in Phase 0, the
 launch system copies the total count back to the actual counter array so user
@@ -258,13 +262,16 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   its segment serially so the accumulation order is fully controlled by Warp.
   This is correct but much slower than the ``"run_to_run"`` CUB ``ReduceByKey``
   fast path in high-contention cases.
+- Deterministic scatter overflow detection is disabled for CUDA graph capture
+  and replay to keep graph launches asynchronous. Graph workloads should size
+  buffers conservatively with ``deterministic_max_records``.
 - Deterministic scatter launches are limited to ``2**32`` threads because the
   sort key packs the destination index and the linear thread index into one
   64-bit key.
 
 ## Testing Strategy
 
-53 tests in ``warp/tests/test_deterministic.py`` cover:
+52 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
