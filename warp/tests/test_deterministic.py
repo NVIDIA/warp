@@ -1715,6 +1715,7 @@ def test_graph_capture_deterministic_launch(test, device):
         wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
 
     test.assertGreater(len(capture.graph._deterministic_buffer_refs), 0)
+    test.assertTrue(any(getattr(ref, "dtype", None) is wp.uint8 for ref in capture.graph._deterministic_buffer_refs))
     gc.collect()
 
     wp.capture_launch(capture.graph)
