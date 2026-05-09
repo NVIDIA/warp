@@ -1910,8 +1910,8 @@ def test_graph_capture_vec3_atomic_minmax(test, device):
     np.testing.assert_array_equal(first_max, second_max)
 
 
-def test_graph_capture_consumed_return_counter(test, device):
-    """Verify consumed-return atomic counters can be captured and replayed."""
+def test_graph_capture_consumed_return_counter_rejected(test, device):
+    """Verify consumed-return atomic counters fail clearly during graph capture."""
     if device.is_cpu:
         test.skipTest("Graph capture requires CUDA")
 
@@ -1927,25 +1927,22 @@ def test_graph_capture_consumed_return_counter(test, device):
     counter.zero_()
     output.zero_()
 
-    with wp.ScopedCapture(device, force_module_load=False) as capture:
-        wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+    with test.assertRaisesRegex(RuntimeError, "not supported during CUDA graph capture"):
+        with wp.ScopedCapture(device, force_module_load=False):
+            wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
 
-    test.assertGreater(len(capture.graph._deterministic_buffer_refs), 0)
-    gc.collect()
 
-    wp.capture_launch(capture.graph)
-    first = output.numpy().copy()
-    first_count = int(counter.numpy()[0])
+def test_counter_large_launch_rejected(test, device):
+    """Verify counter prefix buffers fail clearly before oversized launches."""
+    if device.is_cpu:
+        test.skipTest("CUDA deterministic counter path required")
 
-    counter.zero_()
-    output.zero_()
-    wp.capture_launch(capture.graph)
-    second = output.numpy().copy()
-    second_count = int(counter.numpy()[0])
+    data = wp.ones(1, dtype=wp.float32, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device)
 
-    test.assertEqual(first_count, n)
-    test.assertEqual(second_count, n)
-    np.testing.assert_array_equal(first, second)
+    with test.assertRaisesRegex(RuntimeError, "up to 2\\^31 - 1 threads"):
+        wp.launch(counter_kernel, dim=(46341, 46341), inputs=[data, counter], outputs=[output], device=device)
 
 
 def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
@@ -2381,8 +2378,14 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic,
-    "test_graph_capture_consumed_return_counter",
-    test_graph_capture_consumed_return_counter,
+    "test_graph_capture_consumed_return_counter_rejected",
+    test_graph_capture_consumed_return_counter_rejected,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_large_launch_rejected",
+    test_counter_large_launch_rejected,
     devices=cuda_devices,
 )
 add_function_test(

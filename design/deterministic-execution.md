@@ -233,18 +233,20 @@ checks because reading device flags would synchronize every graph launch and
 defeat the asynchronous graph replay path.
 
 **CUDA graph capture support**: deterministic launch orchestration allocates
-scatter buffers, counter buffers, and CUB sort/reduce workspaces from Python.
+scatter buffers and CUB sort/reduce workspaces from Python for Pattern A.
 During ordinary CUDA graph capture, Warp retains those arrays on the captured
 graph object so replay can safely reuse the device memory after the original
 launch call returns. The native sort/reduce entry point receives an explicit
 workspace pointer and size; it does not allocate temporary CUB scratch storage
-inside the captured native calls.
+inside the captured native calls. Pattern B is currently rejected during CUDA
+graph capture because its prefix scans use native ``array_scan`` CUB scratch
+storage that is allocated and freed inside the captured call.
 
 **Counter total writeback**: after the exclusive prefix sum in Phase 0, the
 launch system copies the total count back to the actual counter array so user
 code that reads it post-launch sees the correct value. The total is
 ``prefix[-1] + contrib[-1]``; the implementation may materialize that value via
-an inclusive scan scratch buffer to keep the writeback capture-friendly.
+an inclusive scan scratch buffer.
 
 **Files added/modified**:
 
@@ -276,6 +278,9 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   counter atomic.
 - The consumed-return counter path currently supports only ``atomic_add`` on
   ``int32`` counter arrays with literal counter index ``0``.
+- The consumed-return counter path is limited to launches of at most
+  ``2**31 - 1`` threads because the per-thread contribution and prefix buffers
+  store ``int32`` values.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
@@ -298,13 +303,17 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - Deterministic scatter overflow detection is disabled for CUDA graph capture
   and replay to keep graph launches asynchronous. Graph workloads should size
   buffers conservatively with ``deterministic_max_records``.
-- Deterministic kernels are supported in ordinary CUDA graph capture/replay,
-  but not inside CUDA conditional body graphs such as ``wp.capture_while()``
-  or ``wp.capture_if()`` when the deterministic launch would need to allocate
-  scatter buffers, counter buffers, or sort/reduce workspaces while capturing
-  the conditional body. Capture a fixed sequence, run that region outside
-  conditional graph nodes, or disable deterministic mode there until Warp
-  exposes a caller-provided reusable workspace for conditional body capture.
+- Deterministic Pattern A scatter kernels are supported in ordinary CUDA graph
+  capture/replay. Pattern B counter kernels are rejected during CUDA graph
+  capture until the scan workspace is externally managed and retained for graph
+  replay.
+- Deterministic kernels are not supported inside CUDA conditional body graphs
+  such as ``wp.capture_while()`` or ``wp.capture_if()`` when the deterministic
+  launch would need to allocate scatter buffers or sort/reduce workspaces while
+  capturing the conditional body. Capture a fixed sequence, run that region
+  outside conditional graph nodes, or disable deterministic mode there until
+  Warp exposes a caller-provided reusable workspace for conditional body
+  capture.
 - APIC serialization (``apic=True`` capture for ``wp.capture_save()``) is not
   currently supported for deterministic CUDA kernels. APIC records
   user-visible launches and arguments, but deterministic mode adds hidden phase
@@ -363,5 +372,6 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   deterministic CUDA kernels.
 - **Graph capture support**: deterministic scatter launches can be captured and
   replayed with CUDA graphs, including composite ``wp.vec3`` reductions.
+  Deterministic counter launches are rejected during graph capture.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.

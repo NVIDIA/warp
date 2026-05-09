@@ -294,8 +294,9 @@ There are a few details to know:
   ``deterministic_max_records``.
 * Counter/slot-allocation kernels use prefix scans.  CUDA graph replay requires
   all temporary scan storage used by captured CUB work to remain valid for the
-  lifetime of the graph.  Keep Pattern 2 kernels outside CUDA graph capture
-  unless this path has been validated for your application.
+  lifetime of the graph.  Warp currently rejects Pattern 2 kernels during CUDA
+  graph capture; launch them outside capture, or disable deterministic mode for
+  that kernel.
 * Deterministic kernels are not supported inside CUDA conditional body graphs,
   such as :func:`wp.capture_while() <warp.capture_while>` or
   :func:`wp.capture_if() <warp.capture_if>`, when the deterministic launch
@@ -339,7 +340,9 @@ Fixed scatter capacity
 Large launches
     Deterministic scatter launches are limited to at most ``2**32`` threads.
     The scatter sort key stores the destination index and the linear thread
-    index in one 64-bit value.
+    index in one 64-bit value.  Deterministic counter launches are limited to
+    at most ``2**31 - 1`` threads because their prefix buffers store
+    per-thread contributions as ``int32`` values.
 
 Performance cost
     Deterministic mode adds work.  Accumulation atomics sort and reduce
@@ -359,6 +362,7 @@ When enabling deterministic mode in a new kernel:
 4. If the kernel uses ``slot = wp.atomic_add(counter, 0, value)``, check that
    the counter is ``int32`` and indexed at literal ``0``.
 5. If you capture the kernel in a CUDA graph, validate both capture and replay.
+   Pattern 2 counter kernels are not currently supported in graph capture.
 6. If performance matters, benchmark both normal and deterministic modes.
 
 Related NVIDIA Libraries

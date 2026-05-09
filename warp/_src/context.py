@@ -9195,6 +9195,11 @@ def _launch_deterministic(
             "Deterministic scatter atomics support launch sizes up to 2^32 threads because sort keys pack the "
             "linear thread index into 32 bits."
         )
+    if det_meta.has_counter and dim_size > ((1 << 31) - 1):
+        raise RuntimeError(
+            "Deterministic consumed-return counter atomics support launch sizes up to 2^31 - 1 threads because "
+            "counter prefix buffers store per-thread contributions as int32 values."
+        )
 
     options = kernel.module.resolve_options(warp.config) | kernel.options
     determinism_mode = normalize_deterministic_mode(options.get("deterministic"), option_name="deterministic")
@@ -9205,6 +9210,13 @@ def _launch_deterministic(
     if stream_is_capturing:
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
+
+    if det_meta.has_counter and stream_is_capturing:
+        raise RuntimeError(
+            "Deterministic consumed-return counter atomics are not supported during CUDA graph capture because "
+            "the prefix-scan workspace must remain valid for graph replay. Launch the counter kernel outside "
+            "capture, or disable deterministic mode for this kernel."
+        )
 
     if runtime._apic_capture is not None:
         raise RuntimeError(
