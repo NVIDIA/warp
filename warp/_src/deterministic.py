@@ -414,7 +414,7 @@ def warp_scalar_type_to_id(dtype) -> int:
 # ---------------------------------------------------------------------------
 
 
-def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_records=0):
+def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_records=0, initialize_unused=False):
     """Allocate buffers for atomics reduced after the kernel finishes.
 
     Returns a list of ``(keys, values, counter, capacity)`` tuples, one per
@@ -430,11 +430,33 @@ def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_record
                 f"({capacity} > {DETERMINISTIC_SCATTER_MAX_CAPACITY}). "
                 "Reduce the launch size or deterministic_max_records."
             )
-        keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
-        values = warp.zeros(shape=(capacity,), dtype=target.value_dtype, device=device)
+        if initialize_unused:
+            keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
+            values = warp.zeros(shape=(capacity,), dtype=target.value_dtype, device=device)
+        else:
+            keys = warp.empty(shape=(capacity,), dtype=warp.int64, device=device)
+            values = warp.empty(shape=(capacity,), dtype=target.value_dtype, device=device)
         counter = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
         buffers.append((keys, values, counter, capacity))
     return buffers
+
+
+def get_scatter_record_count(scatter_buffer, stream_is_capturing=False):
+    """Return the number of scatter records that should be sorted.
+
+    Outside CUDA graph capture, the emitted-record counter can be read back
+    after the scatter kernel completes, so the postpass only needs to sort the
+    valid prefix of the buffer. During capture, host readbacks are illegal, so
+    replay still sorts the full sentinel-initialized capacity.
+    """
+    _keys, _values, counter, capacity = scatter_buffer
+    if stream_is_capturing:
+        return capacity
+
+    emitted_count = int(counter.numpy()[0])
+    if emitted_count < 0:
+        return capacity
+    return min(emitted_count, capacity)
 
 
 def allocate_counter_buffers(counter_targets, dim_size, device):
@@ -447,19 +469,24 @@ def allocate_counter_buffers(counter_targets, dim_size, device):
     return buffers
 
 
-def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode):
+def run_sort_reduce(
+    runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode, record_counts=None
+):
     """Execute post-kernel sort-reduce for all scatter targets."""
     workspaces = []
     determinism_mode_id = deterministic_mode_to_id(determinism_mode)
 
     for i, target in enumerate(scatter_targets):
         keys, values, _counter, capacity = scatter_buffers[i]
+        record_count = capacity if record_counts is None else record_counts[i]
         dest_arr = dest_arrays[i]
 
         # Optional route-specific outputs may be passed as ``None``. Their
         # guarded kernel paths must remain inactive, so there is no destination
         # buffer to reduce into.
         if dest_arr is None:
+            continue
+        if record_count <= 0:
             continue
 
         try:
@@ -470,7 +497,7 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
 
         components = getattr(target.value_dtype, "_length_", 1)
         workspace_size = runtime.core.wp_deterministic_sort_reduce_workspace_size(
-            capacity,
+            record_count,
             target.reduce_op,
             scalar_type_id,
             components,
@@ -482,7 +509,7 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
         runtime.core.wp_deterministic_sort_reduce_device(
             keys.ptr,
             values.ptr,
-            capacity,
+            record_count,
             dest_arr.ptr,
             dest_arr.size,
             target.reduce_op,
