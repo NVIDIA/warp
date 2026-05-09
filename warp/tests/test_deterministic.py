@@ -1979,8 +1979,13 @@ def test_deterministic_enum_parity(test, device):
             raise AssertionError(f"Failed to find enum {enum_name} in deterministic.cu")
 
         entries = {}
-        for name, value in re.findall(r"([A-Z0-9_]+)\s*=\s*([0-9]+)", match.group(1)):
-            entries[name] = int(value)
+        for enum_line in match.group(1).splitlines():
+            entry = enum_line.strip().rstrip(",")
+            if not entry or "=" not in entry:
+                continue
+            name, value = (part.strip() for part in entry.split("=", 1))
+            if name.isidentifier() and value.isdecimal():
+                entries[name] = int(value)
         return entries
 
     native_reduce_ops = parse_enum("ReduceOp")
