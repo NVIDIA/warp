@@ -1929,8 +1929,9 @@ class Adjoint:
     def _emit_deterministic_atomic(adj, func, bound_args, return_type, output, output_list):
         """Emit deterministic scatter or two-pass code for an atomic builtin.
 
-        Returns the output Var if the atomic was handled, or None to fall
-        through to normal codegen.
+        Returns the output Var if the atomic was handled, or None only for
+        atomic operations whose ordinary implementation is already
+        deterministic.
         """
         from warp._src.deterministic import (  # noqa: PLC0415
             REDUCE_OP_ADD,
@@ -1953,11 +1954,13 @@ class Adjoint:
         try:
             target_info = _deterministic_target_info(arr_var)
             if target_info is None:
-                return None
+                raise WarpCodegenError(f"Deterministic mode could not resolve the target array for {func.key}.")
 
             target_root_label, target_attr_path, arr_type = target_info
             if not is_array(arr_type):
-                return None
+                raise WarpCodegenError(
+                    f"Deterministic mode expected {func.key} to target an array, got {type_repr(arr_type)}."
+                )
 
             value_dtype = arr_type.dtype
             scalar_dtype = value_dtype
@@ -1965,9 +1968,14 @@ class Adjoint:
                 scalar_dtype = scalar_dtype._wp_scalar_type_
 
             if not any(arg.label == target_root_label for arg in adj.args):
-                return None
-        except (AttributeError, KeyError, TypeError, ValueError):
-            return None
+                raise WarpCodegenError(
+                    f"Deterministic mode could not map atomic target '{target_root_label}' "
+                    f"for {func.key} to a kernel argument."
+                )
+        except WarpCodegenError:
+            raise
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            raise WarpCodegenError(f"Deterministic mode could not lower {func.key}: {e}") from e
 
         # Determine if the return value is actually consumed by the caller.
         # When called from emit_AugAssign (arr[i] += val) or a bare expression,
@@ -2021,6 +2029,12 @@ class Adjoint:
 
         if return_is_consumed:
             # Consumed-return counter: assign slots by replaying after a prefix sum.
+            if func.key != "atomic_add":
+                raise WarpCodegenError(
+                    "Deterministic mode currently supports consumed-return counter atomics only for atomic_add, "
+                    f"got {func.key}."
+                )
+
             if scalar_dtype != int32:
                 raise WarpCodegenError(
                     "Deterministic mode currently supports consumed-return counter atomics only for int32 "
@@ -2073,7 +2087,10 @@ class Adjoint:
         ndim = len(idx_loaded_list)
         target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
         if target_expr is None:
-            return None
+            raise WarpCodegenError(
+                f"Deterministic mode could not build a generated target expression for {func.key} "
+                f"on '{target_root_label}'."
+            )
 
         if ndim == 1:
             flat_idx_expr = f"var_{idx_loaded_list[0]}"

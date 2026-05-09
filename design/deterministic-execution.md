@@ -274,8 +274,8 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   the supported model. This suppression is applied conservatively when the
   kernel's statically reachable ``@wp.func`` call graph contains a consumed
   counter atomic.
-- The consumed-return counter path currently supports only ``int32`` counter
-  arrays with literal counter index ``0``.
+- The consumed-return counter path currently supports only ``atomic_add`` on
+  ``int32`` counter arrays with literal counter index ``0``.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.

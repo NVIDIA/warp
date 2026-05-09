@@ -1344,6 +1344,44 @@ def test_counter_int64_rejected(test, device):
         wp.launch(counter_int64_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
 
 
+def test_counter_non_add_atomic_rejected(test, device):
+    """Verify consumed-return deterministic counters only accept ``atomic_add``."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    with test.assertRaisesRegex(Exception, "only for atomic_add"):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def counter_sub_kernel(
+            counter: wp.array(dtype=wp.int32),
+            output: wp.array(dtype=wp.float32),
+        ):
+            """Unsupported consumed-return counter using ``atomic_sub``."""
+            tid = wp.tid()
+            slot = wp.atomic_sub(counter, 0, 1)
+            output[slot] = float(tid)
+
+        counter = wp.zeros(1, dtype=wp.int32, device=device)
+        output = wp.zeros(8, dtype=wp.float32, device=device)
+        wp.launch(counter_sub_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
+
+    with test.assertRaisesRegex(Exception, "only for atomic_add"):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def counter_max_kernel(
+            counter: wp.array(dtype=wp.int32),
+            output: wp.array(dtype=wp.float32),
+        ):
+            """Unsupported consumed-return counter using ``atomic_max``."""
+            tid = wp.tid()
+            old = wp.atomic_max(counter, 0, tid)
+            output[tid] = float(old)
+
+        counter = wp.zeros(1, dtype=wp.int32, device=device)
+        output = wp.zeros(8, dtype=wp.float32, device=device)
+        wp.launch(counter_max_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
+
+
 def test_scatter_capacity_overflow_rejected(test, device):
     """Verify oversized deterministic scatter buffers fail before allocation."""
     del device
@@ -1692,6 +1730,15 @@ def test_record_cmd_deterministic_launch(test, device):
     cmd.launch()
 
     np.testing.assert_array_equal(output_2.numpy(), expected)
+
+    output_3 = wp.zeros(out_size, dtype=wp.float32, device=device)
+    with test.assertRaisesRegex(RuntimeError, "raw ctypes"):
+        cmd.set_param_by_name_from_ctype("output", output_3.__ctype__())
+
+    cmd.set_param_by_name("output", output_3)
+    cmd.launch()
+
+    np.testing.assert_array_equal(output_3.numpy(), expected)
 
 
 def test_graph_capture_deterministic_launch(test, device):
@@ -2256,6 +2303,12 @@ add_function_test(
     TestDeterministic,
     "test_counter_int64_rejected",
     test_counter_int64_rejected,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_non_add_atomic_rejected",
+    test_counter_non_add_atomic_rejected,
     devices=cuda_devices,
 )
 add_function_test(
