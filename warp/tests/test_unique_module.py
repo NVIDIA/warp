@@ -169,8 +169,6 @@ class TestUniqueModule(unittest.TestCase):
 
     def test_kernel_options_affect_unique_module_identity(self):
         """Kernel decorator options must contribute to unique module hashing."""
-        if not wp.is_cuda_available():
-            self.skipTest("CUDA required for deterministic kernel launch test")
 
         @wp.kernel(module="unique")
         def _scatter_normal(
@@ -191,6 +189,9 @@ class TestUniqueModule(unittest.TestCase):
             _scatter_deterministic.module.name,
             "Different kernel options must produce different unique module names",
         )
+
+        if not wp.is_cuda_available():
+            return
 
         values = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device="cuda:0")
         indices = wp.array([0, 0, 0, 0], dtype=wp.int32, device="cuda:0")
@@ -223,6 +224,32 @@ class TestUniqueModule(unittest.TestCase):
 
         self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
         self.assertTrue(_scatter_deterministic.adj.det_meta.needs_deterministic)
+
+    def test_deterministic_max_records_validation(self):
+        """``deterministic_max_records`` must be a non-negative integer."""
+
+        @wp.kernel(deterministic_max_records=np.int32(2), module="unique")
+        def _valid_max_records(a: wp.array(dtype=float)):
+            pass
+
+        self.assertEqual(_valid_max_records.options["deterministic_max_records"], 2)
+
+        invalid_values = [True, 1.5, "2"]
+        for value in invalid_values:
+            with self.subTest(value=value), self.assertRaises(TypeError):
+
+                @wp.kernel(deterministic_max_records=value, module="unique")
+                def _bad_kernel_type(a: wp.array(dtype=float)):
+                    pass
+
+        with self.assertRaises(ValueError):
+
+            @wp.kernel(deterministic_max_records=-1, module="unique")
+            def _bad_kernel_value(a: wp.array(dtype=float)):
+                pass
+
+        with self.assertRaises(ValueError):
+            wp.set_module_options({"deterministic_max_records": -1}, module=wp)
 
     def test_module_options_error_without_unique(self):
         """ValueError raised when module_options are used without ``module="unique"``."""

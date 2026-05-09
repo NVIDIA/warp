@@ -24,6 +24,7 @@ See ``warp.config.deterministic`` for the user-facing configuration modes.
 
 from __future__ import annotations
 
+import operator
 import re
 from dataclasses import dataclass, field
 
@@ -81,6 +82,32 @@ def normalize_deterministic_mode(value, option_name="deterministic", allow_none=
         raise ValueError(f"{option_name} must be one of {valid_modes}, got {value!r}")
 
     raise TypeError(f"{option_name} must be a bool or string, got {type(value).__name__}")
+
+
+def normalize_deterministic_max_records(value, option_name="deterministic_max_records", allow_none=False) -> int | None:
+    """Normalize the deterministic scatter record override.
+
+    ``deterministic_max_records`` is a per-thread record count, so it must be
+    a non-negative integer-like value. ``operator.index`` accepts NumPy integer
+    scalars while rejecting lossy conversions from floats and strings.
+    """
+    if value is None:
+        if allow_none:
+            return None
+        return 0
+
+    if isinstance(value, bool):
+        raise TypeError(f"{option_name} must be a non-negative integer, got bool")
+
+    try:
+        normalized = operator.index(value)
+    except TypeError as e:
+        raise TypeError(f"{option_name} must be a non-negative integer, got {type(value).__name__}") from e
+
+    if normalized < 0:
+        raise ValueError(f"{option_name} must be non-negative, got {normalized}")
+
+    return normalized
 
 
 def is_deterministic_mode_enabled(value) -> bool:
