@@ -7402,7 +7402,7 @@ def _cuda_launch_kernel(
 ):
     _retain_cuda_module_for_capture(module_exec, stream)
 
-    launch_args = [
+    runtime.core.wp_cuda_launch_kernel(
         device.context,
         hook,
         dim,
@@ -7411,14 +7411,8 @@ def _cuda_launch_kernel(
         shared_memory_bytes,
         params_addr,
         stream.cuda_stream,
-    ]
-    launch_argtypes = getattr(runtime.core.wp_cuda_launch_kernel, "argtypes", None)
-    if launch_argtypes is None and hasattr(runtime.core, "ctypes"):
-        launch_argtypes = getattr(runtime.core.ctypes.wp_cuda_launch_kernel, "argtypes", None)
-    if launch_argtypes is not None and len(launch_argtypes) > len(launch_args):
-        launch_args.append(apic_info_ptr)
-
-    runtime.core.wp_cuda_launch_kernel(*launch_args)
+        apic_info_ptr,
+    )
 
 
 class Launch:
