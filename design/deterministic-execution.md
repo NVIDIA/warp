@@ -120,9 +120,11 @@ index. The post-sort reduction depends on the selected determinism guarantee:
   the left-to-right accumulation order is explicit in Warp's own code.
 - Composite leaf types always use the segmented kernel.
 
-Unused buffer slots are initialized with an invalid sentinel key and sort to
-the end. This avoids host-side scatter count readbacks and keeps the path
-compatible with CUDA graph capture.
+Unused buffer slots are initialized with the invalid sentinel key ``-1``. CUB
+sorts that signed key before valid non-negative destination keys; the reducer
+paths ignore records with invalid destinations, so sentinel records do not
+affect outputs. Sorting the fixed-capacity buffer avoids host-side scatter
+count readbacks and keeps the path compatible with CUDA graph capture.
 
 Because the sort key reserves 32 bits for the linear thread index,
 deterministic scatter launches are limited to at most ``2**32`` threads.
@@ -253,7 +255,9 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   deterministic mode is a compile-time error.
 - Phase 0 of the counter path suppresses normal side effects. Kernels whose
   correctness depends on writes performed during the counting pass are outside
-  the supported model.
+  the supported model. This suppression is applied conservatively when the
+  kernel's statically reachable ``@wp.func`` call graph contains a consumed
+  counter atomic.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
@@ -265,13 +269,22 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - Deterministic scatter overflow detection is disabled for CUDA graph capture
   and replay to keep graph launches asynchronous. Graph workloads should size
   buffers conservatively with ``deterministic_max_records``.
+- Deterministic kernels are supported in ordinary CUDA graph capture/replay,
+  but not inside CUDA conditional body graphs such as ``wp.capture_while()``
+  or ``wp.capture_if()`` when they require deterministic temporary
+  allocations. CUDA does not allow those allocations inside conditional body
+  capture, and pre-launching a kernel does not remove the deterministic
+  temporary allocation from the conditional body. Capture a fixed sequence,
+  run that region outside conditional graph nodes, or use non-deterministic
+  execution there until Warp has an explicit reusable workspace API for this
+  path.
 - Deterministic scatter launches are limited to ``2**32`` threads because the
   sort key packs the destination index and the linear thread index into one
   64-bit key.
 
 ## Testing Strategy
 
-52 tests in ``warp/tests/test_deterministic.py`` cover:
+53 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
@@ -296,7 +309,8 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, 0, 1);
   output[slot] = data[tid]`` produces identical output arrays across 10 runs.
 - **Phase 0 side-effect suppression**: non-counter array writes are skipped in
-  the counting pass.
+  the counting pass, including stores that occur before helper calls whose
+  reachable call graph contains a consumed-return counter.
 - **Counter correctness**: verifies counter value equals N and output is a
   permutation of input.
 - **Conditional counter**: stream compaction (only elements above threshold),
