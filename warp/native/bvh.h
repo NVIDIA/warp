@@ -622,7 +622,7 @@ void cubql_bvh_create_device(
     void* context, vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh_device_on_host
 );
 void cubql_bvh_destroy_device(CuBQLBVH& bvh);
-void cubql_bvh_refit_device(CuBQLBVH& bvh);
+bool cubql_bvh_refit_device(CuBQLBVH& bvh);
 void cubql_bvh_rebuild_device(CuBQLBVH& bvh);
 
 #endif  // WP_ENABLE_CUDA

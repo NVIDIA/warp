@@ -5086,10 +5086,14 @@ class Runtime:
             self.core.wp_mesh_destroy_device.argtypes = [ctypes.c_uint64]
 
             self.core.wp_mesh_refit_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_refit_host.restype = None
             self.core.wp_mesh_refit_device.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_refit_device.restype = ctypes.c_int
 
             self.core.wp_mesh_set_points_host.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
+            self.core.wp_mesh_set_points_host.restype = None
             self.core.wp_mesh_set_points_device.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
+            self.core.wp_mesh_set_points_device.restype = ctypes.c_int
 
             self.core.wp_mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
             self.core.wp_mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
