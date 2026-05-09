@@ -224,6 +224,14 @@ capture and replay, Warp deliberately skips host-side overflow checks because
 reading the device flag would synchronize every graph launch and defeat the
 asynchronous graph replay path.
 
+**CUDA graph capture support**: deterministic launch orchestration allocates
+scatter buffers, counter buffers, and CUB sort/reduce workspaces from Python.
+During ordinary CUDA graph capture, Warp retains those arrays on the captured
+graph object so replay can safely reuse the device memory after the original
+launch call returns. The native sort/reduce entry point receives an explicit
+workspace pointer and size; it does not allocate temporary CUB scratch storage
+inside the captured native calls.
+
 **Counter total writeback**: after the exclusive prefix sum in Phase 0, the
 launch system copies the total count back to the actual counter array so user
 code that reads it post-launch sees the correct value. The total is
@@ -235,11 +243,11 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 | File | Role |
 | --- | --- |
 | ``warp/config.py`` | ``deterministic`` global flag |
-| ``warp/_src/deterministic.py`` | Dataclasses, buffer allocation, sort-reduce orchestration |
+| ``warp/_src/deterministic.py`` | Dataclasses, deterministic buffer/workspace allocation, sort-reduce orchestration |
 | ``warp/_src/codegen.py`` | Atomic classification, scatter/phase codegen, hidden kernel params |
 | ``warp/_src/context.py`` | Module option, ``_launch_deterministic()`` orchestrator, ctypes bindings |
 | ``warp/native/deterministic.h`` | ``wp::det_ctx``, ``wp::det_scatter_buf<T>``, ``wp::det_counter_buf``, and device-side ``wp::deterministic::scatter()`` |
-| ``warp/native/deterministic.cu`` | CUB radix sort + ``ReduceByKey`` / segmented reduce kernels |
+| ``warp/native/deterministic.cu`` | CUB workspace size queries, radix sort + ``ReduceByKey`` / segmented reduce kernels |
 | ``warp/native/deterministic.cpp`` | CPU stubs (linker satisfaction when CUDA unavailable) |
 
 ## Current Limitations
@@ -263,6 +271,10 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
+- Pattern A currently sorts each target's full fixed-capacity scatter buffer,
+  including unused sentinel records, to avoid host-side count readbacks and keep
+  the path compatible with CUDA graph capture. This can waste sort/reduce work
+  when the static capacity is much larger than the number of emitted records.
 - Deterministic scatter buffer capacity is limited to ``2**31 - 1`` records
   because the native scatter buffer metadata and CUB sort/reduce counts use
   32-bit signed integers.
@@ -276,17 +288,18 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   buffers conservatively with ``deterministic_max_records``.
 - Deterministic kernels are supported in ordinary CUDA graph capture/replay,
   but not inside CUDA conditional body graphs such as ``wp.capture_while()``
-  or ``wp.capture_if()`` when they require deterministic temporary
-  allocations. CUDA does not allow those allocations inside conditional body
-  capture, and pre-launching a kernel does not remove the deterministic
-  temporary allocation from the conditional body. Capture a fixed sequence,
-  run that region outside conditional graph nodes, or use non-deterministic
-  execution there until Warp has an explicit reusable workspace API for this
-  path.
+  or ``wp.capture_if()`` when the deterministic launch would need to allocate
+  scatter buffers, counter buffers, or sort/reduce workspaces while capturing
+  the conditional body. Capture a fixed sequence, run that region outside
+  conditional graph nodes, or disable deterministic mode there until Warp
+  exposes a caller-provided reusable workspace for conditional body capture.
 - APIC serialization (``apic=True`` capture for ``wp.capture_save()``) is not
-  currently supported for deterministic CUDA kernels. Use ordinary CUDA graph
-  capture/replay without APIC serialization, or disable deterministic mode for
-  kernels captured with ``apic=True``.
+  currently supported for deterministic CUDA kernels. APIC records
+  user-visible launches and arguments, but deterministic mode adds hidden phase
+  launches, temporary scatter/counter buffers, CUB workspace arrays, and native
+  sort/reduce calls that APIC does not yet serialize as a self-contained
+  workload. Use ordinary CUDA graph capture/replay without APIC serialization,
+  or disable deterministic mode for kernels captured with ``apic=True``.
 - Deterministic scatter launches are limited to ``2**32`` threads because the
   sort key packs the destination index and the linear thread index into one
   64-bit key.
