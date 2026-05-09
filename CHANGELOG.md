@@ -27,6 +27,8 @@
   `enable_mathdx_solver` config flag and module option (parity with `enable_mathdx_gemm`)
   to route these ops through the fallback when libmathdx is available
   ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
+- Add `wp.copysign(x, y)`: returns a value with the magnitude of `x` and the
+  sign of `y`, matching C `copysign` ([GH-1444](https://github.com/NVIDIA/warp/issues/1444)).
 
 ### Removed
 

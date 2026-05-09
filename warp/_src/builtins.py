@@ -123,6 +123,19 @@ add_builtin(
 )
 
 add_builtin(
+    "copysign",
+    input_types={"x": Float, "y": Float},
+    value_func=sametypes_create_value_func(Float),
+    doc="""Return a value with the magnitude of ``x`` and the sign of ``y``.
+
+    For example, ``wp.copysign(3.0, -1.0)`` returns ``-3.0`` and
+    ``wp.copysign(-3.0, 1.0)`` returns ``3.0``. Useful for forcing a
+    specific sign on a result whose signed-zero behavior is otherwise
+    implementation-defined (e.g. ``wp.min(-0.0, +0.0)``).""",
+    group="Scalar Math",
+)
+
+add_builtin(
     "step",
     input_types={"x": Scalar},
     value_func=sametypes_create_value_func(Scalar),

@@ -1806,6 +1806,15 @@ def sign(x: Scalar) -> Scalar:
         -1 if ``x`` < 0 and 1 otherwise."""
     ...
 
+def copysign(x: Float, y: Float) -> Float:
+    """Return a value with the magnitude of ``x`` and the sign of ``y``.
+
+    For example, ``wp.copysign(3.0, -1.0)`` returns ``-3.0`` and
+    ``wp.copysign(-3.0, 1.0)`` returns ``3.0``. Useful for forcing a
+    specific sign on a result whose signed-zero behavior is otherwise
+    implementation-defined (e.g. ``wp.min(-0.0, +0.0)``)."""
+    ...
+
 def step(x: Scalar) -> Scalar:
     """Compute 1.0 if ``x`` < 0.0, otherwise 0.0."""
     ...

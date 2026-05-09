@@ -735,6 +735,18 @@ inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
 inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
 inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret){ adj_a += adj_ret; }\
 inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) { }\
+inline CUDA_CALLABLE void adj_copysign(T x, T y, T& adj_x, T& adj_y, T adj_ret) \
+{ \
+    /* copysign(x, y) = |x| * sign(y). d/dx is +1 when signs of x and y agree, */ \
+    /* -1 otherwise. d/dy is 0 almost everywhere -- the result depends on y    */ \
+    /* only through its sign, which is locally constant for y != 0.            */ \
+    /* Use copysign(1, .) so signed-zero inputs are classified by their sign   */ \
+    /* bit (x < 0 is false for both +0 and -0).                                */ \
+    if (copysign(T(1), x) == copysign(T(1), y)) \
+        adj_x += adj_ret; \
+    else \
+        adj_x -= adj_ret; \
+} \
 inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) { }\
 inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }\
 inline CUDA_CALLABLE void adj_clamp(T x, T a, T b, T& adj_x, T& adj_a, T& adj_b, T adj_ret)\
@@ -770,6 +782,38 @@ inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret
 inline CUDA_CALLABLE void adj_isnan(const T&, T&, bool) { }\
 inline CUDA_CALLABLE void adj_isinf(const T&, T&, bool) { }\
 inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
+
+// copysign(x, y) returns x with the sign bit of y. Lowers to a single
+// instruction on CUDA (libdevice __nv_copysign) and on Clang/GCC (compiler
+// intrinsic). MSVC (warp.dll host build only) falls through to ::copysignf,
+// which is declared by <math.h> via crt.h. half / bfloat16 round-trip through
+// float; the magnitude bits are exactly representable in the original type so
+// the cast back is exact. Defined ahead of DECLARE_FLOAT_OPS instantiations
+// because adj_copysign uses it for sign-bit-aware comparison.
+inline CUDA_CALLABLE float copysign(float x, float y)
+{
+#ifdef __CUDA_ARCH__
+    return ::copysignf(x, y);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __builtin_copysignf(x, y);
+#else
+    return ::copysignf(x, y);
+#endif
+}
+inline CUDA_CALLABLE double copysign(double x, double y)
+{
+#ifdef __CUDA_ARCH__
+    return ::copysign(x, y);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __builtin_copysign(x, y);
+#else
+    return ::copysign(x, y);
+#endif
+}
+inline CUDA_CALLABLE half copysign(half x, half y) { return half(copysign(float(x), float(y))); }
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE bfloat16 copysign(bfloat16 x, bfloat16 y) { return bfloat16(copysign(float(x), float(y))); }
+#endif
 
 DECLARE_FLOAT_OPS(float16)
 #ifndef WP_NO_BFLOAT16

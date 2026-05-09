@@ -272,6 +272,124 @@ def test_is_special_quat(test, device, dtype, register_kernels=False):
     test.assertFalse(outputs_bool_cpu[8], "wp.isnan(inf_quat) is not False")
 
 
+def assert_float_eq(test, actual, expected, msg):
+    """Compare two floats, treating NaN as equal to NaN and distinguishing signed zeros."""
+    actual_f = float(actual)
+    expected_f = float(expected)
+    test.assertEqual(
+        math.isnan(actual_f),
+        math.isnan(expected_f),
+        f"{msg}: NaN mismatch (actual={actual_f}, expected={expected_f})",
+    )
+    if not math.isnan(expected_f):
+        test.assertEqual(actual_f, expected_f, f"{msg}: value mismatch (actual={actual_f}, expected={expected_f})")
+        if expected_f == 0.0:
+            test.assertEqual(
+                math.copysign(1.0, actual_f),
+                math.copysign(1.0, expected_f),
+                f"{msg}: signed-zero mismatch (actual={actual_f}, expected={expected_f})",
+            )
+
+
+def test_copysign(test, device, dtype, register_kernels=False):
+    # Forward: wp.copysign(x, y) returns x with the sign bit of y. Covers
+    # finite inputs, signed zeros, and NaN x (whose magnitude is preserved
+    # but whose sign is replaced by y's). NaN y is platform-dependent for the
+    # CPU JIT (no signbit access without bit twiddling on that path), so it's
+    # not exercised here.
+
+    def kern(
+        x: wp.array(dtype=dtype),
+        y: wp.array(dtype=dtype),
+        out: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        out[i] = wp.copysign(x[i], y[i])
+
+    kernel = getkernel(kern, suffix="copysign_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+    # (x, y, expected). Use np.copysign as the oracle (matches IEEE semantics).
+    rows = [
+        (3.0, 1.0, 3.0),
+        (3.0, -1.0, -3.0),
+        (-3.0, 1.0, 3.0),
+        (-3.0, -1.0, -3.0),
+        (0.0, -1.0, -0.0),
+        (-0.0, 1.0, 0.0),
+        (1.0, 0.0, 1.0),
+        (1.0, -0.0, -1.0),
+        (nan, 1.0, nan),
+        (nan, -1.0, nan),
+    ]
+
+    n = len(rows)
+    x = wp.array([r[0] for r in rows], dtype=dtype, device=device)
+    y = wp.array([r[1] for r in rows], dtype=dtype, device=device)
+    out = wp.empty(n, dtype=dtype, device=device)
+    wp.launch(kernel, dim=n, inputs=[x, y], outputs=[out], device=device)
+    actual = out.to("cpu").list()
+
+    for i, (xi, yi, expected) in enumerate(rows):
+        # NaN sign-bit on the CPU JIT defaults to positive in the reference path,
+        # so just check NaN-ness for NaN x.
+        if math.isnan(expected):
+            test.assertTrue(math.isnan(actual[i]), f"copysign({xi}, {yi}) expected NaN, got {actual[i]}")
+        else:
+            assert_float_eq(test, actual[i], expected, f"copysign({xi}, {yi})")
+
+
+def test_copysign_adjoint(test, device, dtype, register_kernels=False):
+    # adj_copysign: d/dx is +1 when signs of x and y agree, -1 otherwise. d/dy
+    # is 0 almost everywhere (result depends on y only through its sign).
+
+    def kern(
+        x: wp.array(dtype=dtype),
+        y: wp.array(dtype=dtype),
+        out: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        out[i] = wp.copysign(x[i], y[i])
+
+    kernel = getkernel(kern, suffix="copysign_adj_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # (x, y, expected_grad_x). Gradient on y is always 0. Signed-zero inputs
+    # are classified by their sign bit (not by `< 0`), matching the forward.
+    rows = [
+        (3.0, 1.0, 1.0),  # signs agree -> +1
+        (3.0, -1.0, -1.0),  # signs differ -> -1
+        (-3.0, 1.0, -1.0),  # signs differ -> -1
+        (-3.0, -1.0, 1.0),  # signs agree -> +1
+        (-0.0, -1.0, 1.0),  # both negative (sign bit) -> +1
+        (-0.0, 1.0, -1.0),  # signs differ -> -1
+        (0.0, -1.0, -1.0),  # signs differ -> -1
+        (0.0, 1.0, 1.0),  # signs agree -> +1
+    ]
+
+    n = len(rows)
+    x = wp.array([r[0] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    y = wp.array([r[1] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    out = wp.zeros(n, dtype=dtype, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=n, inputs=[x, y], outputs=[out], device=device)
+    out.grad.fill_(dtype(1.0))
+    tape.backward()
+    actual_grad_x = x.grad.numpy()
+    actual_grad_y = y.grad.numpy()
+
+    for i, (xi, yi, expected_x) in enumerate(rows):
+        assert_float_eq(test, actual_grad_x[i], expected_x, f"adj_copysign d/dx ({xi}, {yi})")
+        assert_float_eq(test, actual_grad_y[i], 0.0, f"adj_copysign d/dy ({xi}, {yi})")
+
+
 devices = get_test_devices()
 
 
@@ -294,6 +412,20 @@ for dtype in [wp.float16, wp.float32, wp.float64]:
     )
     add_function_test_register_kernel(
         TestSpecialValues, f"test_is_special_quat_{dtype.__name__}", test_is_special_quat, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_copysign_{dtype.__name__}",
+        test_copysign,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_copysign_adjoint_{dtype.__name__}",
+        test_copysign_adjoint,
+        devices=devices,
+        dtype=dtype,
     )
 
 

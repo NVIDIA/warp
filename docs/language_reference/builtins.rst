@@ -23,6 +23,7 @@ Scalar Math
    cbrt
    ceil
    clamp
+   copysign
    cos
    cosh
    degrees
