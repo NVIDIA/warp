@@ -23,15 +23,17 @@ deterministic lowering happens when the module is compiled.
 Quick Start
 -----------
 
-For one kernel, use a unique module and enable deterministic mode directly on
-the kernel:
+For an existing Warp module, set a module option near the top of the Python
+file that defines your kernels, before the kernels are defined:
 
 .. code:: python
 
     import warp as wp
 
+    wp.set_module_options({"deterministic": "run_to_run"})
 
-    @wp.kernel(deterministic="run_to_run", module="unique")
+
+    @wp.kernel
     def accumulate(
         values: wp.array(dtype=wp.float32),
         bins: wp.array(dtype=wp.int32),
@@ -48,28 +50,35 @@ the kernel:
 
     wp.launch(accumulate, dim=n, inputs=[values, bins], outputs=[out], device="cuda")
 
-For every kernel in a Python module, set a module option near the top of the
-file, before the kernels are defined:
-
-.. code:: python
-
-    import warp as wp
-
-    wp.set_module_options({"deterministic": "run_to_run"})
-
-
-    @wp.kernel
-    def accumulate(...):
-        ...
+This is the most common way to turn determinism on after the fact: every kernel
+defined in that Python module uses deterministic lowering when it contains a
+supported atomic pattern.
 
 For a process-wide default, set :attr:`wp.config.deterministic
-<warp.config.deterministic>`:
+<warp.config.deterministic>` before modules are compiled:
 
 .. code:: python
 
     import warp as wp
 
     wp.config.deterministic = "run_to_run"
+
+For one targeted kernel, set the option on the kernel:
+
+.. code:: python
+
+    @wp.kernel(deterministic="run_to_run")
+    def accumulate(...):
+        ...
+
+If you only want to experiment with one kernel in an otherwise shared Python
+module, put that kernel in a unique module:
+
+.. code:: python
+
+    @wp.kernel(deterministic="run_to_run", module="unique")
+    def accumulate(...):
+        ...
 
 The accepted modes are:
 
@@ -95,17 +104,31 @@ compiled module, not just to one line of Python.
 
 Use this rule of thumb:
 
-* Use ``@wp.kernel(deterministic=..., module="unique")`` when you only want to
-  opt in one kernel.
 * Use :func:`wp.set_module_options() <warp.set_module_options>` when the kernels
   in the current Python file should all share the same deterministic setting.
 * Use :attr:`wp.config.deterministic <warp.config.deterministic>` when you want
   a global default for a whole application or test run.
+* Use ``@wp.kernel(deterministic=...)`` for a targeted kernel override.
+* Add ``module="unique"`` to that kernel when you want its compiled module and
+  reachable helper functions isolated from other kernels in the same Python
+  file.
 
-Why ``module="unique"``?  A normal Warp module may contain many kernels and
-``@wp.func`` helpers.  Deterministic mode changes generated code and the module
-hash.  A unique module keeps one per-kernel experiment from affecting unrelated
-kernels that happen to live in the same Python file.
+The kernel decorator does not turn on determinism for every kernel in the
+Python module.  It stores a kernel-level option, and that option wins over the
+module and global defaults for that kernel.  The nuance is compilation: Warp
+normally compiles the kernels and ``@wp.func`` helpers in a Python module into
+one module binary.  Deterministic lowering can change generated code for a
+kernel's reachable helper functions, especially when supported atomics live in
+``@wp.func`` calls.  ``module="unique"`` gives that kernel its own compiled
+module, so the deterministic and non-deterministic variants do not share helper
+code or module hashes.
+
+If you decorate a kernel with ``deterministic="run_to_run"``, that kernel is
+explicitly deterministic even when ``wp.config.deterministic`` is later set to
+``"not_guaranteed"``.  To toggle an existing program on and off, prefer
+``wp.set_module_options()`` or :attr:`wp.config.deterministic
+<warp.config.deterministic>` instead of hard-coding the decorator on every
+kernel.
 
 What Warp Supports
 ------------------
@@ -354,7 +377,9 @@ Checklist
 
 When enabling deterministic mode in a new kernel:
 
-1. Start with ``@wp.kernel(deterministic="run_to_run", module="unique")``.
+1. Start with ``wp.set_module_options({"deterministic": "run_to_run"})`` for an
+   existing module, or ``@wp.kernel(deterministic="run_to_run")`` for one
+   targeted kernel.
 2. Run the kernel several times and compare outputs with
    ``np.testing.assert_array_equal()`` for bit-exact tests.
 3. If the kernel has dynamic loops around deterministic atomics, set
