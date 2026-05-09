@@ -1322,6 +1322,28 @@ def test_counter_nonzero_index_rejected(test, device):
         wp.launch(counter_nonzero_index_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
 
 
+def test_counter_int64_rejected(test, device):
+    """Verify unsupported non-int32 consumed-return counters fail clearly."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    with test.assertRaisesRegex(Exception, "int32 counter arrays"):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def counter_int64_kernel(
+            counter: wp.array(dtype=wp.int64),
+            output: wp.array(dtype=wp.float32),
+        ):
+            """Unsupported non-int32 consumed-return counter."""
+            tid = wp.tid()
+            slot = wp.atomic_add(counter, 0, wp.int64(1))
+            output[slot] = float(tid)
+
+        counter = wp.zeros(1, dtype=wp.int64, device=device)
+        output = wp.zeros(8, dtype=wp.float32, device=device)
+        wp.launch(counter_int64_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
+
+
 def test_conditional_counter(test, device):
     """Verify stream compaction with a conditional counter."""
     if device.is_cpu:
@@ -2108,6 +2130,12 @@ add_function_test(
     TestDeterministic,
     "test_counter_nonzero_index_rejected",
     test_counter_nonzero_index_rejected,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_int64_rejected",
+    test_counter_int64_rejected,
     devices=cuda_devices,
 )
 add_function_test(TestDeterministic, "test_conditional_counter", test_conditional_counter, devices=cuda_devices)

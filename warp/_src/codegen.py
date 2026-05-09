@@ -2257,6 +2257,12 @@ class Adjoint:
 
         if return_is_consumed:
             # Consumed-return counter: assign slots by replaying after a prefix sum.
+            if scalar_dtype != int32:
+                raise WarpCodegenError(
+                    "Deterministic mode currently supports consumed-return counter atomics only for int32 "
+                    "counter arrays."
+                )
+
             counter_indices = [*view_prefix_vars, *args_list[1:-1]]
             if not _deterministic_counter_indices_are_zero(counter_indices):
                 raise WarpCodegenError(

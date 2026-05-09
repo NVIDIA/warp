@@ -258,6 +258,8 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   the supported model. This suppression is applied conservatively when the
   kernel's statically reachable ``@wp.func`` call graph contains a consumed
   counter atomic.
+- The consumed-return counter path currently supports only ``int32`` counter
+  arrays with literal counter index ``0``.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
@@ -284,7 +286,7 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 
 ## Testing Strategy
 
-54 tests in ``warp/tests/test_deterministic.py`` cover:
+55 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all

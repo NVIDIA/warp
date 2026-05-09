@@ -1474,7 +1474,10 @@ def kernel(
     def wrapper(f, *args, **kwargs):
         kernel_options = {}
 
-        from warp._src.deterministic import normalize_deterministic_mode  # noqa: PLC0415
+        from warp._src.deterministic import (  # noqa: PLC0415
+            normalize_deterministic_max_records,
+            normalize_deterministic_mode,
+        )
 
         if enable_backward is not None:
             kernel_options["enable_backward"] = enable_backward
@@ -1485,7 +1488,7 @@ def kernel(
             )
 
         if deterministic_max_records is not None:
-            kernel_options["deterministic_max_records"] = deterministic_max_records
+            kernel_options["deterministic_max_records"] = normalize_deterministic_max_records(deterministic_max_records)
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
@@ -1516,15 +1519,29 @@ def kernel(
                     f"@wp.kernel for '{f.__name__}': module_options requires module=\"unique\". "
                     "Use wp.set_module_options() to set module-level options for a shared module."
                 )
-            if module_options:
-                unknown = sorted(set(module_options) - set(m.options))
+            normalized_module_options = dict(module_options)
+            if "deterministic" in normalized_module_options:
+                normalized_module_options["deterministic"] = normalize_deterministic_mode(
+                    normalized_module_options["deterministic"],
+                    option_name="module_options['deterministic']",
+                    allow_none=True,
+                )
+            if "deterministic_max_records" in normalized_module_options:
+                normalized_module_options["deterministic_max_records"] = normalize_deterministic_max_records(
+                    normalized_module_options["deterministic_max_records"],
+                    option_name="module_options['deterministic_max_records']",
+                    allow_none=True,
+                )
+
+            if normalized_module_options:
+                unknown = sorted(set(normalized_module_options) - set(m.options))
                 if unknown:
                     raise ValueError(
                         f"@wp.kernel for '{f.__name__}': unknown module_options: "
                         f"{', '.join(repr(k) for k in unknown)}. "
                         f"Valid options are: {', '.join(repr(k) for k in sorted(m.options))}."
                     )
-                m.options.update(module_options)
+                m.options.update(normalized_module_options)
 
         # Create the kernel object and register it with the module
         k = Kernel(
@@ -2904,15 +2921,19 @@ class Module:
         if options["enable_mathdx_fft"] is None:
             options["enable_mathdx_fft"] = config.enable_mathdx_fft
 
-        from warp._src.deterministic import normalize_deterministic_mode  # noqa: PLC0415
+        from warp._src.deterministic import (  # noqa: PLC0415
+            normalize_deterministic_max_records,
+            normalize_deterministic_mode,
+        )
 
         # Resolve None-means-inherit for deterministic
         if options["deterministic"] is None:
             options["deterministic"] = config.deterministic
         options["deterministic"] = normalize_deterministic_mode(options["deterministic"], option_name="deterministic")
 
-        if options["deterministic_max_records"] is None:
-            options["deterministic_max_records"] = 0
+        options["deterministic_max_records"] = normalize_deterministic_max_records(
+            options["deterministic_max_records"], allow_none=False
+        )
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -9225,7 +9246,8 @@ def _launch_deterministic(
         # Prefix sum on each counter's contributions, then update the real counter.
         for i, ct in enumerate(det_meta.counter_targets):
             contrib, prefix = counter_bufs[i]
-            warp._src.utils.array_scan(contrib, prefix, inclusive=False)
+            with warp.ScopedStream(stream, sync_enter=False):
+                warp._src.utils.array_scan(contrib, prefix, inclusive=False)
 
             # Write the total count to the actual counter array so user code
             # that reads it after the launch sees the correct value.
@@ -9233,7 +9255,8 @@ def _launch_deterministic(
             # Use inclusive scan's last element = total
             inclusive_out = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
             counter_total_bufs.append(inclusive_out)
-            warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
+            with warp.ScopedStream(stream, sync_enter=False):
+                warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
 
             counter_arr = resolve_det_target_array(ct)
             if counter_arr is None:
@@ -9246,7 +9269,7 @@ def _launch_deterministic(
                 )
 
             # Copy the total (last element of inclusive scan) to the counter.
-            warp.copy(counter_arr, inclusive_out, dest_offset=0, src_offset=dim_size - 1, count=1)
+            warp.copy(counter_arr, inclusive_out, dest_offset=0, src_offset=dim_size - 1, count=1, stream=stream)
 
         # Phase 1: execution pass with deterministic slots.
         det_params_p1 = build_det_params(
@@ -9281,7 +9304,8 @@ def _launch_deterministic(
             scatter_buffers.append(scatter_buffer)
             dest_arrays.append(dest_array)
 
-        run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode)
+        with warp.ScopedStream(stream, sync_enter=False):
+            run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode)
 
     if capture_graph is not None:
         # Captured graphs replay after this function returns, so keep temporary
@@ -10404,13 +10428,21 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
         options: Set of key-value option pairs
     """
-    if "deterministic" in options:
-        from warp._src.deterministic import normalize_deterministic_mode  # noqa: PLC0415
+    if "deterministic" in options or "deterministic_max_records" in options:
+        from warp._src.deterministic import (  # noqa: PLC0415
+            normalize_deterministic_max_records,
+            normalize_deterministic_mode,
+        )
 
         options = dict(options)
-        options["deterministic"] = normalize_deterministic_mode(
-            options["deterministic"], option_name="deterministic", allow_none=True
-        )
+        if "deterministic" in options:
+            options["deterministic"] = normalize_deterministic_mode(
+                options["deterministic"], option_name="deterministic", allow_none=True
+            )
+        if "deterministic_max_records" in options:
+            options["deterministic_max_records"] = normalize_deterministic_max_records(
+                options["deterministic_max_records"], allow_none=True
+            )
 
     if module is None:
         module_name = _get_caller_module_name(stack_level=2)
