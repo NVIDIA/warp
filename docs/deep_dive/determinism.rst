@@ -524,8 +524,11 @@ Performance cost
     Deterministic mode adds algorithmic work and temporary storage.
     Accumulation atomics sort and reduce temporary records.  Slot allocation
     runs an extra counting pass and a scan.  Wall time depends on the atomic
-    pattern: high-contention atomics can be faster after sorting, while sparse
-    atomics usually pay a clear overhead.
+    pattern: highly contended floating-point atomics can get faster with
+    deterministic reduction because Warp sorts the updates, groups equal
+    destinations, and then reduces each group without making every thread
+    contend on the same hardware atomic.  Sparse atomics usually pay a clear
+    overhead because there is little contention to remove.
 
     The table below is one local measurement, not a performance guarantee.  It
     uses a single ``atomic_add`` kernel with 262,144 records on an NVIDIA
@@ -556,9 +559,13 @@ Performance cost
          - 318 us (13.9x)
          - 379 us (16.6x)
 
-    The one-bin ``"gpu_to_gpu"`` case is intentionally a worst case: the
-    segmented reducer preserves a strict order for one long destination run.
-    Benchmark your workload with its real output shape and contention pattern.
+    The one-bin ``"run_to_run"`` case is the important crossover: even in this
+    end-to-end measurement, deterministic reduction is faster than direct
+    floating-point atomics.  Kernel-only microbenchmarks of the same pattern can
+    show a larger speedup as the number of writes to one output grows.  The
+    one-bin ``"gpu_to_gpu"`` case is intentionally a worst case: the segmented
+    reducer preserves a strict order for one long destination run.  Benchmark
+    your workload with its real output shape and contention pattern.
 
 Checklist
 ---------
