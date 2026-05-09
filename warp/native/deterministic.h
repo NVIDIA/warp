@@ -77,6 +77,8 @@ template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_count
         return T {};
     }
 
+    // Return the base slot for this reservation. Values greater than one reserve
+    // the contiguous range [slot, slot + value); caller code writes each element.
     T slot = static_cast<T>(buf.prefix[ctx.idx]);
     buf.prefix[ctx.idx] += value;
     return slot;
