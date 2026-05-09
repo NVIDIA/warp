@@ -123,10 +123,14 @@ post-sort reduction depends on the selected determinism guarantee:
 
 During CUDA graph capture, host-side scatter count readbacks are not allowed.
 Captured launches therefore still initialize unused buffer slots with the
-invalid sentinel key ``-1`` and sort the full fixed-capacity buffer. CUB sorts
-that signed key before valid non-negative destination keys; the reducer paths
-ignore records with invalid destinations, so sentinel records do not affect
-outputs.
+invalid sentinel key ``-1`` and sort the full fixed-capacity buffer. The
+emitted record count is only known on the device after the scatter kernel runs,
+while CUB sort/reduce calls take the item count as a host-side launch
+parameter when the graph is captured. Using the exact count during replay would
+therefore require a host readback, graph rebuild, or a custom device-driven
+sort/reduce path. CUB sorts the signed sentinel key before valid non-negative
+destination keys; the reducer paths ignore records with invalid destinations,
+so sentinel records do not affect outputs.
 
 Because the sort key reserves 32 bits for the linear thread index,
 deterministic scatter launches are limited to at most ``2**32`` threads.
@@ -276,9 +280,13 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
 - During CUDA graph capture, Pattern A sorts each target's full fixed-capacity
-  scatter buffer, including unused sentinel records, because graph replay cannot
-  insert host-side count readbacks. This can waste sort/reduce work when the
-  static capacity is much larger than the number of emitted records.
+  scatter buffer, including unused sentinel records. The exact emitted record
+  count is device-side state, but CUB receives its item count as a host-side
+  launch parameter during capture. Avoiding the extra sentinel work during
+  replay would require synchronization, graph rebuild, or a custom
+  device-driven sort/reduce path. This limitation is specific to graph capture;
+  ordinary deterministic launches read the emitted count and sort only the
+  valid prefix.
 - Deterministic scatter buffer capacity is limited to ``2**31 - 1`` records
   because the native scatter buffer metadata and CUB sort/reduce counts use
   32-bit signed integers.
