@@ -263,6 +263,9 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - Scatter buffers are fixed-capacity and rely on a static lower bound plus the
   optional ``deterministic_max_records`` override. Dynamic loops that exceed
   that bound will truncate records.
+- Deterministic scatter buffer capacity is limited to ``2**31 - 1`` records
+  because the native scatter buffer metadata and CUB sort/reduce counts use
+  32-bit signed integers.
 - ``"gpu_to_gpu"`` mode currently falls back to Warp's explicit segmented
   reduction path for scalar scatter reductions. Each segment head accumulates
   its segment serially so the accumulation order is fully controlled by Warp.
@@ -280,13 +283,17 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
   run that region outside conditional graph nodes, or use non-deterministic
   execution there until Warp has an explicit reusable workspace API for this
   path.
+- APIC serialization (``apic=True`` capture for ``wp.capture_save()``) is not
+  currently supported for deterministic CUDA kernels. Use ordinary CUDA graph
+  capture/replay without APIC serialization, or disable deterministic mode for
+  kernels captured with ``apic=True``.
 - Deterministic scatter launches are limited to ``2**32`` threads because the
   sort key packs the destination index and the linear thread index into one
   64-bit key.
 
 ## Testing Strategy
 
-55 tests in ``warp/tests/test_deterministic.py`` cover:
+57 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all

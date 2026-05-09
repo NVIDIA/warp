@@ -7686,6 +7686,12 @@ def _launch_deterministic(
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
 
+    if runtime._apic_capture is not None:
+        raise RuntimeError(
+            "APIC serialization is not currently supported for deterministic CUDA kernels. "
+            "Capture with apic=False, or disable deterministic mode for kernels captured with apic=True."
+        )
+
     # Allocate buffers.
     scatter_bufs = (
         allocate_scatter_buffers(
