@@ -39,14 +39,14 @@ N = 8
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_lower_kernel(gA: wp.array2d(dtype=wp.float64), gL: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_lower_kernel(gA: wp.array2d[wp.float64], gL: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N, N))
     L = wp.tile_cholesky(A)
     wp.tile_store(gL, L)
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_lower_inplace_kernel(gA: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_lower_inplace_kernel(gA: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N, N))
     wp.tile_cholesky_inplace(A)
     wp.tile_store(gA, A)
@@ -58,14 +58,14 @@ def tile_cholesky_lower_inplace_kernel(gA: wp.array2d(dtype=wp.float64)):
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_upper_kernel(gA: wp.array2d(dtype=wp.float64), gU: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_upper_kernel(gA: wp.array2d[wp.float64], gU: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N, N))
     U = wp.tile_cholesky(A, fill_mode="upper")
     wp.tile_store(gU, U)
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_upper_inplace_kernel(gA: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_upper_inplace_kernel(gA: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N, N))
     wp.tile_cholesky_inplace(A, fill_mode="upper")
     wp.tile_store(gA, A)
@@ -140,14 +140,14 @@ def test_cholesky_upper_inplace(test, device):
 
 
 @wp.kernel
-def tile_cholesky_lower_backward_kernel(gA: wp.array2d(dtype=wp.float64), gL: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_lower_backward_kernel(gA: wp.array2d[wp.float64], gL: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N, N), storage="shared")
     L = wp.tile_cholesky(A)
     wp.tile_store(gL, L)
 
 
 @wp.kernel
-def tile_cholesky_upper_backward_kernel(gA: wp.array2d(dtype=wp.float64), gU: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_upper_backward_kernel(gA: wp.array2d[wp.float64], gU: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N, N), storage="shared")
     U = wp.tile_cholesky(A, fill_mode="upper")
     wp.tile_store(gU, U)
@@ -228,7 +228,7 @@ N32 = 32
 
 
 @wp.kernel
-def tile_cholesky_lower_backward_n32_kernel(gA: wp.array2d(dtype=wp.float64), gL: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_lower_backward_n32_kernel(gA: wp.array2d[wp.float64], gL: wp.array2d[wp.float64]):
     A = wp.tile_load(gA, shape=(N32, N32), storage="shared")
     L = wp.tile_cholesky(A)
     wp.tile_store(gL, L)

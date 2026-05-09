@@ -15,7 +15,7 @@ TILE_O = 8
 
 
 @wp.kernel
-def test_tile_view_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def test_tile_view_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     # load whole source into local memory
     a = wp.tile_load(src, shape=(TILE_M, TILE_N))
 
@@ -43,7 +43,7 @@ def test_tile_view(test, device):
 
 
 @wp.kernel
-def test_tile_assign_1d_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def test_tile_assign_1d_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     # load whole source into local memory
     a = wp.tile_load(src, shape=(TILE_M, TILE_N))
     b = wp.tile_zeros(dtype=float, shape=(TILE_M, TILE_N))
@@ -77,7 +77,7 @@ def test_tile_assign_1d(test, device):
 
 
 @wp.kernel
-def test_tile_assign_2d_kernel(src: wp.array3d(dtype=float), dst: wp.array3d(dtype=float)):
+def test_tile_assign_2d_kernel(src: wp.array3d[float], dst: wp.array3d[float]):
     # load whole source into local memory
     a = wp.tile_load(src, shape=(TILE_M, TILE_N, TILE_O))
     b = wp.tile_zeros(dtype=float, shape=(TILE_M, TILE_N, TILE_O))
@@ -111,7 +111,7 @@ def test_tile_assign_2d(test, device):
 
 
 @wp.kernel
-def test_tile_view_offset_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def test_tile_view_offset_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     # load whole source into local memory
     a = wp.tile_load(src, shape=(TILE_M, TILE_N))
     b = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float)
@@ -133,7 +133,7 @@ def affine_op(x: float):
 
 
 @wp.kernel
-def test_tile_view_map_assign_column_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float), col_idx: int):
+def test_tile_view_map_assign_column_kernel(src: wp.array2d[float], dst: wp.array2d[float], col_idx: int):
     # Explicitly use shared storage for the source tile.
     a = wp.tile_load(src, shape=(TILE_M, TILE_N), storage="shared")
 
@@ -201,9 +201,7 @@ def test_tile_view_offset(test, device):
 
 
 @wp.kernel
-def test_tile_view_shared_assign_column_kernel(
-    src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float), col_idx: int
-):
+def test_tile_view_shared_assign_column_kernel(src: wp.array2d[float], dst: wp.array2d[float], col_idx: int):
     a = wp.tile_load(src, shape=(TILE_M, TILE_N), storage="shared")
 
     # Extract a column view from src, scale it, and assign back via shared-to-shared tile_assign.
@@ -252,7 +250,7 @@ def test_tile_view_shared_assign_column_backward(test, device):
 
 
 @wp.kernel
-def tile_view_non_dense_store_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_view_non_dense_store_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     """Store a non-dense view to global memory.
 
     Parent tile is (TILE_M, TILE_N) with shared strides (TILE_N, 1).

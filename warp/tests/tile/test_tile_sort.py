@@ -12,10 +12,10 @@ from warp.tests.unittest_utils import *
 def create_sort_kernel(KEY_TYPE, MAX_SORT_LENGTH):
     @wp.kernel
     def tile_sort_kernel(
-        input_keys: wp.array(dtype=KEY_TYPE),
-        input_values: wp.array(dtype=wp.int32),
-        output_keys: wp.array(dtype=KEY_TYPE),
-        output_values: wp.array(dtype=wp.int32),
+        input_keys: wp.array[KEY_TYPE],
+        input_values: wp.array[wp.int32],
+        output_keys: wp.array[KEY_TYPE],
+        output_values: wp.array[wp.int32],
     ):
         # Load input into shared memory
         keys = wp.tile_load(input_keys, shape=MAX_SORT_LENGTH, storage="shared")

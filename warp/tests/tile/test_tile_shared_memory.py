@@ -17,7 +17,7 @@ def test_tile_shared_mem_size(test, device):
     BLOCK_DIM = 256
 
     @wp.kernel(module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
@@ -53,7 +53,7 @@ def test_tile_shared_mem_large(test, device):
 
     # we disable backward kernel gen since 128k is not supported on most architectures
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
@@ -89,7 +89,7 @@ def test_tile_shared_mem_graph(test, device):
     BLOCK_DIM = 256
 
     @wp.kernel(module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         a = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared")
         b = wp.tile_ones(shape=(DIM_M, DIM_N), dtype=float, storage="shared") * 2.0
 
@@ -146,7 +146,7 @@ def test_tile_shared_mem_func(test, device):
         return a + b
 
     @wp.kernel(module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         s = add_tile_small()
         b = add_tile_big()
 
@@ -186,7 +186,7 @@ def test_tile_shared_non_aligned(test, device):
         return a + b
 
     @wp.kernel(module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         # This test the logic in the stack allocator, which should increment and
         # decrement the stack pointer each time foo() is called
         # Failing to do so correct will make b out of bounds and corrupt the results
@@ -216,7 +216,7 @@ def test_tile_shared_vec_accumulation(test, device):
     BLOCK_DIM = 256
 
     @wp.kernel(module="unique")
-    def compute(indices: wp.array(dtype=int), vecs: wp.array(dtype=wp.vec3), output: wp.array2d(dtype=float)):
+    def compute(indices: wp.array[int], vecs: wp.array[wp.vec3], output: wp.array2d[float]):
         i, j = wp.tid()
 
         idx_tile = wp.tile_load(indices, shape=BLOCK_DIM, offset=i * BLOCK_DIM)
@@ -277,7 +277,7 @@ def test_tile_shared_simple_reduction_add(test, device):
     BLOCK_DIM = 256
 
     @wp.kernel(module="unique")
-    def compute(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    def compute(x: wp.array[float], y: wp.array[float]):
         i, j = wp.tid()
 
         t = wp.tile_load(x, shape=BLOCK_DIM, offset=BLOCK_DIM * i)
@@ -304,7 +304,7 @@ def test_tile_shared_simple_reduction_sub(test, device):
     BLOCK_DIM = 256
 
     @wp.kernel(module="unique")
-    def compute(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+    def compute(x: wp.array[float], y: wp.array[float]):
         i, j = wp.tid()
 
         t = wp.tile_load(x, shape=BLOCK_DIM, offset=BLOCK_DIM * i)
@@ -332,7 +332,7 @@ def test_tile_scatter_add_basic(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=float)):
+    def compute(out: wp.array[float]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
         wp.tile_scatter_add(t, i, float(i + 1), True)
@@ -349,7 +349,7 @@ def test_tile_scatter_add_conflicting(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=float)):
+    def compute(out: wp.array[float]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
         wp.tile_scatter_add(t, 0, 1.0, True)
@@ -368,7 +368,7 @@ def test_tile_scatter_add_partial(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=float)):
+    def compute(out: wp.array[float]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
         wp.tile_scatter_add(t, i, float(i + 1), (i % 2) == 0)
@@ -392,7 +392,7 @@ def test_tile_scatter_add_2d(test, device):
     BLOCK_DIM = ROWS * COLS
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         _tile, idx = wp.tid()
         row = idx // COLS
         col = idx % COLS
@@ -412,7 +412,7 @@ def test_tile_scatter_add_grad_basic(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i] * 2.0
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
@@ -437,7 +437,7 @@ def test_tile_scatter_add_grad_partial(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i] * 2.0
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
@@ -463,7 +463,7 @@ def test_tile_scatter_add_grad_conflicting(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i]
         t = wp.tile_zeros(shape=1, dtype=float, storage="shared")
@@ -495,7 +495,7 @@ def test_tile_scatter_add_non_atomic_1d(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=float)):
+    def compute(out: wp.array[float]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
         wp.tile_scatter_add(t, i, float(i + 1), True, atomic=False)
@@ -514,7 +514,7 @@ def test_tile_scatter_add_non_atomic_2d(test, device):
     TILE_SIZE = ROWS * COLS
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array2d(dtype=float)):
+    def compute(out: wp.array2d[float]):
         _tile, i = wp.tid()
         row = i // COLS
         col = i % COLS
@@ -534,7 +534,7 @@ def test_tile_scatter_add_non_atomic_grad(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i] * 2.0
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
@@ -561,8 +561,8 @@ def test_tile_shared_coalesced_mat33(test, device):
 
     @wp.kernel(enable_backward=False, module="unique")
     def compute(
-        inp: wp.array(dtype=wp.mat33),
-        out: wp.array(dtype=wp.mat33),
+        inp: wp.array[wp.mat33],
+        out: wp.array[wp.mat33],
     ):
         i = wp.tid()
         t = wp.tile_load(inp, shape=TILE_SIZE, offset=0, storage="shared")
@@ -584,8 +584,8 @@ def test_tile_shared_coalesced_mat44(test, device):
 
     @wp.kernel(enable_backward=False, module="unique")
     def compute(
-        inp: wp.array(dtype=wp.mat44),
-        out: wp.array(dtype=wp.mat44),
+        inp: wp.array[wp.mat44],
+        out: wp.array[wp.mat44],
     ):
         i = wp.tid()
         t = wp.tile_load(inp, shape=TILE_SIZE, offset=0, storage="shared")
@@ -605,7 +605,7 @@ def test_tile_scatter_masked_basic(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=int)):
+    def compute(out: wp.array[int]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=int, storage="shared")
         wp.tile_scatter_masked(t, i, i + 1, True)
@@ -622,7 +622,7 @@ def test_tile_scatter_masked_partial(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=int)):
+    def compute(out: wp.array[int]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=int, storage="shared")
         wp.tile_scatter_masked(t, i, i + 1, (i % 2) == 0)
@@ -644,7 +644,7 @@ def test_tile_scatter_masked_cross_thread(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array(dtype=int)):
+    def compute(out: wp.array[int]):
         _tile, i = wp.tid()
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=int, storage="shared")
         wp.tile_scatter_masked(t, i, i * 10, True)
@@ -665,7 +665,7 @@ def test_tile_scatter_masked_2d(test, device):
     BLOCK_DIM = ROWS * COLS
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array2d(dtype=int)):
+    def compute(out: wp.array2d[int]):
         _tile, idx = wp.tid()
         row = idx // COLS
         col = idx % COLS
@@ -688,7 +688,7 @@ def test_tile_scatter_masked_3d(test, device):
     BLOCK_DIM = D0 * D1 * D2
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array3d(dtype=int)):
+    def compute(out: wp.array3d[int]):
         _tile, idx = wp.tid()
         i = idx // (D1 * D2)
         j = (idx // D2) % D1
@@ -713,7 +713,7 @@ def test_tile_scatter_masked_4d(test, device):
     BLOCK_DIM = D0 * D1 * D2 * D3
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(out: wp.array4d(dtype=int)):
+    def compute(out: wp.array4d[int]):
         _tile, idx = wp.tid()
         i = idx // (D1 * D2 * D3)
         j = (idx // (D2 * D3)) % D1
@@ -735,7 +735,7 @@ def test_tile_scatter_masked_grad_basic(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i] * 2.0
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
@@ -760,7 +760,7 @@ def test_tile_scatter_masked_grad_partial(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i] * 2.0
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")
@@ -786,7 +786,7 @@ def test_tile_scatter_masked_grad_cross_thread(test, device):
     TILE_SIZE = 64
 
     @wp.kernel(module="unique")
-    def compute(inp: wp.array(dtype=float), out: wp.array(dtype=float)):
+    def compute(inp: wp.array[float], out: wp.array[float]):
         _tile, i = wp.tid()
         val = inp[i] * float(i + 1)
         t = wp.tile_zeros(shape=TILE_SIZE, dtype=float, storage="shared")

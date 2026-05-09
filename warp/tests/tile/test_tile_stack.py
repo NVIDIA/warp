@@ -18,7 +18,7 @@ ZERO_CAP = wp.constant(0)
 # 1. push_all
 # ----------------------------------------------------------------
 @wp.kernel
-def push_all_kernel(out: wp.array(dtype=int)):
+def push_all_kernel(out: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     wp.tile_stack_push(s, j * 10, True)
@@ -46,7 +46,7 @@ def test_push_all(test, device):
 # 2. push_partial
 # ----------------------------------------------------------------
 @wp.kernel
-def push_partial_kernel(out_count: wp.array(dtype=int)):
+def push_partial_kernel(out_count: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     wp.tile_stack_push(s, j, j % 2 == 0)
@@ -72,7 +72,7 @@ def test_push_partial(test, device):
 # 3. overflow
 # ----------------------------------------------------------------
 @wp.kernel
-def overflow_kernel(out_idx: wp.array(dtype=int), out_count: wp.array(dtype=int)):
+def overflow_kernel(out_idx: wp.array[int], out_count: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=SMALL_CAP, dtype=int)
     idx = wp.tile_stack_push(s, j * 10, True)
@@ -102,7 +102,7 @@ def test_overflow(test, device):
 # 4. pop_empty
 # ----------------------------------------------------------------
 @wp.kernel
-def pop_empty_kernel(out_ok: wp.array(dtype=int), out_val: wp.array(dtype=int)):
+def pop_empty_kernel(out_ok: wp.array[int], out_val: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     val, slot = wp.tile_stack_pop(s)
@@ -129,7 +129,7 @@ def test_pop_empty(test, device):
 # 5. push_pop_clear_cycle
 # ----------------------------------------------------------------
 @wp.kernel
-def push_pop_clear_cycle_kernel(out_count: wp.array(dtype=int)):
+def push_pop_clear_cycle_kernel(out_count: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     # First push
@@ -160,8 +160,8 @@ def test_push_pop_clear_cycle(test, device):
 # ----------------------------------------------------------------
 @wp.kernel
 def pop_more_than_pushed_kernel(
-    out_ok1: wp.array(dtype=int),
-    out_ok2: wp.array(dtype=int),
+    out_ok1: wp.array[int],
+    out_ok2: wp.array[int],
 ):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
@@ -199,7 +199,7 @@ def test_pop_more_than_pushed(test, device):
 # 7. multi_tile
 # ----------------------------------------------------------------
 @wp.kernel
-def multi_tile_kernel(out_counts: wp.array(dtype=int)):
+def multi_tile_kernel(out_counts: wp.array[int]):
     i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     wp.tile_stack_push(s, j, j <= i)
@@ -234,7 +234,7 @@ def test_multi_tile(test, device):
 # 8. has_value_false_returns_minus_one
 # ----------------------------------------------------------------
 @wp.kernel
-def has_value_false_kernel(out_idx: wp.array(dtype=int)):
+def has_value_false_kernel(out_idx: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     idx = wp.tile_stack_push(s, j, False)
@@ -262,7 +262,7 @@ def test_has_value_false_returns_minus_one(test, device):
 # 9. clear_resets_count
 # ----------------------------------------------------------------
 @wp.kernel
-def clear_resets_count_kernel(out_count: wp.array(dtype=int)):
+def clear_resets_count_kernel(out_count: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     wp.tile_stack_push(s, j, True)
@@ -286,7 +286,7 @@ def test_clear_resets_count(test, device):
 # 10. float_dtype
 # ----------------------------------------------------------------
 @wp.kernel
-def float_dtype_kernel(out: wp.array(dtype=float)):
+def float_dtype_kernel(out: wp.array[float]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=float)
     wp.tile_stack_push(s, float(j) * 1.5, True)
@@ -314,7 +314,7 @@ def test_float_dtype(test, device):
 # 11. overflow_data_integrity
 # ----------------------------------------------------------------
 @wp.kernel
-def overflow_data_integrity_kernel(out_vals: wp.array(dtype=int), out_ok: wp.array(dtype=int)):
+def overflow_data_integrity_kernel(out_vals: wp.array[int], out_ok: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=SMALL_CAP, dtype=int)
     wp.tile_stack_push(s, j * 10, True)
@@ -356,7 +356,7 @@ def test_overflow_data_integrity(test, device):
 # 12. vec3_dtype
 # ----------------------------------------------------------------
 @wp.kernel
-def vec3_dtype_kernel(out: wp.array(dtype=wp.vec3)):
+def vec3_dtype_kernel(out: wp.array[wp.vec3]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=wp.vec3)
     v = wp.vec3(float(j), float(j) * 2.0, float(j) * 3.0)
@@ -387,7 +387,7 @@ def test_vec3_dtype(test, device):
 # 13. float16_dtype
 # ----------------------------------------------------------------
 @wp.kernel
-def float16_dtype_kernel(out: wp.array(dtype=wp.float16), out_ok: wp.array(dtype=int)):
+def float16_dtype_kernel(out: wp.array[wp.float16], out_ok: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=wp.float16)
     wp.tile_stack_push(s, wp.float16(float(j)), True)
@@ -418,7 +418,7 @@ def test_float16_dtype(test, device):
 # 14. count_after_push
 # ----------------------------------------------------------------
 @wp.kernel
-def count_after_push_kernel(out_count: wp.array(dtype=int)):
+def count_after_push_kernel(out_count: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     wp.tile_stack_push(s, j, j < 10)
@@ -445,7 +445,7 @@ def test_count_after_push(test, device):
 # 15. two_stacks (LIFO deallocation of multiple stacks)
 # ----------------------------------------------------------------
 @wp.kernel
-def two_stacks_kernel(out_ints: wp.array(dtype=int), out_floats: wp.array(dtype=float)):
+def two_stacks_kernel(out_ints: wp.array[int], out_floats: wp.array[float]):
     _i, j = wp.tid()
     s1 = wp.tile_stack(capacity=CAPACITY, dtype=int)
     s2 = wp.tile_stack(capacity=CAPACITY, dtype=float)
@@ -493,7 +493,7 @@ HALF_DIM = wp.constant(TILE_DIM // 2)
 
 
 @wp.kernel
-def pop_slot_compact_kernel(out_slot: wp.array(dtype=int)):
+def pop_slot_compact_kernel(out_slot: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     # Only the first half of threads push
@@ -531,7 +531,7 @@ def helper_push(s: wp.tile_stack(capacity=CAPACITY, dtype=int), val: int):
 
 
 @wp.kernel
-def func_tile_stack_kernel(out: wp.array(dtype=int)):
+def func_tile_stack_kernel(out: wp.array[int]):
     _i, j = wp.tid()
     s = wp.tile_stack(capacity=CAPACITY, dtype=int)
     helper_push(s, j * 10)

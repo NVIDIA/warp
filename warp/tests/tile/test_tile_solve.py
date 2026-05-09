@@ -26,9 +26,7 @@ wp.get_module("test_solve_fwd").options["enable_backward"] = False
 
 
 @wp.kernel(module="test_solve_fwd")
-def tile_math_forward_substitution(
-    gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
-):
+def tile_math_forward_substitution(gL: wp.array2d[wp.float64], gx: wp.array1d[wp.float64], gz: wp.array1d[wp.float64]):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -40,7 +38,7 @@ def tile_math_forward_substitution(
 
 
 @wp.kernel(module="test_solve_fwd")
-def tile_math_forward_substitution_inplace(gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64)):
+def tile_math_forward_substitution_inplace(gL: wp.array2d[wp.float64], gx: wp.array1d[wp.float64]):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -86,9 +84,7 @@ def test_tile_solve_forward_substitution(test, device):
 
 
 @wp.kernel(module="test_solve_fwd")
-def tile_math_back_substitution(
-    gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
-):
+def tile_math_back_substitution(gL: wp.array2d[wp.float64], gx: wp.array1d[wp.float64], gz: wp.array1d[wp.float64]):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -100,7 +96,7 @@ def tile_math_back_substitution(
 
 
 @wp.kernel(module="test_solve_fwd")
-def tile_math_back_substitution_inplace(gL: wp.array2d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64)):
+def tile_math_back_substitution_inplace(gL: wp.array2d[wp.float64], gx: wp.array1d[wp.float64]):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
     x = wp.tile_load(gx, shape=TILE_M, storage="shared")
@@ -147,10 +143,10 @@ def test_tile_solve_back_substitution(test, device):
 
 @wp.kernel(module="test_solve_fwd")
 def tile_math_forward_substitution_multiple_rhs(
-    gL: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gz: wp.array2d(dtype=wp.float64),
-    gc: wp.array2d(dtype=wp.float64),
+    gL: wp.array2d[wp.float64],
+    gx: wp.array2d[wp.float64],
+    gz: wp.array2d[wp.float64],
+    gc: wp.array2d[wp.float64],
 ):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
@@ -167,9 +163,9 @@ def tile_math_forward_substitution_multiple_rhs(
 
 @wp.kernel(module="test_solve_fwd")
 def tile_math_forward_substitution_multiple_rhs_inplace(
-    gL: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gc: wp.array2d(dtype=wp.float64),
+    gL: wp.array2d[wp.float64],
+    gx: wp.array2d[wp.float64],
+    gc: wp.array2d[wp.float64],
 ):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
@@ -233,10 +229,10 @@ def test_tile_solve_forward_substitution_multiple_rhs(test, device):
 
 @wp.kernel(module="test_solve_fwd")
 def tile_math_back_substitution_multiple_rhs(
-    gL: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gz: wp.array2d(dtype=wp.float64),
-    gc: wp.array2d(dtype=wp.float64),
+    gL: wp.array2d[wp.float64],
+    gx: wp.array2d[wp.float64],
+    gz: wp.array2d[wp.float64],
+    gc: wp.array2d[wp.float64],
 ):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
@@ -253,9 +249,9 @@ def tile_math_back_substitution_multiple_rhs(
 
 @wp.kernel(module="test_solve_fwd")
 def tile_math_back_substitution_multiple_rhs_inplace(
-    gL: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gc: wp.array2d(dtype=wp.float64),
+    gL: wp.array2d[wp.float64],
+    gx: wp.array2d[wp.float64],
+    gc: wp.array2d[wp.float64],
 ):
     # Load L & x
     L = wp.tile_load(gL, shape=(TILE_M, TILE_M), storage="shared")
@@ -318,7 +314,7 @@ def test_tile_solve_back_substitution_multiple_rhs(test, device):
 
 
 @wp.kernel(module="test_solve_fwd")
-def tile_lower_solve_kernel(L: wp.array2d(dtype=float), y: wp.array(dtype=float), x: wp.array(dtype=float)):
+def tile_lower_solve_kernel(L: wp.array2d[float], y: wp.array[float], x: wp.array[float]):
     L_tile = wp.tile_load(L, shape=(TILE_M, TILE_M))
     y_tile = wp.tile_load(y, shape=(TILE_M,))
     sol = wp.tile_lower_solve(L_tile, y_tile)
@@ -326,7 +322,7 @@ def tile_lower_solve_kernel(L: wp.array2d(dtype=float), y: wp.array(dtype=float)
 
 
 @wp.kernel(module="test_solve_fwd")
-def tile_upper_solve_kernel(L: wp.array2d(dtype=float), y: wp.array(dtype=float), x: wp.array(dtype=float)):
+def tile_upper_solve_kernel(L: wp.array2d[float], y: wp.array[float], x: wp.array[float]):
     L_tile = wp.tile_load(L, shape=(TILE_M, TILE_M))
     y_tile = wp.tile_load(y, shape=(TILE_M,))
     sol = wp.tile_upper_solve(L_tile, y_tile)

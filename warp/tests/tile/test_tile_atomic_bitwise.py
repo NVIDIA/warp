@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def test_tile_atomic_bitwise_scalar_kernel(
-    a: wp.array(dtype=wp.uint32), b: wp.array(dtype=wp.uint32), c: wp.array(dtype=wp.uint32), op_type: int
+    a: wp.array[wp.uint32], b: wp.array[wp.uint32], c: wp.array[wp.uint32], op_type: int
 ):
     word_idx, bit_idx = wp.tid()
     block_dim = wp.block_dim()
@@ -42,7 +42,7 @@ def test_tile_atomic_bitwise_scalar_kernel(
 
 @wp.kernel
 def test_tile_atomic_bitwise_scalar_tilewise_kernel(
-    a: wp.array(dtype=wp.uint32), b: wp.array(dtype=wp.uint32), c: wp.array(dtype=wp.uint32), op_type: int
+    a: wp.array[wp.uint32], b: wp.array[wp.uint32], c: wp.array[wp.uint32], op_type: int
 ):
     batch_idx, _ = wp.tid()
     block_dim = wp.block_dim()
@@ -126,7 +126,7 @@ def test_tile_atomic_bitwise_scalar(test, device):
 
 @wp.kernel
 def test_tile_atomic_bitwise_vector_kernel(
-    a: wp.array(dtype=wp.vec3ui), b: wp.array(dtype=wp.vec3ui), c: wp.array(dtype=wp.vec3ui), op_type: int
+    a: wp.array[wp.vec3ui], b: wp.array[wp.vec3ui], c: wp.array[wp.vec3ui], op_type: int
 ):
     word_idx, bit_idx = wp.tid()
     block_dim = wp.block_dim()
@@ -157,7 +157,7 @@ def test_tile_atomic_bitwise_vector_kernel(
 
 @wp.kernel
 def test_tile_atomic_bitwise_vector_tilewise_kernel(
-    a: wp.array(dtype=wp.vec3ui), b: wp.array(dtype=wp.vec3ui), c: wp.array(dtype=wp.vec3ui), op_type: int
+    a: wp.array[wp.vec3ui], b: wp.array[wp.vec3ui], c: wp.array[wp.vec3ui], op_type: int
 ):
     batch_idx, _ = wp.tid()
     block_dim = wp.block_dim()
@@ -244,7 +244,7 @@ mat33ui = wp.types.matrix(shape=(3, 3), dtype=wp.uint32)
 
 @wp.kernel
 def test_tile_atomic_bitwise_matrix_kernel(
-    a: wp.array(dtype=mat33ui), b: wp.array(dtype=mat33ui), c: wp.array(dtype=mat33ui), op_type: int
+    a: wp.array[mat33ui], b: wp.array[mat33ui], c: wp.array[mat33ui], op_type: int
 ):
     word_idx, bit_idx = wp.tid()
     block_dim = wp.block_dim()
@@ -275,7 +275,7 @@ def test_tile_atomic_bitwise_matrix_kernel(
 
 @wp.kernel
 def test_tile_atomic_bitwise_matrix_tilewise_kernel(
-    a: wp.array(dtype=mat33ui), b: wp.array(dtype=mat33ui), c: wp.array(dtype=mat33ui), op_type: int
+    a: wp.array[mat33ui], b: wp.array[mat33ui], c: wp.array[mat33ui], op_type: int
 ):
     batch_idx, _ = wp.tid()
     block_dim = wp.block_dim()

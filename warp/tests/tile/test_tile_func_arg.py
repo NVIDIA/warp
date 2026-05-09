@@ -19,28 +19,28 @@ TILE_N = 4
 
 
 @wp.func
-def scale_tile(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+def scale_tile(t: wp.tile[float, TILE_M, TILE_N]):
     """Multiply every element of a tile by 2."""
     return t * 2.0
 
 
 @wp.func
-def pass_through_tile(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+def pass_through_tile(t: wp.tile[float, TILE_M, TILE_N]):
     """Return a tile unchanged (tests direct return of parameter)."""
     return t
 
 
 @wp.func
 def add_tiles(
-    a: wp.tile(dtype=float, shape=(TILE_M, TILE_N)),
-    b: wp.tile(dtype=float, shape=(TILE_M, TILE_N)),
+    a: wp.tile[float, TILE_M, TILE_N],
+    b: wp.tile[float, TILE_M, TILE_N],
 ):
     """Add two tiles element-wise."""
     return a + b
 
 
 @wp.func
-def scale_then_pass_through(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+def scale_then_pass_through(t: wp.tile[float, TILE_M, TILE_N]):
     """Chain two @wp.func calls: scale then pass through."""
     s = scale_tile(t)
     return pass_through_tile(s)
@@ -48,8 +48,8 @@ def scale_then_pass_through(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
 
 @wp.func
 def inplace_add_func(
-    a: wp.tile(dtype=float, shape=(TILE_M, TILE_N)),
-    b: wp.tile(dtype=float, shape=(TILE_M, TILE_N)),
+    a: wp.tile[float, TILE_M, TILE_N],
+    b: wp.tile[float, TILE_M, TILE_N],
 ):
     """Modify a in place (a += b) and return a."""
     a += b
@@ -57,7 +57,7 @@ def inplace_add_func(
 
 
 @wp.func
-def modify_tile_no_return(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+def modify_tile_no_return(t: wp.tile[float, TILE_M, TILE_N]):
     """Write into a tile in place without returning it. Used for both register and shared tiles."""
     t += wp.tile_ones(dtype=float, shape=(TILE_M, TILE_N), storage="register") * 5.0
 
@@ -69,7 +69,7 @@ def test_shared_tile_func_arg(test, device):
     """Pass a shared tile into a @wp.func, get a scaled copy back."""
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         r = scale_tile(t)
@@ -88,7 +88,7 @@ def test_register_tile_func_arg(test, device):
     """Pass a register tile into a @wp.func, get a scaled copy back."""
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="register")
         r = scale_tile(t)
@@ -107,7 +107,7 @@ def test_pass_through_shared_tile(test, device):
     """Return a shared tile directly from a @wp.func (tests cross-storage assignment)."""
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         r = pass_through_tile(t)
@@ -127,9 +127,9 @@ def test_mixed_storage_func_args(test, device):
 
     @wp.kernel(enable_backward=False, module="unique")
     def compute(
-        input_a: wp.array2d(dtype=float),
-        input_b: wp.array2d(dtype=float),
-        out: wp.array2d(dtype=float),
+        input_a: wp.array2d[float],
+        input_b: wp.array2d[float],
+        out: wp.array2d[float],
     ):
         i = wp.tid()
         a = wp.tile_load(input_a, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
@@ -151,7 +151,7 @@ def test_nested_func_calls(test, device):
     """Chain two @wp.func calls with tile args (tests template propagation)."""
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         r = scale_then_pass_through(t)
@@ -173,7 +173,7 @@ def test_shared_tile_inplace_no_return(test, device):
     """
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         modify_tile_no_return(t)
@@ -196,7 +196,7 @@ def test_register_tile_inplace_no_return(test, device):
     """
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="register")
         modify_tile_no_return(t)
@@ -221,7 +221,7 @@ def test_nested_func_calls_grad(test, device):
     """
 
     @wp.kernel(module="unique")
-    def compute(input: wp.array2d(dtype=float), loss: wp.array1d(dtype=float)):
+    def compute(input: wp.array2d[float], loss: wp.array1d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         r = scale_then_pass_through(t)
@@ -245,7 +245,7 @@ def test_shared_tile_func_grad(test, device):
     """
 
     @wp.kernel(module="unique")
-    def compute(input: wp.array2d(dtype=float), loss: wp.array1d(dtype=float)):
+    def compute(input: wp.array2d[float], loss: wp.array1d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         r = scale_tile(t)
@@ -269,7 +269,7 @@ def test_register_tile_func_grad(test, device):
     """
 
     @wp.kernel(module="unique")
-    def compute(input: wp.array2d(dtype=float), loss: wp.array1d(dtype=float)):
+    def compute(input: wp.array2d[float], loss: wp.array1d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="register")
         r = scale_tile(t)
@@ -294,9 +294,9 @@ def test_mixed_storage_func_grad(test, device):
 
     @wp.kernel(module="unique")
     def compute(
-        input_a: wp.array2d(dtype=float),
-        input_b: wp.array2d(dtype=float),
-        loss: wp.array1d(dtype=float),
+        input_a: wp.array2d[float],
+        input_b: wp.array2d[float],
+        loss: wp.array1d[float],
     ):
         i = wp.tid()
         a = wp.tile_load(input_a, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
@@ -327,9 +327,9 @@ def test_inplace_modify_func_grad(test, device):
 
     @wp.kernel(module="unique")
     def compute(
-        input_a: wp.array2d(dtype=float),
-        input_b: wp.array2d(dtype=float),
-        loss: wp.array1d(dtype=float),
+        input_a: wp.array2d[float],
+        input_b: wp.array2d[float],
+        loss: wp.array1d[float],
     ):
         i = wp.tid()
         a = wp.tile_load(input_a, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
@@ -366,10 +366,10 @@ def test_native_func_shared_tile(test, device):
     """
 
     @wp.func_native(snippet)
-    def read_tile_native(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N)), out: wp.array(dtype=float)): ...
+    def read_tile_native(t: wp.tile[float, TILE_M, TILE_N], out: wp.array[float]): ...
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         read_tile_native(t, out)
@@ -393,10 +393,10 @@ def test_native_func_register_tile(test, device):
     """
 
     @wp.func_native(snippet)
-    def read_tile_native(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N)), out: wp.array(dtype=float)): ...
+    def read_tile_native(t: wp.tile[float, TILE_M, TILE_N], out: wp.array[float]): ...
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="register")
         read_tile_native(t, out)
@@ -422,10 +422,10 @@ def test_native_func_inplace_modify_tile(test, device):
     """
 
     @wp.func_native(snippet)
-    def modify_tile_native(t: wp.tile(dtype=float, shape=(TILE_M, TILE_N))): ...
+    def modify_tile_native(t: wp.tile[float, TILE_M, TILE_N]): ...
 
     @wp.kernel(enable_backward=False, module="unique")
-    def compute(input: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def compute(input: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(input, shape=(TILE_M, TILE_N), offset=(0, 0), storage="shared")
         modify_tile_native(t)

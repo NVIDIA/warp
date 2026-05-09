@@ -33,9 +33,7 @@ M_RHS = 4
 
 
 @wp.kernel(enable_backward=False)
-def tile_lower_solve_vec_kernel(
-    gL: wp.array2d(dtype=wp.float64), gy: wp.array1d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)
-):
+def tile_lower_solve_vec_kernel(gL: wp.array2d[wp.float64], gy: wp.array1d[wp.float64], gz: wp.array1d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=N)
     z = wp.tile_lower_solve(L, y)
@@ -43,9 +41,7 @@ def tile_lower_solve_vec_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def tile_lower_solve_mat_kernel(
-    gL: wp.array2d(dtype=wp.float64), gy: wp.array2d(dtype=wp.float64), gz: wp.array2d(dtype=wp.float64)
-):
+def tile_lower_solve_mat_kernel(gL: wp.array2d[wp.float64], gy: wp.array2d[wp.float64], gz: wp.array2d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=(N, M_RHS))
     z = wp.tile_lower_solve(L, y)
@@ -53,7 +49,7 @@ def tile_lower_solve_mat_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def tile_lower_solve_inplace_vec_kernel(gL: wp.array2d(dtype=wp.float64), gy: wp.array1d(dtype=wp.float64)):
+def tile_lower_solve_inplace_vec_kernel(gL: wp.array2d[wp.float64], gy: wp.array1d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=N)
     wp.tile_lower_solve_inplace(L, y)
@@ -61,7 +57,7 @@ def tile_lower_solve_inplace_vec_kernel(gL: wp.array2d(dtype=wp.float64), gy: wp
 
 
 @wp.kernel(enable_backward=False)
-def tile_lower_solve_inplace_mat_kernel(gL: wp.array2d(dtype=wp.float64), gy: wp.array2d(dtype=wp.float64)):
+def tile_lower_solve_inplace_mat_kernel(gL: wp.array2d[wp.float64], gy: wp.array2d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=(N, M_RHS))
     wp.tile_lower_solve_inplace(L, y)
@@ -74,9 +70,7 @@ def tile_lower_solve_inplace_mat_kernel(gL: wp.array2d(dtype=wp.float64), gy: wp
 
 
 @wp.kernel(enable_backward=False)
-def tile_upper_solve_vec_kernel(
-    gU: wp.array2d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64)
-):
+def tile_upper_solve_vec_kernel(gU: wp.array2d[wp.float64], gz: wp.array1d[wp.float64], gx: wp.array1d[wp.float64]):
     U = wp.tile_load(gU, shape=(N, N))
     z = wp.tile_load(gz, shape=N)
     x = wp.tile_upper_solve(U, z)
@@ -84,9 +78,7 @@ def tile_upper_solve_vec_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def tile_upper_solve_mat_kernel(
-    gU: wp.array2d(dtype=wp.float64), gz: wp.array2d(dtype=wp.float64), gx: wp.array2d(dtype=wp.float64)
-):
+def tile_upper_solve_mat_kernel(gU: wp.array2d[wp.float64], gz: wp.array2d[wp.float64], gx: wp.array2d[wp.float64]):
     U = wp.tile_load(gU, shape=(N, N))
     z = wp.tile_load(gz, shape=(N, M_RHS))
     x = wp.tile_upper_solve(U, z)
@@ -94,7 +86,7 @@ def tile_upper_solve_mat_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def tile_upper_solve_inplace_vec_kernel(gU: wp.array2d(dtype=wp.float64), gz: wp.array1d(dtype=wp.float64)):
+def tile_upper_solve_inplace_vec_kernel(gU: wp.array2d[wp.float64], gz: wp.array1d[wp.float64]):
     U = wp.tile_load(gU, shape=(N, N))
     z = wp.tile_load(gz, shape=N)
     wp.tile_upper_solve_inplace(U, z)
@@ -102,7 +94,7 @@ def tile_upper_solve_inplace_vec_kernel(gU: wp.array2d(dtype=wp.float64), gz: wp
 
 
 @wp.kernel(enable_backward=False)
-def tile_upper_solve_inplace_mat_kernel(gU: wp.array2d(dtype=wp.float64), gz: wp.array2d(dtype=wp.float64)):
+def tile_upper_solve_inplace_mat_kernel(gU: wp.array2d[wp.float64], gz: wp.array2d[wp.float64]):
     U = wp.tile_load(gU, shape=(N, N))
     z = wp.tile_load(gz, shape=(N, M_RHS))
     wp.tile_upper_solve_inplace(U, z)
@@ -116,9 +108,7 @@ def tile_upper_solve_inplace_mat_kernel(gU: wp.array2d(dtype=wp.float64), gz: wp
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_solve_vec_kernel(
-    gL: wp.array2d(dtype=wp.float64), gy: wp.array1d(dtype=wp.float64), gx: wp.array1d(dtype=wp.float64)
-):
+def tile_cholesky_solve_vec_kernel(gL: wp.array2d[wp.float64], gy: wp.array1d[wp.float64], gx: wp.array1d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=N)
     x = wp.tile_cholesky_solve(L, y)
@@ -126,9 +116,7 @@ def tile_cholesky_solve_vec_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_solve_mat_kernel(
-    gL: wp.array2d(dtype=wp.float64), gy: wp.array2d(dtype=wp.float64), gx: wp.array2d(dtype=wp.float64)
-):
+def tile_cholesky_solve_mat_kernel(gL: wp.array2d[wp.float64], gy: wp.array2d[wp.float64], gx: wp.array2d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=(N, M_RHS))
     x = wp.tile_cholesky_solve(L, y)
@@ -136,7 +124,7 @@ def tile_cholesky_solve_mat_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_solve_inplace_vec_kernel(gL: wp.array2d(dtype=wp.float64), gy: wp.array1d(dtype=wp.float64)):
+def tile_cholesky_solve_inplace_vec_kernel(gL: wp.array2d[wp.float64], gy: wp.array1d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=N)
     wp.tile_cholesky_solve_inplace(L, y)
@@ -144,7 +132,7 @@ def tile_cholesky_solve_inplace_vec_kernel(gL: wp.array2d(dtype=wp.float64), gy:
 
 
 @wp.kernel(enable_backward=False)
-def tile_cholesky_solve_inplace_mat_kernel(gL: wp.array2d(dtype=wp.float64), gy: wp.array2d(dtype=wp.float64)):
+def tile_cholesky_solve_inplace_mat_kernel(gL: wp.array2d[wp.float64], gy: wp.array2d[wp.float64]):
     L = wp.tile_load(gL, shape=(N, N))
     y = wp.tile_load(gy, shape=(N, M_RHS))
     wp.tile_cholesky_solve_inplace(L, y)

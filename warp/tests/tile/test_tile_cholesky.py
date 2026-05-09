@@ -24,11 +24,11 @@ wp.get_module("test_cholesky_fwd").options["enable_backward"] = False
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky(
-    gA: wp.array2d(dtype=wp.float64),
-    gD: wp.array1d(dtype=wp.float64),
-    gL: wp.array2d(dtype=wp.float64),
-    gy: wp.array1d(dtype=wp.float64),
-    gx: wp.array1d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gD: wp.array1d[wp.float64],
+    gL: wp.array2d[wp.float64],
+    gy: wp.array1d[wp.float64],
+    gx: wp.array1d[wp.float64],
 ):
     # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -75,8 +75,8 @@ def test_tile_cholesky_cholesky(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_inplace(
-    gA: wp.array2d(dtype=wp.float64),
-    gy: wp.array1d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gy: wp.array1d[wp.float64],
 ):
     # Load A & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -109,12 +109,12 @@ def test_tile_cholesky_cholesky_inplace(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_multiple_rhs(
-    gA: wp.array2d(dtype=wp.float64),
-    gD: wp.array1d(dtype=wp.float64),
-    gL: wp.array2d(dtype=wp.float64),
-    gy: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gz: wp.array2d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gD: wp.array1d[wp.float64],
+    gL: wp.array2d[wp.float64],
+    gy: wp.array2d[wp.float64],
+    gx: wp.array2d[wp.float64],
+    gz: wp.array2d[wp.float64],
 ):
     # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -173,9 +173,9 @@ def test_tile_cholesky_cholesky_multiple_rhs(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_multiple_rhs_inplace(
-    gA: wp.array2d(dtype=wp.float64),
-    gy: wp.array2d(dtype=wp.float64),
-    gz: wp.array2d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gy: wp.array2d[wp.float64],
+    gz: wp.array2d[wp.float64],
 ):
     # Load A & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -223,20 +223,16 @@ def test_tile_cholesky_cholesky_multiple_rhs_inplace(test, device):
 
 @wp.kernel()
 def tile_cholesky_lower_backward_kernel(
-    gA: wp.array2d(dtype=Any),
-    gL: wp.array2d(dtype=Any),
+    gA: wp.array2d[Any],
+    gL: wp.array2d[Any],
 ):
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     l = wp.tile_cholesky(a)
     wp.tile_store(gL, l)
 
 
-wp.overload(
-    tile_cholesky_lower_backward_kernel, {"gA": wp.array2d(dtype=wp.float32), "gL": wp.array2d(dtype=wp.float32)}
-)
-wp.overload(
-    tile_cholesky_lower_backward_kernel, {"gA": wp.array2d(dtype=wp.float64), "gL": wp.array2d(dtype=wp.float64)}
-)
+wp.overload(tile_cholesky_lower_backward_kernel, {"gA": wp.array2d[wp.float32], "gL": wp.array2d[wp.float32]})
+wp.overload(tile_cholesky_lower_backward_kernel, {"gA": wp.array2d[wp.float64], "gL": wp.array2d[wp.float64]})
 
 
 def cholesky_adjoint_numpy_lower(L, adj_L):
@@ -321,20 +317,16 @@ def test_tile_cholesky_lower_backward(dtype):
 
 @wp.kernel()
 def tile_cholesky_upper_backward_kernel(
-    gA: wp.array2d(dtype=Any),
-    gU: wp.array2d(dtype=Any),
+    gA: wp.array2d[Any],
+    gU: wp.array2d[Any],
 ):
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
     u = wp.tile_cholesky(a, fill_mode="upper")
     wp.tile_store(gU, u)
 
 
-wp.overload(
-    tile_cholesky_upper_backward_kernel, {"gA": wp.array2d(dtype=wp.float32), "gU": wp.array2d(dtype=wp.float32)}
-)
-wp.overload(
-    tile_cholesky_upper_backward_kernel, {"gA": wp.array2d(dtype=wp.float64), "gU": wp.array2d(dtype=wp.float64)}
-)
+wp.overload(tile_cholesky_upper_backward_kernel, {"gA": wp.array2d[wp.float32], "gU": wp.array2d[wp.float32]})
+wp.overload(tile_cholesky_upper_backward_kernel, {"gA": wp.array2d[wp.float64], "gU": wp.array2d[wp.float64]})
 
 
 def cholesky_adjoint_numpy_upper(U, adj_U):
@@ -423,8 +415,8 @@ def test_tile_cholesky_block_cholesky(test, device):
 
     @wp.kernel(enable_backward=False, module="unique")
     def block_cholesky_kernel(
-        A: wp.array2d(dtype=float),
-        L: wp.array2d(dtype=float),
+        A: wp.array2d[float],
+        L: wp.array2d[float],
     ):
         """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
 
@@ -467,10 +459,10 @@ def test_tile_cholesky_block_cholesky(test, device):
 
     @wp.kernel(enable_backward=False, module="unique")
     def block_cholesky_solve_kernel(
-        L: wp.array2d(dtype=float),
-        b: wp.array2d(dtype=float),
-        scratch: wp.array2d(dtype=float),
-        x: wp.array2d(dtype=float),
+        L: wp.array2d[float],
+        b: wp.array2d[float],
+        scratch: wp.array2d[float],
+        x: wp.array2d[float],
     ):
         """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution."""
 
@@ -540,11 +532,11 @@ def test_tile_cholesky_block_cholesky(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_upper(
-    gA: wp.array2d(dtype=wp.float64),
-    gD: wp.array1d(dtype=wp.float64),
-    gU: wp.array2d(dtype=wp.float64),
-    gy: wp.array1d(dtype=wp.float64),
-    gx: wp.array1d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gD: wp.array1d[wp.float64],
+    gU: wp.array2d[wp.float64],
+    gy: wp.array1d[wp.float64],
+    gx: wp.array1d[wp.float64],
 ):
     # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -611,8 +603,8 @@ def test_tile_cholesky_upper(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_upper_inplace(
-    gA: wp.array2d(dtype=wp.float64),
-    gy: wp.array1d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gy: wp.array1d[wp.float64],
 ):
     # Load A & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -666,12 +658,12 @@ def test_tile_cholesky_upper_inplace(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_upper_multiple_rhs(
-    gA: wp.array2d(dtype=wp.float64),
-    gD: wp.array1d(dtype=wp.float64),
-    gU: wp.array2d(dtype=wp.float64),
-    gy: wp.array2d(dtype=wp.float64),
-    gx: wp.array2d(dtype=wp.float64),
-    gz: wp.array2d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gD: wp.array1d[wp.float64],
+    gU: wp.array2d[wp.float64],
+    gy: wp.array2d[wp.float64],
+    gx: wp.array2d[wp.float64],
+    gz: wp.array2d[wp.float64],
 ):
     # Load A, D & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -698,9 +690,9 @@ def test_tile_cholesky_upper_multiple_rhs(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_upper_multiple_rhs_inplace(
-    gA: wp.array2d(dtype=wp.float64),
-    gy: wp.array2d(dtype=wp.float64),
-    gz: wp.array2d(dtype=wp.float64),
+    gA: wp.array2d[wp.float64],
+    gy: wp.array2d[wp.float64],
+    gz: wp.array2d[wp.float64],
 ):
     # Load A & y
     a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
@@ -724,9 +716,9 @@ def test_tile_cholesky_upper_multiple_rhs_inplace(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_solve_upper(
-    gU: wp.array2d(dtype=wp.float64),
-    gy: wp.array1d(dtype=wp.float64),
-    gx: wp.array1d(dtype=wp.float64),
+    gU: wp.array2d[wp.float64],
+    gy: wp.array1d[wp.float64],
+    gx: wp.array1d[wp.float64],
 ):
     U = wp.tile_load(gU, shape=(TILE_M, TILE_M), storage="shared")
     y = wp.tile_load(gy, shape=TILE_M, storage="shared")
@@ -754,8 +746,8 @@ def test_tile_cholesky_solve_upper(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_solve_upper_inplace(
-    gU: wp.array2d(dtype=wp.float64),
-    gy: wp.array1d(dtype=wp.float64),
+    gU: wp.array2d[wp.float64],
+    gy: wp.array1d[wp.float64],
 ):
     U = wp.tile_load(gU, shape=(TILE_M, TILE_M), storage="shared")
     y = wp.tile_load(gy, shape=TILE_M, storage="shared")
@@ -782,9 +774,9 @@ def test_tile_cholesky_solve_upper_inplace(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_solve_upper_multiple_rhs(
-    gU: wp.array2d(dtype=wp.float64),
-    gY: wp.array2d(dtype=wp.float64),
-    gX: wp.array2d(dtype=wp.float64),
+    gU: wp.array2d[wp.float64],
+    gY: wp.array2d[wp.float64],
+    gX: wp.array2d[wp.float64],
 ):
     U = wp.tile_load(gU, shape=(TILE_M, TILE_M), storage="shared")
     Y = wp.tile_load(gY, shape=(TILE_M, TILE_M), storage="shared")
@@ -816,8 +808,8 @@ def test_tile_cholesky_solve_upper_multiple_rhs(test, device):
 
 @wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_solve_upper_multiple_rhs_inplace(
-    gU: wp.array2d(dtype=wp.float64),
-    gY: wp.array2d(dtype=wp.float64),
+    gU: wp.array2d[wp.float64],
+    gY: wp.array2d[wp.float64],
 ):
     U = wp.tile_load(gU, shape=(TILE_M, TILE_M), storage="shared")
     Y = wp.tile_load(gY, shape=(TILE_M, TILE_M), storage="shared")

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -18,7 +18,7 @@ TILE_DIM = 64
 
 
 @wp.kernel
-def tile_copy_1d_kernel(A: wp.array(dtype=float), B: wp.array(dtype=float)):
+def tile_copy_1d_kernel(A: wp.array[float], B: wp.array[float]):
     # tile index
     i = wp.tid()
 
@@ -57,7 +57,7 @@ def test_tile_copy_1d(test, device):
 
 
 @wp.kernel
-def tile_copy_2d_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float)):
+def tile_copy_2d_kernel(A: wp.array2d[float], B: wp.array2d[float]):
     # tile index
     i, j = wp.tid()
 
@@ -107,7 +107,7 @@ def unary_func(x: wp.float64):
 
 
 @wp.kernel
-def tile_unary_map_user_func(input: wp.array2d(dtype=Any), output: wp.array2d(dtype=Any)):
+def tile_unary_map_user_func(input: wp.array2d[Any], output: wp.array2d[Any]):
     # tile index
     i, j = wp.tid()
 
@@ -119,7 +119,7 @@ def tile_unary_map_user_func(input: wp.array2d(dtype=Any), output: wp.array2d(dt
 
 
 @wp.kernel
-def tile_unary_map_builtin_func(input: wp.array2d(dtype=Any), output: wp.array2d(dtype=Any)):
+def tile_unary_map_builtin_func(input: wp.array2d[Any], output: wp.array2d[Any]):
     # tile index
     i, j = wp.tid()
 
@@ -178,7 +178,7 @@ def unary_func_mixed_types(x: int) -> float:
 
 
 @wp.kernel
-def tile_unary_map_mixed_types(input: wp.array2d(dtype=int), output: wp.array2d(dtype=float)):
+def tile_unary_map_mixed_types(input: wp.array2d[int], output: wp.array2d[float]):
     # tile index
     i, j = wp.tid()
 
@@ -234,9 +234,7 @@ def binary_func(x: wp.float64, y: wp.float64):
 
 
 @wp.kernel
-def tile_binary_map_user_func(
-    input_a: wp.array2d(dtype=Any), input_b: wp.array2d(dtype=Any), output: wp.array2d(dtype=Any)
-):
+def tile_binary_map_user_func(input_a: wp.array2d[Any], input_b: wp.array2d[Any], output: wp.array2d[Any]):
     # tile index
     i, j = wp.tid()
 
@@ -249,9 +247,7 @@ def tile_binary_map_user_func(
 
 
 @wp.kernel
-def tile_binary_map_builtin_func(
-    input_a: wp.array2d(dtype=Any), input_b: wp.array2d(dtype=Any), output: wp.array2d(dtype=Any)
-):
+def tile_binary_map_builtin_func(input_a: wp.array2d[Any], input_b: wp.array2d[Any], output: wp.array2d[Any]):
     # tile index
     i, j = wp.tid()
 
@@ -315,9 +311,7 @@ def binary_func_mixed_types(x: int, y: float) -> float:
 
 
 @wp.kernel
-def tile_binary_map_mixed_types(
-    input_a: wp.array2d(dtype=int), input_b: wp.array2d(dtype=float), output: wp.array2d(dtype=float)
-):
+def tile_binary_map_mixed_types(input_a: wp.array2d[int], input_b: wp.array2d[float], output: wp.array2d[float]):
     # tile index
     i, j = wp.tid()
 
@@ -373,9 +367,7 @@ def tile_n_map_func(x: float, y: float, z: float):
 
 
 @wp.kernel
-def tile_n_map_kernel(
-    x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float), out: wp.array(dtype=float)
-):
+def tile_n_map_kernel(x: wp.array[float], y: wp.array[float], z: wp.array[float], out: wp.array[float]):
     x_tile = wp.tile_load(x, shape=(TILE_M,))
     y_tile = wp.tile_load(y, shape=(TILE_M,))
     z_tile = wp.tile_load(z, shape=(TILE_M,))
@@ -413,7 +405,7 @@ def tile_n_map_func_mixed_types(x: wp.mat33, y: wp.vec3, z: float):
 
 @wp.kernel
 def tile_n_map_kernel_mixed_types(
-    x: wp.array(dtype=wp.mat33), y: wp.array(dtype=wp.vec3), z: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)
+    x: wp.array[wp.mat33], y: wp.array[wp.vec3], z: wp.array[float], out: wp.array[wp.vec3]
 ):
     x_tile = wp.tile_load(x, shape=(TILE_M,))
     y_tile = wp.tile_load(y, shape=(TILE_M,))
@@ -450,7 +442,7 @@ def test_tile_n_map_mixed_types(test, device):
 
 
 @wp.kernel
-def tile_operators(input: wp.array3d(dtype=float), output: wp.array3d(dtype=float)):
+def tile_operators(input: wp.array3d[float], output: wp.array3d[float]):
     # output tile index
     i = wp.tid()
 
@@ -504,7 +496,7 @@ def test_tile_operators(test, device):
 
 
 @wp.kernel
-def tile_const_mul_vec_times_scalar_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
+def tile_const_mul_vec_times_scalar_kernel(input: wp.array[wp.vec3], output: wp.array[wp.vec3]):
     # tile<vec3> * scalar -> tile<vec3>
     a = wp.tile_load(input, shape=TILE_M)
     b = a * 2.0
@@ -512,7 +504,7 @@ def tile_const_mul_vec_times_scalar_kernel(input: wp.array(dtype=wp.vec3), outpu
 
 
 @wp.kernel
-def tile_const_mul_scalar_times_vec_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
+def tile_const_mul_scalar_times_vec_kernel(input: wp.array[wp.vec3], output: wp.array[wp.vec3]):
     # scalar * tile<vec3> -> tile<vec3>
     a = wp.tile_load(input, shape=TILE_M)
     b = 2.0 * a
@@ -520,7 +512,7 @@ def tile_const_mul_scalar_times_vec_kernel(input: wp.array(dtype=wp.vec3), outpu
 
 
 @wp.kernel
-def tile_const_mul_float_times_vec_kernel(input: wp.array(dtype=float), output: wp.array(dtype=wp.vec3)):
+def tile_const_mul_float_times_vec_kernel(input: wp.array[float], output: wp.array[wp.vec3]):
     # tile<float> * vec3 -> tile<vec3>
     a = wp.tile_load(input, shape=TILE_M)
     b = a * wp.vec3(1.0, 2.0, 3.0)
@@ -528,7 +520,7 @@ def tile_const_mul_float_times_vec_kernel(input: wp.array(dtype=float), output: 
 
 
 @wp.kernel
-def tile_const_mul_vec_times_float_kernel(input: wp.array(dtype=float), output: wp.array(dtype=wp.vec3)):
+def tile_const_mul_vec_times_float_kernel(input: wp.array[float], output: wp.array[wp.vec3]):
     # vec3 * tile<float> -> tile<vec3>
     a = wp.tile_load(input, shape=TILE_M)
     b = wp.vec3(1.0, 2.0, 3.0) * a
@@ -633,7 +625,7 @@ def test_tile_const_mul(test, device):
 
 
 @wp.kernel
-def tile_map_with_constant_kernel(input: wp.array(dtype=float), output: wp.array(dtype=wp.vec3)):
+def tile_map_with_constant_kernel(input: wp.array[float], output: wp.array[wp.vec3]):
     # tile_map(mul, tile<float>, vec3) -> tile<vec3>
     a = wp.tile_load(input, shape=TILE_M)
     b = wp.tile_map(wp.mul, a, wp.vec3(1.0, 2.0, 3.0))
@@ -677,9 +669,7 @@ def weighted_add_mixed(a: wp.float32, b: wp.float64, weight: wp.float64):
 
 
 @wp.kernel
-def tile_n_map_with_constant_kernel(
-    x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float64), out: wp.array(dtype=wp.float64)
-):
+def tile_n_map_with_constant_kernel(x: wp.array[wp.float32], y: wp.array[wp.float64], out: wp.array[wp.float64]):
     # tile_map(op, tile<float32>, tile<float64>, constant<float64>)
     x_tile = wp.tile_load(x, shape=TILE_M)
     y_tile = wp.tile_load(y, shape=TILE_M)
@@ -732,7 +722,7 @@ def vec5_fma(a: vec5, b: vec5, c: vec5) -> vec5:
 
 
 @wp.kernel
-def tile_map_custom_vec_unary_kernel(input: wp.array(dtype=vec5), output: wp.array(dtype=vec5)):
+def tile_map_custom_vec_unary_kernel(input: wp.array[vec5], output: wp.array[vec5]):
     i = wp.tid()
     a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
     b = wp.tile_map(wp.abs, a)
@@ -753,9 +743,7 @@ def test_tile_map_custom_vec_unary(test, device):
 
 
 @wp.kernel
-def tile_map_custom_vec_binary_kernel(
-    input_a: wp.array(dtype=vec5), input_b: wp.array(dtype=vec5), output: wp.array(dtype=vec5)
-):
+def tile_map_custom_vec_binary_kernel(input_a: wp.array[vec5], input_b: wp.array[vec5], output: wp.array[vec5]):
     i = wp.tid()
     a = wp.tile_load(input_a, shape=TILE_M, offset=i * TILE_M)
     b = wp.tile_load(input_b, shape=TILE_M, offset=i * TILE_M)
@@ -780,10 +768,10 @@ def test_tile_map_custom_vec_binary(test, device):
 
 @wp.kernel
 def tile_map_custom_vec_variadic_kernel(
-    input_a: wp.array(dtype=vec5),
-    input_b: wp.array(dtype=vec5),
-    input_c: wp.array(dtype=vec5),
-    output: wp.array(dtype=vec5),
+    input_a: wp.array[vec5],
+    input_b: wp.array[vec5],
+    input_c: wp.array[vec5],
+    output: wp.array[vec5],
 ):
     i = wp.tid()
     a = wp.tile_load(input_a, shape=TILE_M, offset=i * TILE_M)
@@ -815,7 +803,7 @@ def test_tile_map_custom_vec_variadic(test, device):
 
 
 @wp.kernel
-def tile_map_custom_mat_unary_kernel(input: wp.array(dtype=mat5), output: wp.array(dtype=mat5)):
+def tile_map_custom_mat_unary_kernel(input: wp.array[mat5], output: wp.array[mat5]):
     i = wp.tid()
     a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
     b = wp.tile_map(wp.neg, a)
@@ -839,7 +827,7 @@ def test_tile_map_custom_mat_unary(test, device):
 
 
 @wp.kernel
-def tile_map_preexpanded_vec_unary_kernel(input: wp.array(dtype=wp.vec3), output: wp.array(dtype=wp.vec3)):
+def tile_map_preexpanded_vec_unary_kernel(input: wp.array[wp.vec3], output: wp.array[wp.vec3]):
     i = wp.tid()
     a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
     b = wp.tile_map(wp.abs, a)
@@ -860,34 +848,34 @@ def test_tile_map_preexpanded_vec_unary(test, device):
 
 
 @wp.kernel
-def test_tile_tile_preserve_type_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+def test_tile_tile_preserve_type_kernel(x: wp.array[Any], y: wp.array[Any]):
     a = x[0]
     t = wp.tile(a, preserve_type=True)
     wp.tile_store(y, t)
 
 
-wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array(dtype=float), "y": wp.array(dtype=float)})
-wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array(dtype=wp.vec3), "y": wp.array(dtype=wp.vec3)})
-wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array(dtype=wp.quat), "y": wp.array(dtype=wp.quat)})
-wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array(dtype=wp.mat33), "y": wp.array(dtype=wp.mat33)})
+wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array[float], "y": wp.array[float]})
+wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array[wp.vec3], "y": wp.array[wp.vec3]})
+wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array[wp.quat], "y": wp.array[wp.quat]})
+wp.overload(test_tile_tile_preserve_type_kernel, {"x": wp.array[wp.mat33], "y": wp.array[wp.mat33]})
 
 
 @wp.kernel
-def test_tile_tile_scalar_expansion_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def test_tile_tile_scalar_expansion_kernel(x: wp.array[float], y: wp.array[float]):
     a = x[0]
     t = wp.tile(a)
     wp.tile_store(y, t)
 
 
 @wp.kernel
-def test_tile_tile_vec_expansion_kernel(x: wp.array(dtype=wp.vec3), y: wp.array2d(dtype=float)):
+def test_tile_tile_vec_expansion_kernel(x: wp.array[wp.vec3], y: wp.array2d[float]):
     a = x[0]
     t = wp.tile(a)
     wp.tile_store(y, t)
 
 
 @wp.kernel
-def test_tile_tile_mat_expansion_kernel(x: wp.array(dtype=wp.mat33), y: wp.array3d(dtype=float)):
+def test_tile_tile_mat_expansion_kernel(x: wp.array[wp.mat33], y: wp.array3d[float]):
     a = x[0]
     t = wp.tile(a)
     wp.tile_store(y, t)
@@ -990,7 +978,7 @@ def test_tile_tile(test, device):
 
 
 @wp.kernel
-def test_tile_untile_preserve_type_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+def test_tile_untile_preserve_type_kernel(x: wp.array[Any], y: wp.array[Any]):
     i = wp.tid()
     a = x[i]
     t = wp.tile(a, preserve_type=True)
@@ -998,14 +986,14 @@ def test_tile_untile_preserve_type_kernel(x: wp.array(dtype=Any), y: wp.array(dt
     y[i] = b
 
 
-wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array(dtype=float), "y": wp.array(dtype=float)})
-wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array(dtype=wp.vec3), "y": wp.array(dtype=wp.vec3)})
-wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array(dtype=wp.quat), "y": wp.array(dtype=wp.quat)})
-wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array(dtype=wp.mat33), "y": wp.array(dtype=wp.mat33)})
+wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array[float], "y": wp.array[float]})
+wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array[wp.vec3], "y": wp.array[wp.vec3]})
+wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array[wp.quat], "y": wp.array[wp.quat]})
+wp.overload(test_tile_untile_preserve_type_kernel, {"x": wp.array[wp.mat33], "y": wp.array[wp.mat33]})
 
 
 @wp.kernel
-def test_tile_untile_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+def test_tile_untile_kernel(x: wp.array[Any], y: wp.array[Any]):
     i = wp.tid()
     a = x[i]
     t = wp.tile(a)
@@ -1013,9 +1001,9 @@ def test_tile_untile_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
     y[i] = b
 
 
-wp.overload(test_tile_untile_kernel, {"x": wp.array(dtype=float), "y": wp.array(dtype=float)})
-wp.overload(test_tile_untile_kernel, {"x": wp.array(dtype=wp.vec3), "y": wp.array(dtype=wp.vec3)})
-wp.overload(test_tile_untile_kernel, {"x": wp.array(dtype=wp.mat33), "y": wp.array(dtype=wp.mat33)})
+wp.overload(test_tile_untile_kernel, {"x": wp.array[float], "y": wp.array[float]})
+wp.overload(test_tile_untile_kernel, {"x": wp.array[wp.vec3], "y": wp.array[wp.vec3]})
+wp.overload(test_tile_untile_kernel, {"x": wp.array[wp.mat33], "y": wp.array[wp.mat33]})
 
 
 def test_tile_untile(test, device):
@@ -1067,12 +1055,12 @@ def test_tile_untile(test, device):
 
 
 @wp.func
-def tile_sum_func(a: wp.tile(dtype=float, shape=(TILE_M, TILE_N))):
+def tile_sum_func(a: wp.tile[float, TILE_M, TILE_N]):
     return wp.tile_sum(a) * 0.5
 
 
 @wp.kernel
-def tile_sum_kernel(input: wp.array3d(dtype=float), output: wp.array(dtype=float)):
+def tile_sum_kernel(input: wp.array3d[float], output: wp.array[float]):
     # output tile index
     i = wp.tid()
 
@@ -1160,7 +1148,7 @@ def test_tile_sum_launch(test, device):
 
 
 @wp.kernel(module="unique")
-def test_tile_extract_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
+def test_tile_extract_kernel(a: wp.array2d[float], b: wp.array2d[float]):
     i, j, x, y = wp.tid()
 
     tile = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
@@ -1170,7 +1158,7 @@ def test_tile_extract_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=flo
 
 
 @wp.kernel
-def test_tile_extract_vec_kernel(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
+def test_tile_extract_vec_kernel(x: wp.array[wp.vec3], y: wp.array[float]):
     i = wp.tid()
 
     tile = wp.tile_load(x, shape=(TILE_M))
@@ -1181,7 +1169,7 @@ def test_tile_extract_vec_kernel(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=f
 
 
 @wp.kernel
-def test_tile_extract_mat_kernel(x: wp.array(dtype=wp.mat33), y: wp.array(dtype=float)):
+def test_tile_extract_mat_kernel(x: wp.array[wp.mat33], y: wp.array[float]):
     i = wp.tid()
 
     tile = wp.tile_load(x, shape=(TILE_M))
@@ -1254,7 +1242,7 @@ def test_tile_extract(test, device):
 
 
 @wp.kernel(module="unique")
-def test_tile_extract_repeated_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float)):
+def test_tile_extract_repeated_kernel(a: wp.array2d[float], b: wp.array2d[float]):
     i, j, _x, _y = wp.tid()
 
     tile = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
@@ -1301,7 +1289,7 @@ def test_tile_extract_repeated(test, device):
 
 
 @wp.kernel
-def test_tile_assign_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def test_tile_assign_kernel(x: wp.array[float], y: wp.array[float]):
     _i, j = wp.tid()
 
     a = wp.tile_zeros(shape=(TILE_M,), dtype=float)
@@ -1312,7 +1300,7 @@ def test_tile_assign_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
 
 
 @wp.kernel
-def test_tile_assign_vec_kernel(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+def test_tile_assign_vec_kernel(x: wp.array[float], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.tile_zeros(shape=(TILE_M,), dtype=wp.vec3)
@@ -1323,7 +1311,7 @@ def test_tile_assign_vec_kernel(x: wp.array(dtype=float), y: wp.array(dtype=wp.v
 
 
 @wp.kernel
-def test_tile_assign_mat_kernel(x: wp.array(dtype=float), y: wp.array(dtype=wp.mat33)):
+def test_tile_assign_mat_kernel(x: wp.array[float], y: wp.array[wp.mat33]):
     i = wp.tid()
 
     a = wp.tile_zeros(shape=(TILE_M,), dtype=wp.mat33)
@@ -1383,7 +1371,7 @@ def test_tile_assign(test, device):
 
 
 @wp.kernel
-def test_tile_where_kernel(select: int, x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+def test_tile_where_kernel(select: int, x: wp.array[float], y: wp.array[float], z: wp.array[float]):
     x_reg = wp.tile_load(x, shape=(TILE_M,), storage="register")
     y_reg = wp.tile_load(y, shape=(TILE_M,), storage="register")
 
@@ -1443,7 +1431,7 @@ def test_tile_where(test, device):
 
 
 @wp.kernel
-def test_tile_transpose_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+def test_tile_transpose_kernel(input: wp.array2d[float], output: wp.array2d[float]):
     x = wp.tile_load(input, shape=(TILE_M, TILE_N))
     y = wp.tile_transpose(x)
 
@@ -1461,9 +1449,7 @@ def test_tile_transpose(test, device):
 
 
 @wp.kernel
-def test_tile_broadcast_add_1d_kernel(
-    input_a: wp.array(dtype=float), input_b: wp.array(dtype=float), output: wp.array(dtype=float)
-):
+def test_tile_broadcast_add_1d_kernel(input_a: wp.array[float], input_b: wp.array[float], output: wp.array[float]):
     a = wp.tile_load(input_a, shape=(10,))
     b = wp.tile_load(input_b, shape=(1,))
 
@@ -1487,9 +1473,7 @@ def test_tile_broadcast_add_1d(test, device):
 
 
 @wp.kernel
-def test_tile_broadcast_add_2d_kernel(
-    input_a: wp.array2d(dtype=float), input_b: wp.array(dtype=float), output: wp.array2d(dtype=float)
-):
+def test_tile_broadcast_add_2d_kernel(input_a: wp.array2d[float], input_b: wp.array[float], output: wp.array2d[float]):
     # implicit 1-dim ([1], 10)
     a = wp.tile_load(input_a, shape=(10, 10))
     b = wp.tile_load(input_b, shape=10)
@@ -1515,7 +1499,7 @@ def test_tile_broadcast_add_2d(test, device):
 
 @wp.kernel
 def test_tile_broadcast_add_3d_kernel(
-    input_a: wp.array3d(dtype=float), input_b: wp.array3d(dtype=float), output: wp.array3d(dtype=float)
+    input_a: wp.array3d[float], input_b: wp.array3d[float], output: wp.array3d[float]
 ):
     a = wp.tile_load(input_a, shape=(4, 10, 12))
     b = wp.tile_load(input_b, shape=(4, 10, 1))
@@ -1542,7 +1526,7 @@ def test_tile_broadcast_add_3d(test, device):
 
 @wp.kernel
 def test_tile_broadcast_add_4d_kernel(
-    input_a: wp.array4d(dtype=float), input_b: wp.array4d(dtype=float), output: wp.array4d(dtype=float)
+    input_a: wp.array4d[float], input_b: wp.array4d[float], output: wp.array4d[float]
 ):
     a = wp.tile_load(input_a, shape=(4, 10, 5, 6))
     b = wp.tile_load(input_b, shape=(4, 1, 5, 1))
@@ -1569,7 +1553,7 @@ def test_tile_broadcast_add_4d(test, device):
 
 
 @wp.kernel
-def test_tile_broadcast_grad_kernel(a: wp.array(dtype=float), b: wp.array2d(dtype=float)):
+def test_tile_broadcast_grad_kernel(a: wp.array[float], b: wp.array2d[float]):
     x = wp.tile_load(a, shape=5)
     y = wp.tile_broadcast(x, shape=(5, 5))
 
@@ -1594,7 +1578,7 @@ def test_tile_broadcast_grad(test, device):
 
 
 @wp.kernel
-def test_tile_squeeze_kernel(x: wp.array3d(dtype=float), y: wp.array(dtype=float)):
+def test_tile_squeeze_kernel(x: wp.array3d[float], y: wp.array[float]):
     a = wp.tile_load(x, shape=(1, TILE_M, 1), offset=(0, 0, 0))
     b = wp.tile_squeeze(a, axis=(2,))
     c = wp.tile_squeeze(b)
@@ -1618,7 +1602,7 @@ def test_tile_squeeze(test, device):
 
 
 @wp.kernel
-def test_tile_reshape_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def test_tile_reshape_kernel(x: wp.array2d[float], y: wp.array2d[float]):
     a = wp.tile_load(x, shape=(TILE_M, TILE_N), offset=(0, 0))
     b = wp.tile_reshape(a, shape=(wp.static(TILE_M * TILE_N), 1))
     c = wp.tile_reshape(b, shape=(-1, 1))
@@ -1642,7 +1626,7 @@ def test_tile_reshape(test, device):
 
 
 @wp.kernel
-def test_tile_astype_kernel(x: wp.array2d(dtype=Any), y: wp.array2d(dtype=wp.float32)):
+def test_tile_astype_kernel(x: wp.array2d[Any], y: wp.array2d[wp.float32]):
     a = wp.tile_load(x, shape=(TILE_M, TILE_N))
     b = wp.tile_astype(a, dtype=wp.float32)
     wp.tile_store(y, b)
@@ -1679,7 +1663,7 @@ def test_tile_func_return_func(tile: Any):
 
 
 @wp.kernel
-def test_tile_func_return_kernel(x: wp.array2d(dtype=wp.float32), y: wp.array2d(dtype=wp.float32)):
+def test_tile_func_return_kernel(x: wp.array2d[wp.float32], y: wp.array2d[wp.float32]):
     a = wp.tile_load(x, shape=(TILE_M, 1))
     b = wp.tile_broadcast(a, shape=(TILE_M, TILE_K))
     c = test_tile_func_return_func(b)
@@ -1705,8 +1689,8 @@ def test_tile_func_return(test, device):
 
 @wp.kernel
 def tile_len_kernel(
-    a: wp.array(dtype=float, ndim=2),
-    out: wp.array(dtype=int),
+    a: wp.array[float, Literal[2]],
+    out: wp.array[int],
 ):
     x = wp.tile_load(a, shape=(TILE_M, TILE_N))
 
@@ -1733,20 +1717,20 @@ class TestStruct:
 class TestStructWithArray:
     """Struct with array field for testing tile_zeros with complex types."""
 
-    x: wp.array(dtype=wp.float64)
+    x: wp.array[wp.float64]
 
 
 @wp.kernel
 def test_tile_construction_kernel(
-    out_zeros: wp.array(dtype=float),
-    out_ones: wp.array(dtype=float),
-    out_arange: wp.array(dtype=float),
-    out_full_twos: wp.array(dtype=float),
-    out_full_vecs: wp.array(dtype=wp.vec3),
-    out_full_mats: wp.array(dtype=wp.mat33),
-    out_full_structs_register: wp.array(dtype=TestStruct),
-    out_full_structs_shared: wp.array(dtype=TestStruct),
-    out_zeros_struct_with_array: wp.array(dtype=TestStructWithArray),
+    out_zeros: wp.array[float],
+    out_ones: wp.array[float],
+    out_arange: wp.array[float],
+    out_full_twos: wp.array[float],
+    out_full_vecs: wp.array[wp.vec3],
+    out_full_mats: wp.array[wp.mat33],
+    out_full_structs_register: wp.array[TestStruct],
+    out_full_structs_shared: wp.array[TestStruct],
+    out_zeros_struct_with_array: wp.array[TestStructWithArray],
 ):
     zeros = wp.tile_zeros(TILE_M, dtype=float)
     ones = wp.tile_ones(TILE_M, dtype=float)
@@ -1824,7 +1808,7 @@ def test_tile_construction(test, device):
 
 
 @wp.kernel
-def test_rand_kernel(seed: int, x: wp.array2d(dtype=int), y: wp.array2d(dtype=float)):
+def test_rand_kernel(seed: int, x: wp.array2d[int], y: wp.array2d[float]):
     i, j = wp.tid()
     rng = wp.rand_init(seed, i * 2 + j)
     ti = wp.tile_randi(shape=(2, 2), rng=rng)
@@ -1834,7 +1818,7 @@ def test_rand_kernel(seed: int, x: wp.array2d(dtype=int), y: wp.array2d(dtype=fl
 
 
 @wp.kernel
-def test_rand_range_kernel(seed: int, x: wp.array2d(dtype=int), y: wp.array2d(dtype=float)):
+def test_rand_range_kernel(seed: int, x: wp.array2d[int], y: wp.array2d[float]):
     i, j = wp.tid()
     rng = wp.rand_init(seed, i * 2 + j)
     ti = wp.tile_randi(shape=(2, 2), rng=rng, min=-5, max=5)
@@ -1945,10 +1929,10 @@ def test_tile_print(test, device):
 
 @wp.kernel
 def test_tile_add_inplace_kernel(
-    input_a: wp.array2d(dtype=float),
-    input_b: wp.array2d(dtype=float),
-    output_reg: wp.array2d(dtype=float),
-    output_shared: wp.array2d(dtype=float),
+    input_a: wp.array2d[float],
+    input_b: wp.array2d[float],
+    output_reg: wp.array2d[float],
+    output_shared: wp.array2d[float],
 ):
     i, j = wp.tid()
 
@@ -1968,10 +1952,10 @@ def test_tile_add_inplace_kernel(
 
 @wp.kernel
 def test_tile_sub_inplace_kernel(
-    input_a: wp.array2d(dtype=float),
-    input_b: wp.array2d(dtype=float),
-    output_reg: wp.array2d(dtype=float),
-    output_shared: wp.array2d(dtype=float),
+    input_a: wp.array2d[float],
+    input_b: wp.array2d[float],
+    output_reg: wp.array2d[float],
+    output_shared: wp.array2d[float],
 ):
     i, j = wp.tid()
 
@@ -2049,7 +2033,7 @@ def test_tile_inplace(test, device):
 
 
 @wp.kernel
-def tile_from_thread_shared_last_kernel(output: wp.array(dtype=int)):
+def tile_from_thread_shared_last_kernel(output: wp.array[int]):
     idx = wp.tid()
 
     # Each thread has a different value
@@ -2066,7 +2050,7 @@ def tile_from_thread_shared_last_kernel(output: wp.array(dtype=int)):
 
 
 @wp.kernel
-def tile_from_thread_register_middle_kernel(output: wp.array(dtype=float)):
+def tile_from_thread_register_middle_kernel(output: wp.array[float]):
     idx = wp.tid()
 
     # Each thread computes a value (offset by 1.0 so thread 0 is non-zero)
@@ -2084,7 +2068,7 @@ TILE_FROM_THREAD_SIZE = wp.constant(8)
 
 
 @wp.kernel
-def tile_from_thread_shared_scalar_shape_kernel(output: wp.array(dtype=float)):
+def tile_from_thread_shared_scalar_shape_kernel(output: wp.array[float]):
     i, j = wp.tid()
 
     # Each thread computes a value
@@ -2147,7 +2131,7 @@ def test_tile_from_thread(test, device):
 
 
 @wp.kernel
-def tile_mul_elementwise_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+def tile_mul_elementwise_kernel(a: wp.array2d[float], b: wp.array2d[float], out: wp.array2d[float]):
     i, j = wp.tid()
     ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
     tb = wp.tile_load(b, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
@@ -2194,7 +2178,7 @@ def test_tile_mul_elementwise(test, device):
 
 
 @wp.kernel
-def tile_mat_mul_scalar_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+def tile_mat_mul_scalar_kernel(a: wp.array[wp.mat22], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     wp.tile_store(out, ta * 2.0)
 
@@ -2231,7 +2215,7 @@ def test_tile_mat_mul_scalar(test, device):
 
 
 @wp.kernel
-def tile_scalar_mul_mat_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+def tile_scalar_mul_mat_kernel(a: wp.array[float], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     # tile<float> * mat22 -> tile<mat22>
     wp.tile_store(out, ta * wp.mat22(1.0, 2.0, 4.0, 8.0))
@@ -2270,7 +2254,7 @@ def test_tile_scalar_mul_mat(test, device):
 
 
 @wp.kernel
-def mat_mul_tile_scalar_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+def mat_mul_tile_scalar_kernel(a: wp.array[float], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     # mat22 * tile<float> -> tile<mat22>
     wp.tile_store(out, wp.mat22(1.0, 2.0, 4.0, 8.0) * ta)
@@ -2309,7 +2293,7 @@ def test_mat_mul_tile_scalar(test, device):
 
 
 @wp.kernel
-def scalar_mul_tile_mat_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+def scalar_mul_tile_mat_kernel(a: wp.array[wp.mat22], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     # scalar * tile<mat22> -> tile<mat22>
     wp.tile_store(out, 2.0 * ta)
@@ -2347,7 +2331,7 @@ def test_scalar_mul_tile_mat(test, device):
 
 
 @wp.kernel
-def tile_div_scalar_kernel(a: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+def tile_div_scalar_kernel(a: wp.array2d[float], out: wp.array2d[float]):
     i, j = wp.tid()
     ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
     wp.tile_store(out, ta / 2.0, offset=(i * TILE_M, j * TILE_N))
@@ -2390,7 +2374,7 @@ def test_tile_div_scalar(test, device):
 
 
 @wp.kernel
-def scalar_div_tile_kernel(a: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+def scalar_div_tile_kernel(a: wp.array2d[float], out: wp.array2d[float]):
     i, j = wp.tid()
     ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
     wp.tile_store(out, 1.0 / ta, offset=(i * TILE_M, j * TILE_N))
@@ -2434,7 +2418,7 @@ def test_scalar_div_tile(test, device):
 
 
 @wp.kernel
-def tile_div_elementwise_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+def tile_div_elementwise_kernel(a: wp.array2d[float], b: wp.array2d[float], out: wp.array2d[float]):
     i, j = wp.tid()
     ta = wp.tile_load(a, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
     tb = wp.tile_load(b, shape=(TILE_M, TILE_N), offset=(i * TILE_M, j * TILE_N))
@@ -2481,7 +2465,7 @@ def test_tile_div_elementwise(test, device):
 
 
 @wp.kernel
-def tile_vec_div_scalar_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+def tile_vec_div_scalar_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
     ta = wp.tile_load(a, shape=TILE_M)
     wp.tile_store(out, ta / 2.0)
 
@@ -2518,7 +2502,7 @@ def test_tile_vec_div_scalar(test, device):
 
 
 @wp.kernel
-def tile_scalar_div_vec_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)):
+def tile_scalar_div_vec_kernel(a: wp.array[float], out: wp.array[wp.vec3]):
     ta = wp.tile_load(a, shape=TILE_M)
     # tile<float> / vec3 -> tile<vec3>
     wp.tile_store(out, ta / wp.vec3(1.0, 2.0, 4.0))
@@ -2557,7 +2541,7 @@ def test_tile_scalar_div_vec(test, device):
 
 
 @wp.kernel
-def vec_div_tile_scalar_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)):
+def vec_div_tile_scalar_kernel(a: wp.array[float], out: wp.array[wp.vec3]):
     ta = wp.tile_load(a, shape=TILE_M)
     # vec3 / tile<float> -> tile<vec3>
     wp.tile_store(out, wp.vec3(8.0, 16.0, 32.0) / ta)
@@ -2596,7 +2580,7 @@ def test_vec_div_tile_scalar(test, device):
 
 
 @wp.kernel
-def scalar_div_tile_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+def scalar_div_tile_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
     ta = wp.tile_load(a, shape=TILE_M)
     # scalar / tile<vec3> -> tile<vec3>
     wp.tile_store(out, 1.0 / ta)
@@ -2636,7 +2620,7 @@ def test_scalar_div_tile_vec(test, device):
 
 
 @wp.kernel
-def tile_mat_div_scalar_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+def tile_mat_div_scalar_kernel(a: wp.array[wp.mat22], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     wp.tile_store(out, ta / 2.0)
 
@@ -2673,7 +2657,7 @@ def test_tile_mat_div_scalar(test, device):
 
 
 @wp.kernel
-def tile_scalar_div_mat_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+def tile_scalar_div_mat_kernel(a: wp.array[float], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     # tile<float> / mat22 -> tile<mat22>
     wp.tile_store(out, ta / wp.mat22(1.0, 2.0, 4.0, 8.0))
@@ -2712,7 +2696,7 @@ def test_tile_scalar_div_mat(test, device):
 
 
 @wp.kernel
-def mat_div_tile_scalar_kernel(a: wp.array(dtype=float), out: wp.array(dtype=wp.mat22)):
+def mat_div_tile_scalar_kernel(a: wp.array[float], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     # mat22 / tile<float> -> tile<mat22>
     wp.tile_store(out, wp.mat22(8.0, 16.0, 32.0, 64.0) / ta)
@@ -2751,7 +2735,7 @@ def test_mat_div_tile_scalar(test, device):
 
 
 @wp.kernel
-def scalar_div_tile_mat_kernel(a: wp.array(dtype=wp.mat22), out: wp.array(dtype=wp.mat22)):
+def scalar_div_tile_mat_kernel(a: wp.array[wp.mat22], out: wp.array[wp.mat22]):
     ta = wp.tile_load(a, shape=TILE_M)
     # scalar / tile<mat22> -> tile<mat22>
     wp.tile_store(out, 1.0 / ta)
@@ -2794,7 +2778,7 @@ def test_tile_div_tile_vec_by_vec_error(test, device):
     """Test that dividing tile<vec3> by vec3 raises TypeError (both operands non-scalar)."""
 
     @wp.kernel
-    def invalid_tile_vec_div_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    def invalid_tile_vec_div_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # tile<vec3> / vec3 is invalid - can't divide vec by vec
         wp.tile_store(out, ta / wp.vec3(1.0, 2.0, 3.0))
@@ -2817,7 +2801,7 @@ def test_tile_div_vec_by_tile_vec_error(test, device):
     """Test that dividing vec3 by tile<vec3> raises TypeError (both operands non-scalar)."""
 
     @wp.kernel
-    def invalid_vec_div_tile_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    def invalid_vec_div_tile_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # vec3 / tile<vec3> is invalid - can't divide vec by vec
         wp.tile_store(out, wp.vec3(1.0, 2.0, 3.0) / ta)
@@ -2845,7 +2829,7 @@ def test_tile_mul_tile_vec_by_vec_error(test, device):
     """Test that multiplying tile<vec3> by vec3 raises TypeError (both operands non-scalar)."""
 
     @wp.kernel
-    def invalid_tile_vec_mul_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    def invalid_tile_vec_mul_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # tile<vec3> * vec3 is invalid - can't multiply vec by vec
         wp.tile_store(out, ta * wp.vec3(1.0, 2.0, 3.0))
@@ -2870,7 +2854,7 @@ def test_tile_mul_vec_by_tile_vec_error(test, device):
     """Test that multiplying vec3 by tile<vec3> raises TypeError (both operands non-scalar)."""
 
     @wp.kernel
-    def invalid_vec_mul_tile_vec_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    def invalid_vec_mul_tile_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # vec3 * tile<vec3> is invalid - can't multiply vec by vec
         wp.tile_store(out, wp.vec3(1.0, 2.0, 3.0) * ta)
@@ -2900,7 +2884,7 @@ def test_tile_mul_tile_vec_by_tile_vec_error(test, device):
     """Test that tile<vec3> * tile<vec3> raises TypeError (non-scalar element types)."""
 
     @wp.kernel
-    def invalid_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    def invalid_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         wp.tile_store(out, ta * ta)
 
@@ -2922,7 +2906,7 @@ def test_tile_div_tile_vec_by_tile_vec_error(test, device):
     """Test that tile<vec3> / tile<vec3> raises TypeError (non-scalar element types)."""
 
     @wp.kernel
-    def invalid_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)):
+    def invalid_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         wp.tile_store(out, ta / ta)
 
@@ -2946,9 +2930,7 @@ def test_tile_div_tile_vec_by_tile_vec_error(test, device):
 
 
 @wp.kernel
-def tile_scalar_mul_tile_vec_kernel(
-    scalars: wp.array(dtype=float), vecs: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)
-):
+def tile_scalar_mul_tile_vec_kernel(scalars: wp.array[float], vecs: wp.array[wp.vec3], out: wp.array[wp.vec3]):
     ts = wp.tile_load(scalars, shape=TILE_M)
     tv = wp.tile_load(vecs, shape=TILE_M)
     wp.tile_store(out, ts * tv)
@@ -2987,9 +2969,7 @@ def test_tile_scalar_mul_tile_vec(test, device):
 
 
 @wp.kernel
-def tile_vec_mul_tile_scalar_kernel(
-    vecs: wp.array(dtype=wp.vec3), scalars: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)
-):
+def tile_vec_mul_tile_scalar_kernel(vecs: wp.array[wp.vec3], scalars: wp.array[float], out: wp.array[wp.vec3]):
     tv = wp.tile_load(vecs, shape=TILE_M)
     ts = wp.tile_load(scalars, shape=TILE_M)
     wp.tile_store(out, tv * ts)
@@ -3033,9 +3013,7 @@ def test_tile_vec_mul_tile_scalar(test, device):
 
 
 @wp.kernel
-def tile_vec_div_tile_scalar_kernel(
-    vecs: wp.array(dtype=wp.vec3), scalars: wp.array(dtype=float), out: wp.array(dtype=wp.vec3)
-):
+def tile_vec_div_tile_scalar_kernel(vecs: wp.array[wp.vec3], scalars: wp.array[float], out: wp.array[wp.vec3]):
     tv = wp.tile_load(vecs, shape=TILE_M)
     ts = wp.tile_load(scalars, shape=TILE_M)
     wp.tile_store(out, tv / ts)
@@ -3075,9 +3053,7 @@ def test_tile_vec_div_tile_scalar(test, device):
 
 
 @wp.kernel
-def tile_scalar_div_tile_vec_kernel(
-    scalars: wp.array(dtype=float), vecs: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.vec3)
-):
+def tile_scalar_div_tile_vec_kernel(scalars: wp.array[float], vecs: wp.array[wp.vec3], out: wp.array[wp.vec3]):
     ts = wp.tile_load(scalars, shape=TILE_M)
     tv = wp.tile_load(vecs, shape=TILE_M)
     wp.tile_store(out, ts / tv)

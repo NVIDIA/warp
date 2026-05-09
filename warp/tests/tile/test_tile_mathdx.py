@@ -19,9 +19,7 @@ TILE_DIM = 32
 
 
 @wp.kernel()
-def tile_math_matmul_kernel(
-    ga: wp.array2d(dtype=wp.float16), gb: wp.array2d(dtype=wp.float32), gc: wp.array2d(dtype=wp.float64)
-):
+def tile_math_matmul_kernel(ga: wp.array2d[wp.float16], gb: wp.array2d[wp.float32], gc: wp.array2d[wp.float64]):
     i, j = wp.tid()
     a = wp.tile_load(ga, shape=(TILE_M, TILE_K), offset=(i * TILE_M, j * TILE_K))
     b = wp.tile_load(gb, shape=(TILE_K, TILE_N), offset=(i * TILE_K, j * TILE_N))

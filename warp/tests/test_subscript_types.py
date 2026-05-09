@@ -157,8 +157,8 @@ def generic_scale_subscript(x: wp.array[Any], s: Any):
     x[i] = s * x[i]
 
 
-wp.overload(generic_scale_subscript, [wp.array(dtype=wp.float32), wp.float32])
-wp.overload(generic_scale_subscript, [wp.array(dtype=wp.float64), wp.float64])
+wp.overload(generic_scale_subscript, [wp.array[wp.float32], wp.float32])
+wp.overload(generic_scale_subscript, [wp.array[wp.float64], wp.float64])
 
 
 def test_subscript_generic_kernel(test, device):
@@ -193,6 +193,21 @@ def test_subscript_indexedarray_kernel(test, device):
 
     wp.launch(indexed_add, dim=n, inputs=[iarr, out], device=device)
     np.testing.assert_allclose(out.numpy(), [1.0, 3.0, 5.0, 7.0, 9.0])
+
+
+def test_subscript_local_dtype_unique_kernel(test, device):
+    """Test subscript annotations with local dtype bindings in unique-module kernels."""
+    dtype = wp.float16
+
+    @wp.kernel(module="unique")
+    def local_dtype_kernel(input: wp.array2d[dtype], output: wp.array[dtype]):
+        output[0] = input[0, 0] + dtype(1.0)
+
+    input_data = wp.full((1, 1), 2.0, dtype=dtype, device=device)
+    output = wp.zeros(1, dtype=dtype, device=device)
+
+    wp.launch(local_dtype_kernel, dim=1, inputs=[input_data, output], device=device)
+    np.testing.assert_allclose(output.numpy(), [3.0], rtol=1.0e-3)
 
 
 def test_subscript_non_array_input(test, device):
@@ -689,6 +704,12 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestSubscriptTypes, "test_subscript_generic_kernel", test_subscript_generic_kernel, devices=devices)
+add_function_test(
+    TestSubscriptTypes,
+    "test_subscript_local_dtype_unique_kernel",
+    test_subscript_local_dtype_unique_kernel,
+    devices=devices,
+)
 add_function_test(TestSubscriptTypes, "test_subscript_non_array_input", test_subscript_non_array_input, devices=devices)
 add_function_test(TestSubscriptTypes, "test_subscript_dtype_mismatch", test_subscript_dtype_mismatch, devices=devices)
 add_function_test(TestSubscriptTypes, "test_subscript_ndim_mismatch", test_subscript_ndim_mismatch, devices=devices)

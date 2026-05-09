@@ -20,56 +20,56 @@ FFT_3D_DIM1 = 4
 
 
 @wp.kernel()
-def tile_fft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
+def tile_fft_kernel_vec2f(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_fft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dtype=wp.vec2d)):
+def tile_fft_kernel_vec2d(gx: wp.array2d[wp.vec2d], gy: wp.array2d[wp.vec2d]):
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP64, FFT_SIZE_FP64))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_ifft_kernel_vec2f(gx: wp.array2d(dtype=wp.vec2f), gy: wp.array2d(dtype=wp.vec2f)):
+def tile_ifft_kernel_vec2f(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
     wp.tile_ifft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_ifft_kernel_vec2d(gx: wp.array2d(dtype=wp.vec2d), gy: wp.array2d(dtype=wp.vec2d)):
+def tile_ifft_kernel_vec2d(gx: wp.array2d[wp.vec2d], gy: wp.array2d[wp.vec2d]):
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP64, FFT_SIZE_FP64))
     wp.tile_ifft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_fft_3d_kernel_vec2f(gx: wp.array3d(dtype=wp.vec2f), gy: wp.array3d(dtype=wp.vec2f)):
+def tile_fft_3d_kernel_vec2f(gx: wp.array3d[wp.vec2f], gy: wp.array3d[wp.vec2f]):
     xy = wp.tile_load(gx, shape=(FFT_3D_DIM0, FFT_3D_DIM1, FFT_SIZE_FP32))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_fft_3d_kernel_vec2d(gx: wp.array3d(dtype=wp.vec2d), gy: wp.array3d(dtype=wp.vec2d)):
+def tile_fft_3d_kernel_vec2d(gx: wp.array3d[wp.vec2d], gy: wp.array3d[wp.vec2d]):
     xy = wp.tile_load(gx, shape=(FFT_3D_DIM0, FFT_3D_DIM1, FFT_SIZE_FP64))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_ifft_3d_kernel_vec2f(gx: wp.array3d(dtype=wp.vec2f), gy: wp.array3d(dtype=wp.vec2f)):
+def tile_ifft_3d_kernel_vec2f(gx: wp.array3d[wp.vec2f], gy: wp.array3d[wp.vec2f]):
     xy = wp.tile_load(gx, shape=(FFT_3D_DIM0, FFT_3D_DIM1, FFT_SIZE_FP32))
     wp.tile_ifft(xy)
     wp.tile_store(gy, xy)
 
 
 @wp.kernel()
-def tile_ifft_3d_kernel_vec2d(gx: wp.array3d(dtype=wp.vec2d), gy: wp.array3d(dtype=wp.vec2d)):
+def tile_ifft_3d_kernel_vec2d(gx: wp.array3d[wp.vec2d], gy: wp.array3d[wp.vec2d]):
     xy = wp.tile_load(gx, shape=(FFT_3D_DIM0, FFT_3D_DIM1, FFT_SIZE_FP64))
     wp.tile_ifft(xy)
     wp.tile_store(gy, xy)

@@ -31,7 +31,7 @@ TILE_DIM = 64
 
 
 @wp.kernel
-def tile_grouped_gemm(A: wp.array3d(dtype=float), B: wp.array3d(dtype=float), C: wp.array3d(dtype=float)):
+def tile_grouped_gemm(A: wp.array3d[float], B: wp.array3d[float], C: wp.array3d[float]):
     # output tile index
     i = wp.tid()
 
@@ -71,7 +71,7 @@ def test_tile_grouped_gemm(test, device):
 
 
 @wp.kernel
-def tile_gemm(A: wp.array2d(dtype=Any), B: wp.array2d(dtype=Any), C: wp.array2d(dtype=Any)):
+def tile_gemm(A: wp.array2d[Any], B: wp.array2d[Any], C: wp.array2d[Any]):
     # output tile index
     i, j = wp.tid()
 
@@ -93,15 +93,9 @@ def tile_gemm(A: wp.array2d(dtype=Any), B: wp.array2d(dtype=Any), C: wp.array2d(
     wp.tile_store(C, sum, offset=(i * TILE_M, j * TILE_N))
 
 
-wp.overload(
-    tile_gemm, {"A": wp.array2d(dtype=wp.float16), "B": wp.array2d(dtype=wp.float16), "C": wp.array2d(dtype=wp.float16)}
-)
-wp.overload(
-    tile_gemm, {"A": wp.array2d(dtype=wp.float32), "B": wp.array2d(dtype=wp.float32), "C": wp.array2d(dtype=wp.float32)}
-)
-wp.overload(
-    tile_gemm, {"A": wp.array2d(dtype=wp.float64), "B": wp.array2d(dtype=wp.float64), "C": wp.array2d(dtype=wp.float64)}
-)
+wp.overload(tile_gemm, {"A": wp.array2d[wp.float16], "B": wp.array2d[wp.float16], "C": wp.array2d[wp.float16]})
+wp.overload(tile_gemm, {"A": wp.array2d[wp.float32], "B": wp.array2d[wp.float32], "C": wp.array2d[wp.float32]})
+wp.overload(tile_gemm, {"A": wp.array2d[wp.float64], "B": wp.array2d[wp.float64], "C": wp.array2d[wp.float64]})
 
 
 def test_tile_gemm(dtype):
@@ -141,7 +135,7 @@ def test_tile_gemm(dtype):
 
 
 @wp.kernel
-def test_tile_transpose_matmul_kernel(input: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+def test_tile_transpose_matmul_kernel(input: wp.array2d[float], output: wp.array2d[float]):
     x = wp.tile_load(input, shape=(TILE_M, TILE_N))
     y = wp.tile_transpose(x)
 
@@ -164,9 +158,7 @@ def test_tile_transpose_matmul(test, device):
 
 
 @wp.kernel
-def test_tile_matmul_return_form_kernel(
-    A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)
-):
+def test_tile_matmul_return_form_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
     """Test the c = wp.tile_matmul(a, b) form which returns a fresh tile."""
     a = wp.tile_load(A, shape=(TILE_M, TILE_K))
     b = wp.tile_load(B, shape=(TILE_K, TILE_N))
@@ -228,7 +220,7 @@ ODD_K = wp.constant(3)
 
 
 @wp.kernel
-def tile_odd_gemm_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+def tile_odd_gemm_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
     """Kernel with non-power-of-2, non-multiple-of-4 tile dimensions."""
     a = wp.tile_load(A, shape=(ODD_M, ODD_K))
     b = wp.tile_load(B, shape=(ODD_K, ODD_N))
@@ -285,7 +277,7 @@ LARGE_ODD_N = wp.constant(33)
 
 
 @wp.kernel
-def tile_large_gemm_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+def tile_large_gemm_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
     """Large aligned tile to exercise BM=8, BN=4 register blocking."""
     a = wp.tile_load(A, shape=(LARGE_M, LARGE_K))
     b = wp.tile_load(B, shape=(LARGE_K, LARGE_N))
@@ -297,7 +289,7 @@ def tile_large_gemm_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float
 
 
 @wp.kernel
-def tile_large_odd_gemm_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+def tile_large_odd_gemm_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
     """Large unaligned tile to exercise register blocking with boundary checks."""
     a = wp.tile_load(A, shape=(LARGE_ODD_M, LARGE_K))
     b = wp.tile_load(B, shape=(LARGE_K, LARGE_ODD_N))
@@ -309,7 +301,7 @@ def tile_large_odd_gemm_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=f
 
 
 @wp.kernel
-def tile_large_gemm_return_kernel(A: wp.array2d(dtype=float), B: wp.array2d(dtype=float), C: wp.array2d(dtype=float)):
+def tile_large_gemm_return_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
     """Large tile using the return form c = wp.tile_matmul(a, b)."""
     a = wp.tile_load(A, shape=(LARGE_M, LARGE_K))
     b = wp.tile_load(B, shape=(LARGE_K, LARGE_N))
@@ -405,9 +397,7 @@ LARGE_K_F64 = wp.constant(8)
 
 
 @wp.kernel
-def tile_large_gemm_f64_kernel(
-    A: wp.array2d(dtype=wp.float64), B: wp.array2d(dtype=wp.float64), C: wp.array2d(dtype=wp.float64)
-):
+def tile_large_gemm_f64_kernel(A: wp.array2d[wp.float64], B: wp.array2d[wp.float64], C: wp.array2d[wp.float64]):
     """Large tile in float64 to exercise fma() specialization."""
     a = wp.tile_load(A, shape=(LARGE_M_F64, LARGE_K_F64))
     b = wp.tile_load(B, shape=(LARGE_K_F64, LARGE_N_F64))

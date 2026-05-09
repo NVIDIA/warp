@@ -62,24 +62,24 @@ def test_multi_layer_nn(test, device):
         return dtype(1.0 / (1.0 + wp.exp(-float(x))))
 
     @wp.kernel
-    def zero(loss: wp.array(dtype=float)):
+    def zero(loss: wp.array[float]):
         loss[0] = 0.0
 
     @wp.kernel(module="unique")
     def compute(
-        batches: wp.array(dtype=int),
-        input: wp.array2d(dtype=dtype),
-        weights_0: wp.array2d(dtype=dtype),
-        bias_0: wp.array2d(dtype=dtype),
-        weights_1: wp.array2d(dtype=dtype),
-        bias_1: wp.array2d(dtype=dtype),
-        weights_2: wp.array2d(dtype=dtype),
-        bias_2: wp.array2d(dtype=dtype),
-        weights_3: wp.array2d(dtype=dtype),
-        bias_3: wp.array2d(dtype=dtype),
-        reference: wp.array2d(dtype=float),
-        loss: wp.array1d(dtype=float),
-        out: wp.array2d(dtype=float),
+        batches: wp.array[int],
+        input: wp.array2d[dtype],
+        weights_0: wp.array2d[dtype],
+        bias_0: wp.array2d[dtype],
+        weights_1: wp.array2d[dtype],
+        bias_1: wp.array2d[dtype],
+        weights_2: wp.array2d[dtype],
+        bias_2: wp.array2d[dtype],
+        weights_3: wp.array2d[dtype],
+        bias_3: wp.array2d[dtype],
+        reference: wp.array2d[float],
+        loss: wp.array1d[float],
+        out: wp.array2d[float],
     ):
         linear = batches[wp.tid()]
         row = linear / IMG_WIDTH
@@ -290,10 +290,10 @@ def test_single_layer_nn(test, device):
 
     @wp.kernel(module="unique")
     def compute(
-        input: wp.array2d(dtype=float),
-        weights: wp.array2d(dtype=float),
-        bias: wp.array2d(dtype=float),
-        out: wp.array2d(dtype=float),
+        input: wp.array2d[float],
+        weights: wp.array2d[float],
+        bias: wp.array2d[float],
+        out: wp.array2d[float],
     ):
         i = wp.tid()
 
