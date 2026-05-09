@@ -5193,12 +5193,14 @@ class tile(Tile):
         layout: str = "rowmajor",
         strides: tuple[int, ...] | None = None,
         owner: builtins.bool = True,
+        block_dim_dependent: builtins.bool = False,
     ):
         self.dtype = type_to_warp(dtype)
         self.shape = shape
         self.storage = storage
         self.layout = layout
         self.strides = strides
+        self.block_dim_dependent = block_dim_dependent
 
         # handle case where shape is concrete (rather than just Any)
         if isinstance(self.shape, (list, tuple)):
@@ -5227,10 +5229,18 @@ class tile(Tile):
     def ctype(self):
         from warp._src.codegen import Var  # noqa: PLC0415
 
+        def _emit_shape(shape):
+            dims = [str(d) for d in shape]
+            if self.block_dim_dependent and dims:
+                dims[-1] = "WP_TILE_BLOCK_DIM"
+            return ",".join(dims)
+
+        shape = _emit_shape(self.shape)
+
         if self.storage == "register":
-            return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_register_t<wp::tile_shape_t<{','.join(map(str, self.shape))}>>>"
+            return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_register_t<wp::tile_shape_t<{shape}>>>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_strided_t<wp::tile_shape_t<{','.join(map(str, self.shape))}>, wp::tile_stride_t<{','.join(map(str, self.strides))}>>, {'true' if self.owner else 'false'}>"
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_strided_t<wp::tile_shape_t<{shape}>, wp::tile_stride_t<{','.join(map(str, self.strides))}>>, {'true' if self.owner else 'false'}>"
         else:
             raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
 
