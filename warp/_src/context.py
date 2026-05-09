@@ -5494,6 +5494,15 @@ class Runtime:
 
             # Deterministic mode: sort scatter records and apply
             # component-wise segmented reduction for scalar/composite values.
+            self.core.wp_deterministic_sort_reduce_workspace_size.argtypes = [
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_sort_reduce_workspace_size.restype = ctypes.c_size_t
+
             self.core.wp_deterministic_sort_reduce_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5504,6 +5513,8 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
             ]
             self.core.wp_deterministic_sort_reduce_device.restype = None
 
@@ -8719,6 +8730,54 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
         hooks.backward(ctypes.byref(params[0]), ctypes.byref(args), ctypes.byref(adj_args))
 
 
+def _build_cuda_kernel_params(params: Sequence[Any]):
+    kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+    return (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+
+def _retain_cuda_module_for_capture(module_exec, stream):
+    if len(runtime.captures) == 0 or not runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+        return
+
+    capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+    graph = runtime.captures.get(capture_id)
+    if graph is not None:
+        graph._retain_module_exec(module_exec)
+
+
+def _cuda_launch_kernel(
+    device,
+    module_exec,
+    hook,
+    dim,
+    max_blocks,
+    block_dim,
+    shared_memory_bytes,
+    params_addr,
+    stream,
+    apic_info_ptr=None,
+):
+    _retain_cuda_module_for_capture(module_exec, stream)
+
+    launch_args = [
+        device.context,
+        hook,
+        dim,
+        max_blocks,
+        block_dim,
+        shared_memory_bytes,
+        params_addr,
+        stream.cuda_stream,
+    ]
+    launch_argtypes = getattr(runtime.core.wp_cuda_launch_kernel, "argtypes", None)
+    if launch_argtypes is None and hasattr(runtime.core, "ctypes"):
+        launch_argtypes = getattr(runtime.core.ctypes.wp_cuda_launch_kernel, "argtypes", None)
+    if launch_argtypes is not None and len(launch_argtypes) > len(launch_args):
+        launch_args.append(apic_info_ptr)
+
+    runtime.core.wp_cuda_launch_kernel(*launch_args)
+
+
 class Launch:
     """Represent all data required for a kernel launch so that launches can be replayed quickly.
 
@@ -8776,11 +8835,7 @@ class Launch:
                         # For primitive types in adjoint mode, initialize with 0
                         params.append(pack_arg(kernel, a.type, a.label, 0, device, True))
 
-            # Create array of parameter addresses
-            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
-            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
-
-            params_addr = kernel_params
+            params_addr = _build_cuda_kernel_params(params)
 
         self.kernel = kernel
         self.hooks = hooks
@@ -8916,36 +8971,30 @@ class Launch:
             if stream is None:
                 stream = self.device.stream
 
-            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
-            # before the captured graph is released.
-            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
-                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
-                graph = runtime.captures.get(capture_id)
-                if graph is not None:
-                    graph._retain_module_exec(self.module_exec)
-
             if self.adjoint:
-                runtime.core.wp_cuda_launch_kernel(
-                    self.device.context,
+                _cuda_launch_kernel(
+                    self.device,
+                    self.module_exec,
                     self.hooks.backward,
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
                     self.hooks.backward_smem_bytes,
                     self.params_addr,
-                    stream.cuda_stream,
+                    stream,
                     None,  # apic_info: replayed launches don't re-record
                 )
             else:
-                runtime.core.wp_cuda_launch_kernel(
-                    self.device.context,
+                _cuda_launch_kernel(
+                    self.device,
+                    self.module_exec,
                     self.hooks.forward,
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
                     self.hooks.forward_smem_bytes,
                     self.params_addr,
-                    stream.cuda_stream,
+                    stream,
                     None,  # apic_info: replayed launches don't re-record
                 )
 
@@ -9161,6 +9210,7 @@ def _launch_deterministic(
     counter_bufs = allocate_counter_buffers(det_meta.counter_targets, dim_size, device) if det_meta.has_counter else []
     overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if det_meta.has_scatter else None
     counter_total_bufs = []
+    sort_reduce_workspaces = []
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
     def build_det_params(phase, scatter_bufs, counter_bufs, use_scatter):
@@ -9187,32 +9237,17 @@ def _launch_deterministic(
         return det_params
 
     def do_cuda_launch(hook, params_list):
-        kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params_list]
-        kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
-
-        if module_exec is not None and capture_graph is not None:
-            retain_module_exec = getattr(capture_graph, "_retain_module_exec", None)
-            if retain_module_exec is None:
-                retain_module_exec = capture_graph.retain_module_exec
-            retain_module_exec(module_exec)
-
-        launch_args = [
-            device.context,
+        _cuda_launch_kernel(
+            device,
+            module_exec,
             hook,
             bounds.size,
             max_blocks,
             block_dim,
             hooks.forward_smem_bytes,
-            kernel_params,
-            stream.cuda_stream,
-        ]
-        launch_argtypes = getattr(runtime.core.wp_cuda_launch_kernel, "argtypes", None)
-        if launch_argtypes is None and hasattr(runtime.core, "ctypes"):
-            launch_argtypes = getattr(runtime.core.ctypes.wp_cuda_launch_kernel, "argtypes", None)
-        if launch_argtypes is not None and len(launch_argtypes) > len(launch_args):
-            launch_args.append(None)
-
-        runtime.core.wp_cuda_launch_kernel(*launch_args)
+            _build_cuda_kernel_params(params_list),
+            stream,
+        )
 
     def resolve_det_target_array(target):
         resolved = None
@@ -9311,7 +9346,9 @@ def _launch_deterministic(
             dest_arrays.append(dest_array)
 
         with warp.ScopedStream(stream, sync_enter=False):
-            run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode)
+            sort_reduce_workspaces = run_sort_reduce(
+                runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode
+            )
 
     if capture_graph is not None:
         # Captured graphs replay after this function returns, so keep temporary
@@ -9323,6 +9360,7 @@ def _launch_deterministic(
                 *counter_bufs,
                 overflow_buf,
                 *counter_total_bufs,
+                *sort_reduce_workspaces,
             )
             if buffer is not None
         )
@@ -9568,19 +9606,10 @@ def launch(
                 invoke(kernel, hooks, params, adjoint)
 
         else:
-            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
-            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+            kernel_params = _build_cuda_kernel_params(params)
 
             if stream is None:
                 stream = device.stream
-
-            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
-            # before the captured graph is released.
-            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
-                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
-                graph = runtime.captures.get(capture_id)
-                if graph is not None:
-                    graph._retain_module_exec(module_exec)
 
             if adjoint:
                 if hooks.backward is None:
@@ -9608,15 +9637,16 @@ def launch(
                             "Backward kernel launches are not supported during APIC graph capture. "
                             "Use wp.Tape outside of capture scope instead."
                         )
-                    runtime.core.wp_cuda_launch_kernel(
-                        device.context,
+                    _cuda_launch_kernel(
+                        device,
+                        module_exec,
                         hooks.backward,
                         bounds.size,
                         max_blocks,
                         block_dim,
                         hooks.backward_smem_bytes,
                         kernel_params,
-                        stream.cuda_stream,
+                        stream,
                         None,
                     )
 
@@ -9651,15 +9681,16 @@ def launch(
                             False,
                         )
                         apic_info_ptr = ctypes.byref(apic_info)
-                    runtime.core.wp_cuda_launch_kernel(
-                        device.context,
+                    _cuda_launch_kernel(
+                        device,
+                        module_exec,
                         hooks.forward,
                         bounds.size,
                         max_blocks,
                         block_dim,
                         hooks.forward_smem_bytes,
                         kernel_params,
-                        stream.cuda_stream,
+                        stream,
                         apic_info_ptr,
                     )
 

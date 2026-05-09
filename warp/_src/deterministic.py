@@ -449,6 +449,9 @@ def allocate_counter_buffers(counter_targets, dim_size, device):
 
 def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode):
     """Execute post-kernel sort-reduce for all scatter targets."""
+    workspaces = []
+    determinism_mode_id = deterministic_mode_to_id(determinism_mode)
+
     for i, target in enumerate(scatter_targets):
         keys, values, _counter, capacity = scatter_buffers[i]
         dest_arr = dest_arrays[i]
@@ -465,6 +468,17 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
             warp_utils.warn(f"Unsupported value type '{target.value_ctype}' for deterministic sort-reduce.")
             continue
 
+        components = getattr(target.value_dtype, "_length_", 1)
+        workspace_size = runtime.core.wp_deterministic_sort_reduce_workspace_size(
+            capacity,
+            target.reduce_op,
+            scalar_type_id,
+            components,
+            determinism_mode_id,
+        )
+        workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
+        workspaces.append(workspace)
+
         runtime.core.wp_deterministic_sort_reduce_device(
             keys.ptr,
             values.ptr,
@@ -473,6 +487,10 @@ def run_sort_reduce(runtime, scatter_targets, scatter_buffers, dest_arrays, devi
             dest_arr.size,
             target.reduce_op,
             scalar_type_id,
-            getattr(target.value_dtype, "_length_", 1),
-            deterministic_mode_to_id(determinism_mode),
+            components,
+            determinism_mode_id,
+            workspace.ptr,
+            workspace_size,
         )
+
+    return workspaces

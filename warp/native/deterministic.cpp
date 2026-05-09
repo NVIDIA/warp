@@ -9,6 +9,12 @@
 
 #if !WP_ENABLE_CUDA
 
+size_t
+wp_deterministic_sort_reduce_workspace_size(int count, int op, int scalar_type, int components, int determinism_level)
+{
+    return 0;
+}
+
 void wp_deterministic_sort_reduce_device(
     uint64_t keys,
     uint64_t values,
@@ -18,7 +24,9 @@ void wp_deterministic_sort_reduce_device(
     int op,
     int scalar_type,
     int components,
-    int determinism_level
+    int determinism_level,
+    uint64_t workspace,
+    size_t workspace_size
 )
 {
 }
