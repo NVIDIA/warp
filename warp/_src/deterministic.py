@@ -200,6 +200,7 @@ class DeterministicMeta:
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
+    needs_context: bool = False
 
     def add_scatter_target(self, target: ScatterTarget, records_per_thread: int = 1):
         """Record a scatter target requirement for this function or kernel."""
@@ -217,6 +218,7 @@ class DeterministicMeta:
 
     def include(self, other: DeterministicMeta):
         """Merge the transitive deterministic requirements of another adjoint."""
+        self.needs_context |= other.needs_context
         for target, count in other.scatter_records_per_thread.items():
             self.add_scatter_target(target, records_per_thread=count)
         for target in other.counter_targets:
@@ -232,7 +234,7 @@ class DeterministicMeta:
 
     @property
     def needs_deterministic(self):
-        return self.has_scatter or self.has_counter
+        return self.needs_context or self.has_scatter or self.has_counter
 
 
 @dataclass

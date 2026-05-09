@@ -284,7 +284,7 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 
 ## Testing Strategy
 
-53 tests in ``warp/tests/test_deterministic.py`` cover:
+54 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
@@ -309,8 +309,9 @@ an inclusive scan scratch buffer to keep the writeback capture-friendly.
 - **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, 0, 1);
   output[slot] = data[tid]`` produces identical output arrays across 10 runs.
 - **Phase 0 side-effect suppression**: non-counter array writes are skipped in
-  the counting pass, including stores that occur before helper calls whose
-  reachable call graph contains a consumed-return counter.
+  the counting pass, including pure write helper calls and stores that occur
+  before helper calls whose reachable call graph contains a consumed-return
+  counter.
 - **Counter correctness**: verifies counter value equals N and output is a
   permutation of input.
 - **Conditional counter**: stream compaction (only elements above threshold),

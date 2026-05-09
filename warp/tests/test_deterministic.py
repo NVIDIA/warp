@@ -241,6 +241,11 @@ def _det_counter_write(counter: wp.array(dtype=wp.int32), output: wp.array(dtype
     output[slot] = value
 
 
+@wp.func
+def _det_increment_array(output: wp.array(dtype=wp.float32), index: int):
+    output[index] = output[index] + 1.0
+
+
 def _make_deterministic_closure_kernel(transform_func):
     @wp.kernel(deterministic=True, module="unique")
     def _deterministic_closure_kernel(
@@ -288,6 +293,19 @@ def helper_counter_side_effect_kernel(
     tid = wp.tid()
     scratch[tid] = scratch[tid] + 1.0
     _det_counter_write(counter, output, float(tid))
+
+
+@wp.kernel(deterministic=True, module="unique")
+def counter_with_helper_store_kernel(
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+    scratch: wp.array(dtype=wp.float32),
+):
+    """Pure write helpers called from counter kernels must be skipped in phase 0."""
+    tid = wp.tid()
+    slot = wp.atomic_add(counter, 0, 1)
+    _det_increment_array(scratch, tid)
+    output[slot] = float(tid)
 
 
 @wp.kernel(deterministic=True, module="unique")
@@ -1239,6 +1257,22 @@ def test_counter_phase0_suppresses_array_writes_before_helper(test, device):
     test.assertEqual(int(counter.numpy()[0]), n)
 
 
+def test_counter_phase0_suppresses_helper_array_writes(test, device):
+    """Verify phase 0 suppresses pure write helpers called from counter kernels."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 128
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device)
+    scratch = wp.zeros(n, dtype=wp.float32, device=device)
+
+    wp.launch(counter_with_helper_store_kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
+
+    np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
+    test.assertEqual(int(counter.numpy()[0]), n)
+
+
 def test_counter_correctness(test, device):
     """Verify consumed-return counters write all data (no lost elements)."""
     n = 512
@@ -2061,6 +2095,12 @@ add_function_test(
     TestDeterministic,
     "test_counter_phase0_suppresses_array_writes_before_helper",
     test_counter_phase0_suppresses_array_writes_before_helper,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_suppresses_helper_array_writes",
+    test_counter_phase0_suppresses_helper_array_writes,
     devices=cuda_devices,
 )
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)
