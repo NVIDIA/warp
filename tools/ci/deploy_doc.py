@@ -63,13 +63,24 @@ def git_run_cmd(*args: str, cwd: Optional[Path] = None) -> str:
 # Version Helpers
 # ---------------------------------------------------------------------------
 
+_VERSION_RE = re.compile(r"^\d+\.\d+$")
+
+
 def resolve_version_folder(version: str) -> str:
     """Map a --version value to the target folder name on gh-pages.
 
-    "latest" -> "latest", "1.10" -> "v1.10".
+    "latest" -> "latest", "1.10" -> "v1.10". Any other shape is rejected so
+    passing a full patch version like "1.10.0" does not silently create a
+    /v1.10.0/ folder. The pattern mirrors the regex enforced by the deploy
+    workflow.
     """
     if version == "latest":
         return "latest"
+
+    if not _VERSION_RE.match(version):
+        raise ValueError(
+            f"Invalid --version '{version}': expected 'latest' or 'MAJOR.MINOR' (e.g. '1.10')"
+        )
 
     return f"v{version}"
 

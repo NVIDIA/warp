@@ -7,11 +7,16 @@ on:
   push:
     branches:
       - main
-      - release-*
+      # Match release-MAJOR.MINOR exactly. The "Determine doc version + mode"
+      # step rejects anything else (e.g. release-kit-*), so filter at the
+      # trigger to avoid burning a runner and the deploy-docs lock.
+      - 'release-[0-9]*.[0-9]*'
     tags:
       # Tags gate /stable/ promotion. Branch pushes deploy /vX.Y/ but
-      # don't touch /stable/ until a corresponding vX.Y.* tag exists.
-      - 'v*'
+      # don't touch /stable/ until a corresponding vX.Y.Z tag exists.
+      # The three-component glob filters out stray v-prefixed tags
+      # before they consume a runner and hold the deploy-docs lock.
+      - 'v[0-9]*.[0-9]*.[0-9]*'
   workflow_dispatch:
 
 concurrency:
