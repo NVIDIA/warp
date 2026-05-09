@@ -9299,9 +9299,9 @@ def _launch_deterministic(
 
     try:
         runtime.verify_cuda_device(device)
-    except Exception as e:
-        print(f"Error in deterministic kernel launch: {kernel.key} on device {device}")
-        raise e
+    except Exception:
+        warp._src.utils.warn(f"Error in deterministic kernel launch: {kernel.key} on device {device}")
+        raise
 
     if overflow_buf is not None and not stream_is_capturing and int(overflow_buf.numpy()[0]) != 0:
         raise RuntimeError(
