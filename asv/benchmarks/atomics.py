@@ -19,6 +19,7 @@ All threads write to a single output location (index 0) to maximize contention
 and measure worst-case atomic operation performance.
 """
 
+import inspect
 from typing import Any
 
 import numpy as np
@@ -33,6 +34,17 @@ DTYPE_MAP = {
 
 NUM_ELEMENTS = 32 * 1024 * 1024
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
+DETERMINISM_SUPPORTED = "deterministic" in inspect.signature(wp.kernel).parameters
+DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic") if DETERMINISM_SUPPORTED else ("normal",)
+DETERMINISTIC_KERNEL_OPTIONS = {"enable_backward": False}
+if DETERMINISM_SUPPORTED:
+    DETERMINISTIC_KERNEL_OPTIONS.update(
+        {
+            "deterministic": True,
+            "deterministic_max_records": 1,
+            "module": "unique",
+        }
+    )
 
 
 @wp.kernel(enable_backward=False)
@@ -65,7 +77,7 @@ def scatter_add_kernel(
     wp.atomic_add(out, indices[tid], vals[tid])
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=1, enable_backward=False)
+@wp.kernel(**DETERMINISTIC_KERNEL_OPTIONS)
 def scatter_add_kernel_deterministic(
     vals: wp.array(dtype=wp.float32),
     indices: wp.array(dtype=wp.int32),
@@ -86,7 +98,7 @@ def counter_kernel(
     out[slot] = vals[tid]
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=1, enable_backward=False)
+@wp.kernel(**DETERMINISTIC_KERNEL_OPTIONS)
 def counter_kernel_deterministic(
     vals: wp.array(dtype=wp.float32),
     counter: wp.array(dtype=wp.int32),
@@ -235,7 +247,7 @@ class AtomicAddDeterminismOverhead:
     - ``65536``: lower contention, closer to a scatter workload.
     """
 
-    params = (("normal", "deterministic"), (1, 65536), tuple(DETERMINISTIC_BENCHMARK_SIZES))
+    params = (DETERMINISTIC_BENCHMARK_MODES, (1, 65536), tuple(DETERMINISTIC_BENCHMARK_SIZES))
     param_names = ("mode", "num_outputs", "num_elements")
 
     repeat = 10
@@ -310,7 +322,7 @@ class AtomicCounterDeterminismOverhead:
     state inside the captured graph so the benchmark isolates device work.
     """
 
-    params = (("normal", "deterministic"), tuple(DETERMINISTIC_BENCHMARK_SIZES))
+    params = (DETERMINISTIC_BENCHMARK_MODES, tuple(DETERMINISTIC_BENCHMARK_SIZES))
     param_names = ("mode", "num_elements")
 
     repeat = 10
