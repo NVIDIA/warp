@@ -519,6 +519,8 @@ differentiable simulations
 <code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code> config flag and module option (parity with <code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code>)
 to route these ops through the fallback when libmathdx is available
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1402">GH-1402</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.copysign(x,</span> <span class="pre">y)</span></code>: returns a value with the magnitude of <code class="docutils literal notranslate"><span class="pre">x</span></code> and the
+sign of <code class="docutils literal notranslate"><span class="pre">y</span></code>, matching C <code class="docutils literal notranslate"><span class="pre">copysign</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1444">GH-1444</a>).</p></li>
 </ul>
 </section>
 <section id="removed">

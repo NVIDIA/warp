@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.clamp &#8212; Warp 1.14.0.dev0</title>
+    <title>warp.copysign &#8212; Warp 1.14.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.clamp';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.copysign';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.copysign" href="warp.copysign.html" />
-    <link rel="prev" title="warp.ceil" href="warp.ceil.html" />
+    <link rel="next" title="warp.cos" href="warp.cos.html" />
+    <link rel="prev" title="warp.clamp" href="warp.clamp.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -461,7 +461,7 @@
     
     <li class="breadcrumb-item"><a href="../builtins.html" class="nav-link">Built-Ins</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.clamp</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.copysign</span></li>
   </ul>
 </nav>
 </div>
@@ -474,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/language_reference/_generated/warp.clamp.rst.txt">
+  <a href="../../_sources/language_reference/_generated/warp.copysign.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -491,11 +491,11 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-clamp">
-<h1>warp.clamp<a class="headerlink" href="#warp-clamp" title="Link to this heading">#</a></h1>
+  <section id="warp-copysign">
+<h1>warp.copysign<a class="headerlink" href="#warp-copysign" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp._src.lang.clamp">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clamp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Scalar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Scalar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">high</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Scalar</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Scalar</span></span></span><a class="headerlink" href="#warp._src.lang.clamp" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="warp._src.lang.copysign">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">copysign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Float</span></span></span><a class="headerlink" href="#warp._src.lang.copysign" title="Link to this definition">#</a></dt>
 <dd><table class="hlist"><tr><td><ul class="simple">
 <li><p>Kernel</p></li>
 </ul>
@@ -515,7 +515,11 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Clamp the value of <code class="docutils literal notranslate"><span class="pre">x</span></code> to the range [low, high].</p>
+<p>Return a value with the magnitude of <code class="docutils literal notranslate"><span class="pre">x</span></code> and the sign of <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
+<p>For example, <code class="docutils literal notranslate"><span class="pre">wp.copysign(3.0,</span> <span class="pre">-1.0)</span></code> returns <code class="docutils literal notranslate"><span class="pre">-3.0</span></code> and
+<code class="docutils literal notranslate"><span class="pre">wp.copysign(-3.0,</span> <span class="pre">1.0)</span></code> returns <code class="docutils literal notranslate"><span class="pre">3.0</span></code>. Useful for forcing a
+specific sign on a result whose signed-zero behavior is otherwise
+implementation-defined (e.g. <code class="docutils literal notranslate"><span class="pre">wp.min(-0.0,</span> <span class="pre">+0.0)</span></code>).</p>
 </dd></dl>
 
 </section>
@@ -531,20 +535,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.ceil.html"
+       href="warp.clamp.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.ceil</p>
+        <p class="prev-next-title">warp.clamp</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.copysign.html"
+       href="warp.cos.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.copysign</p>
+        <p class="prev-next-title">warp.cos</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -569,7 +573,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.clamp"><code class="docutils literal notranslate"><span class="pre">clamp()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.copysign"><code class="docutils literal notranslate"><span class="pre">copysign()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -577,7 +581,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.clamp.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.copysign.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
