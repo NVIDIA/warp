@@ -93,8 +93,8 @@ The accepted modes are:
     Uses a stronger reduction path intended to preserve the same result across
     GPU architectures.  It is more conservative and can be slower.
 
-For backward compatibility, ``True`` is treated as ``"run_to_run"`` and
-``False`` is treated as ``"not_guaranteed"``.
+For ease of use, ``True`` is treated as ``"run_to_run"`` and ``False`` is
+treated as ``"not_guaranteed"``.
 
 Choosing a Scope
 ----------------
