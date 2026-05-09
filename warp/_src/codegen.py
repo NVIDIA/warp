@@ -80,6 +80,29 @@ def _deterministic_contains_atomic_call(node):
     return False
 
 
+def _deterministic_contains_subscript_target(node):
+    if isinstance(node, ast.Subscript):
+        return True
+    if isinstance(node, (ast.Tuple, ast.List)):
+        return any(_deterministic_contains_subscript_target(element) for element in node.elts)
+    return False
+
+
+def _deterministic_has_potential_array_store(tree):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            if any(_deterministic_contains_subscript_target(target) for target in node.targets):
+                return True
+        elif isinstance(node, ast.AnnAssign):
+            if _deterministic_contains_subscript_target(node.target):
+                return True
+        elif isinstance(node, ast.AugAssign):
+            if _deterministic_contains_subscript_target(node.target):
+                return True
+
+    return False
+
+
 def _deterministic_has_consumed_atomic(tree):
     """Return whether codegen will treat any atomic return value as consumed."""
     return _deterministic_has_consumed_atomic_impl(tree, adj=None, seen=None)
@@ -1483,10 +1506,12 @@ class Adjoint:
             adj.det_meta = DeterministicMeta()
             adj.det_registry = DeterministicRegistry()
             adj._det_has_consumed_atomic = _deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None)
+            adj._det_has_side_effect_store = adj.is_user_function and _deterministic_has_potential_array_store(adj.tree)
         else:
             adj.det_meta = None
             adj.det_registry = None
             adj._det_has_consumed_atomic = False
+            adj._det_has_side_effect_store = False
         adj._det_in_assign = False
 
         adj.symbols = {}  # map from symbols to adjoint variables
@@ -4205,7 +4230,11 @@ class Adjoint:
         if is_array(target_type):
             # Deterministic two-pass mode must suppress normal array writes in
             # phase 0 so the counting pass does not introduce side effects.
-            if adj.det_meta is not None and (adj.det_meta.has_counter or adj._det_has_consumed_atomic):
+            needs_guarded_store = adj.det_meta is not None and (
+                adj.det_meta.has_counter or adj._det_has_consumed_atomic or adj._det_has_side_effect_store
+            )
+            if needs_guarded_store:
+                adj.det_meta.needs_context = True
                 _add_deterministic_array_store(adj, target, indices, rhs)
             else:
                 adj.add_builtin_call("array_store", [target, *indices, rhs])
@@ -6152,6 +6181,8 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
         return
 
     from warp._src.deterministic import get_or_create_counter_target, get_or_create_scatter_target  # noqa: PLC0415
+
+    adj.det_meta.needs_context |= meta.needs_context
 
     for target, count in meta.scatter_records_per_thread.items():
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
