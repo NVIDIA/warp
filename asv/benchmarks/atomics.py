@@ -25,8 +25,6 @@ import numpy as np
 
 import warp as wp
 
-wp.set_module_options({"enable_backward": False})
-
 # Map string parameter names to warp dtypes
 DTYPE_MAP = {
     "float32": wp.float32,
@@ -37,7 +35,7 @@ NUM_ELEMENTS = 32 * 1024 * 1024
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def max_kernel(
     vals: wp.array(dtype=Any),
     out: wp.array(dtype=Any),
@@ -47,7 +45,7 @@ def max_kernel(
     wp.atomic_max(out, 0, val)  # All threads contend on out[0]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def min_kernel(
     vals: wp.array(dtype=Any),
     out: wp.array(dtype=Any),
@@ -57,7 +55,7 @@ def min_kernel(
     wp.atomic_min(out, 0, val)  # All threads contend on out[0]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def scatter_add_kernel(
     vals: wp.array(dtype=wp.float32),
     indices: wp.array(dtype=wp.int32),
@@ -67,7 +65,7 @@ def scatter_add_kernel(
     wp.atomic_add(out, indices[tid], vals[tid])
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=1)
+@wp.kernel(deterministic=True, deterministic_max_records=1, enable_backward=False)
 def scatter_add_kernel_deterministic(
     vals: wp.array(dtype=wp.float32),
     indices: wp.array(dtype=wp.int32),
@@ -77,7 +75,7 @@ def scatter_add_kernel_deterministic(
     wp.atomic_add(out, indices[tid], vals[tid])
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def counter_kernel(
     vals: wp.array(dtype=wp.float32),
     counter: wp.array(dtype=wp.int32),
@@ -88,7 +86,7 @@ def counter_kernel(
     out[slot] = vals[tid]
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=1)
+@wp.kernel(deterministic=True, deterministic_max_records=1, enable_backward=False)
 def counter_kernel_deterministic(
     vals: wp.array(dtype=wp.float32),
     counter: wp.array(dtype=wp.int32),
@@ -99,13 +97,13 @@ def counter_kernel_deterministic(
     out[slot] = vals[tid]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def zero_float_array_kernel(out: wp.array(dtype=wp.float32)):
     tid = wp.tid()
     out[tid] = 0.0
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def zero_int_array_kernel(out: wp.array(dtype=wp.int32)):
     tid = wp.tid()
     out[tid] = 0
