@@ -62,7 +62,7 @@ def normalize_deterministic_mode(value, option_name="deterministic", allow_none=
     """Normalize user-facing deterministic mode values.
 
     The public API accepts the explicit mode strings plus ``True``/``False``
-    for backward compatibility:
+    for ease of use:
 
     - ``False`` -> ``"not_guaranteed"``
     - ``True`` -> ``"run_to_run"``
