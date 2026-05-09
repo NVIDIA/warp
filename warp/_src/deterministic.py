@@ -385,6 +385,8 @@ _SCALAR_TYPE_IDS = {
     warp.uint64: 6,
 }
 
+DETERMINISTIC_SCATTER_MAX_CAPACITY = (1 << 31) - 1
+
 
 def warp_type_to_ctype(dtype) -> str:
     """Map a Warp scalar type to its C++ type string."""
@@ -422,6 +424,12 @@ def allocate_scatter_buffers(scatter_targets, meta, dim_size, device, max_record
     for target in scatter_targets:
         records_per_thread = max(meta.scatter_records_per_thread.get(target, 0), max_records)
         capacity = max(dim_size * records_per_thread, 1024)
+        if capacity > DETERMINISTIC_SCATTER_MAX_CAPACITY:
+            raise RuntimeError(
+                "Deterministic scatter buffer capacity exceeds the supported int32 limit "
+                f"({capacity} > {DETERMINISTIC_SCATTER_MAX_CAPACITY}). "
+                "Reduce the launch size or deterministic_max_records."
+            )
         keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
         values = warp.zeros(shape=(capacity,), dtype=target.value_dtype, device=device)
         counter = warp.zeros(shape=(1,), dtype=warp.int32, device=device)

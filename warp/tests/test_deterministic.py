@@ -1344,6 +1344,24 @@ def test_counter_int64_rejected(test, device):
         wp.launch(counter_int64_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
 
 
+def test_scatter_capacity_overflow_rejected(test, device):
+    """Verify oversized deterministic scatter buffers fail before allocation."""
+    del device
+
+    meta = loop_scatter_add_kernel.adj.det_meta
+    test.assertIsNotNone(meta)
+    test.assertTrue(meta.has_scatter)
+
+    with test.assertRaisesRegex(RuntimeError, "int32 limit"):
+        wp_deterministic.allocate_scatter_buffers(
+            meta.scatter_targets,
+            meta,
+            wp_deterministic.DETERMINISTIC_SCATTER_MAX_CAPACITY + 1,
+            wp.get_device("cpu"),
+            max_records=1,
+        )
+
+
 def test_conditional_counter(test, device):
     """Verify stream compaction with a conditional counter."""
     if device.is_cpu:
@@ -1882,6 +1900,27 @@ def test_graph_capture_consumed_return_counter(test, device):
     np.testing.assert_array_equal(first, second)
 
 
+def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
+    """Verify APIC serialization fails explicitly for deterministic CUDA kernels."""
+    if device.is_cpu:
+        test.skipTest("CUDA APIC capture path required")
+
+    n = 16
+    data_np = np.ones(n, dtype=np.float32)
+    indices_np = np.arange(n, dtype=np.int32) % 4
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(4, dtype=wp.float32, device=device)
+
+    wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+    output.zero_()
+
+    with test.assertRaisesRegex(RuntimeError, "APIC serialization"):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+
+
 def test_deterministic_backward_scatter_add(test, device):
     """Verify deterministic scatter-add kernels launch backward and propagate value gradients."""
     if device.is_cpu:
@@ -2138,6 +2177,12 @@ add_function_test(
     test_counter_int64_rejected,
     devices=cuda_devices,
 )
+add_function_test(
+    TestDeterministic,
+    "test_scatter_capacity_overflow_rejected",
+    test_scatter_capacity_overflow_rejected,
+    devices=[wp.get_device("cpu")],
+)
 add_function_test(TestDeterministic, "test_conditional_counter", test_conditional_counter, devices=cuda_devices)
 
 # Mixed counter and scatter/reduce tests.
@@ -2204,6 +2249,12 @@ add_function_test(
     TestDeterministic,
     "test_graph_capture_consumed_return_counter",
     test_graph_capture_consumed_return_counter,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_apic_capture_rejects_deterministic_cuda_kernel",
+    test_apic_capture_rejects_deterministic_cuda_kernel,
     devices=cuda_devices,
 )
 add_function_test(
