@@ -1122,6 +1122,127 @@ def test_ffi_callback(test, device):
     assert_np_equal(d, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
 
 
+# =========================================================================================================
+# JAX FFI Host (CPU) tests
+# =========================================================================================================
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_add_host(test, device):
+    # two inputs and one output on CPU
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    jax_add = jax_kernel(add_kernel)
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.arange(n, dtype=jp.float32)
+        b = jp.ones(n, dtype=jp.float32)
+        return jax_add(a, b)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        (y,) = f()
+
+    jax.block_until_ready(y)
+
+    result = np.asarray(y)
+    expected = np.arange(1, ARRAY_SIZE + 1, dtype=np.float32)
+
+    assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_sincos_host(test, device):
+    # one input and two outputs on CPU
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    jax_sincos = jax_kernel(sincos_kernel, num_outputs=2)
+
+    n = ARRAY_SIZE
+
+    @jax.jit
+    def f():
+        a = jp.linspace(0, 2 * jp.pi, n, dtype=jp.float32)
+        return jax_sincos(a)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        s, c = f()
+
+    jax.block_until_ready([s, c])
+
+    result_s = np.asarray(s)
+    result_c = np.asarray(c)
+
+    a = np.linspace(0, 2 * np.pi, n, dtype=np.float32)
+    expected_s = np.sin(a)
+    expected_c = np.cos(a)
+
+    assert_np_equal(result_s, expected_s, tol=1e-4)
+    assert_np_equal(result_c, expected_c, tol=1e-4)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_in_out_host(test, device):
+    # in-out args on CPU
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_kernel
+
+    jax_func = jax_kernel(in_out_kernel, num_outputs=2, in_out_argnames=["b"])
+
+    f = jax.jit(jax_func)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        a = jp.ones(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32)
+        b, c = f(a, b)
+
+    jax.block_until_ready([b, c])
+
+    assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_scale_constant_host(test, device):
+    # scale two arrays using a constant on CPU
+    import jax.numpy as jp
+
+    from warp.jax_experimental.ffi import jax_callable
+
+    jax_func = jax_callable(scale_func, num_outputs=2)
+
+    @jax.jit
+    def f():
+        # inputs
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # wp.vec2
+        s = 2.0
+
+        # output shapes
+        output_dims = {"c": a.shape, "d": b.shape}
+
+        c, d = jax_func(a, b, s, output_dims=output_dims)
+
+        return c, d
+
+    with jax.default_device(wp.device_to_jax(device)):
+        result1, result2 = f()
+
+    jax.block_until_ready([result1, result2])
+
+    expected1 = 2 * np.arange(ARRAY_SIZE, dtype=np.float32)
+    expected2 = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
+
+    assert_np_equal(result1, expected1)
+    assert_np_equal(result2, expected2)
+
+
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_simple(test, device):
     if device.ordinal > 0:
@@ -2082,6 +2203,7 @@ try:
     test_devices = get_test_devices()
     jax_compatible_devices = []
     jax_compatible_cuda_devices = []
+    jax_compatible_cpu_devices = []
     for d in test_devices:
         try:
             with jax.default_device(wp.device_to_jax(d)):
@@ -2090,6 +2212,8 @@ try:
             jax_compatible_devices.append(d)
             if d.is_cuda:
                 jax_compatible_cuda_devices.append(d)
+            if d.is_cpu:
+                jax_compatible_cpu_devices.append(d)
         except Exception as e:
             print(f"Skipping Jax DLPack tests on device '{d}' due to exception: {e}")
 
@@ -2256,6 +2380,31 @@ try:
         # ffi callback tests
         add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
 
+    # ffi Host (CPU) tests
+    if jax_compatible_cpu_devices:
+        add_function_test(
+            TestJax, "test_ffi_jax_kernel_add_host", test_ffi_jax_kernel_add_host, devices=jax_compatible_cpu_devices
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_sincos_host",
+            test_ffi_jax_kernel_sincos_host,
+            devices=jax_compatible_cpu_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_kernel_in_out_host",
+            test_ffi_jax_kernel_in_out_host,
+            devices=jax_compatible_cpu_devices,
+        )
+        add_function_test(
+            TestJax,
+            "test_ffi_jax_callable_scale_constant_host",
+            test_ffi_jax_callable_scale_constant_host,
+            devices=jax_compatible_cpu_devices,
+        )
+
+    if jax_compatible_cuda_devices:
         # autodiff tests
         add_function_test(
             TestJax,
