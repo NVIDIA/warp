@@ -7608,30 +7608,34 @@ class Launch:
             if stream is None:
                 stream = self.device.stream
 
+            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+                graph = runtime.captures.get(capture_id)
+                if graph is not None:
+                    graph._retain_module_exec(self.module_exec)
+
             if self.adjoint:
-                _cuda_launch_kernel(
-                    self.device,
-                    self.module_exec,
+                runtime.core.wp_cuda_launch_kernel(
+                    self.device.context,
                     self.hooks.backward,
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
                     self.hooks.backward_smem_bytes,
                     self.params_addr,
-                    stream,
+                    stream.cuda_stream,
                     None,  # apic_info: replayed launches don't re-record
                 )
             else:
-                _cuda_launch_kernel(
-                    self.device,
-                    self.module_exec,
+                runtime.core.wp_cuda_launch_kernel(
+                    self.device.context,
                     self.hooks.forward,
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
                     self.hooks.forward_smem_bytes,
                     self.params_addr,
-                    stream,
+                    stream.cuda_stream,
                     None,  # apic_info: replayed launches don't re-record
                 )
 
@@ -8140,10 +8144,17 @@ def launch(
             invoke(kernel, hooks, params, adjoint)
 
         else:
-            kernel_params = _build_cuda_kernel_params(params)
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
             if stream is None:
                 stream = device.stream
+
+            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+                graph = runtime.captures.get(capture_id)
+                if graph is not None:
+                    graph._retain_module_exec(module_exec)
 
             if adjoint:
                 if hooks.backward is None:
@@ -8171,16 +8182,15 @@ def launch(
                             "Backward kernel launches are not supported during APIC graph capture. "
                             "Use wp.Tape outside of capture scope instead."
                         )
-                    _cuda_launch_kernel(
-                        device,
-                        module_exec,
+                    runtime.core.wp_cuda_launch_kernel(
+                        device.context,
                         hooks.backward,
                         bounds.size,
                         max_blocks,
                         block_dim,
                         hooks.backward_smem_bytes,
                         kernel_params,
-                        stream,
+                        stream.cuda_stream,
                         None,
                     )
 
@@ -8215,16 +8225,15 @@ def launch(
                             False,
                         )
                         apic_info_ptr = ctypes.byref(apic_info)
-                    _cuda_launch_kernel(
-                        device,
-                        module_exec,
+                    runtime.core.wp_cuda_launch_kernel(
+                        device.context,
                         hooks.forward,
                         bounds.size,
                         max_blocks,
                         block_dim,
                         hooks.forward_smem_bytes,
                         kernel_params,
-                        stream,
+                        stream.cuda_stream,
                         apic_info_ptr,
                     )
 
