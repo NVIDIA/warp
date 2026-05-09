@@ -57,9 +57,116 @@ def _deterministic_contains_atomic_call(node):
 
 def _deterministic_has_consumed_atomic(tree):
     """Return whether codegen will treat any atomic return value as consumed."""
+    return _deterministic_has_consumed_atomic_impl(tree, adj=None, seen=None)
+
+
+def _deterministic_collect_target_names(target, names):
+    if isinstance(target, ast.Name):
+        names.add(target.id)
+    elif isinstance(target, (ast.Tuple, ast.List)):
+        for element in target.elts:
+            _deterministic_collect_target_names(element, names)
+
+
+def _deterministic_local_names(tree):
+    names = set()
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            args = node.args
+            for arg in itertools.chain(args.posonlyargs, args.args, args.kwonlyargs):
+                names.add(arg.arg)
+            if args.vararg is not None:
+                names.add(args.vararg.arg)
+            if args.kwarg is not None:
+                names.add(args.kwarg.arg)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                _deterministic_collect_target_names(target, names)
+        elif isinstance(node, ast.AnnAssign):
+            _deterministic_collect_target_names(node.target, names)
+        elif isinstance(node, ast.NamedExpr):
+            _deterministic_collect_target_names(node.target, names)
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            _deterministic_collect_target_names(node.target, names)
+        elif isinstance(node, ast.With):
+            for item in node.items:
+                if item.optional_vars is not None:
+                    _deterministic_collect_target_names(item.optional_vars, names)
+        elif isinstance(node, ast.ExceptHandler) and isinstance(node.name, str):
+            names.add(node.name)
+
+    return names
+
+
+def _deterministic_call_path(node):
+    path = []
+
+    while isinstance(node, ast.Attribute):
+        path.append(node.attr)
+        node = node.value
+
+    if isinstance(node, ast.Name):
+        path.append(node.id)
+        path.reverse()
+        return path
+
+    return None
+
+
+def _deterministic_resolve_static_call(adj, node, local_names):
+    if adj is None:
+        return None
+
+    path = _deterministic_call_path(node)
+    if not path or path[0] in local_names:
+        return None
+
+    obj = adj.resolve_external_reference(path[0])
+
+    if obj is None:
+        obj = getattr(warp, path[0], None)
+
+    if obj is None:
+        builtins_obj = __builtins__
+        if isinstance(builtins_obj, dict):
+            obj = builtins_obj.get(path[0])
+        else:
+            obj = getattr(builtins_obj, path[0], None)
+
+    if obj is None:
+        return None
+
+    for attr in path[1:]:
+        if not hasattr(obj, attr):
+            return None
+        obj = getattr(obj, attr)
+
+    return obj
+
+
+def _deterministic_has_consumed_atomic_impl(tree, adj, seen):
+    """Return whether this AST or any statically called Warp function consumes an atomic return."""
+    if seen is None:
+        seen = set()
+
+    local_names = _deterministic_local_names(tree)
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and _deterministic_contains_atomic_call(node.value):
             return True
+
+        if isinstance(node, ast.Call):
+            func = _deterministic_resolve_static_call(adj, node.func, local_names)
+            if isinstance(func, warp._src.context.Function) and not func.is_builtin():
+                func_id = id(func)
+                if func_id in seen:
+                    continue
+
+                seen.add(func_id)
+                if _deterministic_has_consumed_atomic_impl(func.adj.tree, func.adj, seen):
+                    return True
+
     return False
 
 
@@ -1147,7 +1254,7 @@ class Adjoint:
         if is_deterministic_mode_enabled(adj.builder_options.get("deterministic")):
             adj.det_meta = DeterministicMeta()
             adj.det_registry = DeterministicRegistry()
-            adj._det_has_consumed_atomic = _deterministic_has_consumed_atomic(adj.tree)
+            adj._det_has_consumed_atomic = _deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None)
         else:
             adj.det_meta = None
             adj.det_registry = None

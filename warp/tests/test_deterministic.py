@@ -235,6 +235,12 @@ def _det_struct_counter_write(writer: _DetStructCounterWriter, value: wp.float32
     writer.output[slot] = value
 
 
+@wp.func
+def _det_counter_write(counter: wp.array(dtype=wp.int32), output: wp.array(dtype=wp.float32), value: wp.float32):
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = value
+
+
 def _make_deterministic_closure_kernel(transform_func):
     @wp.kernel(deterministic=True, module="unique")
     def _deterministic_closure_kernel(
@@ -270,6 +276,18 @@ def struct_field_helper_counter_kernel(
     tid = wp.tid()
     if flags[tid] != 0:
         _det_struct_counter_write(writer, data[tid])
+
+
+@wp.kernel(deterministic=True, module="unique")
+def helper_counter_side_effect_kernel(
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+    scratch: wp.array(dtype=wp.float32),
+):
+    """Normal stores before helper counter calls must be suppressed in phase 0."""
+    tid = wp.tid()
+    scratch[tid] = scratch[tid] + 1.0
+    _det_counter_write(counter, output, float(tid))
 
 
 @wp.kernel(deterministic=True, module="unique")
@@ -1205,6 +1223,22 @@ def test_counter_phase0_suppresses_array_writes(test, device):
     test.assertEqual(int(counter.numpy()[0]), n)
 
 
+def test_counter_phase0_suppresses_array_writes_before_helper(test, device):
+    """Verify phase 0 suppresses stores before helper functions with counters."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 128
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device)
+    scratch = wp.zeros(n, dtype=wp.float32, device=device)
+
+    wp.launch(helper_counter_side_effect_kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
+
+    np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
+    test.assertEqual(int(counter.numpy()[0]), n)
+
+
 def test_counter_correctness(test, device):
     """Verify consumed-return counters write all data (no lost elements)."""
     n = 512
@@ -2021,6 +2055,12 @@ add_function_test(
     TestDeterministic,
     "test_counter_phase0_suppresses_array_writes",
     test_counter_phase0_suppresses_array_writes,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_suppresses_array_writes_before_helper",
+    test_counter_phase0_suppresses_array_writes_before_helper,
     devices=cuda_devices,
 )
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)
