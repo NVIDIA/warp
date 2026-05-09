@@ -31,7 +31,7 @@ USD_AVAILABLE = pxr is not None
 
 wp.set_module_options({"enable_backward": False})
 
-NUM_QUERY_POINTS = 1000000
+NUM_QUERY_POINTS = 200000
 NUM_TRIES = 10
 NUM_MESHES = 10
 seed = 42
@@ -72,7 +72,7 @@ def sample_mesh_query_signed(
 
 
 class MeshQuery:
-    params = [[0, 8], ["bunny", "bear", "rocks"]]
+    params = [[0, 8], ["bunny", "rocks"]]
     param_names = ["leaf_size", "asset"]
     number = 20
     timeout = 60
