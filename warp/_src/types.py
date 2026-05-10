@@ -5225,22 +5225,68 @@ class tile(Tile):
 
         self.owner = owner
 
+    def _emit_shape(self):
+        dims = [str(d) for d in self.shape]
+        if self.block_dim_dependent and dims:
+            dims[-1] = "WP_TILE_BLOCK_DIM"
+        return ",".join(dims)
+
+    def _emit_default_strides(self):
+        strides = ["1"] * len(self.shape)
+        shape = [str(d) for d in self.shape]
+        if self.block_dim_dependent and shape:
+            shape[-1] = "WP_TILE_BLOCK_DIM"
+
+        def multiply(a, b):
+            if a == "1":
+                return b
+            if b == "1":
+                return a
+            return f"{a}*{b}"
+
+        if self.layout == "rowmajor":
+            for i in range(len(shape) - 2, -1, -1):
+                strides[i] = multiply(strides[i + 1], shape[i + 1])
+        else:
+            for i in range(1, len(shape)):
+                strides[i] = multiply(strides[i - 1], shape[i - 1])
+
+        return ",".join(strides)
+
+    def _emit_strides(self):
+        if (
+            self.block_dim_dependent
+            and self.strides is not None
+            and list(self.strides) == tile._default_strides(self.shape, self.layout)
+        ):
+            return self._emit_default_strides()
+
+        return ",".join(map(str, self.strides))
+
+    @staticmethod
+    def _default_strides(shape, layout):
+        strides = [1] * len(shape)
+
+        if layout == "rowmajor":
+            for i in range(len(shape) - 2, -1, -1):
+                strides[i] = strides[i + 1] * shape[i + 1]
+        else:
+            for i in range(1, len(shape)):
+                strides[i] = strides[i - 1] * shape[i - 1]
+
+        return strides
+
     # generates C-type string
     def ctype(self):
         from warp._src.codegen import Var  # noqa: PLC0415
 
-        def _emit_shape(shape):
-            dims = [str(d) for d in shape]
-            if self.block_dim_dependent and dims:
-                dims[-1] = "WP_TILE_BLOCK_DIM"
-            return ",".join(dims)
-
-        shape = _emit_shape(self.shape)
+        shape = self._emit_shape()
+        strides = self._emit_strides()
 
         if self.storage == "register":
             return f"wp::tile_register_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_register_t<wp::tile_shape_t<{shape}>>>"
         elif self.storage == "shared":
-            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_strided_t<wp::tile_shape_t<{shape}>, wp::tile_stride_t<{','.join(map(str, self.strides))}>>, {'true' if self.owner else 'false'}>"
+            return f"wp::tile_shared_t<{Var.type_to_ctype(self.dtype)},wp::tile_layout_strided_t<wp::tile_shape_t<{shape}>, wp::tile_stride_t<{strides}>>, {'true' if self.owner else 'false'}>"
         else:
             raise RuntimeError(f"Unrecognized tile storage type {self.storage}")
 
@@ -5253,7 +5299,7 @@ class tile(Tile):
         elif self.storage == "shared":
             if self.owner:
                 # allocate new shared memory tile
-                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},wp::tile_shape_t<{','.join(map(str, self.shape))}>,wp::tile_stride_t<{','.join(map(str, self.strides))}>,{'true' if requires_grad else 'false'}>()"
+                return f"wp::tile_alloc_empty<{Var.type_to_ctype(self.dtype)},wp::tile_shape_t<{self._emit_shape()}>,wp::tile_stride_t<{self._emit_strides()}>,{'true' if requires_grad else 'false'}>()"
             else:
                 # tile will be initialized by another call, e.g.: tile_transpose()
                 return "nullptr"
