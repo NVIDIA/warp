@@ -224,8 +224,6 @@ Spatial Acceleration
    BvhQueryTiled
    HashGrid
    HashGridQuery
-   HashGridQueryD
-   HashGridQueryH
    Mesh
    MeshQueryAABB
    MeshQueryAABBTiled

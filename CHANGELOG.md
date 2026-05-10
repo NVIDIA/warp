@@ -58,9 +58,16 @@
   either flag continues to work during the deprecation window and now emits a one-time `DeprecationWarning`.
   `warp.config.verbose_warnings` is unaffected and continues to control whether warning output includes the source
   location ([GH-1315](https://github.com/NVIDIA/warp/issues/1315)).
+- Deprecate `wp.HashGridQueryH` and `wp.HashGridQueryD`; use `wp.HashGridQuery` instead.
+  The legacy aliases remain available during the deprecation period for compatibility
+  ([GH-1452](https://github.com/NVIDIA/warp/issues/1452)).
 
 ### Changed
 
+- Consolidate the documented `wp.HashGrid` query API around `wp.HashGridQuery`. Query
+  objects returned by `wp.hash_grid_query()` now appear as `wp.HashGridQuery` in
+  generated docs and stubs regardless of the grid coordinate precision
+  ([GH-1452](https://github.com/NVIDIA/warp/issues/1452)).
 - Reduce overhead of converting `wp.float16` values to and from Python `float`. Building from source on Linux now
   requires `libpython3-dev` for the Python C headers (`Python.h`); the build checks for them up front and reports an
   actionable error when missing ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).

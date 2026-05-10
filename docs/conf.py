@@ -669,6 +669,31 @@ def resolve_wp_aliases(app, env, node, contnode):
     return None
 
 
+def resolve_public_builtin_aliases(app, env, node, contnode):
+    """Resolve public ``warp.*`` built-in refs to their generated documents."""
+    reftarget = node.get("reftarget", "")
+    if node.get("reftype") != "func" or not reftarget.startswith("warp."):
+        return None
+
+    builtin_name = reftarget[5:]
+    if "." in builtin_name:
+        return None
+
+    from warp._src.context import builtin_functions  # noqa: PLC0415
+
+    if builtin_name not in builtin_functions:
+        return None
+
+    new_target = f"warp._src.lang.{builtin_name}"
+    node["reftarget"] = new_target
+
+    domain = env.get_domain("py")
+    result = domain.resolve_xref(env, node.get("refdoc", ""), app.builder, "func", new_target, node, contnode)
+
+    node["reftarget"] = reftarget
+    return result
+
+
 def generate_reference_docs(app):
     """Generate API and language reference .rst files before Sphinx reads sources."""
     docs.generate_reference.run()
@@ -704,6 +729,7 @@ def setup(app):
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)
     app.connect("autodoc-process-signature", rewrite_wp_aliases)
     app.connect("missing-reference", resolve_wp_aliases)
+    app.connect("missing-reference", resolve_public_builtin_aliases)
     # Lower priority runs first; this must precede TocTreeCollector
     # (default 500) so the autosummary wrappers are gone before it
     # populates `env.tocs`.

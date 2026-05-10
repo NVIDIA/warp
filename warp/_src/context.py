@@ -10508,6 +10508,8 @@ def type_str(t):
         return f"Tile[{type_str(t.dtype)}, {type_str(t.shape)}]"
     elif warp._src.types.is_tile_stack(t):
         return f"TileStack[{type_str(t.dtype)}, {type_str(t.capacity)}]"
+    elif warp._src.types.type_is_hash_grid_query(t):
+        return t._wp_public_name_
 
     return t.__name__
 
@@ -10674,8 +10676,6 @@ def export_functions_rst(file):  # pragma: no cover
         ("mesh_query_point", "MeshQueryPoint"),
         ("mesh_query_ray", "MeshQueryRay"),
         ("hash_grid_query", "HashGridQuery"),
-        ("hash_grid_query", "HashGridQueryH"),
-        ("hash_grid_query", "HashGridQueryD"),
     )
 
     for k, g in groups.items():
@@ -10876,9 +10876,20 @@ def export_stubs(file):  # pragma: no cover
     init_import_lines = []
     init_other_lines = []
 
+    skip_runtime_dunder_getattr = False
     for line in init_lines:
+        if skip_runtime_dunder_getattr:
+            if line and not line[0].isspace():
+                skip_runtime_dunder_getattr = False
+            else:
+                continue
+
         if line.startswith("#"):
             continue  # Skip comment lines from __init__.py
+
+        if line.startswith("def __getattr__("):
+            skip_runtime_dunder_getattr = True
+            continue
 
         # Check if this line is a top-level import statement (no leading whitespace).
         # Indented imports inside function bodies (e.g., in __getattr__) are not top-level imports.
@@ -11292,6 +11303,23 @@ def export_stubs(file):  # pragma: no cover
                     continue
 
             result.append((f, None))
+
+        # After public type rendering, distinct internal overloads may share the
+        # same stub signature. Keep the first generated signature.
+        seen_signatures = set()
+        deduped = []
+        for f, type_overrides in result:
+            args = tuple(
+                type_overrides[k] if type_overrides and k in type_overrides else type_str(v)
+                for k, v in f.input_types.items()
+            )
+            sig = (args, get_return_type_str(f))
+            if sig in seen_signatures:
+                continue
+            seen_signatures.add(sig)
+            deduped.append((f, type_overrides))
+
+        result = deduped
 
         return result
 

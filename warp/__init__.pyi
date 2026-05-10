@@ -72,8 +72,6 @@ from warp._src.types import Volume as Volume
 from warp._src.types import BvhQuery as BvhQuery
 from warp._src.types import BvhQueryTiled as BvhQueryTiled
 from warp._src.types import HashGridQuery as HashGridQuery
-from warp._src.types import HashGridQueryD as HashGridQueryD
-from warp._src.types import HashGridQueryH as HashGridQueryH
 from warp._src.types import MeshQueryAABB as MeshQueryAABB
 from warp._src.types import MeshQueryAABBTiled as MeshQueryAABBTiled
 from warp._src.types import MeshQueryPoint as MeshQueryPoint
@@ -4803,23 +4801,25 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuer
     ...
 
 @over
-def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQueryH:
+def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float16 precision).
 
     This query can be used to iterate over all neighboring points within a fixed radius from the query point."""
     ...
 
 @over
-def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQueryD:
+def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float64 precision).
 
     This query can be used to iterate over all neighboring points within a fixed radius from the query point."""
     ...
 
-def hash_grid_query_next(query: HashGridQuery | HashGridQueryH | HashGridQueryD, index: int32) -> bool:
+def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
     """Move to the next point in the hash grid query.
 
-    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors."""
+    Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
+    coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
+    more neighbors."""
     ...
 
 def hash_grid_point_id(id: uint64, index: int32) -> int:

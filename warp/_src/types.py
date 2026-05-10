@@ -2163,21 +2163,49 @@ class MeshQueryAABBTiled:
 
 # definition just for kernel type (cannot be a parameter), see hashgrid.h
 class HashGridQuery:
-    """Object used to track state during neighbor traversal (float32)."""
+    """Object used to track state during :class:`warp.HashGrid` neighbor traversal.
+
+    Query objects are returned by :func:`warp.hash_grid_query`; users normally do not construct them directly.
+    Use ``warp.HashGridQuery[dtype]`` in function annotations when the query's coordinate precision must be
+    explicit, for example ``warp.HashGridQuery[warp.float64]``.
+    """
 
     _wp_native_name_ = "hash_grid_query_f"
+    _wp_public_name_ = "HashGridQuery"
+    _wp_query_dtype_ = float32
+
+    @classmethod
+    def __class_getitem__(cls, dtype):
+        return hash_grid_query_type(dtype)
 
 
-class HashGridQueryH:
-    """Object used to track state during neighbor traversal (float16)."""
-
+class _HashGridQueryH(HashGridQuery):
     _wp_native_name_ = "hash_grid_query_h"
+    _wp_query_dtype_ = float16
 
 
-class HashGridQueryD:
-    """Object used to track state during neighbor traversal (float64)."""
-
+class _HashGridQueryD(HashGridQuery):
     _wp_native_name_ = "hash_grid_query_d"
+    _wp_query_dtype_ = float64
+
+
+_hash_grid_query_types = {
+    float16: _HashGridQueryH,
+    float32: HashGridQuery,
+    float64: _HashGridQueryD,
+}
+
+
+def hash_grid_query_type(dtype):
+    dtype = type_to_warp(dtype)
+    query_type = _hash_grid_query_types.get(dtype)
+    if query_type is None:
+        raise TypeError(f"Unsupported dtype {dtype} for HashGridQuery. Supported types: float16, float32, float64")
+    return query_type
+
+
+def type_is_hash_grid_query(t):
+    return isinstance(t, type) and getattr(t, "_wp_public_name_", None) == "HashGridQuery"
 
 
 # maximum number of dimensions, must match array.h
@@ -7121,9 +7149,9 @@ simple_type_codes = {
     shape_t: "sh",
     range_t: "rg",
     launch_bounds_t: "lb",
-    HashGridQuery: "hgq",
-    HashGridQueryH: "hgqh",
-    HashGridQueryD: "hgqd",
+    hash_grid_query_type(float16): "hgqh",
+    hash_grid_query_type(float32): "hgq",
+    hash_grid_query_type(float64): "hgqd",
     MeshQueryAABB: "mqa",
     MeshQueryPoint: "mqp",
     MeshQueryRay: "mqr",
