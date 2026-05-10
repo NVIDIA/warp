@@ -19,11 +19,9 @@ import warp as wp
 class HalfFloatConversion:
     """Benchmark half-float conversion via METH_FASTCALL and ctypes paths."""
 
-    # Sampling tuned for ~30ns per-call overhead on the omniperf L40 cluster.
-    # Per-measurement batches are long enough that a single timer interrupt or
-    # context switch can't dominate one sample; warmup discards cold iterations;
-    # min_run_count keeps asv from short-circuiting on benchmarks that turn out
-    # noisy. Each measurement runs ~1.6 ms, so 300 repeats ~ 0.5 s per benchmark.
+    # The fastcall path is short enough that a ~2 ms sample can hide scheduler
+    # noise. Keep those samples near 0.05-0.10 ms and compensate with more ASV
+    # repeats. The ctypes path is slower, so keep its sampling unchanged.
     repeat = 300
     number = 1
     warmup_time = 0.1
@@ -38,7 +36,7 @@ class HalfFloatConversion:
 
     def time_float_to_half_bits_fastcall(self):
         fn = self.core.wp_float_to_half_bits
-        for _ in range(50_000):
+        for _ in range(2_000):
             fn(1.0)
 
     def time_float_to_half_bits_ctypes(self):
@@ -48,7 +46,7 @@ class HalfFloatConversion:
 
     def time_half_bits_to_float_fastcall(self):
         fn = self.core.wp_half_bits_to_float
-        for _ in range(50_000):
+        for _ in range(2_000):
             fn(0x3C00)
 
     def time_half_bits_to_float_ctypes(self):
@@ -59,7 +57,7 @@ class HalfFloatConversion:
     def time_round_trip_fastcall(self):
         to_half = self.core.wp_float_to_half_bits
         to_float = self.core.wp_half_bits_to_float
-        for _ in range(50_000):
+        for _ in range(2_000):
             to_float(to_half(1.0))
 
     def time_round_trip_ctypes(self):
@@ -67,3 +65,8 @@ class HalfFloatConversion:
         to_float = self.ctypes.wp_half_bits_to_float
         for _ in range(5_000):
             to_float(to_half(1.0))
+
+
+HalfFloatConversion.time_float_to_half_bits_fastcall.repeat = 2_000
+HalfFloatConversion.time_half_bits_to_float_fastcall.repeat = 2_000
+HalfFloatConversion.time_round_trip_fastcall.repeat = 2_000
