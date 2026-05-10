@@ -221,7 +221,8 @@ workflow:
 
 1. Run a counting pass.  Each thread records how many slots it needs.
 2. Run a prefix scan.  This computes each thread's deterministic starting slot.
-3. Run the kernel again.  The atomic returns the deterministic slot.
+3. Publish the final counter total from the last prefix and contribution values.
+4. Run the kernel again.  The atomic returns the deterministic slot.
 
 The prefix scan is the same concept as an exclusive scan in CUDA libraries.
 On CUDA, Warp's scan utilities are implemented with CUB primitives such as
@@ -553,10 +554,11 @@ Slot allocation has a different shape.  The kernel is:
     count.zero_()
     wp.launch(counter_kernel, dim=num_writes, inputs=[values, count], outputs=[out], device="cuda")
 
-Deterministic mode turns this into a counting pass, an exclusive scan, and an
-execution pass.  ``"run_to_run"`` and ``"gpu_to_gpu"`` use the same slot
-allocation algorithm.  Pattern B is currently not supported in CUDA graph
-capture, so this table uses direct launches measured with CUDA events.
+Deterministic mode turns this into a counting pass, an exclusive scan, a small
+device-side counter-total writeback, and an execution pass.  ``"run_to_run"``
+and ``"gpu_to_gpu"`` use the same slot allocation algorithm.  Pattern B is
+currently not supported in CUDA graph capture, so this table uses direct
+launches measured with CUDA events.
 
 .. list-table::
    :header-rows: 1
@@ -579,10 +581,10 @@ capture, so this table uses direct launches measured with CUDA events.
      - 7.6x
 
 These counter numbers measure the device work only.  Application wall time can
-be higher because this direct-launch path still allocates temporary scan buffers
-around the launch.  The practical advice is to use deterministic slot allocation
-where stable ordering matters, and benchmark it in the workload that matters to
-you.
+be higher because this direct-launch path still allocates temporary prefix-scan
+buffers around the launch.  The practical advice is to use deterministic slot
+allocation where stable ordering matters, and benchmark it in the workload that
+matters to you.
 
 Limitations
 -----------

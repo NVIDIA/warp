@@ -148,7 +148,9 @@ The kernel runs twice:
 2. *Prefix sum*: ``wp.utils.array_scan(contrib, prefix, inclusive=False)``
    computes deterministic per-thread offsets. The total count is
    ``prefix[-1] + contrib[-1]``.
-3. *Phase 1 (execution)*: The kernel re-executes. Counter atomics return the
+3. *Counter total writeback*: a tiny device helper publishes the total count to
+   the user's counter array without a second full scan.
+4. *Phase 1 (execution)*: The kernel re-executes. Counter atomics return the
    deterministic offset from the prefix sum. All other operations (including
    Pattern A scatters) execute normally.
 
@@ -247,10 +249,10 @@ graph capture because its prefix scans use native ``array_scan`` CUB scratch
 storage that is allocated and freed inside the captured call.
 
 **Counter total writeback**: after the exclusive prefix sum in Phase 0, the
-launch system copies the total count back to the actual counter array so user
+launch system writes the total count back to the actual counter array so user
 code that reads it post-launch sees the correct value. The total is
-``prefix[-1] + contrib[-1]``; the implementation may materialize that value via
-an inclusive scan scratch buffer.
+``prefix[-1] + contrib[-1]`` and is published by a one-thread device helper,
+avoiding a second full-size inclusive scan and temporary output buffer.
 
 **Files added/modified**:
 
@@ -331,7 +333,7 @@ an inclusive scan scratch buffer.
 
 ## Testing Strategy
 
-59 tests in ``warp/tests/test_deterministic.py`` cover:
+60 tests in ``warp/tests/test_deterministic.py`` cover:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
@@ -361,7 +363,8 @@ an inclusive scan scratch buffer.
   before helper calls whose reachable call graph contains a consumed-return
   counter.
 - **Counter correctness**: verifies counter value equals N and output is a
-  permutation of input.
+  permutation of input, plus variable per-thread contributions whose final
+  thread contributes zero.
 - **Conditional counter**: stream compaction (only elements above threshold),
   verifying correct count and reproducible output.
 - **Mixed pattern**: both counter and accumulation in one kernel.
