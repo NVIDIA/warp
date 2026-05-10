@@ -74,9 +74,9 @@ def get_select_kernel(kernel_cache, dtype):
     """
 
     def output_select_kernel_fn(
-        input: wp.array(dtype=dtype),
+        input: wp.array[dtype],
         index: int,
-        out: wp.array(dtype=dtype),
+        out: wp.array[dtype],
     ):
         out[0] = input[index]
 

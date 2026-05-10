@@ -38,13 +38,13 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_vec_mul(
-        v2: wp.array(dtype=vec2),
-        v4: wp.array(dtype=vec4),
-        v32: wp.array(dtype=vec2),
-        m2: wp.array(dtype=mat22),
-        m4: wp.array(dtype=mat44),
-        m32: wp.array(dtype=mat32),
-        outcomponents: wp.array(dtype=wptype),
+        v2: wp.array[vec2],
+        v4: wp.array[vec4],
+        v32: wp.array[vec2],
+        m2: wp.array[mat22],
+        m4: wp.array[mat44],
+        m32: wp.array[mat32],
+        outcomponents: wp.array[wptype],
     ):
         v2result = m2[0] * v2[0]
         v4result = m4[0] * v4[0]
@@ -143,13 +143,13 @@ def test_vecmat_multiplication(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_vec_mat_mul(
-        v2: wp.array(dtype=vec2),
-        v4: wp.array(dtype=vec4),
-        v32: wp.array(dtype=vec2),
-        m2: wp.array(dtype=mat22),
-        m4: wp.array(dtype=mat44),
-        m23: wp.array(dtype=mat23),
-        outcomponents: wp.array(dtype=wptype),
+        v2: wp.array[vec2],
+        v4: wp.array[vec4],
+        v32: wp.array[vec2],
+        m2: wp.array[mat22],
+        m4: wp.array[mat44],
+        m23: wp.array[mat23],
+        outcomponents: wp.array[wptype],
     ):
         v2result = v2[0] * m2[0]
         v4result = v4[0] * m4[0]
@@ -247,13 +247,13 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_mat_mul(
-        a2: wp.array(dtype=mat22),
-        a4: wp.array(dtype=mat44),
-        a32: wp.array(dtype=mat32),
-        b2: wp.array(dtype=mat22),
-        b4: wp.array(dtype=mat44),
-        b32: wp.array(dtype=mat32),
-        outcomponents: wp.array(dtype=wptype),
+        a2: wp.array[mat22],
+        a4: wp.array[mat44],
+        a32: wp.array[mat32],
+        b2: wp.array[mat22],
+        b4: wp.array[mat44],
+        b32: wp.array[mat32],
+        outcomponents: wp.array[wptype],
     ):
         c2result = b2[0] * a2[0]
         c4result = b4[0] * a4[0]
@@ -364,12 +364,12 @@ def test_outer_product(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_outer_product(
-        s2: wp.array(dtype=vec2),
-        s4: wp.array(dtype=vec4),
-        v2: wp.array(dtype=vec2),
-        v4: wp.array(dtype=vec4),
-        v5: wp.array(dtype=vec5),
-        outcomponents: wp.array(dtype=wptype),
+        s2: wp.array[vec2],
+        s4: wp.array[vec4],
+        v2: wp.array[vec2],
+        v4: wp.array[vec4],
+        v5: wp.array[vec5],
+        outcomponents: wp.array[wptype],
     ):
         m22result = wptype(2) * wp.outer(s2[0], v2[0])
         m44result = wptype(2) * wp.outer(s4[0], v4[0])
@@ -464,10 +464,10 @@ def test_transpose(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_transpose(
-        m2: wp.array(dtype=mat22),
-        m4: wp.array(dtype=mat44),
-        m32: wp.array(dtype=mat32),
-        outcomponents: wp.array(dtype=wptype),
+        m2: wp.array[mat22],
+        m4: wp.array[mat44],
+        m32: wp.array[mat32],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         mat2 = wptype(2) * wp.transpose(m2[0])
@@ -543,12 +543,12 @@ def test_ddot(test, device, dtype, register_kernels=False):
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     def check_mat_dot(
-        s2: wp.array(dtype=mat22),
-        s4: wp.array(dtype=mat44),
-        v2: wp.array(dtype=mat22),
-        v4: wp.array(dtype=mat44),
-        dot2: wp.array(dtype=wptype),
-        dot4: wp.array(dtype=wptype),
+        s2: wp.array[mat22],
+        s4: wp.array[mat44],
+        v2: wp.array[mat22],
+        v4: wp.array[mat44],
+        dot2: wp.array[wptype],
+        dot4: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         dot2[0] = wptype(2) * wp.ddot(v2[0], s2[0])
@@ -617,10 +617,10 @@ def test_trace(test, device, dtype, register_kernels=False):
     mat44 = wp._src.types.matrix(shape=(4, 4), dtype=wptype)
 
     def check_mat_trace(
-        v2: wp.array(dtype=mat22),
-        v4: wp.array(dtype=mat44),
-        tr2: wp.array(dtype=wptype),
-        tr4: wp.array(dtype=wptype),
+        v2: wp.array[mat22],
+        v4: wp.array[mat44],
+        tr2: wp.array[wptype],
+        tr4: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         tr2[0] = wptype(2) * wp.trace(v2[0])

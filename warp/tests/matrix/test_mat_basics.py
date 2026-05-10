@@ -108,9 +108,9 @@ def test_indexing(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_indexing(
-        m2: wp.array(dtype=mat22),
-        m4: wp.array(dtype=mat44),
-        outcomponents: wp.array(dtype=wptype),
+        m2: wp.array[mat22],
+        m4: wp.array[mat44],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         idx = 0

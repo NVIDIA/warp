@@ -43,8 +43,8 @@ def test_constructors(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_scalar_mat_constructor(
-        input: wp.array(dtype=wptype),
-        outcomponents: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         m2result = wptype(2) * mat22(input[0])
@@ -62,8 +62,8 @@ def test_constructors(test, device, dtype, register_kernels=False):
                 idx = idx + 1
 
     def check_component_mat_constructor(
-        input: wp.array(dtype=wptype),
-        outcomponents: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         m2result = wptype(2) * mat22(input[0], input[1], input[2], input[3])
@@ -98,8 +98,8 @@ def test_constructors(test, device, dtype, register_kernels=False):
                 idx = idx + 1
 
     def check_vector_mat_constructor(
-        input: wp.array(dtype=wptype),
-        outcomponents: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         m2result = wptype(2) * wp.matrix_from_cols(vec2(input[0], input[2]), vec2(input[1], input[3]))
@@ -196,8 +196,8 @@ def test_diag(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_diag(
-        s5: wp.array(dtype=vec5),
-        outcomponents: wp.array(dtype=wptype),
+        s5: wp.array[vec5],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         m55result = wptype(2) * wp.diag(s5[0])
@@ -631,11 +631,11 @@ def test_quat_constructor(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_quat_constructor(
-        p: wp.array(dtype=vec3),
-        r: wp.array(dtype=quat),
-        s: wp.array(dtype=vec3),
-        outcomponents: wp.array(dtype=wptype),
-        outcomponents_alt: wp.array(dtype=wptype),
+        p: wp.array[vec3],
+        r: wp.array[quat],
+        s: wp.array[vec3],
+        outcomponents: wp.array[wptype],
+        outcomponents_alt: wp.array[wptype],
     ):
         m = wp.transform_compose(p[0], r[0], s[0])
 
@@ -716,7 +716,7 @@ def test_identity(test, device, dtype, register_kernels=False):
     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def check_identity_mat(
-        output: wp.array(dtype=wptype),
+        output: wp.array[wptype],
     ):
         m2result = wp.identity(dtype=wptype, n=2)
         m5result = wp.identity(dtype=wptype, n=5)
@@ -754,8 +754,8 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
     wptype = wp._src.types.np_dtype_to_warp_type[np.dtype(dtype)]
 
     def check_scalar_init(
-        input: wp.array(dtype=wptype),
-        output: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        output: wp.array[wptype],
     ):
         m2result = wp.types.matrix(input[0], shape=(2, 2))
         m4result = wp.types.matrix(input[1], shape=(4, 4))
@@ -776,8 +776,8 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
                 idx = idx + 1
 
     def check_component_init(
-        input: wp.array(dtype=wptype),
-        output: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        output: wp.array[wptype],
     ):
         m2result = wp.types.matrix(input[0], input[1], input[2], input[3], shape=(2, 2))
         m4result = wp.types.matrix(

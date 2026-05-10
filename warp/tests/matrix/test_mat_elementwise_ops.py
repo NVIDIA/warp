@@ -34,11 +34,11 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_scalar_mul(
-        s: wp.array(dtype=wptype),
-        m2: wp.array(dtype=mat22),
-        m4: wp.array(dtype=mat44),
-        outcomponents: wp.array(dtype=wptype),
-        outcomponents_rightmul: wp.array(dtype=wptype),
+        s: wp.array[wptype],
+        m2: wp.array[mat22],
+        m4: wp.array[mat44],
+        outcomponents: wp.array[wptype],
+        outcomponents_rightmul: wp.array[wptype],
     ):
         m2result = s[0] * m2[0]
         m4result = s[0] * m4[0]
@@ -149,11 +149,11 @@ def test_addition(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_add(
-        s2: wp.array(dtype=mat22),
-        s4: wp.array(dtype=mat44),
-        v2: wp.array(dtype=mat22),
-        v4: wp.array(dtype=mat44),
-        outcomponents: wp.array(dtype=wptype),
+        s2: wp.array[mat22],
+        s4: wp.array[mat44],
+        v2: wp.array[mat22],
+        v4: wp.array[mat44],
+        outcomponents: wp.array[wptype],
     ):
         v2result = v2[0] + s2[0]
         v4result = v4[0] + s4[0]
@@ -237,10 +237,10 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_scalar_div(
-        s: wp.array(dtype=wptype),
-        m2: wp.array(dtype=mat22),
-        m4: wp.array(dtype=mat44),
-        outcomponents: wp.array(dtype=wptype),
+        s: wp.array[wptype],
+        m2: wp.array[mat22],
+        m4: wp.array[mat44],
+        outcomponents: wp.array[wptype],
     ):
         m2result = m2[0] / s[0]
         m4result = m4[0] / s[0]
@@ -317,11 +317,11 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_cw_mul(
-        s2: wp.array(dtype=mat22),
-        s4: wp.array(dtype=mat44),
-        v2: wp.array(dtype=mat22),
-        v4: wp.array(dtype=mat44),
-        outcomponents: wp.array(dtype=wptype),
+        s2: wp.array[mat22],
+        s4: wp.array[mat44],
+        v2: wp.array[mat22],
+        v4: wp.array[mat44],
+        outcomponents: wp.array[wptype],
     ):
         v2result = wptype(2) * wp.cw_mul(v2[0], s2[0])
         v4result = wptype(2) * wp.cw_mul(v4[0], s4[0])
@@ -407,11 +407,11 @@ def test_cw_division(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_cw_div(
-        s2: wp.array(dtype=mat22),
-        s4: wp.array(dtype=mat44),
-        v2: wp.array(dtype=mat22),
-        v4: wp.array(dtype=mat44),
-        outcomponents: wp.array(dtype=wptype),
+        s2: wp.array[mat22],
+        s4: wp.array[mat44],
+        v2: wp.array[mat22],
+        v4: wp.array[mat44],
+        outcomponents: wp.array[wptype],
     ):
         v2result = wptype(2) * wp.cw_div(v2[0], s2[0])
         v4result = wptype(2) * wp.cw_div(v4[0], s4[0])

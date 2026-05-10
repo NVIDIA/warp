@@ -18,7 +18,7 @@ def tearDownModule():
 
 
 @wp.kernel
-def mat_assign_element(x: wp.array(dtype=float), y: wp.array(dtype=wp.mat22)):
+def mat_assign_element(x: wp.array[float], y: wp.array[wp.mat22]):
     i = wp.tid()
 
     a = wp.mat22()
@@ -31,7 +31,7 @@ def mat_assign_element(x: wp.array(dtype=float), y: wp.array(dtype=wp.mat22)):
 
 
 @wp.kernel
-def mat_assign_row(x: wp.array(dtype=wp.vec2), y: wp.array(dtype=wp.mat22)):
+def mat_assign_row(x: wp.array[wp.vec2], y: wp.array[wp.mat22]):
     i = wp.tid()
 
     a = wp.mat22()
@@ -73,7 +73,7 @@ def test_mat_assign(test, device):
 
 def test_matrix_assign_copy(test, device):
     @wp.kernel(module="unique")
-    def mat_in_register_overwrite(x: wp.array2d(dtype=wp.mat22), y: wp.array(dtype=wp.vec2)):
+    def mat_in_register_overwrite(x: wp.array2d[wp.mat22], y: wp.array[wp.vec2]):
         i, j = wp.tid()
 
         a = wp.mat22()
@@ -99,9 +99,9 @@ def test_mat_slicing_assign_backward(test, device):
 
     @wp.kernel(module="unique")
     def kernel(
-        arr_x: wp.array(dtype=wp.vec2),
-        arr_y: wp.array(dtype=mat23),
-        arr_z: wp.array(dtype=wp.mat44),
+        arr_x: wp.array[wp.vec2],
+        arr_y: wp.array[mat23],
+        arr_z: wp.array[wp.mat44],
     ):
         i = wp.tid()
 

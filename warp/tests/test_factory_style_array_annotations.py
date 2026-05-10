@@ -54,6 +54,12 @@ def factory_style_composite_kernel(
 
 
 @wp.kernel
+def factory_style_matrix_array2d_kernel(mats: wp.array2d(dtype=wp.mat22), out: wp.array2d(dtype=float)):
+    m = mats[0, 0]
+    out[0, 0] = m[0, 0] + m[1, 1]
+
+
+@wp.kernel
 def factory_style_generic_scale_kernel(values: wp.array(dtype=Any), scale: Any):
     i = wp.tid()
     values[i] = values[i] * scale
@@ -122,6 +128,15 @@ def test_factory_style_composite_annotations(test, device):
     wp.launch(factory_style_composite_kernel, dim=1, inputs=[vecs, mats, out], device=device)
 
     np.testing.assert_allclose(out.numpy(), [1.0 + 2.0 + 3.0 + 4.0 + 7.0])
+
+
+def test_factory_style_matrix_array2d_annotations(test, device):
+    mats = wp.array(np.array([[[[1.0, 2.0], [3.0, 4.0]]]], dtype=np.float32), dtype=wp.mat22, device=device)
+    out = wp.zeros((1, 1), dtype=float, device=device)
+
+    wp.launch(factory_style_matrix_array2d_kernel, dim=1, inputs=[mats, out], device=device)
+
+    np.testing.assert_allclose(out.numpy(), [[5.0]])
 
 
 def test_factory_style_generic_overload_annotations(test, device):
@@ -232,7 +247,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertIs(generic_4d.dtype, Any)
         self.assertEqual(generic_4d.ndim, 4)
         self.assertEqual(array_type_id(generic_4d), ARRAY_TYPE_REGULAR)
-        self.assertEqual(get_type_code(generic_4d), get_type_code(wp.array[Any, Literal[4]]))
+        self.assertEqual(get_type_code(generic_4d), get_type_code(wp.array4d[Any]))
 
         default_generic = wp.array()
         self.assertIs(default_generic.dtype, Any)
@@ -258,7 +273,9 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
             (wp.array(dtype=wp.vec3f), wp.array[wp.vec3f]),
             (wp.array(dtype=wp.vec3d), wp.array[wp.vec3d]),
             (wp.array2d(dtype=wp.int32), wp.array2d[wp.int32]),
-            (wp.array(dtype=wp.int32, ndim=2), wp.array[wp.int32, Literal[2]]),
+            (wp.array(dtype=wp.int32, ndim=2), wp.array2d[wp.int32]),
+            (wp.array2d(dtype=wp.mat22), wp.array2d[wp.mat22]),
+            (wp.array(dtype=wp.mat22, ndim=2), wp.array2d[wp.mat22]),
         )
 
         for factory_style, subscript_style in annotations:
@@ -271,10 +288,10 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
     def test_factory_style_noncontiguous_array_metadata(self):
         annotations = (
             (wp.indexedarray(dtype=wp.float64, ndim=3), wp.indexedarray[wp.float64, Literal[3]], ARRAY_TYPE_INDEXED),
-            (wp.fabricarray(dtype=wp.float32, ndim=2), wp.fabricarray[wp.float32, Literal[2]], ARRAY_TYPE_FABRIC),
+            (wp.fabricarray(dtype=wp.float32, ndim=2), wp.fabricarray[wp.float32, 2], ARRAY_TYPE_FABRIC),
             (
                 wp.indexedfabricarray(dtype=wp.float64, ndim=2),
-                wp.indexedfabricarray[wp.float64, Literal[2]],
+                wp.indexedfabricarray[wp.float64, 2],
                 ARRAY_TYPE_FABRIC_INDEXED,
             ),
         )
@@ -299,6 +316,12 @@ add_function_test(
     TestFactoryStyleArrayAnnotations,
     "test_factory_style_composite_annotations",
     test_factory_style_composite_annotations,
+    devices=devices,
+)
+add_function_test(
+    TestFactoryStyleArrayAnnotations,
+    "test_factory_style_matrix_array2d_annotations",
+    test_factory_style_matrix_array2d_annotations,
     devices=devices,
 )
 add_function_test(
