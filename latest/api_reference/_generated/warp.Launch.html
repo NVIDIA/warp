@@ -509,7 +509,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7998-L8227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8002-L8231"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch" title="Link to this definition">#</a></dt>
 <dd><p>Represent all data required for a kernel launch so that launches can be replayed quickly.</p>
 <p>Users should not directly instantiate this class, instead use
 <code class="docutils literal notranslate"><span class="pre">warp.launch(...,</span> <span class="pre">record_cmd=True)</span></code> to record a launch.</p>
@@ -543,7 +543,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8005-L8081"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8009-L8085"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -647,7 +647,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_dim">
-<span class="sig-name descname"><span class="pre">set_dim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8082-L8096"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_dim" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_dim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8086-L8100"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_dim" title="Link to this definition">#</a></dt>
 <dd><p>Set the launch dimensions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -658,7 +658,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_param_at_index">
-<span class="sig-name descname"><span class="pre">set_param_at_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8097-L8119"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_at_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_param_at_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8101-L8123"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_at_index" title="Link to this definition">#</a></dt>
 <dd><p>Set a kernel parameter at an index.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -673,7 +673,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_param_at_index_from_ctype">
-<span class="sig-name descname"><span class="pre">set_param_at_index_from_ctype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8120-L8137"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_at_index_from_ctype" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_param_at_index_from_ctype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8124-L8141"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_at_index_from_ctype" title="Link to this definition">#</a></dt>
 <dd><p>Set a kernel parameter at an index without any type conversion.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -687,7 +687,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_param_by_name">
-<span class="sig-name descname"><span class="pre">set_param_by_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8138-L8152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_by_name" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_param_by_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8142-L8156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_by_name" title="Link to this definition">#</a></dt>
 <dd><p>Set a kernel parameter by argument name.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -702,7 +702,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_param_by_name_from_ctype">
-<span class="sig-name descname"><span class="pre">set_param_by_name_from_ctype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8153-L8164"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_by_name_from_ctype" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_param_by_name_from_ctype</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8157-L8168"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_param_by_name_from_ctype" title="Link to this definition">#</a></dt>
 <dd><p>Set a kernel parameter by argument name with no type conversions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -716,7 +716,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_params">
-<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8165-L8173"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_params" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8169-L8177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_params" title="Link to this definition">#</a></dt>
 <dd><p>Set all parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -727,7 +727,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.set_params_from_ctypes">
-<span class="sig-name descname"><span class="pre">set_params_from_ctypes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8174-L8182"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_params_from_ctypes" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_params_from_ctypes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8178-L8186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.set_params_from_ctypes" title="Link to this definition">#</a></dt>
 <dd><p>Set all parameters without performing type-conversions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -738,7 +738,7 @@ This should not be changed after the launch object is created.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Launch.launch">
-<span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8183-L8227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.launch" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8187-L8231"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Launch.launch" title="Link to this definition">#</a></dt>
 <dd><p>Launch the kernel.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
