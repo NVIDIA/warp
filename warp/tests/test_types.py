@@ -676,6 +676,34 @@ class TestTypes(unittest.TestCase):
         test_conversions(wp.uint64, np.uint64)
         test_conversions(wp.bool, np.bool_)
 
+    def test_block_dim_dependent_shared_tile_codegen(self):
+        tile_type = wp._src.types.tile(
+            dtype=wp.float32,
+            shape=(3, 32),
+            storage="shared",
+            block_dim_dependent=True,
+        )
+
+        ctype = tile_type.ctype()
+        cinit = tile_type.cinit()
+
+        self.assertIn("wp::tile_shape_t<3,WP_TILE_BLOCK_DIM>", ctype)
+        self.assertIn("wp::tile_stride_t<WP_TILE_BLOCK_DIM,1>", ctype)
+        self.assertIn("wp::tile_shape_t<3,WP_TILE_BLOCK_DIM>", cinit)
+        self.assertIn("wp::tile_stride_t<WP_TILE_BLOCK_DIM,1>", cinit)
+
+        matrix_tile_type = wp._src.types.tile(
+            dtype=wp.float32,
+            shape=(2, 3, 32),
+            storage="shared",
+            block_dim_dependent=True,
+        )
+
+        self.assertIn("wp::tile_shape_t<2,3,WP_TILE_BLOCK_DIM>", matrix_tile_type.ctype())
+        self.assertIn("wp::tile_stride_t<WP_TILE_BLOCK_DIM*3,WP_TILE_BLOCK_DIM,1>", matrix_tile_type.ctype())
+        self.assertIn("wp::tile_shape_t<2,3,WP_TILE_BLOCK_DIM>", matrix_tile_type.cinit())
+        self.assertIn("wp::tile_stride_t<WP_TILE_BLOCK_DIM*3,WP_TILE_BLOCK_DIM,1>", matrix_tile_type.cinit())
+
     def test_tuple_type_code_generation(self):
         """Test that tuple type annotations generate correct type codes, especially on Python 3.10."""
         # Test basic tuple types
