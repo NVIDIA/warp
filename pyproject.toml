@@ -61,6 +61,10 @@ torch-cu12 = [
     "warp-lang[examples]",
     "torch>=2.7.0",
 ]
+torch-cu13 = [
+    "warp-lang[examples]",
+    "torch>=2.9.0",
+]
 dev = [
     "warp-lang[examples]",
     "warp-lang[docs]",
@@ -166,6 +170,12 @@ omit = [
 
 [tool.uv]
 managed = true
+conflicts = [
+    [
+        { extra = "torch-cu12" },
+        { extra = "torch-cu13" },
+    ],
+]
 
 [[tool.uv.index]]
 name = "testpypi"
@@ -174,11 +184,19 @@ publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128", extra = "torch-cu12" }]
+torch = [
+    { index = "pytorch-cu128", extra = "torch-cu12" },
+    { index = "pytorch-cu130", extra = "torch-cu13" },
+]
 
 [[tool.uv.index]]
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.typos]

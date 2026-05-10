@@ -289,7 +289,7 @@ jobs:
           path: warp/bin/
 
       - name: Run Tests
-        run: uv run --extra dev --extra torch-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
