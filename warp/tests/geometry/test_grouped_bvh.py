@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def bvh_query_aabb(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, bounds_intersected: wp.array(dtype=int)):
+def bvh_query_aabb(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, bounds_intersected: wp.array[int]):
     query = wp.bvh_query_aabb(bvh_id, lower, upper)
     bounds_nr = int(0)
 
@@ -20,7 +20,7 @@ def bvh_query_aabb(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, bounds_int
 
 
 @wp.kernel
-def bvh_query_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, bounds_intersected: wp.array(dtype=int)):
+def bvh_query_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, bounds_intersected: wp.array[int]):
     query = wp.bvh_query_ray(bvh_id, start, dir)
     bounds_nr = int(0)
 
@@ -33,8 +33,8 @@ def bvh_query_aabb_group(
     bvh_id: wp.uint64,
     lower: wp.vec3,
     upper: wp.vec3,
-    group_ids: wp.array(dtype=int),
-    bounds_intersected: wp.array(dtype=int),
+    group_ids: wp.array[int],
+    bounds_intersected: wp.array[int],
 ):
     tid = wp.tid()
     root = wp.bvh_get_group_root(bvh_id, group_ids[tid])
@@ -50,8 +50,8 @@ def bvh_query_ray_group(
     bvh_id: wp.uint64,
     start: wp.vec3,
     dir: wp.vec3,
-    group_ids: wp.array(dtype=int),
-    bounds_intersected: wp.array(dtype=int),
+    group_ids: wp.array[int],
+    bounds_intersected: wp.array[int],
 ):
     tid = wp.tid()
     root = wp.bvh_get_group_root(bvh_id, group_ids[tid])
@@ -63,7 +63,7 @@ def bvh_query_ray_group(
 
 
 @wp.kernel
-def get_group_root(bvh_id: wp.uint64, roots: wp.array(dtype=int)):
+def get_group_root(bvh_id: wp.uint64, roots: wp.array[int]):
     tid = wp.tid()
     roots[tid] = wp.bvh_get_group_root(bvh_id, tid)
 
@@ -363,14 +363,14 @@ def intersect_aabb_aabb(a_lower: wp.vec3, a_upper: wp.vec3, b_lower: wp.vec3, b_
 
 @wp.kernel
 def compute_num_contact_with_checksums_brutal(
-    bvh_lowers: wp.array(dtype=wp.vec3),
-    bvh_uppers: wp.array(dtype=wp.vec3),
-    bvh_groups: wp.array(dtype=int),
-    test_lowers: wp.array(dtype=wp.vec3),
-    test_uppers: wp.array(dtype=wp.vec3),
-    test_groups: wp.array(dtype=int),
-    counts: wp.array(dtype=int),
-    check_sums: wp.array(dtype=int),
+    bvh_lowers: wp.array[wp.vec3],
+    bvh_uppers: wp.array[wp.vec3],
+    bvh_groups: wp.array[int],
+    test_lowers: wp.array[wp.vec3],
+    test_uppers: wp.array[wp.vec3],
+    test_groups: wp.array[int],
+    counts: wp.array[int],
+    check_sums: wp.array[int],
 ):
     tid = wp.tid()
 
@@ -393,12 +393,12 @@ def compute_num_contact_with_checksums_brutal(
 
 @wp.kernel
 def compute_num_contact_with_checksums(
-    lowers: wp.array(dtype=wp.vec3),
-    uppers: wp.array(dtype=wp.vec3),
-    groups: wp.array(dtype=int),
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
+    groups: wp.array[int],
     bvh_id: wp.uint64,
-    counts: wp.array(dtype=int),
-    check_sums: wp.array(dtype=int),
+    counts: wp.array[int],
+    check_sums: wp.array[int],
 ):
     tid = wp.tid()
 

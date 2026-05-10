@@ -14,7 +14,7 @@ from warp.tests.unittest_utils import *
 
 # float volume tests
 @wp.kernel
-def test_volume_lookup_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_lookup_f(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -31,7 +31,7 @@ def test_volume_lookup_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
-def test_volume_sample_closest_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_closest_f(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -51,7 +51,7 @@ def test_volume_sample_closest_f(volume: wp.uint64, points: wp.array(dtype=wp.ve
 
 
 @wp.kernel
-def test_volume_sample_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_linear_f(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -65,7 +65,7 @@ def test_volume_sample_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec
 
 
 @wp.kernel
-def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -96,7 +96,7 @@ def test_volume_sample_grad_linear_f(volume: wp.uint64, points: wp.array(dtype=w
 
 @wp.kernel
 def test_volume_sample_local_f_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)
+    volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]
 ):
     tid = wp.tid()
     p = points[tid]
@@ -105,7 +105,7 @@ def test_volume_sample_local_f_linear_values(
 
 @wp.kernel
 def test_volume_sample_grad_local_f_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num: int
+    volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32], case_num: int
 ):
     tid = wp.tid()
     p = points[tid]
@@ -124,7 +124,7 @@ def test_volume_sample_grad_local_f_linear_values(
 
 @wp.kernel
 def test_volume_sample_world_f_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)
+    volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]
 ):
     tid = wp.tid()
     q = points[tid]
@@ -134,7 +134,7 @@ def test_volume_sample_world_f_linear_values(
 
 @wp.kernel
 def test_volume_sample_grad_world_f_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32), case_num: int
+    volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32], case_num: int
 ):
     tid = wp.tid()
     q = points[tid]
@@ -154,7 +154,7 @@ def test_volume_sample_grad_world_f_linear_values(
 
 # vec3f volume tests
 @wp.kernel
-def test_volume_lookup_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_lookup_v(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -173,7 +173,7 @@ def test_volume_lookup_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
-def test_volume_sample_closest_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_closest_v(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -193,7 +193,7 @@ def test_volume_sample_closest_v(volume: wp.uint64, points: wp.array(dtype=wp.ve
 
 
 @wp.kernel
-def test_volume_sample_linear_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_linear_v(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -209,7 +209,7 @@ def test_volume_sample_linear_v(volume: wp.uint64, points: wp.array(dtype=wp.vec
 
 
 @wp.kernel
-def test_volume_sample_grad_linear_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_grad_linear_v(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -233,7 +233,7 @@ def test_volume_sample_grad_linear_v(volume: wp.uint64, points: wp.array(dtype=w
 
 @wp.kernel
 def test_volume_sample_local_v_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)
+    volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]
 ):
     tid = wp.tid()
     p = points[tid]
@@ -243,7 +243,7 @@ def test_volume_sample_local_v_linear_values(
 
 @wp.kernel
 def test_volume_sample_world_v_linear_values(
-    volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)
+    volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]
 ):
     tid = wp.tid()
     q = points[tid]
@@ -254,7 +254,7 @@ def test_volume_sample_world_v_linear_values(
 
 # int32 volume tests
 @wp.kernel
-def test_volume_lookup_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_lookup_i(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -270,7 +270,7 @@ def test_volume_lookup_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
-def test_volume_sample_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_sample_i(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -293,9 +293,9 @@ def test_volume_sample_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
 @wp.kernel
 def test_volume_index_to_world(
     volume: wp.uint64,
-    points: wp.array(dtype=wp.vec3),
-    values: wp.array(dtype=wp.float32),
-    grad_values: wp.array(dtype=wp.vec3),
+    points: wp.array[wp.vec3],
+    values: wp.array[wp.float32],
+    grad_values: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     p = points[tid]
@@ -307,9 +307,9 @@ def test_volume_index_to_world(
 @wp.kernel
 def test_volume_world_to_index(
     volume: wp.uint64,
-    points: wp.array(dtype=wp.vec3),
-    values: wp.array(dtype=wp.float32),
-    grad_values: wp.array(dtype=wp.vec3),
+    points: wp.array[wp.vec3],
+    values: wp.array[wp.float32],
+    grad_values: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     p = points[tid]
@@ -320,7 +320,7 @@ def test_volume_world_to_index(
 
 # Volume write tests
 @wp.kernel
-def test_volume_store_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)):
+def test_volume_store_f(volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]):
     tid = wp.tid()
 
     p = points[tid]
@@ -333,7 +333,7 @@ def test_volume_store_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
 
 
 @wp.kernel
-def test_volume_store_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.vec3)):
+def test_volume_store_v(volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -346,7 +346,7 @@ def test_volume_store_v(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
 
 
 @wp.kernel
-def test_volume_store_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.int32)):
+def test_volume_store_i(volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.int32]):
     tid = wp.tid()
 
     p = points[tid]
@@ -359,7 +359,7 @@ def test_volume_store_i(volume: wp.uint64, points: wp.array(dtype=wp.vec3), valu
 
 
 @wp.kernel
-def test_volume_store_v4(volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.vec4)):
+def test_volume_store_v4(volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.vec4]):
     tid = wp.tid()
 
     p = points[tid]
@@ -713,7 +713,7 @@ def test_volume_feature_array(test, device):
 
 
 @wp.kernel
-def fill_leaf_values_kernel(volume: wp.uint64, ijk: wp.array2d(dtype=wp.int32), values: wp.array(dtype=Any)):
+def fill_leaf_values_kernel(volume: wp.uint64, ijk: wp.array2d[wp.int32], values: wp.array[Any]):
     tid = wp.tid()
 
     i = ijk[tid, 0]
@@ -728,10 +728,10 @@ def fill_leaf_values_kernel(volume: wp.uint64, ijk: wp.array2d(dtype=wp.int32), 
 @wp.kernel
 def test_volume_sample_index_kernel(
     volume: wp.uint64,
-    points: wp.array(dtype=wp.vec3),
-    values: wp.array(dtype=Any),
-    background: wp.array(dtype=Any),
-    sampled_values: wp.array(dtype=Any),
+    points: wp.array[wp.vec3],
+    values: wp.array[Any],
+    background: wp.array[Any],
+    sampled_values: wp.array[Any],
 ):
     tid = wp.tid()
     p = points[tid]
@@ -744,11 +744,11 @@ def test_volume_sample_index_kernel(
 @wp.kernel
 def test_volume_sample_grad_index_kernel(
     volume: wp.uint64,
-    points: wp.array(dtype=wp.vec3),
-    values: wp.array(dtype=Any),
-    background: wp.array(dtype=Any),
-    sampled_values: wp.array(dtype=Any),
-    sampled_grads: wp.array(dtype=Any),
+    points: wp.array[wp.vec3],
+    values: wp.array[Any],
+    background: wp.array[Any],
+    sampled_values: wp.array[Any],
+    sampled_grads: wp.array[Any],
 ):
     tid = wp.tid()
     p = points[tid]

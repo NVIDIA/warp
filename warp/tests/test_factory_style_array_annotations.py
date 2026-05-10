@@ -60,6 +60,13 @@ def factory_style_generic_scale_kernel(values: wp.array(dtype=Any), scale: Any):
 
 
 @wp.kernel
+def factory_style_vec3_component_sum_kernel(values: wp.array(dtype=Any), out: wp.array(dtype=Any)):
+    i = wp.tid()
+    v = values[i]
+    out[i] = v[0] + v[1] + v[2]
+
+
+@wp.kernel
 def factory_style_func_kernel(values: wp.array(dtype=float), out: wp.array(dtype=float)):
     i = wp.tid()
     out[i] = factory_style_read_func(values, i) * 2.0
@@ -79,6 +86,9 @@ def factory_style_indexedarray_kernel(values: wp.indexedarray(dtype=float), out:
 
 wp.overload(factory_style_generic_scale_kernel, [wp.array(dtype=wp.float32), wp.float32])
 wp.overload(factory_style_generic_scale_kernel, [wp.array(dtype=wp.int32), wp.int32])
+wp.overload(factory_style_vec3_component_sum_kernel, [wp.array(dtype=wp.vec3h), wp.array(dtype=wp.float16)])
+wp.overload(factory_style_vec3_component_sum_kernel, [wp.array(dtype=wp.vec3f), wp.array(dtype=wp.float32)])
+wp.overload(factory_style_vec3_component_sum_kernel, [wp.array(dtype=wp.vec3d), wp.array(dtype=wp.float64)])
 
 
 def create_factory_style_string_annotation_kernel(dtype):
@@ -123,6 +133,27 @@ def test_factory_style_generic_overload_annotations(test, device):
 
     np.testing.assert_allclose(float_values.numpy(), [2.0, 4.0, 6.0])
     np.testing.assert_array_equal(int_values.numpy(), [3, 6, 9])
+
+
+def test_factory_style_vec3_overload_annotations(test, device):
+    test_cases = (
+        (wp.vec3h, wp.float16, np.float16),
+        (wp.vec3f, wp.float32, np.float32),
+        (wp.vec3d, wp.float64, np.float64),
+    )
+
+    for vec_dtype, scalar_dtype, np_dtype in test_cases:
+        with test.subTest(vec_dtype=vec_dtype):
+            values = wp.array(
+                np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np_dtype),
+                dtype=vec_dtype,
+                device=device,
+            )
+            out = wp.zeros(2, dtype=scalar_dtype, device=device)
+
+            wp.launch(factory_style_vec3_component_sum_kernel, dim=2, inputs=[values, out], device=device)
+
+            np.testing.assert_allclose(out.numpy(), [6.0, 15.0])
 
 
 def test_factory_style_func_annotations(test, device):
@@ -221,6 +252,22 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
+    def test_factory_style_geometry_array_metadata(self):
+        annotations = (
+            (wp.array(dtype=wp.vec3h), wp.array[wp.vec3h]),
+            (wp.array(dtype=wp.vec3f), wp.array[wp.vec3f]),
+            (wp.array(dtype=wp.vec3d), wp.array[wp.vec3d]),
+            (wp.array2d(dtype=wp.int32), wp.array2d[wp.int32]),
+            (wp.array(dtype=wp.int32, ndim=2), wp.array[wp.int32, Literal[2]]),
+        )
+
+        for factory_style, subscript_style in annotations:
+            with self.subTest(factory_style=factory_style):
+                self.assertEqual(factory_style.dtype, subscript_style.dtype)
+                self.assertEqual(factory_style.ndim, subscript_style.ndim)
+                self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
+                self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
+
     def test_factory_style_noncontiguous_array_metadata(self):
         annotations = (
             (wp.indexedarray(dtype=wp.float64, ndim=3), wp.indexedarray[wp.float64, Literal[3]], ARRAY_TYPE_INDEXED),
@@ -258,6 +305,12 @@ add_function_test(
     TestFactoryStyleArrayAnnotations,
     "test_factory_style_generic_overload_annotations",
     test_factory_style_generic_overload_annotations,
+    devices=devices,
+)
+add_function_test(
+    TestFactoryStyleArrayAnnotations,
+    "test_factory_style_vec3_overload_annotations",
+    test_factory_style_vec3_overload_annotations,
     devices=devices,
 )
 add_function_test(

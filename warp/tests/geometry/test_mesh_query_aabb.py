@@ -24,10 +24,10 @@ def max_vec3(a: wp.vec3, b: wp.vec3):
 
 @wp.kernel
 def compute_bounds(
-    indices: wp.array(dtype=int),
-    positions: wp.array(dtype=wp.vec3),
-    lowers: wp.array(dtype=wp.vec3),
-    uppers: wp.array(dtype=wp.vec3),
+    indices: wp.array[int],
+    positions: wp.array[wp.vec3],
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     i = indices[tid * 3 + 0]
@@ -47,7 +47,7 @@ def compute_bounds(
 
 @wp.kernel
 def compute_num_contacts(
-    lowers: wp.array(dtype=wp.vec3), uppers: wp.array(dtype=wp.vec3), mesh_id: wp.uint64, counts: wp.array(dtype=int)
+    lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3], mesh_id: wp.uint64, counts: wp.array[int]
 ):
     tid = wp.tid()
 
@@ -188,11 +188,11 @@ def test_mesh_query_aabb_count_nonoverlap(test, device):
 
 @wp.kernel
 def compute_num_contact_with_checksums(
-    lowers: wp.array(dtype=wp.vec3),
-    uppers: wp.array(dtype=wp.vec3),
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
     mesh_id: wp.uint64,
-    counts: wp.array(dtype=int),
-    check_sums: wp.array(dtype=int),
+    counts: wp.array[int],
+    check_sums: wp.array[int],
 ):
     tid = wp.tid()
 
@@ -228,12 +228,12 @@ def intersect_aabb_aabb(a_lower: wp.vec3, a_upper: wp.vec3, b_lower: wp.vec3, b_
 
 @wp.kernel
 def compute_num_contact_with_checksums_brutal(
-    lowers: wp.array(dtype=wp.vec3),
-    uppers: wp.array(dtype=wp.vec3),
-    mesh_points: wp.array(dtype=wp.vec3),
-    mesh_indices: wp.array(dtype=int),
-    counts: wp.array(dtype=int),
-    check_sums: wp.array(dtype=int),
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
+    mesh_points: wp.array[wp.vec3],
+    mesh_indices: wp.array[int],
+    counts: wp.array[int],
+    check_sums: wp.array[int],
 ):
     tid = wp.tid()
 
@@ -344,7 +344,7 @@ def tile_mesh_query_aabb_kernel(
     mesh_id: wp.uint64,
     lower: wp.vec3,
     upper: wp.vec3,
-    faces_intersected: wp.array(dtype=int),
+    faces_intersected: wp.array[int],
 ):
     query = wp.tile_mesh_query_aabb(mesh_id, lower, upper)
 
@@ -363,7 +363,7 @@ def mesh_query_aabb_kernel(
     mesh_id: wp.uint64,
     lower: wp.vec3,
     upper: wp.vec3,
-    faces_intersected: wp.array(dtype=int),
+    faces_intersected: wp.array[int],
 ):
     query = wp.mesh_query_aabb(mesh_id, lower, upper)
 
@@ -520,7 +520,7 @@ def mesh_query_aabb_tiled_kernel(
     mesh_id: wp.uint64,
     lower: wp.vec3,
     upper: wp.vec3,
-    faces_intersected: wp.array(dtype=int),
+    faces_intersected: wp.array[int],
 ):
     query = wp.mesh_query_aabb_tiled(mesh_id, lower, upper)
 
@@ -602,7 +602,7 @@ def tile_mesh_query_aabb_valid_kernel(
     mesh_id: wp.uint64,
     lower: wp.vec3,
     upper: wp.vec3,
-    faces_intersected: wp.array(dtype=int),
+    faces_intersected: wp.array[int],
 ):
     query = wp.tile_mesh_query_aabb(mesh_id, lower, upper)
 

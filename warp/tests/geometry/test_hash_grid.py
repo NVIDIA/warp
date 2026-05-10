@@ -19,7 +19,7 @@ query_radius = 8.0
 
 # Generic kernel supporting float16, float32, and float64 precision
 @wp.kernel
-def count_neighbors(grid: wp.uint64, radius: Any, points: wp.array(dtype=Any), counts: wp.array(dtype=int)):
+def count_neighbors(grid: wp.uint64, radius: Any, points: wp.array[Any], counts: wp.array[int]):
     tid = wp.tid()
 
     # order threads by cell
@@ -42,15 +42,9 @@ def count_neighbors(grid: wp.uint64, radius: Any, points: wp.array(dtype=Any), c
 
 # Forward-declare concrete overloads to avoid extra module recompilations
 # and to verify JIT compilation with explicit types (tests simple_type_codes)
-count_neighbors_f16 = wp.overload(
-    count_neighbors, [wp.uint64, wp.float16, wp.array(dtype=wp.vec3h), wp.array(dtype=int)]
-)
-count_neighbors_f32 = wp.overload(
-    count_neighbors, [wp.uint64, wp.float32, wp.array(dtype=wp.vec3f), wp.array(dtype=int)]
-)
-count_neighbors_f64 = wp.overload(
-    count_neighbors, [wp.uint64, wp.float64, wp.array(dtype=wp.vec3d), wp.array(dtype=int)]
-)
+count_neighbors_f16 = wp.overload(count_neighbors, [wp.uint64, wp.float16, wp.array[wp.vec3h], wp.array[int]])
+count_neighbors_f32 = wp.overload(count_neighbors, [wp.uint64, wp.float32, wp.array[wp.vec3f], wp.array[int]])
+count_neighbors_f64 = wp.overload(count_neighbors, [wp.uint64, wp.float64, wp.array[wp.vec3d], wp.array[int]])
 
 
 @wp.func
@@ -70,8 +64,8 @@ def count_neighbors_periodic(
     grid: wp.uint64,
     radius: float,
     period: float,
-    points: wp.array(dtype=wp.vec3),
-    counts: wp.array(dtype=int),
+    points: wp.array[wp.vec3],
+    counts: wp.array[int],
 ):
     tid = wp.tid()
     i = wp.hash_grid_point_id(grid, tid)
@@ -91,9 +85,7 @@ def count_neighbors_periodic(
 
 
 @wp.kernel
-def count_neighbors_reference(
-    radius: float, points: wp.array(dtype=wp.vec3), counts: wp.array(dtype=int), num_points: int
-):
+def count_neighbors_reference(radius: float, points: wp.array[wp.vec3], counts: wp.array[int], num_points: int):
     tid = wp.tid()
 
     i = tid % num_points

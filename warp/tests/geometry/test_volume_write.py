@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 # Volume write tests
 @wp.kernel
-def test_volume_store_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
+def test_volume_store_f(volume: wp.uint64, points: wp.array[wp.vec3]):
     tid = wp.tid()
 
     p = points[tid]
@@ -23,7 +23,7 @@ def test_volume_store_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
-def test_volume_readback_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)):
+def test_volume_readback_f(volume: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]):
     tid = wp.tid()
 
     p = points[tid]
@@ -37,10 +37,10 @@ def test_volume_readback_f(volume: wp.uint64, points: wp.array(dtype=wp.vec3), v
 @wp.kernel
 def test_get_list_of_tiles(
     volume: wp.uint64,
-    points_is: wp.array2d(dtype=wp.int32),
-    points_ws: wp.array(dtype=wp.vec3),
-    tiles_is: wp.array2d(dtype=wp.int32),
-    tiles_ws: wp.array2d(dtype=wp.int32),
+    points_is: wp.array2d[wp.int32],
+    points_ws: wp.array[wp.vec3],
+    tiles_is: wp.array2d[wp.int32],
+    tiles_ws: wp.array2d[wp.int32],
 ):
     tid = wp.tid()
 
@@ -55,7 +55,7 @@ def test_get_list_of_tiles(
 
 
 @wp.kernel
-def test_volume_tile_store_f(volume: wp.uint64, tiles: wp.array2d(dtype=wp.int32)):
+def test_volume_tile_store_f(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
     tid = wp.tid()
 
     ti = tiles[tid, 0]
@@ -70,7 +70,7 @@ def test_volume_tile_store_f(volume: wp.uint64, tiles: wp.array2d(dtype=wp.int32
 
 
 @wp.kernel
-def test_volume_tile_store_ws_f(volume: wp.uint64, tiles: wp.array(dtype=wp.vec3)):
+def test_volume_tile_store_ws_f(volume: wp.uint64, tiles: wp.array[wp.vec3]):
     tid = wp.tid()
 
     q = wp.volume_world_to_index(volume, tiles[tid])
@@ -86,9 +86,7 @@ def test_volume_tile_store_ws_f(volume: wp.uint64, tiles: wp.array(dtype=wp.vec3
 
 
 @wp.kernel
-def test_volume_tile_readback_f(
-    volume: wp.uint64, tiles: wp.array2d(dtype=wp.int32), values: wp.array(dtype=wp.float32)
-):
+def test_volume_tile_readback_f(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.float32]):
     tid = wp.tid()
 
     ti = tiles[tid, 0]
@@ -103,7 +101,7 @@ def test_volume_tile_readback_f(
 
 
 @wp.kernel
-def test_volume_tile_store_v(volume: wp.uint64, tiles: wp.array2d(dtype=wp.int32)):
+def test_volume_tile_store_v(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
     tid = wp.tid()
 
     ti = tiles[tid, 0]
@@ -118,7 +116,7 @@ def test_volume_tile_store_v(volume: wp.uint64, tiles: wp.array2d(dtype=wp.int32
 
 
 @wp.kernel
-def test_volume_tile_readback_v(volume: wp.uint64, tiles: wp.array2d(dtype=wp.int32), values: wp.array(dtype=wp.vec3)):
+def test_volume_tile_readback_v(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.vec3]):
     tid = wp.tid()
 
     ti = tiles[tid, 0]

@@ -10,7 +10,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def make_field_sphere_sdf(field: wp.array3d(dtype=float), center: wp.vec3, radius: float):
+def make_field_sphere_sdf(field: wp.array3d[float], center: wp.vec3, radius: float):
     """Make a sphere SDF for nodes on the integer domain with node coordinates 0,1,2,3,..."""
 
     i, j, k = wp.tid()
@@ -23,9 +23,7 @@ def make_field_sphere_sdf(field: wp.array3d(dtype=float), center: wp.vec3, radiu
 
 
 @wp.kernel
-def make_field_sphere_sdf_unit_domain(
-    field: wp.array3d(dtype=float), center: wp.vec3, radius: wp.array(dtype=wp.float32)
-):
+def make_field_sphere_sdf_unit_domain(field: wp.array3d[float], center: wp.vec3, radius: wp.array[wp.float32]):
     """Makes a sphere SDF for nodes on the unit domain [-1, 1]^3."""
     i, j, k = wp.tid()
 
@@ -43,9 +41,7 @@ def make_field_sphere_sdf_unit_domain(
 
 
 @wp.kernel
-def compute_surface_area(
-    verts: wp.array(dtype=wp.vec3), faces: wp.array(dtype=wp.int32), out_area: wp.array(dtype=wp.float32)
-):
+def compute_surface_area(verts: wp.array[wp.vec3], faces: wp.array[wp.int32], out_area: wp.array[wp.float32]):
     tid = wp.tid()
     vi = faces[3 * tid + 0]
     vj = faces[3 * tid + 1]

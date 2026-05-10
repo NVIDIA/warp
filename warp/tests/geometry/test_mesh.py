@@ -64,7 +64,7 @@ FACE_COUNT = 12
 @wp.kernel(enable_backward=False)
 def read_points_kernel(
     mesh_id: wp.uint64,
-    out_points: wp.array(dtype=wp.vec3),
+    out_points: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     mesh = wp.mesh_get(mesh_id)
@@ -74,7 +74,7 @@ def read_points_kernel(
 @wp.kernel(enable_backward=False)
 def read_indices_kernel(
     mesh_id: wp.uint64,
-    out_indices: wp.array(dtype=int),
+    out_indices: wp.array[int],
 ):
     tid = wp.tid()
     mesh = wp.mesh_get(mesh_id)
@@ -299,7 +299,7 @@ def query_ray_hit_kernel(
     mesh_id: wp.uint64,
     origin: wp.vec3,
     direction: wp.vec3,
-    hit_result: wp.array(dtype=wp.int32),
+    hit_result: wp.array[wp.int32],
 ):
     t = float(0.0)
     bary_u = float(0.0)

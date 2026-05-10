@@ -34,10 +34,10 @@ def triangulate(face_counts, face_indices):
 @wp.kernel
 def mesh_query_ray_loss(
     mesh: wp.uint64,
-    query_points: wp.array(dtype=wp.vec3),
-    query_dirs: wp.array(dtype=wp.vec3),
-    intersection_points: wp.array(dtype=wp.vec3),
-    loss: wp.array(dtype=float),
+    query_points: wp.array[wp.vec3],
+    query_dirs: wp.array[wp.vec3],
+    intersection_points: wp.array[wp.vec3],
+    loss: wp.array[float],
 ):
     tid = wp.tid()
 
@@ -111,8 +111,8 @@ def intersect_ray_triangle(
 
 @wp.func
 def raycast_brutal(
-    points: wp.array(dtype=wp.vec3),
-    indices: wp.array(dtype=int),
+    points: wp.array[wp.vec3],
+    indices: wp.array[int],
     p: wp.vec3,
     dir: wp.vec3,
     max_t: float,
@@ -140,11 +140,11 @@ def raycast_brutal(
 
 @wp.kernel
 def mesh_query_ray_count_intersections_brutal(
-    points: wp.array(dtype=wp.vec3),
-    indices: wp.array(dtype=int),
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
-    counts: wp.array(dtype=int),
+    points: wp.array[wp.vec3],
+    indices: wp.array[int],
+    ray_starts: wp.array[wp.vec3],
+    ray_directions: wp.array[wp.vec3],
+    counts: wp.array[int],
 ):
     tid = wp.tid()
     p = ray_starts[tid]
@@ -174,9 +174,9 @@ def mesh_query_ray_count_intersections_brutal(
 @wp.kernel
 def mesh_query_ray_count_intersections_kernel(
     mesh: wp.uint64,
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
-    counts: wp.array(dtype=int),
+    ray_starts: wp.array[wp.vec3],
+    ray_directions: wp.array[wp.vec3],
+    counts: wp.array[int],
 ):
     tid = wp.tid()
     p = ray_starts[tid]
@@ -335,11 +335,11 @@ def test_mesh_query_ray_grad(test, device):
 @wp.kernel
 def mesh_query_ray_with_results(
     mesh: wp.uint64,
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
+    ray_starts: wp.array[wp.vec3],
+    ray_directions: wp.array[wp.vec3],
     max_t: float,
-    faces: wp.array(dtype=int),
-    counts: wp.array(dtype=int),
+    faces: wp.array[int],
+    counts: wp.array[int],
 ):
     tid = wp.tid()
 
@@ -361,13 +361,13 @@ def mesh_query_ray_with_results(
 
 @wp.kernel
 def mesh_query_ray_brutal(
-    points: wp.array(dtype=wp.vec3),
-    indices: wp.array(dtype=int),
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
+    points: wp.array[wp.vec3],
+    indices: wp.array[int],
+    ray_starts: wp.array[wp.vec3],
+    ray_directions: wp.array[wp.vec3],
     max_t: float,
-    faces: wp.array(dtype=int),
-    counts: wp.array(dtype=int),
+    faces: wp.array[int],
+    counts: wp.array[int],
 ):
     tid = wp.tid()
 
@@ -637,10 +637,10 @@ def test_mesh_query_ray_and_groups(test, device):
 @wp.kernel
 def mesh_query_ray_anyhit_kernel(
     mesh: wp.uint64,
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
+    ray_starts: wp.array[wp.vec3],
+    ray_directions: wp.array[wp.vec3],
     max_t: float,
-    counts: wp.array(dtype=int),
+    counts: wp.array[int],
 ):
     tid = wp.tid()
     p = ray_starts[tid]
@@ -651,9 +651,9 @@ def mesh_query_ray_anyhit_kernel(
 @wp.kernel
 def raycast_kernel(
     mesh: wp.uint64,
-    ray_starts: wp.array(dtype=wp.vec3),
-    ray_directions: wp.array(dtype=wp.vec3),
-    count: wp.array(dtype=int),
+    ray_starts: wp.array[wp.vec3],
+    ray_directions: wp.array[wp.vec3],
+    count: wp.array[int],
 ):
     t = float(0.0)  # hit distance along ray
     u = float(0.0)  # hit face barycentric u
