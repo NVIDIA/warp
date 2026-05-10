@@ -26,6 +26,12 @@ repos:
         language: python
         always_run: true
         pass_filenames: false
+      - id: warp-check-skill-sync
+        name: "warp: check Claude/Codex skill sync"
+        entry: python tools/pre-commit-hooks/sync_skills.py --pre-commit
+        language: python
+        files: ^(\.pre-commit-config\.yaml$|\.claude/skills/|\.codex/skills/|tools/pre-commit-hooks/sync_skills\.py$)
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.15.9

@@ -7,11 +7,12 @@ Warp keeps project-level skills under both ``.claude/skills`` and ``.codex/skill
 same release-management workflows. This script plans and applies changes between those trees without guessing when
 both sides have diverged.
 
-The command has three operating modes:
+The command has these operating modes:
 
 - Auto mode compares each side against ``HEAD`` and copies the side that changed.
 - Forced mode (``--from``) treats one side as the source of truth and mirrors it to the other side.
 - Check mode (``--check``) prints the plan and never mutates the filesystem.
+- Pre-commit mode (``--pre-commit``) runs check mode only when staged paths can affect skill synchronization.
 """
 
 from __future__ import annotations
@@ -21,8 +22,14 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+
+
+SKILL_PREFIXES = (".claude/skills/", ".codex/skills/")
+PRE_COMMIT_CONFIG = ".pre-commit-config.yaml"
+SYNC_TOOL = "tools/pre-commit-hooks/sync_skills.py"
 
 
 @dataclass(frozen=True)
@@ -81,6 +88,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Resolve both-sides-changed conflicts by choosing the newer file mtime.",
     )
+    parser.add_argument(
+        "--pre-commit",
+        action="store_true",
+        help="Run the read-only check only when staged paths can affect skill synchronization.",
+    )
     return parser.parse_args()
 
 
@@ -100,8 +112,73 @@ def git_root() -> Path:
     return Path(proc.stdout.strip())
 
 
-def list_files(base: Path) -> dict[str, Path]:
-    """Return non-cache files below ``base``, keyed by slash-separated paths relative to ``base``.
+def is_side_specific_metadata(side_name: str, rel: str) -> bool:
+    """Return whether ``rel`` is metadata that belongs only to one agent side."""
+
+    parts = PurePosixPath(rel).parts
+    return side_name == "codex" and len(parts) == 3 and parts[1:] == ("agents", "openai.yaml")
+
+
+def is_skill_sync_path(path: str) -> bool:
+    """Return whether ``path`` can affect Claude Code and Codex skill synchronization."""
+
+    return path in {PRE_COMMIT_CONFIG, SYNC_TOOL} or path.startswith(SKILL_PREFIXES)
+
+
+def staged_paths(root: Path) -> list[str]:
+    """Return staged paths, including deletions."""
+
+    proc = subprocess.run(
+        ["git", "-C", str(root), "diff", "--cached", "--name-only", "--diff-filter=ACMRTD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        print(proc.stderr.strip() or "failed to inspect staged paths", file=sys.stderr)
+        raise SystemExit(1)
+    return [line for line in proc.stdout.splitlines() if line]
+
+
+def read_index(root: Path, git_path: str) -> bytes | None:
+    """Read a staged repository path from the index."""
+
+    proc = subprocess.run(
+        ["git", "-C", str(root), "show", f":{git_path}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def list_index_files(root: Path, side: Side) -> dict[str, bytes | None]:
+    """Return staged shared-payload file contents for one skill tree."""
+
+    proc = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z", "--", side.git_prefix],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        print(proc.stderr.strip() or f"failed to inspect staged files under {side.git_prefix}", file=sys.stderr)
+        raise SystemExit(1)
+
+    out: dict[str, bytes | None] = {}
+    prefix = PurePosixPath(side.git_prefix)
+    for git_path in (path for path in proc.stdout.split("\0") if path):
+        rel = PurePosixPath(git_path).relative_to(prefix).as_posix()
+        if is_side_specific_metadata(side.name, rel):
+            continue
+        out[rel] = read_index(root, git_path)
+    return out
+
+
+def list_files(base: Path, side_name: str | None = None) -> dict[str, Path]:
+    """Return non-cache shared-payload files below ``base``, keyed by paths relative to ``base``.
 
     A missing tree is treated as empty. That lets forced mode seed a destination tree while validation still ensures
     the chosen source tree exists.
@@ -114,7 +191,10 @@ def list_files(base: Path) -> dict[str, Path]:
         if "__pycache__" in path.parts or path.suffix == ".pyc":
             continue
         if path.is_file() or path.is_symlink():
-            out[path.relative_to(base).as_posix()] = path
+            rel = path.relative_to(base).as_posix()
+            if side_name is not None and is_side_specific_metadata(side_name, rel):
+                continue
+            out[rel] = path
     return out
 
 
@@ -173,8 +253,8 @@ def build_action(
     winner: str,
     rel: str,
     reason: str,
-    claude_files: dict[str, Path],
-    codex_files: dict[str, Path],
+    claude_files: Mapping[str, object],
+    codex_files: Mapping[str, object],
 ) -> Action:
     """Build the copy/delete action needed to make the losing side match the winning side."""
 
@@ -183,6 +263,56 @@ def build_action(
     if rel in winner_files:
         return Action("copy", winner, loser, rel, reason)
     return Action("delete", winner, loser, rel, reason)
+
+
+def plan_auto_contents(
+    root: Path,
+    sides: dict[str, Side],
+    claude_contents: Mapping[str, bytes | None],
+    codex_contents: Mapping[str, bytes | None],
+    prefer_mtime: bool = False,
+    claude_files: dict[str, Path] | None = None,
+    codex_files: dict[str, Path] | None = None,
+) -> tuple[list[Action], list[str]]:
+    """Plan a bidirectional sync from content maps and drift relative to ``HEAD``."""
+
+    actions: list[Action] = []
+    conflicts: list[str] = []
+
+    for rel in sorted(set(claude_contents) | set(codex_contents)):
+        claude_current = claude_contents.get(rel)
+        codex_current = codex_contents.get(rel)
+        if claude_current == codex_current:
+            continue
+
+        # ``None`` represents "missing" on either side, both in the compared tree and in HEAD. A create/delete is
+        # just another changed value, so the same logic handles additions, edits, and removals.
+        claude_base = read_head(root, f"{sides['claude'].git_prefix}/{rel}")
+        codex_base = read_head(root, f"{sides['codex'].git_prefix}/{rel}")
+        claude_changed = changed(claude_current, claude_base)
+        codex_changed = changed(codex_current, codex_base)
+
+        if claude_changed and not codex_changed:
+            actions.append(build_action("claude", rel, "Claude side changed", claude_contents, codex_contents))
+            continue
+        if codex_changed and not claude_changed:
+            actions.append(build_action("codex", rel, "Codex side changed", claude_contents, codex_contents))
+            continue
+
+        if prefer_mtime and claude_files is not None and codex_files is not None:
+            winner = newest_side(rel, claude_files, codex_files)
+            if winner is not None:
+                actions.append(
+                    build_action(winner, rel, f"{winner} side has newer mtime", claude_contents, codex_contents)
+                )
+                continue
+
+        if claude_changed and codex_changed:
+            conflicts.append(f"{rel}: both sides changed differently")
+        else:
+            conflicts.append(f"{rel}: trees differ but neither side differs from HEAD; use --prefer-mtime or --from")
+
+    return actions, conflicts
 
 
 def plan_forced(source: str, claude_files: dict[str, Path], codex_files: dict[str, Path]) -> list[Action]:
@@ -218,41 +348,17 @@ def plan_auto(
     mirror operation from silently overwriting independent edits.
     """
 
-    actions: list[Action] = []
-    conflicts: list[str] = []
-
-    for rel in sorted(set(claude_files) | set(codex_files)):
-        claude_current = read_current(claude_files.get(rel))
-        codex_current = read_current(codex_files.get(rel))
-        if claude_current == codex_current:
-            continue
-
-        # ``None`` represents "missing" on either side, both in the working tree and in HEAD. A create/delete is just
-        # another changed value, so the same logic handles additions, edits, and removals.
-        claude_base = read_head(root, f"{sides['claude'].git_prefix}/{rel}")
-        codex_base = read_head(root, f"{sides['codex'].git_prefix}/{rel}")
-        claude_changed = changed(claude_current, claude_base)
-        codex_changed = changed(codex_current, codex_base)
-
-        if claude_changed and not codex_changed:
-            actions.append(build_action("claude", rel, "Claude side changed", claude_files, codex_files))
-            continue
-        if codex_changed and not claude_changed:
-            actions.append(build_action("codex", rel, "Codex side changed", claude_files, codex_files))
-            continue
-
-        if prefer_mtime:
-            winner = newest_side(rel, claude_files, codex_files)
-            if winner is not None:
-                actions.append(build_action(winner, rel, f"{winner} side has newer mtime", claude_files, codex_files))
-                continue
-
-        if claude_changed and codex_changed:
-            conflicts.append(f"{rel}: both sides changed differently")
-        else:
-            conflicts.append(f"{rel}: trees differ but neither side differs from HEAD; use --prefer-mtime or --from")
-
-    return actions, conflicts
+    claude_contents = {rel: read_current(path) for rel, path in claude_files.items()}
+    codex_contents = {rel: read_current(path) for rel, path in codex_files.items()}
+    return plan_auto_contents(
+        root,
+        sides,
+        claude_contents,
+        codex_contents,
+        prefer_mtime,
+        claude_files,
+        codex_files,
+    )
 
 
 def apply_action(action: Action, sides: dict[str, Side]) -> None:
@@ -314,10 +420,9 @@ def validate_trees(args: argparse.Namespace, claude: Path, codex: Path) -> int:
     return 0
 
 
-def run(args: argparse.Namespace) -> int:
-    """Plan and optionally apply a skill-tree sync."""
+def run_with_root(args: argparse.Namespace, root: Path) -> int:
+    """Plan and optionally apply a skill-tree sync from an explicit repository root."""
 
-    root = git_root()
     claude = root / ".claude" / "skills"
     codex = root / ".codex" / "skills"
     if status := validate_trees(args, claude, codex):
@@ -331,8 +436,8 @@ def run(args: argparse.Namespace) -> int:
     # ``--check`` must be read-only: even seeding a missing destination tree would surprise CI and review tools.
     if not args.check:
         codex.mkdir(parents=True, exist_ok=True)
-    claude_files = list_files(claude)
-    codex_files = list_files(codex)
+    claude_files = list_files(claude, "claude")
+    codex_files = list_files(codex, "codex")
 
     if args.force_source is not None:
         actions = plan_forced(args.force_source, claude_files, codex_files)
@@ -365,8 +470,62 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
+def run(args: argparse.Namespace) -> int:
+    """Plan and optionally apply a skill-tree sync."""
+
+    return run_with_root(args, git_root())
+
+
+def run_index_check(root: Path) -> int:
+    """Run the read-only sync check against the staged index."""
+
+    sides = {
+        "claude": Side("claude", root / ".claude" / "skills", ".claude/skills"),
+        "codex": Side("codex", root / ".codex" / "skills", ".codex/skills"),
+    }
+    actions, conflicts = plan_auto_contents(
+        root,
+        sides,
+        list_index_files(root, sides["claude"]),
+        list_index_files(root, sides["codex"]),
+    )
+
+    if conflicts:
+        print("conflicts detected:", file=sys.stderr)
+        for conflict in conflicts:
+            print(f"  {conflict}", file=sys.stderr)
+        return 2
+
+    if not actions:
+        print("in sync")
+        return 0
+
+    print("drift detected:")
+    for action in actions:
+        print(f"  would {describe(action)}")
+    return 1
+
+
+def run_pre_commit(args: argparse.Namespace) -> int:
+    """Run check mode when staged paths are relevant or the command is not commit-scoped."""
+
+    root = git_root()
+    staged = staged_paths(root)
+    if staged and not any(is_skill_sync_path(path) for path in staged):
+        return 0
+
+    if staged:
+        return run_index_check(root)
+
+    check_args = argparse.Namespace(check=True, force_source=None, prefer_mtime=args.prefer_mtime)
+    return run_with_root(check_args, root)
+
+
 def main() -> int:
-    return run(parse_args())
+    args = parse_args()
+    if args.pre_commit:
+        return run_pre_commit(args)
+    return run(args)
 
 
 if __name__ == "__main__":
