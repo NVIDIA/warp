@@ -309,10 +309,10 @@ avoiding a second full-size inclusive scan and temporary output buffer.
 - Deterministic scatter overflow detection is disabled for CUDA graph capture
   and replay to keep graph launches asynchronous. Graph workloads should size
   buffers conservatively with ``deterministic_max_records``.
-- Deterministic Pattern A scatter kernels are supported in ordinary CUDA graph
-  capture/replay. Pattern B counter kernels are rejected during CUDA graph
-  capture until the scan workspace is externally managed and retained for graph
-  replay.
+- Deterministic Pattern A scatter kernels and Pattern B counter kernels are
+  supported in ordinary CUDA graph capture/replay. Warp retains the temporary
+  scatter, counter, scan, and sort/reduce buffers on the captured graph object
+  so those allocations remain valid for graph replay.
 - Deterministic kernels are not supported inside CUDA conditional body graphs
   such as ``wp.capture_while()`` or ``wp.capture_if()`` when the deterministic
   launch would need to allocate scatter buffers or sort/reduce workspaces while
@@ -377,8 +377,8 @@ avoiding a second full-size inclusive scan and temporary output buffer.
   global config off.
 - **Recorded launch support**: ``wp.launch(..., record_cmd=True)`` works for
   deterministic CUDA kernels.
-- **Graph capture support**: deterministic scatter launches can be captured and
-  replayed with CUDA graphs, including composite ``wp.vec3`` reductions.
-  Deterministic counter launches are rejected during graph capture.
+- **Graph capture support**: deterministic scatter and counter launches can be
+  captured and replayed with CUDA graphs, including composite ``wp.vec3``
+  reductions and consumed-return counter atomics.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.
