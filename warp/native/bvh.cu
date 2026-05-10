@@ -7,6 +7,7 @@
 
 #include "bvh.h"
 #include "cuda_util.h"
+#include "error.h"
 #include "sort.h"
 
 #include <algorithm>
@@ -830,6 +831,15 @@ static inline void cubql_update_device_boxes(CuBQLBVH& bvh)
     );
 }
 
+static cuBQL::GpuMemoryResource& cubql_get_mem_resource()
+{
+    int ordinal = wp_cuda_context_get_device_ordinal(wp_cuda_context_get_current());
+    if (wp_cuda_device_is_mempool_supported(ordinal))
+        return cuBQL::defaultGpuMemResource();
+    static cuBQL::DeviceMemoryResource sync_resource;
+    return sync_resource;
+}
+
 void cubql_bvh_create_device(
     void* context, vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh_device_on_host
 )
@@ -854,14 +864,34 @@ void cubql_bvh_create_device(
     bvh_device_on_host.boxes = wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(cuBQL::box3f) * num_items);
     cubql_update_device_boxes(bvh_device_on_host);
 
-    cuBQL::bvh3f native;
-    cuBQL::BuildConfig build_config;
-    build_config.enableSAH();
-    build_config.makeLeafThreshold = leaf_size;
-    cuBQL::gpuBuilder(
-        native, reinterpret_cast<cuBQL::box3f*>(bvh_device_on_host.boxes), uint32_t(num_items), build_config
-    );
-    cubql_assign(bvh_device_on_host, native);
+    auto free_partial_bvh = [&]() {
+        if (bvh_device_on_host.boxes) {
+            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.boxes);
+            bvh_device_on_host.boxes = nullptr;
+        }
+        if (bvh_device_on_host.root) {
+            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.root);
+            bvh_device_on_host.root = nullptr;
+        }
+    };
+
+    try {
+        cuBQL::bvh3f native;
+        cuBQL::BuildConfig build_config;
+        build_config.enableSAH();
+        build_config.makeLeafThreshold = leaf_size;
+        cuBQL::gpuBuilder(
+            native, reinterpret_cast<cuBQL::box3f*>(bvh_device_on_host.boxes), uint32_t(num_items), build_config, 0,
+            cubql_get_mem_resource()
+        );
+        cubql_assign(bvh_device_on_host, native);
+    } catch (const std::exception& e) {
+        wp::set_error_string("Warp error: cuBQL BVH build failed: %s", e.what());
+        free_partial_bvh();
+    } catch (...) {
+        wp::set_error_string("Warp error: cuBQL BVH build failed: unknown exception");
+        free_partial_bvh();
+    }
 }
 
 void cubql_bvh_destroy_device(CuBQLBVH& bvh)
@@ -870,7 +900,13 @@ void cubql_bvh_destroy_device(CuBQLBVH& bvh)
 
     if (bvh.nodes || bvh.primitive_indices) {
         cuBQL::bvh3f native = cubql_native_view(bvh);
-        cuBQL::cuda::free(native);
+        try {
+            cuBQL::cuda::free(native, 0, cubql_get_mem_resource());
+        } catch (const std::exception& e) {
+            wp::set_error_string("Warp error: cuBQL BVH free failed: %s", e.what());
+        } catch (...) {
+            wp::set_error_string("Warp error: cuBQL BVH free failed: unknown exception");
+        }
     }
 
     if (bvh.boxes) {
@@ -888,36 +924,54 @@ void cubql_bvh_destroy_device(CuBQLBVH& bvh)
     bvh.leaf_size = 0;
 }
 
-void cubql_bvh_refit_device(CuBQLBVH& bvh)
+bool cubql_bvh_refit_device(CuBQLBVH& bvh)
 {
     ContextGuard guard(bvh.context);
     if (!bvh.nodes || !bvh.boxes || bvh.num_items <= 0) {
-        return;
+        return true;
     }
 
     cubql_update_device_boxes(bvh);
     cuBQL::bvh3f native = cubql_native_view(bvh);
-    cuBQL::cuda::refit(native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes));
+    try {
+        cuBQL::cuda::refit(native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), 0, cubql_get_mem_resource());
+        return true;
+    } catch (const std::exception& e) {
+        wp::set_error_string("Warp error: cuBQL BVH refit failed: %s", e.what());
+    } catch (...) {
+        wp::set_error_string("Warp error: cuBQL BVH refit failed: unknown exception");
+    }
+    return false;
 }
 
 void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
-    if (bvh.nodes || bvh.primitive_indices) {
-        cuBQL::bvh3f old_native = cubql_native_view(bvh);
-        cuBQL::cuda::free(old_native);
-    }
-
-    if (bvh.num_items <= 0) {
+    auto reset_rebuilt_bvh = [&]() {
         bvh.nodes = nullptr;
-        bvh.primitive_indices = nullptr;
         bvh.num_nodes = 0;
+        bvh.primitive_indices = nullptr;
         bvh.num_prims = 0;
         if (bvh.root) {
             int root_index = -1;
             wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
         }
+    };
+
+    if (bvh.nodes || bvh.primitive_indices) {
+        cuBQL::bvh3f old_native = cubql_native_view(bvh);
+        try {
+            cuBQL::cuda::free(old_native, 0, cubql_get_mem_resource());
+        } catch (const std::exception& e) {
+            wp::set_error_string("Warp error: cuBQL BVH free failed: %s", e.what());
+        } catch (...) {
+            wp::set_error_string("Warp error: cuBQL BVH free failed: unknown exception");
+        }
+    }
+
+    if (bvh.num_items <= 0) {
+        reset_rebuilt_bvh();
         return;
     }
 
@@ -926,12 +980,23 @@ void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
     }
     cubql_update_device_boxes(bvh);
 
-    cuBQL::bvh3f native;
-    cuBQL::BuildConfig build_config;
-    build_config.enableSAH();
-    build_config.makeLeafThreshold = bvh.leaf_size;
-    cuBQL::gpuBuilder(native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), uint32_t(bvh.num_items), build_config);
-    cubql_assign(bvh, native);
+    try {
+        cuBQL::bvh3f native;
+        cuBQL::BuildConfig build_config;
+        build_config.enableSAH();
+        build_config.makeLeafThreshold = bvh.leaf_size;
+        cuBQL::gpuBuilder(
+            native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), uint32_t(bvh.num_items), build_config, 0,
+            cubql_get_mem_resource()
+        );
+        cubql_assign(bvh, native);
+    } catch (const std::exception& e) {
+        wp::set_error_string("Warp error: cuBQL BVH rebuild failed: %s", e.what());
+        reset_rebuilt_bvh();
+    } catch (...) {
+        wp::set_error_string("Warp error: cuBQL BVH rebuild failed: unknown exception");
+        reset_rebuilt_bvh();
+    }
 }
 
 #else  // WP_DISABLE_CUBQL
@@ -945,7 +1010,7 @@ void cubql_bvh_create_device(
 }
 
 void cubql_bvh_destroy_device(CuBQLBVH&) { }
-void cubql_bvh_refit_device(CuBQLBVH&) { }
+bool cubql_bvh_refit_device(CuBQLBVH&) { return true; }
 void cubql_bvh_rebuild_device(CuBQLBVH&) { }
 
 #endif  // WP_DISABLE_CUBQL
@@ -1040,7 +1105,9 @@ void wp_cubql_bvh_refit_device(uint64_t id)
     wp::CuBQLBVH bvh;
     if (wp::cubql_bvh_get_descriptor(id, bvh)) {
         ContextGuard guard(bvh.context);
-        wp::cubql_bvh_refit_device(bvh);
+        if (!wp::cubql_bvh_refit_device(bvh)) {
+            return;
+        }
         wp::cubql_bvh_add_descriptor(id, bvh);
         wp_memcpy_h2d(WP_CURRENT_CONTEXT, (void*)id, &bvh, sizeof(wp::CuBQLBVH));
     }

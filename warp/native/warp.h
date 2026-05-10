@@ -131,10 +131,10 @@ WP_API uint64_t wp_mesh_create_device(
     int bvh_leaf_size
 );
 WP_API void wp_mesh_destroy_device(uint64_t id);
-WP_API void wp_mesh_refit_device(uint64_t id);
+WP_API int wp_mesh_refit_device(uint64_t id);
 
 WP_API void wp_mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points);
-WP_API void wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points);
+WP_API int wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points);
 
 WP_API void wp_mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities);
 WP_API void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities);

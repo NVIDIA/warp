@@ -5677,6 +5677,9 @@ class Mesh:
                 bvh_leaf_size,
             )
 
+        if not self.id:
+            raise RuntimeError(f"Failed to create mesh: {self.runtime.get_error_string()}")
+
     def __del__(self):
         if not self.id:
             return
@@ -5701,7 +5704,8 @@ class Mesh:
         if self.device.is_cpu:
             self.runtime.core.wp_mesh_refit_host(self.id)
         else:
-            self.runtime.core.wp_mesh_refit_device(self.id)
+            if not self.runtime.core.wp_mesh_refit_device(self.id):
+                raise RuntimeError(f"Failed to refit mesh: {self.runtime.get_error_string()}")
             self.runtime.verify_cuda_device(self.device)
 
     @property
@@ -5733,7 +5737,8 @@ class Mesh:
         if self.device.is_cpu:
             self.runtime.core.wp_mesh_set_points_host(self.id, points_new.__ctype__())
         else:
-            self.runtime.core.wp_mesh_set_points_device(self.id, points_new.__ctype__())
+            if not self.runtime.core.wp_mesh_set_points_device(self.id, points_new.__ctype__()):
+                raise RuntimeError(f"Failed to set mesh points: {self.runtime.get_error_string()}")
             self.runtime.verify_cuda_device(self.device)
 
     @property

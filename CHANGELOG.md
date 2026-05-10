@@ -69,6 +69,8 @@
   ([GH-583](https://github.com/NVIDIA/warp/issues/583),
   [GH-248](https://github.com/NVIDIA/warp/issues/248),
   [GH-1174](https://github.com/NVIDIA/warp/issues/1174)).
+- Fix cuBQL mesh BVH construction and refit on CUDA devices without memory pool support
+  ([GH-1430](https://github.com/NVIDIA/warp/issues/1430)).
 
 ### Documentation
 

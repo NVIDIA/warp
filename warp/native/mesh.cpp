@@ -292,8 +292,8 @@ WP_API uint64_t wp_mesh_create_device(
     return 0;
 }
 WP_API void wp_mesh_destroy_device(uint64_t id) { }
-WP_API void wp_mesh_refit_device(uint64_t id) { }
-WP_API void wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) { };
+WP_API int wp_mesh_refit_device(uint64_t id) { return 0; }
+WP_API int wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) { return 0; };
 WP_API void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> points) { };
 
 
