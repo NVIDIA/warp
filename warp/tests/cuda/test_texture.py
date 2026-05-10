@@ -18,7 +18,7 @@ from warp.tests.unittest_utils import add_function_test, get_selected_cuda_test_
 @wp.kernel
 def sample_texture1d_f_at_centers(
     tex: wp.Texture1D,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
     width: int,
 ):
     """Sample a 1-channel 1D texture at texel centers."""
@@ -34,7 +34,7 @@ def sample_texture1d_f_at_centers(
 @wp.kernel
 def sample_texture1d_v2_at_centers(
     tex: wp.Texture1D,
-    output: wp.array(dtype=wp.vec2f),
+    output: wp.array[wp.vec2f],
     width: int,
 ):
     """Sample a 2-channel 1D texture at texel centers."""
@@ -48,7 +48,7 @@ def sample_texture1d_v2_at_centers(
 @wp.kernel
 def sample_texture1d_v4_at_centers(
     tex: wp.Texture1D,
-    output: wp.array(dtype=wp.vec4f),
+    output: wp.array[wp.vec4f],
     width: int,
 ):
     """Sample a 4-channel 1D texture at texel centers."""
@@ -78,7 +78,7 @@ def test_texture1d_resolution(
 @wp.kernel
 def sample_texture2d_f_at_centers(
     tex: wp.Texture2D,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
     width: int,
     height: int,
 ):
@@ -98,7 +98,7 @@ def sample_texture2d_f_at_centers(
 @wp.kernel
 def sample_texture2d_v2_at_centers(
     tex: wp.Texture2D,
-    output: wp.array(dtype=wp.vec2f),
+    output: wp.array[wp.vec2f],
     width: int,
     height: int,
 ):
@@ -116,7 +116,7 @@ def sample_texture2d_v2_at_centers(
 @wp.kernel
 def sample_texture2d_v4_at_centers(
     tex: wp.Texture2D,
-    output: wp.array(dtype=wp.vec4f),
+    output: wp.array[wp.vec4f],
     width: int,
     height: int,
 ):
@@ -153,7 +153,7 @@ def test_texture2d_resolution(
 @wp.kernel
 def sample_texture3d_f_at_centers(
     tex: wp.Texture3D,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
     width: int,
     height: int,
     depth: int,
@@ -175,7 +175,7 @@ def sample_texture3d_f_at_centers(
 @wp.kernel
 def sample_texture3d_v2_at_centers(
     tex: wp.Texture3D,
-    output: wp.array(dtype=wp.vec2f),
+    output: wp.array[wp.vec2f],
     width: int,
     height: int,
     depth: int,
@@ -196,7 +196,7 @@ def sample_texture3d_v2_at_centers(
 @wp.kernel
 def sample_texture3d_v4_at_centers(
     tex: wp.Texture3D,
-    output: wp.array(dtype=wp.vec4f),
+    output: wp.array[wp.vec4f],
     width: int,
     height: int,
     depth: int,
@@ -238,9 +238,9 @@ def test_texture3d_resolution(
 
 @wp.kernel
 def sample_texture2d_array(
-    textures: wp.array(dtype=wp.Texture2D),
+    textures: wp.array[wp.Texture2D],
     uv: wp.vec2f,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
 ):
     """Sample from an array of 2D textures, one texture per thread."""
     tid = wp.tid()
@@ -250,9 +250,9 @@ def sample_texture2d_array(
 
 @wp.kernel
 def sample_texture3d_array(
-    textures: wp.array(dtype=wp.Texture3D),
+    textures: wp.array[wp.Texture3D],
     uvw: wp.vec3f,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
 ):
     """Sample from an array of 3D textures, one texture per thread."""
     tid = wp.tid()
@@ -1179,8 +1179,8 @@ def test_texture3d_new_del(test, device):
 @wp.kernel
 def sample_texture2d_at_uv(
     tex: wp.Texture2D,
-    uvs: wp.array(dtype=wp.vec2f),
-    output: wp.array(dtype=float),
+    uvs: wp.array[wp.vec2f],
+    output: wp.array[float],
 ):
     """Sample a 2D texture at specified UV coordinates."""
     tid = wp.tid()
@@ -1191,8 +1191,8 @@ def sample_texture2d_at_uv(
 @wp.kernel
 def sample_texture3d_at_uvw(
     tex: wp.Texture3D,
-    uvws: wp.array(dtype=wp.vec3f),
-    output: wp.array(dtype=float),
+    uvws: wp.array[wp.vec3f],
+    output: wp.array[float],
 ):
     """Sample a 3D texture at specified UVW coordinates."""
     tid = wp.tid()
@@ -1817,8 +1817,8 @@ def test_texture3d_uint16_linear_interpolation(test, device):
 @wp.kernel
 def sample_texture2d_outside_bounds(
     tex: wp.Texture2D,
-    uvs: wp.array(dtype=wp.vec2f),
-    output: wp.array(dtype=float),
+    uvs: wp.array[wp.vec2f],
+    output: wp.array[float],
 ):
     """Sample a 2D texture at specified UV coordinates (may be outside [0,1])."""
     tid = wp.tid()
@@ -1829,8 +1829,8 @@ def sample_texture2d_outside_bounds(
 @wp.kernel
 def sample_texture3d_outside_bounds(
     tex: wp.Texture3D,
-    uvws: wp.array(dtype=wp.vec3f),
-    output: wp.array(dtype=float),
+    uvws: wp.array[wp.vec3f],
+    output: wp.array[float],
 ):
     """Sample a 3D texture at specified UVW coordinates (may be outside [0,1])."""
     tid = wp.tid()
@@ -2099,8 +2099,8 @@ def test_texture2d_mirror_linear_edge(test, device):
 @wp.kernel
 def sample_texture2d_texel_coords(
     tex: wp.Texture2D,
-    coords: wp.array(dtype=wp.vec2f),
-    output: wp.array(dtype=float),
+    coords: wp.array[wp.vec2f],
+    output: wp.array[float],
 ):
     """Sample a 2D texture using texel-space coordinates."""
     tid = wp.tid()
@@ -2111,8 +2111,8 @@ def sample_texture2d_texel_coords(
 @wp.kernel
 def sample_texture3d_texel_coords(
     tex: wp.Texture3D,
-    coords: wp.array(dtype=wp.vec3f),
-    output: wp.array(dtype=float),
+    coords: wp.array[wp.vec3f],
+    output: wp.array[float],
 ):
     """Sample a 3D texture using texel-space coordinates."""
     tid = wp.tid()
@@ -2354,7 +2354,7 @@ class TextureStructBoth:
 def sample_texture2d_from_struct(
     s: TextureStruct2D,
     uv: wp.vec2f,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
 ):
     """Sample a 2D texture from a struct member."""
     tid = wp.tid()
@@ -2366,7 +2366,7 @@ def sample_texture2d_from_struct(
 def sample_texture3d_from_struct(
     s: TextureStruct3D,
     uvw: wp.vec3f,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
 ):
     """Sample a 3D texture from a struct member."""
     tid = wp.tid()
@@ -2379,7 +2379,7 @@ def sample_both_textures_from_struct(
     s: TextureStructBoth,
     uv: wp.vec2f,
     uvw: wp.vec3f,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
 ):
     """Sample both 2D and 3D textures from a struct."""
     tid = wp.tid()

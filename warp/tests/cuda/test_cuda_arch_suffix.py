@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def add_one(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+def add_one(a: wp.array[float], b: wp.array[float]):
     i = wp.tid()
     b[i] = a[i] + 1.0
 

@@ -11,13 +11,13 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def inc(a: wp.array(dtype=float)):
+def inc(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
 
 @wp.kernel
-def arange(start: int, step: int, a: wp.array(dtype=int)):
+def arange(start: int, step: int, a: wp.array[int]):
     tid = wp.tid()
     a[tid] = start + step * tid
 

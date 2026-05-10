@@ -50,7 +50,7 @@ def test_ipc_event_missing_interprocess_flag(test, device):
 
 
 @wp.kernel
-def multiply_by_two(a: wp.array(dtype=wp.float32)):
+def multiply_by_two(a: wp.array[wp.float32]):
     i = wp.tid()
     a[i] = 2.0 * a[i]
 

@@ -40,7 +40,7 @@ class Capturable:
 
 
 @wp.kernel
-def inc(a: wp.array(dtype=float)):
+def inc(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 

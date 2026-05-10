@@ -207,6 +207,20 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertIs(default_generic.dtype, Any)
         self.assertEqual(default_generic.ndim, 1)
 
+    def test_factory_style_texture_array_metadata(self):
+        annotations = (
+            (wp.array(dtype=wp.Texture1D), wp.array[wp.Texture1D]),
+            (wp.array(dtype=wp.Texture2D), wp.array[wp.Texture2D]),
+            (wp.array(dtype=wp.Texture3D), wp.array[wp.Texture3D]),
+        )
+
+        for factory_style, subscript_style in annotations:
+            with self.subTest(factory_style=factory_style):
+                self.assertEqual(factory_style.dtype, subscript_style.dtype)
+                self.assertEqual(factory_style.ndim, subscript_style.ndim)
+                self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
+                self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
+
     def test_factory_style_noncontiguous_array_metadata(self):
         annotations = (
             (wp.indexedarray(dtype=wp.float64, ndim=3), wp.indexedarray[wp.float64, Literal[3]], ARRAY_TYPE_INDEXED),

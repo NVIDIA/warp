@@ -11,19 +11,19 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def inc(a: wp.array(dtype=float)):
+def inc(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
 
 @wp.kernel
-def inc_new(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
+def inc_new(src: wp.array[float], dst: wp.array[float]):
     tid = wp.tid()
     dst[tid] = src[tid] + 1.0
 
 
 @wp.kernel
-def sum(a: wp.array(dtype=float), b: wp.array(dtype=float), c: wp.array(dtype=float)):
+def sum(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
     tid = wp.tid()
     c[tid] = a[tid] + b[tid]
 
@@ -448,7 +448,7 @@ def test_stream_priority_timings(test, device):
 
 
 @wp.kernel
-def sum_threads(sum: wp.array(dtype=wp.uint64)):
+def sum_threads(sum: wp.array[wp.uint64]):
     i = wp.tid()
     wp.atomic_add(sum, 0, wp.uint64(1))
 

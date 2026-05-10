@@ -12,29 +12,27 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def multiply_by_one_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_one_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 1.0
 
 
-def launch_multiply_by_one(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_one(array: wp.array[wp.float32]):
     wp.launch(multiply_by_one_kernel, dim=array.size, inputs=[array])
 
 
 @wp.kernel
-def multiply_by_two_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_two_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 2.0
 
 
-def launch_multiply_by_two(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_two(array: wp.array[wp.float32]):
     wp.launch(multiply_by_two_kernel, dim=array.size, inputs=[array])
 
 
 @wp.kernel
-def multiply_by_two_kernel_limited(
-    array: wp.array(dtype=wp.float32), condition: wp.array(dtype=wp.int32), limit: float
-):
+def multiply_by_two_kernel_limited(array: wp.array[wp.float32], condition: wp.array[wp.int32], limit: float):
     tid = wp.tid()
     array[tid] = array[tid] * 2.0
 
@@ -43,61 +41,61 @@ def multiply_by_two_kernel_limited(
         condition[0] = 0
 
 
-def launch_multiply_by_two_until_limit(array: wp.array(dtype=wp.float32), cond: wp.array(dtype=wp.int32), limit: float):
+def launch_multiply_by_two_until_limit(array: wp.array[wp.float32], cond: wp.array[wp.int32], limit: float):
     wp.launch(multiply_by_two_kernel_limited, dim=array.size, inputs=[array, cond, limit])
 
 
 @wp.kernel
-def multiply_by_three_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_three_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 3.0
 
 
-def launch_multiply_by_three(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_three(array: wp.array[wp.float32]):
     wp.launch(multiply_by_three_kernel, dim=array.size, inputs=[array])
 
 
 @wp.kernel
-def multiply_by_five_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_five_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 5.0
 
 
-def launch_multiply_by_five(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_five(array: wp.array[wp.float32]):
     wp.launch(multiply_by_five_kernel, dim=array.size, inputs=[array])
 
 
 @wp.kernel
-def multiply_by_seven_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_seven_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 7.0
 
 
-def launch_multiply_by_seven(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_seven(array: wp.array[wp.float32]):
     wp.launch(multiply_by_seven_kernel, dim=array.size, inputs=[array])
 
 
 @wp.kernel
-def multiply_by_eleven_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_eleven_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 11.0
 
 
-def launch_multiply_by_eleven(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_eleven(array: wp.array[wp.float32]):
     wp.launch(multiply_by_eleven_kernel, dim=array.size, inputs=[array])
 
 
 @wp.kernel
-def multiply_by_thirteen_kernel(array: wp.array(dtype=wp.float32)):
+def multiply_by_thirteen_kernel(array: wp.array[wp.float32]):
     tid = wp.tid()
     array[tid] = array[tid] * 13.0
 
 
-def launch_multiply_by_thirteen(array: wp.array(dtype=wp.float32)):
+def launch_multiply_by_thirteen(array: wp.array[wp.float32]):
     wp.launch(multiply_by_thirteen_kernel, dim=array.size, inputs=[array])
 
 
-def launch_multiply_by_two_or_thirteen(array: wp.array(dtype=wp.float32), cond: wp.array(dtype=wp.int32)):
+def launch_multiply_by_two_or_thirteen(array: wp.array[wp.float32], cond: wp.array[wp.int32]):
     wp.capture_if(
         cond,
         lambda: launch_multiply_by_two(array),
@@ -105,7 +103,7 @@ def launch_multiply_by_two_or_thirteen(array: wp.array(dtype=wp.float32), cond: 
     )
 
 
-def launch_multiply_by_three_or_eleven(array: wp.array(dtype=wp.float32), cond: wp.array(dtype=wp.int32)):
+def launch_multiply_by_three_or_eleven(array: wp.array[wp.float32], cond: wp.array[wp.int32]):
     wp.capture_if(
         cond,
         lambda: launch_multiply_by_three(array),
