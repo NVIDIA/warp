@@ -452,10 +452,9 @@ void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities
     wp::Mesh m;
     if (mesh_get_descriptor(id, m)) {
         if (velocities.ndim != 1 || velocities.shape[0] != m.velocities.shape[0]) {
-            fprintf(
-                stderr,
-                "The new velocities input for wp_mesh_set_velocities_device does not match the shape of the original "
-                "velocities\n"
+            wp::set_error_string(
+                "Warp error: new velocities input for wp_mesh_set_velocities_device does not match the original "
+                "velocities shape"
             );
             return;
         }
@@ -466,7 +465,7 @@ void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities
         wp_memcpy_h2d(WP_CURRENT_CONTEXT, mesh_device, &m, sizeof(wp::Mesh));
         mesh_set_descriptor(id, m);
     } else {
-        fprintf(stderr, "The mesh id provided to wp_mesh_set_velocities_device is not valid!\n");
+        wp::set_error_string("Warp error: invalid mesh id");
         return;
     }
 }

@@ -864,6 +864,17 @@ void cubql_bvh_create_device(
     bvh_device_on_host.boxes = wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(cuBQL::box3f) * num_items);
     cubql_update_device_boxes(bvh_device_on_host);
 
+    auto free_partial_bvh = [&]() {
+        if (bvh_device_on_host.boxes) {
+            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.boxes);
+            bvh_device_on_host.boxes = nullptr;
+        }
+        if (bvh_device_on_host.root) {
+            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.root);
+            bvh_device_on_host.root = nullptr;
+        }
+    };
+
     try {
         cuBQL::bvh3f native;
         cuBQL::BuildConfig build_config;
@@ -876,24 +887,10 @@ void cubql_bvh_create_device(
         cubql_assign(bvh_device_on_host, native);
     } catch (const std::exception& e) {
         wp::set_error_string("Warp error: cuBQL BVH build failed: %s", e.what());
-        if (bvh_device_on_host.boxes) {
-            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.boxes);
-            bvh_device_on_host.boxes = nullptr;
-        }
-        if (bvh_device_on_host.root) {
-            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.root);
-            bvh_device_on_host.root = nullptr;
-        }
+        free_partial_bvh();
     } catch (...) {
         wp::set_error_string("Warp error: cuBQL BVH build failed: unknown exception");
-        if (bvh_device_on_host.boxes) {
-            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.boxes);
-            bvh_device_on_host.boxes = nullptr;
-        }
-        if (bvh_device_on_host.root) {
-            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.root);
-            bvh_device_on_host.root = nullptr;
-        }
+        free_partial_bvh();
     }
 }
 
@@ -951,6 +948,17 @@ void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
+    auto reset_rebuilt_bvh = [&]() {
+        bvh.nodes = nullptr;
+        bvh.num_nodes = 0;
+        bvh.primitive_indices = nullptr;
+        bvh.num_prims = 0;
+        if (bvh.root) {
+            int root_index = -1;
+            wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
+        }
+    };
+
     if (bvh.nodes || bvh.primitive_indices) {
         cuBQL::bvh3f old_native = cubql_native_view(bvh);
         try {
@@ -963,14 +971,7 @@ void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
     }
 
     if (bvh.num_items <= 0) {
-        bvh.nodes = nullptr;
-        bvh.primitive_indices = nullptr;
-        bvh.num_nodes = 0;
-        bvh.num_prims = 0;
-        if (bvh.root) {
-            int root_index = -1;
-            wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
-        }
+        reset_rebuilt_bvh();
         return;
     }
 
@@ -991,24 +992,10 @@ void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
         cubql_assign(bvh, native);
     } catch (const std::exception& e) {
         wp::set_error_string("Warp error: cuBQL BVH rebuild failed: %s", e.what());
-        bvh.nodes = nullptr;
-        bvh.num_nodes = 0;
-        bvh.primitive_indices = nullptr;
-        bvh.num_prims = 0;
-        if (bvh.root) {
-            int root_index = -1;
-            wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
-        }
+        reset_rebuilt_bvh();
     } catch (...) {
         wp::set_error_string("Warp error: cuBQL BVH rebuild failed: unknown exception");
-        bvh.nodes = nullptr;
-        bvh.num_nodes = 0;
-        bvh.primitive_indices = nullptr;
-        bvh.num_prims = 0;
-        if (bvh.root) {
-            int root_index = -1;
-            wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
-        }
+        reset_rebuilt_bvh();
     }
 }
 

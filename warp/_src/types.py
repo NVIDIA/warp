@@ -5678,10 +5678,7 @@ class Mesh:
             )
 
         if not self.id:
-            error_string = self.runtime.get_error_string()
-            if error_string:
-                raise RuntimeError(f"Failed to create mesh: {error_string}")
-            raise RuntimeError("Failed to create mesh")
+            raise RuntimeError(f"Failed to create mesh: {self.runtime.get_error_string()}")
 
     def __del__(self):
         if not self.id:
@@ -5708,10 +5705,7 @@ class Mesh:
             self.runtime.core.wp_mesh_refit_host(self.id)
         else:
             if not self.runtime.core.wp_mesh_refit_device(self.id):
-                error_string = self.runtime.get_error_string()
-                if error_string:
-                    raise RuntimeError(f"Failed to refit mesh: {error_string}")
-                raise RuntimeError("Failed to refit mesh")
+                raise RuntimeError(f"Failed to refit mesh: {self.runtime.get_error_string()}")
             self.runtime.verify_cuda_device(self.device)
 
     @property
@@ -5744,10 +5738,7 @@ class Mesh:
             self.runtime.core.wp_mesh_set_points_host(self.id, points_new.__ctype__())
         else:
             if not self.runtime.core.wp_mesh_set_points_device(self.id, points_new.__ctype__()):
-                error_string = self.runtime.get_error_string()
-                if error_string:
-                    raise RuntimeError(f"Failed to set mesh points: {error_string}")
-                raise RuntimeError("Failed to set mesh points")
+                raise RuntimeError(f"Failed to set mesh points: {self.runtime.get_error_string()}")
             self.runtime.verify_cuda_device(self.device)
 
     @property
