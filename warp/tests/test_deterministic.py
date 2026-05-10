@@ -611,6 +611,27 @@ def custom_adjoint_store_kernel(
     _det_custom_square_store(tid, values, output, scratch)
 
 
+@wp.func
+def _not_guaranteed_lookup_value(values: wp.array(dtype=wp.float32), index: int) -> wp.float32:
+    return values[index]
+
+
+@wp.func_grad(_not_guaranteed_lookup_value)
+def _adj_not_guaranteed_lookup_value(values: wp.array(dtype=wp.float32), index: int, adj_ret: wp.float32):
+    wp.adjoint[values][index] += adj_ret
+
+
+@wp.kernel
+def custom_adjoint_not_guaranteed_kernel(
+    values: wp.array(dtype=wp.float32),
+    indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Use a custom adjoint while deterministic mode is disabled."""
+    tid = wp.tid()
+    output[tid] = _not_guaranteed_lookup_value(values, indices[tid])
+
+
 # ---------------------------------------------------------------------------
 # Test functions
 # ---------------------------------------------------------------------------
@@ -2351,6 +2372,64 @@ def test_deterministic_custom_adjoint_store_function(test, device):
     np.testing.assert_allclose(tape.gradients[values].numpy(), 2.0 * values_np, rtol=0, atol=0)
 
 
+def test_custom_adjoint_not_guaranteed_mode(test, device):
+    """Verify custom adjoints compile after disabling deterministic mode."""
+    n = 48
+    value_count = 7
+    indices_np = (np.arange(n, dtype=np.int32) * 3) % value_count
+    values_np = np.linspace(0.25, 1.75, value_count, dtype=np.float32)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "not_guaranteed"
+
+        values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
+        indices = wp.array(indices_np, dtype=wp.int32, device=device)
+        output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(
+                custom_adjoint_not_guaranteed_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device
+            )
+
+        tape.backward(grads={output: wp.ones_like(output)})
+        result = tape.gradients[values].numpy()
+
+        if not device.is_cpu:
+            wp.config.deterministic = "run_to_run"
+
+            store_n = 32
+            store_values_np = np.linspace(0.5, 2.0, store_n, dtype=np.float32)
+            store_values = wp.array(store_values_np, dtype=wp.float32, device=device, requires_grad=True)
+            store_output = wp.zeros(store_n, dtype=wp.float32, device=device, requires_grad=True)
+            store_scratch = wp.ones(store_n, dtype=wp.float32, device=device)
+
+            store_tape = wp.Tape()
+            with store_tape:
+                wp.launch(
+                    custom_adjoint_store_kernel,
+                    dim=store_n,
+                    inputs=[store_values],
+                    outputs=[store_output, store_scratch],
+                    device=device,
+                )
+
+            store_tape.backward(grads={store_output: wp.ones_like(store_output)})
+            store_output_result = store_output.numpy()
+            store_scratch_result = store_scratch.numpy()
+            store_gradient_result = store_tape.gradients[store_values].numpy()
+    finally:
+        wp.config.deterministic = old_det
+
+    expected = np.bincount(indices_np, minlength=value_count).astype(np.float32)
+    np.testing.assert_allclose(result, expected, rtol=0, atol=0)
+    if not device.is_cpu:
+        np.testing.assert_allclose(store_output_result, store_values_np * store_values_np, rtol=0, atol=0)
+        np.testing.assert_allclose(store_scratch_result, np.zeros(store_n, dtype=np.float32), rtol=0, atol=0)
+        np.testing.assert_allclose(store_gradient_result, 2.0 * store_values_np, rtol=0, atol=0)
+
+
 def test_deterministic_enum_parity(test, device):
     """Keep Python deterministic constants aligned with the native enums."""
     del device
@@ -2787,6 +2866,12 @@ add_function_test(
     "test_deterministic_custom_adjoint_store_function",
     test_deterministic_custom_adjoint_store_function,
     devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_custom_adjoint_not_guaranteed_mode",
+    test_custom_adjoint_not_guaranteed_mode,
+    devices=all_devices,
 )
 add_function_test(
     TestDeterministic, "test_deterministic_enum_parity", test_deterministic_enum_parity, devices=all_devices

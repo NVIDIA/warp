@@ -2000,17 +2000,20 @@ class Adjoint:
                 if func.custom_replay_func:
                     adj.builder.deferred_functions.append(func.custom_replay_func)
 
-            if adj.det_meta is not None and func.adj.det_meta is not None:
+            func_det_meta = getattr(func.adj, "det_meta", None)
+            if adj.det_meta is not None and func_det_meta is not None:
                 try:
-                    _include_deterministic_call_meta(adj, func.adj.det_meta, bound_args)
+                    _include_deterministic_call_meta(adj, func_det_meta, bound_args)
                 except ValueError as e:
                     raise WarpCodegenError(str(e)) from e
             if adj.det_meta is not None and func.custom_grad_func is not None:
-                if not hasattr(func.custom_grad_func.adj, "return_var"):
+                custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
+                if not hasattr(func.custom_grad_func.adj, "return_var") or custom_grad_det_meta is None:
                     func.custom_grad_func.build(None, adj.builder_options)
-                if func.custom_grad_func.adj.det_meta is not None:
+                custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
+                if custom_grad_det_meta is not None:
                     try:
-                        _include_deterministic_call_meta(adj, func.custom_grad_func.adj.det_meta, bound_args)
+                        _include_deterministic_call_meta(adj, custom_grad_det_meta, bound_args)
                     except ValueError as e:
                         raise WarpCodegenError(str(e)) from e
 
@@ -2100,7 +2103,7 @@ class Adjoint:
 
         det_args = []
         if not func.is_builtin():
-            det_args = _deterministic_call_args(adj, func.adj.det_meta, bound_args)
+            det_args = _deterministic_call_args(adj, getattr(func.adj, "det_meta", None), bound_args)
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
@@ -2141,7 +2144,9 @@ class Adjoint:
                 func.require_original_output_arg or len(output_list) > 1
             ) and func.custom_grad_func is None
             if func.custom_grad_func is not None:
-                reverse_extra_args = _deterministic_call_args(adj, func.custom_grad_func.adj.det_meta, bound_args)
+                reverse_extra_args = _deterministic_call_args(
+                    adj, getattr(func.custom_grad_func.adj, "det_meta", None), bound_args
+                )
             else:
                 reverse_extra_args = det_args
             arg_str = adj.format_reverse_call_args(
