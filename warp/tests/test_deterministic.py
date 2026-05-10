@@ -422,6 +422,21 @@ def conditional_counter_kernel(
 
 
 @wp.kernel
+def variable_counter_kernel(
+    counts: wp.array(dtype=wp.int32),
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+):
+    """Reserve a variable number of slots per thread."""
+    tid = wp.tid()
+    count = counts[tid]
+    slot = wp.atomic_add(counter, 0, count)
+
+    for i in range(count):
+        output[slot + i] = tid * 10 + i
+
+
+@wp.kernel
 def counter_side_effect_kernel(
     counter: wp.array(dtype=wp.int32),
     output: wp.array(dtype=wp.float32),
@@ -1298,6 +1313,29 @@ def test_counter_correctness(test, device):
     result = sorted(output.numpy().tolist())
     expected = sorted(data_np.tolist())
     np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+
+def test_counter_variable_total_writeback(test, device):
+    """Verify deterministic counters publish variable total counts on device."""
+    if device.is_cpu:
+        test.skipTest("CUDA deterministic counter writeback required")
+
+    counts_np = np.array([2, 0, 3, 1, 0, 4, 1, 0], dtype=np.int32)
+    expected = []
+    for tid, count in enumerate(counts_np):
+        expected.extend([tid * 10 + i for i in range(count)])
+    expected_np = np.array(expected, dtype=np.int32)
+
+    counts = wp.array(counts_np, dtype=wp.int32, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(expected_np.shape[0], value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(
+        variable_counter_kernel, dim=counts_np.shape[0], inputs=[counts, counter], outputs=[output], device=device
+    )
+
+    np.testing.assert_array_equal(counter.numpy(), np.array([expected_np.shape[0]], dtype=np.int32))
+    np.testing.assert_array_equal(output.numpy(), expected_np)
 
 
 def test_counter_nonzero_index_rejected(test, device):
@@ -2290,6 +2328,12 @@ add_function_test(
     devices=cuda_devices,
 )
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)
+add_function_test(
+    TestDeterministic,
+    "test_counter_variable_total_writeback",
+    test_counter_variable_total_writeback,
+    devices=cuda_devices,
+)
 add_function_test(
     TestDeterministic,
     "test_counter_nonzero_index_rejected",

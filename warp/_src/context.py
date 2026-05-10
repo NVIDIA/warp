@@ -5517,6 +5517,13 @@ class Runtime:
                 ctypes.c_size_t,
             ]
             self.core.wp_deterministic_sort_reduce_device.restype = None
+            self.core.wp_deterministic_counter_total_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+            ]
+            self.core.wp_deterministic_counter_total_device.restype = None
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
             self.core.wp_bvh_create_host.argtypes = [
@@ -9239,7 +9246,6 @@ def _launch_deterministic(
     )
     counter_bufs = allocate_counter_buffers(det_meta.counter_targets, dim_size, device) if det_meta.has_counter else []
     overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if det_meta.has_scatter else None
-    counter_total_bufs = []
     sort_reduce_workspaces = []
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
@@ -9320,15 +9326,6 @@ def _launch_deterministic(
             with warp.ScopedStream(stream, sync_enter=False):
                 warp._src.utils.array_scan(contrib, prefix, inclusive=False)
 
-            # Write the total count to the actual counter array so user code
-            # that reads it after the launch sees the correct value.
-            # Total = exclusive_prefix[-1] + contrib[-1].
-            # Use inclusive scan's last element = total
-            inclusive_out = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
-            counter_total_bufs.append(inclusive_out)
-            with warp.ScopedStream(stream, sync_enter=False):
-                warp._src.utils.array_scan(contrib, inclusive_out, inclusive=True)
-
             counter_arr = resolve_det_target_array(ct)
             if counter_arr is None:
                 continue
@@ -9339,8 +9336,10 @@ def _launch_deterministic(
                     f"({type(counter_arr).__name__})"
                 )
 
-            # Copy the total (last element of inclusive scan) to the counter.
-            warp.copy(counter_arr, inclusive_out, dest_offset=0, src_offset=dim_size - 1, count=1, stream=stream)
+            # Publish Total = exclusive_prefix[-1] + contrib[-1] on device, so
+            # user code sees the final count without a second full scan.
+            with warp.ScopedStream(stream, sync_enter=False):
+                runtime.core.wp_deterministic_counter_total_device(contrib.ptr, prefix.ptr, dim_size, counter_arr.ptr)
 
         # Phase 1: execution pass with deterministic slots.
         det_params_p1 = build_det_params(
@@ -9397,7 +9396,6 @@ def _launch_deterministic(
                 *scatter_bufs,
                 *counter_bufs,
                 overflow_buf,
-                *counter_total_bufs,
                 *sort_reduce_workspaces,
             )
             if buffer is not None

@@ -75,6 +75,15 @@ __global__ void init_record_indices_kernel(int* indices, int count)
     }
 }
 
+__global__ void publish_counter_total_kernel(const int* contrib, const int* prefix, int count, int* counter)
+{
+    if (count <= 0) {
+        counter[0] = 0;
+    } else {
+        counter[0] = prefix[count - 1] + contrib[count - 1];
+    }
+}
+
 template <typename T> struct ReduceByKeyOp {
     int op;
 
@@ -507,4 +516,15 @@ void wp_deterministic_sort_reduce_device(
     default:
         break;
     }
+}
+
+void wp_deterministic_counter_total_device(uint64_t contrib, uint64_t prefix, int count, uint64_t counter)
+{
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    publish_counter_total_kernel<<<1, 1, 0, stream>>>(
+        reinterpret_cast<const int*>(contrib), reinterpret_cast<const int*>(prefix), count,
+        reinterpret_cast<int*>(counter)
+    );
 }
