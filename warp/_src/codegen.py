@@ -2005,6 +2005,14 @@ class Adjoint:
                     _include_deterministic_call_meta(adj, func.adj.det_meta, bound_args)
                 except ValueError as e:
                     raise WarpCodegenError(str(e)) from e
+            if adj.det_meta is not None and func.custom_grad_func is not None:
+                if not hasattr(func.custom_grad_func.adj, "return_var"):
+                    func.custom_grad_func.build(None, adj.builder_options)
+                if func.custom_grad_func.adj.det_meta is not None:
+                    try:
+                        _include_deterministic_call_meta(adj, func.custom_grad_func.adj.det_meta, bound_args)
+                    except ValueError as e:
+                        raise WarpCodegenError(str(e)) from e
 
         # Resolve the return value based on the types and values of the given arguments.
         bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
@@ -2132,12 +2140,16 @@ class Adjoint:
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
             ) and func.custom_grad_func is None
+            if func.custom_grad_func is not None:
+                reverse_extra_args = _deterministic_call_args(adj, func.custom_grad_func.adj.det_meta, bound_args)
+            else:
+                reverse_extra_args = det_args
             arg_str = adj.format_reverse_call_args(
                 fwd_args,
                 adj_args,
                 output_list,
                 use_initializer_list,
-                extra_args=det_args,
+                extra_args=reverse_extra_args,
                 has_output_args=reverse_has_output_args,
                 require_original_output_arg=func.require_original_output_arg,
             )
@@ -2186,6 +2198,9 @@ class Adjoint:
         while getattr(arr_var, "_det_view_parent", None) is not None:
             view_prefix_vars = list(arr_var._det_view_indices) + view_prefix_vars
             arr_var = arr_var._det_view_parent
+
+        if getattr(arr_var, "_det_adjoint_target", False):
+            return None
 
         try:
             target_info = _deterministic_target_info(arr_var)
@@ -2277,13 +2292,6 @@ class Adjoint:
                     "counter arrays."
                 )
 
-            counter_indices = [*view_prefix_vars, *args_list[1:-1]]
-            if not _deterministic_counter_indices_are_zero(counter_indices):
-                raise WarpCodegenError(
-                    "Deterministic mode currently supports consumed-return counter atomics only when every "
-                    "counter index is the literal 0, for example `slot = wp.atomic_add(counter, 0, value)`."
-                )
-
             try:
                 target = get_or_create_counter_target(
                     adj.det_registry, adj.det_meta, target_root_label, scalar_ctype, attr_path=target_attr_path
@@ -2293,9 +2301,19 @@ class Adjoint:
             helper_name = target.helper_name
 
             val_loaded = loaded_args[-1]  # already loaded above
+            loaded_prefix = [adj.load(var) for var in view_prefix_vars]
+            idx_loaded_list = loaded_prefix + list(loaded_args[1:-1])
+            target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
+            if target_expr is None:
+                raise WarpCodegenError(
+                    f"Deterministic mode could not build a generated target expression for {func.key} "
+                    f"on '{target_root_label}'."
+                )
+            flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key)
 
             adj.add_forward(
-                f"WP_DET_COUNTER_OR_FALLBACK(var_{output}, det_ctx, {helper_name}, var_{val_loaded}, {cpu_call});",
+                f"WP_DET_COUNTER_OR_FALLBACK(var_{output}, det_ctx, {helper_name}, {flat_idx_expr}, "
+                f"var_{val_loaded}, {cpu_call});",
                 replay="// deterministic counter replay (skipped)",
             )
             return output
@@ -2320,7 +2338,6 @@ class Adjoint:
         loaded_prefix = [adj.load(var) for var in view_prefix_vars]
         idx_loaded_list = loaded_prefix + list(loaded_args[1:-1])
 
-        ndim = len(idx_loaded_list)
         target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
         if target_expr is None:
             raise WarpCodegenError(
@@ -2328,26 +2345,7 @@ class Adjoint:
                 f"on '{target_root_label}'."
             )
 
-        if ndim == 1:
-            flat_idx_expr = f"var_{idx_loaded_list[0]}"
-        elif ndim == 2:
-            flat_idx_expr = f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] + var_{idx_loaded_list[1]})"
-        elif ndim == 3:
-            flat_idx_expr = (
-                f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] "
-                f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] + var_{idx_loaded_list[2]})"
-            )
-        elif ndim == 4:
-            flat_idx_expr = (
-                f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] * {target_expr}.shape[3] "
-                f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] * {target_expr}.shape[3] "
-                f"+ var_{idx_loaded_list[2]} * {target_expr}.shape[3] + var_{idx_loaded_list[3]})"
-            )
-        else:
-            raise WarpCodegenError(
-                f"Deterministic mode currently supports arrays up to 4 dimensions, got {ndim}D indexing for "
-                f"{target_expr}."
-            )
+        flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key)
 
         val_expr = f"var_{val_loaded}"
         if func.key == "atomic_sub":
@@ -3713,6 +3711,9 @@ class Adjoint:
                 if det_view_indices_are_int:
                     out._det_view_parent = target
                     out._det_view_indices = det_view_indices
+                    if getattr(target, "_det_adjoint_target", False):
+                        out._det_adjoint_target = True
+                        out._det_adjoint_root_label = getattr(target, "_det_adjoint_root_label", None)
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
@@ -3800,6 +3801,8 @@ class Adjoint:
             var = adj.eval(node.slice)
             var_name = var.label
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
+            var._det_adjoint_target = True
+            var._det_adjoint_root_label = var_name
             return var
 
         target, indices = adj.eval_subscript(node)
@@ -6040,10 +6043,12 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
             decls.append(f"auto& {target.helper_name} = {names['buf']};")
     else:
         decls = [
-            "wp::det_ctx det_ctx{0, 0, 0, nullptr};",
+            "wp::det_ctx det_ctx{1, 0, 0, nullptr};",
         ]
         for target in adj.det_meta.counter_targets:
-            decls.append(f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr}};")
+            decls.append(
+                f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0}};"
+            )
         for target in adj.det_meta.scatter_targets:
             decls.append(
                 f"wp::det_scatter_buf_t<{target.value_ctype}> {target.helper_name}{{nullptr, nullptr, nullptr, 0}};"
@@ -6146,16 +6151,31 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
             adj.add_reverse(f"{store_func.namespace}adj_{func_name}({arg_str});")
 
 
-def _deterministic_counter_indices_are_zero(indices):
-    if not indices:
-        return False
+def _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func_key):
+    """Return a generated row-major flat index expression for deterministic buffers."""
+    del adj
 
-    for index in indices:
-        value = get_arg_value(index)
-        if isinstance(value, bool) or not isinstance(value, int) or value != 0:
-            return False
+    ndim = len(idx_loaded_list)
+    if ndim == 1:
+        return f"var_{idx_loaded_list[0]}"
+    if ndim == 2:
+        return f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] + var_{idx_loaded_list[1]})"
+    if ndim == 3:
+        return (
+            f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] "
+            f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] + var_{idx_loaded_list[2]})"
+        )
+    if ndim == 4:
+        return (
+            f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] * {target_expr}.shape[3] "
+            f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] * {target_expr}.shape[3] "
+            f"+ var_{idx_loaded_list[2]} * {target_expr}.shape[3] + var_{idx_loaded_list[3]})"
+        )
 
-    return True
+    raise WarpCodegenError(
+        f"Deterministic mode currently supports arrays up to 4 dimensions, got {ndim}D indexing for "
+        f"{func_key} on {target_expr}."
+    )
 
 
 def _deterministic_bound_target(bound_var, extra_attr_path=()):
@@ -6221,11 +6241,12 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
         )
         adj.det_meta.scatter_records_per_thread[mapped_target] += count - 1
 
-    for target in meta.counter_targets:
+    for target, count in meta.counter_records_per_thread.items():
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
-        get_or_create_counter_target(
+        mapped_target = get_or_create_counter_target(
             adj.det_registry, adj.det_meta, mapped_label, target.value_ctype, attr_path=mapped_attr_path
         )
+        adj.det_meta.counter_records_per_thread[mapped_target] += count - 1
 
 
 def _deterministic_call_args(adj, meta, bound_args):

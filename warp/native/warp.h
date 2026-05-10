@@ -365,6 +365,17 @@ WP_API void wp_deterministic_sort_reduce_device(
     size_t workspace_size
 );
 WP_API void wp_deterministic_counter_total_device(uint64_t contrib, uint64_t prefix, int count, uint64_t counter);
+WP_API size_t wp_deterministic_counter_scan_workspace_size(int count);
+WP_API void wp_deterministic_counter_scan_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t prefixes,
+    uint64_t counters,
+    int counter_size,
+    uint64_t workspace,
+    size_t workspace_size
+);
 
 WP_API void wp_bsr_matrix_from_triplets_host(
     int block_size,

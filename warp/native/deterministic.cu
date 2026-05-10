@@ -84,6 +84,69 @@ __global__ void publish_counter_total_kernel(const int* contrib, const int* pref
     }
 }
 
+struct CounterPrefixState {
+    int dest;
+    int sum;
+};
+
+struct CounterPrefixOp {
+    __host__ __device__ CounterPrefixState operator()(const CounterPrefixState& a, const CounterPrefixState& b) const
+    {
+        if (a.dest == b.dest) {
+            return CounterPrefixState { b.dest, a.sum + b.sum };
+        }
+        return b;
+    }
+};
+
+__global__ void make_counter_prefix_states_kernel(
+    const int64_t* __restrict__ sorted_keys,
+    const int* __restrict__ sorted_indices,
+    const int* __restrict__ values,
+    CounterPrefixState* __restrict__ states,
+    int count
+)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= count)
+        return;
+
+    int dest = dest_index_from_key(sorted_keys[tid]);
+    int original_slot = sorted_indices[tid];
+    int value = dest < 0 ? 0 : values[original_slot];
+    states[tid] = CounterPrefixState { dest, value };
+}
+
+__global__ void scatter_counter_prefixes_kernel(
+    const int64_t* __restrict__ sorted_keys,
+    const int* __restrict__ sorted_indices,
+    const int* __restrict__ values,
+    const CounterPrefixState* __restrict__ inclusive_prefixes,
+    int* __restrict__ prefixes,
+    int* __restrict__ counters,
+    int counter_size,
+    int count
+)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= count)
+        return;
+
+    int dest = dest_index_from_key(sorted_keys[tid]);
+    int original_slot = sorted_indices[tid];
+    if (dest < 0 || original_slot < 0)
+        return;
+
+    int value = values[original_slot];
+    int inclusive = inclusive_prefixes[tid].sum;
+    prefixes[original_slot] = inclusive - value;
+
+    bool is_tail = (tid == count - 1) || (dest_index_from_key(sorted_keys[tid + 1]) != dest);
+    if (is_tail && dest < counter_size) {
+        counters[dest] = inclusive;
+    }
+}
+
 template <typename T> struct ReduceByKeyOp {
     int op;
 
@@ -176,6 +239,37 @@ size_t generic_workspace_size(int count, cudaStream_t stream)
     layout_array<int>(nullptr, offset, count);
     layout_array<int>(nullptr, offset, count);
     layout_bytes(nullptr, offset, sort_temp_size);
+    return offset;
+}
+
+void query_counter_scan_temp_size(int count, cudaStream_t stream, size_t& scan_temp_size)
+{
+    scan_temp_size = 0;
+
+    CounterPrefixState* states = nullptr;
+    CounterPrefixState* prefixes = nullptr;
+    CounterPrefixOp op {};
+    check_cuda(cub::DeviceScan::InclusiveScan(nullptr, scan_temp_size, states, prefixes, op, count, stream));
+}
+
+size_t counter_workspace_size(int count, cudaStream_t stream)
+{
+    if (count <= 0)
+        return 0;
+
+    size_t sort_temp_size = 0;
+    size_t scan_temp_size = 0;
+    query_generic_sort_temp_size(count, stream, sort_temp_size);
+    query_counter_scan_temp_size(count, stream, scan_temp_size);
+
+    size_t offset = 0;
+    layout_array<int64_t>(nullptr, offset, count);
+    layout_array<int>(nullptr, offset, count);
+    layout_array<int>(nullptr, offset, count);
+    layout_bytes(nullptr, offset, sort_temp_size);
+    layout_array<CounterPrefixState>(nullptr, offset, count);
+    layout_array<CounterPrefixState>(nullptr, offset, count);
+    layout_bytes(nullptr, offset, scan_temp_size);
     return offset;
 }
 
@@ -418,6 +512,71 @@ void deterministic_sort_reduce_device(
     );
 }
 
+void deterministic_counter_scan_device(
+    int64_t* keys,
+    int* values,
+    int count,
+    int* prefixes,
+    int* counters,
+    int counter_size,
+    void* workspace,
+    size_t workspace_size
+)
+{
+    if (count <= 0)
+        return;
+
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    size_t required_workspace_size = counter_workspace_size(count, stream);
+    if (workspace == nullptr || workspace_size < required_workspace_size) {
+        check_cuda(cudaErrorInvalidValue);
+        return;
+    }
+
+    size_t sort_temp_size = 0;
+    size_t scan_temp_size = 0;
+    query_generic_sort_temp_size(count, stream, sort_temp_size);
+    query_counter_scan_temp_size(count, stream, scan_temp_size);
+
+    char* workspace_bytes = static_cast<char*>(workspace);
+    size_t offset = 0;
+    int64_t* alt_keys = layout_array<int64_t>(workspace_bytes, offset, count);
+    int* record_indices = layout_array<int>(workspace_bytes, offset, count);
+    int* alt_record_indices = layout_array<int>(workspace_bytes, offset, count);
+    void* sort_temp = layout_bytes(workspace_bytes, offset, sort_temp_size);
+    CounterPrefixState* states = layout_array<CounterPrefixState>(workspace_bytes, offset, count);
+    CounterPrefixState* inclusive_prefixes = layout_array<CounterPrefixState>(workspace_bytes, offset, count);
+    void* scan_temp = layout_bytes(workspace_bytes, offset, scan_temp_size);
+
+    const int block_size = 256;
+    const int num_blocks = (count + block_size - 1) / block_size;
+    init_record_indices_kernel<<<num_blocks, block_size, 0, stream>>>(record_indices, count);
+
+    cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys);
+    cub::DoubleBuffer<int> d_indices(record_indices, alt_record_indices);
+
+    check_cuda(
+        cub::DeviceRadixSort::SortPairs(
+            sort_temp, sort_temp_size, d_keys, d_indices, count, 0, sizeof(int64_t) * 8, stream
+        )
+    );
+
+    make_counter_prefix_states_kernel<<<num_blocks, block_size, 0, stream>>>(
+        d_keys.Current(), d_indices.Current(), values, states, count
+    );
+
+    CounterPrefixOp op {};
+    check_cuda(
+        cub::DeviceScan::InclusiveScan(scan_temp, scan_temp_size, states, inclusive_prefixes, op, count, stream)
+    );
+
+    scatter_counter_prefixes_kernel<<<num_blocks, block_size, 0, stream>>>(
+        d_keys.Current(), d_indices.Current(), values, inclusive_prefixes, prefixes, counters, counter_size, count
+    );
+}
+
 }  // anonymous namespace
 
 
@@ -448,6 +607,13 @@ wp_deterministic_sort_reduce_workspace_size(int count, int op, int scalar_type, 
     default:
         return 0;
     }
+}
+
+size_t wp_deterministic_counter_scan_workspace_size(int count)
+{
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+    return counter_workspace_size(count, stream);
 }
 
 void wp_deterministic_sort_reduce_device(
@@ -526,5 +692,22 @@ void wp_deterministic_counter_total_device(uint64_t contrib, uint64_t prefix, in
     publish_counter_total_kernel<<<1, 1, 0, stream>>>(
         reinterpret_cast<const int*>(contrib), reinterpret_cast<const int*>(prefix), count,
         reinterpret_cast<int*>(counter)
+    );
+}
+
+void wp_deterministic_counter_scan_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t prefixes,
+    uint64_t counters,
+    int counter_size,
+    uint64_t workspace,
+    size_t workspace_size
+)
+{
+    deterministic_counter_scan_device(
+        reinterpret_cast<int64_t*>(keys), reinterpret_cast<int*>(values), count, reinterpret_cast<int*>(prefixes),
+        reinterpret_cast<int*>(counters), counter_size, reinterpret_cast<void*>(workspace), workspace_size
     );
 }

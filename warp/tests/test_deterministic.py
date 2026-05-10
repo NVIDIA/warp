@@ -437,6 +437,62 @@ def variable_counter_kernel(
 
 
 @wp.kernel
+def static_index_counter_kernel(
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+):
+    """Reserve slots from a fixed nonzero counter index."""
+    tid = wp.tid()
+    slot = wp.atomic_add(counter, 1, 1)
+    output[slot] = tid
+
+
+@wp.kernel
+def indexed_counter_kernel(
+    values: wp.array(dtype=wp.int32),
+    bins: wp.array(dtype=wp.int32),
+    counters: wp.array(dtype=wp.int32),
+    output: wp.array2d(dtype=wp.int32),
+):
+    """Reserve slots from a data-dependent counter index."""
+    tid = wp.tid()
+    bin = bins[tid]
+    slot = wp.atomic_add(counters, bin, 1)
+    output[bin, slot] = values[tid]
+
+
+@wp.kernel
+def sliced_counter_kernel(
+    values: wp.array(dtype=wp.int32),
+    bins: wp.array(dtype=wp.int32),
+    counters: wp.array2d(dtype=wp.int32),
+    output: wp.array2d(dtype=wp.int32),
+):
+    """Reserve slots through a sliced counter view such as ``counters[bin]``."""
+    tid = wp.tid()
+    bin = bins[tid]
+    slot = wp.atomic_add(counters[bin], 0, 1)
+    output[bin, slot] = values[tid]
+
+
+@wp.kernel(deterministic=True, deterministic_max_records=4)
+def loop_indexed_counter_kernel(
+    counts: wp.array(dtype=wp.int32),
+    bins: wp.array(dtype=wp.int32),
+    counters: wp.array(dtype=wp.int32),
+    output: wp.array2d(dtype=wp.int32),
+):
+    """Emit a data-dependent number of counter records to dynamic destinations."""
+    tid = wp.tid()
+    count = counts[tid]
+
+    for i in range(count):
+        bin = (bins[tid] + i) % 4
+        slot = wp.atomic_add(counters, bin, 1)
+        output[bin, slot] = tid * 10 + i
+
+
+@wp.kernel
 def counter_side_effect_kernel(
     counter: wp.array(dtype=wp.int32),
     output: wp.array(dtype=wp.float32),
@@ -500,6 +556,59 @@ def int_atomic_add_kernel(
     tid = wp.tid()
     idx = dest_indices[tid]
     wp.atomic_add(output, idx, 1)
+
+
+@wp.func
+def _det_lookup_value(values: wp.array(dtype=wp.float32), index: int) -> wp.float32:
+    return values[index]
+
+
+@wp.func_grad(_det_lookup_value)
+def _adj_det_lookup_value(values: wp.array(dtype=wp.float32), index: int, adj_ret: wp.float32):
+    wp.adjoint[values][index] += adj_ret
+
+
+@wp.kernel
+def custom_adjoint_lookup_kernel(
+    values: wp.array(dtype=wp.float32),
+    indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Use a custom adjoint that accumulates into ``wp.adjoint[values]``."""
+    tid = wp.tid()
+    value = _det_lookup_value(values, indices[tid])
+    wp.atomic_add(output, 0, value)
+
+
+@wp.func
+def _det_custom_square_store(
+    i: int,
+    values: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+    scratch: wp.array(dtype=wp.float32),
+):
+    output[i] = values[i] * values[i]
+
+
+@wp.func_grad(_det_custom_square_store)
+def _adj_det_custom_square_store(
+    i: int,
+    values: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+    scratch: wp.array(dtype=wp.float32),
+):
+    scratch[i] = 0.0
+    wp.adjoint[values][i] += 2.0 * values[i] * wp.adjoint[output][i]
+
+
+@wp.kernel
+def custom_adjoint_store_kernel(
+    values: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+    scratch: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    _det_custom_square_store(tid, values, output, scratch)
 
 
 # ---------------------------------------------------------------------------
@@ -1338,26 +1447,124 @@ def test_counter_variable_total_writeback(test, device):
     np.testing.assert_array_equal(output.numpy(), expected_np)
 
 
-def test_counter_nonzero_index_rejected(test, device):
-    """Verify unsupported nonzero consumed-return counter indices fail clearly."""
+def test_counter_nonzero_index(test, device):
+    """Verify consumed-return counters support fixed nonzero indices."""
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
-    with test.assertRaisesRegex(Exception, "counter index is the literal 0"):
+    n = 32
+    results = []
+    counters = []
 
-        @wp.kernel(deterministic=True, module="unique")
-        def counter_nonzero_index_kernel(
-            counter: wp.array(dtype=wp.int32),
-            output: wp.array(dtype=wp.float32),
-        ):
-            """Unsupported consumed-return counter using a nonzero counter index."""
-            tid = wp.tid()
-            slot = wp.atomic_add(counter, 1, 1)
-            output[slot] = float(tid)
-
+    for _ in range(3):
         counter = wp.zeros(2, dtype=wp.int32, device=device)
-        output = wp.zeros(8, dtype=wp.float32, device=device)
-        wp.launch(counter_nonzero_index_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
+        output = wp.full(n, value=-1, dtype=wp.int32, device=device)
+        wp.launch(static_index_counter_kernel, dim=n, inputs=[counter], outputs=[output], device=device)
+        counters.append(counter.numpy().copy())
+        results.append(output.numpy().copy())
+
+    expected_counter = np.array([0, n], dtype=np.int32)
+    expected_output = np.arange(n, dtype=np.int32)
+    for counter in counters:
+        np.testing.assert_array_equal(counter, expected_counter)
+    for result in results:
+        np.testing.assert_array_equal(result, expected_output)
+
+
+def test_counter_indexed_destinations(test, device):
+    """Verify consumed-return counters support data-dependent counter indices."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 128
+    bin_count = 5
+    rng = np.random.default_rng(92)
+    bins_np = rng.integers(0, bin_count, size=n, dtype=np.int32)
+    values_np = np.arange(n, dtype=np.int32) + 100
+
+    expected_counts = np.bincount(bins_np, minlength=bin_count).astype(np.int32)
+    expected_output = np.full((bin_count, n), -1, dtype=np.int32)
+    offsets = np.zeros(bin_count, dtype=np.int32)
+    for tid, bin in enumerate(bins_np):
+        slot = offsets[bin]
+        expected_output[bin, slot] = values_np[tid]
+        offsets[bin] += 1
+
+    values = wp.array(values_np, dtype=wp.int32, device=device)
+    bins = wp.array(bins_np, dtype=wp.int32, device=device)
+
+    results = []
+    counters = []
+    for _ in range(3):
+        counter = wp.zeros(bin_count, dtype=wp.int32, device=device)
+        output = wp.full((bin_count, n), value=-1, dtype=wp.int32, device=device)
+        wp.launch(indexed_counter_kernel, dim=n, inputs=[values, bins, counter], outputs=[output], device=device)
+        counters.append(counter.numpy().copy())
+        results.append(output.numpy().copy())
+
+    for counter in counters:
+        np.testing.assert_array_equal(counter, expected_counts)
+    for result in results:
+        np.testing.assert_array_equal(result, expected_output)
+
+
+def test_counter_sliced_destinations(test, device):
+    """Verify consumed-return counters support sliced counter-array views."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 96
+    bin_count = 4
+    bins_np = (np.arange(n, dtype=np.int32) * 3) % bin_count
+    values_np = np.arange(n, dtype=np.int32) + 1000
+
+    expected_counts = np.bincount(bins_np, minlength=bin_count).astype(np.int32).reshape(bin_count, 1)
+    expected_output = np.full((bin_count, n), -1, dtype=np.int32)
+    offsets = np.zeros(bin_count, dtype=np.int32)
+    for tid, bin in enumerate(bins_np):
+        slot = offsets[bin]
+        expected_output[bin, slot] = values_np[tid]
+        offsets[bin] += 1
+
+    values = wp.array(values_np, dtype=wp.int32, device=device)
+    bins = wp.array(bins_np, dtype=wp.int32, device=device)
+
+    counters = wp.zeros((bin_count, 1), dtype=wp.int32, device=device)
+    output = wp.full((bin_count, n), value=-1, dtype=wp.int32, device=device)
+    wp.launch(sliced_counter_kernel, dim=n, inputs=[values, bins, counters], outputs=[output], device=device)
+
+    np.testing.assert_array_equal(counters.numpy(), expected_counts)
+    np.testing.assert_array_equal(output.numpy(), expected_output)
+
+
+def test_counter_indexed_dynamic_loop(test, device):
+    """Verify dynamic loops can reserve multiple records for dynamic counter indices."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 64
+    bin_count = 4
+    counts_np = (np.arange(n, dtype=np.int32) % 4).astype(np.int32)
+    bins_np = ((np.arange(n, dtype=np.int32) * 5) % bin_count).astype(np.int32)
+
+    expected_counts = np.zeros(bin_count, dtype=np.int32)
+    expected_output = np.full((bin_count, n * 4), -1, dtype=np.int32)
+    for tid in range(n):
+        for i in range(counts_np[tid]):
+            bin = (bins_np[tid] + i) % bin_count
+            slot = expected_counts[bin]
+            expected_output[bin, slot] = tid * 10 + i
+            expected_counts[bin] += 1
+
+    counts = wp.array(counts_np, dtype=wp.int32, device=device)
+    bins = wp.array(bins_np, dtype=wp.int32, device=device)
+    counters = wp.zeros(bin_count, dtype=wp.int32, device=device)
+    output = wp.full((bin_count, n * 4), value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(loop_indexed_counter_kernel, dim=n, inputs=[counts, bins, counters], outputs=[output], device=device)
+
+    np.testing.assert_array_equal(counters.numpy(), expected_counts)
+    np.testing.assert_array_equal(output.numpy(), expected_output)
 
 
 def test_counter_int64_rejected(test, device):
@@ -1982,6 +2189,42 @@ def test_graph_capture_consumed_return_counter(test, device):
     np.testing.assert_array_equal(first, second)
 
 
+def test_graph_capture_indexed_counter(test, device):
+    """Verify data-dependent consumed-return counters can be captured and replayed."""
+    if device.is_cpu:
+        test.skipTest("Graph capture requires CUDA")
+
+    n = 64
+    bin_count = 4
+    bins_np = (np.arange(n, dtype=np.int32) * 7) % bin_count
+    values_np = np.arange(n, dtype=np.int32)
+
+    values = wp.array(values_np, dtype=wp.int32, device=device)
+    bins = wp.array(bins_np, dtype=wp.int32, device=device)
+    counter = wp.zeros(bin_count, dtype=wp.int32, device=device)
+    output = wp.full((bin_count, n), value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(indexed_counter_kernel, dim=n, inputs=[values, bins, counter], outputs=[output], device=device)
+    counter.zero_()
+    output.fill_(-1)
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(indexed_counter_kernel, dim=n, inputs=[values, bins, counter], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first_count = counter.numpy().copy()
+    first = output.numpy().copy()
+
+    counter.zero_()
+    output.fill_(-1)
+    wp.capture_launch(capture.graph)
+    second_count = counter.numpy().copy()
+    second = output.numpy().copy()
+
+    np.testing.assert_array_equal(first_count, second_count)
+    np.testing.assert_array_equal(first, second)
+
+
 def test_counter_large_launch_rejected(test, device):
     """Verify counter prefix buffers fail clearly before oversized launches."""
     if device.is_cpu:
@@ -2059,6 +2302,53 @@ def test_deterministic_backward_counter_store(test, device):
     tape.backward(grads={output: wp.ones_like(output)})
 
     np.testing.assert_allclose(tape.gradients[data].numpy(), np.ones(n, dtype=np.float32), rtol=0, atol=0)
+
+
+def test_deterministic_custom_adjoint_array_atomic(test, device):
+    """Verify custom adjoints that atomically update ``wp.adjoint[array]`` compile."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 48
+    value_count = 7
+    indices_np = (np.arange(n, dtype=np.int32) * 3) % value_count
+    values_np = np.linspace(0.25, 1.75, value_count, dtype=np.float32)
+
+    values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(custom_adjoint_lookup_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    expected = np.bincount(indices_np, minlength=value_count).astype(np.float32)
+    np.testing.assert_allclose(tape.gradients[values].numpy(), expected, rtol=0, atol=0)
+
+
+def test_deterministic_custom_adjoint_store_function(test, device):
+    """Verify custom adjoints on functions with deterministic store context compile."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 32
+    values_np = np.linspace(0.5, 2.0, n, dtype=np.float32)
+
+    values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+    scratch = wp.ones(n, dtype=wp.float32, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(custom_adjoint_store_kernel, dim=n, inputs=[values], outputs=[output, scratch], device=device)
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(output.numpy(), values_np * values_np, rtol=0, atol=0)
+    np.testing.assert_allclose(scratch.numpy(), np.zeros(n, dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(tape.gradients[values].numpy(), 2.0 * values_np, rtol=0, atol=0)
 
 
 def test_deterministic_enum_parity(test, device):
@@ -2348,8 +2638,26 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic,
-    "test_counter_nonzero_index_rejected",
-    test_counter_nonzero_index_rejected,
+    "test_counter_nonzero_index",
+    test_counter_nonzero_index,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_indexed_destinations",
+    test_counter_indexed_destinations,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_sliced_destinations",
+    test_counter_sliced_destinations,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_indexed_dynamic_loop",
+    test_counter_indexed_dynamic_loop,
     devices=cuda_devices,
 )
 add_function_test(
@@ -2440,6 +2748,12 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic,
+    "test_graph_capture_indexed_counter",
+    test_graph_capture_indexed_counter,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
     "test_counter_large_launch_rejected",
     test_counter_large_launch_rejected,
     devices=cuda_devices,
@@ -2460,6 +2774,18 @@ add_function_test(
     TestDeterministic,
     "test_deterministic_backward_counter_store",
     test_deterministic_backward_counter_store,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_custom_adjoint_array_atomic",
+    test_deterministic_custom_adjoint_array_atomic,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_custom_adjoint_store_function",
+    test_deterministic_custom_adjoint_store_function,
     devices=cuda_devices,
 )
 add_function_test(
