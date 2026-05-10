@@ -219,20 +219,24 @@ Normal atomic execution makes ``slot`` depend on the order in which threads
 arrive.  Deterministic mode turns this into the familiar count-scan-write
 workflow:
 
-1. Run a counting pass.  Each thread records how many slots it needs.
-2. Run a prefix scan.  This computes each thread's deterministic starting slot.
-3. Publish the final counter total from the last prefix and contribution values.
+1. Run a counting pass.  Each thread records each slot reservation, including
+   the counter element, the reservation order for that thread, and the number
+   of slots requested.
+2. Sort reservations by counter element and deterministic thread order.
+3. Run a segmented prefix scan.  This computes the deterministic starting slot
+   for each reservation and the final total for each touched counter element.
 4. Run the kernel again.  The atomic returns the deterministic slot.
 
 The prefix scan is the same concept as an exclusive scan in CUDA libraries.
 On CUDA, Warp's scan utilities are implemented with CUB primitives such as
 `CUB DeviceScan`_.
 
-This pattern currently supports only:
+This pattern currently supports:
 
-* ``slot = wp.atomic_add(counter, 0, value)``
+* ``slot = wp.atomic_add(counter, index, value)``
 * ``counter`` must be an ``int32`` array
-* every counter index must be the literal ``0``
+* ``index`` may be constant or data-dependent
+* sliced counter views such as ``wp.atomic_add(counters[world], 0, 1)``
 
 Consumed-return ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are rejected
 because their semantics are not prefix-sum slot allocation.
@@ -414,11 +418,10 @@ There are a few details to know:
 * Overflow checks are disabled during graph capture and replay to keep graph
   launches asynchronous.  Size buffers conservatively with
   ``deterministic_max_records``.
-* Counter/slot-allocation kernels use prefix scans.  CUDA graph replay requires
-  all temporary scan storage used by captured CUB work to remain valid for the
-  lifetime of the graph.  Warp currently rejects Pattern 2 kernels during CUDA
-  graph capture; launch them outside capture, or disable deterministic mode for
-  that kernel.
+* Counter/slot-allocation kernels use sort and prefix-scan workspaces.  CUDA
+  graph replay requires all temporary CUB storage used by captured work to
+  remain valid for the lifetime of the graph.  Warp keeps these buffers alive
+  on the captured graph object for ordinary CUDA graph capture.
 * Deterministic kernels are not supported inside CUDA conditional body graphs,
   such as :func:`wp.capture_while() <warp.capture_while>` or
   :func:`wp.capture_if() <warp.capture_if>`, when the deterministic launch
@@ -554,11 +557,10 @@ Slot allocation has a different shape.  The kernel is:
     count.zero_()
     wp.launch(counter_kernel, dim=num_writes, inputs=[values, count], outputs=[out], device="cuda")
 
-Deterministic mode turns this into a counting pass, an exclusive scan, a small
-device-side counter-total writeback, and an execution pass.  ``"run_to_run"``
-and ``"gpu_to_gpu"`` use the same slot allocation algorithm.  Pattern B is
-currently not supported in CUDA graph capture, so this table uses direct
-launches measured with CUDA events.
+Deterministic mode turns this into a counting pass, a sort by counter element
+and deterministic reservation order, a segmented prefix scan, and an execution
+pass.  ``"run_to_run"`` and ``"gpu_to_gpu"`` use the same slot allocation
+algorithm.  This table uses direct launches measured with CUDA events.
 
 .. list-table::
    :header-rows: 1
@@ -671,6 +673,12 @@ Fixed scatter capacity
             for i in range(loop_counts[tid]):
                 wp.atomic_add(out, 0, 1.0)
 
+Counter arrays are allocation counters
+    Pattern 2 is intended for counters that are initialized for the launch,
+    usually to zero.  The deterministic postpass writes each touched counter
+    element to the total number of reserved slots.  It does not add that total
+    to a pre-existing nonzero counter value.
+
 Large launches
     Deterministic scatter launches are limited to at most ``2**32`` threads.
     The scatter sort key stores the destination index and the linear thread
@@ -690,8 +698,8 @@ When enabling deterministic mode in a new kernel:
    ``np.testing.assert_array_equal()`` for bit-exact tests.
 3. If the kernel has dynamic loops around deterministic atomics, set
    ``deterministic_max_records`` to a real upper bound.
-4. If the kernel uses ``slot = wp.atomic_add(counter, 0, value)``, check that
-   the counter is ``int32`` and indexed at literal ``0``.
+4. If the kernel uses ``slot = wp.atomic_add(counter, index, value)``, check
+   that the counter is an ``int32`` array initialized for that launch.
 5. If you capture the kernel in a CUDA graph, validate both capture and replay.
    Ordinary CUDA graph capture is supported for both Pattern 1 and Pattern 2;
    Warp keeps the temporary deterministic buffers alive on the captured graph

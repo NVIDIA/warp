@@ -9,10 +9,11 @@
 
 // Deterministic mode scatter buffer support.
 //
-// When deterministic mode is enabled, floating-point atomic operations are
-// redirected to scatter buffers during kernel execution. After the kernel
-// completes, the runtime sorts the buffer by (dest_index, thread_id) and
-// reduces values in that fixed order, guaranteeing bit-exact reproducibility.
+// When deterministic mode is enabled, supported atomic operations are
+// redirected to temporary buffers. Accumulation atomics are sorted by
+// (dest_index, thread_id) and reduced in that fixed order. Consumed-return
+// counter atomics are sorted by (counter_index, deterministic_record_order)
+// and prefix-scanned before the execution replay.
 
 namespace wp {
 template <typename T> struct det_scatter_buf_t {
@@ -23,8 +24,14 @@ template <typename T> struct det_scatter_buf_t {
 };
 
 struct det_counter_buf_t {
-    int* contrib;
-    int* prefix;
+    int64_t* keys;
+    int* values;
+    int* prefixes;
+    int* record_slots;
+    int* cursors;
+    int* count;
+    int capacity;
+    int records_per_thread;
 };
 
 struct det_ctx {
@@ -69,24 +76,54 @@ inline CUDA_CALLABLE void scatter(det_ctx& ctx, det_scatter_buf_t<T>& buf, int d
 #endif
 }
 
-template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_counter_buf_t& buf, T value)
+inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int dest_flat_idx, int value)
 {
 #ifdef __CUDA_ARCH__
+    int cursor = atomicAdd(&buf.cursors[ctx.idx], 1);
+    int record_ordinal = static_cast<int>(ctx.idx) * buf.records_per_thread + cursor;
+
+    if (cursor >= buf.records_per_thread) {
+        if (ctx.overflow != nullptr) {
+            int prev = atomicCAS(ctx.overflow, 0, 1);
+            if (ctx.debug && prev == 0) {
+                printf(
+                    "Warp deterministic counter overflow: records_per_thread=%d dest=%d\n", buf.records_per_thread,
+                    dest_flat_idx
+                );
+            }
+        }
+        return 0;
+    }
+
     if (ctx.phase == 0) {
-        buf.contrib[ctx.idx] += value;
-        return T {};
+        int slot = atomicAdd(buf.count, 1);
+        if (slot < buf.capacity) {
+            buf.record_slots[record_ordinal] = slot;
+            buf.keys[slot] = (static_cast<int64_t>(dest_flat_idx) << 32)
+                | static_cast<int64_t>(static_cast<unsigned int>(record_ordinal));
+            buf.values[slot] = value;
+        } else if (ctx.overflow != nullptr) {
+            int prev = atomicCAS(ctx.overflow, 0, 1);
+            if (ctx.debug && prev == 0) {
+                printf("Warp deterministic counter overflow: capacity=%d dest=%d\n", buf.capacity, dest_flat_idx);
+            }
+        }
+        return 0;
     }
 
     // Return the base slot for this reservation. Values greater than one reserve
     // the contiguous range [slot, slot + value); caller code writes each element.
-    T slot = static_cast<T>(buf.prefix[ctx.idx]);
-    buf.prefix[ctx.idx] += value;
-    return slot;
+    int slot = buf.record_slots[record_ordinal];
+    if (slot < 0 || slot >= buf.capacity) {
+        return 0;
+    }
+    return buf.prefixes[slot];
 #else
     (void)ctx;
     (void)buf;
+    (void)dest_flat_idx;
     (void)value;
-    return T {};
+    return 0;
 #endif
 }
 
@@ -101,9 +138,9 @@ template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_count
         } \
     } while (0)
 
-#define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, value, cpu_expr) \
+#define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, flat_idx, value, cpu_expr) \
     do { \
-        (out) = wp::deterministic::counter_add((det_ctx), (helper), (value)); \
+        (out) = wp::deterministic::counter_add((det_ctx), (helper), static_cast<int>(flat_idx), (value)); \
     } while (0)
 
 #define WP_DET_STORE_IF_ACTIVE(det_ctx, ...) \
@@ -127,10 +164,11 @@ template <typename T> inline CUDA_CALLABLE T counter_add(det_ctx& ctx, det_count
         cpu_expr; \
     } while (0)
 
-#define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, value, cpu_expr) \
+#define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, flat_idx, value, cpu_expr) \
     do { \
         (void)(det_ctx); \
         (void)(helper); \
+        (void)(flat_idx); \
         (void)(value); \
         cpu_expr; \
     } while (0)

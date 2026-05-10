@@ -8,7 +8,7 @@ GPU atomic operations on floating-point arrays are inherently non-deterministic:
 threads execute in unpredictable order, and since float addition is
 non-associative, different execution orderings produce different rounding,
 yielding different results each run. This also applies to counter/slot-allocation
-patterns (``slot = wp.atomic_add(counter, 0, 1)``) where the thread-to-slot
+patterns (``slot = wp.atomic_add(counter, index, 1)``) where the thread-to-slot
 assignment varies across runs, causing downstream writes to differ.
 
 Customers need bit-exact reproducibility for debugging, regression testing, and
@@ -22,7 +22,7 @@ deterministic without algorithm rewrites.
 | ID  | Requirement | Priority | Notes |
 | --- | --- | --- | --- |
 | R1  | ``wp.config.deterministic = "run_to_run"`` makes float atomic accumulations bit-exact reproducible across runs | Must | Core value proposition |
-| R2  | Counter/allocator pattern (``slot = wp.atomic_add(counter, 0, 1)``) produces deterministic slot assignments | Must | Common in compaction, particle emission |
+| R2  | Counter/allocator pattern (``slot = wp.atomic_add(counter, index, 1)``) produces deterministic slot assignments | Must | Common in compaction, particle emission |
 | R3  | Both patterns work in the same kernel simultaneously | Must | Real workloads mix accumulation and allocation |
 | R4  | Integer atomics with unused return values incur no overhead | Must | Already associative+commutative |
 | R5  | CPU execution unaffected (already sequential/deterministic) | Must | Zero overhead on CPU |
@@ -86,8 +86,8 @@ Handling depends on how the atomic is used:
   Integer ``add/sub/min/max`` with unused return values are left on the normal
   atomic path because the final value is already deterministic.
 - **Pattern B: counter / allocator, return value consumed**
-  Example: ``slot = wp.atomic_add(counter, 0, 1)``.
-  This is handled with the two-pass count-scan-execute path.
+  Example: ``slot = wp.atomic_add(counter, index, 1)``.
+  This is handled with the two-pass record-sort-scan-execute path.
 
 Operators that are not supported by deterministic mode:
 
@@ -143,15 +143,16 @@ deterministic scatter launches are limited to at most ``2**32`` threads.
 
 The kernel runs twice:
 1. *Phase 0 (counting)*: The kernel executes with all side effects suppressed.
-   Counter atomics record per-thread contributions to a scratch array instead
-   of performing the actual atomic.
-2. *Prefix sum*: ``wp.utils.array_scan(contrib, prefix, inclusive=False)``
-   computes deterministic per-thread offsets. The total count is
-   ``prefix[-1] + contrib[-1]``.
-3. *Counter total writeback*: a tiny device helper publishes the total count to
-   the user's counter array without a second full scan.
+   Counter atomics record each reservation as ``(counter_flat_index,
+   deterministic_record_order, value)`` instead of performing the actual
+   atomic.
+2. *Sort and segmented prefix scan*: CUB radix sort groups reservations by
+   counter element and deterministic record order. A segmented prefix scan
+   computes the value each consumed-return atomic should receive.
+3. *Counter total writeback*: the scan postpass publishes the total count for
+   each touched counter element to the user's counter array.
 4. *Phase 1 (execution)*: The kernel re-executes. Counter atomics return the
-   deterministic offset from the prefix sum. All other operations (including
+   deterministic offset from the prefix scan. All other operations (including
    Pattern A scatters) execute normally.
 
 This mirrors the well-established count-scan-write pattern already used by
@@ -239,20 +240,19 @@ checks because reading device flags would synchronize every graph launch and
 defeat the asynchronous graph replay path.
 
 **CUDA graph capture support**: deterministic launch orchestration allocates
-scatter buffers and CUB sort/reduce workspaces from Python for Pattern A.
-During ordinary CUDA graph capture, Warp retains those arrays on the captured
-graph object so replay can safely reuse the device memory after the original
-launch call returns. The native sort/reduce entry point receives an explicit
-workspace pointer and size; it does not allocate temporary CUB scratch storage
-inside the captured native calls. Pattern B is currently rejected during CUDA
-graph capture because its prefix scans use native ``array_scan`` CUB scratch
-storage that is allocated and freed inside the captured call.
+scatter buffers, counter buffers, and CUB workspaces from Python. During
+ordinary CUDA graph capture, Warp retains those arrays on the captured graph
+object so replay can safely reuse the device memory after the original launch
+call returns. The native sort/reduce and counter-scan entry points receive
+explicit workspace pointers and sizes; they do not allocate temporary CUB
+scratch storage inside the captured native calls.
 
-**Counter total writeback**: after the exclusive prefix sum in Phase 0, the
-launch system writes the total count back to the actual counter array so user
-code that reads it post-launch sees the correct value. The total is
-``prefix[-1] + contrib[-1]`` and is published by a one-thread device helper,
-avoiding a second full-size inclusive scan and temporary output buffer.
+**Counter total writeback**: after the segmented prefix scan in Phase 0, the
+launch system writes the final total for each touched counter element back to
+the actual counter array so user code that reads it post-launch sees the
+correct value. The current implementation treats counters as allocation
+counters initialized for the launch; it writes the total reserved slots for
+each touched element rather than adding to a pre-existing nonzero counter.
 
 **Files added/modified**:
 
@@ -283,7 +283,11 @@ avoiding a second full-size inclusive scan and temporary output buffer.
   kernel's statically reachable ``@wp.func`` call graph contains a consumed
   counter atomic.
 - The consumed-return counter path currently supports only ``atomic_add`` on
-  ``int32`` counter arrays with literal counter index ``0``.
+  ``int32`` counter arrays. Counter indices may be constant, data-dependent, or
+  supplied through sliced counter views.
+- The consumed-return counter path treats counters as allocation counters
+  initialized for the launch. Pre-existing nonzero counter values are not added
+  to the returned slots or final totals.
 - The consumed-return counter path is limited to launches of at most
   ``2**31 - 1`` threads because the per-thread contribution and prefix buffers
   store ``int32`` values.
@@ -356,15 +360,17 @@ avoiding a second full-size inclusive scan and temporary output buffer.
   scatters per thread to the same target do not overflow a fixed heuristic
   buffer, and the native postpass receives the emitted record count instead of
   full scatter capacity outside CUDA graph capture.
-- **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, 0, 1);
+- **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, index, 1);
   output[slot] = data[tid]`` produces identical output arrays across 10 runs.
 - **Phase 0 side-effect suppression**: non-counter array writes are skipped in
   the counting pass, including pure write helper calls and stores that occur
   before helper calls whose reachable call graph contains a consumed-return
   counter.
 - **Counter correctness**: verifies counter value equals N and output is a
-  permutation of input, plus variable per-thread contributions whose final
-  thread contributes zero.
+  permutation of input, variable per-thread contributions whose final thread
+  contributes zero, fixed nonzero counter indices, data-dependent counter
+  indices, sliced counter views, and dynamic loops with multiple reservations
+  per thread.
 - **Conditional counter**: stream compaction (only elements above threshold),
   verifying correct count and reproducible output.
 - **Mixed pattern**: both counter and accumulation in one kernel.

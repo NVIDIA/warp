@@ -14,9 +14,9 @@ Scatter/reduce atomics (return value unused):
     then sort by ``(dest_index, thread_id)`` and reduce in fixed order.
 
 Consumed-return counter atomics (return value used):
-    ``slot = wp.atomic_add(counter, 0, 1)``
-    Strategy: two-pass execution. Phase 0 records each thread's contribution
-    with all side effects suppressed. Prefix sum computes deterministic
+    ``slot = wp.atomic_add(counter, index, value)``
+    Strategy: two-pass execution. Phase 0 records each reservation with all
+    side effects suppressed. A deterministic sort/scan computes per-target
     offsets. Phase 1 re-executes with deterministic slot assignments.
 
 See ``warp.config.deterministic`` for the user-facing configuration modes.
@@ -227,6 +227,7 @@ class DeterministicMeta:
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
+    counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     needs_context: bool = False
 
     def add_scatter_target(self, target: ScatterTarget, records_per_thread: int = 1):
@@ -237,19 +238,21 @@ class DeterministicMeta:
             self.scatter_records_per_thread[target] = 0
         self.scatter_records_per_thread[target] += records_per_thread
 
-    def add_counter_target(self, target: CounterTarget):
+    def add_counter_target(self, target: CounterTarget, records_per_thread: int = 1):
         """Record a counter target requirement for this function or kernel."""
-        if target not in self.counter_targets:
+        if target not in self.counter_records_per_thread:
             self.counter_targets.append(target)
             self.counter_targets.sort(key=lambda x: x.index)
+            self.counter_records_per_thread[target] = 0
+        self.counter_records_per_thread[target] += records_per_thread
 
     def include(self, other: DeterministicMeta):
         """Merge the transitive deterministic requirements of another adjoint."""
         self.needs_context |= other.needs_context
         for target, count in other.scatter_records_per_thread.items():
             self.add_scatter_target(target, records_per_thread=count)
-        for target in other.counter_targets:
-            self.add_counter_target(target)
+        for target, count in other.counter_records_per_thread.items():
+            self.add_counter_target(target, records_per_thread=count)
 
     @property
     def has_scatter(self):
@@ -459,13 +462,41 @@ def get_scatter_record_count(scatter_buffer, stream_is_capturing=False):
     return min(emitted_count, capacity)
 
 
-def allocate_counter_buffers(counter_targets, dim_size, device):
-    """Allocate per-thread contribution and prefix buffers for counter targets."""
+def get_counter_record_count(counter_buffer, stream_is_capturing=False):
+    """Return the number of counter records that should be sorted/scanned."""
+    _keys, _values, _prefixes, _record_slots, _cursors, count, capacity, _records_per_thread = counter_buffer
+    if stream_is_capturing:
+        return capacity
+
+    emitted_count = int(count.numpy()[0])
+    if emitted_count < 0:
+        return capacity
+    return min(emitted_count, capacity)
+
+
+def allocate_counter_buffers(counter_targets, meta, dim_size, device, max_records=0, initialize_unused=False):
+    """Allocate record buffers for deterministic consumed-return counters."""
     buffers = []
-    for _target in counter_targets:
-        contrib = warp.zeros(shape=(dim_size,), dtype=warp.int32, device=device)
-        prefix = warp.empty(shape=(dim_size,), dtype=warp.int32, device=device)
-        buffers.append((contrib, prefix))
+    for target in counter_targets:
+        records_per_thread = max(meta.counter_records_per_thread.get(target, 0), max_records, 1)
+        capacity = dim_size * records_per_thread
+        if capacity > DETERMINISTIC_SCATTER_MAX_CAPACITY:
+            raise RuntimeError(
+                "Deterministic counter buffer capacity exceeds the supported int32 limit "
+                f"({capacity} > {DETERMINISTIC_SCATTER_MAX_CAPACITY}). "
+                "Reduce the launch size or deterministic_max_records."
+            )
+        if initialize_unused:
+            keys = warp.full(shape=(capacity,), value=-1, dtype=warp.int64, device=device)
+            values = warp.zeros(shape=(capacity,), dtype=warp.int32, device=device)
+        else:
+            keys = warp.empty(shape=(capacity,), dtype=warp.int64, device=device)
+            values = warp.empty(shape=(capacity,), dtype=warp.int32, device=device)
+        prefixes = warp.empty(shape=(capacity,), dtype=warp.int32, device=device)
+        record_slots = warp.full(shape=(capacity,), value=-1, dtype=warp.int32, device=device)
+        cursors = warp.zeros(shape=(dim_size,), dtype=warp.int32, device=device)
+        count = warp.zeros(shape=(1,), dtype=warp.int32, device=device)
+        buffers.append((keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread))
     return buffers
 
 
@@ -516,6 +547,38 @@ def run_sort_reduce(
             scalar_type_id,
             components,
             determinism_mode_id,
+            workspace.ptr,
+            workspace_size,
+        )
+
+    return workspaces
+
+
+def run_counter_scan(runtime, counter_buffers, counter_arrays, device, record_counts=None):
+    """Compute deterministic consumed-return prefixes for counter records."""
+    workspaces = []
+
+    for i, counter_buffer in enumerate(counter_buffers):
+        keys, values, prefixes, _record_slots, _cursors, _count, capacity, _records_per_thread = counter_buffer
+        counter_arr = counter_arrays[i]
+        record_count = capacity if record_counts is None else record_counts[i]
+
+        if counter_arr is None:
+            continue
+        if record_count <= 0:
+            continue
+
+        workspace_size = runtime.core.wp_deterministic_counter_scan_workspace_size(record_count)
+        workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
+        workspaces.append(workspace)
+
+        runtime.core.wp_deterministic_counter_scan_device(
+            keys.ptr,
+            values.ptr,
+            record_count,
+            prefixes.ptr,
+            counter_arr.ptr,
+            counter_arr.size,
             workspace.ptr,
             workspace_size,
         )

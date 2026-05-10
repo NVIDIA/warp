@@ -147,8 +147,14 @@ class det_scatter_buf_t(ctypes.Structure):
 
 class det_counter_buf_t(ctypes.Structure):
     _fields_ = [
-        ("contrib", ctypes.c_void_p),
-        ("prefix", ctypes.c_void_p),
+        ("keys", ctypes.c_void_p),
+        ("values", ctypes.c_void_p),
+        ("prefixes", ctypes.c_void_p),
+        ("record_slots", ctypes.c_void_p),
+        ("cursors", ctypes.c_void_p),
+        ("count", ctypes.c_void_p),
+        ("capacity", ctypes.c_int),
+        ("records_per_thread", ctypes.c_int),
     ]
 
 
@@ -4631,6 +4637,21 @@ class Runtime:
                 ctypes.c_uint64,
             ]
             self.core.wp_deterministic_counter_total_device.restype = None
+            self.core.wp_deterministic_counter_scan_workspace_size.argtypes = [
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_counter_scan_workspace_size.restype = ctypes.c_size_t
+            self.core.wp_deterministic_counter_scan_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
+            ]
+            self.core.wp_deterministic_counter_scan_device.restype = None
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
             self.core.wp_bvh_create_host.argtypes = [
@@ -7751,8 +7772,10 @@ def _launch_deterministic(
     from warp._src.deterministic import (  # noqa: PLC0415
         allocate_counter_buffers,
         allocate_scatter_buffers,
+        get_counter_record_count,
         get_scatter_record_count,
         normalize_deterministic_mode,
+        run_counter_scan,
         run_sort_reduce,
     )
 
@@ -7775,7 +7798,7 @@ def _launch_deterministic(
 
     options = kernel.module.resolve_options(warp.config) | kernel.options
     determinism_mode = normalize_deterministic_mode(options.get("deterministic"), option_name="deterministic")
-    max_scatter_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
+    max_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
     det_debug = int(warp.config.deterministic_debug)
     stream_is_capturing = len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
     capture_graph = None
@@ -7796,15 +7819,31 @@ def _launch_deterministic(
             det_meta,
             dim_size,
             device,
-            max_records=max_scatter_records,
+            max_records=max_records,
             initialize_unused=stream_is_capturing,
         )
         if det_meta.has_scatter
         else []
     )
-    counter_bufs = allocate_counter_buffers(det_meta.counter_targets, dim_size, device) if det_meta.has_counter else []
-    overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if det_meta.has_scatter else None
+    counter_bufs = (
+        allocate_counter_buffers(
+            det_meta.counter_targets,
+            det_meta,
+            dim_size,
+            device,
+            max_records=max_records,
+            initialize_unused=stream_is_capturing,
+        )
+        if det_meta.has_counter
+        else []
+    )
+    overflow_buf = (
+        warp.zeros(shape=(1,), dtype=warp.int32, device=device)
+        if det_meta.has_scatter or det_meta.has_counter
+        else None
+    )
     sort_reduce_workspaces = []
+    counter_scan_workspaces = []
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
     def build_det_params(phase, scatter_bufs, counter_bufs, use_scatter):
@@ -7814,13 +7853,19 @@ def _launch_deterministic(
             ctypes.c_void_p(overflow_buf.ptr if overflow_buf is not None else 0),
         ]
         for i, _ct in enumerate(det_meta.counter_targets):
-            contrib, prefix = counter_bufs[i]
-            if phase == 0:
-                # Count per-thread contributions; prefix is produced after phase 0.
-                det_params.append(det_counter_buf_t(contrib.ptr, 0))
-            else:
-                # Phase 1 consumes and advances the exclusive prefix slots.
-                det_params.append(det_counter_buf_t(0, prefix.ptr))
+            keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread = counter_bufs[i]
+            det_params.append(
+                det_counter_buf_t(
+                    keys.ptr,
+                    values.ptr,
+                    prefixes.ptr,
+                    record_slots.ptr,
+                    cursors.ptr,
+                    count.ptr,
+                    capacity,
+                    records_per_thread,
+                )
+            )
         for i, _st in enumerate(det_meta.scatter_targets):
             if use_scatter and i < len(scatter_bufs):
                 keys, values, counter, capacity = scatter_bufs[i]
@@ -7869,6 +7914,16 @@ def _launch_deterministic(
     if det_meta.has_counter:
         # === Two-pass execution ===
 
+        with warp.ScopedStream(stream, sync_enter=False):
+            for counter_buf in counter_bufs:
+                keys, values, _prefixes, record_slots, cursors, count, _capacity, _records_per_thread = counter_buf
+                count.zero_()
+                cursors.zero_()
+                record_slots.fill_(-1)
+                if stream_is_capturing:
+                    keys.fill_(-1)
+                    values.zero_()
+
         # Phase 0: counting pass (side effects suppressed, scatter disabled).
         det_params_p0 = build_det_params(
             phase=0, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=False
@@ -7878,14 +7933,25 @@ def _launch_deterministic(
         params_p0 = [*user_params, *det_params_p0]
         do_cuda_launch(hooks.forward, params_p0)
 
-        # Prefix sum on each counter's contributions, then update the real counter.
+        # Sort counter records by destination and deterministic record order,
+        # then compute the exclusive prefix each atomic should return.
+        counter_arrays = []
+        counter_record_counts = []
         for i, ct in enumerate(det_meta.counter_targets):
-            contrib, prefix = counter_bufs[i]
-            with warp.ScopedStream(stream, sync_enter=False):
-                warp._src.utils.array_scan(contrib, prefix, inclusive=False)
-
             counter_arr = resolve_det_target_array(ct)
             if counter_arr is None:
+                if not stream_is_capturing:
+                    _keys, _values, _prefixes, _record_slots, _cursors, count, _capacity, _records_per_thread = (
+                        counter_bufs[i]
+                    )
+                    emitted_count = int(count.numpy()[0])
+                    if emitted_count != 0:
+                        raise RuntimeError(
+                            f"Deterministic counter target {ct.target_label!r} resolved to None "
+                            f"but emitted {emitted_count} records."
+                        )
+                counter_arrays.append(None)
+                counter_record_counts.append(0)
                 continue
             if not hasattr(counter_arr, "ptr"):
                 raise RuntimeError(
@@ -7893,11 +7959,39 @@ def _launch_deterministic(
                     f"{ct.target_label!r} resolved to non-array object "
                     f"({type(counter_arr).__name__})"
                 )
+            counter_arrays.append(counter_arr)
+            if stream_is_capturing:
+                record_count = get_counter_record_count(counter_bufs[i], stream_is_capturing=True)
+            else:
+                _keys, _values, _prefixes, _record_slots, _cursors, count, capacity, _records_per_thread = counter_bufs[
+                    i
+                ]
+                emitted_count = int(count.numpy()[0])
+                if emitted_count < 0 or emitted_count > capacity:
+                    raise RuntimeError(
+                        f"Deterministic counter buffer overflow in kernel '{kernel.key}'. "
+                        "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+                    )
+                record_count = emitted_count
+            counter_record_counts.append(record_count)
 
-            # Publish Total = exclusive_prefix[-1] + contrib[-1] on device, so
-            # user code sees the final count without a second full scan.
-            with warp.ScopedStream(stream, sync_enter=False):
-                runtime.core.wp_deterministic_counter_total_device(contrib.ptr, prefix.ptr, dim_size, counter_arr.ptr)
+        if overflow_buf is not None and not stream_is_capturing and int(overflow_buf.numpy()[0]) != 0:
+            raise RuntimeError(
+                f"Deterministic counter buffer overflow in kernel '{kernel.key}'. "
+                "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
+            )
+
+        with warp.ScopedStream(stream, sync_enter=False):
+            counter_scan_workspaces = run_counter_scan(
+                runtime,
+                counter_bufs,
+                counter_arrays,
+                device,
+                record_counts=counter_record_counts,
+            )
+            for counter_buf in counter_bufs:
+                _keys, _values, _prefixes, _record_slots, cursors, _count, _capacity, _records_per_thread = counter_buf
+                cursors.zero_()
 
         # Phase 1: execution pass with deterministic slots.
         det_params_p1 = build_det_params(
@@ -7955,6 +8049,7 @@ def _launch_deterministic(
                 *counter_bufs,
                 overflow_buf,
                 *sort_reduce_workspaces,
+                *counter_scan_workspaces,
             )
             if buffer is not None
         )
@@ -7966,8 +8061,9 @@ def _launch_deterministic(
         raise
 
     if overflow_buf is not None and not stream_is_capturing and int(overflow_buf.numpy()[0]) != 0:
+        overflow_kind = "scatter" if det_meta.has_scatter else "counter"
         raise RuntimeError(
-            f"Deterministic scatter buffer overflow in kernel '{kernel.key}'. "
+            f"Deterministic {overflow_kind} buffer overflow in kernel '{kernel.key}'. "
             "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
         )
 
