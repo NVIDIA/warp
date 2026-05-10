@@ -9218,13 +9218,6 @@ def _launch_deterministic(
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
 
-    if det_meta.has_counter and stream_is_capturing:
-        raise RuntimeError(
-            "Deterministic consumed-return counter atomics are not supported during CUDA graph capture because "
-            "the prefix-scan workspace must remain valid for graph replay. Launch the counter kernel outside "
-            "capture, or disable deterministic mode for this kernel."
-        )
-
     if runtime._apic_capture is not None:
         raise RuntimeError(
             "APIC serialization is not currently supported for deterministic CUDA kernels. "

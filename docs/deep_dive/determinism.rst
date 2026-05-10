@@ -693,7 +693,10 @@ When enabling deterministic mode in a new kernel:
 4. If the kernel uses ``slot = wp.atomic_add(counter, 0, value)``, check that
    the counter is ``int32`` and indexed at literal ``0``.
 5. If you capture the kernel in a CUDA graph, validate both capture and replay.
-   Pattern 2 counter kernels are not currently supported in graph capture.
+   Ordinary CUDA graph capture is supported for both Pattern 1 and Pattern 2;
+   Warp keeps the temporary deterministic buffers alive on the captured graph
+   object. Conditional body graphs and APIC serialization still have the
+   limitations described above.
 6. If performance matters, benchmark both normal and deterministic modes.
 
 Related NVIDIA Libraries

@@ -1948,8 +1948,8 @@ def test_graph_capture_vec3_atomic_minmax(test, device):
     np.testing.assert_array_equal(first_max, second_max)
 
 
-def test_graph_capture_consumed_return_counter_rejected(test, device):
-    """Verify consumed-return atomic counters fail clearly during graph capture."""
+def test_graph_capture_consumed_return_counter(test, device):
+    """Verify consumed-return atomic counters can be captured and replayed."""
     if device.is_cpu:
         test.skipTest("Graph capture requires CUDA")
 
@@ -1965,9 +1965,21 @@ def test_graph_capture_consumed_return_counter_rejected(test, device):
     counter.zero_()
     output.zero_()
 
-    with test.assertRaisesRegex(RuntimeError, "not supported during CUDA graph capture"):
-        with wp.ScopedCapture(device, force_module_load=False):
-            wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+
+    wp.capture_launch(capture.graph)
+    first_count = counter.numpy().copy()
+    first = output.numpy().copy()
+
+    counter.zero_()
+    output.zero_()
+    wp.capture_launch(capture.graph)
+    second_count = counter.numpy().copy()
+    second = output.numpy().copy()
+
+    np.testing.assert_array_equal(first_count, second_count)
+    np.testing.assert_array_equal(first, second)
 
 
 def test_counter_large_launch_rejected(test, device):
@@ -2422,8 +2434,8 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic,
-    "test_graph_capture_consumed_return_counter_rejected",
-    test_graph_capture_consumed_return_counter_rejected,
+    "test_graph_capture_consumed_return_counter",
+    test_graph_capture_consumed_return_counter,
     devices=cuda_devices,
 )
 add_function_test(
