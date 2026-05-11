@@ -479,7 +479,7 @@ jobs:
 
       - name: Run Tests
         # Pin usd-core to 25.5.1 to work around a frequent loading crash on Windows.
-        run: uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
