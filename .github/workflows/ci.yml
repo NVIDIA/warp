@@ -485,7 +485,7 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-windows-cuda12
+          name: build-artifact-windows-cuda13
           path: warp/bin/
 
       - name: Run Tests
