@@ -48,8 +48,8 @@ namespace deterministic {
 //
 // The sort key packs the destination flat index in the upper 32 bits and the
 // thread_id (_idx from the grid-stride loop) in the lower 32 bits. Launches
-// larger than 2^32 threads are rejected by the Python launcher before this
-// path is used. After a 64-bit radix sort, records targeting the same
+// requiring more than 2^31 - 1 records are rejected by the Python launcher
+// before this path is used. After a 64-bit radix sort, records targeting the same
 // destination are grouped together and ordered by thread ID, giving a
 // deterministic reduction order.
 template <typename T>

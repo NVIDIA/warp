@@ -236,7 +236,7 @@ This pattern currently supports:
 * ``slot = wp.atomic_add(counter, index, value)``
 * ``counter`` must be an ``int32`` array
 * ``index`` may be constant or data-dependent
-* sliced counter views such as ``wp.atomic_add(counters[world], 0, 1)``
+* Sliced counter views such as ``wp.atomic_add(counters[world], 0, 1)``
 
 Consumed-return ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are rejected
 because their semantics are not prefix-sum slot allocation.
@@ -680,11 +680,9 @@ Counter arrays are allocation counters
     to a pre-existing nonzero counter value.
 
 Large launches
-    Deterministic scatter launches are limited to at most ``2**32`` threads.
-    The scatter sort key stores the destination index and the linear thread
-    index in one 64-bit value.  Deterministic counter launches are limited to
-    at most ``2**31 - 1`` threads because their prefix buffers store
-    per-thread contributions as ``int32`` values.
+    Deterministic scatter and counter launches are limited to at most
+    ``2**31 - 1`` records.  Scatter buffers use signed 32-bit record slots, and
+    counter prefix buffers store per-record contributions as ``int32`` values.
 
 Checklist
 ---------

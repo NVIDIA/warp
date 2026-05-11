@@ -57,7 +57,7 @@ Deterministic mode can be enabled at three scopes:
   mode, so the cleanest way to opt in for only one kernel is to place it in a
   unique module (for example with ``module="unique"``).
 
-For backward compatibility, ``True`` and ``False`` are still accepted at the
+For ease of use, ``True`` and ``False`` are still accepted at the
 module and kernel level as aliases for ``"run_to_run"`` and
 ``"not_guaranteed"``, respectively.
 
@@ -69,7 +69,7 @@ reachable ``@wp.func`` call graph compiled into the same module.
 
 ## Supported Operators
 
-Deterministic mode currently handles these atomic builtins:
+Deterministic mode currently handles these atomic built-ins:
 
 - ``atomic_add``
 - ``atomic_sub``
@@ -136,8 +136,9 @@ Scatter buffers use a minimum capacity of 1024 records per target. This can
 over-allocate for tiny launches, but it avoids a separate small-allocation path
 and keeps graph-capture workspace sizing stable.
 
-Because the sort key reserves 32 bits for the linear thread index,
-deterministic scatter launches are limited to at most ``2**32`` threads.
+Because the sort key stores the linear thread index in a signed 32-bit
+record slot, deterministic scatter launches are limited to at most
+``2**31 - 1`` records.
 
 **Pattern B --- Two-Pass Execution** (counter/allocator, return value used):
 
@@ -331,9 +332,8 @@ each touched element rather than adding to a pre-existing nonzero counter.
   sort/reduce calls that APIC does not yet serialize as a self-contained
   workload. Use ordinary CUDA graph capture/replay without APIC serialization,
   or disable deterministic mode for kernels captured with ``apic=True``.
-- Deterministic scatter launches are limited to ``2**32`` threads because the
-  sort key packs the destination index and the linear thread index into one
-  64-bit key.
+- Deterministic scatter launches are limited to ``2**31 - 1`` records because
+  scatter buffers use signed 32-bit record slots.
 
 ## Testing Strategy
 
