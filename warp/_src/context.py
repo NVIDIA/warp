@@ -5523,13 +5523,6 @@ class Runtime:
                 ctypes.c_size_t,
             ]
             self.core.wp_deterministic_sort_reduce_device.restype = None
-            self.core.wp_deterministic_counter_total_device.argtypes = [
-                ctypes.c_uint64,
-                ctypes.c_uint64,
-                ctypes.c_int,
-                ctypes.c_uint64,
-            ]
-            self.core.wp_deterministic_counter_total_device.restype = None
             self.core.wp_deterministic_counter_scan_workspace_size.argtypes = [
                 ctypes.c_int,
             ]

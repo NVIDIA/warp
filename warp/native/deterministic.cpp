@@ -31,8 +31,6 @@ void wp_deterministic_sort_reduce_device(
 {
 }
 
-void wp_deterministic_counter_total_device(uint64_t contrib, uint64_t prefix, int count, uint64_t counter) { }
-
 size_t wp_deterministic_counter_scan_workspace_size(int count) { return 0; }
 
 void wp_deterministic_counter_scan_device(
