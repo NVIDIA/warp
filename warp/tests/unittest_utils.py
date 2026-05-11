@@ -136,6 +136,27 @@ def get_test_devices_with_mempool(mode: str | None = None):
     return [d for d in get_test_devices(mode) if not d.is_cuda or d.is_mempool_supported]
 
 
+def is_cuda_graph_module_load_supported(device) -> bool:
+    """Return whether modules can be loaded during CUDA graph capture."""
+    driver_version = wp.get_cuda_driver_version()
+    return not device.is_cuda or (driver_version is not None and driver_version >= (12, 3))
+
+
+def get_test_devices_with_cuda_graph_module_load(mode: str | None = None):
+    """Like :func:`get_test_devices`, but drops CUDA devices using drivers older than 12.3.
+
+    CUDA module loading during graph capture requires a driver supporting CUDA
+    12.3 or newer. CPU devices pass through unchanged because CPU graph capture
+    uses APIC recording rather than CUDA driver graph capture.
+    """
+    return [d for d in get_test_devices(mode) if is_cuda_graph_module_load_supported(d)]
+
+
+def get_test_devices_with_mempool_and_cuda_graph_module_load(mode: str | None = None):
+    """Like :func:`get_test_devices_with_mempool`, but also gates CUDA graph module loading."""
+    return [d for d in get_test_devices_with_mempool(mode) if is_cuda_graph_module_load_supported(d)]
+
+
 def get_cuda_test_devices_with_mempool(mode=None):
     """Like :func:`get_cuda_test_devices`, but drops CUDA devices without memory pool support.
 

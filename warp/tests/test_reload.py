@@ -277,6 +277,7 @@ def test_module_unload_during_graph_capture(test, device):
 
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
+devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
 
 
 class TestReload(unittest.TestCase):
@@ -290,10 +291,16 @@ add_function_test(TestReload, "test_reload_class", test_reload_class, devices=de
 # TODO: test_reload_references sometimes has issues running on cuda:1
 add_function_test(TestReload, "test_reload_references", test_reload_references, devices=get_test_devices("basic"))
 add_function_test(
-    TestReload, "test_graph_launch_after_module_reload", test_graph_launch_after_module_reload, devices=devices
+    TestReload,
+    "test_graph_launch_after_module_reload",
+    test_graph_launch_after_module_reload,
+    devices=devices_with_cuda_graph_module_load,
 )
 add_function_test(
-    TestReload, "test_module_unload_during_graph_capture", test_module_unload_during_graph_capture, devices=devices
+    TestReload,
+    "test_module_unload_during_graph_capture",
+    test_module_unload_during_graph_capture,
+    devices=devices_with_cuda_graph_module_load,
 )
 
 
