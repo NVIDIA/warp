@@ -8,6 +8,7 @@ atomic operations across multiple runs.
 """
 
 import gc
+import inspect
 import re
 import unittest
 from pathlib import Path
@@ -2263,6 +2264,8 @@ def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
     """Verify APIC serialization fails explicitly for deterministic CUDA kernels."""
     if device.is_cpu:
         test.skipTest("CUDA APIC capture path required")
+    if "apic" not in inspect.signature(wp.ScopedCapture).parameters:
+        test.skipTest("APIC ScopedCapture is not available on this branch")
 
     n = 16
     data_np = np.ones(n, dtype=np.float32)

@@ -7423,7 +7423,10 @@ def _retain_cuda_module_for_capture(module_exec, stream):
     capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
     graph = runtime.captures.get(capture_id)
     if graph is not None:
-        graph._retain_module_exec(module_exec)
+        retain_module_exec = getattr(graph, "_retain_module_exec", None)
+        if retain_module_exec is None:
+            retain_module_exec = graph.retain_module_exec
+        retain_module_exec(module_exec)
 
 
 def _cuda_launch_kernel(
@@ -7650,7 +7653,7 @@ class Launch:
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
-                    graph._retain_module_exec(self.module_exec)
+                    graph.retain_module_exec(self.module_exec)
 
             if self.adjoint:
                 runtime.core.wp_cuda_launch_kernel(
@@ -8263,7 +8266,7 @@ def launch(
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
-                    graph._retain_module_exec(module_exec)
+                    graph.retain_module_exec(module_exec)
 
             if adjoint:
                 if hooks.backward is None:
