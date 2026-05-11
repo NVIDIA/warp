@@ -498,24 +498,21 @@
 <span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">make_space_partition</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">geometry_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">with_halo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_node_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L409-L457"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_space_partition" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L407-L441"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_space_partition" title="Link to this definition">#</a></dt>
 <dd><p>Compute the subset of nodes from a function space topology that touch a geometry partition</p>
-<p>Either <cite>space_topology</cite> or <cite>space</cite> must be provided (and will be considered in that order).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>space</strong> (<a class="reference internal" href="warp.fem.FunctionSpace.html#warp.fem.FunctionSpace" title="warp._src.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a><em> | </em><em>None</em>) – (deprecated) the function space defining the topology if <cite>space_topology</cite> is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><strong>space_topology</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><em>SpaceTopology</em></a>) – the topology of the function space to consider.</p></li>
 <li><p><strong>geometry_partition</strong> (<a class="reference internal" href="warp.fem.GeometryPartition.html#warp.fem.GeometryPartition" title="warp._src.fem.geometry.partition.GeometryPartition"><em>GeometryPartition</em></a><em> | </em><em>None</em>) – The subset of the space geometry.  If not provided, use the whole geometry.</p></li>
-<li><p><strong>space_topology</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><em>SpaceTopology</em></a><em> | </em><em>None</em>) – the topology of the function space to consider. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, deduced from <cite>space</cite>.</p></li>
 <li><p><strong>with_halo</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – if True, include the halo nodes (nodes from exterior frontier cells to the partition)</p></li>
 <li><p><strong>max_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – if positive, will be used to limit the number of nodes to avoid device/host synchronization.</p></li>
 <li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
