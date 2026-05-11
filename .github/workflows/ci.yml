@@ -38,7 +38,7 @@ jobs:
             platform: windows
             cuda-version: "13.0.2"
             artifact-name: build-artifact-windows-cuda13
-            cuda-sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
+            cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink"]'
             cuda-non-cuda-packages: ''
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
