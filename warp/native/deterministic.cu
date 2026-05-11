@@ -49,6 +49,25 @@ enum DeterminismLevel {
     DETERMINISTIC_GPU_TO_GPU = 2,
 };
 
+constexpr int DETERMINISTIC_BLOCK_SIZE = 256;
+
+inline int deterministic_num_blocks(int count)
+{
+    return static_cast<int>((static_cast<int64_t>(count) + DETERMINISTIC_BLOCK_SIZE - 1) / DETERMINISTIC_BLOCK_SIZE);
+}
+
+__device__ __forceinline__ bool deterministic_thread_index(int count, int& tid)
+{
+    int64_t linear_tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (linear_tid >= count)
+        return false;
+
+    tid = static_cast<int>(linear_tid);
+    return true;
+}
+
+inline bool check_kernel_launch() { return check_cuda(cudaGetLastError()); }
+
 inline size_t align_offset(size_t offset, size_t alignment) { return (offset + alignment - 1) & ~(alignment - 1); }
 
 template <typename T> T* layout_array(char* base, size_t& offset, size_t count)
@@ -69,10 +88,11 @@ char* layout_bytes(char* base, size_t& offset, size_t count)
 
 __global__ void init_record_indices_kernel(int* indices, int count)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid < count) {
-        indices[tid] = tid;
-    }
+    int tid;
+    if (!deterministic_thread_index(count, tid))
+        return;
+
+    indices[tid] = tid;
 }
 
 __global__ void publish_counter_total_kernel(const int* contrib, const int* prefix, int count, int* counter)
@@ -107,8 +127,8 @@ __global__ void make_counter_prefix_states_kernel(
     int count
 )
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= count)
+    int tid;
+    if (!deterministic_thread_index(count, tid))
         return;
 
     int dest = dest_index_from_key(sorted_keys[tid]);
@@ -128,8 +148,8 @@ __global__ void scatter_counter_prefixes_kernel(
     int count
 )
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= count)
+    int tid;
+    if (!deterministic_thread_index(count, tid))
         return;
 
     int dest = dest_index_from_key(sorted_keys[tid]);
@@ -292,8 +312,8 @@ __global__ void apply_reduced_runs_kernel(
     int op
 )
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= *num_runs)
+    int tid;
+    if (!deterministic_thread_index(*num_runs, tid))
         return;
 
     int dest = unique_dests[tid];
@@ -332,8 +352,8 @@ __global__ void deterministic_reduce_kernel(
     int op
 )
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= num_records)
+    int tid;
+    if (!deterministic_thread_index(num_records, tid))
         return;
 
     // A thread is a segment head if it is the first record, or its dest index
@@ -436,10 +456,11 @@ void deterministic_sort_reduce_device_scalar_run_to_run(
         )
     );
 
-    const int block_size = 256;
-    const int num_blocks = (count + block_size - 1) / block_size;
-    apply_reduced_runs_kernel<T>
-        <<<num_blocks, block_size, 0, stream>>>(unique_dests, aggregates, num_runs, dest_array, dest_size, op);
+    const int num_blocks = deterministic_num_blocks(count);
+    apply_reduced_runs_kernel<T><<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
+        unique_dests, aggregates, num_runs, dest_array, dest_size, op
+    );
+    check_kernel_launch();
 }
 
 // Sort the scatter buffer by key using CUB radix sort, then launch the
@@ -493,9 +514,10 @@ void deterministic_sort_reduce_device(
     int* alt_record_indices = layout_array<int>(workspace_bytes, offset, count);
     void* sort_temp = layout_bytes(workspace_bytes, offset, sort_temp_size);
 
-    const int block_size = 256;
-    const int num_blocks = (count + block_size - 1) / block_size;
-    init_record_indices_kernel<<<num_blocks, block_size, 0, stream>>>(record_indices, count);
+    const int num_blocks = deterministic_num_blocks(count);
+    init_record_indices_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(record_indices, count);
+    if (!check_kernel_launch())
+        return;
 
     cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys);
     cub::DoubleBuffer<int> d_indices(record_indices, alt_record_indices);
@@ -507,9 +529,10 @@ void deterministic_sort_reduce_device(
     );
 
     // --- Segmented reduce ---
-    deterministic_reduce_kernel<T><<<num_blocks, block_size, 0, stream>>>(
+    deterministic_reduce_kernel<T><<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
         d_keys.Current(), d_indices.Current(), values, count, components, dest_array, dest_size, op
     );
+    check_kernel_launch();
 }
 
 void deterministic_counter_scan_device(
@@ -550,9 +573,10 @@ void deterministic_counter_scan_device(
     CounterPrefixState* inclusive_prefixes = layout_array<CounterPrefixState>(workspace_bytes, offset, count);
     void* scan_temp = layout_bytes(workspace_bytes, offset, scan_temp_size);
 
-    const int block_size = 256;
-    const int num_blocks = (count + block_size - 1) / block_size;
-    init_record_indices_kernel<<<num_blocks, block_size, 0, stream>>>(record_indices, count);
+    const int num_blocks = deterministic_num_blocks(count);
+    init_record_indices_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(record_indices, count);
+    if (!check_kernel_launch())
+        return;
 
     cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys);
     cub::DoubleBuffer<int> d_indices(record_indices, alt_record_indices);
@@ -563,18 +587,21 @@ void deterministic_counter_scan_device(
         )
     );
 
-    make_counter_prefix_states_kernel<<<num_blocks, block_size, 0, stream>>>(
+    make_counter_prefix_states_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
         d_keys.Current(), d_indices.Current(), values, states, count
     );
+    if (!check_kernel_launch())
+        return;
 
     CounterPrefixOp op {};
     check_cuda(
         cub::DeviceScan::InclusiveScan(scan_temp, scan_temp_size, states, inclusive_prefixes, op, count, stream)
     );
 
-    scatter_counter_prefixes_kernel<<<num_blocks, block_size, 0, stream>>>(
+    scatter_counter_prefixes_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
         d_keys.Current(), d_indices.Current(), values, inclusive_prefixes, prefixes, counters, counter_size, count
     );
+    check_kernel_launch();
 }
 
 }  // anonymous namespace
@@ -693,6 +720,7 @@ void wp_deterministic_counter_total_device(uint64_t contrib, uint64_t prefix, in
         reinterpret_cast<const int*>(contrib), reinterpret_cast<const int*>(prefix), count,
         reinterpret_cast<int*>(counter)
     );
+    check_kernel_launch();
 }
 
 void wp_deterministic_counter_scan_device(
