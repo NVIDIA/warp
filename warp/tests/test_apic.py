@@ -14,7 +14,9 @@ from warp.tests.unittest_utils import (
     add_function_test,
     get_cuda_test_devices,
     get_test_devices,
+    get_test_devices_with_cuda_graph_module_load,
     get_test_devices_with_mempool,
+    get_test_devices_with_mempool_and_cuda_graph_module_load,
 )
 
 
@@ -546,31 +548,83 @@ def test_get_param_ptr(test, device):
 
 devices = get_test_devices()
 devices_with_mempool = get_test_devices_with_mempool()
+devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
+devices_with_mempool_and_cuda_graph_module_load = get_test_devices_with_mempool_and_cuda_graph_module_load()
 
-add_function_test(TestApic, "test_save_apic_false_error", test_save_apic_false_error, devices=devices)
-add_function_test(TestApic, "test_save_single_kernel", test_save_single_kernel, devices=devices)
-add_function_test(TestApic, "test_save_load_round_trip", test_save_load_round_trip, devices=devices)
-add_function_test(TestApic, "test_save_load_multiple_kernels", test_save_load_multiple_kernels, devices=devices)
+add_function_test(
+    TestApic,
+    "test_save_apic_false_error",
+    test_save_apic_false_error,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_single_kernel",
+    test_save_single_kernel,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_round_trip",
+    test_save_load_round_trip,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_multiple_kernels",
+    test_save_load_multiple_kernels,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(TestApic, "test_save_load_memcpy", test_save_load_memcpy, devices=devices)
 add_function_test(TestApic, "test_save_load_memset", test_save_load_memset, devices=devices)
-add_function_test(TestApic, "test_bindings_param_update", test_bindings_param_update, devices=devices)
+add_function_test(
+    TestApic,
+    "test_bindings_param_update",
+    test_bindings_param_update,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(TestApic, "test_array_slicing", test_array_slicing, devices=devices)
-add_function_test(TestApic, "test_complex_pipeline", test_complex_pipeline, devices=devices)
-add_function_test(TestApic, "test_internal_allocation", test_internal_allocation, devices=devices_with_mempool)
+add_function_test(
+    TestApic,
+    "test_complex_pipeline",
+    test_complex_pipeline,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_internal_allocation",
+    test_internal_allocation,
+    devices=devices_with_mempool_and_cuda_graph_module_load,
+)
 add_function_test(
     TestApic,
     "test_multiple_internal_allocations",
     test_multiple_internal_allocations,
-    devices=devices_with_mempool,
+    devices=devices_with_mempool_and_cuda_graph_module_load,
 )
-add_function_test(TestApic, "test_graph_execution_unchanged", test_graph_execution_unchanged, devices=devices)
-add_function_test(TestApic, "test_save_load_with_param_update", test_save_load_with_param_update, devices=devices)
-add_function_test(TestApic, "test_save_load_memcpy_and_kernel", test_save_load_memcpy_and_kernel, devices=devices)
+add_function_test(
+    TestApic,
+    "test_graph_execution_unchanged",
+    test_graph_execution_unchanged,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_with_param_update",
+    test_save_load_with_param_update,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_memcpy_and_kernel",
+    test_save_load_memcpy_and_kernel,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(
     TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
 )  # CPU: wp_memtile_host not recorded
 add_function_test(TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices_with_mempool)
-add_function_test(TestApic, "test_get_param_ptr", test_get_param_ptr, devices=devices)
+add_function_test(TestApic, "test_get_param_ptr", test_get_param_ptr, devices=devices_with_cuda_graph_module_load)
 
 
 if __name__ == "__main__":

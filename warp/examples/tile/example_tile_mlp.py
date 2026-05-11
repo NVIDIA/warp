@@ -195,6 +195,8 @@ class Example:
         loss = wp.zeros(1, dtype=float, requires_grad=True)
         output = create_array(IMG_WIDTH * IMG_HEIGHT, DIM_OUT)
 
+        wp.load_module(module=compute.module, device=wp.get_device(), block_dim=NUM_THREADS)
+
         # capture graph for whole epoch
         wp.capture_begin()
 

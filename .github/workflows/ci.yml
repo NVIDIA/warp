@@ -30,18 +30,44 @@ jobs:
         include:
           - os: windows-2025
             platform: windows
+            cuda-version: "12.9.1"
+            artifact-name: build-artifact-windows-cuda12
             cuda-sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
+            cuda-non-cuda-packages: ''
+          - os: windows-2025
+            platform: windows
+            cuda-version: "13.0.2"
+            artifact-name: build-artifact-windows-cuda13
+            cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink", "nvvm", "nvptxcompiler"]'
             cuda-non-cuda-packages: ''
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
+            cuda-version: "12.9.1"
+            artifact-name: build-artifact-ubuntu-x86_64-cuda12
+            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+          - os: ubuntu-24.04
+            platform: ubuntu-x86_64
+            cuda-version: "13.0.2"
+            artifact-name: build-artifact-ubuntu-x86_64-cuda13
             cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
             cuda-non-cuda-packages: '["libnvjitlink-dev"]'
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
+            cuda-version: "12.9.1"
+            artifact-name: build-artifact-ubuntu-aarch64-cuda12
+            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+          - os: ubuntu-24.04-arm
+            platform: ubuntu-aarch64
+            cuda-version: "13.0.2"
+            artifact-name: build-artifact-ubuntu-aarch64-cuda13
             cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
             cuda-non-cuda-packages: '["libnvjitlink-dev"]'
           - os: macos-latest
             platform: macos
+            cuda-version: ''
+            artifact-name: build-artifact-macos
             cuda-sub-packages: ''
             cuda-non-cuda-packages: ''
     steps:
@@ -64,20 +90,22 @@ jobs:
         id: cache-build
         with:
           path: warp/bin/
-          key: build-${{ matrix.platform }}-${{ hashFiles('build_lib.py', 'warp/build_dll.py', 'build_llvm.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.h', 'deps/libmathdx-deps.packman.xml') }}
+          key: build-${{ matrix.artifact-name }}-${{ matrix.cuda-version }}-${{ hashFiles('build_lib.py', 'warp/build_dll.py', 'build_llvm.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.h', 'deps/libmathdx-deps.packman.xml') }}
       
       - name: Install CTK (with non-CUDA packages)
         if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages != ''
-        uses: Jimver/cuda-toolkit@1a3c14e26833ccf292b268f9a790fb47dea7b2da
+        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
         with:
+          cuda: ${{ matrix.cuda-version }}
           sub-packages: ${{ matrix.cuda-sub-packages }}
           non-cuda-sub-packages: ${{ matrix.cuda-non-cuda-packages }}
           method: 'network'
       
       - name: Install CTK (without non-CUDA packages)
         if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages == ''
-        uses: Jimver/cuda-toolkit@c35baa1a18fd1fc9dcf47c5bd839bf30559c0bc3  # https://github.com/Jimver/cuda-toolkit/issues/395
+        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
         with:
+          cuda: ${{ matrix.cuda-version }}
           sub-packages: ${{ matrix.cuda-sub-packages }}
           method: 'network'
       
@@ -88,7 +116,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifact-${{ matrix.platform }}
+          name: ${{ matrix.artifact-name }}
           path: warp/bin/
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
       
@@ -105,12 +133,16 @@ jobs:
         include:
           - os: windows-2025
             platform: windows
+            artifact-name: build-artifact-windows-cuda12
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
+            artifact-name: build-artifact-ubuntu-x86_64-cuda13
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
+            artifact-name: build-artifact-ubuntu-aarch64-cuda13
           - os: macos-latest
             platform: macos
+            artifact-name: build-artifact-macos
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -128,7 +160,7 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-${{ matrix.platform }}
+          name: ${{ matrix.artifact-name }}
           path: warp/bin/
       
       - name: Run Tests
@@ -165,7 +197,7 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
       
       - name: Run Debug Mode Tests (CPU)
@@ -245,8 +277,19 @@ jobs:
         include:
           - runner-label: linux-amd64-gpu-h100-latest-1
             gpu-name: h100
+            artifact-name: build-artifact-ubuntu-x86_64-cuda13
+            torch-extra: torch-cu13
+            jax-extra: jax[cuda13]
           - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
             gpu-name: rtxpro6000
+            artifact-name: build-artifact-ubuntu-x86_64-cuda13
+            torch-extra: torch-cu13
+            jax-extra: jax[cuda13]
+          - runner-label: linux-amd64-gpu-l4-earliest-1
+            gpu-name: l4
+            artifact-name: build-artifact-ubuntu-x86_64-cuda12
+            torch-extra: torch-cu12
+            jax-extra: jax[cuda12]
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
@@ -285,11 +328,11 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: ${{ matrix.artifact-name }}
           path: warp/bin/
 
       - name: Run Tests
-        run: uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
@@ -373,7 +416,7 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
 
       - name: Run Tests
@@ -442,12 +485,12 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-windows
+          name: build-artifact-windows-cuda13
           path: warp/bin/
 
       - name: Run Tests
         # Pin usd-core to 25.5.1 to work around a frequent loading crash on Windows.
-        run: uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
@@ -539,7 +582,7 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
 
       - name: Run doctest
@@ -565,7 +608,7 @@ jobs:
       - name: Download Warp binaries
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
       - name: Build Sphinx documentation
         run: |
@@ -612,7 +655,7 @@ jobs:
       - name: Download Warp build artifact
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact-ubuntu-x86_64
+          name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
       - name: Check for un-namespaced symbols
         run: |

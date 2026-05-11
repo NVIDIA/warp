@@ -15,7 +15,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, get_test_devices
+from warp.tests.unittest_utils import add_function_test, get_test_devices_with_cuda_graph_module_load
 
 
 def create_unit_cube_mesh(device):
@@ -563,7 +563,7 @@ class TestApicMesh(unittest.TestCase):
     pass
 
 
-devices = get_test_devices()
+devices = get_test_devices_with_cuda_graph_module_load()
 
 add_function_test(TestApicMesh, "test_apic_mesh_query_point", test_apic_mesh_query_point, devices=devices)
 add_function_test(TestApicMesh, "test_apic_mesh_query_ray", test_apic_mesh_query_ray, devices=devices)
