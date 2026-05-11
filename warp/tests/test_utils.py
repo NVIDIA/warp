@@ -394,24 +394,27 @@ class TestUtils(unittest.TestCase):
 
     def test_warn_respects_user_filters(self):
         # Verify that user-configured warning filters are not overridden by warp.warn().
-        saved_filters = warnings.filters[:] if hasattr(warnings, 'filters') else []
         saved_showwarning = warnings.showwarning
         saved_seen = wp._src.utils.warnings_seen.copy()
         wp._src.utils.warnings_seen.clear()
         try:
             # Suppress all DeprecationWarnings via the standard Python API.
-            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=DeprecationWarning)
 
-            with contextlib.redirect_stdout(io.StringIO()) as f:
-                wp._src.utils.warn("should be suppressed", category=DeprecationWarning)
+                with contextlib.redirect_stdout(io.StringIO()) as f:
+                    wp._src.utils.warn("should be suppressed", category=DeprecationWarning)
 
-            self.assertEqual(f.getvalue(), "", "User-suppressed DeprecationWarning should produce no output")
+                self.assertEqual(f.getvalue(), "", "User-suppressed DeprecationWarning should produce no output")
 
             # Verify non-suppressed warnings still appear.
-            with contextlib.redirect_stdout(io.StringIO()) as f:
-                wp._src.utils.warn("should appear", category=UserWarning)
+            with warnings.catch_warnings():
+                warnings.simplefilter("default")
 
-            self.assertEqual(f.getvalue(), "Warp UserWarning: should appear\n")
+                with contextlib.redirect_stdout(io.StringIO()) as f:
+                    wp._src.utils.warn("should appear", category=UserWarning)
+
+                self.assertEqual(f.getvalue(), "Warp UserWarning: should appear\n")
 
             # Verify that warnings_seen did NOT record the suppressed warning.
             # This ensures removing the filter later would re-enable the warning.
@@ -422,9 +425,7 @@ class TestUtils(unittest.TestCase):
             )
 
         finally:
-            # Restore original filters, showwarning handler, and seen set.
-            if hasattr(warnings, 'filters'):
-                warnings.filters[:] = saved_filters
+            # Restore original showwarning handler and seen set.
             warnings.showwarning = saved_showwarning
             wp._src.utils.warnings_seen.clear()
             wp._src.utils.warnings_seen.update(saved_seen)
