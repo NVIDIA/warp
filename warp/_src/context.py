@@ -4225,7 +4225,7 @@ class Graph:
             pass
 
     # retain executable CUDA modules used by this graph, which prevents them from being unloaded
-    def retain_module_exec(self, module_exec: ModuleExec):
+    def _retain_module_exec(self, module_exec: ModuleExec):
         self.module_execs.add(module_exec)
 
 
@@ -4323,6 +4323,10 @@ class Runtime:
 
         # maps capture ids to graphs
         self.captures = {}
+
+        # APIC capture state (set during capture_begin, cleared at capture_end)
+        self._apic_capture = None
+        self._apic_graph = None
 
         # setup c-types for warp.dll
         try:
@@ -7423,10 +7427,7 @@ def _retain_cuda_module_for_capture(module_exec, stream):
     capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
     graph = runtime.captures.get(capture_id)
     if graph is not None:
-        retain_module_exec = getattr(graph, "_retain_module_exec", None)
-        if retain_module_exec is None:
-            retain_module_exec = graph.retain_module_exec
-        retain_module_exec(module_exec)
+        graph._retain_module_exec(module_exec)
 
 
 def _cuda_launch_kernel(
@@ -7649,11 +7650,13 @@ class Launch:
             if stream is None:
                 stream = self.device.stream
 
+            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
+            # before the captured graph is released.
             if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
                 if graph is not None:
-                    graph.retain_module_exec(self.module_exec)
+                    graph._retain_module_exec(self.module_exec)
 
             if self.adjoint:
                 runtime.core.wp_cuda_launch_kernel(
@@ -7679,6 +7682,311 @@ class Launch:
                     stream.cuda_stream,
                     None,  # apic_info: replayed launches don't re-record
                 )
+
+
+def launch(
+    kernel,
+    dim: int | Sequence[int],
+    inputs: Sequence = [],
+    outputs: Sequence = [],
+    adj_inputs: Sequence = [],
+    adj_outputs: Sequence = [],
+    device: DeviceLike = None,
+    stream: Stream | None = None,
+    adjoint: bool = False,
+    record_tape: bool = True,
+    record_cmd: bool = False,
+    max_blocks: int = 0,
+    block_dim: int = 256,
+):
+    """Launch a Warp kernel on the target device
+
+    Kernel launches are asynchronous with respect to the calling Python thread.
+
+    Args:
+        kernel: The name of a Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator
+        dim: The number of threads to launch the kernel, can be an integer or a
+          sequence of integers with a maximum of 4 dimensions.
+        inputs: The input parameters to the kernel (optional)
+        outputs: The output parameters (optional)
+        adj_inputs: The adjoint inputs (optional)
+        adj_outputs: The adjoint outputs (optional)
+        device: The device to launch on.
+        stream: The stream to launch on.
+        adjoint: Whether to run forward or backward pass (typically use ``False``).
+        record_tape: When ``True``, the launch will be recorded the global
+          :class:`warp.Tape` object when present.
+        record_cmd: When ``True``, the launch will return a :class:`Launch`
+          object. The launch will not occur until the user calls
+          :meth:`Launch.launch()`.
+        max_blocks: The maximum number of CUDA thread blocks to use.
+          Only has an effect for CUDA kernel launches.
+          If negative or zero, the maximum hardware value will be used.
+        block_dim: The number of threads per block (always 1 for "cpu" devices).
+    """
+
+    init()
+
+    # if stream is specified, use the associated device
+    if stream is not None:
+        device = stream.device
+    else:
+        device = runtime.get_device(device)
+
+    if device == "cpu":
+        block_dim = 1
+
+    # check function is a Kernel
+    if not isinstance(kernel, Kernel):
+        raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
+
+    # debugging aid
+    if warp.config.print_launches:
+        print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
+
+    # construct launch bounds
+    bounds = launch_bounds_t(dim)
+
+    if bounds.size > 0:
+        # first param is the number of threads
+        params = []
+        params.append(bounds)
+
+        # converts arguments to kernel's expected ctypes and packs into params
+        def pack_args(args, params, adjoint=False):
+            for i, a in enumerate(args):
+                arg_type = kernel.adj.args[i].type
+                arg_name = kernel.adj.args[i].label
+
+                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
+
+        fwd_args = []
+        fwd_args.extend(inputs)
+        fwd_args.extend(outputs)
+
+        adj_args = []
+        adj_args.extend(adj_inputs)
+        adj_args.extend(adj_outputs)
+
+        if (len(fwd_args)) != (len(kernel.adj.args)):
+            raise RuntimeError(
+                f"Error launching kernel '{kernel.key}', passed {len(fwd_args)} arguments but kernel requires {len(kernel.adj.args)}."
+            )
+
+        # if it's a generic kernel, infer the required overload from the arguments
+        if kernel.is_generic:
+            fwd_types = kernel.infer_argument_types(fwd_args)
+            kernel = kernel.add_overload(fwd_types)
+
+        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
+        # Even though a Module compiles separately for each device (stored in Module.execs),
+        # the skip_build flag is on the Adjoint which is shared across devices.
+        # A failure on one device shouldn't prevent compilation attempts on other devices.
+        if kernel.is_unique_module:
+            kernel.adj.skip_build = False
+
+        # delay load modules, including new overload if needed
+        try:
+            module_exec = kernel.module.load(device, block_dim)
+        except Exception:
+            kernel.adj.skip_build = True
+            raise
+
+        if not module_exec:
+            return
+
+        # late bind
+        hooks = module_exec.get_kernel_hooks(kernel)
+
+        pack_args(fwd_args, params, adjoint=False)
+        pack_args(adj_args, params, adjoint=True)
+
+        # Deterministic mode: redirect to multi-pass launcher for CUDA forward pass.
+        det_meta = getattr(kernel.adj, "det_meta", None)
+        if det_meta is not None and det_meta.needs_deterministic and device.is_cuda and not adjoint:
+            if hooks.forward is None:
+                raise RuntimeError(
+                    f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                )
+            if stream is None:
+                stream = device.stream
+            if record_cmd:
+                return DeterministicLaunch(
+                    kernel=kernel,
+                    device=device,
+                    det_meta=det_meta,
+                    fwd_args=fwd_args,
+                    hooks=hooks,
+                    params=params,
+                    bounds=bounds,
+                    max_blocks=max_blocks,
+                    block_dim=block_dim,
+                )
+            _launch_deterministic(
+                kernel,
+                hooks,
+                params,
+                bounds,
+                device,
+                stream,
+                max_blocks,
+                block_dim,
+                det_meta,
+                fwd_args,
+                module_exec=module_exec,
+            )
+            # Record on tape if one is active (same logic as below).
+            if runtime.tape and record_tape:
+                frame = inspect.currentframe().f_back
+                caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
+                runtime.tape.record_launch(
+                    kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
+                )
+                if warp.config.verify_autograd_array_access:
+                    runtime.tape._check_kernel_array_access(kernel, fwd_args)
+            return
+
+        # run kernel
+        if device.is_cpu:
+            if adjoint:
+                if hooks.backward is None:
+                    raise RuntimeError(
+                        f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                    )
+
+            else:
+                if hooks.forward is None:
+                    raise RuntimeError(
+                        f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                    )
+
+            if record_cmd:
+                launch = Launch(
+                    kernel=kernel,
+                    hooks=hooks,
+                    params=params,
+                    params_addr=None,
+                    bounds=bounds,
+                    device=device,
+                    block_dim=block_dim,
+                    adjoint=adjoint,
+                )
+                return launch
+
+            invoke(kernel, hooks, params, adjoint)
+
+        else:
+            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+            if stream is None:
+                stream = device.stream
+
+            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+                graph = runtime.captures.get(capture_id)
+                if graph is not None:
+                    graph._retain_module_exec(module_exec)
+
+            if adjoint:
+                if hooks.backward is None:
+                    raise RuntimeError(
+                        f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                    )
+
+                if record_cmd:
+                    launch = Launch(
+                        kernel=kernel,
+                        hooks=hooks,
+                        params=params,
+                        params_addr=kernel_params,
+                        bounds=bounds,
+                        device=device,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
+                        adjoint=adjoint,
+                    )
+                    return launch
+                else:
+                    # APIC capture does not support backward kernel launches
+                    if runtime._apic_capture is not None and not device.is_cpu:
+                        raise RuntimeError(
+                            "Backward kernel launches are not supported during APIC graph capture. "
+                            "Use wp.Tape outside of capture scope instead."
+                        )
+                    runtime.core.wp_cuda_launch_kernel(
+                        device.context,
+                        hooks.backward,
+                        bounds.size,
+                        max_blocks,
+                        block_dim,
+                        hooks.backward_smem_bytes,
+                        kernel_params,
+                        stream.cuda_stream,
+                        None,
+                    )
+
+            else:
+                if hooks.forward is None:
+                    raise RuntimeError(
+                        f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                    )
+
+                if record_cmd:
+                    launch = Launch(
+                        kernel=kernel,
+                        hooks=hooks,
+                        params=params,
+                        params_addr=kernel_params,
+                        bounds=bounds,
+                        device=device,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
+                    )
+                    return launch
+                else:
+                    # Build APIC info if CUDA APIC capture is active
+                    apic_info_ptr = None
+                    if runtime._apic_capture is not None and not device.is_cpu:
+                        apic_info = runtime._apic_capture.build_launch_info(
+                            kernel,
+                            module_exec,
+                            hooks,
+                            params,
+                            fwd_args,
+                            False,
+                        )
+                        apic_info_ptr = ctypes.byref(apic_info)
+                    runtime.core.wp_cuda_launch_kernel(
+                        device.context,
+                        hooks.forward,
+                        bounds.size,
+                        max_blocks,
+                        block_dim,
+                        hooks.forward_smem_bytes,
+                        kernel_params,
+                        stream.cuda_stream,
+                        apic_info_ptr,
+                    )
+
+            try:
+                runtime.verify_cuda_device(device)
+            except Exception as e:
+                print(f"Error launching kernel: {kernel.key} on device {device}")
+                raise e
+
+    # record on tape if one is active
+    if runtime.tape and record_tape:
+        # record file, lineno, func as metadata
+        frame = inspect.currentframe().f_back
+        caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
+        runtime.tape.record_launch(
+            kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
+        )
+
+        # detect illegal inter-kernel read/write access patterns if verification flag is set
+        if warp.config.verify_autograd_array_access:
+            runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
 
 class DeterministicLaunch(Launch):
@@ -7802,7 +8110,7 @@ def _launch_deterministic(
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
 
-    if getattr(runtime, "_apic_capture", None) is not None:
+    if runtime._apic_capture is not None:
         raise RuntimeError(
             "APIC serialization is not currently supported for deterministic CUDA kernels. "
             "Capture with apic=False, or disable deterministic mode for kernels captured with apic=True."
@@ -8062,312 +8370,6 @@ def _launch_deterministic(
             f"Deterministic {overflow_kind} buffer overflow in kernel '{kernel.key}'. "
             "Increase 'deterministic_max_records' or reduce the per-thread atomic count."
         )
-
-
-def launch(
-    kernel,
-    dim: int | Sequence[int],
-    inputs: Sequence = [],
-    outputs: Sequence = [],
-    adj_inputs: Sequence = [],
-    adj_outputs: Sequence = [],
-    device: DeviceLike = None,
-    stream: Stream | None = None,
-    adjoint: bool = False,
-    record_tape: bool = True,
-    record_cmd: bool = False,
-    max_blocks: int = 0,
-    block_dim: int = 256,
-):
-    """Launch a Warp kernel on the target device
-
-    Kernel launches are asynchronous with respect to the calling Python thread.
-
-    Args:
-        kernel: The name of a Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator
-        dim: The number of threads to launch the kernel, can be an integer or a
-          sequence of integers with a maximum of 4 dimensions.
-        inputs: The input parameters to the kernel (optional)
-        outputs: The output parameters (optional)
-        adj_inputs: The adjoint inputs (optional)
-        adj_outputs: The adjoint outputs (optional)
-        device: The device to launch on.
-        stream: The stream to launch on.
-        adjoint: Whether to run forward or backward pass (typically use ``False``).
-        record_tape: When ``True``, the launch will be recorded the global
-          :class:`warp.Tape` object when present.
-        record_cmd: When ``True``, the launch will return a :class:`Launch`
-          object. The launch will not occur until the user calls
-          :meth:`Launch.launch()`.
-        max_blocks: The maximum number of CUDA thread blocks to use.
-          Only has an effect for CUDA kernel launches.
-          If negative or zero, the maximum hardware value will be used.
-        block_dim: The number of threads per block (always 1 for "cpu" devices).
-    """
-
-    init()
-
-    # if stream is specified, use the associated device
-    if stream is not None:
-        device = stream.device
-    else:
-        device = runtime.get_device(device)
-
-    if device == "cpu":
-        block_dim = 1
-
-    # check function is a Kernel
-    if not isinstance(kernel, Kernel):
-        raise RuntimeError("Error launching kernel, can only launch functions decorated with @wp.kernel.")
-
-    # debugging aid
-    if warp.config.print_launches:
-        print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
-
-    # construct launch bounds
-    bounds = launch_bounds_t(dim)
-
-    if bounds.size > 0:
-        # first param is the number of threads
-        params = []
-        params.append(bounds)
-
-        # converts arguments to kernel's expected ctypes and packs into params
-        def pack_args(args, params, adjoint=False):
-            for i, a in enumerate(args):
-                arg_type = kernel.adj.args[i].type
-                arg_name = kernel.adj.args[i].label
-
-                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
-
-        fwd_args = []
-        fwd_args.extend(inputs)
-        fwd_args.extend(outputs)
-
-        adj_args = []
-        adj_args.extend(adj_inputs)
-        adj_args.extend(adj_outputs)
-
-        if (len(fwd_args)) != (len(kernel.adj.args)):
-            raise RuntimeError(
-                f"Error launching kernel '{kernel.key}', passed {len(fwd_args)} arguments but kernel requires {len(kernel.adj.args)}."
-            )
-
-        # if it's a generic kernel, infer the required overload from the arguments
-        if kernel.is_generic:
-            fwd_types = kernel.infer_argument_types(fwd_args)
-            kernel = kernel.add_overload(fwd_types)
-
-        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
-        # Even though a Module compiles separately for each device (stored in Module.execs),
-        # the skip_build flag is on the Adjoint which is shared across devices.
-        # A failure on one device shouldn't prevent compilation attempts on other devices.
-        if kernel.is_unique_module:
-            kernel.adj.skip_build = False
-
-        # delay load modules, including new overload if needed
-        try:
-            module_exec = kernel.module.load(device, block_dim)
-        except Exception:
-            kernel.adj.skip_build = True
-            raise
-
-        if not module_exec:
-            return
-
-        # late bind
-        hooks = module_exec.get_kernel_hooks(kernel)
-
-        pack_args(fwd_args, params, adjoint=False)
-        pack_args(adj_args, params, adjoint=True)
-
-        # Deterministic mode: redirect to multi-pass launcher for CUDA forward pass.
-        det_meta = getattr(kernel.adj, "det_meta", None)
-        if det_meta is not None and det_meta.needs_deterministic and device.is_cuda and not adjoint:
-            if hooks.forward is None:
-                raise RuntimeError(
-                    f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
-                )
-            if stream is None:
-                stream = device.stream
-            if record_cmd:
-                return DeterministicLaunch(
-                    kernel=kernel,
-                    device=device,
-                    det_meta=det_meta,
-                    fwd_args=fwd_args,
-                    hooks=hooks,
-                    params=params,
-                    bounds=bounds,
-                    max_blocks=max_blocks,
-                    block_dim=block_dim,
-                )
-            _launch_deterministic(
-                kernel,
-                hooks,
-                params,
-                bounds,
-                device,
-                stream,
-                max_blocks,
-                block_dim,
-                det_meta,
-                fwd_args,
-                module_exec=module_exec,
-            )
-            # Record on tape if one is active (same logic as below).
-            if runtime.tape and record_tape:
-                frame = inspect.currentframe().f_back
-                caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-                runtime.tape.record_launch(
-                    kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
-                )
-                if warp.config.verify_autograd_array_access:
-                    runtime.tape._check_kernel_array_access(kernel, fwd_args)
-            return
-
-        # run kernel
-        if device.is_cpu:
-            if adjoint:
-                if hooks.backward is None:
-                    raise RuntimeError(
-                        f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
-                    )
-
-            else:
-                if hooks.forward is None:
-                    raise RuntimeError(
-                        f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
-                    )
-
-            if record_cmd:
-                launch = Launch(
-                    kernel=kernel,
-                    hooks=hooks,
-                    params=params,
-                    params_addr=None,
-                    bounds=bounds,
-                    device=device,
-                    block_dim=block_dim,
-                    adjoint=adjoint,
-                )
-                return launch
-
-            invoke(kernel, hooks, params, adjoint)
-
-        else:
-            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
-            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
-
-            if stream is None:
-                stream = device.stream
-
-            if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
-                capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
-                graph = runtime.captures.get(capture_id)
-                if graph is not None:
-                    graph.retain_module_exec(module_exec)
-
-            if adjoint:
-                if hooks.backward is None:
-                    raise RuntimeError(
-                        f"Failed to find backward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
-                    )
-
-                if record_cmd:
-                    launch = Launch(
-                        kernel=kernel,
-                        hooks=hooks,
-                        params=params,
-                        params_addr=kernel_params,
-                        bounds=bounds,
-                        device=device,
-                        max_blocks=max_blocks,
-                        block_dim=block_dim,
-                        adjoint=adjoint,
-                    )
-                    return launch
-                else:
-                    # APIC capture does not support backward kernel launches
-                    if getattr(runtime, "_apic_capture", None) is not None and not device.is_cpu:
-                        raise RuntimeError(
-                            "Backward kernel launches are not supported during APIC graph capture. "
-                            "Use wp.Tape outside of capture scope instead."
-                        )
-                    runtime.core.wp_cuda_launch_kernel(
-                        device.context,
-                        hooks.backward,
-                        bounds.size,
-                        max_blocks,
-                        block_dim,
-                        hooks.backward_smem_bytes,
-                        kernel_params,
-                        stream.cuda_stream,
-                        None,
-                    )
-
-            else:
-                if hooks.forward is None:
-                    raise RuntimeError(
-                        f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
-                    )
-
-                if record_cmd:
-                    launch = Launch(
-                        kernel=kernel,
-                        hooks=hooks,
-                        params=params,
-                        params_addr=kernel_params,
-                        bounds=bounds,
-                        device=device,
-                        max_blocks=max_blocks,
-                        block_dim=block_dim,
-                    )
-                    return launch
-                else:
-                    # Build APIC info if CUDA APIC capture is active
-                    apic_info_ptr = None
-                    apic_capture = getattr(runtime, "_apic_capture", None)
-                    if apic_capture is not None and not device.is_cpu:
-                        apic_info = apic_capture.build_launch_info(
-                            kernel,
-                            module_exec,
-                            hooks,
-                            params,
-                            fwd_args,
-                            False,
-                        )
-                        apic_info_ptr = ctypes.byref(apic_info)
-                    runtime.core.wp_cuda_launch_kernel(
-                        device.context,
-                        hooks.forward,
-                        bounds.size,
-                        max_blocks,
-                        block_dim,
-                        hooks.forward_smem_bytes,
-                        kernel_params,
-                        stream.cuda_stream,
-                        apic_info_ptr,
-                    )
-
-            try:
-                runtime.verify_cuda_device(device)
-            except Exception as e:
-                print(f"Error launching kernel: {kernel.key} on device {device}")
-                raise e
-
-    # record on tape if one is active
-    if runtime.tape and record_tape:
-        # record file, lineno, func as metadata
-        frame = inspect.currentframe().f_back
-        caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-        runtime.tape.record_launch(
-            kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
-        )
-
-        # detect illegal inter-kernel read/write access patterns if verification flag is set
-        if warp.config.verify_autograd_array_access:
-            runtime.tape._check_kernel_array_access(kernel, fwd_args)
 
 
 def launch_tiled(*args, **kwargs):
@@ -9134,7 +9136,7 @@ def _unregister_capture(device: Device, stream: Stream, graph: Graph):
 def _register_capture(device: Device, stream: Stream, graph: Graph, capture_id: int):
     """Register a graph capture with the device and runtime.
 
-    Makes the graph discoverable through its capture_id so that retain_module_exec() can be called
+    Makes the graph discoverable through its capture_id so that _retain_module_exec() can be called
     when launching kernels during graph capture. This ensures modules are retained until graph execution completes.
 
     Args:
@@ -9451,7 +9453,7 @@ def capture_if(
     # capture if-graph
     if on_true is not None:
         # temporarily repurpose the main_graph python object such that all dependencies
-        # added through retain_module_exec() end up in the correct python graph object
+        # added through _retain_module_exec() end up in the correct python graph object
         main_graph.graph = graph_on_true
         capture_resume(main_graph, stream=stream)
         if isinstance(on_true, Callable):
@@ -9474,7 +9476,7 @@ def capture_if(
     # capture else-graph
     if on_false is not None:
         # temporarily repurpose the main_graph python object such that all dependencies
-        # added through retain_module_exec() end up in the correct python graph object
+        # added through _retain_module_exec() end up in the correct python graph object
         main_graph.graph = graph_on_false
         capture_resume(main_graph, stream=stream)
         if isinstance(on_false, Callable):
@@ -9583,7 +9585,7 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     main_graph_ptr = main_graph.graph
 
     # temporarily repurpose the main_graph python object such that all dependencies
-    # added through retain_module_exec() end up in the correct python graph object
+    # added through _retain_module_exec() end up in the correct python graph object
     main_graph.graph = body_graph
     capture_resume(main_graph, stream=stream)
 
