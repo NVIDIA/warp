@@ -339,6 +339,9 @@ class AtomicCounterDeterminismOverhead:
         wp.init()
         self.device = wp.get_device("cuda:0")
 
+        if mode == "deterministic" and not DETERMINISM_SUPPORTED:
+            raise NotImplementedError("deterministic kernel options are not supported by this Warp version")
+
         self.vals = wp.array(vals_np[num_elements], dtype=wp.float32, device=self.device)
         self.counter = wp.zeros(shape=(1,), dtype=wp.int32, device=self.device)
         self.out = wp.zeros(shape=(num_elements,), dtype=wp.float32, device=self.device)
