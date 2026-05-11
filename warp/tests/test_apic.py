@@ -557,9 +557,24 @@ add_function_test(
     test_save_apic_false_error,
     devices=devices_with_cuda_graph_module_load,
 )
-add_function_test(TestApic, "test_save_single_kernel", test_save_single_kernel, devices=devices)
-add_function_test(TestApic, "test_save_load_round_trip", test_save_load_round_trip, devices=devices)
-add_function_test(TestApic, "test_save_load_multiple_kernels", test_save_load_multiple_kernels, devices=devices)
+add_function_test(
+    TestApic,
+    "test_save_single_kernel",
+    test_save_single_kernel,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_round_trip",
+    test_save_load_round_trip,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_multiple_kernels",
+    test_save_load_multiple_kernels,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(TestApic, "test_save_load_memcpy", test_save_load_memcpy, devices=devices)
 add_function_test(TestApic, "test_save_load_memset", test_save_load_memset, devices=devices)
 add_function_test(
@@ -593,8 +608,18 @@ add_function_test(
     test_graph_execution_unchanged,
     devices=devices_with_cuda_graph_module_load,
 )
-add_function_test(TestApic, "test_save_load_with_param_update", test_save_load_with_param_update, devices=devices)
-add_function_test(TestApic, "test_save_load_memcpy_and_kernel", test_save_load_memcpy_and_kernel, devices=devices)
+add_function_test(
+    TestApic,
+    "test_save_load_with_param_update",
+    test_save_load_with_param_update,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_memcpy_and_kernel",
+    test_save_load_memcpy_and_kernel,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(
     TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
 )  # CPU: wp_memtile_host not recorded

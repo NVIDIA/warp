@@ -11,6 +11,7 @@ import warp as wp
 from warp.tests.unittest_utils import (
     add_function_test,
     get_test_devices,
+    get_test_devices_with_cuda_graph_module_load,
     get_test_devices_with_mempool_and_cuda_graph_module_load,
 )
 
@@ -163,11 +164,27 @@ def test_graph_alloc(test, device):
 
 
 devices = get_test_devices()
+devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
 devices_with_mempool_and_cuda_graph_module_load = get_test_devices_with_mempool_and_cuda_graph_module_load()
 
-add_function_test(TestGraph, "test_graph_single_kernel", test_graph_single_kernel, devices=devices)
-add_function_test(TestGraph, "test_graph_multiple_kernels", test_graph_multiple_kernels, devices=devices)
-add_function_test(TestGraph, "test_graph_replay_multiple", test_graph_replay_multiple, devices=devices)
+add_function_test(
+    TestGraph,
+    "test_graph_single_kernel",
+    test_graph_single_kernel,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_multiple_kernels",
+    test_graph_multiple_kernels,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_replay_multiple",
+    test_graph_replay_multiple,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(TestGraph, "test_graph_memcpy", test_graph_memcpy, devices=devices)
 add_function_test(TestGraph, "test_graph_memset", test_graph_memset, devices=devices)
 add_function_test(
