@@ -557,7 +557,7 @@ class Example:
         # reduced launch overhead.  Before each replay, step() computes
         # the time-dependent BC contributions into the working buffers
         # (_u_bd_rhs_buf, _p_rhs) that the graph references.
-        self.use_cuda_graph = wp.get_device().is_cuda
+        self.use_cuda_graph = wp.get_device().is_cuda and wp.is_conditional_graph_supported()
         if self.use_cuda_graph:
             import gc  # noqa: PLC0415
 
@@ -649,7 +649,7 @@ class Example:
             x=self._saddle_x,
             tol=1.0e-6,
             check_every=0,
-            use_cuda_graph=True,
+            use_cuda_graph=self.use_cuda_graph,
             M=saddle.preconditioner,
         )
 

@@ -511,7 +511,7 @@ class Example:
         self.renderer.add_field("rho", self.rho_field)
 
         # Capture CUDA graph for the simulation step
-        self.use_cuda_graph = wp.get_device().is_cuda
+        self.use_cuda_graph = wp.get_device().is_cuda and wp.is_conditional_graph_supported()
         if self.use_cuda_graph:
             with wp.ScopedCapture() as capture:
                 self.simulate()
