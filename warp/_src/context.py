@@ -7799,7 +7799,7 @@ def _launch_deterministic(
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
 
-    if runtime._apic_capture is not None:
+    if getattr(runtime, "_apic_capture", None) is not None:
         raise RuntimeError(
             "APIC serialization is not currently supported for deterministic CUDA kernels. "
             "Capture with apic=False, or disable deterministic mode for kernels captured with apic=True."
@@ -8286,7 +8286,7 @@ def launch(
                     return launch
                 else:
                     # APIC capture does not support backward kernel launches
-                    if runtime._apic_capture is not None and not device.is_cpu:
+                    if getattr(runtime, "_apic_capture", None) is not None and not device.is_cpu:
                         raise RuntimeError(
                             "Backward kernel launches are not supported during APIC graph capture. "
                             "Use wp.Tape outside of capture scope instead."
@@ -8324,8 +8324,9 @@ def launch(
                 else:
                     # Build APIC info if CUDA APIC capture is active
                     apic_info_ptr = None
-                    if runtime._apic_capture is not None and not device.is_cpu:
-                        apic_info = runtime._apic_capture.build_launch_info(
+                    apic_capture = getattr(runtime, "_apic_capture", None)
+                    if apic_capture is not None and not device.is_cpu:
+                        apic_info = apic_capture.build_launch_info(
                             kernel,
                             module_exec,
                             hooks,
