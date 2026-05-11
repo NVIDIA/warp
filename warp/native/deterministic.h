@@ -80,8 +80,6 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
 {
 #ifdef __CUDA_ARCH__
     int cursor = atomicAdd(&buf.cursors[ctx.idx], 1);
-    int record_ordinal = static_cast<int>(ctx.idx) * buf.records_per_thread + cursor;
-
     if (cursor >= buf.records_per_thread) {
         if (ctx.overflow != nullptr) {
             int prev = atomicCAS(ctx.overflow, 0, 1);
@@ -94,6 +92,19 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
         }
         return 0;
     }
+
+    int64_t record_ordinal64 = static_cast<int64_t>(ctx.idx) * buf.records_per_thread + cursor;
+    if (record_ordinal64 < 0 || record_ordinal64 >= buf.capacity) {
+        if (ctx.overflow != nullptr) {
+            int prev = atomicCAS(ctx.overflow, 0, 1);
+            if (ctx.debug && prev == 0) {
+                printf("Warp deterministic counter overflow: capacity=%d dest=%d\n", buf.capacity, dest_flat_idx);
+            }
+        }
+        return 0;
+    }
+
+    int record_ordinal = static_cast<int>(record_ordinal64);
 
     if (ctx.phase == 0) {
         int slot = atomicAdd(buf.count, 1);

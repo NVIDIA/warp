@@ -323,9 +323,6 @@ class AtomicCounterDeterminismOverhead:
 
     The timed path uses CUDA graph replay and includes resetting the output
     state inside the captured graph so the benchmark isolates device work.
-    Deterministic consumed-return counters are skipped because they are not
-    supported during CUDA graph capture, and direct launches would measure a
-    different path.
     """
 
     params = (DETERMINISTIC_BENCHMARK_MODES, tuple(DETERMINISTIC_BENCHMARK_SIZES))
@@ -341,11 +338,6 @@ class AtomicCounterDeterminismOverhead:
     def setup(self, vals_np, mode, num_elements):
         wp.init()
         self.device = wp.get_device("cuda:0")
-
-        if mode == "deterministic":
-            raise NotImplementedError(
-                "deterministic consumed-return counter atomics are not supported during CUDA graph capture"
-            )
 
         self.vals = wp.array(vals_np[num_elements], dtype=wp.float32, device=self.device)
         self.counter = wp.zeros(shape=(1,), dtype=wp.int32, device=self.device)
