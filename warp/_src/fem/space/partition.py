@@ -8,9 +8,7 @@ from warp._src.fem import cache
 from warp._src.fem.geometry import GeometryPartition, WholeGeometryPartition
 from warp._src.fem.types import NULL_ELEMENT_INDEX, NULL_NODE_INDEX
 from warp._src.fem.utils import compress_node_indices
-from warp._src.utils import warn
 
-from .function_space import FunctionSpace
 from .topology import SpaceTopology
 
 _wp_module_name_ = "warp.fem.space.partition"
@@ -407,9 +405,8 @@ class NodePartition(SpacePartition):
 
 
 def make_space_partition(
-    space: FunctionSpace | None = None,
+    space_topology: SpaceTopology,
     geometry_partition: GeometryPartition | None = None,
-    space_topology: SpaceTopology | None = None,
     with_halo: bool = True,
     max_node_count: int = -1,
     device=None,
@@ -417,12 +414,9 @@ def make_space_partition(
 ) -> SpacePartition:
     """Compute the subset of nodes from a function space topology that touch a geometry partition
 
-    Either `space_topology` or `space` must be provided (and will be considered in that order).
-
     Args:
-        space: (deprecated) the function space defining the topology if `space_topology` is ``None``.
+        space_topology: the topology of the function space to consider.
         geometry_partition: The subset of the space geometry.  If not provided, use the whole geometry.
-        space_topology: the topology of the function space to consider. If ``None``, deduced from `space`.
         with_halo: if True, include the halo nodes (nodes from exterior frontier cells to the partition)
         max_node_count: if positive, will be used to limit the number of nodes to avoid device/host synchronization.
         device: Warp device on which to perform and store computations
@@ -430,16 +424,6 @@ def make_space_partition(
     Returns:
         the resulting space partition
     """
-
-    if space is not None:
-        warn(
-            "The `space` argument of `make_space_partition` is deprecated and will be removed in 1.14. "
-            "Please use `space_topology` instead.",
-            DeprecationWarning,
-        )
-
-    if space_topology is None:
-        space_topology = space.topology
 
     space_topology = space_topology.full_space_topology()
 

@@ -156,7 +156,9 @@ class Example:
 
     def _assemble_local_system(self, geo_partition: fem.GeometryPartition):
         scalar_space = self._scalar_space
-        space_partition = fem.make_space_partition(scalar_space, geo_partition)
+        space_partition = fem.make_space_partition(
+            space_topology=scalar_space.topology, geometry_partition=geo_partition
+        )
 
         domain = fem.Cells(geometry=geo_partition)
 
