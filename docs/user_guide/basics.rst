@@ -291,6 +291,58 @@ User functions may also be overloaded by defining multiple function signatures w
     def custom(x: wp.vec3):
         return x + wp.vec3(1.0, 0.0, 0.0)
 
+.. _callable-parameters:
+
+Callable Parameters
+^^^^^^^^^^^^^^^^^^^
+
+User functions can accept another user-defined Warp function by annotating the
+parameter as ``Callable`` from ``collections.abc`` or ``typing``.
+The callable target is chosen where the user function is called and can be
+invoked directly inside the user function body:
+
+.. code-block:: python
+
+    from collections.abc import Callable
+
+    import warp as wp
+
+    @wp.func
+    def square(x: float):
+        return x * x
+
+
+    @wp.func
+    def cube(x: float):
+        return x * x * x
+
+
+    @wp.func
+    def apply(f: Callable, x: float):
+        return f(x)
+
+
+    @wp.kernel
+    def apply_kernel(
+        values: wp.array[float],
+        square_out: wp.array[float],
+        cube_out: wp.array[float],
+    ):
+        i = wp.tid()
+        square_out[i] = apply(square, values[i])
+        cube_out[i] = apply(cube, values[i])
+
+Callable parameters may also use defaults and keyword arguments:
+
+.. code-block:: python
+
+    @wp.func
+    def apply_default(f: Callable = square, x: float = 0.0):
+        return f(x)
+
+Pass only user-defined :func:`@wp.func <warp.func>` functions as callable targets.
+See :doc:`limitations` for unsupported callable targets and other restrictions.
+
 Tiles may also be passed to user functions. The function signature tile argument should include
 dtype and shape parameters to match the tile type intended to be used in the function. For example:
 

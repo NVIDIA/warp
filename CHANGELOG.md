@@ -37,6 +37,8 @@
   and can be scoped temporarily with `wp.ScopedLogLevel`; all Python-side diagnostic output now routes through
   the logger ([GH-1315](https://github.com/NVIDIA/warp/issues/1315),
   [GH-1434](https://github.com/NVIDIA/warp/issues/1434)).
+- Support passing user-defined Warp functions to `Callable` parameters in `@wp.func` functions
+  ([GH-1424](https://github.com/NVIDIA/warp/issues/1424)).
 
 ### Removed
 
