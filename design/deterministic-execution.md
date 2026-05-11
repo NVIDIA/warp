@@ -27,7 +27,7 @@ deterministic without algorithm rewrites.
 | R4  | Integer atomics with unused return values incur no overhead | Must | Already associative+commutative |
 | R5  | CPU execution unaffected (already sequential/deterministic) | Must | Zero overhead on CPU |
 | R6  | Per-module and per-kernel granularity via ``module_options`` / unique kernels | Should | Allows selective opt-in |
-| R7  | Backward pass (autodiff) gradient accumulation is also deterministic | Should | Adjoint atomics are Pattern A |
+| R7  | Generated backward pass (autodiff) gradient accumulation is also deterministic where it uses supported atomics | Should | Custom adjoint code has separate limitations |
 | R8  | Multiple target arrays in one kernel each get independent buffers | Must | Real kernels write to N arrays |
 
 **Non-goals**:
@@ -286,6 +286,12 @@ each touched element rather than adding to a pre-existing nonzero counter.
 - The consumed-return counter path currently supports only ``atomic_add`` on
   ``int32`` counter arrays. Counter indices may be constant, data-dependent, or
   supplied through sliced counter views.
+- User-authored custom adjoints compile in deterministic mode, but automatic
+  lowering does not rewrite atomics that target ``wp.adjoint[...]`` inside a
+  custom gradient function. If a custom adjoint performs contended
+  floating-point accumulation into an adjoint array and bit-exact gradients are
+  required, rewrite that gradient with an explicit deterministic pattern or
+  split the accumulation into a deterministic kernel.
 - The consumed-return counter path treats counters as allocation counters
   initialized for the launch. Pre-existing nonzero counter values are not added
   to the returned slots or final totals.
