@@ -94,7 +94,7 @@ docker run --rm -it \
 **Full version tags (for reproducibility):**
 
 - `cuda13.0.2-llvm21-latest` - Multi-arch, always current
-- `cuda13.0.2-llvm21-20241129` - Multi-arch, date-pinned
+- `cuda13.0.2-llvm21-YYYYMMDD` - Multi-arch, date-pinned workflow build
 - `cuda13.0.2-llvm21-x86_64-latest` - Architecture-specific
 - `cuda13.0.2-llvm21-aarch64-latest` - Architecture-specific
 
@@ -108,8 +108,10 @@ docker pull ghcr.io/nvidia/warp-builder:cuda13
 docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-llvm21-latest
 
 # Pinned to exact build date
-docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-llvm21-20241129
+docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-llvm21-YYYYMMDD
 ```
+
+Replace `YYYYMMDD` with the date from a published workflow build.
 
 All multi-arch tags work on both x86_64 and aarch64.
 
