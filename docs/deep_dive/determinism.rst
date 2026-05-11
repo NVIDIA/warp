@@ -606,6 +606,14 @@ Unsupported atomics
             # Compare-and-swap is still the ordinary Warp atomic.
             wp.atomic_cas(lock, 0, 0, 1)
 
+Custom adjoint atomics
+    User-defined custom adjoints compile in deterministic mode, but automatic
+    lowering does not rewrite atomics that target ``wp.adjoint[...]`` inside a
+    custom gradient function.  If a custom adjoint performs contended
+    floating-point accumulation into an adjoint array and bit-exact gradients
+    matter, rewrite that accumulation with an explicit deterministic pattern or
+    move it into a separate deterministic kernel.
+
 One reduction family per target
     A single output array cannot mix different deterministic families inside
     one function or kernel.  For example, using ``wp.atomic_add(out, ...)`` and
