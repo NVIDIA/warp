@@ -76,6 +76,8 @@
   [GH-1174](https://github.com/NVIDIA/warp/issues/1174)).
 - Fix cuBQL mesh BVH construction and refit on CUDA devices without memory pool support
   ([GH-1430](https://github.com/NVIDIA/warp/issues/1430)).
+- Fix tile reassignment from register storage to shared storage after `wp.tile_matmul()`
+  ([GH-1439](https://github.com/NVIDIA/warp/issues/1439)).
 
 ### Documentation
 

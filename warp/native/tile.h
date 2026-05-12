@@ -5579,6 +5579,50 @@ inline CUDA_CALLABLE void adj_tile_astype(Tile& t, AdjTile& adj_t, AdjReturnTile
 }
 
 
+template <typename T, typename SharedLayout, bool Owner>
+inline CUDA_CALLABLE void assign(
+    tile_shared_t<T, SharedLayout, Owner>& dest,
+    const tile_register_t<T, tile_layout_register_t<typename SharedLayout::Shape>>& src
+)
+{
+    dest = src;
+}
+
+template <typename T, typename SharedLayout, bool Owner>
+inline CUDA_CALLABLE void adj_assign(
+    tile_shared_t<T, SharedLayout, Owner>& dest,
+    const tile_register_t<T, tile_layout_register_t<typename SharedLayout::Shape>>& src,
+    tile_shared_t<T, SharedLayout, Owner>& adj_dest,
+    tile_register_t<T, tile_layout_register_t<typename SharedLayout::Shape>>& adj_src
+)
+{
+    using RegLayout = tile_layout_register_t<typename SharedLayout::Shape>;
+
+    (void)src;
+    (void)adj_dest;
+
+    if (dest.grad.ptr == nullptr) {
+        return;
+    }
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < RegLayout::NumRegs; ++i) {
+        const int linear = RegLayout::linear_from_register(i);
+        if (!RegLayout::valid(linear))
+            break;
+
+        adj_src.data[i] += dest.grad(linear);
+    }
+
+    WP_TILE_SYNC();
+    // Overwritten destinations do not contribute to the pre-assignment dest value.
+    for (int i = WP_TILE_THREAD_IDX; i < SharedLayout::Size; i += WP_TILE_BLOCK_DIM) {
+        dest.grad(i) = T {};
+    }
+    WP_TILE_SYNC();
+}
+
+
 template <typename TileA, typename Scalar> inline CUDA_CALLABLE void assign(TileA& dest, int i, const Scalar& src)
 {
     dest.data(tile_coord(i)) = src;
