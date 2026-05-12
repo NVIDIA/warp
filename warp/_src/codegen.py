@@ -2104,20 +2104,25 @@ class Adjoint:
         det_args = []
         if not func.is_builtin():
             det_args = _deterministic_call_args(adj, getattr(func.adj, "det_meta", None), bound_args)
+        replay_det_args = det_args
+        if func.custom_replay_func is not None:
+            replay_det_args = _deterministic_call_args(
+                adj, getattr(func.custom_replay_func.adj, "det_meta", None), bound_args
+            )
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
             forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
+                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
 
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
             forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
 
         else:
             # handle multiple value functions

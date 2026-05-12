@@ -505,6 +505,30 @@ def counter_side_effect_kernel(
     output[slot] = float(tid)
 
 
+@wp.func
+def _det_custom_replay_counter(counter: wp.array(dtype=wp.int32), tids: wp.array(dtype=wp.int32), tid: int):
+    slot = wp.atomic_add(counter, 0, 1)
+    tids[tid] = slot
+    return slot
+
+
+@wp.func_replay(_det_custom_replay_counter)
+def _replay_det_custom_replay_counter(counter: wp.array(dtype=wp.int32), tids: wp.array(dtype=wp.int32), tid: int):
+    return tids[tid]
+
+
+@wp.kernel(deterministic=True, module="unique")
+def custom_replay_counter_kernel(
+    data: wp.array(dtype=wp.float32),
+    counter: wp.array(dtype=wp.int32),
+    tids: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    slot = _det_custom_replay_counter(counter, tids, tid)
+    output[slot] = data[tid] * data[tid]
+
+
 # ---------------------------------------------------------------------------
 # Mixed kernels: counter plus scatter/reduce atomics.
 # ---------------------------------------------------------------------------
@@ -2325,6 +2349,28 @@ def test_deterministic_backward_counter_store(test, device):
     np.testing.assert_allclose(tape.gradients[data].numpy(), np.ones(n, dtype=np.float32), rtol=0, atol=0)
 
 
+def test_deterministic_custom_replay_counter(test, device):
+    """Verify deterministic helper args do not leak into custom replay calls."""
+    if device.is_cpu:
+        test.skipTest("CUDA custom replay coverage required")
+
+    n = 64
+    data_np = np.arange(n, dtype=np.float32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device, requires_grad=True)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    tids = wp.zeros(n, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(custom_replay_counter_kernel, dim=n, inputs=[data, counter, tids], outputs=[output], device=device)
+
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(tape.gradients[data].numpy(), 2.0 * data_np, rtol=0, atol=0)
+
+
 def test_deterministic_custom_adjoint_array_atomic(test, device):
     """Verify custom adjoints that atomically update ``wp.adjoint[array]`` compile."""
     if device.is_cpu:
@@ -2853,6 +2899,12 @@ add_function_test(
     TestDeterministic,
     "test_deterministic_backward_counter_store",
     test_deterministic_backward_counter_store,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_custom_replay_counter",
+    test_deterministic_custom_replay_counter,
     devices=cuda_devices,
 )
 add_function_test(
