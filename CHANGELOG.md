@@ -29,6 +29,9 @@
   ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
 - Add `wp.copysign(x, y)`: returns a value with the magnitude of `x` and the
   sign of `y`, matching C `copysign` ([GH-1444](https://github.com/NVIDIA/warp/issues/1444)).
+- Add `--use-dynamic-cuda` build option to link against shared CUDA libraries instead of embedding
+  them statically; the corresponding shared libraries must be present at runtime
+  ([GH-1334](https://github.com/NVIDIA/warp/issues/1334)).
 
 ### Removed
 

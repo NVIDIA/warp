@@ -398,6 +398,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.clang_build_toolchain:
             print("Error: --clang-build-toolchain requires CUDA (incompatible with --no-cuda).")
             return 1
+        if args.use_dynamic_cuda:
+            print("Error: --use-dynamic-cuda requires CUDA (incompatible with --no-cuda).")
+            return 1
 
     # Warn if building on Intel Mac (cross-compiling for ARM64)
     if platform.system() == "Darwin" and platform.machine() == "x86_64":
