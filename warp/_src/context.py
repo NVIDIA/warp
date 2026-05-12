@@ -9380,7 +9380,7 @@ def _launch_deterministic(
     counter_scan_workspaces = []
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
-    def build_det_params(phase, scatter_bufs, counter_bufs, use_scatter):
+    def build_det_params(phase, use_scatter):
         det_params = [
             ctypes.c_int(phase),
             ctypes.c_int(det_debug),
@@ -9442,9 +9442,7 @@ def _launch_deterministic(
                     values.zero_()
 
         # Phase 0: counting pass (side effects suppressed, scatter disabled).
-        det_params_p0 = build_det_params(
-            phase=0, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=False
-        )
+        det_params_p0 = build_det_params(phase=0, use_scatter=False)
         # Append det params after all user args (matches codegen_kernel order:
         # dim, user_args..., det_params...).
         params_p0 = [*user_params, *det_params_p0]
@@ -9515,15 +9513,13 @@ def _launch_deterministic(
                 cursors.zero_()
 
         # Phase 1: execution pass with deterministic slots.
-        det_params_p1 = build_det_params(
-            phase=1, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=True
-        )
+        det_params_p1 = build_det_params(phase=1, use_scatter=True)
         params_p1 = [*user_params, *det_params_p1]
         do_cuda_launch(launch_hook, params_p1)
 
     else:
         # === Single-pass (scatter only, or inactive deterministic params only) ===
-        det_params = build_det_params(phase=1, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=True)
+        det_params = build_det_params(phase=1, use_scatter=True)
         params_all = [*user_params, *det_params]
         do_cuda_launch(launch_hook, params_all)
 
