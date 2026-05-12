@@ -27,7 +27,7 @@ deterministic without algorithm rewrites.
 | R4  | Integer atomics with unused return values incur no overhead | Must | Already associative+commutative |
 | R5  | CPU execution unaffected (already sequential/deterministic) | Must | Zero overhead on CPU |
 | R6  | Per-module and per-kernel granularity via ``module_options`` / unique kernels | Should | Allows selective opt-in |
-| R7  | Generated backward pass (autodiff) gradient accumulation is also deterministic where it uses supported atomics | Should | Custom adjoint code has separate limitations |
+| R7  | Generated backward pass (autodiff) gradient accumulation is also deterministic where it uses supported atomics | Should | Includes generated array-read adjoints and supported ``wp.adjoint[...]`` custom-adjoint atomics |
 | R8  | Multiple target arrays in one kernel each get independent buffers | Must | Real kernels write to N arrays |
 
 **Non-goals**:
@@ -224,6 +224,29 @@ family share one helper object and one postpass buffer set. The
 counter targets required by that function or kernel, and callers include the
 transitive requirements of any deterministic callees.
 
+**Tape/backward support** uses the same raw deterministic kernel ABI for
+generated reverse kernels. The reverse signature receives the raw deterministic
+parameters after the primal and adjoint user arguments, and ``wp.launch(...,
+adjoint=True)`` routes CUDA launches through ``_launch_deterministic()`` just
+like forward launches. Deterministic targets record whether they are used by
+the forward pass, the backward pass, or both. Backward-only targets still appear
+in the hidden ABI so the compiled signatures are stable, but forward launches
+receive null helper buffers for them and skip the sort/reduce postpass.
+
+Generated array-read adjoints such as ``values[index]`` normally accumulate
+into ``values.grad[index]`` through native floating-point atomics during
+``Tape.backward()``. Deterministic mode lowers those reverse accumulations into
+adjoint scatter targets and reduces them in the same fixed order as Pattern A.
+User-authored custom adjoints that express gradient accumulation in Warp code,
+for example ``wp.adjoint[values][index] += adj_ret``, are lowered the same way.
+When a manual adjoint launch does not pass an explicit adjoint array, the
+deterministic launcher resolves the destination through the primal array's
+``grad`` pointer, matching the native adjoint fallback. If an array read has no
+adjoint destination because the primal array does not require gradients, the
+launcher passes an inert helper and skips the postpass for that target; this
+matches the native no-op adjoint path and avoids sorting records that cannot be
+written anywhere.
+
 **Scatter sizing**: each scatter target uses a fixed-capacity buffer sized from
 a code-generated lower bound (static records-per-thread analysis). The optional
 ``deterministic_max_records`` setting overrides the per-thread record count when
@@ -261,7 +284,7 @@ each touched element rather than adding to a pre-existing nonzero counter.
 | --- | --- |
 | ``warp/config.py`` | ``deterministic`` global flag |
 | ``warp/_src/deterministic.py`` | Dataclasses, deterministic buffer/workspace allocation, sort-reduce orchestration |
-| ``warp/_src/codegen.py`` | Atomic classification, scatter/phase codegen, hidden kernel params |
+| ``warp/_src/codegen.py`` | Atomic classification, scatter/phase codegen, hidden forward/backward kernel params |
 | ``warp/_src/context.py`` | Module option, ``_launch_deterministic()`` orchestrator, ctypes bindings |
 | ``warp/native/deterministic.h`` | ``wp::det_ctx``, ``wp::det_scatter_buf<T>``, ``wp::det_counter_buf``, and device-side ``wp::deterministic::scatter()`` |
 | ``warp/native/deterministic.cu`` | CUB workspace size queries, radix sort + ``ReduceByKey`` / segmented reduce kernels |
@@ -286,12 +309,10 @@ each touched element rather than adding to a pre-existing nonzero counter.
 - The consumed-return counter path currently supports only ``atomic_add`` on
   ``int32`` counter arrays. Counter indices may be constant, data-dependent, or
   supplied through sliced counter views.
-- User-authored custom adjoints compile in deterministic mode, but automatic
-  lowering does not rewrite atomics that target ``wp.adjoint[...]`` inside a
-  custom gradient function. If a custom adjoint performs contended
-  floating-point accumulation into an adjoint array and bit-exact gradients are
-  required, rewrite that gradient with an explicit deterministic pattern or
-  split the accumulation into a deterministic kernel.
+- User-authored custom adjoints are deterministic when their contended gradient
+  accumulation is expressed in Warp code with supported atomic patterns, such
+  as ``wp.adjoint[arr][i] += value``. Native C++ adjoint helpers or unsupported
+  atomics remain outside the automatic rewrite.
 - The consumed-return counter path treats counters as allocation counters
   initialized for the launch. Pre-existing nonzero counter values are not added
   to the returned slots or final totals.
@@ -343,7 +364,7 @@ each touched element rather than adding to a pre-existing nonzero counter.
 
 ## Testing Strategy
 
-60 tests in ``warp/tests/test_deterministic.py`` cover:
+The suite in ``warp/tests/test_deterministic.py`` covers:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
   with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
@@ -392,5 +413,8 @@ each touched element rather than adding to a pre-existing nonzero counter.
 - **Graph capture support**: deterministic scatter and counter launches can be
   captured and replayed with CUDA graphs, including composite ``wp.vec3``
   reductions and consumed-return counter atomics.
+- **Tape/backward support**: generated backward kernels launch through the
+  deterministic path, including scalar and ``wp.vec3`` gather-style gradient
+  scatters and custom ``wp.adjoint[...]`` accumulation.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.

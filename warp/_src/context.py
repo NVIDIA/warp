@@ -9122,11 +9122,13 @@ class DeterministicLaunch(Launch):
         device: Device,
         det_meta,
         fwd_args: Sequence[Any],
+        adj_args: Sequence[Any] | None = None,
         hooks: KernelHooks | None = None,
         params: Sequence[Any] | None = None,
         bounds: launch_bounds_t | None = None,
         max_blocks: int = 0,
         block_dim: int = 256,
+        adjoint: bool = False,
     ):
         super().__init__(
             kernel=kernel,
@@ -9137,10 +9139,11 @@ class DeterministicLaunch(Launch):
             bounds=bounds,
             max_blocks=max_blocks,
             block_dim=block_dim,
-            adjoint=False,
+            adjoint=adjoint,
         )
         self.det_meta = det_meta
         self.fwd_args = list(fwd_args)
+        self.adj_args = list(adj_args) if adj_args is not None else []
 
     def _is_deterministic_target_arg(self, index: int) -> bool:
         if index < 0 or index >= len(self.kernel.adj.args):
@@ -9152,7 +9155,9 @@ class DeterministicLaunch(Launch):
 
     def set_param_at_index(self, index: int, value: Any, adjoint: bool = False):
         super().set_param_at_index(index, value, adjoint)
-        if not adjoint and index < len(self.fwd_args):
+        if adjoint and index < len(self.adj_args):
+            self.adj_args[index] = value
+        elif not adjoint and index < len(self.fwd_args):
             self.fwd_args[index] = value
 
     def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
@@ -9183,12 +9188,27 @@ class DeterministicLaunch(Launch):
             self.block_dim,
             self.det_meta,
             self.fwd_args,
+            adj_args=self.adj_args,
+            adjoint=self.adjoint,
             module_exec=self.module_exec,
         )
 
 
 def _launch_deterministic(
-    kernel, hooks, user_params, bounds, device, stream, max_blocks, block_dim, det_meta, fwd_args, module_exec=None
+    kernel,
+    hooks,
+    user_params,
+    bounds,
+    device,
+    stream,
+    max_blocks,
+    block_dim,
+    det_meta,
+    fwd_args,
+    *,
+    adj_args=None,
+    adjoint=False,
+    module_exec=None,
 ):
     """Orchestrate a deterministic kernel launch with scatter-sort-reduce and/or two-pass execution.
 
@@ -9207,18 +9227,106 @@ def _launch_deterministic(
         run_sort_reduce,
     )
 
-    if hooks is None or hooks.forward is None:
+    launch_hook = hooks.backward if adjoint else hooks.forward
+    shared_memory_bytes = hooks.backward_smem_bytes if adjoint else hooks.forward_smem_bytes
+    launch_kind = "backward" if adjoint else "forward"
+
+    if hooks is None or launch_hook is None:
         raise RuntimeError(
-            f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+            f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
         )
 
+    adj_args = [] if adj_args is None else list(adj_args)
+
+    def resolve_det_target_array(target):
+        resolved = None
+        for j, arg in enumerate(kernel.adj.args):
+            if arg.label == target.array_var_label:
+                if getattr(target, "adjoint", False):
+                    resolved = adj_args[j] if j < len(adj_args) else None
+                else:
+                    resolved = fwd_args[j]
+                break
+
+        if resolved is None:
+            if not getattr(target, "adjoint", False):
+                return None
+
+            # Manual adjoint launches may rely on the forward array's embedded
+            # grad pointer instead of passing an explicit adjoint array. The
+            # deterministic post-pass needs the Python array object, so recover
+            # the same fallback here when possible.
+            primal = None
+            for j, arg in enumerate(kernel.adj.args):
+                if arg.label == target.array_var_label:
+                    primal = fwd_args[j]
+                    break
+            for attr in getattr(target, "attr_path", ()):
+                if primal is None or not hasattr(primal, attr):
+                    primal = None
+                    break
+                primal = getattr(primal, attr)
+            return getattr(primal, "grad", None)
+
+        for attr in getattr(target, "attr_path", ()):
+            if resolved is None:
+                return None
+            if not hasattr(resolved, attr):
+                raise RuntimeError(
+                    "Deterministic target "
+                    f"{target.target_label!r} could not resolve attribute {attr!r} "
+                    f"on {type(resolved).__name__}"
+                )
+            resolved = getattr(resolved, attr)
+
+        if getattr(target, "adjoint", False) and resolved is None:
+            primal = None
+            for j, arg in enumerate(kernel.adj.args):
+                if arg.label == target.array_var_label:
+                    primal = fwd_args[j]
+                    break
+            for attr in getattr(target, "attr_path", ()):
+                if primal is None or not hasattr(primal, attr):
+                    primal = None
+                    break
+                primal = getattr(primal, attr)
+            resolved = getattr(primal, "grad", None)
+
+        return resolved
+
+    def target_has_resolvable_destination(target):
+        array = resolve_det_target_array(target)
+        if array is None:
+            return False
+        if not hasattr(array, "ptr"):
+            raise RuntimeError(
+                f"Deterministic target {target.target_label!r} resolved to non-array object ({type(array).__name__})"
+            )
+        return getattr(array, "ptr", None) is not None and getattr(array, "size", 0) > 0
+
+    active_scatter_targets = []
+    for target in det_meta.scatter_targets:
+        if not (target.use_backward if adjoint else target.use_forward):
+            continue
+        if adjoint and not target_has_resolvable_destination(target):
+            continue
+        active_scatter_targets.append(target)
+
+    active_counter_targets = []
+    for target in det_meta.counter_targets:
+        if not (target.use_backward if adjoint else target.use_forward):
+            continue
+        if adjoint and not target_has_resolvable_destination(target):
+            continue
+        active_counter_targets.append(target)
+
     dim_size = bounds.size
-    if det_meta.has_scatter and dim_size > (1 << 32):
+    if active_scatter_targets and dim_size > (1 << 32):
         raise RuntimeError(
             "Deterministic scatter atomics support launch sizes up to 2^32 threads because sort keys pack the "
             "linear thread index into 32 bits."
         )
-    if det_meta.has_counter and dim_size > ((1 << 31) - 1):
+    if active_counter_targets and dim_size > ((1 << 31) - 1):
         raise RuntimeError(
             "Deterministic consumed-return counter atomics support launch sizes up to 2^31 - 1 threads because "
             "counter prefix buffers store per-thread contributions as int32 values."
@@ -9243,33 +9351,31 @@ def _launch_deterministic(
     # Allocate buffers.
     scatter_bufs = (
         allocate_scatter_buffers(
-            det_meta.scatter_targets,
+            active_scatter_targets,
             det_meta,
             dim_size,
             device,
             max_records=max_records,
             initialize_unused=stream_is_capturing,
         )
-        if det_meta.has_scatter
+        if active_scatter_targets
         else []
     )
     counter_bufs = (
         allocate_counter_buffers(
-            det_meta.counter_targets,
+            active_counter_targets,
             det_meta,
             dim_size,
             device,
             max_records=max_records,
             initialize_unused=stream_is_capturing,
         )
-        if det_meta.has_counter
+        if active_counter_targets
         else []
     )
-    overflow_buf = (
-        warp.zeros(shape=(1,), dtype=warp.int32, device=device)
-        if det_meta.has_scatter or det_meta.has_counter
-        else None
-    )
+    scatter_bufs_by_target = dict(zip(active_scatter_targets, scatter_bufs, strict=True))
+    counter_bufs_by_target = dict(zip(active_counter_targets, counter_bufs, strict=True))
+    overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if scatter_bufs or counter_bufs else None
     sort_reduce_workspaces = []
     counter_scan_workspaces = []
 
@@ -9280,8 +9386,13 @@ def _launch_deterministic(
             ctypes.c_int(det_debug),
             ctypes.c_void_p(overflow_buf.ptr if overflow_buf is not None else 0),
         ]
-        for i, _ct in enumerate(det_meta.counter_targets):
-            keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread = counter_bufs[i]
+        for ct in det_meta.counter_targets:
+            counter_buf = counter_bufs_by_target.get(ct)
+            if counter_buf is None:
+                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0))
+                continue
+
+            keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread = counter_buf
             det_params.append(
                 det_counter_buf_t(
                     keys.ptr,
@@ -9294,9 +9405,10 @@ def _launch_deterministic(
                     records_per_thread,
                 )
             )
-        for i, _st in enumerate(det_meta.scatter_targets):
-            if use_scatter and i < len(scatter_bufs):
-                keys, values, counter, capacity = scatter_bufs[i]
+        for st in det_meta.scatter_targets:
+            scatter_buf = scatter_bufs_by_target.get(st)
+            if use_scatter and scatter_buf is not None:
+                keys, values, counter, capacity = scatter_buf
                 det_params.append(det_scatter_buf_t(keys.ptr, values.ptr, counter.ptr, capacity))
             else:
                 # Null scatter buffers (phase 0 doesn't scatter).
@@ -9311,35 +9423,12 @@ def _launch_deterministic(
             bounds.size,
             max_blocks,
             block_dim,
-            hooks.forward_smem_bytes,
+            shared_memory_bytes,
             _build_cuda_kernel_params(params_list),
             stream,
         )
 
-    def resolve_det_target_array(target):
-        resolved = None
-        for j, arg in enumerate(kernel.adj.args):
-            if arg.label == target.array_var_label:
-                resolved = fwd_args[j]
-                break
-
-        if resolved is None:
-            return None
-
-        for attr in getattr(target, "attr_path", ()):
-            if resolved is None:
-                return None
-            if not hasattr(resolved, attr):
-                raise RuntimeError(
-                    "Deterministic target "
-                    f"{target.target_label!r} could not resolve attribute {attr!r} "
-                    f"on {type(resolved).__name__}"
-                )
-            resolved = getattr(resolved, attr)
-
-        return resolved
-
-    if det_meta.has_counter:
+    if active_counter_targets:
         # === Two-pass execution ===
 
         with warp.ScopedStream(stream, sync_enter=False):
@@ -9359,13 +9448,13 @@ def _launch_deterministic(
         # Append det params after all user args (matches codegen_kernel order:
         # dim, user_args..., det_params...).
         params_p0 = [*user_params, *det_params_p0]
-        do_cuda_launch(hooks.forward, params_p0)
+        do_cuda_launch(launch_hook, params_p0)
 
         # Sort counter records by destination and deterministic record order,
         # then compute the exclusive prefix each atomic should return.
         counter_arrays = []
         counter_record_counts = []
-        for i, ct in enumerate(det_meta.counter_targets):
+        for i, ct in enumerate(active_counter_targets):
             counter_arr = resolve_det_target_array(ct)
             if counter_arr is None:
                 if not stream_is_capturing:
@@ -9387,6 +9476,10 @@ def _launch_deterministic(
                     f"{ct.target_label!r} resolved to non-array object "
                     f"({type(counter_arr).__name__})"
                 )
+            if getattr(counter_arr, "ptr", None) is None or getattr(counter_arr, "size", 0) <= 0:
+                counter_arrays.append(None)
+                counter_record_counts.append(0)
+                continue
             counter_arrays.append(counter_arr)
             if stream_is_capturing:
                 record_count = get_counter_record_count(counter_bufs[i], stream_is_capturing=True)
@@ -9426,22 +9519,22 @@ def _launch_deterministic(
             phase=1, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=True
         )
         params_p1 = [*user_params, *det_params_p1]
-        do_cuda_launch(hooks.forward, params_p1)
+        do_cuda_launch(launch_hook, params_p1)
 
     else:
-        # === Single-pass (scatter only) ===
+        # === Single-pass (scatter only, or inactive deterministic params only) ===
         det_params = build_det_params(phase=1, scatter_bufs=scatter_bufs, counter_bufs=counter_bufs, use_scatter=True)
         params_all = [*user_params, *det_params]
-        do_cuda_launch(hooks.forward, params_all)
+        do_cuda_launch(launch_hook, params_all)
 
     # Post-kernel: reduce scatter records in a fixed order.
-    if det_meta.has_scatter:
+    if active_scatter_targets:
         # Identify the destination arrays from fwd_args.
         scatter_targets = []
         scatter_buffers = []
         dest_arrays = []
         record_counts = []
-        for scatter_target, scatter_buffer in zip(det_meta.scatter_targets, scatter_bufs, strict=True):
+        for scatter_target, scatter_buffer in zip(active_scatter_targets, scatter_bufs, strict=True):
             dest_array = resolve_det_target_array(scatter_target)
             if dest_array is None:
                 continue
@@ -9451,6 +9544,8 @@ def _launch_deterministic(
                     f"{scatter_target.target_label!r} resolved to non-array object "
                     f"({type(dest_array).__name__})"
                 )
+            if getattr(dest_array, "ptr", None) is None or getattr(dest_array, "size", 0) <= 0:
+                continue
             scatter_targets.append(scatter_target)
             scatter_buffers.append(scatter_buffer)
             dest_arrays.append(dest_array)
@@ -9613,12 +9708,16 @@ def launch(
         pack_args(fwd_args, params, adjoint=False)
         pack_args(adj_args, params, adjoint=True)
 
-        # Deterministic mode: redirect to multi-pass launcher for CUDA forward pass.
+        # Deterministic mode: redirect to the launcher that supplies the hidden
+        # deterministic buffers. Backward kernels use the same path so generated
+        # tape adjoints can reduce gradient atomics in a fixed order.
         det_meta = getattr(kernel.adj, "det_meta", None)
-        if det_meta is not None and det_meta.needs_deterministic and device.is_cuda and not adjoint:
-            if hooks.forward is None:
+        if det_meta is not None and det_meta.needs_deterministic and device.is_cuda:
+            launch_hook = hooks.backward if adjoint else hooks.forward
+            launch_kind = "backward" if adjoint else "forward"
+            if launch_hook is None:
                 raise RuntimeError(
-                    f"Failed to find forward kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                    f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
                 )
             if stream is None:
                 stream = device.stream
@@ -9628,11 +9727,13 @@ def launch(
                     device=device,
                     det_meta=det_meta,
                     fwd_args=fwd_args,
+                    adj_args=adj_args,
                     hooks=hooks,
                     params=params,
                     bounds=bounds,
                     max_blocks=max_blocks,
                     block_dim=block_dim,
+                    adjoint=adjoint,
                 )
             _launch_deterministic(
                 kernel,
@@ -9645,6 +9746,8 @@ def launch(
                 block_dim,
                 det_meta,
                 fwd_args,
+                adj_args=adj_args,
+                adjoint=adjoint,
                 module_exec=module_exec,
             )
             # Record on tape if one is active (same logic as below).

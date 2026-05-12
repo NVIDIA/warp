@@ -241,6 +241,56 @@ This pattern currently supports:
 Consumed-return ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are rejected
 because their semantics are not prefix-sum slot allocation.
 
+Tape and Backward Passes
+------------------------
+
+Deterministic mode also applies to generated CUDA backward kernels launched by
+:class:`wp.Tape <warp.Tape>`.  This matters for differentiable simulations:
+the forward pass may be bit-exact, while the backward pass still scatters many
+per-thread contributions into the same input gradients.
+
+The most common example is a gather in the forward pass:
+
+.. code:: python
+
+    @wp.kernel(deterministic="run_to_run", module="unique")
+    def gather(
+        values: wp.array(dtype=wp.float32),
+        indices: wp.array(dtype=wp.int32),
+        out: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        out[tid] = values[indices[tid]]
+
+
+The forward kernel has no atomic operation.  During ``Tape.backward()``,
+however, Warp's generated adjoint accumulates ``out.grad[tid]`` into
+``values.grad[indices[tid]]``.  If several output lanes read the same input
+lane, that gradient accumulation is an atomic add.  With deterministic mode
+enabled, Warp routes that reverse accumulation through the same scatter,
+sort, and reduce path used for Pattern 1.
+
+User-defined custom adjoints are covered when their gradient accumulation is
+written in Warp code using supported atomic patterns:
+
+.. code:: python
+
+    @wp.func_grad(load_value)
+    def adj_load_value(values: wp.array(dtype=wp.float32), index: int, adj_ret: wp.float32):
+        wp.adjoint[values][index] += adj_ret
+
+
+The deterministic launcher distinguishes forward-only, backward-only, and
+shared deterministic targets.  Backward-only gradient targets are part of the
+compiled hidden ABI, but forward launches pass inert helper buffers for those
+targets and skip their sort/reduce work.  That keeps the forward path from
+paying for gradient reductions that only exist during ``Tape.backward()``.
+When an input array has no adjoint buffer, for example because it was read by
+the forward pass but does not require gradients, deterministic mode treats the
+corresponding backward target as inactive and leaves the generated helper as a
+no-op.  Other gradients from the same backward kernel are still reduced
+deterministically.
+
 Writing Manual Deterministic Code
 ---------------------------------
 
@@ -606,13 +656,11 @@ Unsupported atomics
             # Compare-and-swap is still the ordinary Warp atomic.
             wp.atomic_cas(lock, 0, 0, 1)
 
-Custom adjoint atomics
-    User-defined custom adjoints compile in deterministic mode, but automatic
-    lowering does not rewrite atomics that target ``wp.adjoint[...]`` inside a
-    custom gradient function.  If a custom adjoint performs contended
-    floating-point accumulation into an adjoint array and bit-exact gradients
-    matter, rewrite that accumulation with an explicit deterministic pattern or
-    move it into a separate deterministic kernel.
+Custom/native adjoint boundaries
+    User-defined custom adjoints are deterministic when their contended
+    accumulation is written in Warp code with supported atomic patterns, such
+    as ``wp.adjoint[arr][i] += value``.  Native C++ adjoint helpers and
+    unsupported atomics remain outside the automatic rewrite.
 
 One reduction family per target
     A single output array cannot mix different deterministic families inside
@@ -706,12 +754,14 @@ When enabling deterministic mode in a new kernel:
    ``deterministic_max_records`` to a real upper bound.
 4. If the kernel uses ``slot = wp.atomic_add(counter, index, value)``, check
    that the counter is an ``int32`` array initialized for that launch.
-5. If you capture the kernel in a CUDA graph, validate both capture and replay.
+5. For differentiable kernels, run ``Tape.backward()`` several times and compare
+   the gradients that matter with ``np.testing.assert_array_equal()``.
+6. If you capture the kernel in a CUDA graph, validate both capture and replay.
    Ordinary CUDA graph capture is supported for both Pattern 1 and Pattern 2;
    Warp keeps the temporary deterministic buffers alive on the captured graph
    object. Conditional body graphs and APIC serialization still have the
    limitations described above.
-6. If performance matters, benchmark both normal and deterministic modes.
+7. If performance matters, benchmark both normal and deterministic modes.
 
 Related NVIDIA Libraries
 ------------------------

@@ -184,6 +184,8 @@ class ScatterTarget:
 
     A target is the destination array, or struct-field array, whose atomics are
     scattered and later reduced. The registry owns the stable helper name.
+    ``adjoint`` marks reductions into the argument's adjoint buffer during a
+    generated backward pass.
     """
 
     array_var_label: str
@@ -195,10 +197,14 @@ class ScatterTarget:
     reduce_op: int
     index: int = 0
     attr_path: tuple[str, ...] = ()
+    adjoint: bool = False
+    use_forward: bool = True
+    use_backward: bool = False
 
     @property
     def target_label(self) -> str:
-        return target_label(self.array_var_label, self.attr_path)
+        label = target_label(self.array_var_label, self.attr_path)
+        return f"adjoint({label})" if self.adjoint else label
 
 
 @dataclass(eq=False)
@@ -210,10 +216,14 @@ class CounterTarget:
     value_ctype: str
     index: int = 0
     attr_path: tuple[str, ...] = ()
+    adjoint: bool = False
+    use_forward: bool = True
+    use_backward: bool = False
 
     @property
     def target_label(self) -> str:
-        return target_label(self.array_var_label, self.attr_path)
+        label = target_label(self.array_var_label, self.attr_path)
+        return f"adjoint({label})" if self.adjoint else label
 
 
 @dataclass
@@ -273,14 +283,25 @@ class DeterministicRegistry:
 
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
-    _scatter_targets_by_array: dict[tuple[str, tuple[str, ...]], ScatterTarget] = field(default_factory=dict)
-    _counter_targets_by_array: dict[tuple[str, tuple[str, ...]], CounterTarget] = field(default_factory=dict)
+    _scatter_targets_by_array: dict[tuple[str, tuple[str, ...], bool], ScatterTarget] = field(default_factory=dict)
+    _counter_targets_by_array: dict[tuple[str, tuple[str, ...], bool], CounterTarget] = field(default_factory=dict)
     # Scatter and counter helpers share one namespace in generated C++.
     _next_target_index: int = 0
 
 
 def get_or_create_scatter_target(
-    registry, meta, array_var_label, value_dtype, value_ctype, scalar_dtype, reduce_op, attr_path=()
+    registry,
+    meta,
+    array_var_label,
+    value_dtype,
+    value_ctype,
+    scalar_dtype,
+    reduce_op,
+    attr_path=(),
+    *,
+    adjoint=False,
+    use_forward=True,
+    use_backward=False,
 ):
     """Get or create a stable scatter target and attach it to ``meta``.
 
@@ -291,11 +312,12 @@ def get_or_create_scatter_target(
     """
     family = reduce_op_to_family(reduce_op)
     attr_path = tuple(attr_path)
-    key = (array_var_label, attr_path)
+    key = (array_var_label, attr_path, bool(adjoint))
     label = target_label(array_var_label, attr_path)
+    helper_label = f"adj_{label}" if adjoint else label
     if key in registry._counter_targets_by_array:
         raise ValueError(
-            f"Deterministic mode does not support using array '{label}' as both a counter target "
+            f"Deterministic mode does not support using array '{helper_label}' as both a counter target "
             "and a scatter target in the same function or kernel."
         )
     target = registry._scatter_targets_by_array.get(key)
@@ -304,7 +326,7 @@ def get_or_create_scatter_target(
         if target.family != family:
             raise ValueError(
                 f"Deterministic mode does not support mixing '{target.family}' and '{family}' reductions on array "
-                f"'{label}' in the same function or kernel."
+                f"'{helper_label}' in the same function or kernel."
             )
         if (
             target.value_dtype != value_dtype
@@ -316,12 +338,14 @@ def get_or_create_scatter_target(
                 f"Deterministic mode does not support multiple value layouts for array '{label}' "
                 f"within the same reduction family."
             )
+        target.use_forward |= bool(use_forward)
+        target.use_backward |= bool(use_backward)
     else:
         index = registry._next_target_index
         registry._next_target_index += 1
         target = ScatterTarget(
             array_var_label=array_var_label,
-            helper_name=scatter_helper_name(label, index),
+            helper_name=scatter_helper_name(helper_label, index),
             family=family,
             value_dtype=value_dtype,
             value_ctype=value_ctype,
@@ -329,6 +353,9 @@ def get_or_create_scatter_target(
             reduce_op=reduce_op,
             index=index,
             attr_path=attr_path,
+            adjoint=bool(adjoint),
+            use_forward=bool(use_forward),
+            use_backward=bool(use_backward),
         )
         registry.scatter_targets.append(target)
         registry._scatter_targets_by_array[key] = target
@@ -337,14 +364,17 @@ def get_or_create_scatter_target(
     return target
 
 
-def get_or_create_counter_target(registry, meta, array_var_label, value_ctype, attr_path=()):
+def get_or_create_counter_target(
+    registry, meta, array_var_label, value_ctype, attr_path=(), *, adjoint=False, use_forward=True, use_backward=False
+):
     """Get or create a stable counter target and attach it to ``meta``."""
     attr_path = tuple(attr_path)
-    key = (array_var_label, attr_path)
+    key = (array_var_label, attr_path, bool(adjoint))
     label = target_label(array_var_label, attr_path)
+    helper_label = f"adj_{label}" if adjoint else label
     if key in registry._scatter_targets_by_array:
         raise ValueError(
-            f"Deterministic mode does not support using array '{label}' as both a counter target "
+            f"Deterministic mode does not support using array '{helper_label}' as both a counter target "
             "and a scatter target in the same function or kernel."
         )
     target = registry._counter_targets_by_array.get(key)
@@ -353,13 +383,19 @@ def get_or_create_counter_target(registry, meta, array_var_label, value_ctype, a
         registry._next_target_index += 1
         target = CounterTarget(
             array_var_label=array_var_label,
-            helper_name=counter_helper_name(label, index),
+            helper_name=counter_helper_name(helper_label, index),
             value_ctype=value_ctype,
             index=index,
             attr_path=attr_path,
+            adjoint=bool(adjoint),
+            use_forward=bool(use_forward),
+            use_backward=bool(use_backward),
         )
         registry.counter_targets.append(target)
         registry._counter_targets_by_array[key] = target
+    else:
+        target.use_forward |= bool(use_forward)
+        target.use_backward |= bool(use_backward)
     meta.add_counter_target(target)
     return target
 

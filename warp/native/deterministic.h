@@ -144,14 +144,16 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
 #ifdef __CUDA_ARCH__
 #define WP_DET_SCATTER_OR_FALLBACK(det_ctx, helper, flat_idx, value, cpu_expr) \
     do { \
-        if ((det_ctx).phase != 0) { \
+        if ((det_ctx).phase != 0 && (helper).count != nullptr) { \
             wp::deterministic::scatter((det_ctx), (helper), static_cast<int>(flat_idx), (value)); \
         } \
     } while (0)
 
 #define WP_DET_COUNTER_OR_FALLBACK(out, det_ctx, helper, flat_idx, value, cpu_expr) \
     do { \
-        (out) = wp::deterministic::counter_add((det_ctx), (helper), static_cast<int>(flat_idx), (value)); \
+        (out) = ((helper).count != nullptr) \
+            ? wp::deterministic::counter_add((det_ctx), (helper), static_cast<int>(flat_idx), (value)) \
+            : 0; \
     } while (0)
 
 #define WP_DET_STORE_IF_ACTIVE(det_ctx, ...) \

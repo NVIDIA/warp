@@ -165,6 +165,44 @@ def vec3_scatter_add_kernel(
 
 
 @wp.kernel
+def gather_address_kernel(
+    values: wp.array(dtype=wp.float32),
+    source_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Read many output lanes from the same input lanes.
+
+    The forward pass is a plain gather, but the generated backward pass scatters
+    output gradients back into ``values.grad`` with atomic additions.
+    """
+    tid = wp.tid()
+    output[tid] = values[source_indices[tid]]
+
+
+@wp.kernel
+def vec3_gather_address_kernel(
+    values: wp.array(dtype=wp.vec3),
+    source_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.vec3),
+):
+    """Vector-valued gather covering cloth/particle-style position gradients."""
+    tid = wp.tid()
+    output[tid] = values[source_indices[tid]]
+
+
+@wp.kernel
+def gather_with_nongrad_input_kernel(
+    values: wp.array(dtype=wp.float32),
+    source_indices: wp.array(dtype=wp.int32),
+    scale: wp.array(dtype=wp.float32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Read a non-differentiable input while accumulating into another gradient."""
+    tid = wp.tid()
+    output[tid] = values[source_indices[tid]] * scale[0]
+
+
+@wp.kernel
 def vec3_atomic_minmax_kernel(
     points: wp.array(dtype=wp.vec3),
     out_min: wp.array(dtype=wp.vec3),
@@ -602,6 +640,17 @@ def custom_adjoint_lookup_kernel(
     tid = wp.tid()
     value = _det_lookup_value(values, indices[tid])
     wp.atomic_add(output, 0, value)
+
+
+@wp.kernel
+def custom_adjoint_gather_kernel(
+    values: wp.array(dtype=wp.float32),
+    indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.float32),
+):
+    """Use a custom adjoint that scatters per-lane output gradients."""
+    tid = wp.tid()
+    output[tid] = _det_lookup_value(values, indices[tid])
 
 
 @wp.func
@@ -2328,6 +2377,125 @@ def test_deterministic_backward_scatter_add(test, device):
     np.testing.assert_allclose(tape.gradients[data].numpy(), np.ones(n, dtype=np.float32), rtol=0, atol=0)
 
 
+def test_deterministic_backward_address_scatter(test, device):
+    """Verify generated array-read adjoints reduce contended gradients deterministically."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 4096
+    value_count = 37
+    rng = np.random.default_rng(303)
+    values_np = rng.random(value_count, dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+    expected = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "gpu_to_gpu"
+        results = []
+        for _ in range(3):
+            values.grad.zero_()
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(gather_address_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+            tape.backward(grads={output: output_grad})
+            results.append(tape.gradients[values].numpy().copy())
+    finally:
+        wp.config.deterministic = old_det
+
+    for result in results:
+        np.testing.assert_array_equal(result, expected)
+
+
+def test_deterministic_backward_vec3_address_scatter(test, device):
+    """Verify vector-valued array-read adjoints are also reduced deterministically."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 2048
+    value_count = 29
+    rng = np.random.default_rng(304)
+    values_np = rng.random((value_count, 3), dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random((n, 3), dtype=np.float32)
+    expected = np.zeros((value_count, 3), dtype=np.float32)
+    for value, index in zip(grad_np, indices_np, strict=True):
+        expected[index] = np.float32(expected[index] + value)
+
+    values = wp.array(values_np, dtype=wp.vec3, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.vec3, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "gpu_to_gpu"
+        results = []
+        for _ in range(3):
+            values.grad.zero_()
+            output = wp.zeros(n, dtype=wp.vec3, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(vec3_gather_address_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+            tape.backward(grads={output: output_grad})
+            results.append(tape.gradients[values].numpy().copy())
+    finally:
+        wp.config.deterministic = old_det
+
+    for result in results:
+        np.testing.assert_array_equal(result, expected)
+
+
+def test_deterministic_backward_missing_adjoint_target(test, device):
+    """Verify backward deterministic reductions ignore array reads with no grad buffer."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 2048
+    value_count = 23
+    rng = np.random.default_rng(305)
+    values_np = rng.random(value_count, dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+    expected = np.zeros(1, dtype=np.float32)
+    for grad, index in zip(grad_np, indices_np, strict=True):
+        expected[0] = np.float32(expected[0] + np.float32(grad * values_np[index]))
+
+    values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=False)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    scale = wp.ones(1, dtype=wp.float32, device=device, requires_grad=True)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "gpu_to_gpu"
+        results = []
+        for _ in range(3):
+            scale.grad.zero_()
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    gather_with_nongrad_input_kernel,
+                    dim=n,
+                    inputs=[values, indices, scale],
+                    outputs=[output],
+                    device=device,
+                )
+            tape.backward(grads={output: output_grad})
+            results.append(tape.gradients[scale].numpy().copy())
+    finally:
+        wp.config.deterministic = old_det
+
+    for result in results:
+        np.testing.assert_array_equal(result, expected)
+
+
 def test_deterministic_backward_counter_store(test, device):
     """Verify counter-mode array stores preserve ``array_store`` adjoints."""
     if device.is_cpu:
@@ -2393,6 +2561,44 @@ def test_deterministic_custom_adjoint_array_atomic(test, device):
 
     expected = np.bincount(indices_np, minlength=value_count).astype(np.float32)
     np.testing.assert_allclose(tape.gradients[values].numpy(), expected, rtol=0, atol=0)
+
+
+def test_deterministic_custom_adjoint_gather_atomic(test, device):
+    """Verify custom ``wp.adjoint[array]`` atomics use deterministic backward reduction."""
+    if device.is_cpu:
+        test.skipTest("CUDA backward launch coverage required")
+
+    n = 2048
+    value_count = 31
+    rng = np.random.default_rng(305)
+    values_np = rng.random(value_count, dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+    expected = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = "gpu_to_gpu"
+        results = []
+        for _ in range(3):
+            values.grad.zero_()
+            output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    custom_adjoint_gather_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device
+                )
+            tape.backward(grads={output: output_grad})
+            results.append(tape.gradients[values].numpy().copy())
+    finally:
+        wp.config.deterministic = old_det
+
+    for result in results:
+        np.testing.assert_array_equal(result, expected)
 
 
 def test_deterministic_custom_adjoint_store_function(test, device):
@@ -2897,6 +3103,24 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic,
+    "test_deterministic_backward_address_scatter",
+    test_deterministic_backward_address_scatter,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_backward_vec3_address_scatter",
+    test_deterministic_backward_vec3_address_scatter,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_backward_missing_adjoint_target",
+    test_deterministic_backward_missing_adjoint_target,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
     "test_deterministic_backward_counter_store",
     test_deterministic_backward_counter_store,
     devices=cuda_devices,
@@ -2911,6 +3135,12 @@ add_function_test(
     TestDeterministic,
     "test_deterministic_custom_adjoint_array_atomic",
     test_deterministic_custom_adjoint_array_atomic,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_deterministic_custom_adjoint_gather_atomic",
+    test_deterministic_custom_adjoint_gather_atomic,
     devices=cuda_devices,
 )
 add_function_test(
