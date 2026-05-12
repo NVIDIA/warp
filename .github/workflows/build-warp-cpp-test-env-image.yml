@@ -1,0 +1,119 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build Warp C++ Test Environment Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - docker/warp-cpp-test-env/**
+      - .github/workflows/build-warp-cpp-test-env-image.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build CUDA 13.0.2
+    if: github.repository == 'NVIDIA/warp'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        run: |
+          CUDA_VERSION="13.0.2"
+          UBUNTU_VERSION="24.04"
+          CUDA_MAJOR="${CUDA_VERSION%%.*}"
+          DATE_TAG=$(date -u +%Y%m%d)
+          CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          SHORT_SHA="${GITHUB_SHA::12}"
+
+          # Lowercase repository owner for GHCR compatibility
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-cpp-test-env"
+          TAG_BASE="cuda${CUDA_VERSION}-ubuntu${UBUNTU_VERSION}"
+
+          TAGS="${IMAGE_BASE}:${TAG_BASE}-${DATE_TAG}"
+          TAGS="${TAGS},${IMAGE_BASE}:${TAG_BASE}-${SHORT_SHA}"
+          TAGS="${TAGS},${IMAGE_BASE}:${TAG_BASE}-latest"
+          TAGS="${TAGS},${IMAGE_BASE}:cuda${CUDA_MAJOR}"
+          TAGS="${TAGS},${IMAGE_BASE}:latest"
+
+          {
+            echo "tags=${TAGS}"
+            echo "tag_base=${TAG_BASE}"
+            echo "date_tag=${DATE_TAG}"
+            echo "created_at=${CREATED_AT}"
+            echo "short_sha=${SHORT_SHA}"
+            echo "image_base=${IMAGE_BASE}"
+            echo "cuda_version=${CUDA_VERSION}"
+            echo "cuda_major=${CUDA_MAJOR}"
+            echo "ubuntu_version=${UBUNTU_VERSION}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: docker/warp-cpp-test-env
+          file: docker/warp-cpp-test-env/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            CUDA_VERSION=${{ steps.meta.outputs.cuda_version }}
+            UBUNTU_VERSION=${{ steps.meta.outputs.ubuntu_version }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=warp-cpp-test-env
+          cache-to: type=gha,mode=max,scope=warp-cpp-test-env
+          labels: |
+            org.opencontainers.image.title=Warp C++ Test Environment
+            org.opencontainers.image.description=Testing environment for NVIDIA Warp C++ examples with CUDA ${{ steps.meta.outputs.cuda_version }}
+            org.opencontainers.image.vendor=NVIDIA
+            org.opencontainers.image.licenses=NVIDIA CUDA EULA AND Apache-2.0
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created_at }}
+            cuda.version=${{ steps.meta.outputs.cuda_version }}
+            ubuntu.version=${{ steps.meta.outputs.ubuntu_version }}
+
+      - name: Verify image
+        run: |
+          IMAGE="${{ steps.meta.outputs.image_base }}:${{ steps.meta.outputs.tag_base }}-${{ steps.meta.outputs.short_sha }}"
+
+          docker pull "${IMAGE}"
+          docker run --rm "${IMAGE}" bash -lc 'nvcc --version && cmake --version && uv --version'
+
+          SIZE_BYTES=$(docker image inspect "${IMAGE}" --format='{{.Size}}')
+          SIZE_HUMAN=$(numfmt --to=iec-i --suffix=B "${SIZE_BYTES}")
+
+          {
+            echo "## Published Warp C++ test environment"
+            echo ""
+            echo "- CUDA: ${{ steps.meta.outputs.cuda_version }}"
+            echo "- Ubuntu: ${{ steps.meta.outputs.ubuntu_version }}"
+            echo "- Platform: linux/amd64"
+            echo "- Size: ${SIZE_HUMAN}"
+            echo "- Immutable tag: \`${IMAGE}\`"
+            echo "- Stable tags: \`${{ steps.meta.outputs.image_base }}:${{ steps.meta.outputs.tag_base }}-latest\`, \`${{ steps.meta.outputs.image_base }}:cuda${{ steps.meta.outputs.cuda_major }}\`, \`${{ steps.meta.outputs.image_base }}:latest\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
