@@ -9227,11 +9227,17 @@ def _launch_deterministic(
         run_sort_reduce,
     )
 
-    launch_hook = hooks.backward if adjoint else hooks.forward
-    shared_memory_bytes = hooks.backward_smem_bytes if adjoint else hooks.forward_smem_bytes
     launch_kind = "backward" if adjoint else "forward"
 
-    if hooks is None or launch_hook is None:
+    if hooks is None:
+        raise RuntimeError(
+            f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+        )
+
+    launch_hook = hooks.backward if adjoint else hooks.forward
+    shared_memory_bytes = hooks.backward_smem_bytes if adjoint else hooks.forward_smem_bytes
+
+    if launch_hook is None:
         raise RuntimeError(
             f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
         )
