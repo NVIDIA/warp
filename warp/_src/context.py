@@ -4651,8 +4651,13 @@ class Runtime:
             self.core.wp_alloc_tracker_push_scope.restype = None
             self.core.wp_alloc_tracker_pop_scope.argtypes = []
             self.core.wp_alloc_tracker_pop_scope.restype = None
-            self.core.wp_alloc_tracker_report.argtypes = [ctypes.c_int, ctypes.c_int]
-            self.core.wp_alloc_tracker_report.restype = ctypes.c_char_p
+            self.core.wp_alloc_tracker_report.argtypes = [
+                ctypes.POINTER(ctypes.c_char),
+                ctypes.c_size_t,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_alloc_tracker_report.restype = ctypes.c_size_t
             self.core.wp_alloc_tracker_get_current_bytes.argtypes = []
             self.core.wp_alloc_tracker_get_current_bytes.restype = ctypes.c_size_t
             self.core.wp_alloc_tracker_get_peak_bytes.argtypes = []
@@ -11399,15 +11404,29 @@ def _stop_global_alloc_tracking():
         pass
 
 
+def alloc_tracker_report_text(sort_order: int, max_items: int) -> str:
+    """Return an allocation tracker report from the native caller-owned buffer API.
+
+    The native API returns the required byte count excluding the null terminator.
+    """
+    cap = 64 * 1024
+
+    while True:
+        buf = ctypes.create_string_buffer(cap)
+        needed = runtime.core.wp_alloc_tracker_report(buf, cap, sort_order, max_items)
+        if needed < cap:
+            return buf.value.decode("utf-8")
+
+        cap = needed + 1
+
+
 def print_memory_report(file=None, sort="size", max_items=10):
     """Print a report of all currently tracked memory allocations.
 
     Requires :attr:`warp.config.track_memory` to be ``True`` (set before
     :func:`warp.init`), or an active :class:`~warp.ScopedMemoryTracker`.
-
-    .. note::
-
-        Not safe to call concurrently from multiple threads.
+    Concurrent calls produce serialized snapshots of the global tracker
+    state.
 
     Args:
         file: File object to write to (defaults to ``sys.stdout``).
@@ -11432,9 +11451,9 @@ def print_memory_report(file=None, sort="size", max_items=10):
             "or use wp.ScopedMemoryTracker as a context manager."
         )
     sort_order = 1 if sort == "chronological" else 0
-    text = runtime.core.wp_alloc_tracker_report(sort_order, max_items)
+    text = alloc_tracker_report_text(sort_order, max_items)
     if text:
-        print(text.decode("utf-8"), file=file or sys.stdout, end="")
+        print(text, file=file or sys.stdout, end="")
 
 
 def get_warp_version():

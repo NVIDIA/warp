@@ -84,6 +84,8 @@
 - Fix tile reassignment from register storage to shared storage after `wp.tile_matmul()`
   ([GH-1439](https://github.com/NVIDIA/warp/issues/1439)).
 - Fix memory leak with retained graph allocations ([GH-1429](https://github.com/NVIDIA/warp/issues/1429)).
+- Fix a data race in `wp.ScopedMemoryTracker.report()` that could corrupt the report when called
+  concurrently from multiple threads ([GH-1415](https://github.com/NVIDIA/warp/issues/1415)).
 
 ### Documentation
 

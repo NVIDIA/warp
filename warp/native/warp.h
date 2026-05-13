@@ -644,7 +644,7 @@ WP_API void wp_alloc_tracker_reset();
 WP_API void wp_alloc_tracker_set_tag(void* ptr, const char* tag);
 WP_API void wp_alloc_tracker_push_scope(const char* name);
 WP_API void wp_alloc_tracker_pop_scope();
-WP_API const char* wp_alloc_tracker_report(int sort_order = 0, int max_items = 10);
+WP_API size_t wp_alloc_tracker_report(char* buf, size_t cap, int sort_order = 0, int max_items = 10);
 WP_API size_t wp_alloc_tracker_get_current_bytes();
 WP_API size_t wp_alloc_tracker_get_peak_bytes();
 WP_API size_t wp_alloc_tracker_get_total_alloc_count();

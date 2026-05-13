@@ -1894,6 +1894,10 @@ class ScopedMemoryTracker:
     ``(native:bvh)``), while Python allocations include the call-site
     file, line, and function name.
 
+    Scope stacks are thread-local, while allocation totals and reports are
+    global.  When tracking allocations from worker threads, prefer enabling
+    tracking before starting the workers.
+
     Args:
         name: Scope name for grouping allocations.  Nested trackers form a
             hierarchical scope path, e.g. ``"simulation/collision"``.
@@ -1962,10 +1966,8 @@ class ScopedMemoryTracker:
         """Print an allocation report.
 
         Can be called multiple times -- each call reflects the current state.
-
-        .. note::
-
-            Not safe to call concurrently from multiple threads.
+        Concurrent calls produce serialized snapshots of the global tracker
+        state.
 
         Args:
             file: File object to write to (defaults to ``sys.stdout``).
@@ -1980,16 +1982,13 @@ class ScopedMemoryTracker:
         if sort not in ("size", "chronological"):
             raise ValueError(f"Invalid sort order {sort!r}; expected 'size' or 'chronological'")
 
-        from warp._src.context import runtime  # noqa: PLC0415
-
         sort_order = 1 if sort == "chronological" else 0
-        text = runtime.core.wp_alloc_tracker_report(sort_order, max_items)
+        text = warp._src.context.alloc_tracker_report_text(sort_order, max_items)
         if text:
-            decoded = text.decode("utf-8")
             if self.report_func is not None:
-                self.report_func(decoded)
+                self.report_func(text)
             else:
-                print(decoded, file=file or sys.stdout, end="")
+                print(text, file=file or sys.stdout, end="")
 
     def clear(self):
         """Reset all tracking data while keeping the tracker active.

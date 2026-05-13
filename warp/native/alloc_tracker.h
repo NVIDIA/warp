@@ -40,11 +40,9 @@ public:
     // Associate a tag with an existing live allocation identified by pointer.
     void set_tag(void* ptr, const char* tag);
 
-    // Returns a pointer to an internal buffer.  The caller must copy the
-    // string before the next call to report() from any thread.
     // sort_order: 0 = by size descending (default), 1 = chronological (oldest first)
     // max_items: maximum number of individual allocations shown per category
-    const char* report(int sort_order = 0, int max_items = 10);
+    std::string report(int sort_order = 0, int max_items = 10);
 
     size_t get_current_bytes();
     size_t get_peak_bytes();
@@ -98,9 +96,6 @@ private:
 
     // Scope breakdown: (scope, kind, ordinal) -> (count, bytes)
     std::unordered_map<ScopeKey, std::pair<size_t, size_t>, ScopeKeyHash> m_scope_stats;
-
-    // Buffer for report() return value
-    std::string m_report_buf;
 };
 
 extern AllocTracker g_alloc_tracker;

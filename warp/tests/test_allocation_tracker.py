@@ -3,19 +3,25 @@
 
 import gc
 import io
+import threading
+import traceback
 import unittest
 
 import numpy as np
 
 import warp as wp
+import warp._src.context as warp_context
 from warp.tests.unittest_utils import *
 
 
 def _core():
-    """Return the native core library handle (lazy, after wp.init)."""
-    from warp._src.context import runtime  # noqa: PLC0415
+    """Return the native core library handle (lazy, after ``wp.init``)."""
+    return warp_context.runtime.core
 
-    return runtime.core
+
+def _report(sort_order=0, max_items=10):
+    """Return the native allocation tracker report as text."""
+    return warp_context.alloc_tracker_report_text(sort_order, max_items)
 
 
 def test_basic_tracking(test, device):
@@ -50,7 +56,7 @@ def test_scope_nesting(test, device):
         with wp.ScopedMemoryTracker("inner", print=False):
             b = wp.zeros(20, dtype=wp.float32, device=device)
 
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
 
     test.assertIn("outer", report)
     test.assertIn("outer/inner", report)
@@ -89,7 +95,7 @@ def test_callsite_capture(test, device):
         _core().wp_alloc_tracker_reset()
         a = wp.zeros(32, dtype=wp.float32, device=device)
 
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
 
     test.assertIn("array[float32, 32]", report)
 
@@ -121,7 +127,7 @@ def test_native_hashgrid(test, device):
 
         live = _core().wp_alloc_tracker_get_live_count()
         total_bytes = _core().wp_alloc_tracker_get_current_bytes()
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
 
     test.assertGreater(live, 0, "HashGrid should produce tracked allocations")
     test.assertGreater(total_bytes, 0)
@@ -145,7 +151,7 @@ def test_native_mesh(test, device):
 
         live = _core().wp_alloc_tracker_get_live_count()
         total_bytes = _core().wp_alloc_tracker_get_current_bytes()
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
 
     test.assertGreater(live, 0, "Mesh should produce tracked allocations")
     test.assertGreater(total_bytes, 0)
@@ -183,7 +189,7 @@ def test_pinned_memory(test, device):
 
         a = wp.zeros(512, dtype=wp.float32, device="cpu", pinned=True)
 
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
         live = _core().wp_alloc_tracker_get_live_count()
 
     test.assertGreater(live, 0)
@@ -223,18 +229,16 @@ def test_report_after_exit(test, device):
 
 def test_multithreaded_scopes(test, device):
     """Verify that thread-local scope stacks are independent."""
-    import threading  # noqa: PLC0415
-
-    results = {}
+    arrays = []
+    arrays_lock = threading.Lock()
 
     def worker(name, size):
         with wp.ScopedMemoryTracker(name, print=False):
             a = wp.zeros(size, dtype=wp.float32, device=device)
             with wp.ScopedMemoryTracker("inner", print=False):
                 b = wp.zeros(size, dtype=wp.float32, device=device)
-            report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
-            results[name] = report
-            del a, b
+            with arrays_lock:
+                arrays.extend((a, b))
 
     with wp.ScopedMemoryTracker("mt_root", print=False):
         _core().wp_alloc_tracker_reset()
@@ -246,8 +250,46 @@ def test_multithreaded_scopes(test, device):
         t1.join()
         t2.join()
 
-    test.assertIn("thread_a", results.get("thread_a", ""))
-    test.assertIn("thread_b", results.get("thread_b", ""))
+        report = _report()
+
+    test.assertIn("thread_a", report)
+    test.assertIn("thread_b", report)
+    test.assertIn("thread_a/inner", report)
+    test.assertIn("thread_b/inner", report)
+
+
+def test_concurrent_reports(test, device):
+    """Verify that concurrent reports copy into caller-owned buffers."""
+    errors = []
+    errors_lock = threading.Lock()
+    start_event = threading.Event()
+
+    def worker(tid):
+        start_event.wait()
+        try:
+            for i in range(10):
+                with wp.ScopedMemoryTracker(f"report_thread_{tid}", print=False):
+                    a = wp.zeros(32 + tid + i, dtype=wp.float32, device=device)
+                    report = _report(max_items=2)
+                    if "Allocation Tracking Report" not in report:
+                        raise AssertionError("Missing report header")
+                    del a
+        except Exception:
+            with errors_lock:
+                errors.append(traceback.format_exc())
+
+    with wp.ScopedMemoryTracker("concurrent_reports", print=False):
+        _core().wp_alloc_tracker_reset()
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(4)]
+        for t in threads:
+            t.start()
+        start_event.set()
+        for t in threads:
+            t.join()
+
+    if errors:
+        test.fail("\n".join(errors[:2]))
 
 
 def test_native_label_hashgrid_on_cpu(test, device):
@@ -260,7 +302,7 @@ def test_native_label_hashgrid_on_cpu(test, device):
 
         grid = wp.HashGrid(dim_x=5, dim_y=5, dim_z=5, device=device)
 
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
 
     test.assertIn("(native:hashgrid)", report)
 
@@ -280,7 +322,7 @@ def test_native_label_bvh_on_cpu(test, device):
 
         bvh = wp.Bvh(lowers, uppers)
 
-        report = _core().wp_alloc_tracker_report(0, 10).decode("utf-8")
+        report = _report()
 
     test.assertIn("(native:bvh)", report)
 
@@ -313,6 +355,7 @@ add_function_test(
 )
 add_function_test(TestAllocTracker, "test_report_after_exit", test_report_after_exit, devices=devices)
 add_function_test(TestAllocTracker, "test_multithreaded_scopes", test_multithreaded_scopes, devices=devices)
+add_function_test(TestAllocTracker, "test_concurrent_reports", test_concurrent_reports, devices=devices)
 add_function_test(
     TestAllocTracker, "test_native_label_hashgrid_on_cpu", test_native_label_hashgrid_on_cpu, devices=devices
 )
