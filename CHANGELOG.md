@@ -112,6 +112,10 @@
   `warnings.filterwarnings()` ([GH-1315](https://github.com/NVIDIA/warp/issues/1315)).
 - Fix retained Python module references when repeated `module="unique"` kernel declarations reuse an existing unique
   module ([GH-1462](https://github.com/NVIDIA/warp/issues/1462)).
+- Accept parenthesized multi-line lambda bodies (the default formatting produced by ruff v0.15+)
+  in `wp.utils.create_warp_function()` and `wp.map()`. Previously such bodies raised
+  `IndentationError` when re-emitted as a `return` expression
+  ([GH-1351](https://github.com/NVIDIA/warp/issues/1351)).
 
 ### Documentation
 

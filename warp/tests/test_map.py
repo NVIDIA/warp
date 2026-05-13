@@ -125,6 +125,36 @@ def test_lambda(test, device):
     )
     assert_np_equal(out.numpy(), expected, tol=1e-6)
 
+    # GH-1351: parenthesized multi-line body without backslash continuation
+    # (the default formatting produced by ruff v0.15+).
+    # fmt: off
+    out = wp.map(
+        lambda a: (
+            a + 1.0
+            + 2.0
+            + 3.0
+        ),
+        a1,
+    )
+    # fmt: on
+    expected = np.array(np.arange(10) + 6.0, dtype=np.float32)
+    assert_np_equal(out.numpy(), expected)
+
+    # GH-1351: parenthesized multi-line boolean body.
+    bools = wp.empty(10, dtype=bool, device=device)
+    # fmt: off
+    wp.map(
+        lambda a: (
+            a > 0.0
+            and a < 5.0
+        ),
+        a1,
+        out=bools,
+    )
+    # fmt: on
+    expected = np.array([0.0 < i < 5.0 for i in range(10)], dtype=bool)
+    assert_np_equal(bools.numpy(), expected)
+
 
 def test_multiple_return_values(test, device):
     @wp.func
