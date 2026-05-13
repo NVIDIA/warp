@@ -41,26 +41,123 @@ In addition, formatted C-style printing for *scalar types* is available through 
 
         wp.printf("A float value %f, an int value: %d\n", x, i)
 
-Verbose Mode and Printing Launches
-----------------------------------
+Diagnostics and Logging
+-----------------------
 
 For complex applications, it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
 these issues, Warp supports a simple option to print out all launches and arguments to the console::
 
     wp.config.print_launches = True
 
-Verbose mode can also be enabled with::
+Log Level
+^^^^^^^^^
 
-    wp.config.verbose = True
+Warp emits informational, warning, and error messages through its own logging
+infrastructure. The verbosity is controlled by a single global threshold:
 
-In verbose mode, additional messages will be printed to standard output regarding program progress and
-code generation, such as when operations may be non-differentiable.
+.. code-block:: python
 
-Verbose *warnings* can be enabled with::
+    wp.config.log_level = wp.LOG_DEBUG    # most verbose: codegen details, module loads
+    wp.config.log_level = wp.LOG_INFO     # default: init banner, compile timings
+    wp.config.log_level = wp.LOG_WARNING  # warnings and errors only
+    wp.config.log_level = wp.LOG_ERROR    # errors only
+
+Messages below the threshold are suppressed. Errors always emit regardless of
+the level.
+
+At ``wp.LOG_DEBUG``, additional messages are printed to standard output
+regarding program progress and code generation, such as when operations may be
+non-differentiable.
+
+.. note::
+    The legacy ``wp.config.verbose`` and ``wp.config.quiet`` flags are
+    deprecated. Migrate to ``wp.config.log_level``:
+
+    - ``wp.config.verbose = True`` → ``wp.config.log_level = wp.LOG_DEBUG``
+    - ``wp.config.quiet = True`` → ``wp.config.log_level = wp.LOG_WARNING``
+
+    Reading or setting either deprecated flag emits a one-time
+    ``DeprecationWarning``. During the deprecation window the flag is still
+    honored alongside ``log_level``, so existing code keeps working; remove the
+    flag once your code sets ``log_level`` directly.
+
+    ``wp.config.verbose_warnings`` is not deprecated. It is an orthogonal
+    formatting flag that controls whether warning messages include the source
+    location and has no ``log_level`` equivalent.
+
+Verbose Warnings
+^^^^^^^^^^^^^^^^
+
+To include the source location in each ``Warp UserWarning`` message, enable::
 
     wp.config.verbose_warnings = True
 
-This can be useful in identifying where a particular ``Warp UserWarning`` message is being emitted from.
+This can be useful in identifying where a particular warning is being emitted from.
+
+Custom Loggers
+^^^^^^^^^^^^^^
+
+By default Warp routes diagnostics through a built-in logger that writes
+debug and info messages to ``sys.stdout``, errors to ``sys.stderr``, and
+routes warnings through Python's :mod:`warnings` filter machinery so that
+``-W`` flags and :func:`warnings.simplefilter` work as expected.
+
+Frameworks that want to capture Warp's output can supply a custom logger.
+:class:`wp.Logger <warp.Logger>` is a runtime-checkable :class:`~typing.Protocol`,
+so any object with the four methods below works. There is no need to inherit
+from a Warp base class; framework integrators typically wrap an existing
+logger in a small adapter:
+
+.. code-block:: python
+
+    class MyLogger:
+        def debug(self, message): ...
+        def info(self, message): ...
+        def warning(self, message, category=None, stacklevel=1): ...
+        def error(self, message): ...
+
+    wp.set_logger(MyLogger())
+
+The ``warning`` method must accept the ``category`` and ``stacklevel`` keyword
+arguments even if the adapter ignores them: the internal emitter passes them
+by name, so an adapter without those parameters raises ``TypeError`` at the
+first warning. The built-in default logger uses them to integrate with
+Python's :mod:`warnings` filter machinery.
+
+To forward Warp's diagnostics into an existing :mod:`logging` pipeline, wrap
+:class:`logging.Logger` in a small adapter:
+
+.. code-block:: python
+
+    import logging
+    import warp as wp
+
+    app_logger = logging.getLogger("myapp.warp")
+
+    class StdlibAdapter:
+        def debug(self, message): app_logger.debug(message)
+        def info(self, message): app_logger.info(message)
+        def warning(self, message, category=None, stacklevel=1): app_logger.warning(message)
+        def error(self, message): app_logger.error(message)
+
+    wp.set_logger(StdlibAdapter())
+
+This routes all of Warp's output through stdlib :mod:`logging` (and any
+handlers, filters, or formatters configured on it). Note that this loses
+the default logger's integration with Python's :mod:`warnings` filter
+machinery (e.g. ``-W`` flags, :func:`warnings.filterwarnings`); the adapter
+emits warnings as plain log records instead.
+
+To temporarily install a logger, use :class:`wp.ScopedLogger <warp.ScopedLogger>`,
+which restores the previous logger on context exit:
+
+.. code-block:: python
+
+    with wp.ScopedLogger(my_capture_logger):
+        wp.launch(my_kernel, ...)  # diagnostics flow to my_capture_logger
+
+Pass ``None`` to ``wp.set_logger()`` or ``wp.ScopedLogger()`` to restore
+Warp's built-in default logger.
 
 .. _debug-mode:
 

@@ -413,7 +413,7 @@ def test_generic_kernel_no_overloads_with_regular_kernel(test, device):
     )
 
     # This should succeed with a warning about the generic kernel without overloads
-    with contextlib.redirect_stdout(io.StringIO()) as f:
+    with contextlib.redirect_stderr(io.StringIO()) as f:
         wp.compile_aot_module(warp.tests.aot.aux_test_mixed_regular_and_generic, device)
 
     # Verify a warning was issued
@@ -447,7 +447,7 @@ def test_mixed_generic_kernels_some_without_overloads(test, device):
     )
 
     # This should succeed with a warning about the generic kernel without overloads
-    with contextlib.redirect_stdout(io.StringIO()) as f:
+    with contextlib.redirect_stderr(io.StringIO()) as f:
         wp.compile_aot_module(warp.tests.aot.aux_test_mixed_generic_kernels, device, strip_hash=False)
 
     # Verify a warning was issued

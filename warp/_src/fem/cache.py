@@ -14,8 +14,8 @@ import warp as wp
 from warp._src.codegen import Struct, StructInstance, get_annotations
 from warp._src.fem.operator import Integrand
 from warp._src.fem.types import Domain, Field
+from warp._src.logger import log_warning
 from warp._src.types import get_type_code, type_repr, type_scalar_type, type_size, type_size_in_bytes, type_to_warp
-from warp._src.utils import warn
 
 _wp_module_name_ = "warp.fem.cache"
 
@@ -224,7 +224,7 @@ def populate_argument_struct(value_struct: StructInstance, values: dict[str, Any
 
     missing_values = Args.vars.keys() - values.keys()
     if missing_values:
-        warn(
+        log_warning(
             f"Missing values for parameter(s) '{', '.join(missing_values)}' of the function '{func_name}', will be zero-initialized"
         )
 

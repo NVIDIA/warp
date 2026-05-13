@@ -3,6 +3,7 @@
 
 """Tests for graph capture and replay on CPU and CUDA devices."""
 
+import ctypes
 import gc
 import time
 import unittest
@@ -32,7 +33,22 @@ def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.ar
 
 
 class TestGraph(unittest.TestCase):
-    pass
+    def test_cuda_graph_memory_bindings(self):
+        core = wp._src.context.runtime.core
+
+        def get_ctypes_binding(name):
+            bindings = getattr(core, "ctypes", None)
+            if bindings is not None and hasattr(bindings, name):
+                return getattr(bindings, name)
+            return getattr(core, name)
+
+        get_current = get_ctypes_binding("wp_cuda_device_get_graph_mem_current")
+        trim = get_ctypes_binding("wp_cuda_device_graph_mem_trim")
+
+        self.assertEqual(get_current.argtypes, [ctypes.c_int])
+        self.assertIs(get_current.restype, ctypes.c_uint64)
+        self.assertEqual(trim.argtypes, [ctypes.c_int])
+        self.assertIsNone(trim.restype)
 
 
 def test_graph_single_kernel(test, device):

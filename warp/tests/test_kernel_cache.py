@@ -43,7 +43,7 @@ class TestKernelCache(unittest.TestCase):
         """Warn when the unversioned base directory contains stale wp_ artifacts."""
         with tempfile.TemporaryDirectory() as tmp:
             os.makedirs(os.path.join(tmp, "wp_stale_module"))
-            with patch("warp._src.utils.warn") as mock_warn:
+            with patch("warp._src.logger.log_warning") as mock_warn:
                 warp._src.build.init_kernel_cache(path=tmp)
                 mock_warn.assert_called_once()
                 self.assertIn("previous Warp version", mock_warn.call_args[0][0])
@@ -51,7 +51,7 @@ class TestKernelCache(unittest.TestCase):
     def test_no_stale_artifacts_warning(self):
         """No warning when the base directory is clean."""
         with tempfile.TemporaryDirectory() as tmp:
-            with patch("warp._src.utils.warn") as mock_warn:
+            with patch("warp._src.logger.log_warning") as mock_warn:
                 warp._src.build.init_kernel_cache(path=tmp)
                 mock_warn.assert_not_called()
 

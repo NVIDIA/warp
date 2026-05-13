@@ -40,7 +40,7 @@ def test_kernel_read_kernel_write(test, device):
 
         tape = wp.Tape()
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
             with tape:
                 wp.launch(square_kernel, a.shape, inputs=[a], outputs=[b], device=device)
                 wp.launch(overwrite_kernel_a, c.shape, inputs=[c], outputs=[a], device=device)
@@ -83,7 +83,7 @@ def test_kernel_write_kernel_read_kernel_write(test, device):
         c = wp.zeros_like(a)
         d = wp.zeros_like(a)
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
             with tape:
                 wp.launch(double_kernel, a.shape, inputs=[a], outputs=[b], device=device)
                 wp.launch(triple_kernel, b.shape, inputs=[b], outputs=[c], device=device)
@@ -122,7 +122,7 @@ def test_kernel_read_kernel_writeread(test, device):
 
         tape = wp.Tape()
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
             with tape:
                 wp.launch(read_kernel, dim=5, inputs=[a, b], device=device)
                 wp.launch(writeread_kernel, dim=5, inputs=[a, d, c], device=device)
@@ -153,7 +153,7 @@ def test_kernel_writeread_kernel_write(test, device):
 
         tape = wp.Tape()
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
             with tape:
                 wp.launch(writeread_kernel, dim=5, inputs=[a, b, c], device=device)
                 wp.launch(write_kernel, dim=5, inputs=[a, d], device=device)
@@ -370,7 +370,7 @@ def test_in_place_operators_warning(test, device):
     try:
         wp.config.verify_autograd_array_access = True
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
 
             @wp.kernel
             def inplace_c(x: wp.array(dtype=float)):
@@ -398,7 +398,7 @@ def test_kernel_readwrite(test, device):
     try:
         wp.config.verify_autograd_array_access = True
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
 
             @wp.kernel
             def readwrite_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
@@ -426,7 +426,7 @@ def test_kernel_read_func_write(test, device):
     try:
         wp.config.verify_autograd_array_access = True
 
-        with contextlib.redirect_stdout(io.StringIO()) as f:
+        with contextlib.redirect_stderr(io.StringIO()) as f:
 
             @wp.func
             def write_func_2(x: wp.array(dtype=float), idx: int):

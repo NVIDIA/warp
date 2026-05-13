@@ -17,6 +17,7 @@ import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
 from warp._src.context import CudaMemcpyKind
 from warp._src.jax import get_jax_device
+from warp._src.logger import log_warning
 from warp._src.types import (
     array_t,
     launch_bounds_t,
@@ -25,7 +26,6 @@ from warp._src.types import (
     type_size_in_bytes,
     type_to_warp,
 )
-from warp._src.utils import warn
 
 from .xla_ffi import *
 
@@ -1320,7 +1320,7 @@ def jax_kernel(
                 try:
                     gi.zero_()
                 except Exception as e:
-                    warn(f"Failed to zero gradient array: {e}", stacklevel=2)
+                    log_warning(f"Failed to zero gradient array: {e}", stacklevel=2)
                     raise e
 
         # The same _resolve_launch_dims() is used here so that the adjoint

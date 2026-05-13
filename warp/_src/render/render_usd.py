@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import warp as wp
-from warp._src.utils import warn
+from warp._src.logger import log_error, log_info, log_warning
 
 if TYPE_CHECKING:
     from pxr import Usd
@@ -112,7 +112,7 @@ class UsdRenderer:
         elif isinstance(stage, Usd.Stage):
             self.stage = stage
         else:
-            print("Failed to create stage in renderer. Please construct with stage path or stage object.")
+            log_error("Failed to create stage in renderer. Please construct with stage path or stage object.")
         self.up_axis = up_axis.upper()
         self.fps = float(fps)
         self.time = 0.0
@@ -1031,11 +1031,12 @@ class UsdRenderer:
             This method references non-existent attributes (`self.model` and `self.body_names`)
             and will be removed in a future release.
         """
-        warn(
+        log_warning(
             "UsdRenderer.update_body_transforms() is deprecated and non-functional. "
             "It references attributes that do not exist (self.model, self.body_names) "
             "and will be removed in a future release.",
             category=DeprecationWarning,
+            stacklevel=2,
         )
         # Original broken code preserved for now
         from pxr import Sdf, UsdGeom  # noqa: PLC0415
@@ -1062,9 +1063,9 @@ class UsdRenderer:
         try:
             self.stage.Save()
         except Exception as e:
-            print("Failed to save USD stage:", e)
+            log_error(f"Failed to save USD stage: {e}")
             return False
 
         file_path = self.stage.GetRootLayer().realPath
-        print(f"Saved the USD stage file at `{file_path}`")
+        log_info(f"Saved the USD stage file at '{file_path}'")
         return True

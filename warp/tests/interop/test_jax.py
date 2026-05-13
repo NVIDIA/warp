@@ -9,6 +9,7 @@ import io
 import os
 import sys
 import unittest
+import warnings
 from functools import partial
 from typing import Any
 
@@ -107,9 +108,9 @@ def _clear_jax_namespace_modules():
 
 
 def _clear_jax_experimental_warning_cache():
-    wp._src.utils.warnings_seen = {
+    wp._src.logger._warnings_seen = {
         entry
-        for entry in wp._src.utils.warnings_seen
+        for entry in wp._src.logger._warnings_seen
         if not (
             entry[0] is DeprecationWarning
             and isinstance(entry[1], str)
@@ -120,9 +121,10 @@ def _clear_jax_experimental_warning_cache():
 
 def _import_deprecated_jax_namespace(module_name):
     _clear_jax_experimental_warning_cache()
-    with contextlib.redirect_stdout(io.StringIO()) as stdout:
+    with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+        warnings.simplefilter("always", DeprecationWarning)
         module = importlib.import_module(module_name)
-    return module, stdout.getvalue()
+    return module, stderr.getvalue()
 
 
 def test_jax_namespace_imports(test, device):

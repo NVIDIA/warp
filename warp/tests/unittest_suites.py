@@ -179,6 +179,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_launch import TestLaunch
     from warp.tests.test_lerp import TestLerp
     from warp.tests.test_linear_solvers import TestLinearSolvers
+    from warp.tests.test_logger import TestLogger
     from warp.tests.test_lvalue import TestLValue
     from warp.tests.test_math import TestMath
     from warp.tests.test_module_contamination import TestModuleContamination
@@ -311,6 +312,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLaunch,
         TestLerp,
         TestLinearSolvers,
+        TestLogger,
         TestLValue,
         TestMarchingCubes,
         TestMat,

@@ -363,7 +363,7 @@ from typing import Any
 import numpy as np
 import warp as wp
 
-wp.config.quiet = True
+wp.config.log_level = wp.LOG_WARNING
 wp.init()
 """
 

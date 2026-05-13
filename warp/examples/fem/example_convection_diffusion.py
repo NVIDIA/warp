@@ -121,7 +121,7 @@ class Example:
 
         # Solve linear system
         fem_example_utils.bsr_cg(
-            self._matrix, x=self._phi_field.dof_values, b=rhs, quiet=not wp.config.verbose, tol=1.0e-12
+            self._matrix, x=self._phi_field.dof_values, b=rhs, quiet=wp.config.log_level > wp.LOG_DEBUG, tol=1.0e-12
         )
 
     def render(self):

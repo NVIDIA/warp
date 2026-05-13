@@ -189,7 +189,7 @@ class Example:
             x_p=x_p,
             b_u=u_rhs,
             b_p=p_rhs,
-            quiet=not wp.config.verbose,
+            quiet=wp.config.log_level > wp.LOG_DEBUG,
         )
 
         wp.utils.array_cast(in_array=x_u, out_array=self._u_field.dof_values)

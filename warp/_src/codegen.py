@@ -21,6 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, ClassVar, get_args, get_origin
 
 import warp.config
+from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
 
 _wp_module_name_ = "warp.codegen"
@@ -379,11 +380,11 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             setattr(inst._ctype, field, value)
         else:
             if is_scalar(value):
-                warp._src.utils.warn(
+                log_warning(
                     f"Implicit conversion from a scalar type to the composite type "
                     f"`{type_repr(var_type)}` for struct field '{field}' is deprecated. "
                     f"Use an explicit conversion, e.g.: `{type_repr(var_type)}(...)`.",
-                    DeprecationWarning,
+                    category=DeprecationWarning,
                     stacklevel=3,
                 )
             # conversion from list/tuple, ndarray, etc.
@@ -803,12 +804,12 @@ class Var:
         # detect if we are writing to an array after reading from it within the same kernel
         if self.is_read and warp._src.codegen.options.get("verify_autograd_array_access", False):
             if "kernel_name" in kwargs and "filename" in kwargs and "lineno" in kwargs:
-                print(
-                    f"Warning: Array passed to argument {self.label} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
+                log_warning(
+                    f"Array passed to argument {self.label} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
                 )
             else:
-                print(
-                    f"Warning: Array {self} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
+                log_warning(
+                    f"Array {self} is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
                 )
         self.is_write = True
 
@@ -1813,8 +1814,9 @@ class Adjoint:
         # Warn if this kernel has backward enabled, since the gradient call
         # is forward-only and won't participate in automatic differentiation.
         if adj.used_by_backward_kernel:
-            msg = f'Warning: grad() call for function "{func.key}" is used in a kernel with enable_backward=True. The gradient call does NOT participate in automatic differentiation - gradients will not flow through this call in the backward pass.'
-            print(msg)
+            log_warning(
+                f'grad() call for function "{func.key}" is used in a kernel with enable_backward=True. The gradient call does NOT participate in automatic differentiation - gradients will not flow through this call in the backward pass.'
+            )
 
         # Ensure the function is built so its adjoint code exists.
         if not func.is_builtin():
@@ -2520,11 +2522,11 @@ class Adjoint:
             var2 = adj.symbols[sym]
 
             if var1 != var2:
-                if warp.config.verbose and not adj.custom_reverse_mode:
+                if not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source_lines[adj.lineno]
-                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}\n'
-                    print(msg)
+                    msg = f'Warning: detected mutated variable {sym} during a dynamic for-loop in function "{adj.fun_name}" at {adj.filename}:{lineno}: this may not be a differentiable operation.\n{line}'
+                    log_debug(msg)
 
                 if var1.constant is not None:
                     raise WarpCodegenError(
@@ -2653,23 +2655,21 @@ class Adjoint:
             # Always unroll if the loop contains static expressions
             if contains_static:
                 # Forced unrolling for loops with static expressions regardless of max_unroll
-                if warp.config.verbose and max_iters > max_unroll:
-                    print(
+                if max_iters > max_unroll:
+                    log_debug(
                         f"Notice: Forcing unroll of loop with {max_iters} iterations because it contains wp.static expressions."
                     )
                 return range(start, end, step)
 
             # Apply max_unroll check only for regular loops (no static expressions)
             if max_iters > max_unroll:
-                if warp.config.verbose:
-                    print(
-                        f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
-                    )
+                log_debug(
+                    f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
+                )
                 ok_to_unroll = False
 
             elif adj.contains_break(loop.body):
-                if warp.config.verbose:
-                    print("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+                log_debug("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
                 ok_to_unroll = False
 
             if ok_to_unroll:
@@ -3608,12 +3608,12 @@ class Adjoint:
                 attr = adj.add_builtin_call("indexref", [target, *indices])
                 adj.add_builtin_call("store", [attr, rhs])
 
-                if warp.config.verbose and not adj.custom_reverse_mode:
+                if not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source_lines[adj.lineno]
                     node_source = adj.get_node_source(lhs.value)
-                    print(
-                        f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n"
+                    log_debug(
+                        f"Warning: mutating {node_source} in function {adj.fun_name} at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}"
                     )
             else:
                 if adj.builder_options.get("enable_vector_component_overwrites", False):
@@ -3678,11 +3678,11 @@ class Adjoint:
             else:
                 adj.add_builtin_call("assign", [attr, rhs])
 
-            if warp.config.verbose and not adj.custom_reverse_mode:
+            if not adj.custom_reverse_mode:
                 lineno = adj.lineno + adj.fun_lineno
                 line = adj.source_lines[adj.lineno]
-                msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}\n'
-                print(msg)
+                msg = f'Warning: detected mutated struct {attr.label} during function "{adj.fun_name}" at {adj.filename}:{lineno}: this is a non-differentiable operation.\n{line}'
+                log_debug(msg)
 
     def emit_Return(adj, node):
         if node.value is None:
@@ -3894,8 +3894,7 @@ class Adjoint:
                     if adj.builder_options.get("verify_autograd_array_access", False):
                         target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
                 else:
-                    if warp.config.verbose:
-                        print(f"Warning: in-place op {node.op} is not differentiable")
+                    log_debug(f"Warning: in-place op {node.op} is not differentiable")
                     augassign_subscript(target, indices)
                     return
 
@@ -3916,8 +3915,7 @@ class Adjoint:
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("bit_xor_inplace", [target, *indices, rhs])
                 else:
-                    if warp.config.verbose:
-                        print(f"Warning: in-place op {node.op} is not differentiable")
+                    log_debug(f"Warning: in-place op {node.op} is not differentiable")
                     augassign_subscript(target, indices)
                     return
 
@@ -3933,8 +3931,7 @@ class Adjoint:
                 elif isinstance(node.op, ast.BitXor):
                     adj.add_builtin_call("tile_bit_xor_inplace", [target, *indices, rhs])
                 else:
-                    if warp.config.verbose:
-                        print(f"Warning: in-place op {node.op} is not differentiable")
+                    log_debug(f"Warning: in-place op {node.op} is not differentiable")
                     augassign_subscript(target, indices)
                     return
 
@@ -4232,8 +4229,7 @@ class Adjoint:
             value = eval(code_to_eval, vars_dict)
             if isinstance(value, (enum.IntEnum, enum.IntFlag)):
                 value = int(value)
-            if warp.config.verbose:
-                print(f"Evaluated static command: {static_code} = {value}")
+            log_debug(f"Evaluated static command: {static_code} = {value}")
         except NameError as e:
             raise WarpCodegenError(
                 f"Error evaluating static expression: {e}. Make sure all variables used in the static expression are constant."

@@ -40,7 +40,7 @@ def test_ipc_event_missing_interprocess_flag(test, device):
     e1 = wp.Event(device, interprocess=False)
 
     try:
-        capture = StdOutCapture()
+        capture = StdErrCapture()
         capture.begin()
         ipc_handle = e1.ipc_handle()
     finally:
