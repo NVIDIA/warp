@@ -83,6 +83,7 @@
   ([GH-1430](https://github.com/NVIDIA/warp/issues/1430)).
 - Fix tile reassignment from register storage to shared storage after `wp.tile_matmul()`
   ([GH-1439](https://github.com/NVIDIA/warp/issues/1439)).
+- Fix memory leak with retained graph allocations ([GH-1429](https://github.com/NVIDIA/warp/issues/1429)).
 
 ### Documentation
 

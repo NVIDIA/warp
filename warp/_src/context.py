@@ -5382,6 +5382,10 @@ class Runtime:
             self.core.wp_cuda_device_get_mempool_used_mem_current.restype = ctypes.c_uint64
             self.core.wp_cuda_device_get_mempool_used_mem_high.argtypes = [ctypes.c_int]
             self.core.wp_cuda_device_get_mempool_used_mem_high.restype = ctypes.c_uint64
+            self.core.wp_cuda_device_get_graph_mem_current.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_graph_mem_current.restype = ctypes.c_uint64
+            self.core.wp_cuda_device_graph_mem_trim.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_graph_mem_trim.restype = None
             self.core.wp_cuda_device_get_memory_info.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_device_get_memory_info.restype = None
             self.core.wp_cuda_device_get_uuid.argtypes = [ctypes.c_int, ctypes.c_char * 16]

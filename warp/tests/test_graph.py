@@ -3,6 +3,8 @@
 
 """Tests for graph capture and replay on CPU and CUDA devices."""
 
+import gc
+import time
 import unittest
 
 import numpy as np
@@ -10,6 +12,7 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import (
     add_function_test,
+    get_selected_cuda_test_devices_with_mempool,
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
     get_test_devices_with_mempool_and_cuda_graph_module_load,
@@ -163,6 +166,87 @@ def test_graph_alloc(test, device):
     np.testing.assert_allclose(output_arr.numpy(), expected)
 
 
+############################################################
+#
+# CUDA-only tests
+#
+############################################################
+
+
+def test_cuda_graph_alloc_retained_release(test, device):
+    """Release retained CUDA graph allocations after graph and user refs drop.
+
+    Allocations made during capture and stored on a Python object that
+    outlives the capture must be reclaimed once both the graph and the user
+    reference are gone.
+    """
+    device = wp.get_device(device)
+
+    n = 64 * 1024 * 1024  # allocation size should be large enough to spot a clear leak
+    size_in_bytes = n * 4
+    steps = 10
+    substeps = 5
+
+    wp_cuda_device_get_graph_mem_current = wp._src.context.runtime.core.wp_cuda_device_get_graph_mem_current
+    wp_cuda_device_graph_mem_trim = wp._src.context.runtime.core.wp_cuda_device_graph_mem_trim
+
+    class Holder:
+        """Allocate inside capture, retain on self."""
+
+        def __init__(self):
+            base = wp.zeros(n, dtype=float, device=device)
+            wp.load_module(device=device)
+            with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                for _ in range(substeps):
+                    # graph allocation retained in self
+                    self.scratch = wp.clone(base)
+                    wp.launch(scale_kernel, dim=n, inputs=[self.scratch, self.scratch, 1.0], device=device)
+            self.graph = capture.graph
+            self.base = base
+
+        def step(self):
+            wp.capture_launch(self.graph)
+
+    def cycle():
+        h = Holder()
+        for _ in range(steps):
+            h.step()
+        # h goes out of scope -> graph + scratch reference both dropped
+
+    def settle():
+        # Allow gc and deferred destructors to settle.
+        # on_graph_destroy() runs on an internal CUDA thread and might lag the Python thread.
+        # Pressure from concurrent processes could cause delays with callbacks or mempool management.
+        # Deferred destructors are processed in synchronize_device().
+        # Call wp_cuda_device_graph_mem_trim() to release any unused graph memory.
+        gc.collect()
+        wp.synchronize_device(device)  # finish GPU work, including graphs
+        time.sleep(0.1)  # wait for async callbacks to arrive (e.g., on_graph_destroy)
+        wp.synchronize_device(device)  # process deferred deallocations
+        wp_cuda_device_graph_mem_trim(device.ordinal)
+
+    # Warm up: first cycle establishes the steady-state graph mempool footprint.
+    settle()
+    cycle()
+    settle()
+    baseline = wp_cuda_device_get_graph_mem_current(device.ordinal)
+
+    # Run several more cycles.
+    n_cycles = 10
+    for _ in range(n_cycles):
+        cycle()
+        settle()
+
+    final = wp_cuda_device_get_graph_mem_current(device.ordinal)
+
+    # Allow up to 2 * size_in_bytes as headroom. A real leak would scale with n_cycles.
+    test.assertLess(
+        final - baseline,
+        2 * size_in_bytes,
+        f"graph memory leak: baseline={baseline}, final={final} after {n_cycles} cycles",
+    )
+
+
 devices = get_test_devices()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
 devices_with_mempool_and_cuda_graph_module_load = get_test_devices_with_mempool_and_cuda_graph_module_load()
@@ -192,6 +276,16 @@ add_function_test(
     "test_graph_alloc",
     test_graph_alloc,
     devices=devices_with_mempool_and_cuda_graph_module_load,
+)
+
+# CUDA-only tests
+cuda_devices = get_selected_cuda_test_devices_with_mempool()
+
+add_function_test(
+    TestGraph,
+    "test_cuda_graph_alloc_retained_release",
+    test_cuda_graph_alloc_retained_release,
+    devices=cuda_devices,
 )
 
 if __name__ == "__main__":

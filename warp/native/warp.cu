@@ -619,14 +619,12 @@ static int process_deferred_graph_destroy_callbacks(void* context = NULL)
             for (void* ptr : graph_info->unfreed_allocs) {
                 auto alloc_iter = g_graph_allocs.find(ptr);
                 if (alloc_iter != g_graph_allocs.end()) {
+                    // unlink this allocation from the destroyed graph
+                    // and free it if no user reference remains
                     GraphAllocInfo& alloc_info = alloc_iter->second;
-                    if (alloc_info.ref_exists) {
-                        // unreference from graph so the pointer will be deallocated when the user reference goes away
-                        alloc_info.graph_destroyed = true;
-                    } else {
-                        // the pointer can be freed, no references remain
+                    alloc_info.graph_destroyed = true;
+                    if (!alloc_info.ref_exists) {
                         wp_free_device_async(alloc_info.context, ptr);
-                        g_graph_allocs.erase(alloc_iter);
                     }
                 }
             }
@@ -2153,6 +2151,34 @@ uint64_t wp_cuda_device_get_mempool_used_mem_high(int ordinal)
     }
 
     return mem_high_water_mark;
+}
+
+uint64_t wp_cuda_device_get_graph_mem_current(int ordinal)
+{
+    if (ordinal < 0 || ordinal >= int(g_devices.size())) {
+        fprintf(stderr, "Invalid device ordinal %d\n", ordinal);
+        return 0;
+    }
+
+    uint64_t mem_used = 0;
+    if (!check_cuda(cudaDeviceGetGraphMemAttribute(ordinal, cudaGraphMemAttrUsedMemCurrent, &mem_used))) {
+        fprintf(stderr, "Warp error: Failed to get graph memory usage on device %d\n", ordinal);
+        return 0;
+    }
+
+    return mem_used;
+}
+
+void wp_cuda_device_graph_mem_trim(int ordinal)
+{
+    if (ordinal < 0 || ordinal >= int(g_devices.size())) {
+        fprintf(stderr, "Invalid device ordinal %d\n", ordinal);
+        return;
+    }
+
+    if (!check_cuda(cudaDeviceGraphMemTrim(ordinal))) {
+        fprintf(stderr, "Warp error: Failed to trim graph memory on device %d\n", ordinal);
+    }
 }
 
 void wp_cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem)
