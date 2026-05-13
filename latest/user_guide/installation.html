@@ -632,7 +632,15 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 The build script will look for the CUDA Toolkit in its default installation path.
 This path can be overridden by setting the <code class="docutils literal notranslate"><span class="pre">CUDA_PATH</span></code> environment variable. Alternatively,
 the path to the CUDA Toolkit can be passed to the build command as
-<code class="docutils literal notranslate"><span class="pre">--cuda-path=&quot;...&quot;</span></code>. After building, the Warp package should be installed using:</p>
+<code class="docutils literal notranslate"><span class="pre">--cuda-path=&quot;...&quot;</span></code>.</p>
+<p>By default, CUDA libraries (cudart, NVRTC, nvJitLink, MathDx) are linked statically
+to produce self-contained binaries. To link against shared CUDA libraries instead,
+pass <code class="docutils literal notranslate"><span class="pre">--use-dynamic-cuda</span></code>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>build_lib.py<span class="w"> </span>--use-dynamic-cuda
+</pre></div>
+</div>
+<p>The corresponding shared libraries must be available at runtime when using this option.</p>
+<p>After building, the Warp package should be installed using:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
 </pre></div>
 </div>
