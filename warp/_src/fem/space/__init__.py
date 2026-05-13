@@ -4,6 +4,7 @@
 # isort: skip_file
 
 from enum import Enum
+from warp._src.utils import warn
 import warp._src.fem.domain as _domain
 import warp._src.fem.geometry as _geometry
 import warp._src.fem.polynomial as _polynomial
@@ -38,6 +39,7 @@ from .dof_mapper import DofMapper, IdentityMapper, SymmetricTensorMapper, SkewSy
 
 
 def make_space_restriction(
+    space: FunctionSpace | None = None,
     space_partition: SpacePartition | None = None,
     domain: _domain.GeometryDomain | None = None,
     space_topology: SpaceTopology | None = None,
@@ -47,9 +49,10 @@ def make_space_restriction(
     """
     Restricts a function space partition to a Domain, i.e. a subset of its elements.
 
-    One of `space_partition` or `space_topology` must be provided (and will be considered in that order).
+    One of `space_partition`, `space_topology`, or `space` must be provided (and will be considered in that order).
 
     Args:
+        space: (deprecated) if neither `space_partition` nor `space_topology` are provided, the space defining the topology to restrict
         space_partition: the subset of nodes from the space topology to consider
         domain: the domain to restrict the space to, defaults to all cells of the space geometry or partition.
         space_topology: the space topology to be restricted, if `space_partition` is ``None``.
@@ -57,9 +60,18 @@ def make_space_restriction(
         temporary_store: shared pool from which to allocate temporary arrays
     """
 
+    if space is not None:
+        warn(
+            "The `space` argument of `make_space_restriction` is deprecated and will be removed in Warp 1.15. "
+            "Please use `space_partition` or `space_topology` instead.",
+            DeprecationWarning,
+        )
+
     if space_partition is None:
         if space_topology is None:
-            raise ValueError("One of `space_partition` or `space_topology` must be provided")
+            if space is None:
+                raise ValueError("One of `space_partition`, `space_topology`, or `space` must be provided")
+            space_topology = space.topology
 
         if domain is None:
             domain = _domain.Cells(geometry=space_topology.geometry)
