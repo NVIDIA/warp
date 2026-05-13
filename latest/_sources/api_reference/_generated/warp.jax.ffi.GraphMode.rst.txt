@@ -1,7 +1,7 @@
-﻿warp.jax\_experimental.ffi.GraphMode
-====================================
+﻿warp.jax.ffi.GraphMode
+======================
 
-.. currentmodule:: warp.jax_experimental.ffi
+.. currentmodule:: warp.jax.ffi
 
 .. autoclass:: GraphMode
 

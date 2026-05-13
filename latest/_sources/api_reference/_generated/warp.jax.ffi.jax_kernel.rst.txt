@@ -1,0 +1,6 @@
+﻿warp.jax.ffi.jax\_kernel
+========================
+
+.. currentmodule:: warp.jax.ffi
+
+.. autofunction:: jax_kernel

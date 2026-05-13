@@ -414,7 +414,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -534,6 +534,10 @@ them statically; the corresponding shared libraries must be present at runtime
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>: Defer the scheduled removal of the deprecated <code class="docutils literal notranslate"><span class="pre">quadrature</span></code> and <code class="docutils literal notranslate"><span class="pre">domain</span></code> arguments of <code class="docutils literal notranslate"><span class="pre">interpolate()</span></code>,
 and the <code class="docutils literal notranslate"><span class="pre">space</span></code> argument of <code class="docutils literal notranslate"><span class="pre">make_space_restriction</span></code> and <code class="docutils literal notranslate"><span class="pre">make_space_partition</span></code>, to Warp 1.15.</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> in favor of the stable public <code class="docutils literal notranslate"><span class="pre">warp.jax</span></code> API. Migrate by updating
+import statements from <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> to <code class="docutils literal notranslate"><span class="pre">warp.jax</span></code>. No API changes are required.
+<code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> will be removed in Warp 1.16.
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1370">GH-1370</a>)</p></li>
 </ul>
 </section>
 <section id="changed">

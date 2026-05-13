@@ -1,10 +1,10 @@
-warp.jax_experimental.ffi
-=========================
+warp.jax.ffi
+============
 
-.. automodule:: warp.jax_experimental.ffi
+.. automodule:: warp.jax.ffi
    :no-members:
 
-.. currentmodule:: warp.jax_experimental.ffi
+.. currentmodule:: warp.jax.ffi
 
 API
 ---

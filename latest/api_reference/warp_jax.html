@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax_experimental &#8212; Warp 1.14.0.dev0</title>
+    <title>warp.jax &#8212; Warp 1.14.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/warp_jax_experimental';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/warp_jax';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,7 +62,7 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="warp.jax_experimental.custom_call" href="warp_jax_experimental_custom_call.html" />
+    <link rel="next" title="warp.jax.device_from_jax" href="_generated/warp.jax.device_from_jax.html" />
     <link rel="prev" title="warp.fem.utils.grid_to_tris" href="_generated/warp.fem.utils.grid_to_tris.html" />
 
 
@@ -414,7 +414,7 @@
 <li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">warp.jax_experimental</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_sparse.html">warp.sparse</a></li>
@@ -458,7 +458,7 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax_experimental</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax</span></li>
   </ul>
 </nav>
 </div>
@@ -471,7 +471,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/api_reference/warp_jax_experimental.rst.txt">
+  <a href="../_sources/api_reference/warp_jax.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -488,25 +488,18 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-warp.jax_experimental">
-<span id="warp-jax-experimental"></span><h1>warp.jax_experimental<a class="headerlink" href="#module-warp.jax_experimental" title="Link to this heading">#</a></h1>
-<p>Experimental JAX integration for calling Warp kernels from JAX.</p>
-<p>This module enables using Warp kernels as JAX primitives, allowing them to be
-called inside jitted JAX functions. The
-<a class="reference internal" href="_generated/warp.jax_experimental.ffi.jax_kernel.html#warp.jax_experimental.ffi.jax_kernel" title="warp.jax_experimental.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel</span></code></a> function wraps
-individual Warp kernels, while
-<a class="reference internal" href="_generated/warp.jax_experimental.ffi.jax_callable.html#warp.jax_experimental.ffi.jax_callable" title="warp.jax_experimental.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable</span></code></a> wraps Python
-functions that launch multiple kernels. Both support automatic differentiation,
-custom launch dimensions, and CUDA graph capture.</p>
-<div class="admonition caution">
-<p class="admonition-title">Caution</p>
-<p>This module is experimental and less stable than the core Warp API. The interface
-may change as new functionality is added and to accommodate changes in upcoming
-JAX library versions.</p>
-</div>
+  <section id="module-warp.jax">
+<span id="warp-jax"></span><h1>warp.jax<a class="headerlink" href="#module-warp.jax" title="Link to this heading">#</a></h1>
+<p>JAX integration for Warp.</p>
+<p>This module provides helpers for converting arrays between Warp and JAX, along with
+JAX primitives for calling Warp kernels and Warp-backed Python functions from JAX.</p>
+<p>The <a class="reference internal" href="_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel</span></code></a> function wraps individual Warp
+kernels, while <a class="reference internal" href="_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable</span></code></a> wraps Python
+functions that launch one or more Warp kernels. Both support automatic
+differentiation, custom launch dimensions, and CUDA graph capture.</p>
 <dl>
 <dt>Usage:</dt><dd><p>This module must be explicitly imported:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp.jax_experimental</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp.jax</span>
 </pre></div>
 </div>
 </dd>
@@ -519,22 +512,48 @@ JAX library versions.</p>
 </div>
 <section id="additional-submodules">
 <h2>Additional Submodules<a class="headerlink" href="#additional-submodules" title="Link to this heading">#</a></h2>
-<p>These modules must be explicitly imported (e.g., <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp.jax_experimental.custom_call</span></code>).</p>
+<p>These modules must be explicitly imported (e.g., <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp.jax.custom_call</span></code>).</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="warp_jax_experimental_custom_call.html#module-warp.jax_experimental.custom_call" title="warp.jax_experimental.custom_call"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.jax_experimental.custom_call</span></code></a></p></li>
-<li><p><a class="reference internal" href="warp_jax_experimental_ffi.html#module-warp.jax_experimental.ffi" title="warp.jax_experimental.ffi"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.jax_experimental.ffi</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_jax_custom_call.html#module-warp.jax.custom_call" title="warp.jax.custom_call"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.jax.custom_call</span></code></a></p></li>
+<li><p><a class="reference internal" href="warp_jax_ffi.html#module-warp.jax.ffi" title="warp.jax.ffi"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.jax.ffi</span></code></a></p></li>
 </ul>
 </section>
-<section id="api">
-<h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
+<section id="jax-array-interop">
+<h2>JAX Array Interop<a class="headerlink" href="#jax-array-interop" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.device_from_jax.html#warp.jax.device_from_jax" title="warp.jax.device_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_from_jax</span></code></a></p></td>
+<td><p>Return the Warp device corresponding to a Jax device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax.device_to_jax.html#warp.jax.device_to_jax" title="warp.jax.device_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_to_jax</span></code></a></p></td>
+<td><p>Return the Jax device corresponding to a Warp device.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.dtype_from_jax.html#warp.jax.dtype_from_jax" title="warp.jax.dtype_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_jax</span></code></a></p></td>
+<td><p>Return the Warp dtype corresponding to a Jax dtype.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax.dtype_to_jax.html#warp.jax.dtype_to_jax" title="warp.jax.dtype_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_jax</span></code></a></p></td>
+<td><p>Return the Jax dtype corresponding to a Warp dtype.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.from_jax.html#warp.jax.from_jax" title="warp.jax.from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_jax</span></code></a></p></td>
+<td><p>Convert a Jax array to a Warp array without copying the data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax.to_jax.html#warp.jax.to_jax" title="warp.jax.to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_jax</span></code></a></p></td>
+<td><p>Convert a Warp array to a Jax array without copying the data.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="jax-callable-interop">
+<h2>JAX Callable Interop<a class="headerlink" href="#jax-callable-interop" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.GraphMode.html#warp.jax_experimental.ffi.GraphMode" title="warp.jax_experimental.ffi.GraphMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GraphMode</span></code></a></p></li>
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.clear_jax_callable_graph_cache.html#warp.jax_experimental.ffi.clear_jax_callable_graph_cache" title="warp.jax_experimental.ffi.clear_jax_callable_graph_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache</span></code></a></p></li>
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.get_jax_callable_default_graph_cache_max.html#warp.jax_experimental.ffi.get_jax_callable_default_graph_cache_max" title="warp.jax_experimental.ffi.get_jax_callable_default_graph_cache_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jax_callable_default_graph_cache_max</span></code></a></p></li>
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.jax_callable.html#warp.jax_experimental.ffi.jax_callable" title="warp.jax_experimental.ffi.jax_callable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_callable</span></code></a></p></li>
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.jax_kernel.html#warp.jax_experimental.ffi.jax_kernel" title="warp.jax_experimental.ffi.jax_kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_kernel</span></code></a></p></li>
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.register_ffi_callback.html#warp.jax_experimental.ffi.register_ffi_callback" title="warp.jax_experimental.ffi.register_ffi_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_ffi_callback</span></code></a></p></li>
-<li><p><a class="reference internal" href="_generated/warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max.html#warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max" title="warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_jax_callable_default_graph_cache_max</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode" title="warp.jax.ffi.GraphMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GraphMode</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.clear_jax_callable_graph_cache.html#warp.jax.ffi.clear_jax_callable_graph_cache" title="warp.jax.ffi.clear_jax_callable_graph_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.get_jax_callable_default_graph_cache_max.html#warp.jax.ffi.get_jax_callable_default_graph_cache_max" title="warp.jax.ffi.get_jax_callable_default_graph_cache_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jax_callable_default_graph_cache_max</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_callable</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_kernel</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.register_ffi_callback.html#warp.jax.ffi.register_ffi_callback" title="warp.jax.ffi.register_ffi_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_ffi_callback</span></code></a></p></li>
+<li><p><a class="reference internal" href="_generated/warp.jax.ffi.set_jax_callable_default_graph_cache_max.html#warp.jax.ffi.set_jax_callable_default_graph_cache_max" title="warp.jax.ffi.set_jax_callable_default_graph_cache_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_jax_callable_default_graph_cache_max</span></code></a></p></li>
 </ul>
 </section>
 </section>
@@ -559,11 +578,11 @@ JAX library versions.</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp_jax_experimental_custom_call.html"
+       href="_generated/warp.jax.device_from_jax.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.jax_experimental.custom_call</p>
+        <p class="prev-next-title">warp.jax.device_from_jax</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -589,7 +608,8 @@ JAX library versions.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#additional-submodules">Additional Submodules</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api">API</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-array-interop">JAX Array Interop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-callable-interop">JAX Callable Interop</a></li>
 </ul>
   </nav></div>
 
@@ -597,7 +617,7 @@ JAX library versions.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/warp_jax_experimental.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/warp_jax.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

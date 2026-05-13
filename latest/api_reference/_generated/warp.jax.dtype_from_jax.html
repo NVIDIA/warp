@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max &#8212; Warp 1.14.0.dev0</title>
+    <title>warp.jax.dtype_from_jax &#8212; Warp 1.14.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax.dtype_from_jax';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.optim" href="../warp_optim.html" />
-    <link rel="prev" title="warp.jax_experimental.ffi.register_ffi_callback" href="warp.jax_experimental.ffi.register_ffi_callback.html" />
+    <link rel="next" title="warp.jax.dtype_to_jax" href="warp.jax.dtype_to_jax.html" />
+    <link rel="prev" title="warp.jax.device_to_jax" href="warp.jax.device_to_jax.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -414,7 +414,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax_experimental.html">warp.jax_experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -459,12 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_jax_experimental.html" class="nav-link">warp.jax_experimental</a></li>
+    <li class="breadcrumb-item"><a href="../warp_jax.html" class="nav-link">warp.jax</a></li>
     
-    
-    <li class="breadcrumb-item"><a href="../warp_jax_experimental_ffi.html" class="nav-link">warp.jax_experimental.ffi</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax.dtype_from_jax</span></li>
   </ul>
 </nav>
 </div>
@@ -477,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.jax.dtype_from_jax.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -494,15 +491,15 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-jax-experimental-ffi-set-jax-callable-default-graph-cache-max">
-<h1>warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max<a class="headerlink" href="#warp-jax-experimental-ffi-set-jax-callable-default-graph-cache-max" title="Link to this heading">#</a></h1>
+  <section id="warp-jax-dtype-from-jax">
+<h1>warp.jax.dtype_from_jax<a class="headerlink" href="#warp-jax-dtype-from-jax" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max">
-<span class="sig-prename descclassname"><span class="pre">warp.jax_experimental.ffi.</span></span><span class="sig-name descname"><span class="pre">set_jax_callable_default_graph_cache_max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_max</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax_experimental/ffi.py#L1622-L1627"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max" title="Link to this definition">#</a></dt>
-<dd><p>Set the maximum size of the graph cache for graphs captured using <code class="docutils literal notranslate"><span class="pre">GraphMode.WARP</span></code>, unlimited if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dt class="sig sig-object py" id="warp.jax.dtype_from_jax">
+<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">dtype_from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_dtype</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/__init__.py#L100-L146"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax.dtype_from_jax" title="Link to this definition">#</a></dt>
+<dd><p>Return the Warp dtype corresponding to a Jax dtype.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cache_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – Unable to find a corresponding Warp data type.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -520,20 +517,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.jax_experimental.ffi.register_ffi_callback.html"
+       href="warp.jax.device_to_jax.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.jax_experimental.ffi.register_ffi_callback</p>
+        <p class="prev-next-title">warp.jax.device_to_jax</p>
       </div>
     </a>
     <a class="right-next"
-       href="../warp_optim.html"
+       href="warp.jax.dtype_to_jax.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.optim</p>
+        <p class="prev-next-title">warp.jax.dtype_to_jax</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -558,7 +555,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max"><code class="docutils literal notranslate"><span class="pre">set_jax_callable_default_graph_cache_max()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax.dtype_from_jax"><code class="docutils literal notranslate"><span class="pre">dtype_from_jax()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -566,7 +563,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax.dtype_from_jax.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

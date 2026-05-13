@@ -3,13 +3,13 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../../" >
+<html lang="en" data-content_root="../" >
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax_experimental.ffi.register_ffi_callback &#8212; Warp 1.14.0.dev0</title>
+    <title>warp.jax.ffi &#8212; Warp 1.14.0.dev0</title>
   
   
   
@@ -28,28 +28,28 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
 
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
-    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
 
 
-    <script src="../../_static/documentation_options.js?v=b37a29d0"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
-    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax_experimental.ffi.register_ffi_callback';</script>
+    <script src="../_static/documentation_options.js?v=b37a29d0"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/warp_jax_ffi';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -58,12 +58,12 @@
             true;
         </script>
 
-    <link rel="icon" href="../../_static/favicon.png"/>
+    <link rel="icon" href="../_static/favicon.png"/>
 
-    <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max" href="warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max.html" />
-    <link rel="prev" title="warp.jax_experimental.ffi.jax_kernel" href="warp.jax_experimental.ffi.jax_kernel.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="warp.jax.ffi.GraphMode" href="_generated/warp.jax.ffi.GraphMode.html" />
+    <link rel="prev" title="warp.jax.custom_call.jax_kernel" href="_generated/warp.jax.custom_call.jax_kernel.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -92,7 +92,7 @@
   <dialog id="pst-search-dialog">
     
 <form class="bd-search d-flex align-items-center"
-      action="../../search.html"
+      action="../search.html"
       method="get">
   <i class="fa-solid fa-magnifying-glass"></i>
   <input type="search"
@@ -128,7 +128,7 @@
     
   
 
-<a class="navbar-brand logo" href="../../index.html">
+<a class="navbar-brand logo" href="../index.html">
   
   
   
@@ -139,8 +139,8 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
   
   
     <p class="title logo__title">Warp 1.14.0.dev0</p>
@@ -267,7 +267,7 @@
     
   
 
-<a class="navbar-brand logo" href="../../index.html">
+<a class="navbar-brand logo" href="../index.html">
   
   
   
@@ -278,8 +278,8 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
   
   
     <p class="title logo__title">Warp 1.14.0.dev0</p>
@@ -374,56 +374,56 @@
   <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/basics.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/tiles.html">Tiles</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability_jax.html">JAX Interoperability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_jax.html">JAX Interoperability</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax_experimental.html">warp.jax_experimental</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_jax.html">warp.jax</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="warp_utils.html">warp.utils</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 </div>
 </nav></div>
@@ -454,17 +454,14 @@
   <ul class="bd-breadcrumbs">
     
     <li class="breadcrumb-item breadcrumb-home">
-      <a href="../../index.html" class="nav-link" aria-label="Home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_jax_experimental.html" class="nav-link">warp.jax_experimental</a></li>
+    <li class="breadcrumb-item"><a href="warp_jax.html" class="nav-link">warp.jax</a></li>
     
-    
-    <li class="breadcrumb-item"><a href="../warp_jax_experimental_ffi.html" class="nav-link">warp.jax_experimental.ffi</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax_experimental.ffi.register_ffi_callback</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax.ffi</span></li>
   </ul>
 </nav>
 </div>
@@ -477,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.jax_experimental.ffi.register_ffi_callback.rst.txt">
+  <a href="../_sources/api_reference/warp_jax_ffi.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -494,28 +491,43 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-jax-experimental-ffi-register-ffi-callback">
-<h1>warp.jax_experimental.ffi.register_ffi_callback<a class="headerlink" href="#warp-jax-experimental-ffi-register-ffi-callback" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.jax_experimental.ffi.register_ffi_callback">
-<span class="sig-prename descclassname"><span class="pre">warp.jax_experimental.ffi.</span></span><span class="sig-name descname"><span class="pre">register_ffi_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph_compatible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax_experimental/ffi.py#L1649-L1717"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_experimental.ffi.register_ffi_callback" title="Link to this definition">#</a></dt>
-<dd><p>Create a JAX callback from a Python function.</p>
-<p>The Python function must have the form <code class="docutils literal notranslate"><span class="pre">func(inputs,</span> <span class="pre">outputs,</span> <span class="pre">attrs,</span> <span class="pre">ctx)</span></code>.</p>
-<p>NOTE: This is an experimental feature under development.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – A unique FFI callback name.</p></li>
-<li><p><strong>func</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a>) – The Python function to call.</p></li>
-<li><p><strong>graph_compatible</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the function can be called during CUDA graph capture.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
+  <section id="module-warp.jax.ffi">
+<span id="warp-jax-ffi"></span><h1>warp.jax.ffi<a class="headerlink" href="#module-warp.jax.ffi" title="Link to this heading">#</a></h1>
+<p>Current FFI-based implementation of JAX integration.</p>
+<p>This module provides the Foreign Function Interface (FFI) implementation that supports
+JAX 0.4.25 and later, including JAX 0.8.0+. It is the default implementation as of
+Warp 1.10.</p>
+<p>For low-level use cases, <a class="reference internal" href="_generated/warp.jax.ffi.register_ffi_callback.html#warp.jax.ffi.register_ffi_callback" title="warp.jax.ffi.register_ffi_callback"><code class="xref py py-func docutils literal notranslate"><span class="pre">register_ffi_callback()</span></code></a> provides direct FFI callback
+registration for functions that do not use Warp-style type annotations.</p>
+<section id="api">
+<h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode" title="warp.jax.ffi.GraphMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GraphMode</span></code></a></p></td>
+<td><p>CUDA graph capture modes for <code class="xref py py-func docutils literal notranslate"><span class="pre">warp.jax.jax_callable()</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.clear_jax_callable_graph_cache.html#warp.jax.ffi.clear_jax_callable_graph_cache" title="warp.jax.ffi.clear_jax_callable_graph_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache</span></code></a></p></td>
+<td><p>Clear the graph cache of the given callable or all callables if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.get_jax_callable_default_graph_cache_max.html#warp.jax.ffi.get_jax_callable_default_graph_cache_max" title="warp.jax.ffi.get_jax_callable_default_graph_cache_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_jax_callable_default_graph_cache_max</span></code></a></p></td>
+<td><p>Get the maximum size of the graph cache for graphs captured using <code class="docutils literal notranslate"><span class="pre">GraphMode.WARP</span></code>, unlimited if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_callable</span></code></a></p></td>
+<td><p>Create a JAX callback from an annotated Python function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_kernel</span></code></a></p></td>
+<td><p>Create a JAX callback from a Warp kernel.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.register_ffi_callback.html#warp.jax.ffi.register_ffi_callback" title="warp.jax.ffi.register_ffi_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_ffi_callback</span></code></a></p></td>
+<td><p>Create a JAX callback from a Python function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax.ffi.set_jax_callable_default_graph_cache_max.html#warp.jax.ffi.set_jax_callable_default_graph_cache_max" title="warp.jax.ffi.set_jax_callable_default_graph_cache_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_jax_callable_default_graph_cache_max</span></code></a></p></td>
+<td><p>Set the maximum size of the graph cache for graphs captured using <code class="docutils literal notranslate"><span class="pre">GraphMode.WARP</span></code>, unlimited if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 </section>
 
 
@@ -529,20 +541,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.jax_experimental.ffi.jax_kernel.html"
+       href="_generated/warp.jax.custom_call.jax_kernel.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.jax_experimental.ffi.jax_kernel</p>
+        <p class="prev-next-title">warp.jax.custom_call.jax_kernel</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max.html"
+       href="_generated/warp.jax.ffi.GraphMode.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.jax_experimental.ffi.set_jax_callable_default_graph_cache_max</p>
+        <p class="prev-next-title">warp.jax.ffi.GraphMode</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -567,7 +579,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax_experimental.ffi.register_ffi_callback"><code class="docutils literal notranslate"><span class="pre">register_ffi_callback()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api">API</a></li>
 </ul>
   </nav></div>
 
@@ -575,7 +587,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax_experimental.ffi.register_ffi_callback.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/warp_jax_ffi.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
@@ -602,8 +614,8 @@
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
 
 
   <footer class="bd-footer">
@@ -613,8 +625,8 @@
       
         <div class="footer-item">
 <a class="footer-brand logo" href="https://www.nvidia.com">
-  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
-  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
 </a></div>
       
         <div class="footer-item">
