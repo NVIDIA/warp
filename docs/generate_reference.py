@@ -81,7 +81,27 @@ BUILTINS_REF_DIR = "language_reference"
 SKIP = (
     "warp._src",
     "warp.examples",
+    "warp.jax_experimental",
     "warp.tests",
+)
+
+JAX_ARRAY_INTEROP_SYMBOLS = (
+    "device_from_jax",
+    "device_to_jax",
+    "dtype_from_jax",
+    "dtype_to_jax",
+    "from_jax",
+    "to_jax",
+)
+
+JAX_CALLABLE_INTEROP_SYMBOLS = (
+    "GraphMode",
+    "clear_jax_callable_graph_cache",
+    "get_jax_callable_default_graph_cache_max",
+    "jax_callable",
+    "jax_kernel",
+    "register_ffi_callback",
+    "set_jax_callable_default_graph_cache_max",
 )
 
 
@@ -537,7 +557,13 @@ def write_module_page(
         title = name
         current_module = name
         output_file_name = name.replace(".", "_")
-        symbols_per_category = get_symbols_per_category(module, symbols)
+        if name == "warp.jax":
+            symbols_per_category = {
+                "JAX Array Interop": tuple(x for x in JAX_ARRAY_INTEROP_SYMBOLS if x in symbols),
+                "JAX Callable Interop": tuple(x for x in JAX_CALLABLE_INTEROP_SYMBOLS if x in symbols),
+            }
+        else:
+            symbols_per_category = get_symbols_per_category(module, symbols)
 
     symbols_per_category = {k: sort_symbols(module, v) for k, v in symbols_per_category.items() if v}
 
@@ -707,7 +733,11 @@ def run():
                 {
                     x: other_module_name
                     for x in symbols
-                    if x in other_symbols and getattr(module, x) is getattr(other_module, x)
+                    if x in other_symbols
+                    and getattr(module, x) is getattr(other_module, x)
+                    and not (
+                        module_name == "warp" and other_module_name == "warp.jax" and x in JAX_ARRAY_INTEROP_SYMBOLS
+                    )
                 }
             )
 

@@ -39,6 +39,10 @@
 
 - `warp.fem`: Defer the scheduled removal of the deprecated `quadrature` and `domain` arguments of `interpolate()`,
   and the `space` argument of `make_space_restriction` and `make_space_partition`, to Warp 1.15.
+- Deprecate `warp.jax_experimental` in favor of the stable public `warp.jax` API. Migrate by updating
+  import statements from `warp.jax_experimental` to `warp.jax`. No API changes are required.
+  `warp.jax_experimental` will be removed in Warp 1.16.
+  ([GH-1370](https://github.com/NVIDIA/warp/issues/1370))
 
 ### Changed
 

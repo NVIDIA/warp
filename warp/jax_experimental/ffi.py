@@ -1,27 +1,27 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+# ruff: noqa: E402
 
-"""Current FFI-based implementation of JAX integration.
+"""Deprecated alias for :mod:`warp.jax.ffi`.
 
-This module provides the Foreign Function Interface (FFI) implementation that supports
-JAX 0.4.25 and later, including JAX 0.8.0+. It is the default implementation as of
-Warp 1.10.
-
-For low-level use cases, :func:`register_ffi_callback` provides direct FFI callback
-registration for functions that don't use Warp-style type annotations.
+.. deprecated:: 1.14.0
+    Use :mod:`warp.jax.ffi` instead. This namespace will be removed in Warp 1.16.
 """
 
 # isort: skip_file
 
-from warp._src.jax_experimental.ffi import GraphMode as GraphMode
-from warp._src.jax_experimental.ffi import jax_callable as jax_callable
-from warp._src.jax_experimental.ffi import jax_kernel as jax_kernel
-from warp._src.jax_experimental.ffi import register_ffi_callback as register_ffi_callback
+from ._deprecation import warn_deprecated_jax_experimental_namespace as _warn_deprecated_jax_experimental_namespace
 
-from warp._src.jax_experimental.ffi import clear_jax_callable_graph_cache as clear_jax_callable_graph_cache
-from warp._src.jax_experimental.ffi import (
+_warn_deprecated_jax_experimental_namespace("warp.jax_experimental.ffi", "warp.jax.ffi")
+
+from warp.jax.ffi import GraphMode as GraphMode
+from warp.jax.ffi import clear_jax_callable_graph_cache as clear_jax_callable_graph_cache
+from warp.jax.ffi import (
     get_jax_callable_default_graph_cache_max as get_jax_callable_default_graph_cache_max,
 )
-from warp._src.jax_experimental.ffi import (
+from warp.jax.ffi import jax_callable as jax_callable
+from warp.jax.ffi import jax_kernel as jax_kernel
+from warp.jax.ffi import register_ffi_callback as register_ffi_callback
+from warp.jax.ffi import (
     set_jax_callable_default_graph_cache_max as set_jax_callable_default_graph_cache_max,
 )

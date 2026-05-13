@@ -29,7 +29,7 @@ from warp._src.utils import warn
 
 from .xla_ffi import *
 
-_wp_module_name_ = "warp.jax_experimental.ffi"
+_wp_module_name_ = "warp.jax.ffi"
 
 # Holders for the custom callbacks to keep them alive.
 _FFI_KERNEL_REGISTRY: dict[tuple, FfiKernel] = {}
@@ -53,7 +53,7 @@ def check_jax_version():
             f"but installed JAX version is {jax.__version_info__}."
         )
         if jax.__version_info__ >= (0, 4, 25):
-            msg += " Please use warp.jax_experimental.custom_call.jax_kernel instead."
+            msg += " Please use warp.jax.custom_call.jax_kernel instead."
         raise RuntimeError(msg)
 
 
@@ -73,7 +73,7 @@ def compute_batch_size(shape, batch_ndim):
 
 
 class GraphMode(IntEnum):
-    """CUDA graph capture modes for :func:`warp.jax_experimental.jax_callable`.
+    """CUDA graph capture modes for :func:`warp.jax.jax_callable`.
 
     These modes control whether JAX or Warp captures a CUDA graph, and whether
     staging buffers are used when capturing with Warp.
@@ -1552,7 +1552,7 @@ def jax_callable(
         stage_out_argnames: Names of output arguments that need to be copied with ``GraphMode.WARP_STAGED*``.
             If ``None``, copy all output arguments.
         graph_cache_max: Maximum number of cached graphs captured using ``GraphMode.WARP``.
-            If ``None``, use ``warp.jax_experimental.get_jax_callable_default_graph_cache_max()``.
+            If ``None``, use ``warp.jax.get_jax_callable_default_graph_cache_max()``.
         module_preload_mode: Specify the devices where the module should be preloaded.
         has_side_effect: Whether the custom call has side effects. When True,
             the FFI call will be executed even when the outputs are not used.

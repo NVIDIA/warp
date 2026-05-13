@@ -22,7 +22,7 @@ These modules must be explicitly imported (e.g., ``import warp.autograd``).
 
 - :mod:`warp.autograd`
 - :mod:`warp.fem`
-- :mod:`warp.jax_experimental`
+- :mod:`warp.jax`
 - :mod:`warp.optim`
 - :mod:`warp.render`
 - :mod:`warp.sparse`

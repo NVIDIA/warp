@@ -128,8 +128,8 @@ nitpick_ignore_regex = [
         r"py:obj",
         r".*\.(conjugate|bit_length|bit_count|to_bytes|from_bytes|as_integer_ratio|is_integer|real|imag|numerator|denominator)",
     ),
-    # jax_callable lives in warp.jax_experimental (jax itself is mocked)
-    (r"py:func", r"warp\.jax_experimental\.jax_callable"),
+    # jax_callable lives in warp.jax (jax itself is mocked)
+    (r"py:func", r"warp\.jax\.jax_callable"),
 ]
 
 

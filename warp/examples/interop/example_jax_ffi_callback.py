@@ -14,7 +14,7 @@ import numpy as np
 
 import warp as wp
 from warp._src.jax import get_jax_device
-from warp.jax_experimental import register_ffi_callback
+from warp.jax import register_ffi_callback
 
 
 @wp.kernel
