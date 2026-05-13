@@ -10,66 +10,66 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def op_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def op_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = 0.5 - x[tid] * 2.0
 
 
 @wp.kernel
-def inc(a: wp.array(dtype=float)):
+def inc(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
 
 @wp.kernel
-def inc_vector(a: wp.array(dtype=wp.vec3f)):
+def inc_vector(a: wp.array[wp.vec3f]):
     tid = wp.tid()
     a[tid] = a[tid] + wp.vec3f(1.0)
 
 
 @wp.kernel
-def inc_matrix(a: wp.array(dtype=wp.mat22f)):
+def inc_matrix(a: wp.array[wp.mat22f]):
     tid = wp.tid()
     a[tid] = a[tid] + wp.mat22f(1.0)
 
 
 @wp.kernel
-def arange(start: int, step: int, a: wp.array(dtype=int)):
+def arange(start: int, step: int, a: wp.array[int]):
     tid = wp.tid()
     a[tid] = start + step * tid
 
 
 # copy elements between non-contiguous 1d arrays of float
 @wp.kernel
-def copy1d_float_kernel(dst: wp.array(dtype=float), src: wp.array(dtype=float)):
+def copy1d_float_kernel(dst: wp.array[float], src: wp.array[float]):
     i = wp.tid()
     dst[i] = src[i]
 
 
 # copy elements between non-contiguous 2d arrays of float
 @wp.kernel
-def copy2d_float_kernel(dst: wp.array2d(dtype=float), src: wp.array2d(dtype=float)):
+def copy2d_float_kernel(dst: wp.array2d[float], src: wp.array2d[float]):
     i, j = wp.tid()
     dst[i, j] = src[i, j]
 
 
 # copy elements between non-contiguous 3d arrays of float
 @wp.kernel
-def copy3d_float_kernel(dst: wp.array3d(dtype=float), src: wp.array3d(dtype=float)):
+def copy3d_float_kernel(dst: wp.array3d[float], src: wp.array3d[float]):
     i, j, k = wp.tid()
     dst[i, j, k] = src[i, j, k]
 
 
 # copy elements between non-contiguous 2d arrays of vec3
 @wp.kernel
-def copy2d_vec3_kernel(dst: wp.array2d(dtype=wp.vec3), src: wp.array2d(dtype=wp.vec3)):
+def copy2d_vec3_kernel(dst: wp.array2d[wp.vec3], src: wp.array2d[wp.vec3]):
     i, j = wp.tid()
     dst[i, j] = src[i, j]
 
 
 # copy elements between non-contiguous 2d arrays of mat22
 @wp.kernel
-def copy2d_mat22_kernel(dst: wp.array2d(dtype=wp.mat22), src: wp.array2d(dtype=wp.mat22)):
+def copy2d_mat22_kernel(dst: wp.array2d[wp.mat22], src: wp.array2d[wp.mat22]):
     i, j = wp.tid()
     dst[i, j] = src[i, j]
 

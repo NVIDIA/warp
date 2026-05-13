@@ -20,33 +20,33 @@ ARRAY_SIZE = 1024 * 1024
 
 # basic kernel with one input and output
 @wp.kernel
-def triple_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
+def triple_kernel(inp: wp.array[float], output: wp.array[float]):
     tid = wp.tid()
-    output[tid] = 3.0 * input[tid]
+    output[tid] = 3.0 * inp[tid]
 
 
 # generic kernel with one scalar input and output
 @wp.kernel
-def triple_kernel_scalar(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
+def triple_kernel_scalar(inp: wp.array[Any], output: wp.array[Any]):
     tid = wp.tid()
-    output[tid] = input.dtype(3) * input[tid]
+    output[tid] = inp.dtype(3) * inp[tid]
 
 
 # generic kernel with one vector/matrix input and output
 @wp.kernel
-def triple_kernel_vecmat(input: wp.array(dtype=Any), output: wp.array(dtype=Any)):
+def triple_kernel_vecmat(inp: wp.array[Any], output: wp.array[Any]):
     tid = wp.tid()
-    output[tid] = input.dtype.dtype(3) * input[tid]
+    output[tid] = inp.dtype.dtype(3) * inp[tid]
 
 
 @wp.kernel
-def inc_1d_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def inc_1d_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = x[tid] + 1.0
 
 
 @wp.kernel
-def inc_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def inc_2d_kernel(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     y[i, j] = x[i, j] + 1.0
 
@@ -55,12 +55,12 @@ def inc_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
 @wp.kernel
 def multiarg_kernel(
     # inputs
-    a: wp.array(dtype=float),
-    b: wp.array(dtype=float),
-    c: wp.array(dtype=float),
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
     # outputs
-    ab: wp.array(dtype=float),
-    bc: wp.array(dtype=float),
+    ab: wp.array[float],
+    bc: wp.array[float],
 ):
     tid = wp.tid()
     ab[tid] = a[tid] + b[tid]
@@ -349,60 +349,60 @@ def test_jax_kernel_launch_dims(test, device, use_ffi=False):
 
 
 @wp.kernel
-def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
+def add_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
     tid = wp.tid()
     output[tid] = a[tid] + b[tid]
 
 
 @wp.kernel
-def add2d_kernel(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+def add2d_kernel(a: wp.array2d[float], b: wp.array2d[float], output: wp.array2d[float]):
     i, j = wp.tid()
     output[i, j] = a[i, j] + b[i, j]
 
 
 @wp.kernel
-def axpy_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), alpha: float, out: wp.array(dtype=float)):
+def axpy_kernel(x: wp.array[float], y: wp.array[float], alpha: float, out: wp.array[float]):
     tid = wp.tid()
     out[tid] = alpha * x[tid] + y[tid]
 
 
 @wp.kernel
-def sincos_kernel(angle: wp.array(dtype=float), sin_out: wp.array(dtype=float), cos_out: wp.array(dtype=float)):
+def sincos_kernel(angle: wp.array[float], sin_out: wp.array[float], cos_out: wp.array[float]):
     tid = wp.tid()
     sin_out[tid] = wp.sin(angle[tid])
     cos_out[tid] = wp.cos(angle[tid])
 
 
 @wp.kernel
-def diagonal_kernel(output: wp.array(dtype=wp.mat33)):
+def diagonal_kernel(output: wp.array[wp.mat33]):
     tid = wp.tid()
     d = float(tid + 1)
     output[tid] = wp.mat33(d, 0.0, 0.0, 0.0, d * 2.0, 0.0, 0.0, 0.0, d * 3.0)
 
 
 @wp.kernel
-def scale_kernel(a: wp.array(dtype=float), s: float, output: wp.array(dtype=float)):
+def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 
 
 @wp.kernel
-def scale_vec_kernel(a: wp.array(dtype=wp.vec2), s: float, output: wp.array(dtype=wp.vec2)):
+def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
     tid = wp.tid()
     output[tid] = a[tid] * s
 
 
 @wp.kernel
-def accum_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+def accum_kernel(a: wp.array[float], b: wp.array[float]):
     tid = wp.tid()
     b[tid] += a[tid]
 
 
 @wp.kernel
 def matmul_kernel(
-    a: wp.array2d(dtype=float),  # NxK
-    b: wp.array2d(dtype=float),  # KxM
-    c: wp.array2d(dtype=float),  # NxM
+    a: wp.array2d[float],  # NxK
+    b: wp.array2d[float],  # KxM
+    c: wp.array2d[float],  # NxM
 ):
     # launch dims should be (N, M)
     i, j = wp.tid()
@@ -418,9 +418,9 @@ def matmul_kernel(
 
 @wp.kernel
 def in_out_kernel(
-    a: wp.array(dtype=float),  # input only
-    b: wp.array(dtype=float),  # input and output
-    c: wp.array(dtype=float),  # output only
+    a: wp.array[float],  # input only
+    b: wp.array[float],  # input and output
+    c: wp.array[float],  # output only
 ):
     tid = wp.tid()
     b[tid] += a[tid]
@@ -428,34 +428,28 @@ def in_out_kernel(
 
 
 @wp.kernel
-def multi_out_kernel(
-    a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
-):
+def multi_out_kernel(a: wp.array[float], b: wp.array[float], s: float, c: wp.array[float], d: wp.array[float]):
     tid = wp.tid()
     c[tid] = a[tid] + b[tid]
     d[tid] = s * a[tid]
 
 
 @wp.kernel
-def multi_out_kernel_v2(
-    a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
-):
+def multi_out_kernel_v2(a: wp.array[float], b: wp.array[float], s: float, c: wp.array[float], d: wp.array[float]):
     tid = wp.tid()
     c[tid] = a[tid] * a[tid]
     d[tid] = a[tid] * b[tid] * s
 
 
 @wp.kernel
-def multi_out_kernel_v3(
-    a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float), d: wp.array(dtype=float)
-):
+def multi_out_kernel_v3(a: wp.array[float], b: wp.array[float], s: float, c: wp.array[float], d: wp.array[float]):
     tid = wp.tid()
     c[tid] = a[tid] ** 2.0
     d[tid] = a[tid] * b[tid] * s
 
 
 @wp.kernel
-def scale_sum_square_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, c: wp.array(dtype=float)):
+def scale_sum_square_kernel(a: wp.array[float], b: wp.array[float], s: float, c: wp.array[float]):
     tid = wp.tid()
     c[tid] = (a[tid] * s + b[tid]) ** 2.0
 
@@ -483,21 +477,21 @@ def scale_sum_square_kernel_subscript(a: wp.array[float], b: wp.array[float], s:
 # Note the argument annotations, just like Warp kernels.
 def scale_func(
     # inputs
-    a: wp.array(dtype=float),
-    b: wp.array(dtype=wp.vec2),
+    a: wp.array[float],
+    b: wp.array[wp.vec2],
     s: float,
     # outputs
-    c: wp.array(dtype=float),
-    d: wp.array(dtype=wp.vec2),
+    c: wp.array[float],
+    d: wp.array[wp.vec2],
 ):
     wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
     wp.launch(scale_vec_kernel, dim=b.shape, inputs=[b, s], outputs=[d])
 
 
 def in_out_func(
-    a: wp.array(dtype=float),  # input only
-    b: wp.array(dtype=float),  # input and output
-    c: wp.array(dtype=float),  # output only
+    a: wp.array[float],  # input only
+    b: wp.array[float],  # input and output
+    c: wp.array[float],  # output only
 ):
     wp.launch(scale_kernel, dim=a.size, inputs=[a, 2.0], outputs=[c])
     wp.launch(accum_kernel, dim=a.size, inputs=[a, b])  # modifies `b`
@@ -505,9 +499,9 @@ def in_out_func(
 
 def double_func(
     # inputs
-    a: wp.array(dtype=float),
+    a: wp.array[float],
     # outputs
-    b: wp.array(dtype=float),
+    b: wp.array[float],
 ):
     wp.launch(scale_kernel, dim=a.shape, inputs=[a, 2.0], outputs=[b])
 
@@ -987,11 +981,11 @@ def test_ffi_jax_callable_pmap_multi_output(test, device):
     from warp.jax_experimental.ffi import jax_callable
 
     def multi_out_py(
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
+        a: wp.array[float],
+        b: wp.array[float],
         s: float,
-        c: wp.array(dtype=float),
-        d: wp.array(dtype=float),
+        c: wp.array[float],
+        d: wp.array[float],
     ):
         wp.launch(multi_out_kernel, dim=a.shape, inputs=[a, b, s], outputs=[c, d])
 
@@ -1028,11 +1022,11 @@ def test_ffi_jax_callable_pmap_multi_stage(test, device):
     from warp.jax_experimental.ffi import jax_callable
 
     def multi_stage_py(
-        a: wp.array(dtype=float),
-        b: wp.array(dtype=float),
+        a: wp.array[float],
+        b: wp.array[float],
         alpha: float,
-        tmp: wp.array(dtype=float),
-        out: wp.array(dtype=float),
+        tmp: wp.array[float],
+        out: wp.array[float],
     ):
         wp.launch(add_kernel, dim=a.shape, inputs=[a, b], outputs=[tmp])
         wp.launch(axpy_kernel, dim=a.shape, inputs=[tmp, b, alpha], outputs=[out])
@@ -1354,7 +1348,7 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
     from warp.jax_experimental.ffi import jax_kernel
 
     @wp.kernel
-    def scale_mat_kernel(a: wp.array(dtype=wp.mat22), s: float, out: wp.array(dtype=wp.mat22)):
+    def scale_mat_kernel(a: wp.array[wp.mat22], s: float, out: wp.array[wp.mat22]):
         tid = wp.tid()
         out[tid] = a[tid] * s
 
@@ -1479,8 +1473,8 @@ def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
 
 @wp.kernel
 def scale_extra_axis_kernel(
-    a: wp.array4d(dtype=wp.float32),
-    b: wp.array4d(dtype=wp.float32),
+    a: wp.array4d[wp.float32],
+    b: wp.array4d[wp.float32],
 ):
     """3-D tid but 4-D array; outer axis iterated inside the kernel body."""
     i, j, k = wp.tid()
@@ -1490,8 +1484,8 @@ def scale_extra_axis_kernel(
 
 @wp.kernel
 def scale_outer_2d_kernel(
-    a: wp.array3d(dtype=wp.float32),
-    b: wp.array3d(dtype=wp.float32),
+    a: wp.array3d[wp.float32],
+    b: wp.array3d[wp.float32],
 ):
     """2-D tid with an outer axis iterated inside; used for the vmap test."""
     i, j = wp.tid()
@@ -1652,7 +1646,7 @@ def test_ffi_jax_kernel_autodiff_per_call_override_rejected(test, device):
     from warp.jax_experimental.ffi import jax_kernel
 
     @wp.kernel
-    def noop(a: wp.array1d(dtype=wp.float32), b: wp.array1d(dtype=wp.float32)):
+    def noop(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
         i = wp.tid()
         b[i] = a[i]
 
@@ -1676,7 +1670,7 @@ def test_ffi_jax_kernel_output_dims_autodiff_still_blocked(test, device):
     from warp.jax_experimental.ffi import jax_kernel
 
     @wp.kernel
-    def noop(a: wp.array1d(dtype=wp.float32), b: wp.array1d(dtype=wp.float32)):
+    def noop(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
         """Identity copy; used only to trigger the output_dims guard path."""
         i = wp.tid()
         b[i] = a[i]
@@ -1747,11 +1741,11 @@ def test_ffi_vmap_add(test, device, vmap_method):
         return a + b
 
     # warp callable 1d
-    def warp_add1d(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
+    def warp_add1d(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
         wp.launch(add_kernel, dim=a.shape, inputs=[a, b, output])
 
     # warp callable 2d
-    def warp_add2d(a: wp.array2d(dtype=float), b: wp.array2d(dtype=float), output: wp.array2d(dtype=float)):
+    def warp_add2d(a: wp.array2d[float], b: wp.array2d[float], output: wp.array2d[float]):
         wp.launch(add2d_kernel, dim=a.shape, inputs=[a, b, output])
 
     jk_add1d = jax_kernel(add_kernel, vmap_method=vmap_method)
@@ -1796,7 +1790,7 @@ def test_ffi_vmap_add(test, device, vmap_method):
 
 
 @wp.kernel
-def rowsum_kernel(matrix: wp.array2d(dtype=float), sums: wp.array1d(dtype=float)):
+def rowsum_kernel(matrix: wp.array2d[float], sums: wp.array1d[float]):
     i, j = wp.tid()
     wp.atomic_add(sums, i, matrix[i, j])
 
@@ -1814,7 +1808,7 @@ def test_ffi_vmap_rowsum(test, device, vmap_method):
         return jp.sum(matrix, axis=1)
 
     # warp callable
-    def warp_rowsum(matrix: wp.array2d(dtype=float), sums: wp.array1d(dtype=float)):
+    def warp_rowsum(matrix: wp.array2d[float], sums: wp.array1d[float]):
         wp.launch(rowsum_kernel, dim=matrix.shape, inputs=[matrix, sums])
 
     jk_rowsum = jax_kernel(rowsum_kernel, in_out_argnames=["sums"], vmap_method=vmap_method)
@@ -1873,7 +1867,7 @@ def test_ffi_vmap_rowsum(test, device, vmap_method):
 
 
 @wp.kernel
-def lookup_kernel(table: wp.array(dtype=float), indices: wp.array(dtype=int), output: wp.array(dtype=float)):
+def lookup_kernel(table: wp.array[float], indices: wp.array[int], output: wp.array[float]):
     i = wp.tid()
     output[i] = table[indices[i]]
 
@@ -1895,7 +1889,7 @@ def test_ffi_vmap_lookup(test, device, vmap_method):
     def jax_lookup(a, indices):
         return a[indices]
 
-    def warp_lookup(table: wp.array(dtype=float), indices: wp.array(dtype=int), output: wp.array(dtype=float)):
+    def warp_lookup(table: wp.array[float], indices: wp.array[int], output: wp.array[float]):
         wp.launch(lookup_kernel, dim=indices.shape, inputs=[table, indices, output])
 
     jk_lookup = jax_kernel(lookup_kernel, vmap_method=vmap_method)
