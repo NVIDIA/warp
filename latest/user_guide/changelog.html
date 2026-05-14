@@ -529,18 +529,6 @@ or scope it temporarily with <code class="docutils literal notranslate"><span cl
 and can be scoped temporarily with <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogLevel</span></code>; all Python-side diagnostic output now routes through
 the logger (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1434">GH-1434</a>).</p></li>
-<li><p>Add libmathdx-free implementations of <code class="docutils literal notranslate"><span class="pre">wp.tile_fft()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.tile_ifft()</span></code> and their adjoints.
-The CPU path uses a sequential radix-2 Cooley-Tukey for power-of-two sizes and a direct DFT for
-non-power-of-two sizes up to 4096 elements. The GPU path (selected when libmathdx is unavailable
-or disabled via the <code class="docutils literal notranslate"><span class="pre">enable_mathdx_fft</span></code> module option / <code class="docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_fft</span></code> flag) is
-a shared-memory cooperative radix-2 implementation supporting power-of-two FFT sizes that are
-divisible by <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. Both paths match the unnormalized convention used by cuFFTDx</p></li>
-<li><p>Add libmathdx-free implementations of <code class="docutils literal notranslate"><span class="pre">wp.tile_fft()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.tile_ifft()</span></code> and their adjoints,
-so they run on CPU and on GPU builds where libmathdx is unavailable. Add the <code class="docutils literal notranslate"><span class="pre">enable_mathdx_fft</span></code>
-config flag and module option (parity with <code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code> / <code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code>) to
-route these ops through the fallback when libmathdx is available. CPU supports power-of-two
-sizes of any length and non-power-of-two sizes up to 4096 elements; the GPU fallback supports
-power-of-two sizes divisible by <code class="docutils literal notranslate"><span class="pre">block_dim</span></code></p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.tile_fft()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.tile_ifft()</span></code> (and their adjoints) on CPU and on GPU builds
 without libmathdx. CPU supports power-of-two sizes and non-power-of-two sizes up to 4096
 elements; GPU requires power-of-two sizes divisible by <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. The new
