@@ -18,6 +18,7 @@ import textwrap
 import threading
 import types
 from collections.abc import Callable, Mapping, Sequence
+from copy import copy as shallowcopy
 from typing import Any, ClassVar, get_args, get_origin
 
 import warp.config
@@ -881,8 +882,11 @@ def func_match_args(func, arg_types, kwarg_types):
         if func_arg_type is Any:
             continue
 
-        # handle function refs as a special case
-        if func_arg_type is Callable and isinstance(bound_arg_type, warp._src.context.Function):
+        # Callable parameters are type-erased during overload matching; the
+        # concrete target is bound later during call specialization.
+        if warp._src.types.is_callable_annotation(func_arg_type) and isinstance(
+            bound_arg_type, warp._src.context.Function
+        ):
             continue
 
         bound_arg_type_stripped = strip_reference(bound_arg_type)
@@ -902,6 +906,151 @@ def func_match_args(func, arg_types, kwarg_types):
             return False
 
     return True
+
+
+def get_callable_arg_values(func, bound_args):
+    """Return concrete user-defined function targets for ``Callable`` parameters.
+
+    ``bound_args`` already includes defaults. A non-empty result means the call
+    needs a specialized clone where callable parameter names resolve directly to
+    function objects during codegen instead of runtime variables.
+    """
+
+    if func.is_builtin():
+        return None
+
+    callable_arg_values = {}
+
+    for name, value in bound_args.items():
+        if not warp._src.types.is_callable_annotation(func.input_types.get(name)):
+            continue
+
+        if not isinstance(value, warp._src.context.Function):
+            continue
+
+        if value.is_builtin():
+            raise WarpCodegenError(
+                "Callable parameters currently require user-defined Warp functions, "
+                f"but parameter '{name}' of '{func.key}' received built-in function '{value.key}'."
+            )
+
+        callable_arg_values[name] = value
+
+    if callable_arg_values:
+        return callable_arg_values
+
+    return None
+
+
+def get_default_arg_value(func, name, value):
+    if warp._src.types.is_callable_annotation(func.input_types.get(name)) and isinstance(
+        value, warp._src.context.Function
+    ):
+        # Callable defaults need the same specialization path as explicit
+        # callable arguments.
+        return value
+
+    return Var(None, type=type(value), constant=value)
+
+
+def bind_call_arg_nodes(func, call_node):
+    """Bind a call AST to ``func`` and return AST/default arguments by name."""
+
+    try:
+        bound_args = func.signature.bind(*call_node.args, **{kw.arg: kw.value for kw in call_node.keywords})
+    except TypeError:
+        return {}
+
+    default_args = {k: v for k, v in func.defaults.items() if k not in bound_args.arguments and v is not None}
+    apply_defaults(bound_args, default_args)
+    return bound_args.arguments
+
+
+def resolve_callable_arg_target(adj, arg_node, callable_arg_values=None):
+    """Resolve a callable argument node or default to a concrete Warp function."""
+
+    if isinstance(arg_node, warp._src.context.Function):
+        return arg_node
+
+    if callable_arg_values and isinstance(arg_node, ast.Name):
+        callable_func = callable_arg_values.get(arg_node.id)
+        if callable_func is not None:
+            return callable_func
+
+    callable_func, _ = adj.resolve_static_expression(arg_node, eval_types=False)
+    return callable_func
+
+
+def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=None):
+    """Yield Warp function targets passed to ``Callable`` parameters."""
+
+    if not isinstance(func, warp._src.context.Function) or func.is_builtin():
+        return
+
+    bound_arg_nodes = bind_call_arg_nodes(func, call_node)
+
+    for arg_name, arg_node in bound_arg_nodes.items():
+        if not warp._src.types.is_callable_annotation(func.input_types.get(arg_name)):
+            continue
+
+        callable_func = resolve_callable_arg_target(adj, arg_node, callable_arg_values)
+        if isinstance(callable_func, warp._src.context.Function):
+            yield callable_func
+
+
+def specialize_callable_func(func, callable_arg_values):
+    """Clone ``func`` for a concrete set of callable parameter targets."""
+
+    if func.custom_grad_func is not None or func.custom_replay_func is not None:
+        raise WarpCodegenError(
+            "Callable parameters are not supported on functions with custom gradients or replay functions: "
+            f"'{func.key}'"
+        )
+
+    specialization_key = tuple(
+        (name, callable_arg_values[name]) for name in func.input_types if name in callable_arg_values
+    )
+
+    specializations = getattr(func, "_callable_specializations", None)
+    if specializations is None:
+        specializations = {}
+        func._callable_specializations = specializations
+
+    specialized_func = specializations.get(specialization_key)
+    if specialized_func is not None:
+        return specialized_func
+
+    # The callable targets are inlined by name while being omitted from the C++
+    # function parameters, so each target set needs a distinct native name.
+    suffix_hash = hashlib.sha256()
+    suffix_hash.update(bytes(func.native_func, "utf-8"))
+    for name, callable_func in specialization_key:
+        suffix_hash.update(bytes(name, "utf-8"))
+        suffix_hash.update(bytes(callable_func.key, "utf-8"))
+        suffix_hash.update(bytes(callable_func.native_func, "utf-8"))
+
+    specialized_func = shallowcopy(func)
+    # Specialization clones should not share the parent specialization cache.
+    specialized_func.__dict__.pop("_callable_specializations", None)
+    specialized_func.native_func = f"{func.native_func}_callable_{suffix_hash.hexdigest()[:12]}"
+    specialized_func.value_func = None
+    specialized_func.adj = Adjoint(
+        func.func,
+        overload_annotations=func.adj.arg_types,
+        is_user_function=func.adj.is_user_function,
+        skip_forward_codegen=func.adj.skip_forward_codegen,
+        skip_reverse_codegen=func.adj.skip_reverse_codegen,
+        custom_reverse_mode=func.adj.custom_reverse_mode,
+        custom_reverse_num_input_args=func.adj.custom_reverse_num_input_args,
+        transformers=func.adj.transformers,
+        source=func.adj.source,
+    )
+    specialized_func.adj.callable_arg_values = dict(callable_arg_values)
+    specialized_func.adj.used_by_backward_kernel = func.adj.used_by_backward_kernel
+    specialized_func.adj.force_adjoint_codegen = func.adj.force_adjoint_codegen
+
+    specializations[specialization_key] = specialized_func
+    return specialized_func
 
 
 def get_arg_type(arg: Var | Any) -> type:
@@ -1141,7 +1290,7 @@ class Adjoint:
 
     # generate function ssa form and adjoint
     @synchronized
-    def build(adj, builder, default_builder_options=None):
+    def build(adj, builder, default_builder_options=None, callable_arg_values=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
         for arg in adj.args:
             arg.is_read = False
@@ -1149,6 +1298,9 @@ class Adjoint:
 
         if adj.skip_build:
             return
+
+        if callable_arg_values is None:
+            callable_arg_values = getattr(adj, "callable_arg_values", None)
 
         adj.builder = builder
 
@@ -1186,9 +1338,13 @@ class Adjoint:
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
 
-        # update symbol map for each argument
+        # Callable-specialized functions replace selected argument Vars with
+        # Function objects so calls like `op(x)` resolve statically.
         for a in adj.args:
-            adj.symbols[a.label] = a
+            if callable_arg_values is not None and a.label in callable_arg_values:
+                adj.symbols[a.label] = callable_arg_values[a.label]
+            else:
+                adj.symbols[a.label] = a
 
         # recursively evaluate function body
         try:
@@ -1588,13 +1744,16 @@ class Adjoint:
 
         if func.defaults:
             default_vars = {
-                k: Var(None, type=type(v), constant=v)
+                k: get_default_arg_value(func, k, v)
                 for k, v in func.defaults.items()
                 if k not in bound_args.arguments and v is not None
             }
             apply_defaults(bound_args, default_vars)
 
         bound_args = bound_args.arguments
+        callable_arg_values = get_callable_arg_values(func, bound_args)
+        if callable_arg_values is not None:
+            func = specialize_callable_func(func, callable_arg_values)
 
         # Constant precision preservation: when calling a 64-bit scalar type
         # constructor with a single compile-time constant argument, emit
@@ -1694,7 +1853,12 @@ class Adjoint:
         elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
         else:
-            func_args = tuple(bound_args.values())
+            func_args = tuple(
+                value
+                for name, value in bound_args.items()
+                if func.is_builtin() or not warp._src.types.is_callable_annotation(func.input_types.get(name))
+            )
+            # Callable parameters are specialization inputs, not C++ arguments.
             template_args = ()
 
         func_args = tuple(adj.register_var(x) for x in func_args)
@@ -4392,6 +4556,7 @@ class Adjoint:
         constants: dict[str, Any] = {}
         types: dict[Struct | type, Any] = {}
         functions: dict[warp._src.context.Function, Any] = {}
+        callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
 
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Name) and node.id not in local_variables:
@@ -4407,9 +4572,18 @@ class Adjoint:
 
             elif isinstance(node, ast.Call):
                 func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+                if func is None and isinstance(node.func, ast.Name):
+                    func = callable_arg_values.get(node.func.id)
+
                 if isinstance(func, warp._src.context.Function) and not func.is_builtin():
                     # calling user-defined function
                     functions[func] = None
+
+                    # Callable targets are passed as values, so they must be
+                    # added explicitly to the function reference set.
+                    for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
+                        if not callable_func.is_builtin():
+                            functions[callable_func] = None
                 elif isinstance(func, Struct):
                     # calling struct constructor
                     types[func] = None
@@ -5022,6 +5196,8 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
 
     # forward args
     for i, arg in enumerate(adj.args):
+        if warp._src.types.is_callable_annotation(arg.type):
+            continue
         if is_tile(arg.type) or is_tile_stack(arg.type):
             tname = f"tile_{arg.label}"
             template_params.append(tname)
@@ -5038,6 +5214,8 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
 
     # reverse args
     for i, arg in enumerate(adj.args):
+        if warp._src.types.is_callable_annotation(arg.type):
+            continue
         if adj.custom_reverse_mode and i >= adj.custom_reverse_num_input_args:
             break
         # indexed array gradients are regular arrays
