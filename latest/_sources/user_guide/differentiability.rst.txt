@@ -1412,7 +1412,7 @@ The code produces the expected output:
     b.grad = [-1. -1. -1. -1. -1. -1. -1. -1. -1. -1.]
 
 In-place multiplication and division are *not* supported and incorrect results will be obtained in the backward pass.
-A warning will be emitted during code generation if ``wp.config.verbose = True``.
+A warning will be emitted during code generation if ``wp.config.log_level = wp.LOG_DEBUG``.
 
 Vector, Matrix, and Quaternion Component Assignment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

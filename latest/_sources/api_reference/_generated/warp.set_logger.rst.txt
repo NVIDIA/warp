@@ -1,0 +1,7 @@
+﻿warp.set\_logger
+================
+
+.. currentmodule:: warp
+
+
+.. autofunction:: set_logger

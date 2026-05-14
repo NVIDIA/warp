@@ -3,4 +3,5 @@
 
 .. currentmodule:: warp.optim.linear
 
+
 .. autofunction:: cr

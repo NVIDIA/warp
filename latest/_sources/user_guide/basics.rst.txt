@@ -371,7 +371,7 @@ By default, status messages will be printed out after each module has been loade
 * How long it took to load the module in milliseconds
 * Whether the module was compiled ``(compiled)``, loaded from the cache ``(cached)``, or was unable to be loaded ``(error)``.
 
-For debugging purposes, ``wp.config.verbose = True`` can be set to also get a printout when each module load begins.
+For debugging purposes, ``wp.config.log_level = wp.LOG_DEBUG`` can be set to also get a printout when each module load begins.
 
 Here is an example illustrating the functionality of the kernel cache by running ``python -m warp.examples.tile.example_tile_cholesky``
 twice. The first time, we see:

@@ -1,0 +1,7 @@
+﻿warp.LOG\_DEBUG
+===============
+
+.. currentmodule:: warp
+
+
+.. autodata:: LOG_DEBUG

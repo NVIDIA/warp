@@ -3,4 +3,5 @@
 
 .. currentmodule:: warp.fem.linalg
 
+
 .. autodata:: householder_make_hessenberg

@@ -3,4 +3,5 @@
 
 .. currentmodule:: warp.fem.linalg
 
+
 .. autodata:: symmetric_eigenvalues_qr

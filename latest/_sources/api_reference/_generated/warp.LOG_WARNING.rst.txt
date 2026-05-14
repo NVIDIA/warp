@@ -1,0 +1,7 @@
+﻿warp.LOG\_WARNING
+=================
+
+.. currentmodule:: warp
+
+
+.. autodata:: LOG_WARNING

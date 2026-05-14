@@ -497,7 +497,10 @@
 <dt class="sig sig-object py" id="warp.config.quiet">
 <span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">quiet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#warp.config.quiet" title="Link to this definition">#</a></dt>
 <dd><p>Disable Warp module initialization messages.</p>
-<p>Error messages and warnings remain unaffected.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version Use: </span><code class="docutils literal notranslate"><span class="pre">warp.config.log_level</span> <span class="pre">=</span> <span class="pre">warp.LOG_WARNING</span></code> instead. Reading or setting
+this flag emits a <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> for external callers.</p>
+</div>
 </dd></dl>
 
 </section>

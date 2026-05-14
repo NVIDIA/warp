@@ -823,7 +823,7 @@ Any kernels registered in the module with <a class="reference internal" href="..
 <li><p>How long it took to load the module in milliseconds</p></li>
 <li><p>Whether the module was compiled <code class="docutils literal notranslate"><span class="pre">(compiled)</span></code>, loaded from the cache <code class="docutils literal notranslate"><span class="pre">(cached)</span></code>, or was unable to be loaded <code class="docutils literal notranslate"><span class="pre">(error)</span></code>.</p></li>
 </ul>
-<p>For debugging purposes, <code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span> <span class="pre">=</span> <span class="pre">True</span></code> can be set to also get a printout when each module load begins.</p>
+<p>For debugging purposes, <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span> <span class="pre">=</span> <span class="pre">wp.LOG_DEBUG</span></code> can be set to also get a printout when each module load begins.</p>
 <p>Here is an example illustrating the functionality of the kernel cache by running <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">warp.examples.tile.example_tile_cholesky</span></code>
 twice. The first time, we see:</p>
 <div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>Warp 1.10.0.dev0 initialized:

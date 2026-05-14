@@ -3,4 +3,5 @@
 
 .. currentmodule:: warp.config
 
+
 .. autodata:: legacy_scalar_return_types

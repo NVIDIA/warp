@@ -1,0 +1,7 @@
+﻿warp.LOG\_INFO
+==============
+
+.. currentmodule:: warp
+
+
+.. autodata:: LOG_INFO

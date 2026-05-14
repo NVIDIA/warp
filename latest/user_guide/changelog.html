@@ -524,6 +524,11 @@ sign of <code class="docutils literal notranslate"><span class="pre">y</span></c
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">--use-dynamic-cuda</span></code> build option to link against shared CUDA libraries instead of embedding
 them statically; the corresponding shared libraries must be present at runtime
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1334">GH-1334</a>).</p></li>
+<li><p>Add pluggable logging infrastructure: implement the <code class="docutils literal notranslate"><span class="pre">wp.Logger</span></code> protocol and pass it to <code class="docutils literal notranslate"><span class="pre">wp.set_logger()</span></code>,
+or scope it temporarily with <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogger</span></code>. <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span></code> controls the global verbosity threshold
+and can be scoped temporarily with <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogLevel</span></code>; all Python-side diagnostic output now routes through
+the logger (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>,
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1434">GH-1434</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -538,6 +543,10 @@ and the <code class="docutils literal notranslate"><span class="pre">space</span
 import statements from <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> to <code class="docutils literal notranslate"><span class="pre">warp.jax</span></code>. No API changes are required.
 <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> will be removed in Warp 1.16.
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1370">GH-1370</a>)</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">warp.config.verbose</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.config.quiet</span></code> in favor of <code class="docutils literal notranslate"><span class="pre">warp.config.log_level</span></code>. Reading or setting
+either flag continues to work during the deprecation window and now emits a one-time <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>.
+<code class="docutils literal notranslate"><span class="pre">warp.config.verbose_warnings</span></code> is unaffected and continues to control whether warning output includes the source
+location (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
 </ul>
 </section>
 <section id="changed">
@@ -585,6 +594,8 @@ propagate gradients instead of silently dropping them.
 <li><p>Fix memory leak with retained graph allocations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1429">GH-1429</a>).</p></li>
 <li><p>Fix a data race in <code class="docutils literal notranslate"><span class="pre">wp.ScopedMemoryTracker.report()</span></code> that could corrupt the report when called
 concurrently from multiple threads (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1415">GH-1415</a>).</p></li>
+<li><p>Fix Warp warning emission overriding user warning filters, making deprecation warnings unsuppressible via
+<code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">

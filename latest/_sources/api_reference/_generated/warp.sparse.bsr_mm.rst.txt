@@ -3,4 +3,5 @@
 
 .. currentmodule:: warp.sparse
 
+
 .. autofunction:: bsr_mm

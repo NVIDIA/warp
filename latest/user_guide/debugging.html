@@ -522,24 +522,108 @@ types using the <a class="reference internal" href="../language_reference/_gener
 </pre></div>
 </div>
 </section>
-<section id="verbose-mode-and-printing-launches">
-<h2>Verbose Mode and Printing Launches<a class="headerlink" href="#verbose-mode-and-printing-launches" title="Link to this heading">#</a></h2>
+<section id="diagnostics-and-logging">
+<h2>Diagnostics and Logging<a class="headerlink" href="#diagnostics-and-logging" title="Link to this heading">#</a></h2>
 <p>For complex applications, it can be difficult to understand the order-of-operations that lead to a bug. To help diagnose
 these issues, Warp supports a simple option to print out all launches and arguments to the console:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">print_launches</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-<p>Verbose mode can also be enabled with:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span>
+<section id="log-level">
+<h3>Log Level<a class="headerlink" href="#log-level" title="Link to this heading">#</a></h3>
+<p>Warp emits informational, warning, and error messages through its own logging
+infrastructure. The verbosity is controlled by a single global threshold:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LOG_DEBUG</span>    <span class="c1"># most verbose: codegen details, module loads</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LOG_INFO</span>     <span class="c1"># default: init banner, compile timings</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LOG_WARNING</span>  <span class="c1"># warnings and errors only</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">log_level</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LOG_ERROR</span>    <span class="c1"># errors only</span>
 </pre></div>
 </div>
-<p>In verbose mode, additional messages will be printed to standard output regarding program progress and
-code generation, such as when operations may be non-differentiable.</p>
-<p>Verbose <em>warnings</em> can be enabled with:</p>
+<p>Messages below the threshold are suppressed. Errors always emit regardless of
+the level.</p>
+<p>At <code class="docutils literal notranslate"><span class="pre">wp.LOG_DEBUG</span></code>, additional messages are printed to standard output
+regarding program progress and code generation, such as when operations may be
+non-differentiable.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The legacy <code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.config.quiet</span></code> flags are
+deprecated. Migrate to <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span> <span class="pre">=</span> <span class="pre">True</span></code> → <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span> <span class="pre">=</span> <span class="pre">wp.LOG_DEBUG</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.quiet</span> <span class="pre">=</span> <span class="pre">True</span></code> → <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span> <span class="pre">=</span> <span class="pre">wp.LOG_WARNING</span></code></p></li>
+</ul>
+<p>Reading or setting either deprecated flag emits a one-time
+<code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>. During the deprecation window the flag is still
+honored alongside <code class="docutils literal notranslate"><span class="pre">log_level</span></code>, so existing code keeps working; remove the
+flag once your code sets <code class="docutils literal notranslate"><span class="pre">log_level</span></code> directly.</p>
+<p><code class="docutils literal notranslate"><span class="pre">wp.config.verbose_warnings</span></code> is not deprecated. It is an orthogonal
+formatting flag that controls whether warning messages include the source
+location and has no <code class="docutils literal notranslate"><span class="pre">log_level</span></code> equivalent.</p>
+</div>
+</section>
+<section id="verbose-warnings">
+<h3>Verbose Warnings<a class="headerlink" href="#verbose-warnings" title="Link to this heading">#</a></h3>
+<p>To include the source location in each <code class="docutils literal notranslate"><span class="pre">Warp</span> <span class="pre">UserWarning</span></code> message, enable:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">verbose_warnings</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-<p>This can be useful in identifying where a particular <code class="docutils literal notranslate"><span class="pre">Warp</span> <span class="pre">UserWarning</span></code> message is being emitted from.</p>
+<p>This can be useful in identifying where a particular warning is being emitted from.</p>
+</section>
+<section id="custom-loggers">
+<h3>Custom Loggers<a class="headerlink" href="#custom-loggers" title="Link to this heading">#</a></h3>
+<p>By default Warp routes diagnostics through a built-in logger that writes
+debug and info messages to <code class="docutils literal notranslate"><span class="pre">sys.stdout</span></code>, errors to <code class="docutils literal notranslate"><span class="pre">sys.stderr</span></code>, and
+routes warnings through Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter machinery so that
+<code class="docutils literal notranslate"><span class="pre">-W</span></code> flags and <a class="reference external" href="https://docs.python.org/3/library/warnings.html#warnings.simplefilter" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">warnings.simplefilter()</span></code></a> work as expected.</p>
+<p>Frameworks that want to capture Warp’s output can supply a custom logger.
+<a class="reference internal" href="../api_reference/_generated/warp.Logger.html#warp.Logger" title="warp.Logger"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Logger</span></code></a> is a runtime-checkable <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Protocol" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></a>,
+so any object with the four methods below works. There is no need to inherit
+from a Warp base class; framework integrators typically wrap an existing
+logger in a small adapter:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MyLogger</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">debug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="o">...</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="n">MyLogger</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">warning</span></code> method must accept the <code class="docutils literal notranslate"><span class="pre">category</span></code> and <code class="docutils literal notranslate"><span class="pre">stacklevel</span></code> keyword
+arguments even if the adapter ignores them: the internal emitter passes them
+by name, so an adapter without those parameters raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at the
+first warning. The built-in default logger uses them to integrate with
+Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter machinery.</p>
+<p>To forward Warp’s diagnostics into an existing <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> pipeline, wrap
+<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">logging.Logger</span></code></a> in a small adapter:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">app_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;myapp.warp&quot;</span><span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">StdlibAdapter</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">debug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="n">app_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="n">app_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="n">app_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span> <span class="n">app_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_logger</span><span class="p">(</span><span class="n">StdlibAdapter</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>This routes all of Warp’s output through stdlib <a class="reference external" href="https://docs.python.org/3/library/logging.html#module-logging" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">logging</span></code></a> (and any
+handlers, filters, or formatters configured on it). Note that this loses
+the default logger’s integration with Python’s <a class="reference external" href="https://docs.python.org/3/library/warnings.html#module-warnings" title="(in Python v3.14)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warnings</span></code></a> filter
+machinery (e.g. <code class="docutils literal notranslate"><span class="pre">-W</span></code> flags, <a class="reference external" href="https://docs.python.org/3/library/warnings.html#warnings.filterwarnings" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code></a>); the adapter
+emits warnings as plain log records instead.</p>
+<p>To temporarily install a logger, use <a class="reference internal" href="../api_reference/_generated/warp.ScopedLogger.html#warp.ScopedLogger" title="warp.ScopedLogger"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedLogger</span></code></a>,
+which restores the previous logger on context exit:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedLogger</span><span class="p">(</span><span class="n">my_capture_logger</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>  <span class="c1"># diagnostics flow to my_capture_logger</span>
+</pre></div>
+</div>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> to <code class="docutils literal notranslate"><span class="pre">wp.set_logger()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogger()</span></code> to restore
+Warp’s built-in default logger.</p>
+</section>
 </section>
 <section id="debug-mode-compilation">
 <span id="debug-mode"></span><h2>Debug Mode Compilation<a class="headerlink" href="#debug-mode-compilation" title="Link to this heading">#</a></h2>
@@ -737,7 +821,12 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#environment-diagnostics">Environment Diagnostics</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#printing-values">Printing Values</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verbose-mode-and-printing-launches">Verbose Mode and Printing Launches</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#diagnostics-and-logging">Diagnostics and Logging</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#log-level">Log Level</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verbose-warnings">Verbose Warnings</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-loggers">Custom Loggers</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#debug-mode-compilation">Debug Mode Compilation</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#assertions">Assertions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-through-debugging">Step-Through Debugging</a></li>

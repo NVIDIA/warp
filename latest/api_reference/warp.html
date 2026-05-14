@@ -1451,6 +1451,41 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 </div>
 </section>
 </section>
+<section id="logging">
+<h2>Logging<a class="headerlink" href="#logging" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Logger.html#warp.Logger" title="warp.Logger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Logger</span></code></a></p></td>
+<td><p>Protocol for Warp loggers.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ScopedLogLevel.html#warp.ScopedLogLevel" title="warp.ScopedLogLevel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedLogLevel</span></code></a></p></td>
+<td><p>Context manager to temporarily override <a class="reference internal" href="_generated/warp.config.log_level.html#warp.config.log_level" title="warp.config.log_level"><code class="xref py py-data docutils literal notranslate"><span class="pre">warp.config.log_level</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedLogger.html#warp.ScopedLogger" title="warp.ScopedLogger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedLogger</span></code></a></p></td>
+<td><p>Context manager to temporarily install a custom logger.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_logger.html#warp.get_logger" title="warp.get_logger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_logger</span></code></a></p></td>
+<td><p>Return the active Warp logger.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_logger.html#warp.set_logger" title="warp.set_logger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_logger</span></code></a></p></td>
+<td><p>Set the active Warp logger.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.LOG_DEBUG.html#warp.LOG_DEBUG" title="warp.LOG_DEBUG"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOG_DEBUG</span></code></a></p></td>
+<td><p>Log level for verbose compilation and debugging output.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.LOG_ERROR.html#warp.LOG_ERROR" title="warp.LOG_ERROR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOG_ERROR</span></code></a></p></td>
+<td><p>Log level for error messages.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.LOG_INFO.html#warp.LOG_INFO" title="warp.LOG_INFO"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOG_INFO</span></code></a></p></td>
+<td><p>Log level for informational messages (init banner, launch info).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.LOG_WARNING.html#warp.LOG_WARNING" title="warp.LOG_WARNING"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOG_WARNING</span></code></a></p></td>
+<td><p>Log level for warnings and deprecation notices.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 <section id="numpy-interop">
 <h2>NumPy Interop<a class="headerlink" href="#numpy-interop" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -1764,6 +1799,7 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#timing-flags">Timing Flags</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#logging">Logging</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numpy-interop">NumPy Interop</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dlpack-interop">DLPack Interop</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-interop">JAX Interop</a></li>
