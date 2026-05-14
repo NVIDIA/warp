@@ -17,12 +17,18 @@ from warp.tests.unittest_utils import *
 kernel_cache = {}
 
 
+_prev_log_level = None
+
+
 def setUpModule():
-    wp.config.quiet = True
+    global _prev_log_level
+    _prev_log_level = wp.config.log_level
+    wp.config.log_level = wp.LOG_WARNING
 
 
 def tearDownModule():
-    wp.config.quiet = False
+    if _prev_log_level is not None:
+        wp.config.log_level = _prev_log_level
 
 
 def test_constructors(test, device, dtype, register_kernels=False):

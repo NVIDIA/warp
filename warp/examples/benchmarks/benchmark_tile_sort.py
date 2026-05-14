@@ -35,7 +35,7 @@ def create_test_kernel(KEY_TYPE, MAX_SORT_LENGTH):
 
 
 if __name__ == "__main__":
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
     wp.init()
     wp.clear_kernel_cache()
     wp.set_module_options({"fast_math": True, "enable_backward": False})

@@ -6,12 +6,10 @@ from __future__ import annotations
 import cProfile
 import ctypes
 import gc
-import linecache
 import os
 import sys
 import threading
 import time
-import warnings
 from collections.abc import Callable
 from types import ModuleType
 from typing import Any
@@ -21,56 +19,15 @@ import numpy as np
 import warp as wp
 import warp._src.context
 import warp._src.types
+from warp._src import logger as _logger_module
 from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator
+from warp._src.logger import Logger, LoggerBasic, _validate_logger, get_logger, log_debug, set_logger
 from warp._src.types import Array, DType, type_repr, types_equal
 
 _wp_module_name_ = "warp.utils"
 
-warnings_seen = set()
-
 # Cache for wp.map(): (func_name, input_descriptors, output_type_descriptor) -> (out_dtypes, kernel)
 map_cache: dict[tuple, tuple] = {}
-
-
-def warp_showwarning(message, category, filename, lineno, file=None, line=None):
-    """Version of warnings.showwarning that always prints to sys.stdout."""
-
-    if warp.config.verbose_warnings:
-        s = f"Warp {category.__name__}: {message} ({filename}:{lineno})\n"
-
-        if line is None:
-            try:
-                line = linecache.getline(filename, lineno)
-            except Exception:
-                # When a warning is logged during Python shutdown, linecache
-                # and the import machinery don't work anymore
-                line = None
-
-        if line:
-            line = line.strip()
-            s += f"  {line}\n"
-    else:
-        # simple warning
-        s = f"Warp {category.__name__}: {message}\n"
-
-    sys.stdout.write(s)
-
-
-def warn(message, category=None, stacklevel=1, once=False):
-    if (category, message) in warnings_seen:
-        return
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("default")  # Change the filter in this process
-        warnings.showwarning = warp_showwarning
-        warnings.warn(
-            message,
-            category,
-            stacklevel=stacklevel + 1,  # Increment stacklevel by 1 since we are in a wrapper
-        )
-
-    if category is DeprecationWarning or once:
-        warnings_seen.add((category, message))
 
 
 # expand a 7-vec to a tuple of arrays
@@ -1433,9 +1390,8 @@ class ScopedTimer:
             if self.print:
                 ScopedTimer._thread_local.indent += 1
 
-                if warp.config.verbose:
-                    indent = "    " * ScopedTimer._thread_local.indent
-                    print(f"{indent}{self.name} ...", flush=True)
+                indent = "    " * ScopedTimer._thread_local.indent
+                log_debug(f"{indent}{self.name} ...")
 
             self.start = time.perf_counter_ns()
 
@@ -1473,12 +1429,17 @@ class ScopedTimer:
 
                 if self.timing_results:
                     self.report_func(self.timing_results, indent=indent)
-                    print()
 
+                # Route the timer's final output through the active logger so
+                # that custom loggers capture it.  Callers
+                # pass ``active=`` to gate by log_level themselves; bypass the
+                # log_level threshold here so an explicitly enabled timer
+                # always emits.
+                logger = get_logger()
                 if self.extra_msg:
-                    print(f"{indent}{self.name} took {self.elapsed:.2f} ms {self.extra_msg}")
+                    logger.info(f"{indent}{self.name} took {self.elapsed:.2f} ms {self.extra_msg}")
                 else:
-                    print(f"{indent}{self.name} took {self.elapsed:.2f} ms")
+                    logger.info(f"{indent}{self.name} took {self.elapsed:.2f} ms")
 
                 ScopedTimer._thread_local.indent -= 1
 
@@ -1549,6 +1510,74 @@ class ScopedAllocator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.device._custom_allocator = self.saved
+
+
+class ScopedLogger:
+    """Context manager to temporarily install a custom logger.
+
+    On context exit, the previous logger is restored.
+
+    Args:
+        logger: A :class:`~warp.Logger`-compatible object, or ``None`` to
+            temporarily restore Warp's built-in default logger.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedLogger(my_capture_logger):
+                wp.launch(...)  # diagnostics flow to my_capture_logger
+
+    See Also:
+        :func:`warp.set_logger`, :func:`warp.get_logger`
+    """
+
+    def __init__(self, logger: Logger | None):
+        if logger is not None:
+            _validate_logger(logger)
+        self.logger = logger
+
+    def __enter__(self):
+        self.saved = get_logger()
+        set_logger(self.logger if self.logger is not None else LoggerBasic())
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Restore by direct assignment rather than set_logger() to avoid
+        # re-validating the saved logger; a TypeError raised here would mask
+        # any in-flight exception propagating through the context.
+        _logger_module._active_logger = self.saved
+
+
+class ScopedLogLevel:
+    """Context manager to temporarily override :data:`warp.config.log_level`.
+
+    On context exit, the previous value is restored.
+
+    Args:
+        log_level: The log level to set inside the scope. Use one of
+            :data:`~warp.LOG_DEBUG`, :data:`~warp.LOG_INFO`,
+            :data:`~warp.LOG_WARNING`, or :data:`~warp.LOG_ERROR`.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedLogLevel(wp.LOG_WARNING):
+                wp.init()  # banner suppressed inside the scope
+
+    See Also:
+        :data:`warp.config.log_level`
+    """
+
+    def __init__(self, log_level: int):
+        self.log_level = log_level
+
+    def __enter__(self):
+        self.saved = wp.config.log_level
+        wp.config.log_level = self.log_level
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        wp.config.log_level = self.saved
 
 
 # Allow temporarily enabling/disabling mempool access

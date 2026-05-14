@@ -64,6 +64,7 @@ import warp._src.build
 import warp._src.codegen
 import warp.config
 from warp._src.codegen import WarpCodegenTypeError, synchronized
+from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import Array, launch_bounds_t, type_repr
 
@@ -863,8 +864,7 @@ class Kernel:
             return ovl
 
         # Log that we're creating a new overload (will trigger module hash change and recompilation)
-        if warp.config.verbose:
-            print(f"[Kernel.add_overload] Creating new overload for {self.key}: {sig}")
+        log_debug(f"[Kernel.add_overload] Creating new overload for {self.key}: {sig}")
 
         arg_names = list(self.adj.arg_types.keys())
         template_types = list(self.adj.arg_types.values())
@@ -1441,8 +1441,7 @@ def kernel(
             # This can happen when the same kernel is compiled for multiple devices
             existing_module = user_modules.get(k.module.name)
             if existing_module is not None:
-                if warp.config.verbose:
-                    print(f"[wp.kernel] Reusing existing unique module: {k.module.name}")
+                log_debug(f"[wp.kernel] Reusing existing unique module: {k.module.name}")
 
                 # The kernel must already exist in the module (same hash means same content)
                 existing_kernel_same_key = existing_module.kernels.get(k.key)
@@ -1458,7 +1457,7 @@ def kernel(
                 # user_modules and will not be compiled. Returning the existing kernel ensures
                 # its .module points to the registered, compiled module, and its .hash stays
                 # in sync with ModuleHasher updates (e.g., resolving static expressions).
-                if warp.config.verbose:
+                if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
                     # Show number of overloads if this is a generic kernel
                     overload_info = ""
                     if existing_kernel_same_key.is_generic:
@@ -1466,7 +1465,7 @@ def kernel(
                         overload_info = (
                             f" (generic kernel with {num_overloads} overload{'s' if num_overloads != 1 else ''})"
                         )
-                    print(f"[wp.kernel]   Reusing existing kernel object for {k.key}{overload_info}")
+                    log_debug(f"[wp.kernel]   Reusing existing kernel object for {k.key}{overload_info}")
                 k = existing_kernel_same_key
 
                 # Reset skip_build flag for all kernels when reusing a module.
@@ -1478,8 +1477,7 @@ def kernel(
                 # This is the first time we've seen this kernel
                 # Register the new unique module in the global registry
                 user_modules[k.module.name] = k.module
-                if warp.config.verbose:
-                    print(f"[wp.kernel] Created new unique module: {k.module.name}")
+                log_debug(f"[wp.kernel] Created new unique module: {k.module.name}")
 
         k = functools.update_wrapper(k, f)
         return k
@@ -2046,19 +2044,27 @@ class ModuleHasher:
                         old_hash = ovl.hash
                         ovl.hash = self.hash_kernel(ovl)
                         # Only log hash changes when old hash was not None (unexpected changes)
-                        if warp.config.verbose and old_hash is not None and old_hash != ovl.hash:
+                        if (
+                            (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
+                            and old_hash is not None
+                            and old_hash != ovl.hash
+                        ):
                             old_str = old_hash.hex()[:8]
                             new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
-                            print(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
+                            log_debug(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
             else:
                 if not kernel.adj.skip_build:
                     old_hash = kernel.hash
                     kernel.hash = self.hash_kernel(kernel)
                     # Only log hash changes when old hash was not None (unexpected changes)
-                    if warp.config.verbose and old_hash is not None and old_hash != kernel.hash:
+                    if (
+                        (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
+                        and old_hash is not None
+                        and old_hash != kernel.hash
+                    ):
                         old_str = old_hash.hex()[:8]
                         new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
-                        print(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
+                        log_debug(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
 
         # include all unique kernels in the module hash
         for kernel_hash in sorted(self.unique_kernels.keys()):
@@ -2474,15 +2480,15 @@ class ModuleExec:
             max_smem_bytes = self.device.max_shared_memory_per_block
 
             if not runtime.core.wp_cuda_configure_kernel_shared_memory(forward_kernel, forward_smem_bytes):
-                print(
-                    f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {forward_name} kernel for {forward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
+                log_warning(
+                    f"Failed to configure kernel dynamic shared memory for this device, tried to configure {forward_name} kernel for {forward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
                 )
 
             if options["enable_backward"] and not runtime.core.wp_cuda_configure_kernel_shared_memory(
                 backward_kernel, backward_smem_bytes
             ):
-                print(
-                    f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {backward_name} kernel for {backward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
+                log_warning(
+                    f"Failed to configure kernel dynamic shared memory for this device, tried to configure {backward_name} kernel for {backward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
                 )
 
             hooks = KernelHooks(forward_kernel, backward_kernel, forward_smem_bytes, backward_smem_bytes)
@@ -3000,9 +3006,7 @@ class Module:
             opt = 2 if is_cpu else 3
 
         if opt != 3 and not is_cpu and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
-            warp._src.utils.warn(
-                "Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True
-            )
+            log_warning("Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True)
 
         # build CPU
         if is_cpu:
@@ -3019,7 +3023,9 @@ class Module:
                 output_path = os.path.join(build_dir, output_name)
 
                 # build object code
-                with warp.ScopedTimer("Compile x86", active=warp.config.verbose):
+                with warp.ScopedTimer(
+                    "Compile x86", active=(warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
+                ):
                     warp._src.build.build_cpu(
                         output_path,
                         source_code_path,
@@ -3029,7 +3035,7 @@ class Module:
                         fuse_fp=options["fuse_fp"],
                         extra_flags=options["cpu_compiler_flags"],
                         optimization_level=opt,
-                        verbose=warp.config.verbose,
+                        verbose=warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG,
                         use_precompiled_headers=options["use_precompiled_headers"],
                         pch_dir=runtime.get_clang_pch_dir() if options["use_precompiled_headers"] else None,
                         block_dim=options["block_dim"],
@@ -3060,7 +3066,7 @@ class Module:
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
                     f"Compile CUDA (arch={options['output_arch']}{arch_suffix}, mode={mode}, block_dim={options['block_dim']})",
-                    active=warp.config.verbose,
+                    active=(warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG),
                 ):
                     warp._src.build.build_cuda(
                         source_code_path,
@@ -3138,7 +3144,7 @@ class Module:
                 pass
             except Exception as e:
                 # We don't need source_code_path to be copied successfully to proceed, so warn and keep running
-                warp._src.utils.warn(f"Exception when renaming {source_code_path}: {e}")
+                log_warning(f"Exception when renaming {source_code_path}: {e}")
 
             # clean up build_dir used for this process regardless
             shutil.rmtree(build_dir, ignore_errors=True)
@@ -3168,10 +3174,10 @@ class Module:
             if self.options["strip_hash"] or (exec.module_hash == current_hash):
                 return exec
             # else: Hash mismatch means module changed, need to recompile
-            if warp.config.verbose:
+            if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
                 old_str = exec.module_hash.hex()[:8] if exec.module_hash else "None"
                 new_str = current_hash.hex()[:8] if current_hash else "None"
-                print(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
+                log_debug(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
 
         # quietly avoid repeated build attempts to reduce error spew
         if device.context in self.failed_builds:
@@ -3189,10 +3195,13 @@ class Module:
             else f"Module {self.name} load on device '{device}'"
         )
 
-        if warp.config.verbose:
+        if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
             module_load_timer_name += f" (block_dim={active_block_dim})"
 
-        with warp.ScopedTimer(module_load_timer_name, active=not warp.config.quiet) as module_load_timer:
+        with warp.ScopedTimer(
+            module_load_timer_name,
+            active=not warp.config.quiet and warp.config.log_level <= warp.LOG_INFO,
+        ) as module_load_timer:
             # -----------------------------------------------------------
             # Determine binary path and build if necessary
 
@@ -3282,9 +3291,9 @@ class Module:
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
         module_exec = self.execs.get((device.context, self.options["block_dim"]))
         if module_exec is not None:
-            if warp.config.verbose:
+            if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
                 kernel_hash_str = kernel.hash.hex()[:8] if kernel.hash else "None"
-                print(f"[Module.get_kernel_hooks] Looking up kernel: {kernel.key} (hash: {kernel_hash_str})")
+                log_debug(f"[Module.get_kernel_hooks] Looking up kernel: {kernel.key} (hash: {kernel_hash_str})")
             return module_exec.get_kernel_hooks(kernel)
         else:
             raise RuntimeError(f"Module is not loaded on device {device}")
@@ -3574,7 +3583,7 @@ class Event:
             )
 
             if ipc_handle_buffer.raw == bytes(64):
-                warp._src.utils.warn("IPC event handle appears to be invalid. Was interprocess=True used?")
+                log_warning("IPC event handle appears to be invalid. Was interprocess=True used?")
 
             return ipc_handle_buffer.raw
 
@@ -4051,9 +4060,9 @@ class Device:
 
                 return psutil.virtual_memory().total
             except ModuleNotFoundError:
-                warp._src.utils.warn(
+                log_warning(
                     "Please install the 'psutil' package to query CPU memory information.",
-                    UserWarning,
+                    category=UserWarning,
                     stacklevel=2,
                     once=True,
                 )
@@ -4076,9 +4085,9 @@ class Device:
 
                 return psutil.virtual_memory().free
             except ModuleNotFoundError:
-                warp._src.utils.warn(
+                log_warning(
                     "Please install the 'psutil' package to query CPU memory information.",
-                    UserWarning,
+                    category=UserWarning,
                     stacklevel=2,
                     once=True,
                 )
@@ -4493,6 +4502,31 @@ class Runtime:
                 "or upgrade to Apple Silicon hardware (ARM64)."
             )
 
+        if warp.config.quiet:
+            if not warp.config._deprecated_quiet_warning_seen:
+                log_warning(
+                    "warp.config.quiet is deprecated; "
+                    "use warp.config.log_level = warp.LOG_WARNING to suppress the init banner.",
+                    category=DeprecationWarning,
+                    once=True,
+                )
+                warp.config._deprecated_quiet_warning_seen = True
+            # Honor the legacy flag during the deprecation window without
+            # clobbering an explicit user log_level that's already at least
+            # this restrictive.
+            if warp.config.log_level < LOG_WARNING:
+                warp.config.log_level = LOG_WARNING
+        if warp.config.verbose:
+            if not warp.config._deprecated_verbose_warning_seen:
+                log_warning(
+                    "warp.config.verbose is deprecated; use warp.config.log_level = warp.LOG_DEBUG instead.",
+                    category=DeprecationWarning,
+                    once=True,
+                )
+                warp.config._deprecated_verbose_warning_seen = True
+            if not warp.config._suppress_verbose_log_level_mapping and warp.config.log_level > LOG_DEBUG:
+                warp.config.log_level = LOG_DEBUG
+
         bin_path = os.path.join(warp_home, "bin")
 
         if os.name == "nt":
@@ -4572,19 +4606,19 @@ class Runtime:
                 if clang_version_ptr:
                     clang_version = clang_version_ptr.decode("utf-8")
                     if clang_version != warp.config.version:
-                        warp._src.utils.warn(
+                        log_warning(
                             f"Version mismatch detected in warp-clang library.\n"
                             f"  Expected Warp version: {warp.config.version}\n"
                             f"  Loaded warp-clang library version: {clang_version}\n"
                             f"  This may occur due to environment variables or multiple Warp installations."
                         )
                 else:
-                    warp._src.utils.warn(
+                    log_warning(
                         "warp-clang version check returned NULL.\n"
                         "  This may indicate a corrupted or incompatible library."
                     )
             else:
-                warp._src.utils.warn(
+                log_warning(
                     "warp-clang library does not support version checking.\n"
                     "  This may indicate an older or mismatched library version."
                 )
@@ -5846,7 +5880,7 @@ class Runtime:
                     setattr(self.core.ctypes, name, getattr(self.core, name))
                     setattr(self.core, name, getattr(fastcall, name))
         except Exception as e:
-            warp._src.utils.warn(f"Failed to load _warp_fastcall module: {e}. Falling back to ctypes.")
+            log_warning(f"Failed to load _warp_fastcall module: {e}. Falling back to ctypes.")
 
         # Initialize with version verification
         error = self.core.wp_init(warp.config.version.encode("utf-8"))
@@ -5968,7 +6002,7 @@ class Runtime:
         self.tape = None
 
         # print device and version information
-        if not warp.config.quiet:
+        if not warp.config.quiet and warp.config.log_level <= warp.LOG_INFO:
             greeting = []
 
             greeting.append(f"Warp {warp.config.version} initialized:")
@@ -6059,7 +6093,7 @@ class Runtime:
             greeting.append("   Kernel cache:")
             greeting.append(f"     {warp.config.kernel_cache_dir}")
 
-            print("\n".join(greeting))
+            log_info("\n".join(greeting))
 
         if cuda_device_count > 0:
             # ensure initialization did not change the initial context (e.g. querying available memory)
@@ -6078,11 +6112,11 @@ class Runtime:
                 # This should not happen on any system officially supported by Warp.  UVA is not available
                 # on 32-bit Windows, which we don't support.  Nonetheless, we should check and report a
                 # warning out of abundance of caution.  It may help with debugging a broken VM setup etc.
-                warp._src.utils.warn(
+                log_warning(
                     f"\n   Support for Unified Virtual Addressing (UVA) was not detected on devices {devices_without_uva}."
                 )
             if devices_without_mempool:
-                warp._src.utils.warn(
+                log_warning(
                     f"\n   Support for CUDA memory pools was not detected on devices {devices_without_mempool}."
                     "\n   This prevents memory allocations in CUDA graphs and may result in poor performance."
                     "\n   Is the UVM driver enabled?"
@@ -6099,7 +6133,7 @@ class Runtime:
                     f"but the installed CUDA driver version is {self.driver_version[0]}.{self.driver_version[1]}."
                 )
                 msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
-                warp._src.utils.warn("\n   ".join(msg))
+                log_warning("\n   ".join(msg))
 
     def _get_or_create_pch_dir(self) -> str:
         """Return a per-thread temporary directory for precompiled header files.
@@ -7168,7 +7202,7 @@ class RegisteredGLBuffer:
                 self.warp_buffer = None
                 self.warp_buffer_cpu = None
                 if not RegisteredGLBuffer.__fallback_warning_shown:
-                    warp._src.utils.warn(
+                    log_warning(
                         "Could not register GL buffer since CUDA/OpenGL interoperability is not available. Falling back to copy operations between the Warp array and the OpenGL buffer.",
                     )
                     RegisteredGLBuffer.__fallback_warning_shown = True
@@ -7802,11 +7836,11 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
         else:
             # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
             if warp._src.types.is_scalar(value):
-                warp._src.utils.warn(
+                log_warning(
                     f"Implicit conversion from a scalar type to the composite type "
                     f"`{type_str(arg_type)}` for kernel parameter '{arg_name}' is deprecated. "
                     f"Use an explicit conversion, e.g.: `{type_str(arg_type)}(...)`.",
-                    DeprecationWarning,
+                    category=DeprecationWarning,
                     stacklevel=4,
                 )
             try:
@@ -7877,7 +7911,6 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             else:
                 return arg_type._type_(value)
         except Exception as e:
-            print(e)
             raise RuntimeError(
                 "Error launching kernel, unable to pack kernel parameter type "
                 f"{type(value)} for param {arg_name}, expected {arg_type}"
@@ -8297,7 +8330,7 @@ def launch(
 
     # debugging aid
     if warp.config.print_launches:
-        print(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
+        get_logger().info(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
     # construct launch bounds
     bounds = launch_bounds_t(dim)
@@ -8524,8 +8557,8 @@ def launch(
             try:
                 runtime.verify_cuda_device(device)
             except Exception as e:
-                print(f"Error launching kernel: {kernel.key} on device {device}")
-                raise e
+                log_error(f"Error launching kernel: {kernel.key} on device {device}: {e}")
+                raise
 
     # record on tape if one is active
     if runtime.tape and record_tape:
@@ -9082,9 +9115,7 @@ def compile_aot_module(
 
     # Warn if there are generic kernels without overloads
     if no_overloads:
-        from warp._src.utils import warn  # noqa: PLC0415
-
-        warn(
+        log_warning(
             f"Generic kernels without overloads will be skipped during AOT compilation. "
             f"Add overloads using wp.overload() or the @wp.overload decorator to compile them. "
             f"Kernels without overloads: {', '.join(no_overloads)}",
@@ -9114,11 +9145,13 @@ def compile_aot_module(
         aot_targets_cpu = get_device(device).is_cpu
 
     if aot_targets_cpu and _uses_march_native(resolved_cpu_flags):
-        warp._src.utils.warn(
+        log_warning(
             "compile_aot_module: CPU module is being compiled with -march=native. "
             "The result requires this CPU's instruction set extensions "
             "and may not run on CPUs with fewer features. "
             "Set cpu_compiler_flags='' for a portable build.",
+            category=UserWarning,
+            stacklevel=2,
             once=True,
         )
 
@@ -10974,7 +11007,7 @@ def export_stubs(file):  # pragma: no cover
 
         # Warn if doc strings differ
         if not all(f.doc == first.doc for f in overloads):
-            warp._src.utils.warn(
+            log_warning(
                 f"Merging overloads for '{first.key}' with differing docstrings. "
                 "Consider aligning docstrings for consistency.",
                 stacklevel=3,
@@ -11576,12 +11609,17 @@ def print_diagnostics() -> dict:
     # If runtime not yet initialized, suppress the init greeting since
     # diagnostics output already subsumes all greeting info.
     if runtime is None:
-        old_quiet = warp.config.quiet
-        warp.config.quiet = True
+        from warp._src.utils import ScopedLogLevel  # noqa: PLC0415
+
+        suppress_verbose_log_level_mapping = warp.config._suppress_verbose_log_level_mapping
         try:
-            init()
+            warp.config._suppress_verbose_log_level_mapping = True
+            with ScopedLogLevel(warp.LOG_WARNING):
+                init()
         finally:
-            warp.config.quiet = old_quiet
+            warp.config._suppress_verbose_log_level_mapping = suppress_verbose_log_level_mapping
+        if warp.config.verbose and warp.config.log_level > warp.LOG_DEBUG:
+            warp.config.log_level = warp.LOG_DEBUG
 
     def _version_str(ver):
         """Format a (major, minor) version tuple as 'major.minor', or None."""

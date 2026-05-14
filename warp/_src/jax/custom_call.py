@@ -7,8 +7,8 @@ from functools import reduce
 import warp as wp
 from warp._src.context import type_str
 from warp._src.jax import get_jax_device
+from warp._src.logger import log_warning
 from warp._src.types import array_t, launch_bounds_t, matches_array_class, strides_from_shape
-from warp._src.utils import warn
 
 _wp_module_name_ = "warp.jax.custom_call"
 
@@ -61,7 +61,7 @@ def jax_kernel(kernel, launch_dims=None, quiet=False):
 
     # deprecation warning
     if jax.__version_info__ >= (0, 5, 0) and not quiet:
-        warn(
+        log_warning(
             "This version of jax_kernel() is deprecated and will not be supported with newer JAX versions. "
             "Please use the newer FFI version instead (warp.jax.ffi.jax_kernel). "
             "As of Warp release 1.10, the FFI version is the default implementation of jax_kernel(). "

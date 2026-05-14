@@ -391,6 +391,22 @@ from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
 
 
+# category: Logging
+
+from warp._src.logger import LOG_DEBUG as LOG_DEBUG
+from warp._src.logger import LOG_INFO as LOG_INFO
+from warp._src.logger import LOG_WARNING as LOG_WARNING
+from warp._src.logger import LOG_ERROR as LOG_ERROR
+
+from warp._src.logger import Logger as Logger
+
+from warp._src.logger import set_logger as set_logger
+from warp._src.logger import get_logger as get_logger
+
+from warp._src.utils import ScopedLogger as ScopedLogger
+from warp._src.utils import ScopedLogLevel as ScopedLogLevel
+
+
 # category: NumPy Interop
 
 from warp._src.types import dtype_from_numpy as dtype_from_numpy

@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     configs = list(product(tile_m, tile_n, tile_k, block))
 
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
 
     # header
     print(

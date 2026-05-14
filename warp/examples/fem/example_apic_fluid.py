@@ -8,6 +8,7 @@
 # grid and the PicQuadrature class.
 ###########################################################################
 
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,7 +18,6 @@ import warp as wp
 import warp.examples.fem.utils as fem_example_utils
 import warp.fem as fem
 import warp.render
-from warp._src.utils import warn
 from warp.fem import Domain, Field, Sample, at_node, div, grad, integrand
 from warp.sparse import BsrMatrix, bsr_mm, bsr_mv, bsr_transposed
 
@@ -238,7 +238,7 @@ class Example:
                     screen_height=1024,
                 )
         except Exception as err:
-            warn(f"Could not initialize OpenGL renderer: {err}.")
+            warnings.warn(f"Could not initialize OpenGL renderer: {err}.", stacklevel=2)
 
         try:
             if stage_path:
@@ -348,7 +348,7 @@ class Example:
                 inv_volume,
                 pressure_field.dof_values,
                 velocity_field.dof_values,
-                quiet=not wp.config.verbose,
+                quiet=wp.config.log_level > wp.LOG_DEBUG,
             )
 
             # (A)PIC advection

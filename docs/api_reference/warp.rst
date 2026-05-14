@@ -467,6 +467,23 @@ Timing Flags
    TIMING_MEMCPY
    TIMING_MEMSET
 
+Logging
+-------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   Logger
+   ScopedLogLevel
+   ScopedLogger
+   get_logger
+   set_logger
+   LOG_DEBUG
+   LOG_ERROR
+   LOG_INFO
+   LOG_WARNING
+
 NumPy Interop
 -------------
 

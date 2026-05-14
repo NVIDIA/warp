@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     from warp._src.context import DeviceLike
 
+from warp._src.logger import log_warning
 from warp._src.types import (
     array,
     float16,
@@ -696,11 +697,10 @@ class Texture:
     def copy_from_array(self, src: array):
         """Copy from a CUDA Warp array into this texture's CUDA array.
         Deprecated, use ``Texture.copy_from()`` method instead."""
-        import warp._src.utils  # noqa: PLC0415
 
-        warp._src.utils.warn(
+        log_warning(
             "The Texture.copy_from_array() method is deprecated, use Texture.copy_from() instead.",
-            DeprecationWarning,
+            category=DeprecationWarning,
             stacklevel=2,
         )
 
@@ -709,11 +709,10 @@ class Texture:
     def copy_to_array(self, dst: array):
         """Copy from this texture's CUDA array into a CUDA Warp array.
         Deprecated, use ``Texture.copy_to()`` method instead."""
-        import warp._src.utils  # noqa: PLC0415
 
-        warp._src.utils.warn(
+        log_warning(
             "The Texture.copy_to_array() method is deprecated, use Texture.copy_to() instead.",
-            DeprecationWarning,
+            category=DeprecationWarning,
             stacklevel=2,
         )
 

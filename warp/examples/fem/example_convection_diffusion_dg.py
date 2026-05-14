@@ -145,7 +145,9 @@ class Example:
         )
 
         phi = wp.zeros_like(rhs)
-        fem_example_utils.bsr_cg(self._matrix, b=rhs, x=phi, method="bicgstab", quiet=not wp.config.verbose)
+        fem_example_utils.bsr_cg(
+            self._matrix, b=rhs, x=phi, method="bicgstab", quiet=wp.config.log_level > wp.LOG_DEBUG
+        )
         wp.utils.array_cast(in_array=phi, out_array=self._phi_field.dof_values)
 
         # for visualization purposes only

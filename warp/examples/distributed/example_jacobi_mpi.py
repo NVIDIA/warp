@@ -27,7 +27,7 @@ from mpi4py import MPI
 
 import warp as wp
 
-wp.config.quiet = True  # Suppress wp.init() output
+wp.config.log_level = wp.LOG_WARNING  # Suppress wp.init() info/debug output
 
 
 tol = 1e-8

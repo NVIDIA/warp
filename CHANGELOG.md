@@ -32,6 +32,11 @@
 - Add `--use-dynamic-cuda` build option to link against shared CUDA libraries instead of embedding
   them statically; the corresponding shared libraries must be present at runtime
   ([GH-1334](https://github.com/NVIDIA/warp/issues/1334)).
+- Add pluggable logging infrastructure: implement the `wp.Logger` protocol and pass it to `wp.set_logger()`,
+  or scope it temporarily with `wp.ScopedLogger`. `wp.config.log_level` controls the global verbosity threshold
+  and can be scoped temporarily with `wp.ScopedLogLevel`; all Python-side diagnostic output now routes through
+  the logger ([GH-1315](https://github.com/NVIDIA/warp/issues/1315),
+  [GH-1434](https://github.com/NVIDIA/warp/issues/1434)).
 
 ### Removed
 
@@ -43,6 +48,10 @@
   import statements from `warp.jax_experimental` to `warp.jax`. No API changes are required.
   `warp.jax_experimental` will be removed in Warp 1.16.
   ([GH-1370](https://github.com/NVIDIA/warp/issues/1370))
+- Deprecate `warp.config.verbose` and `warp.config.quiet` in favor of `warp.config.log_level`. Reading or setting
+  either flag continues to work during the deprecation window and now emits a one-time `DeprecationWarning`.
+  `warp.config.verbose_warnings` is unaffected and continues to control whether warning output includes the source
+  location ([GH-1315](https://github.com/NVIDIA/warp/issues/1315)).
 
 ### Changed
 
@@ -86,6 +95,8 @@
 - Fix memory leak with retained graph allocations ([GH-1429](https://github.com/NVIDIA/warp/issues/1429)).
 - Fix a data race in `wp.ScopedMemoryTracker.report()` that could corrupt the report when called
   concurrently from multiple threads ([GH-1415](https://github.com/NVIDIA/warp/issues/1415)).
+- Fix Warp warning emission overriding user warning filters, making deprecation warnings unsuppressible via
+  `warnings.filterwarnings()` ([GH-1315](https://github.com/NVIDIA/warp/issues/1315)).
 
 ### Documentation
 

@@ -201,6 +201,15 @@ from warp._src.utils import TIMING_MEMCPY as TIMING_MEMCPY
 from warp._src.utils import TIMING_MEMSET as TIMING_MEMSET
 from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
+from warp._src.logger import LOG_DEBUG as LOG_DEBUG
+from warp._src.logger import LOG_INFO as LOG_INFO
+from warp._src.logger import LOG_WARNING as LOG_WARNING
+from warp._src.logger import LOG_ERROR as LOG_ERROR
+from warp._src.logger import Logger as Logger
+from warp._src.logger import set_logger as set_logger
+from warp._src.logger import get_logger as get_logger
+from warp._src.utils import ScopedLogger as ScopedLogger
+from warp._src.utils import ScopedLogLevel as ScopedLogLevel
 from warp._src.types import dtype_from_numpy as dtype_from_numpy
 from warp._src.types import dtype_to_numpy as dtype_to_numpy
 from warp._src.context import from_numpy as from_numpy

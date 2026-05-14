@@ -12,6 +12,7 @@ from typing import Any
 import warp._src.build
 import warp._src.context
 from warp._src.codegen import Reference, Var, get_arg_value, strip_reference
+from warp._src.logger import log_warning
 from warp._src.types import *
 
 from .context import add_builtin
@@ -3147,16 +3148,12 @@ def tile_load_tuple_value_func(arg_types: Mapping[str, type], arg_values: Mappin
 
     if arg_values.get("aligned"):
         if arg_values["storage"] == "register":
-            from warp._src.utils import warn  # noqa: PLC0415
-
-            warn(
+            log_warning(
                 "tile_load() with aligned=True has no effect for storage='register'. "
                 "The aligned parameter only affects shared memory tiles."
             )
         elif arg_values["storage"] == "shared" and len(shape) < 2:
-            from warp._src.utils import warn  # noqa: PLC0415
-
-            warn(
+            log_warning(
                 "tile_load() with aligned=True has no effect for 1D shared tiles. "
                 "The vectorized path requires 2D+ tiles."
             )
@@ -3426,16 +3423,12 @@ def tile_store_value_func(arg_types, arg_values):
 
     if arg_values.get("aligned"):
         if t.storage == "register":
-            from warp._src.utils import warn  # noqa: PLC0415
-
-            warn(
+            log_warning(
                 "tile_store() with aligned=True has no effect for register tiles. "
                 "The aligned parameter only affects shared memory tiles."
             )
         elif t.storage == "shared" and len(t.shape) < 2:
-            from warp._src.utils import warn  # noqa: PLC0415
-
-            warn(
+            log_warning(
                 "tile_store() with aligned=True has no effect for 1D shared tiles. "
                 "The vectorized path requires 2D+ tiles."
             )

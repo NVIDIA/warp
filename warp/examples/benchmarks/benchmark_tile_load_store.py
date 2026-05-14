@@ -223,7 +223,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    wp.config.quiet = True
+    wp.config.log_level = wp.LOG_WARNING
     wp.init()
     wp.set_module_options({"fast_math": True, "enable_backward": False})
 

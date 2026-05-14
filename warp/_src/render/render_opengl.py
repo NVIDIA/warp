@@ -11,6 +11,7 @@ from collections import defaultdict
 import numpy as np
 
 import warp as wp
+from warp._src.logger import log_error
 
 from .utils import tab10_color_map
 
@@ -659,7 +660,7 @@ def check_gl_error():
 
     error = gl.glGetError()
     if error != gl.GL_NO_ERROR:
-        print(f"OpenGL error: {error}")
+        log_error(f"OpenGL error: {error}")
 
 
 class ShapeInstancer:
@@ -1728,7 +1729,7 @@ class OpenGLRenderer:
             )
 
             if gl.glCheckFramebufferStatus(gl.GL_FRAMEBUFFER) != gl.GL_FRAMEBUFFER_COMPLETE:
-                print("Framebuffer is not complete!", flush=True)
+                log_error("Framebuffer is not complete!")
                 gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
                 sys.exit(1)
 

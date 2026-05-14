@@ -4,6 +4,7 @@
 import contextlib
 import io
 import unittest
+import warnings
 
 import numpy as np
 
@@ -580,7 +581,8 @@ class TestFemIntegrate(unittest.TestCase):
         device = "cpu"
 
         def assert_deprecation_mentions_warp_1_15(callback):
-            with contextlib.redirect_stdout(io.StringIO()) as output:
+            with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as output:
+                warnings.simplefilter("always", DeprecationWarning)
                 result = callback()
 
             self.assertIn("will be removed in Warp 1.15", output.getvalue())

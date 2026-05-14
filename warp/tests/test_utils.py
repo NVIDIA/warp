@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-import inspect
 import io
 import unittest
+import warnings
 
+from warp._src.logger import log_warning
 from warp.tests.unittest_utils import *
 
 
@@ -342,52 +343,40 @@ devices = get_test_devices()
 
 class TestUtils(unittest.TestCase):
     def test_warn(self):
+        # Clear any state from prior tests in the same process.
+        from warp._src import logger as _logger  # noqa: PLC0415
+
+        _logger._warnings_seen.clear()
+
         # Multiple warnings get printed out each time.
-        with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp._src.utils.warn("hello, world!")
-            wp._src.utils.warn("hello, world!")
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            log_warning("hello, world!")
+            log_warning("hello, world!")
 
         expected = "Warp UserWarning: hello, world!\nWarp UserWarning: hello, world!\n"
 
         self.assertEqual(f.getvalue(), expected)
 
-        # Test verbose warnings
-        saved_verbosity = wp.config.verbose_warnings
-        try:
-            wp.config.verbose_warnings = True
-            with contextlib.redirect_stdout(io.StringIO()) as f:
-                frame_info = inspect.getframeinfo(inspect.currentframe())
-                wp._src.utils.warn("hello, world!")
-                wp._src.utils.warn("hello, world!")
+        # Multiple similar DeprecationWarnings with once=True get printed out only once.
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as f:
+            warnings.simplefilter("always")
+            log_warning("once_msg_utils_test", category=DeprecationWarning, once=True)
+            log_warning("once_msg_utils_test", category=DeprecationWarning, once=True)
 
-            expected = (
-                f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 1})\n"
-                '  wp._src.utils.warn("hello, world!")\n'
-                f"Warp UserWarning: hello, world! ({frame_info.filename}:{frame_info.lineno + 2})\n"
-                '  wp._src.utils.warn("hello, world!")\n'
-            )
-
-            self.assertEqual(f.getvalue(), expected)
-
-        finally:
-            # make sure to restore warning verbosity
-            wp.config.verbose_warnings = saved_verbosity
-
-        # Multiple similar deprecation warnings get printed out only once.
-        with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp._src.utils.warn("hello, world!", category=DeprecationWarning)
-            wp._src.utils.warn("hello, world!", category=DeprecationWarning)
-
-        expected = "Warp DeprecationWarning: hello, world!\n"
+        expected = "Warp DeprecationWarning: once_msg_utils_test\n"
 
         self.assertEqual(f.getvalue(), expected)
 
-        # Multiple different deprecation warnings get printed out each time.
-        with contextlib.redirect_stdout(io.StringIO()) as f:
-            wp._src.utils.warn("foo", category=DeprecationWarning)
-            wp._src.utils.warn("bar", category=DeprecationWarning)
+        # Clear once-seen state for next sub-test.
+        _logger._warnings_seen.clear()
 
-        expected = "Warp DeprecationWarning: foo\nWarp DeprecationWarning: bar\n"
+        # Multiple different DeprecationWarnings with once=True get printed out each time.
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as f:
+            warnings.simplefilter("always")
+            log_warning("foo_once_utils_test", category=DeprecationWarning, once=True)
+            log_warning("bar_once_utils_test", category=DeprecationWarning, once=True)
+
+        expected = "Warp DeprecationWarning: foo_once_utils_test\nWarp DeprecationWarning: bar_once_utils_test\n"
 
         self.assertEqual(f.getvalue(), expected)
 
@@ -498,7 +487,7 @@ class TestUtils(unittest.TestCase):
             with wp.ScopedTimer("hello", detailed=True):
                 pass
 
-        self.assertRegex(f.getvalue(), r"^         4 function calls in \d+\.\d+ seconds")
+        self.assertRegex(f.getvalue(), r"^         \d+ function calls in \d+\.\d+ seconds")
         self.assertRegex(f.getvalue(), r"hello took \d+\.\d+ ms$")
 
 

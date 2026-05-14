@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib.metadata
+import subprocess
+import sys
+import textwrap
 import unittest
 
 import warp as wp
@@ -101,6 +104,28 @@ class TestDiagnostics(unittest.TestCase):
             self.assertIsInstance(cuda_dev["memory_gb"], float)
             self.assertIsInstance(cuda_dev["mempool_enabled"], bool)
             self.assertRegex(cuda_dev["pci_bus_id"], r"^[0-9A-F]+:[0-9A-F]+:[0-9A-F]+$")
+
+    def test_print_diagnostics_suppresses_init_banner_with_deprecated_verbose(self):
+        script = textwrap.dedent(
+            """
+            import contextlib
+            import io
+            import warnings
+            import warp as wp
+
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            wp.config.verbose = True
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                wp.print_diagnostics()
+            assert wp.config.log_level == wp.LOG_DEBUG, wp.config.log_level
+            print(output.getvalue().splitlines()[0])
+            """
+        )
+
+        result = subprocess.run([sys.executable, "-c", script], check=True, capture_output=True, text=True)
+        first_line = result.stdout.strip()
+        self.assertEqual(first_line, "Software")
 
     def test_nanovdb_version(self):
         version = get_nanovdb_version()

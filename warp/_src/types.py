@@ -31,6 +31,7 @@ import numpy.typing as npt
 
 import warp
 import warp.config
+from warp._src.logger import log_warning
 
 _wp_module_name_ = "warp.types"
 
@@ -3181,7 +3182,7 @@ class array(Array[DType, NDim]):
             else:
                 # Warn if the data type is compatible with the requested dtype
                 if not np_dtype_is_compatible(data_dtype_np, dtype):
-                    warp._src.utils.warn(
+                    log_warning(
                         f"The input data type {data_dtype_np} does not appear to be "
                         f"compatible with the requested dtype {dtype}. If "
                         "data-type sizes do not match, then this may lead to memory-access violations."
@@ -3971,12 +3972,12 @@ class array(Array[DType, NDim]):
         """Detect if we are writing to an array that has already been read from."""
         if self._is_read:
             if "arg_name" in kwargs and "kernel_name" in kwargs and "filename" in kwargs and "lineno" in kwargs:
-                print(
-                    f"Warning: Array {self} passed to argument {kwargs['arg_name']} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
+                log_warning(
+                    f"Array {self} passed to argument {kwargs['arg_name']} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
                 )
             else:
-                print(
-                    f"Warning: Array {self} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
+                log_warning(
+                    f"Array {self} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
                 )
 
     def _apic_ensure_tracked(self):
@@ -4095,7 +4096,7 @@ class array(Array[DType, NDim]):
         if is_bf16 and not _suppress_bfloat16_warning:
             ml_bf16 = _get_ml_dtypes_bfloat16()
             if ml_bf16 is None:
-                warp._src.utils.warn(
+                log_warning(
                     "bfloat16 arrays are returned as np.uint16 (raw bit representation) "
                     "because NumPy does not natively support bfloat16. "
                     "Use wp.to_torch() or wp.to_jax() for frameworks that support bfloat16 natively, "
@@ -4563,7 +4564,7 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     See Also:
         :class:`array`, :func:`from_ipc_handle`
     """
-    warp._src.utils.warn(
+    log_warning(
         """This version of wp.from_ptr() is deprecated. OmniGraph
     applications should use from_omni_graph_ptr() instead. To create an array
     from a C pointer, use the array constructor and pass the ptr argument as a
@@ -4572,6 +4573,7 @@ def from_ptr(ptr, length, dtype=None, shape=None, device=None):
     ptr=ctypes.cast(pointer, ctypes.POINTER(ctypes.c_size_t)).contents.value.
     Be sure to also specify the dtype and shape parameters.""",
         category=DeprecationWarning,
+        stacklevel=2,
     )
 
     return array(
@@ -5432,7 +5434,7 @@ class Bvh:
 
         if self.device.is_cpu:
             if constructor == BvhConstructor.LBVH:
-                warp._src.utils.warn(
+                log_warning(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 constructor = BvhConstructor.SAH
@@ -5526,14 +5528,14 @@ class Bvh:
 
         if self.device.is_cpu:
             if constructor == BvhConstructor.LBVH:
-                warp._src.utils.warn(
+                log_warning(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 constructor = BvhConstructor.SAH
             self.runtime.core.wp_bvh_rebuild_host(self.id, constructor)
         else:
             if constructor != BvhConstructor.LBVH:
-                warp._src.utils.warn(
+                log_warning(
                     "In-place rebuild method on the CUDA device only supports LBVH constructor. Falling back to LBVH constructor.",
                     stacklevel=2,
                 )
@@ -5647,7 +5649,7 @@ class Mesh:
 
         if self.device.is_cpu:
             if bvh_constructor == BvhConstructor.LBVH:
-                warp._src.utils.warn(
+                log_warning(
                     "LBVH constructor is not available for a CPU tree. Falling back to SAH constructor.", stacklevel=2
                 )
                 bvh_constructor = BvhConstructor.SAH
