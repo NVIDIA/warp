@@ -8,6 +8,7 @@ import tempfile
 import textwrap
 import unittest
 import warnings
+from pathlib import Path
 from types import SimpleNamespace
 
 import warp
@@ -37,6 +38,13 @@ class _NoOpLogger:
 
 
 class TestLogger(unittest.TestCase):
+    def setUp(self):
+        self._source_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._source_dir.cleanup)
+
+    def _source_path(self, filename):
+        return str(Path(self._source_dir.name) / filename)
+
     def _clear_deprecated_config_warnings(self):
         wp.config._deprecated_verbose_warning_seen = False
         wp.config._deprecated_quiet_warning_seen = False
@@ -58,6 +66,7 @@ class TestLogger(unittest.TestCase):
     def test_deprecated_config_verbose_read_warns_for_external_callers(self):
         self._clear_deprecated_config_warnings()
         namespace = {"wp": wp, "__name__": "external_app"}
+        external_app_path = self._source_path("external_app.py")
         original_verbose_warnings = wp.config.verbose_warnings
         old_stderr = sys.stderr
         sys.stderr = io.StringIO()
@@ -66,7 +75,7 @@ class TestLogger(unittest.TestCase):
             with warnings.catch_warnings():
                 warnings.simplefilter("always", DeprecationWarning)
                 exec(
-                    compile("value = wp.config.verbose\nagain = wp.config.verbose", "/tmp/external_app.py", "exec"),
+                    compile("value = wp.config.verbose\nagain = wp.config.verbose", external_app_path, "exec"),
                     namespace,
                 )
             output = sys.stderr.getvalue()
@@ -77,12 +86,13 @@ class TestLogger(unittest.TestCase):
         self.assertIsInstance(namespace["value"], bool)
         self.assertEqual(namespace["again"], namespace["value"])
         self.assertEqual(output.count("warp.config.verbose is deprecated"), 1)
-        self.assertIn("/tmp/external_app.py", output)
+        self.assertIn(external_app_path, output)
 
     def test_deprecated_config_quiet_assignment_warns_for_external_callers(self):
         self._clear_deprecated_config_warnings()
         original_quiet = wp.config.__dict__["quiet"]
         original_verbose_warnings = wp.config.verbose_warnings
+        external_app_path = self._source_path("external_app.py")
         old_stderr = sys.stderr
         sys.stderr = io.StringIO()
         try:
@@ -90,12 +100,12 @@ class TestLogger(unittest.TestCase):
             namespace = {"wp": wp, "__name__": "external_app"}
             with warnings.catch_warnings():
                 warnings.simplefilter("always", DeprecationWarning)
-                exec(compile("wp.config.quiet = True", "/tmp/external_app.py", "exec"), namespace)
+                exec(compile("wp.config.quiet = True", external_app_path, "exec"), namespace)
             output = sys.stderr.getvalue()
 
             self.assertTrue(wp.config.__dict__["quiet"])
             self.assertEqual(output.count("warp.config.quiet is deprecated"), 1)
-            self.assertIn("/tmp/external_app.py", output)
+            self.assertIn(external_app_path, output)
         finally:
             sys.stderr = old_stderr
             wp.config.verbose_warnings = original_verbose_warnings
@@ -104,12 +114,13 @@ class TestLogger(unittest.TestCase):
     def test_deprecated_config_access_does_not_warn_for_warp_callers(self):
         self._clear_deprecated_config_warnings()
         namespace = {"wp": wp, "__name__": "warp._src.fake_internal"}
+        fake_internal_path = self._source_path("fake_internal.py")
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter("always", DeprecationWarning)
             exec(
                 compile(
                     "value = wp.config.verbose\nwp.config.quiet = wp.config.quiet",
-                    "/tmp/fake_internal.py",
+                    fake_internal_path,
                     "exec",
                 ),
                 namespace,
@@ -139,12 +150,13 @@ class TestLogger(unittest.TestCase):
         logger = CaptureLogger()
         original_logger = wp.get_logger()
         original_quiet = wp.config.__dict__["quiet"]
+        external_app_path = self._source_path("external_app.py")
         try:
             wp.set_logger(logger)
             namespace = {"wp": wp, "__name__": "external_app"}
             with warnings.catch_warnings(record=True) as recorded:
                 warnings.simplefilter("always", DeprecationWarning)
-                exec(compile("wp.config.quiet = True", "/tmp/external_app.py", "exec"), namespace)
+                exec(compile("wp.config.quiet = True", external_app_path, "exec"), namespace)
         finally:
             wp.config.__dict__["quiet"] = original_quiet
             wp.set_logger(original_logger)
@@ -161,9 +173,10 @@ class TestLogger(unittest.TestCase):
         try:
             wp.config.__dict__["log_level"] = wp.LOG_ERROR
             namespace = {"wp": wp, "__name__": "external_app"}
+            external_app_path = self._source_path("external_app.py")
             with warnings.catch_warnings(record=True) as recorded:
                 warnings.simplefilter("always", DeprecationWarning)
-                exec(compile("value = wp.config.verbose", "/tmp/external_app.py", "exec"), namespace)
+                exec(compile("value = wp.config.verbose", external_app_path, "exec"), namespace)
         finally:
             wp.config.__dict__["log_level"] = original_level
 
@@ -443,12 +456,13 @@ class TestLogger(unittest.TestCase):
         try:
             wp.set_logger(WarningsLogger())
             namespace = {"log_warning": log_warning, "UserWarning": UserWarning}
+            warning_caller_path = self._source_path("external_warning_caller.py")
             with warnings.catch_warnings(record=True) as recorded:
                 warnings.simplefilter("always", UserWarning)
                 exec(
                     compile(
                         "log_warning('custom logger warning', category=UserWarning)",
-                        "/tmp/external_warning_caller.py",
+                        warning_caller_path,
                         "exec",
                     ),
                     namespace,
@@ -457,7 +471,7 @@ class TestLogger(unittest.TestCase):
             wp.set_logger(original)
 
         self.assertEqual(len(recorded), 1)
-        self.assertEqual(recorded[0].filename, "/tmp/external_warning_caller.py")
+        self.assertEqual(recorded[0].filename, warning_caller_path)
 
     def test_from_ptr_deprecation_warning_visible_to_default_filter(self):
         script = textwrap.dedent(

@@ -29,6 +29,10 @@ _suppress_verbose_log_level_mapping = False
 
 def _is_internal_warp_config_access() -> bool:
     try:
+        # Temporary verbose/quiet migration hook. Frame depth 3 assumes:
+        # _is_internal_warp_config_access -> _warn_deprecated_config_access
+        # -> module __getattribute__/__setattr__ -> caller. Remove this when
+        # verbose/quiet are removed.
         module_name = _sys._getframe(3).f_globals.get("__name__", "")
     except ValueError:
         return False
