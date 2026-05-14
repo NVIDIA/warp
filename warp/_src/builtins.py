@@ -8101,15 +8101,17 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
         group="Geometry",
         doc="""Move to the next point in the hash grid query.
 
-    The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.""",
+    Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
+    coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
+    more neighbors.""",
         export=False,
         is_differentiable=False,
     )
 
 
-_add_hash_grid_query_builtins(vec3, float, HashGridQuery)
-_add_hash_grid_query_builtins(vec3h, float16, HashGridQueryH, "float16")
-_add_hash_grid_query_builtins(vec3d, float64, HashGridQueryD, "float64")
+_add_hash_grid_query_builtins(vec3, float, hash_grid_query_type(float32))
+_add_hash_grid_query_builtins(vec3h, float16, hash_grid_query_type(float16), "float16")
+_add_hash_grid_query_builtins(vec3d, float64, hash_grid_query_type(float64), "float64")
 
 add_builtin(
     "hash_grid_point_id",
@@ -8257,7 +8259,11 @@ add_builtin(
     hidden=True,
     is_differentiable=False,
 )
-for query_type in (HashGridQuery, HashGridQueryH, HashGridQueryD):
+for query_type in (
+    hash_grid_query_type(float16),
+    hash_grid_query_type(float32),
+    hash_grid_query_type(float64),
+):
     add_builtin(
         "iter_next",
         input_types={"query": query_type},
