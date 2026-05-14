@@ -2038,6 +2038,10 @@ and :func:`wp.hash_grid_query_next() <warp._src.lang.hash_grid_query_next>` as f
 
         output[tid] = sum
 
+Helper functions that take hash grid query objects should annotate the query argument with the matching grid coordinate
+precision, for example ``wp.HashGridQuery[wp.float64]``. The unparameterized ``wp.HashGridQuery`` denotes the default
+``wp.float32`` query type.
+
 .. note::
     The ``HashGrid`` query will give back all points in *cells* that fall inside the query radius.
     When there are hash conflicts it means that some points outside of query radius will be returned, and users should

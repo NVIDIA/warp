@@ -10,9 +10,11 @@
 
    Move to the next point in the hash grid query.
    
-   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+   Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
+   coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
+   more neighbors.
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQueryH, index: int32) -> bool
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
    .. hlist::
@@ -22,9 +24,11 @@
 
    Move to the next point in the hash grid query.
    
-   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+   Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
+   coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
+   more neighbors.
 
-.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQueryD, index: int32) -> bool
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
    :noindex:
 
    .. hlist::
@@ -34,4 +38,6 @@
 
    Move to the next point in the hash grid query.
    
-   The index of the current neighbor is stored in ``index``, returns ``False`` if there are no more neighbors.
+   Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
+   coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
+   more neighbors.

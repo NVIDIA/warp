@@ -553,11 +553,18 @@ import statements from <code class="docutils literal notranslate"><span class="p
 either flag continues to work during the deprecation window and now emits a one-time <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>.
 <code class="docutils literal notranslate"><span class="pre">warp.config.verbose_warnings</span></code> is unaffected and continues to control whether warning output includes the source
 location (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">wp.HashGridQueryH</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.HashGridQueryD</span></code>; use <code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code> instead.
+The legacy aliases remain available during the deprecation period for compatibility
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1452">GH-1452</a>).</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Consolidate the documented <code class="docutils literal notranslate"><span class="pre">wp.HashGrid</span></code> query API around <code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code>. Query
+objects returned by <code class="docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code> now appear as <code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code> in
+generated docs and stubs regardless of the grid coordinate precision
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1452">GH-1452</a>).</p></li>
 <li><p>Reduce overhead of converting <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> values to and from Python <code class="docutils literal notranslate"><span class="pre">float</span></code>. Building from source on Linux now
 requires <code class="docutils literal notranslate"><span class="pre">libpython3-dev</span></code> for the Python C headers (<code class="docutils literal notranslate"><span class="pre">Python.h</span></code>); the build checks for them up front and reports an
 actionable error when missing (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>

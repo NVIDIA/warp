@@ -12,7 +12,7 @@
    
    This query can be used to iterate over all neighboring points within a fixed radius from the query point.
 
-.. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQueryH
+.. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery
    :noindex:
 
    .. hlist::
@@ -24,7 +24,7 @@
    
    This query can be used to iterate over all neighboring points within a fixed radius from the query point.
 
-.. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQueryD
+.. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery
    :noindex:
 
    .. hlist::
