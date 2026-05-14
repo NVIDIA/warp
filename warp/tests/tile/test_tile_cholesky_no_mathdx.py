@@ -272,7 +272,7 @@ def test_cholesky_lower_block_dim_1(test, device):
 # -----------------------------------------------------------------------------
 
 
-class TestTileCholeskyNoMathdx(unittest.TestCase):
+class TestTileCholeskyNoMathDx(unittest.TestCase):
     pass
 
 
@@ -288,7 +288,7 @@ for name, func in [
     ("test_cholesky_lower_backward_n32", test_cholesky_lower_backward_n32),
     ("test_cholesky_lower_block_dim_1", test_cholesky_lower_block_dim_1),
 ]:
-    add_function_test(TestTileCholeskyNoMathdx, name, func, devices=_devices, check_output=False)
+    add_function_test(TestTileCholeskyNoMathDx, name, func, devices=_devices, check_output=False)
 
 
 if __name__ == "__main__":

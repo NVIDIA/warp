@@ -288,6 +288,17 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_solver"`` module option.
 """
 
+enable_mathdx_fft: bool = True
+"""Use libmathdx (cuFFTDx) for :func:`tile_fft <warp._src.lang.tile_fft>` and
+:func:`tile_ifft <warp._src.lang.tile_ifft>` on GPU when available.
+
+When False, these ops use a fallback that supports power-of-two FFT sizes only,
+trading runtime performance for faster kernel compile times.
+
+This setting can be overridden at the module level by setting the
+``"enable_mathdx_fft"`` module option.
+"""
+
 cpu_compiler_flags: str | None = None
 """Flags controlling CPU kernel compilation.
 

@@ -435,7 +435,7 @@ def test_tile_matmul_large_fp64(test, device):
     assert_np_equal(B_wp.grad.numpy(), A.T @ adj_C, tol=1e-10)
 
 
-class TestTileMatmulNoMathdx(unittest.TestCase):
+class TestTileMatmulNoMathDx(unittest.TestCase):
     pass
 
 
@@ -456,7 +456,7 @@ tile_matmul_tests = [
 ]
 
 for name, func in tile_matmul_tests:
-    add_function_test(TestTileMatmulNoMathdx, name, func, devices=devices)
+    add_function_test(TestTileMatmulNoMathDx, name, func, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

@@ -6401,7 +6401,22 @@ def tile_fft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
         * vec2f, vec2d
 
     Args:
-        inout: The input/output tile."""
+        inout: The input/output tile.
+
+    Notes:
+        Supported FFT sizes by backend:
+
+        * **CPU**: Any size. Non-power-of-two sizes are capped at 4096;
+          larger non-power-of-two sizes raise ``ValueError``.
+        * **GPU with libmathdx**: Any size. This is the default when Warp
+          is built with libmathdx.
+        * **GPU without libmathdx** (or ``enable_mathdx_fft=False``):
+          Power-of-two sizes only, and the FFT size must be divisible by
+          ``block_dim``. Other sizes raise ``ValueError``. Slower than the
+          libmathdx path.
+
+        See :attr:`warp.config.enable_mathdx_fft` to control GPU backend
+        selection."""
     ...
 
 def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
@@ -6419,7 +6434,11 @@ def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
         * vec2f, vec2d
 
     Args:
-        inout: The input/output tile."""
+        inout: The input/output tile.
+
+    Notes:
+        See :func:`tile_fft` for backend selection and supported sizes — the
+        same constraints apply to :func:`tile_ifft`."""
     ...
 
 def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str) -> Tile[Float, tuple[int, int]]:

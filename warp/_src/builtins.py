@@ -13159,39 +13159,52 @@ def tile_fft_generic_lto_dispatch_func(
     arch = options["output_arch"]
     ept = size // num_threads
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
-        return ([], [], [], 0)
-    else:
-        # Validate elements per thread (ept) - cuFFTDx requires ept >= 2
-        if ept < 2:
-            func_name = "tile_fft" if direction == "forward" else "tile_ifft"
-            raise ValueError(
-                f"{func_name}() requires at least 2 elements per thread, but got ept={ept} "
-                f"(fft_size={size}, block_dim={num_threads}). "
-                f"Reduce block_dim to at most {size // 2} for this FFT size."
-            )
+    func_name = "tile_fft" if direction == "forward" else "tile_ifft"
+    use_mathdx = (
+        arch is not None
+        and warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        and options.get("enable_mathdx_fft", True)
+    )
 
-        # generate the forward LTO
-        lto_symbol_fwd, lto_code_data_fwd, shared_memory_bytes = warp._src.build.build_lto_fft(
-            arch, size, ept, direction, fwd_dir, precision, builder
-        )
-
-        if options["enable_backward"]:
-            # generate the backward LTO (inverse direction for adjoint)
-            # shared memory requirements are identical since tile sizes match
-            lto_symbol_bwd, lto_code_data_bwd, _ = warp._src.build.build_lto_fft(
-                arch, size, ept, bwd_direction, bwd_dir, precision, builder
-            )
+    if not use_mathdx:
+        # CPU sequential or GPU cooperative scalar path. Both go through
+        # `wp::tile_fft_entry` with a literal `0` for the LTO function name;
+        # `wp_is_null_func<int>::value` selects the scalar branch at template
+        # instantiation, mirroring how `tile_matmul` handles the same case.
+        if arch is not None:
+            # GPU cooperative path requires power-of-two FFT size (cooperative
+            # mixed-radix would mean reimplementing cuFFTDx) and ept >= 1 so
+            # every thread participates in at least one butterfly per stage.
+            if size <= 0 or (size & (size - 1)) != 0:
+                raise ValueError(
+                    f"{func_name}() on GPU without libmathdx requires a power-of-two FFT size, "
+                    f"got {size}. Build Warp with libmathdx (cuFFTDx) for arbitrary sizes, "
+                    f"or run on CPU."
+                )
+            if size % num_threads != 0:
+                raise ValueError(
+                    f"{func_name}() on GPU without libmathdx requires fft_size to be divisible "
+                    f"by block_dim (got fft_size={size}, block_dim={num_threads})."
+                )
+            # Shared scratch holds one batch worth of complex data; reused
+            # across batches inside `tile_fft_gpu_impl`.
+            dtype_size = 2 * (4 if precision == 5 else 8)
+            shared_memory_bytes = size * dtype_size
         else:
-            # adjoints aren't computed, so we reuse forward symbol as a dummy arg
-            lto_symbol_bwd = lto_symbol_fwd
-            lto_code_data_bwd = None
+            # CPU path: non-power-of-two sizes use an O(n^2) DFT with fixed
+            # stack buffers capped at WP_FFT_CPU_MAX_DFT_SIZE (4096).
+            if (size & (size - 1)) != 0 and size > 4096:
+                raise ValueError(
+                    f"{func_name}() on CPU with a non-power-of-two FFT size is limited to "
+                    f"4096 elements, got {size}. Use a power-of-two size for larger transforms."
+                )
+            shared_memory_bytes = 0
 
+        lto_placeholder = "/* scalar */ 0"
         return (
             (
-                Var(lto_symbol_fwd, str, False, True, False),
-                Var(lto_symbol_bwd, str, False, True, False),
+                Var(lto_placeholder, str, False, True, False),
+                Var(lto_placeholder, str, False, True, False),
                 Var(dtype, str, False, True, False),
                 Var(str(shared_memory_bytes), str, False, True, False),
                 Var(str(batch), str, False, True, False),
@@ -13199,9 +13212,48 @@ def tile_fft_generic_lto_dispatch_func(
                 inout,
             ),
             [],
-            [lto_code_data_fwd, lto_code_data_bwd],
+            [],
             shared_memory_bytes,
         )
+
+    # GPU cuFFTDx LTO path.
+    if ept < 2:
+        raise ValueError(
+            f"{func_name}() requires at least 2 elements per thread, but got ept={ept} "
+            f"(fft_size={size}, block_dim={num_threads}). "
+            f"Reduce block_dim to at most {size // 2} for this FFT size."
+        )
+
+    # generate the forward LTO
+    lto_symbol_fwd, lto_code_data_fwd, shared_memory_bytes = warp._src.build.build_lto_fft(
+        arch, size, ept, direction, fwd_dir, precision, builder
+    )
+
+    if options["enable_backward"]:
+        # generate the backward LTO (inverse direction for adjoint)
+        # shared memory requirements are identical since tile sizes match
+        lto_symbol_bwd, lto_code_data_bwd, _ = warp._src.build.build_lto_fft(
+            arch, size, ept, bwd_direction, bwd_dir, precision, builder
+        )
+    else:
+        # adjoints aren't computed, so we reuse forward symbol as a dummy arg
+        lto_symbol_bwd = lto_symbol_fwd
+        lto_code_data_bwd = None
+
+    return (
+        (
+            Var(lto_symbol_fwd, str, False, True, False),
+            Var(lto_symbol_bwd, str, False, True, False),
+            Var(dtype, str, False, True, False),
+            Var(str(shared_memory_bytes), str, False, True, False),
+            Var(str(batch), str, False, True, False),
+            Var(str(ept), str, False, True, False),
+            inout,
+        ),
+        [],
+        [lto_code_data_fwd, lto_code_data_bwd],
+        shared_memory_bytes,
+    )
 
 
 add_builtin(
@@ -13224,7 +13276,22 @@ add_builtin(
         * vec2f, vec2d
 
     Args:
-        inout: The input/output tile.""",
+        inout: The input/output tile.
+
+    Notes:
+        Supported FFT sizes by backend:
+
+        * **CPU**: Any size. Non-power-of-two sizes are capped at 4096;
+          larger non-power-of-two sizes raise ``ValueError``.
+        * **GPU with libmathdx**: Any size. This is the default when Warp
+          is built with libmathdx.
+        * **GPU without libmathdx** (or ``enable_mathdx_fft=False``):
+          Power-of-two sizes only, and the FFT size must be divisible by
+          ``block_dim``. Other sizes raise ``ValueError``. Slower than the
+          libmathdx path.
+
+        See :attr:`warp.config.enable_mathdx_fft` to control GPU backend
+        selection.""",
     group="Tile Primitives",
     export=False,
     namespace="",
@@ -13250,7 +13317,11 @@ add_builtin(
         * vec2f, vec2d
 
     Args:
-        inout: The input/output tile.""",
+        inout: The input/output tile.
+
+    Notes:
+        See :func:`tile_fft` for backend selection and supported sizes — the
+        same constraints apply to :func:`tile_ifft`.""",
     group="Tile Primitives",
     export=False,
     namespace="",

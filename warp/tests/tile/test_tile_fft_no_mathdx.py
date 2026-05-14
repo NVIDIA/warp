@@ -1,6 +1,17 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+"""Tile FFT tests exercising the cooperative scalar fallback path.
+
+This file mirrors the kernel definitions and test logic from test_tile_fft.py
+so that the no-MathDx variants compile as a separate Warp module. Setting
+``enable_mathdx_fft=False`` at the module level routes ``tile_fft`` /
+``tile_ifft`` and their adjoints through ``wp::tile_fft_entry``'s cooperative
+shared-memory branch on GPU (or the CPU sequential branch on CPU). This is
+the fallback path used when ``enable_mathdx_fft=False``, which is also the
+path selected when Warp is built without libmathdx.
+"""
+
 import functools
 import unittest
 
@@ -9,7 +20,8 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
-wp.init()  # For wp._src.context.runtime.core.wp_is_mathdx_enabled()
+# Disable MathDx FFT for all kernels defined in this module.
+wp.set_module_options({"enable_mathdx_fft": False})
 
 # num threads per-tile
 TILE_DIM = 32
@@ -17,8 +29,6 @@ FFT_SIZE_FP32 = 64
 FFT_SIZE_FP64 = 64
 FFT_3D_DIM0 = 2
 FFT_3D_DIM1 = 4
-# Non-power-of-two size exercises the CPU direct DFT fallback.
-FFT_SIZE_NPO2 = 48
 
 
 @wp.kernel
@@ -77,46 +87,16 @@ def tile_ifft_3d_kernel_vec2d(gx: wp.array3d[wp.vec2d], gy: wp.array3d[wp.vec2d]
     wp.tile_store(gy, xy)
 
 
-# Non-power-of-two CPU FFT kernels. These exercise the direct-DFT fallback and
-# are CPU-only — a non-power-of-two fft_size violates the GPU codegen
-# constraints. ``module="test_fft_npo2"`` places them in a shared Warp module
-# separate from the surrounding test module, so the module is only compiled
-# when launched on CPU.
-@wp.kernel(module="test_fft_npo2")
-def tile_fft_kernel_vec2f_npo2(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
-    xy = wp.tile_load(gx, shape=(FFT_SIZE_NPO2, FFT_SIZE_NPO2))
-    wp.tile_fft(xy)
-    wp.tile_store(gy, xy)
-
-
-@wp.kernel(module="test_fft_npo2")
-def tile_fft_kernel_vec2d_npo2(gx: wp.array2d[wp.vec2d], gy: wp.array2d[wp.vec2d]):
-    xy = wp.tile_load(gx, shape=(FFT_SIZE_NPO2, FFT_SIZE_NPO2))
-    wp.tile_fft(xy)
-    wp.tile_store(gy, xy)
-
-
-@wp.kernel(module="test_fft_npo2")
-def tile_ifft_kernel_vec2f_npo2(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
-    xy = wp.tile_load(gx, shape=(FFT_SIZE_NPO2, FFT_SIZE_NPO2))
-    wp.tile_ifft(xy)
-    wp.tile_store(gy, xy)
-
-
-@wp.kernel(module="test_fft_npo2")
-def tile_ifft_kernel_vec2d_npo2(gx: wp.array2d[wp.vec2d], gy: wp.array2d[wp.vec2d]):
-    xy = wp.tile_load(gx, shape=(FFT_SIZE_NPO2, FFT_SIZE_NPO2))
-    wp.tile_ifft(xy)
-    wp.tile_store(gy, xy)
+# Tolerances chosen with ~5-15x headroom over max abs errors measured on
+# CPU and CUDA (RTX 5090, sm_120) across all kernels here: ~7e-6 worst case
+# for fp32 and ~7e-15 for fp64 (forward and adjoint).
+_FFT_TOL = {wp.vec2f: 3.0e-5, wp.vec2d: 1.0e-13}
 
 
 def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
-    # CUDA path requires MathDx for cuFFTDx; CPU path has a built-in implementation.
-    wp_device = wp.get_device(device)
-    if wp_device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
-        test.skipTest("Warp was not built with MathDx support")
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
+    tol = _FFT_TOL[wp_dtype]
     fft_size = data_shape[-1] // 2
     complex_shape = (*data_shape[:-1], fft_size)
 
@@ -134,31 +114,24 @@ def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
     with wp.Tape() as tape:
         wp.launch_tiled(kernel, dim=[1], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
 
-    # verify forward pass
     Y_wp_c = Y_wp.numpy().view(np_cplx_dtype).reshape(complex_shape)
-    assert_np_equal(Y_wp_c, Y_c, tol=1.0e-4)
+    assert_np_equal(Y_wp_c, Y_c, tol=tol)
 
-    # verify backward pass
-    # The adjoint of FFT is IFFT (unnormalized)
     adj_Y = rng.random(data_shape, dtype=np_real_dtype)
     adj_Y_c = adj_Y.view(np_cplx_dtype).reshape(complex_shape)
 
     tape.backward(grads={Y_wp: wp.array(adj_Y, dtype=wp_dtype, device=device)})
 
-    # Expected gradient: IFFT of adj_Y (unnormalized, so multiply by fft_size)
     expected_grad_c = np.fft.ifft(adj_Y_c, axis=-1) * fft_size
     actual_grad_c = X_wp.grad.numpy().view(np_cplx_dtype).reshape(complex_shape)
 
-    assert_np_equal(actual_grad_c, expected_grad_c, tol=1.0e-4)
+    assert_np_equal(actual_grad_c, expected_grad_c, tol=tol)
 
 
 def test_tile_ifft(test, device, wp_dtype, kernel, data_shape):
-    # CUDA path requires MathDx for cuFFTDx; CPU path has a built-in implementation.
-    wp_device = wp.get_device(device)
-    if wp_device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
-        test.skipTest("Warp was not built with MathDx support")
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
+    tol = _FFT_TOL[wp_dtype]
     fft_size = data_shape[-1] // 2
     complex_shape = (*data_shape[:-1], fft_size)
 
@@ -171,40 +144,34 @@ def test_tile_ifft(test, device, wp_dtype, kernel, data_shape):
     Y_wp = wp.array(Y, requires_grad=True, dtype=wp_dtype, device=device)
 
     X_c = X.view(np_cplx_dtype).reshape(complex_shape)
-    # Warp's IFFT is unnormalized, equivalent to NumPy's ifft * N
     Y_c = np.fft.ifft(X_c, axis=-1) * fft_size
 
     with wp.Tape() as tape:
         wp.launch_tiled(kernel, dim=[1], inputs=[X_wp, Y_wp], block_dim=TILE_DIM, device=device)
 
-    # verify forward pass
     Y_wp_c = Y_wp.numpy().view(np_cplx_dtype).reshape(complex_shape)
-    assert_np_equal(Y_wp_c, Y_c, tol=1.0e-4)
+    assert_np_equal(Y_wp_c, Y_c, tol=tol)
 
-    # verify backward pass
-    # The adjoint of IFFT is FFT (unnormalized)
     adj_Y = rng.random(data_shape, dtype=np_real_dtype)
     adj_Y_c = adj_Y.view(np_cplx_dtype).reshape(complex_shape)
 
     tape.backward(grads={Y_wp: wp.array(adj_Y, dtype=wp_dtype, device=device)})
 
-    # Expected gradient: FFT of adj_Y
     expected_grad_c = np.fft.fft(adj_Y_c, axis=-1)
     actual_grad_c = X_wp.grad.numpy().view(np_cplx_dtype).reshape(complex_shape)
 
-    assert_np_equal(actual_grad_c, expected_grad_c, tol=1.0e-4)
+    assert_np_equal(actual_grad_c, expected_grad_c, tol=tol)
 
 
 test_devices = get_test_devices()
 
 
-class TestTileFFT(unittest.TestCase):
+class TestTileFFTNoMathDx(unittest.TestCase):
     pass
 
 
-# check_output=False so we can enable libmathdx's logging without failing the tests
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_fft_2d_vec2f",
     functools.partial(
         test_tile_fft,
@@ -216,7 +183,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_fft_2d_vec2d",
     functools.partial(
         test_tile_fft,
@@ -228,7 +195,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_ifft_2d_vec2f",
     functools.partial(
         test_tile_ifft,
@@ -240,7 +207,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_ifft_2d_vec2d",
     functools.partial(
         test_tile_ifft,
@@ -252,7 +219,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_fft_3d_vec2f",
     functools.partial(
         test_tile_fft,
@@ -264,7 +231,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_fft_3d_vec2d",
     functools.partial(
         test_tile_fft,
@@ -276,7 +243,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_ifft_3d_vec2f",
     functools.partial(
         test_tile_ifft,
@@ -288,7 +255,7 @@ add_function_test(
     check_output=False,
 )
 add_function_test(
-    TestTileFFT,
+    TestTileFFTNoMathDx,
     "test_tile_ifft_3d_vec2d",
     functools.partial(
         test_tile_ifft,
@@ -297,54 +264,6 @@ add_function_test(
         data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
     ),
     devices=test_devices,
-    check_output=False,
-)
-add_function_test(
-    TestTileFFT,
-    "test_tile_fft_cpu_npo2_vec2f",
-    functools.partial(
-        test_tile_fft,
-        wp_dtype=wp.vec2f,
-        kernel=tile_fft_kernel_vec2f_npo2,
-        data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
-    ),
-    devices=["cpu"],
-    check_output=False,
-)
-add_function_test(
-    TestTileFFT,
-    "test_tile_fft_cpu_npo2_vec2d",
-    functools.partial(
-        test_tile_fft,
-        wp_dtype=wp.vec2d,
-        kernel=tile_fft_kernel_vec2d_npo2,
-        data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
-    ),
-    devices=["cpu"],
-    check_output=False,
-)
-add_function_test(
-    TestTileFFT,
-    "test_tile_ifft_cpu_npo2_vec2f",
-    functools.partial(
-        test_tile_ifft,
-        wp_dtype=wp.vec2f,
-        kernel=tile_ifft_kernel_vec2f_npo2,
-        data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
-    ),
-    devices=["cpu"],
-    check_output=False,
-)
-add_function_test(
-    TestTileFFT,
-    "test_tile_ifft_cpu_npo2_vec2d",
-    functools.partial(
-        test_tile_ifft,
-        wp_dtype=wp.vec2d,
-        kernel=tile_ifft_kernel_vec2d_npo2,
-        data_shape=(FFT_SIZE_NPO2, 2 * FFT_SIZE_NPO2),
-    ),
-    devices=["cpu"],
     check_output=False,
 )
 

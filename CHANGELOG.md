@@ -37,6 +37,24 @@
   and can be scoped temporarily with `wp.ScopedLogLevel`; all Python-side diagnostic output now routes through
   the logger ([GH-1315](https://github.com/NVIDIA/warp/issues/1315),
   [GH-1434](https://github.com/NVIDIA/warp/issues/1434)).
+- Add libmathdx-free implementations of `wp.tile_fft()` and `wp.tile_ifft()` and their adjoints.
+  The CPU path uses a sequential radix-2 Cooley-Tukey for power-of-two sizes and a direct DFT for
+  non-power-of-two sizes up to 4096 elements. The GPU path (selected when libmathdx is unavailable
+  or disabled via the `enable_mathdx_fft` module option / `warp.config.enable_mathdx_fft` flag) is
+  a shared-memory cooperative radix-2 implementation supporting power-of-two FFT sizes that are
+  divisible by `block_dim`. Both paths match the unnormalized convention used by cuFFTDx
+- Add libmathdx-free implementations of `wp.tile_fft()` and `wp.tile_ifft()` and their adjoints,
+  so they run on CPU and on GPU builds where libmathdx is unavailable. Add the `enable_mathdx_fft`
+  config flag and module option (parity with `enable_mathdx_gemm` / `enable_mathdx_solver`) to
+  route these ops through the fallback when libmathdx is available. CPU supports power-of-two
+  sizes of any length and non-power-of-two sizes up to 4096 elements; the GPU fallback supports
+  power-of-two sizes divisible by `block_dim`
+- Add `wp.tile_fft()` and `wp.tile_ifft()` (and their adjoints) on CPU and on GPU builds
+  without libmathdx. CPU supports power-of-two sizes and non-power-of-two sizes up to 4096
+  elements; GPU requires power-of-two sizes divisible by `block_dim`. The new
+  `enable_mathdx_fft` config flag and module option also selects the fallback on GPU builds
+  with libmathdx, trading runtime performance for faster kernel compile times
+  ([GH-1396](https://github.com/NVIDIA/warp/issues/1396)).
 
 ### Removed
 

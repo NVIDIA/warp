@@ -614,6 +614,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
     arch = 120 if arch > 121 else arch
 
     lto_symbol = f"fft_{size}_{ept}_{arch}_{direction}_{precision}"
+    dtype_ctype = "wp::vec2f" if precision == 5 else "wp::vec2d"
 
     def compile_lto_fft(temp_paths):
         shared_memory_size = ctypes.c_int(0)
@@ -666,6 +667,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
 
         # Update builder
         builder.ltoirs[lto_symbol] = lto_code_data
+        builder.ltoirs_decl[lto_symbol] = f"void {lto_symbol}({dtype_ctype}*, char*);"
         builder.shared_memory_bytes[lto_symbol] = shared_memory_bytes
 
     return lto_symbol, lto_code_data, shared_memory_bytes

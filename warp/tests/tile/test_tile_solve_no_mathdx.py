@@ -360,7 +360,7 @@ def test_cholesky_solve_matrix_block_dim_1(test, device):
 # -----------------------------------------------------------------------------
 
 
-class TestTileSolveNoMathdx(unittest.TestCase):
+class TestTileSolveNoMathDx(unittest.TestCase):
     pass
 
 
@@ -382,7 +382,7 @@ for name, func in [
     ("test_lower_solve_block_dim_1", test_lower_solve_block_dim_1),
     ("test_cholesky_solve_matrix_block_dim_1", test_cholesky_solve_matrix_block_dim_1),
 ]:
-    add_function_test(TestTileSolveNoMathdx, name, func, devices=_devices, check_output=False)
+    add_function_test(TestTileSolveNoMathDx, name, func, devices=_devices, check_output=False)
 
 
 if __name__ == "__main__":
