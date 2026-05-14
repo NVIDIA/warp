@@ -24,3 +24,8 @@
    
    :param inout: The input/output tile.
    
+   .. rubric:: Notes
+   
+   See :func:`tile_fft` for backend selection and supported sizes — the
+   same constraints apply to :func:`tile_ifft`.
+   

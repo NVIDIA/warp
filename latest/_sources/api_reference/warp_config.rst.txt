@@ -20,6 +20,7 @@ API
    cuda_output
    enable_backward
    enable_graph_capture_module_load_by_default
+   enable_mathdx_fft
    enable_mathdx_gemm
    enable_mathdx_solver
    enable_mempools_at_init

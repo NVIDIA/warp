@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.load_module &#8212; Warp 1.14.0.dev0</title>
+    <title>warp.config.enable_mathdx_fft &#8212; Warp 1.14.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.load_module';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.config.enable_mathdx_fft';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.set_module_options" href="warp.set_module_options.html" />
-    <link rel="prev" title="warp.load_aot_module" href="warp.load_aot_module.html" />
+    <link rel="next" title="warp.config.enable_mathdx_gemm" href="warp.config.enable_mathdx_gemm.html" />
+    <link rel="prev" title="warp.config.enable_graph_capture_module_load_by_default" href="warp.config.enable_graph_capture_module_load_by_default.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -459,9 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../warp_config.html" class="nav-link">warp.config</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.load_module</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.config.enable_mathdx_fft</span></li>
   </ul>
 </nav>
 </div>
@@ -474,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.load_module.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.config.enable_mathdx_fft.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -491,58 +491,17 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-load-module">
-<h1>warp.load_module<a class="headerlink" href="#warp-load-module" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.load_module">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">load_module</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">recursive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_workers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8940-L9018"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.load_module" title="Link to this definition">#</a></dt>
-<dd><p>Force a user-defined module to be compiled and loaded.</p>
-<p>This is the recommended way to explicitly load modules that contain Warp code.
-It accepts Python module references (module object, module name string, or Warp
-<a class="reference internal" href="warp.Module.html#warp.Module" title="warp.Module"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a>) and provides convenient options for loading submodules recursively.</p>
-<p>Modules containing Warp code are typically loaded automatically on first kernel launch,
-so this function is mainly useful for:</p>
-<ul class="simple">
-<li><p>Preloading modules to avoid JIT compilation delays during runtime</p></li>
-<li><p>Loading modules in controlled environments (e.g. testing, profiling)</p></li>
-<li><p>Ensuring modules are compiled before specific operations (e.g. CUDA graph capture)</p></li>
-<li><p>Loading a module hierarchy with the <code class="docutils literal notranslate"><span class="pre">recursive</span></code> option</p></li>
-</ul>
-<p>The Python module must be imported and contain at least one Warp kernel,
-function, or struct definition to be loadable.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>module</strong> (<a class="reference internal" href="warp.Module.html#warp.Module" title="warp._src.context.Module"><em>Module</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/types.html#types.ModuleType" title="(in Python v3.14)"><em>ModuleType</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The module to load. Can be a Python module object, module name string,
-or Warp <a class="reference internal" href="warp.Module.html#warp.Module" title="warp.Module"><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></a>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, loads the module that called this function.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – The device or list of devices to load the module on. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, load on all devices.</p></li>
-<li><p><strong>recursive</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to load submodules. For example, if the given module is
-<code class="docutils literal notranslate"><span class="pre">warp.optim</span></code>, this also loads every registered <code class="docutils literal notranslate"><span class="pre">warp.optim.*</span></code>
-submodule containing <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code>, <code class="docutils literal notranslate"><span class="pre">&#64;warp.func</span></code>, or <code class="docutils literal notranslate"><span class="pre">&#64;warp.struct</span></code>
-definitions.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The number of threads per block (always 1 for <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> devices).</p></li>
-<li><p><strong>max_workers</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – The maximum number of parallel threads to use for loading modules. <code class="docutils literal notranslate"><span class="pre">0</span></code> means serial loading.
-If <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">`warp.config.load_module_max_workers</span></code> determines the default.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If the specified module does not contain any Warp kernels, functions,
-    or structs, or has not been imported yet.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If the module argument is not a valid module type.</p></li>
-</ul>
-</dd>
-</dl>
+  <section id="warp-config-enable-mathdx-fft">
+<h1>warp.config.enable_mathdx_fft<a class="headerlink" href="#warp-config-enable-mathdx-fft" title="Link to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="warp.config.enable_mathdx_fft">
+<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_mathdx_fft</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#warp.config.enable_mathdx_fft" title="Link to this definition">#</a></dt>
+<dd><p>Use libmathdx (cuFFTDx) for <a class="reference internal" href="../../language_reference/_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft</span></code></a> and
+<a class="reference internal" href="../../language_reference/_generated/warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft</span></code></a> on GPU when available.</p>
+<p>When False, these ops use a fallback that supports power-of-two FFT sizes only,
+trading runtime performance for faster kernel compile times.</p>
+<p>This setting can be overridden at the module level by setting the
+<code class="docutils literal notranslate"><span class="pre">&quot;enable_mathdx_fft&quot;</span></code> module option.</p>
 </dd></dl>
 
 </section>
@@ -558,20 +517,20 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.load_aot_module.html"
+       href="warp.config.enable_graph_capture_module_load_by_default.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.load_aot_module</p>
+        <p class="prev-next-title">warp.config.enable_graph_capture_module_load_by_default</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.set_module_options.html"
+       href="warp.config.enable_mathdx_gemm.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.set_module_options</p>
+        <p class="prev-next-title">warp.config.enable_mathdx_gemm</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -596,7 +555,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.load_module"><code class="docutils literal notranslate"><span class="pre">load_module()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.config.enable_mathdx_fft"><code class="docutils literal notranslate"><span class="pre">enable_mathdx_fft</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -604,7 +563,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.load_module.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.config.enable_mathdx_fft.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
