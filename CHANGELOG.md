@@ -71,6 +71,8 @@
   ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
 
 ### Fixed
+- Fix Raise a `WarpCodegenTypeError` when a kernel specifies a non-`None` return type annotation but contains only a bare return.
+  ([GH-1411](https://github.com/NVIDIA/warp/pull/1411)).
 
 - Suppress the `+avx10.1-256` "invalid feature combination" warning emitted on every CPU kernel
   compile on Intel Granite Rapids hosts ([GH-1426](https://github.com/NVIDIA/warp/issues/1426)).

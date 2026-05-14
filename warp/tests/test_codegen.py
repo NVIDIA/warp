@@ -554,13 +554,19 @@ def test_error_kernel_return_value(test, device):
     with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
         wp.launch(f3, dim=1, inputs=[3.0], device=device)
 
-    # TODO: specifying a return type without returning a value is benign, but should be reported to avoid confusion
-    # @wp.kernel
-    # def f4(x: float) -> float:
-    #     return
+    @wp.kernel(module="unique")
+    def f4(x: float) -> float:
+        return
 
-    # with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
-    #     wp.launch(f4, dim=1, inputs=[3.0], device=device)
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+        wp.launch(f4, dim=1, inputs=[3.0], device=device)
+
+    @wp.kernel(module="unique")
+    def f5(x: float) -> None:
+        return
+
+    # -> none should remain accepted
+    wp.launch(f5, dim=1, inputs=[3.0], device=device)
 
 
 def test_error_mutating_constant_in_dynamic_loop(test, device):
