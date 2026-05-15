@@ -27,6 +27,8 @@ jobs:
   # - Symbol namespace validation
   ci:
     uses: ./.github/workflows/ci.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # Static analysis with cppcheck (runs independently, doesn't need build artifacts)
   cppcheck:

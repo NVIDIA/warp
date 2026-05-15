@@ -5,6 +5,9 @@ name: CI
 
 on:
   workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
   workflow_dispatch:
   push:
     tags:
@@ -349,7 +352,7 @@ jobs:
           disable_search: true
           files: ./rspec.xml
           report_type: test_results
-          flags: unittests,linux,${{ matrix.gpu-name }}
+          flags: test-warp-gpu-linux-${{ matrix.gpu-name }}
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports to Codecov
@@ -359,7 +362,7 @@ jobs:
         with:
           disable_search: true
           files: ./coverage.xml
-          flags: unittests,linux,${{ matrix.gpu-name }}
+          flags: test-warp-gpu-linux-${{ matrix.gpu-name }}
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-gpu-linux-mgpu-python310:
@@ -437,7 +440,7 @@ jobs:
           disable_search: true
           files: ./rspec.xml
           report_type: test_results
-          flags: unittests,linux,rtxpro6000,mgpu,py310
+          flags: test-warp-gpu-linux-mgpu-python310
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports to Codecov
@@ -447,7 +450,7 @@ jobs:
         with:
           disable_search: true
           files: ./coverage.xml
-          flags: unittests,linux,rtxpro6000,mgpu,py310
+          flags: test-warp-gpu-linux-mgpu-python310
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-gpu-windows:
@@ -507,7 +510,7 @@ jobs:
           disable_search: true
           files: ./rspec.xml
           report_type: test_results
-          flags: unittests,windows,rtxpro6000
+          flags: test-warp-gpu-windows-rtxpro6000
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports to Codecov
@@ -517,7 +520,7 @@ jobs:
         with:
           disable_search: true
           files: ./coverage.xml
-          flags: unittests,windows,rtxpro6000
+          flags: test-warp-gpu-windows-rtxpro6000
           token: ${{ secrets.CODECOV_TOKEN }}
 
   # Validate Sphinx doctests (RST testcode blocks and autodoc-extracted docstrings)

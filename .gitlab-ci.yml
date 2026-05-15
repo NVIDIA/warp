@@ -446,10 +446,6 @@ linux-x86_64 test:
     - export WARP_DISABLE_P2P_TESTS=1
   script:
     - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-    # Upload report to Codecov
-    - git config --global --add safe.directory $CI_PROJECT_DIR
-    - uvx --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
-    - uvx --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # A temporary job for testing on Blackwell until more runners are available
 linux-x86_64-blackwell test:
@@ -503,12 +499,6 @@ windows-x86_64 test:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-    # Upload report to Codecov
-    - git config --global --add safe.directory $env:CI_PROJECT_DIR
-    - |
-      & "$env:CI_PROJECT_DIR\_uv\uvx.exe" --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --plugin pycoverage -F unittests -f coverage.xml
-    - |
-      & "$env:CI_PROJECT_DIR\_uv\uvx.exe" --from codecov-cli codecovcli --verbose upload-process --git-service github --disable-search -t $CODECOV_TOKEN -r NVIDIA/warp --report-type test_results -f rspec.xml
 
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:
