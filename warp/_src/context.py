@@ -1443,6 +1443,11 @@ def kernel(
             if existing_module is not None:
                 log_debug(f"[wp.kernel] Reusing existing unique module: {k.module.name}")
 
+                # This temporary module is discarded below. It may already have
+                # registered dependency edges during registration/hash resolution,
+                # so unlink it before returning the canonical kernel.
+                k.module._detach_references()
+
                 # The kernel must already exist in the module (same hash means same content)
                 existing_kernel_same_key = existing_module.kernels.get(k.key)
                 if existing_kernel_same_key is None:
@@ -2605,6 +2610,9 @@ class Module:
         # dependents, so that they will be re-hashed and reloaded on the next launch.
         # -> See ``get_module()``
 
+        # Dependency edges are bidirectional: if A.references contains B, then
+        # B.dependents must contain A. Modules discarded during registration must
+        # call _detach_references() before becoming unreachable.
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
 
@@ -2754,6 +2762,12 @@ class Module:
         # so we should avoid it as a general rule.  Instead, we rely on Python's
         # reference counting GC to collect kernels that have gone out of scope.
         return list(self._live_kernels)
+
+    def _detach_references(self):
+        """Remove this module from the dependent sets of modules it references."""
+        for ref in tuple(self.references):
+            ref.dependents.discard(self)
+        self.references.clear()
 
     # find kernel corresponding to a Python function
     def _find_kernel(self, func):

@@ -110,6 +110,8 @@
   concurrently from multiple threads ([GH-1415](https://github.com/NVIDIA/warp/issues/1415)).
 - Fix Warp warning emission overriding user warning filters, making deprecation warnings unsuppressible via
   `warnings.filterwarnings()` ([GH-1315](https://github.com/NVIDIA/warp/issues/1315)).
+- Fix retained Python module references when repeated `module="unique"` kernel declarations reuse an existing unique
+  module ([GH-1462](https://github.com/NVIDIA/warp/issues/1462)).
 
 ### Documentation
 

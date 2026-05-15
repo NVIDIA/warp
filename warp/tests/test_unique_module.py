@@ -436,6 +436,43 @@ def test_unique_module_generic_closure_reuse(test, device):
         assert_np_equal(writer_data.out.numpy(), np.array([5, 6, 7]))
 
 
+def test_unique_module_reuse_does_not_retain_temporary_dependents(test, device):
+    """Reusing a unique module must not retain discarded temporary modules."""
+
+    @wp.func
+    def _increment_for_unique_reuse(value: int) -> int:
+        return value + 1
+
+    values = [7, 11]
+
+    def make_kernel():
+        @wp.kernel(module="unique", enable_backward=False)
+        def _kernel_with_dependency(out: wp.array(dtype=int)):
+            tid = wp.tid()
+            for i in range(wp.static(len(values))):
+                if wp.static(values[i]) == 7:
+                    out[tid] = _increment_for_unique_reuse(out[tid])
+
+        return _kernel_with_dependency
+
+    before_dependents = set(_increment_for_unique_reuse.module.dependents)
+    kernels = [make_kernel() for _ in range(5)]
+    after_dependents = set(_increment_for_unique_reuse.module.dependents)
+    new_dependents = after_dependents - before_dependents
+    canonical_module = kernels[0].module
+
+    test.assertEqual(len({id(kernel) for kernel in kernels}), 1, "Equivalent unique kernels should reuse one object")
+    test.assertEqual({id(kernel.module) for kernel in kernels}, {id(canonical_module)})
+    test.assertIn(_increment_for_unique_reuse.module, canonical_module.references)
+    test.assertIn(canonical_module, after_dependents)
+    test.assertEqual(new_dependents - {canonical_module}, set())
+
+    with wp.ScopedDevice(device):
+        out = wp.array([1], dtype=int)
+        wp.launch(kernels[-1], dim=1, inputs=[out])
+        assert_np_equal(out.numpy(), np.array([2]))
+
+
 def test_unique_module_nongeneric_closure_disambiguation(test, device):
     """Non-generic closure kernels with different captured functions must get different modules.
 
@@ -505,6 +542,12 @@ add_function_test(
     TestUniqueModule,
     "test_unique_module_generic_closure_reuse",
     test_unique_module_generic_closure_reuse,
+    devices=devices,
+)
+add_function_test(
+    TestUniqueModule,
+    "test_unique_module_reuse_does_not_retain_temporary_dependents",
+    test_unique_module_reuse_does_not_retain_temporary_dependents,
     devices=devices,
 )
 add_function_test(
