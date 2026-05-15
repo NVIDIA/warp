@@ -600,6 +600,58 @@ def test_tile_shared_coalesced_mat44(test, device):
     np.testing.assert_allclose(out.numpy(), inp_np)
 
 
+def test_tile_register_from_shared_reassign(test, device):
+    TILE_SIZE = 8
+    BLOCK_DIM = 64
+
+    @wp.kernel(module="unique")
+    def compute(
+        src: wp.array[float],
+        overwritten: wp.array[float],
+        reassigned: wp.array[float],
+        direct: wp.array[float],
+        iters: int,
+    ):
+        t = wp.tile_load(overwritten, shape=TILE_SIZE, offset=0, storage="register")
+        s = wp.tile_load(src, shape=TILE_SIZE, offset=0, storage="shared")
+
+        for _ in range(iters):
+            t = s
+
+        wp.tile_store(reassigned, t, offset=0)
+        wp.tile_store(direct, s, offset=0)
+
+    src_np = np.arange(TILE_SIZE, dtype=np.float32) + 1.0
+    overwritten_np = np.arange(TILE_SIZE, dtype=np.float32) + 101.0
+
+    src = wp.array(src_np, requires_grad=True, device=device)
+    overwritten = wp.array(overwritten_np, requires_grad=True, device=device)
+    reassigned = wp.zeros(TILE_SIZE, dtype=float, requires_grad=True, device=device)
+    direct = wp.zeros(TILE_SIZE, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            compute,
+            dim=[1],
+            inputs=[src, overwritten, reassigned, direct, 2],
+            block_dim=BLOCK_DIM,
+            device=device,
+        )
+
+    np.testing.assert_allclose(reassigned.numpy(), src_np)
+    np.testing.assert_allclose(direct.numpy(), src_np)
+
+    tape.backward(
+        grads={
+            reassigned: wp.ones_like(reassigned, device=device),
+            direct: wp.ones_like(direct, device=device),
+        }
+    )
+
+    np.testing.assert_allclose(src.grad.numpy(), np.full(TILE_SIZE, 2.0, dtype=np.float32))
+    np.testing.assert_allclose(overwritten.grad.numpy(), np.zeros(TILE_SIZE, dtype=np.float32))
+
+
 def test_tile_scatter_masked_basic(test, device):
     """Each thread writes its index; verify all values are visible after the call."""
     TILE_SIZE = 64
@@ -887,6 +939,12 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_shared_coalesced_mat44",
     test_tile_shared_coalesced_mat44,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_register_from_shared_reassign",
+    test_tile_register_from_shared_reassign,
     devices=devices,
 )
 add_function_test(

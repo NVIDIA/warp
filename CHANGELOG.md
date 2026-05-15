@@ -125,6 +125,8 @@
   now well-defined (and gradient-stable) for near-parallel edges, where it
   could previously return geometrically valid but unstable barycentric
   weights ([GH-1437](https://github.com/NVIDIA/warp/issues/1437)).
+- Fix tile reassignment from shared storage to register storage
+  ([GH-1440](https://github.com/NVIDIA/warp/issues/1440)).
 
 ### Documentation
 

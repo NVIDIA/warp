@@ -5602,6 +5602,34 @@ inline CUDA_CALLABLE void adj_assign(
     WP_TILE_SYNC();
 }
 
+template <typename T, typename SharedLayout, bool Owner>
+inline CUDA_CALLABLE void assign(
+    tile_register_t<T, tile_layout_register_t<typename SharedLayout::Shape>>& dest,
+    const tile_shared_t<T, SharedLayout, Owner>& src
+)
+{
+    dest.assign(src.copy_to_register());
+}
+
+template <typename T, typename SharedLayout, bool Owner>
+inline CUDA_CALLABLE void adj_assign(
+    tile_register_t<T, tile_layout_register_t<typename SharedLayout::Shape>>& dest,
+    const tile_shared_t<T, SharedLayout, Owner>& src,
+    tile_register_t<T, tile_layout_register_t<typename SharedLayout::Shape>>& adj_dest,
+    tile_shared_t<T, SharedLayout, Owner>& adj_src
+)
+{
+    (void)dest;
+    (void)src;
+
+    if (adj_src.grad.ptr != nullptr) {
+        adj_src.grad_add(adj_dest);
+    }
+
+    // Overwritten destinations do not contribute to the pre-assignment dest value.
+    adj_dest.zero();
+}
+
 
 template <typename TileA, typename Scalar> inline CUDA_CALLABLE void assign(TileA& dest, int i, const Scalar& src)
 {
