@@ -619,6 +619,11 @@ concurrently from multiple threads (<a class="reference external" href="https://
 <code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
 <li><p>Fix retained Python module references when repeated <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> kernel declarations reuse an existing unique
 module (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1462">GH-1462</a>).</p></li>
+<li><p>Stabilize <code class="docutils literal notranslate"><span class="pre">wp.closest_point_edge_edge()</span></code> at near-parallel configurations.
+Forward output is unchanged for well-conditioned inputs and is
+now well-defined (and gradient-stable) for near-parallel edges, where it
+could previously return geometrically valid but unstable barycentric
+weights (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1437">GH-1437</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
