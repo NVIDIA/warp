@@ -516,6 +516,9 @@
 </ul>
 </td></tr></table>
 <p>Clamp the value of <code class="docutils literal notranslate"><span class="pre">x</span></code> to the range [low, high].</p>
+<p>Equivalent to <code class="docutils literal notranslate"><span class="pre">wp.min(wp.max(low,</span> <span class="pre">x),</span> <span class="pre">high)</span></code>. On float types this means
+NaN values of <code class="docutils literal notranslate"><span class="pre">x</span></code> produce <code class="docutils literal notranslate"><span class="pre">wp.min(low,</span> <span class="pre">high)</span></code> rather than propagating
+NaN.</p>
 </dd></dl>
 
 </section>

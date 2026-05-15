@@ -516,6 +516,9 @@
 </ul>
 </td></tr></table>
 <p>Compute the minimum value.</p>
+<p>On float types, NaN is treated as missing (C <code class="docutils literal notranslate"><span class="pre">fmin</span></code> semantics): the
+operation returns the non-NaN operand when exactly one is NaN, and NaN
+only when both are NaN.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -578,6 +581,9 @@
 </ul>
 </td></tr></table>
 <p>Compute the minimum value.</p>
+<p>On float types, NaN elements are treated as missing (C <code class="docutils literal notranslate"><span class="pre">fmin</span></code> semantics);
+the reduction returns the smallest non-NaN element, or NaN only if every
+element is NaN.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>The minimum element of <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p>
