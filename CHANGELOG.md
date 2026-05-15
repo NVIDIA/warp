@@ -120,6 +120,11 @@
   `warnings.filterwarnings()` ([GH-1315](https://github.com/NVIDIA/warp/issues/1315)).
 - Fix retained Python module references when repeated `module="unique"` kernel declarations reuse an existing unique
   module ([GH-1462](https://github.com/NVIDIA/warp/issues/1462)).
+- Stabilize `wp.closest_point_edge_edge()` at near-parallel configurations.
+  Forward output is unchanged for well-conditioned inputs and is
+  now well-defined (and gradient-stable) for near-parallel edges, where it
+  could previously return geometrically valid but unstable barycentric
+  weights ([GH-1437](https://github.com/NVIDIA/warp/issues/1437)).
 
 ### Documentation
 

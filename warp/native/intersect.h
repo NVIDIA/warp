@@ -1035,11 +1035,22 @@ label6:;
 
 
 // ----------------------------------------------------------------
-// jleaf: I needed to replace "float(" with "cast_float(" manually below because
-// "#define float(x) cast_float(x)"" in this header affects other files.
-// See adjoint in "intersect_adj.h" for the generated adjoint.
+// Closest-point computation between two line segments p1->q1 and p2->q2.
+// Returns vec3(s, t, dist) where (s, t) are barycentric weights of the closest
+// points on each segment and dist is the distance between them.
+//
+// Based on Christer Ericson, Real-Time Collision Detection §5.1.9.
+//
+// The general nondegenerate case computes
+//     denom = |d1|² |d2|² - (d1·d2)²            where d1 = q1 - p1, d2 = q2 - p2
+//     num   = (d1·d2)(d2·r) - (d1·r) |d2|²      where r  = p1 - p2
+// and takes s_init = clamp(num / denom, 0, 1). Each difference of products is
+// evaluated with diff_product(), which uses Kahan-compensated FMA to reduce
+// cancellation versus plain (a*e - b*b) and (b*f - c*e). This matters when the
+// edges are near-parallel: denom = |d1|²|d2|² sin²θ, so the naive subtraction
+// loses precision as sinθ approaches sqrt(machine ε).
 /*
-  Here is the original warp implementation that was used to generate this code:
+  Reference Python implementation (forward only) for comparison:
 
 # https://books.google.ca/books?id=WGpL6Sk9qNAC&printsec=frontcover&hl=en#v=onepage&q=triangle&f=false
 # From 5.1.9
@@ -1112,175 +1123,301 @@ def closest_point_edge_edge(
 
 */
 
-static CUDA_CALLABLE vec3
-closest_point_edge_edge(vec3 var_p1, vec3 var_q1, vec3 var_p2, vec3 var_q2, float32 var_epsilon)
+// Adjoint stability threshold (relative to a*e). The forward path always uses
+// the general formula when denom > 0; this constant is consulted only by the
+// adjoint, which routes inputs with denom <= kClosestPointEdgeEdgeParallelTol
+// * a * e into a damped chain rule that suppresses back-prop through s_uc =
+// num/denom (otherwise 1/denom would amplify float32 noise into unbounded
+// gradients). denom / (a*e) = sin²θ, so this threshold corresponds to sinθ
+// ≈ 1e-3 (~0.06°).
+static constexpr float kClosestPointEdgeEdgeParallelTol = 1.0e-6f;
+
+static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 p1, vec3 q1, vec3 p2, vec3 q2, float32 epsilon)
 {
-    //---------
-    // primal vars
-    vec3 var_0;
-    vec3 var_1;
-    vec3 var_2;
-    float32 var_3;
-    float32 var_4;
-    float32 var_5;
-    const float32 var_6 = 0.0;
-    float32 var_7;
-    float32 var_8;
-    vec3 var_9;
-    float32 var_10;
-    bool var_11;
-    bool var_12;
-    bool var_13;
-    vec3 var_14;
-    bool var_15;
-    float32 var_16;
-    float32 var_17;
-    float32 var_18;
-    float32 var_19;
-    float32 var_20;
-    float32 var_21;
-    bool var_22;
-    float32 var_23;
-    float32 var_24;
-    const float32 var_25 = 1.0;
-    float32 var_26;
-    float32 var_27;
-    float32 var_28;
-    float32 var_29;
-    float32 var_30;
-    float32 var_31;
-    float32 var_32;
-    float32 var_33;
-    bool var_34;
-    float32 var_35;
-    float32 var_36;
-    float32 var_37;
-    float32 var_38;
-    float32 var_39;
-    float32 var_40;
-    float32 var_41;
-    float32 var_42;
-    float32 var_43;
-    float32 var_44;
-    bool var_45;
-    float32 var_46;
-    float32 var_47;
-    float32 var_48;
-    float32 var_49;
-    float32 var_50;
-    bool var_51;
-    float32 var_52;
-    float32 var_53;
-    float32 var_54;
-    float32 var_55;
-    float32 var_56;
-    float32 var_57;
-    float32 var_58;
-    float32 var_59;
-    float32 var_60;
-    float32 var_61;
-    float32 var_62;
-    vec3 var_63;
-    vec3 var_64;
-    vec3 var_65;
-    vec3 var_66;
-    vec3 var_67;
-    vec3 var_68;
-    vec3 var_69;
-    float32 var_70;
-    vec3 var_71;
-    //---------
-    // forward
-    var_0 = wp::sub(var_q1, var_p1);
-    var_1 = wp::sub(var_q2, var_p2);
-    var_2 = wp::sub(var_p1, var_p2);
-    var_3 = wp::dot(var_0, var_0);
-    var_4 = wp::dot(var_1, var_1);
-    var_5 = wp::dot(var_1, var_2);
-    var_7 = wp::cast_float(var_6);
-    var_8 = wp::cast_float(var_6);
-    var_9 = wp::sub(var_p2, var_p1);
-    var_10 = wp::length(var_9);
-    var_11 = (var_3 <= var_epsilon);
-    var_12 = (var_4 <= var_epsilon);
-    var_13 = var_11 && var_12;
-    if (var_13) {
-        var_14 = wp::vec3(var_7, var_8, var_10);
-        return var_14;
-    }
-    var_15 = (var_3 <= var_epsilon);
-    if (var_15) {
-        var_16 = wp::cast_float(var_6);
-        var_17 = wp::div(var_5, var_4);
-        var_18 = wp::cast_float(var_17);
-    }
-    var_19 = wp::where(var_15, var_16, var_7);
-    var_20 = wp::where(var_15, var_18, var_8);
-    if (!var_15) {
-        var_21 = wp::dot(var_0, var_2);
-        var_22 = (var_4 <= var_epsilon);
-        if (var_22) {
-            var_23 = wp::neg(var_21);
-            var_24 = wp::div(var_23, var_3);
-            var_26 = wp::clamp(var_24, var_6, var_25);
-            var_27 = wp::cast_float(var_6);
+    const vec3 d1 = q1 - p1;
+    const vec3 d2 = q2 - p2;
+    const vec3 r = p1 - p2;
+
+    const float a = dot(d1, d1);  // squared length of edge 1
+    const float e = dot(d2, d2);  // squared length of edge 2
+    const float f = dot(d2, r);
+
+    float s = 0.0f;
+    float t = 0.0f;
+
+    const bool degen1 = (a <= epsilon);
+    const bool degen2 = (e <= epsilon);
+
+    if (degen1 && degen2) {
+        // both segments degenerate to points: s = t = 0
+    } else if (degen1) {
+        // edge 1 is a point: project p1 onto edge 2 and clamp to segment
+        t = clamp(f / e, 0.0f, 1.0f);
+    } else if (degen2) {
+        // edge 2 is a point: project p2 onto edge 1 and clamp to segment
+        s = clamp(-dot(d1, r) / a, 0.0f, 1.0f);
+    } else {
+        // general case
+        const float c = dot(d1, r);
+        const float b = dot(d1, d2);
+        const float denom = diff_product(a, e, b, b);
+
+        float s_init;
+        if (denom > 0.0f) {
+            const float num = diff_product(b, f, c, e);
+            s_init = clamp(num / denom, 0.0f, 1.0f);
+        } else {
+            // edges parallel to within float32 noise; pick s = 0 and let t correct
+            s_init = 0.0f;
         }
-        var_28 = wp::where(var_22, var_26, var_19);
-        var_29 = wp::where(var_22, var_27, var_20);
-        if (!var_22) {
-            var_30 = wp::dot(var_0, var_1);
-            var_31 = wp::mul(var_3, var_4);
-            var_32 = wp::mul(var_30, var_30);
-            var_33 = wp::sub(var_31, var_32);
-            var_34 = (var_33 != var_6);
-            if (var_34) {
-                var_35 = wp::mul(var_30, var_5);
-                var_36 = wp::mul(var_21, var_4);
-                var_37 = wp::sub(var_35, var_36);
-                var_38 = wp::div(var_37, var_33);
-                var_39 = wp::clamp(var_38, var_6, var_25);
-            }
-            var_40 = wp::where(var_34, var_39, var_28);
-            if (!var_34) { }
-            var_41 = wp::where(var_34, var_40, var_6);
-            var_42 = wp::mul(var_30, var_41);
-            var_43 = wp::add(var_42, var_5);
-            var_44 = wp::div(var_43, var_4);
-            var_45 = (var_44 < var_6);
-            if (var_45) {
-                var_46 = wp::neg(var_21);
-                var_47 = wp::div(var_46, var_3);
-                var_48 = wp::clamp(var_47, var_6, var_25);
-            }
-            var_49 = wp::where(var_45, var_48, var_41);
-            var_50 = wp::where(var_45, var_6, var_44);
-            if (!var_45) {
-                var_51 = (var_50 > var_25);
-                if (var_51) {
-                    var_52 = wp::sub(var_30, var_21);
-                    var_53 = wp::div(var_52, var_3);
-                    var_54 = wp::clamp(var_53, var_6, var_25);
-                }
-                var_55 = wp::where(var_51, var_54, var_49);
-                var_56 = wp::where(var_51, var_25, var_50);
-            }
-            var_57 = wp::where(var_45, var_49, var_55);
-            var_58 = wp::where(var_45, var_50, var_56);
+
+        const float t_init = (b * s_init + f) / e;
+
+        if (t_init < 0.0f) {
+            // closest point on edge 2 is past p2; recompute s with t = 0
+            s = clamp(-c / a, 0.0f, 1.0f);
+            // t = 0
+        } else if (t_init > 1.0f) {
+            // closest point on edge 2 is past q2; recompute s with t = 1
+            s = clamp((b - c) / a, 0.0f, 1.0f);
+            t = 1.0f;
+        } else {
+            s = s_init;
+            t = t_init;
         }
-        var_59 = wp::where(var_22, var_28, var_57);
-        var_60 = wp::where(var_22, var_29, var_58);
     }
-    var_61 = wp::where(var_15, var_19, var_59);
-    var_62 = wp::where(var_15, var_20, var_60);
-    var_63 = wp::sub(var_q1, var_p1);
-    var_64 = wp::mul(var_63, var_61);
-    var_65 = wp::add(var_p1, var_64);
-    var_66 = wp::sub(var_q2, var_p2);
-    var_67 = wp::mul(var_66, var_62);
-    var_68 = wp::add(var_p2, var_67);
-    var_69 = wp::sub(var_68, var_65);
-    var_70 = wp::length(var_69);
-    var_71 = wp::vec3(var_61, var_62, var_70);
-    return var_71;
+
+    const vec3 c1 = p1 + s * d1;
+    const vec3 c2 = p2 + t * d2;
+    const float dist = length(c2 - c1);
+
+    return vec3(s, t, dist);
 }
+// Analytic adjoint of closest_point_edge_edge.
+//
+// Forward returns vec3(s, t, dist). It selects one of six branches:
+//   A: both edges degenerate to points
+//   B: edge 1 degenerate (s = 0, t = clamp(f/e, 0, 1))
+//   C: edge 2 degenerate (t = 0, s = clamp(-c/a, 0, 1))
+//   D: general case (s, t in [0, 1] after t-correction)
+//   D_DEGEN: gradient damped — either denom <= 0 (true parallel, s = 0) or
+//            denom positive but below the stability tolerance (forward
+//            general path; gradient back-prop through s_uc = num/denom
+//            suppressed to keep gradients bounded)
+//   E: t saturates to 0 after correction (s = clamp(-c/a, 0, 1))
+//   F: t saturates to 1 after correction (s = clamp((b-c)/a, 0, 1))
+//
+// This adjoint recomputes the forward to determine the active branch, then
+// applies the chain rule. The general case D computes denom = a*e - b² and
+// num = b*f - c*e via Kahan-compensated diff_product. The forward path takes
+// CASE_D as long as denom > 0 (any well-defined closest pair); branch
+// classification for the adjoint is stricter so 1/denom never amplifies
+// noise. Inputs in the band 0 < denom <= 1e-6 * a*e produce a correct
+// forward output and a damped (approximate-but-bounded) gradient.
+static CUDA_CALLABLE void adj_closest_point_edge_edge(
+    vec3 p1,
+    vec3 q1,
+    vec3 p2,
+    vec3 q2,
+    float32 epsilon,
+    vec3& adj_p1,
+    vec3& adj_q1,
+    vec3& adj_p2,
+    vec3& adj_q2,
+    float32& adj_epsilon,
+    vec3& adj_ret
+)
+{
+    (void)adj_epsilon;  // epsilon is a tolerance; not differentiable
+
+    // ---- forward (recomputed) ----
+    const vec3 d1 = q1 - p1;
+    const vec3 d2 = q2 - p2;
+    const vec3 r = p1 - p2;
+    const float a = dot(d1, d1);
+    const float e = dot(d2, d2);
+    const float f = dot(d2, r);
+
+    const bool degen1 = (a <= epsilon);
+    const bool degen2 = (e <= epsilon);
+
+    // Branch-dependent state. Only quantities used in the active branch's
+    // chain rule are read.
+    float s = 0.0f;
+    float t = 0.0f;
+    float c = 0.0f;  // dot(d1, r)
+    float b = 0.0f;  // dot(d1, d2)
+    float denom = 0.0f;  // diff_product(a, e, b, b) in case D
+    float s_uc = 0.0f;  // unclamped s_init for the active branch
+    float t_uc = 0.0f;  // unclamped t for case B
+
+    enum { CASE_A, CASE_B, CASE_C, CASE_D, CASE_D_DEGEN, CASE_E, CASE_F } branch;
+
+    if (degen1 && degen2) {
+        branch = CASE_A;
+    } else if (degen1) {
+        branch = CASE_B;
+        t_uc = f / e;
+        t = clamp(t_uc, 0.0f, 1.0f);
+    } else if (degen2) {
+        branch = CASE_C;
+        c = dot(d1, r);
+        s_uc = -c / a;
+        s = clamp(s_uc, 0.0f, 1.0f);
+    } else {
+        c = dot(d1, r);
+        b = dot(d1, d2);
+        denom = diff_product(a, e, b, b);
+        // Forward gate (denom_positive) mirrors the primal: any positive denom
+        // gives a meaningful closest-pair solution. Adjoint gate (denom_stable)
+        // is stricter — it identifies the band where 1/denom would amplify
+        // float32 noise into unbounded gradients, so we damp the chain rule
+        // there even though the forward result is still correct.
+        const bool denom_positive = (denom > 0.0f);
+        const bool denom_stable = denom_positive && (denom > kClosestPointEdgeEdgeParallelTol * a * e);
+
+        float s_init;
+        if (denom_positive) {
+            const float num = diff_product(b, f, c, e);
+            s_uc = num / denom;
+            s_init = clamp(s_uc, 0.0f, 1.0f);
+        } else {
+            s_init = 0.0f;
+        }
+        const float t_init = (b * s_init + f) / e;
+
+        if (t_init < 0.0f) {
+            branch = CASE_E;
+            s_uc = -c / a;
+            s = clamp(s_uc, 0.0f, 1.0f);
+            t = 0.0f;
+        } else if (t_init > 1.0f) {
+            branch = CASE_F;
+            s_uc = (b - c) / a;
+            s = clamp(s_uc, 0.0f, 1.0f);
+            t = 1.0f;
+        } else {
+            branch = denom_stable ? CASE_D : CASE_D_DEGEN;
+            s = s_init;
+            t = t_init;
+        }
+    }
+
+    const vec3 c1 = p1 + s * d1;
+    const vec3 c2 = p2 + t * d2;
+    const vec3 diff = c2 - c1;
+    const float dist = length(diff);
+
+    // ---- reverse ----
+
+    // Stage 1: dist = ||diff||
+    vec3 adj_diff(0.0f);
+    if (dist > 0.0f) {
+        adj_diff = (adj_ret[2] / dist) * diff;
+    }
+
+    // Stage 2: c1 = p1 + s*d1, c2 = p2 + t*d2, diff = c2 - c1
+    const vec3 adj_c1 = -adj_diff;
+    const vec3 adj_c2 = adj_diff;
+
+    vec3 adj_d1(0.0f);
+    vec3 adj_d2(0.0f);
+    vec3 adj_r(0.0f);
+
+    adj_p1 += adj_c1;
+    adj_d1 += s * adj_c1;
+    float adj_s = dot(d1, adj_c1) + adj_ret[0];
+
+    adj_p2 += adj_c2;
+    adj_d2 += t * adj_c2;
+    float adj_t = dot(d2, adj_c2) + adj_ret[1];
+
+    // Stage 3: per-branch propagation through (s, t) formulas. wp::adj_clamp
+    // routes the incoming gradient to adj_s_uc only when s_uc is inside [0, 1];
+    // outside, it lands on the (constant) bound dummies and is discarded.
+    float adj_a = 0.0f, adj_e = 0.0f, adj_b = 0.0f, adj_c = 0.0f, adj_f = 0.0f;
+
+    switch (branch) {
+    case CASE_A:
+        // s, t both constant 0 — adj_s, adj_t discarded.
+        break;
+    case CASE_B: {
+        // s = 0 const; t = clamp(f/e, 0, 1)
+        float adj_t_uc = 0.0f, _u_lo = 0.0f, _u_hi = 0.0f;
+        adj_clamp(t_uc, 0.0f, 1.0f, adj_t_uc, _u_lo, _u_hi, adj_t);
+        adj_f += adj_t_uc / e;
+        adj_e += -adj_t_uc * t_uc / e;
+        break;
+    }
+    case CASE_C:
+    case CASE_E: {
+        // t const; s = clamp(-c/a, 0, 1)
+        float adj_s_uc = 0.0f, _u_lo = 0.0f, _u_hi = 0.0f;
+        adj_clamp(s_uc, 0.0f, 1.0f, adj_s_uc, _u_lo, _u_hi, adj_s);
+        adj_c += -adj_s_uc / a;
+        adj_a += -adj_s_uc * s_uc / a;
+        break;
+    }
+    case CASE_F: {
+        // t = 1 const; s = clamp((b-c)/a, 0, 1)
+        float adj_s_uc = 0.0f, _u_lo = 0.0f, _u_hi = 0.0f;
+        adj_clamp(s_uc, 0.0f, 1.0f, adj_s_uc, _u_lo, _u_hi, adj_s);
+        adj_b += adj_s_uc / a;
+        adj_c += -adj_s_uc / a;
+        adj_a += -adj_s_uc * s_uc / a;
+        break;
+    }
+    case CASE_D: {
+        // t = (b*s + f)/e; feeds back into adj_s
+        adj_b += adj_t * s / e;
+        adj_s += adj_t * b / e;
+        adj_f += adj_t / e;
+        adj_e += -adj_t * t / e;
+
+        // s = clamp(num/denom, 0, 1) where denom = a*e - b², num = b*f - c*e
+        // (both computed via Kahan-compensated diff_product in the forward).
+        float adj_s_uc = 0.0f, _u_lo = 0.0f, _u_hi = 0.0f;
+        adj_clamp(s_uc, 0.0f, 1.0f, adj_s_uc, _u_lo, _u_hi, adj_s);
+
+        const float adj_num = adj_s_uc / denom;
+        const float adj_denom = -adj_s_uc * s_uc / denom;
+
+        // adj of num = b*f - c*e
+        adj_b += adj_num * f;
+        adj_f += adj_num * b;
+        adj_c -= adj_num * e;
+        adj_e -= adj_num * c;
+
+        // adj of denom = a*e - b² (compensation terms are O(ulp), drop them)
+        adj_a += adj_denom * e;
+        adj_e += adj_denom * a;
+        adj_b -= 2.0f * adj_denom * b;
+        break;
+    }
+    case CASE_D_DEGEN:
+        // Forward took either the parallel branch (s = 0) or the general path
+        // with denom in the noise band. Either way we damp the gradient by
+        // treating s as constant in t = (b*s + f)/e and discarding the
+        // back-prop through s_uc = num/denom. When s = 0 (true parallel) the
+        // adj_b term vanishes; when s != 0 (damped general path) it does not.
+        adj_b += adj_t * s / e;
+        adj_f += adj_t / e;
+        adj_e += -adj_t * t / e;
+        break;
+    }
+
+    // Stage 4: through the scalar dot products.
+    adj_d1 += 2.0f * adj_a * d1 + adj_b * d2 + adj_c * r;
+    adj_d2 += 2.0f * adj_e * d2 + adj_b * d1 + adj_f * r;
+    adj_r += adj_c * d1 + adj_f * d2;
+
+    // Stage 5: through d1 = q1 - p1, d2 = q2 - p2, r = p1 - p2
+    adj_q1 += adj_d1;
+    adj_p1 -= adj_d1;
+    adj_q2 += adj_d2;
+    adj_p2 -= adj_d2;
+    adj_p1 += adj_r;
+    adj_p2 -= adj_r;
+}
+
 }  // namespace wp

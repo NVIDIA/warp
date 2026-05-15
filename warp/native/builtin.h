@@ -2560,7 +2560,6 @@ inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) { }
 #include "quat.h"
 #include "spatial.h"
 #include "intersect.h"
-#include "intersect_adj.h"
 // clang-format on
 
 //--------------
