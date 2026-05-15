@@ -2546,6 +2546,37 @@ def tile_ones(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ..
     ...
 
 @over
+def tile_empty(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """Allocate a tile of uninitialized items.
+
+    The tile's contents are undefined; the caller is responsible for overwriting
+    every element before any read. This matches the semantics of ``numpy.empty``.
+
+    Because it skips initialization, ``tile_empty`` can avoid unnecessary stores
+    when every element will be overwritten, especially for ``"shared"`` tiles.
+
+    For accumulator patterns (``a += ...``), use :func:`tile_zeros` instead -
+    accumulation reads the prior value and would propagate uninitialized data.
+    Use ``tile_empty`` only when the first operation after construction is a
+    full overwrite (a ``tile_load``, a tile-typed assignment, or a complete
+    element-wise fill).
+
+    Args:
+        shape: Shape of the output tile
+        dtype: Data type of output tile's elements (default float)
+        storage: The storage location for the tile: ``"register"`` for registers
+            (default) or ``"shared"`` for shared memory.
+
+    Returns:
+        An uninitialized tile with the requested shape and data type."""
+    ...
+
+@over
+def tile_empty(shape: int32, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
+    """Allocate a tile of uninitialized items."""
+    ...
+
+@over
 def tile_full(shape: tuple[int, ...], value: Any, dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with the specified value.
 

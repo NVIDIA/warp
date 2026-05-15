@@ -225,6 +225,7 @@ Construction
 ^^^^^^^^^^^^
 
 * :func:`tile_zeros <warp._src.lang.tile_zeros>`
+* :func:`tile_empty <warp._src.lang.tile_empty>`
 * :func:`tile_ones <warp._src.lang.tile_ones>`
 * :func:`tile_full <warp._src.lang.tile_full>`
 * :func:`tile_from_thread <warp._src.lang.tile_from_thread>`

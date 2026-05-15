@@ -194,6 +194,7 @@ Tile Primitives
    tile_cholesky_solve_inplace
    tile_diag_add
    tile_dot
+   tile_empty
    tile_extract
    tile_fft
    tile_from_thread

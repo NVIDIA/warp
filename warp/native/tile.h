@@ -828,6 +828,9 @@ template <typename Shape_> struct tile_layout_register_t {
     }
 };
 
+// Tag type used by tile_empty to skip initialization in operator=
+struct tile_empty_t { };
+
 // forward declaration (needed for converting constructor in tile_register_t)
 template <typename T, typename L, bool Owner> struct tile_shared_t;
 
@@ -838,14 +841,15 @@ template <typename T, typename L> struct tile_register_t {
 
     T data[Layout::NumRegs];
 
+    // Default-constructs to zero deliberately: required for adjoint tiles
+    // (accumulated from zero) and ensures any read before a full write is
+    // safe. Has no measurable runtime cost - codegen emits
+    // `tile_register_t<...> var{}; var = rhs;`, and NVCC under -O2 elides
+    // the zero-fill once the immediately-following overwrite makes it dead.
+    // tile_empty<>() short-circuits via operator=(tile_empty_t) on the
+    // assignment side; it does not depend on this default ctor being a no-op.
     inline CUDA_CALLABLE tile_register_t(T value = T {})
     {
-        // zero-initialize by default necessary for tile adjoints
-        // need to check if this results in worse codegen
-        // than doing adj_var = tile_zeros() explicitly
-        // in backwards pass and letting default constructor
-        // avoid initialization
-
         for (int i = 0; i < Layout::NumRegs; ++i)
             data[i] = value;
     }
@@ -869,6 +873,17 @@ template <typename T, typename L> struct tile_register_t {
         copy_from_global(t);
         return *this;
     }
+
+    // broadcast a scalar to all elements - mirrors tile_shared_t scalar assignment
+    inline CUDA_CALLABLE auto& operator=(const T& value)
+    {
+        for (int i = 0; i < Layout::NumRegs; ++i)
+            data[i] = value;
+        return *this;
+    }
+
+    // no-init assignment: leave data unchanged - the rvalue side of tile_empty
+    inline CUDA_CALLABLE auto& operator=(tile_empty_t) { return *this; }
 
     // define the += operator which is used during backward pass codegen
     // when returning a register tile from a user defined function
@@ -1484,6 +1499,9 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         return *this;
     }
 
+    // no-init assignment: leave data unchanged - the rvalue side of tile_empty
+    inline CUDA_CALLABLE auto& operator=(tile_empty_t) { return *this; }
+
     // define the += operator which is used during backward pass codegen
     // when returning a register tile from a user defined function
     template <typename OtherLayout> inline CUDA_CALLABLE auto& operator+=(const tile_register_t<T, OtherLayout>& rhs)
@@ -1722,11 +1740,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         WP_PRAGMA_UNROLL
         for (int i = 0; i < Tile::Layout::NumRegs; ++i) {
             const int linear = Tile::Layout::linear_from_register(i);
-
-            if (!Tile::Layout::valid(linear))
-                break;
-
-            out(i) = grad(linear);
+            out(i) = Tile::Layout::valid(linear) ? grad(linear) : T {};
         }
 
         return out;
@@ -2476,6 +2490,15 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_zeros()
 {
     // tile variable assignment operator will handle initialization (since lhs could be shared/register tile)
     return T {};
+}
+
+// uninitialized tile
+template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_empty()
+{
+    // tile variable assignment operator will route to operator=(tile_empty_t),
+    // leaving the LHS uninitialized. Caller is responsible for overwriting
+    // every element before any read - matches np.empty semantics.
+    return tile_empty_t {};
 }
 
 // one-initialized tile

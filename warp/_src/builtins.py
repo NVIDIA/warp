@@ -2361,7 +2361,8 @@ def tile_zeros_dispatch_func(arg_types: Mapping[str, type], return_type: Any, ar
     if None in shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
 
-    dtype = arg_values["dtype"]
+    dtype_var = arg_values["dtype"]
+    dtype = dtype_var.constant if isinstance(dtype_var, Var) else dtype_var
 
     template_args = []
     template_args.append(dtype)
@@ -2437,7 +2438,8 @@ def tile_ones_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     if None in shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
 
-    dtype = arg_values["dtype"]
+    dtype_var = arg_values["dtype"]
+    dtype = dtype_var.constant if isinstance(dtype_var, Var) else dtype_var
 
     template_args = []
     template_args.append(dtype)
@@ -2481,6 +2483,95 @@ add_builtin(
 )
 
 
+def tile_empty_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    if "dtype" not in arg_values:
+        raise TypeError("tile_empty() missing required keyword argument 'dtype'")
+
+    if "storage" not in arg_values:
+        raise TypeError("tile_empty() missing required keyword argument 'storage'")
+
+    if arg_values["storage"] not in {"shared", "register"}:
+        raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
+
+    dtype = arg_values["dtype"]
+
+    return tile(dtype=dtype, shape=shape, storage=arg_values["storage"])
+
+
+def tile_empty_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    shape = extract_tuple(arg_values["shape"], as_constant=True)
+
+    if None in shape:
+        raise ValueError("Tile functions require shape to be a compile time constant.")
+
+    dtype_var = arg_values["dtype"]
+    dtype = dtype_var.constant if isinstance(dtype_var, Var) else dtype_var
+
+    template_args = []
+    template_args.append(dtype)
+    template_args.extend(shape)
+
+    return ([], template_args)
+
+
+add_builtin(
+    "tile_empty",
+    input_types={"shape": tuple[int, ...], "dtype": Any, "storage": str},
+    defaults={"storage": "register", "dtype": float},
+    value_func=tile_empty_value_func,
+    dispatch_func=tile_empty_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Allocate a tile of uninitialized items.
+
+    The tile's contents are undefined; the caller is responsible for overwriting
+    every element before any read. This matches the semantics of ``numpy.empty``.
+
+    Because it skips initialization, ``tile_empty`` can avoid unnecessary stores
+    when every element will be overwritten, especially for ``"shared"`` tiles.
+
+    For accumulator patterns (``a += ...``), use :func:`tile_zeros` instead -
+    accumulation reads the prior value and would propagate uninitialized data.
+    Use ``tile_empty`` only when the first operation after construction is a
+    full overwrite (a ``tile_load``, a tile-typed assignment, or a complete
+    element-wise fill).
+
+    Args:
+        shape: Shape of the output tile
+        dtype: Data type of output tile's elements (default float)
+        storage: The storage location for the tile: ``"register"`` for registers
+            (default) or ``"shared"`` for shared memory.
+
+    Returns:
+        An uninitialized tile with the requested shape and data type.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+# overload for scalar shape
+add_builtin(
+    "tile_empty",
+    input_types={"shape": int, "dtype": Any, "storage": str},
+    defaults={"storage": "register", "dtype": float},
+    value_func=tile_empty_value_func,
+    dispatch_func=tile_empty_dispatch_func,
+    variadic=False,
+    is_differentiable=False,
+    doc="""Allocate a tile of uninitialized items.""",
+    group="Tile Primitives",
+    export=False,
+)
+
+
 def tile_full_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -2514,7 +2605,8 @@ def tile_full_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     if None in shape:
         raise ValueError("Tile functions require shape to be a compile time constant.")
 
-    dtype = arg_values["dtype"]
+    dtype_var = arg_values["dtype"]
+    dtype = dtype_var.constant if isinstance(dtype_var, Var) else dtype_var
     value = arg_values["value"]
 
     func_args = [value]
