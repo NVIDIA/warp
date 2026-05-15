@@ -2601,6 +2601,462 @@ def test_texture3d_array(test, device):
 
 
 # ============================================================================
+# Adjoint tests
+# ============================================================================
+
+
+@wp.kernel
+def sample_1d(tex: wp.Texture1D, pos: wp.array(dtype=float), out: wp.array(dtype=float)):
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float)
+
+
+@wp.kernel
+def sample_2d(tex: wp.Texture2D, pos: wp.array(dtype=wp.vec2f), out: wp.array(dtype=float)):
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float)
+
+
+@wp.kernel
+def sample_3d(tex: wp.Texture3D, pos: wp.array(dtype=wp.vec3f), out: wp.array(dtype=float)):
+    tid = wp.tid()
+    out[tid] = wp.texture_sample(tex, pos[tid], dtype=float)
+
+
+def _grad_1d(data, u, device):
+    tex = wp.Texture1D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([u], dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_1d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_2d(data, coord, device):
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([wp.vec2f(*coord)], dtype=wp.vec2f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_2d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_3d(data, coord, device):
+    tex = wp.Texture3D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([wp.vec3f(*coord)], dtype=wp.vec3f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_3d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_1d_normalized(data, u_normalized, device):
+    """Helper for 1D gradient with normalized coordinates."""
+    tex = wp.Texture1D(
+        data,
+        normalized_coords=True,  # Use default normalized coordinates
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([u_normalized], dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_1d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_2d_normalized(data, coord_normalized, device):
+    """Helper for 2D gradient with normalized coordinates."""
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=True,  # Use default normalized coordinates
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([wp.vec2f(*coord_normalized)], dtype=wp.vec2f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_2d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def _grad_3d_normalized(data, coord_normalized, device):
+    """Helper for 3D gradient with normalized coordinates."""
+    tex = wp.Texture3D(
+        data,
+        normalized_coords=True,  # Use default normalized coordinates
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([wp.vec3f(*coord_normalized)], dtype=wp.vec3f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_3d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    return pos.grad.numpy()[0]
+
+
+def test_texture1d_adj_boundary_zero(test, device):
+    """Gradient is zero when sampling position straddles the near boundary."""
+    data = np.random.default_rng(0).standard_normal(16).astype(np.float32)
+    np.testing.assert_allclose(_grad_1d(data, 0.1, device), 0.0, atol=1e-6)
+
+
+def test_texture1d_adj_far_boundary_zero(test, device):
+    """Gradient is zero when sampling position straddles the far boundary."""
+    data = np.random.default_rng(1).standard_normal(16).astype(np.float32)
+    np.testing.assert_allclose(_grad_1d(data, 15.9, device), 0.0, atol=1e-6)
+
+
+def test_texture1d_adj_closest_zero(test, device):
+    """Gradient is zero for CLOSEST filter mode."""
+    data = np.random.default_rng(2).standard_normal(16).astype(np.float32)
+    tex = wp.Texture1D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.CLOSEST,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+    pos = wp.array([7.3], dtype=float, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_1d, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.ones(1, dtype=float, device=device)
+    tape.backward()
+    np.testing.assert_allclose(pos.grad.numpy()[0], 0.0, atol=1e-6)
+
+
+def test_texture1d_adj_linear_signal(test, device):
+    """Gradient of a linear signal is constant and analytically known."""
+    W = 16
+    # value = x / W, so d(value)/d(u) = 1/W
+    data = np.arange(W, dtype=np.float32) / W
+    g = _grad_1d(data, 7.3, device)
+    np.testing.assert_allclose(g, 1.0 / W, atol=1e-5)
+
+
+def test_texture2d_adj_near_boundary_zero(test, device):
+    """2D gradient is zero when straddling the near boundary in both axes."""
+    data = np.random.default_rng(3).standard_normal((8, 10)).astype(np.float32)
+    g = _grad_2d(data, (0.1, 0.1), device)
+    np.testing.assert_allclose(g, [0.0, 0.0], atol=1e-6)
+
+
+def test_texture2d_adj_far_boundary_zero(test, device):
+    """2D gradient is zero when straddling the far boundary."""
+    data = np.random.default_rng(4).standard_normal((8, 10)).astype(np.float32)
+    H, W = data.shape
+    g = _grad_2d(data, (W - 0.1, H - 0.1), device)
+    np.testing.assert_allclose(g, [0.0, 0.0], atol=1e-6)
+
+
+def test_texture2d_adj_partial_boundary(test, device):
+    """2D gradient: x interior but y straddling boundary — only y grad is zero."""
+    data = np.random.default_rng(5).standard_normal((8, 10)).astype(np.float32)
+    g = _grad_2d(data, (3.7, 0.1), device)
+    # x is interior so gradient should be nonzero; y straddles boundary so zero
+    test.assertNotEqual(g[0], 0.0)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-6)
+
+
+def test_texture2d_adj_linear_x(test, device):
+    """2D gradient of signal linear in x: x-grad is 1/W, y-grad is zero."""
+    H, W = 6, 10
+    data = np.zeros((H, W), dtype=np.float32)
+    for x in range(W):
+        data[:, x] = x / W
+    g = _grad_2d(data, (4.5, 3.0), device)
+    np.testing.assert_allclose(g[0], 1.0 / W, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+
+
+def test_texture2d_adj_linear_y(test, device):
+    """2D gradient of signal linear in y: y-grad is 1/H, x-grad is zero."""
+    H, W = 6, 10
+    data = np.zeros((H, W), dtype=np.float32)
+    for y in range(H):
+        data[y, :] = y / H
+    g = _grad_2d(data, (4.5, 3.0), device)
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 1.0 / H, atol=1e-5)
+
+
+def test_texture3d_adj_near_boundary_zero(test, device):
+    """3D gradient is zero when straddling the near boundary in all axes."""
+    data = np.random.default_rng(6).standard_normal((8, 6, 10)).astype(np.float32)
+    g = _grad_3d(data, (0.1, 0.1, 0.1), device)
+    np.testing.assert_allclose(g, [0.0, 0.0, 0.0], atol=1e-6)
+
+
+def test_texture3d_adj_far_boundary_zero(test, device):
+    """3D gradient is zero when straddling the far boundary."""
+    data = np.random.default_rng(7).standard_normal((8, 6, 10)).astype(np.float32)
+    D, H, W = data.shape
+    g = _grad_3d(data, (W - 0.1, H - 0.1, D - 0.1), device)
+    np.testing.assert_allclose(g, [0.0, 0.0, 0.0], atol=1e-6)
+
+
+def test_texture3d_adj_partial_boundary(test, device):
+    """3D gradient: x and y interior, z straddling boundary — only z grad is zero."""
+    data = np.random.default_rng(8).standard_normal((8, 6, 10)).astype(np.float32)
+    g = _grad_3d(data, (2.3, 3.7, 0.1), device)
+    test.assertNotEqual(g[0], 0.0)
+    test.assertNotEqual(g[1], 0.0)
+    np.testing.assert_allclose(g[2], 0.0, atol=1e-6)
+
+
+def test_texture3d_adj_uniform_zero(test, device):
+    """Gradient of a uniform volume is zero (no spatial variation to differentiate)."""
+    data = np.ones((8, 6, 10), dtype=np.float32)
+    g = _grad_3d(data, (2.3, 3.7, 1.1), device)
+    np.testing.assert_allclose(g, [0.0, 0.0, 0.0], atol=1e-6)
+
+
+def test_texture3d_adj_linear_x(test, device):
+    """3D gradient of signal linear in x: x-grad is 1/W, y and z grads are zero."""
+    D, H, W = 8, 6, 10
+    data = np.zeros((D, H, W), dtype=np.float32)
+    for x in range(W):
+        data[:, :, x] = x / W
+    g = _grad_3d(data, (4.5, 3.0, 3.0), device)
+    np.testing.assert_allclose(g[0], 1.0 / W, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[2], 0.0, atol=1e-5)
+
+
+def test_texture3d_adj_linear_y(test, device):
+    """3D gradient of signal linear in y: y-grad is 1/H, x and z grads are zero."""
+    D, H, W = 8, 6, 10
+    data = np.zeros((D, H, W), dtype=np.float32)
+    for y in range(H):
+        data[:, y, :] = y / H
+    g = _grad_3d(data, (4.5, 3.0, 3.0), device)
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 1.0 / H, atol=1e-5)
+    np.testing.assert_allclose(g[2], 0.0, atol=1e-5)
+
+
+def test_texture3d_adj_linear_z(test, device):
+    """3D gradient of signal linear in z: z-grad is 1/D, x and y grads are zero."""
+    D, H, W = 8, 6, 10
+    data = np.zeros((D, H, W), dtype=np.float32)
+    for z in range(D):
+        data[z, :, :] = z / D
+    g = _grad_3d(data, (4.5, 3.0, 3.0), device)
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[2], 1.0 / D, atol=1e-5)
+
+
+def test_texture2d_adj_vec2f_linear_x(test, device):
+    """2D vec2f texture: x-grad matches scalar case for each channel independently."""
+    H, W = 6, 10
+    data = np.zeros((H, W, 2), dtype=np.float32)
+    for x in range(W):
+        data[:, x, 0] = x / W  # channel 0: linear in x
+        data[:, x, 1] = (W - 1 - x) / W  # channel 1: linear in x, reversed
+
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+
+    @wp.kernel
+    def sample_2d_vec2(tex: wp.Texture2D, pos: wp.array(dtype=wp.vec2f), out: wp.array(dtype=wp.vec2f)):
+        tid = wp.tid()
+        out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec2f)
+
+    pos = wp.array([wp.vec2f(4.5, 3.0)], dtype=wp.vec2f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=wp.vec2f, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_2d_vec2, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    # seed gradient: both channels contribute equally
+    out.grad = wp.array([wp.vec2f(1.0, 1.0)], dtype=wp.vec2f, device=device)
+    tape.backward()
+
+    g = pos.grad.numpy()[0]
+    # d(ch0)/dx = 1/W, d(ch1)/dx = -1/W, sum = 0
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+
+
+def test_texture2d_adj_vec2f_channels_independent(test, device):
+    """2D vec2f texture: seeding only channel 0 gives channel-0-only gradient."""
+    H, W = 6, 10
+    data = np.zeros((H, W, 2), dtype=np.float32)
+    for x in range(W):
+        data[:, x, 0] = x / W  # channel 0: linear in x
+        data[:, x, 1] = 0.0  # channel 1: constant
+
+    tex = wp.Texture2D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+
+    @wp.kernel
+    def sample_2d_vec2(tex: wp.Texture2D, pos: wp.array(dtype=wp.vec2f), out: wp.array(dtype=wp.vec2f)):
+        tid = wp.tid()
+        out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec2f)
+
+    pos = wp.array([wp.vec2f(4.5, 3.0)], dtype=wp.vec2f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=wp.vec2f, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_2d_vec2, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    # seed only channel 0
+    out.grad = wp.array([wp.vec2f(1.0, 0.0)], dtype=wp.vec2f, device=device)
+    tape.backward()
+
+    g = pos.grad.numpy()[0]
+    np.testing.assert_allclose(g[0], 1.0 / W, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+
+
+def test_texture3d_adj_vec2f_linear_z(test, device):
+    """3D vec2f texture: z-grad is 1/D when only channel 0 is linear in z."""
+    D, H, W = 8, 6, 10
+    data = np.zeros((D, H, W, 2), dtype=np.float32)
+    for z in range(D):
+        data[z, :, :, 0] = z / D  # channel 0: linear in z
+        data[z, :, :, 1] = 0.0  # channel 1: constant
+
+    tex = wp.Texture3D(
+        data,
+        normalized_coords=False,
+        filter_mode=wp.TextureFilterMode.LINEAR,
+        address_mode=wp.TextureAddressMode.BORDER,
+        device=device,
+    )
+
+    @wp.kernel
+    def sample_3d_vec2(tex: wp.Texture3D, pos: wp.array(dtype=wp.vec3f), out: wp.array(dtype=wp.vec2f)):
+        tid = wp.tid()
+        out[tid] = wp.texture_sample(tex, pos[tid], dtype=wp.vec2f)
+
+    pos = wp.array([wp.vec3f(4.5, 3.0, 3.0)], dtype=wp.vec3f, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=wp.vec2f, requires_grad=True, device=device)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(sample_3d_vec2, dim=1, inputs=[tex, pos], outputs=[out], device=device)
+    out.grad = wp.array([wp.vec2f(1.0, 0.0)], dtype=wp.vec2f, device=device)
+    tape.backward()
+
+    g = pos.grad.numpy()[0]
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[2], 1.0 / D, atol=1e-5)
+
+
+def test_texture1d_adj_normalized_boundary(test, device):
+    """1D normalized coords: gradient is zero at boundary (u ≈ 0.0 or u ≈ 1.0)."""
+    data = np.random.default_rng(10).standard_normal(16).astype(np.float32)
+    g_near = _grad_1d_normalized(data, 0.01, device)
+    g_far = _grad_1d_normalized(data, 0.99, device)
+    np.testing.assert_allclose(g_near, 0.0, atol=1e-6)
+    np.testing.assert_allclose(g_far, 0.0, atol=1e-6)
+
+
+def test_texture1d_adj_normalized_linear(test, device):
+    """1D normalized coords: gradient of linear signal."""
+    W = 16
+    data = np.arange(W, dtype=np.float32) / W
+    # With normalized coords, d(value)/d(u_norm) = d(value)/d(u_texel) * d(u_texel)/d(u_norm)
+    # = (1/W) * W = 1.0
+    g = _grad_1d_normalized(data, 0.5, device)
+    np.testing.assert_allclose(g, 1.0, atol=1e-4)
+
+
+def test_texture2d_adj_normalized_boundary(test, device):
+    """2D normalized coords: gradient is zero at boundaries."""
+    data = np.random.default_rng(11).standard_normal((8, 10)).astype(np.float32)
+    g_near = _grad_2d_normalized(data, (0.01, 0.01), device)
+    g_far = _grad_2d_normalized(data, (0.99, 0.99), device)
+    np.testing.assert_allclose(g_near, [0.0, 0.0], atol=1e-6)
+    np.testing.assert_allclose(g_far, [0.0, 0.0], atol=1e-6)
+
+
+def test_texture2d_adj_normalized_linear_x(test, device):
+    """2D normalized coords: x-gradient of signal linear in x."""
+    H, W = 6, 10
+    data = np.zeros((H, W), dtype=np.float32)
+    for x in range(W):
+        data[:, x] = x / W
+    g = _grad_2d_normalized(data, (0.5, 0.5), device)
+    # With normalized coords: d(value)/d(u_norm) = 1.0
+    np.testing.assert_allclose(g[0], 1.0, atol=1e-4)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+
+
+def test_texture3d_adj_normalized_boundary(test, device):
+    """3D normalized coords: gradient is zero at boundaries."""
+    data = np.random.default_rng(12).standard_normal((8, 6, 10)).astype(np.float32)
+    g_near = _grad_3d_normalized(data, (0.01, 0.01, 0.01), device)
+    g_far = _grad_3d_normalized(data, (0.99, 0.99, 0.99), device)
+    np.testing.assert_allclose(g_near, [0.0, 0.0, 0.0], atol=1e-6)
+    np.testing.assert_allclose(g_far, [0.0, 0.0, 0.0], atol=1e-6)
+
+
+def test_texture3d_adj_normalized_linear_z(test, device):
+    """3D normalized coords: z-gradient of signal linear in z."""
+    D, H, W = 8, 6, 10
+    data = np.zeros((D, H, W), dtype=np.float32)
+    for z in range(D):
+        data[z, :, :] = z / D
+    g = _grad_3d_normalized(data, (0.5, 0.5, 0.5), device)
+    # With normalized coords: d(value)/d(w_norm) = 1.0
+    np.testing.assert_allclose(g[0], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[1], 0.0, atol=1e-5)
+    np.testing.assert_allclose(g[2], 1.0, atol=1e-4)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -2851,6 +3307,72 @@ add_function_test(TestTexture, "test_texture2d_struct_member", test_texture2d_st
 add_function_test(TestTexture, "test_texture3d_struct_member", test_texture3d_struct_member, devices=all_devices)
 add_function_test(
     TestTexture, "test_texture_struct_both_members", test_texture_struct_both_members, devices=all_devices
+)
+
+# Adjoint
+add_function_test(
+    TestTexture, "test_texture1d_adj_boundary_zero", test_texture1d_adj_boundary_zero, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture1d_adj_far_boundary_zero", test_texture1d_adj_far_boundary_zero, devices=all_devices
+)
+add_function_test(TestTexture, "test_texture1d_adj_closest_zero", test_texture1d_adj_closest_zero, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture1d_adj_linear_signal", test_texture1d_adj_linear_signal, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_near_boundary_zero", test_texture2d_adj_near_boundary_zero, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_far_boundary_zero", test_texture2d_adj_far_boundary_zero, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_partial_boundary", test_texture2d_adj_partial_boundary, devices=all_devices
+)
+add_function_test(TestTexture, "test_texture2d_adj_linear_x", test_texture2d_adj_linear_x, devices=all_devices)
+add_function_test(TestTexture, "test_texture2d_adj_linear_y", test_texture2d_adj_linear_y, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture3d_adj_near_boundary_zero", test_texture3d_adj_near_boundary_zero, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_far_boundary_zero", test_texture3d_adj_far_boundary_zero, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_partial_boundary", test_texture3d_adj_partial_boundary, devices=all_devices
+)
+add_function_test(TestTexture, "test_texture3d_adj_uniform_zero", test_texture3d_adj_uniform_zero, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_adj_linear_x", test_texture3d_adj_linear_x, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_adj_linear_y", test_texture3d_adj_linear_y, devices=all_devices)
+add_function_test(TestTexture, "test_texture3d_adj_linear_z", test_texture3d_adj_linear_z, devices=all_devices)
+add_function_test(
+    TestTexture, "test_texture2d_adj_vec2f_linear_x", test_texture2d_adj_vec2f_linear_x, devices=all_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_adj_vec2f_channels_independent",
+    test_texture2d_adj_vec2f_channels_independent,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_vec2f_linear_z", test_texture3d_adj_vec2f_linear_z, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture1d_adj_normalized_boundary", test_texture1d_adj_normalized_boundary, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture1d_adj_normalized_linear", test_texture1d_adj_normalized_linear, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_normalized_boundary", test_texture2d_adj_normalized_boundary, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture2d_adj_normalized_linear_x", test_texture2d_adj_normalized_linear_x, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_normalized_boundary", test_texture3d_adj_normalized_boundary, devices=all_devices
+)
+add_function_test(
+    TestTexture, "test_texture3d_adj_normalized_linear_z", test_texture3d_adj_normalized_linear_z, devices=all_devices
 )
 
 
