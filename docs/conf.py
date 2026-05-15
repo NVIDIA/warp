@@ -299,6 +299,50 @@ def normalize_docstring(doc: str) -> str:
     return re.sub(r"^(:(rtype|type\s+\w+):.*)\bwp\.", r"\1warp.", rst, flags=re.MULTILINE) if "wp." in rst else rst
 
 
+def _get_builtin_overloads_info(symbol: str) -> list[dict[str, object]]:
+    head = wp._src.context.builtin_functions[symbol]
+
+    # Collect all overloads, filtering out hidden ones.
+    # Note: head.overloads already includes the head itself (see Function.__init__)
+    all_funcs = head.overloads if hasattr(head, "overloads") else [head]
+    visible_overloads = [f for f in all_funcs if not f.hidden]
+
+    overloads_info = []
+    seen_overloads = set()
+    for func in visible_overloads:
+        args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
+        args_str = ", ".join(f"{k}: {v}" for k, v in args.items())
+
+        try:
+            return_type = wp._src.context.type_str(func.value_func(None, None))
+        except Exception:
+            return_type = "None"
+
+        if hasattr(func, "overloads"):
+            sig = wp._src.context.resolve_exported_function_sig(func)
+            is_exported = sig is not None
+        else:
+            is_exported = False
+
+        doc = normalize_docstring(func.doc)
+        overload_key = (args_str, return_type, is_exported, func.is_differentiable, doc)
+        if overload_key in seen_overloads:
+            continue
+
+        seen_overloads.add(overload_key)
+        overloads_info.append(
+            {
+                "args": args_str,
+                "return_type": return_type,
+                "is_exported": is_exported,
+                "is_differentiable": func.is_differentiable,
+                "doc": doc,
+            }
+        )
+
+    return overloads_info
+
+
 class AutosummaryRenderer(AutosummaryRenderer):
     # Module containing Warp's built-ins functions and requiring special handling.
     BUILTINS_TEMPLATE_FILE = "builtins.rst"
@@ -308,44 +352,11 @@ class AutosummaryRenderer(AutosummaryRenderer):
             fullname = context["fullname"]
             symbol = fullname.split(".")[-1]
 
-            head = wp._src.context.builtin_functions[symbol]
-
-            # Collect all overloads, filtering out hidden ones.
-            # Note: head.overloads already includes the head itself (see Function.__init__)
-            all_funcs = head.overloads if hasattr(head, "overloads") else [head]
-            visible_overloads = [f for f in all_funcs if not f.hidden]
-
-            # Build overload info for each visible overload
-            overloads_info = []
-            for func in visible_overloads:
-                args = {k: wp._src.context.type_str(v) for k, v in func.input_types.items()}
-
-                try:
-                    return_type = wp._src.context.type_str(func.value_func(None, None))
-                except Exception:
-                    return_type = "None"
-
-                if hasattr(func, "overloads"):
-                    sig = wp._src.context.resolve_exported_function_sig(func)
-                    is_exported = sig is not None
-                else:
-                    is_exported = False
-
-                overloads_info.append(
-                    {
-                        "args": ", ".join(f"{k}: {v}" for k, v in args.items()),
-                        "return_type": return_type,
-                        "is_exported": is_exported,
-                        "is_differentiable": func.is_differentiable,
-                        "doc": normalize_docstring(func.doc),
-                    }
-                )
-
             # Insert metadata that can be accessed from the template.
             context.update(
                 {
                     "wp_display_name": f"warp.{symbol}",
-                    "wp_overloads": overloads_info,
+                    "wp_overloads": _get_builtin_overloads_info(symbol),
                 }
             )
 
