@@ -103,8 +103,8 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
         const vec3& right_upper = reinterpret_cast<const vec3&>(bvh.node_uppers[right_index]);
 
         // union of child bounds
-        vec3 new_lower = min(left_lower, right_lower);
-        vec3 new_upper = max(left_upper, right_upper);
+        vec3 new_lower = std_min(left_lower, right_lower);
+        vec3 new_upper = std_max(left_upper, right_upper);
 
         // write new BVH nodes
         reinterpret_cast<vec3&>(lower) = new_lower;

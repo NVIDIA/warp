@@ -1750,13 +1750,21 @@ def min(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
 def min(a: Vector[Scalar, Any]) -> Scalar:
     """Compute the minimum value.
 
+    On float types, NaN elements are treated as missing (C ``fmin`` semantics);
+    the reduction returns the smallest non-NaN element, or NaN only if every
+    element is NaN.
+
     Returns:
         The minimum element of ``a``."""
     ...
 
 @over
 def min(a: Scalar, b: Scalar) -> Scalar:
-    """Compute the minimum value."""
+    """Compute the minimum value.
+
+    On float types, NaN is treated as missing (C ``fmin`` semantics): the
+    operation returns the non-NaN operand when exactly one is NaN, and NaN
+    only when both are NaN."""
     ...
 
 @over
@@ -1771,17 +1779,29 @@ def max(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]:
 def max(a: Vector[Scalar, Any]) -> Scalar:
     """Compute the maximum value.
 
+    On float types, NaN elements are treated as missing (C ``fmax`` semantics);
+    the reduction returns the largest non-NaN element, or NaN only if every
+    element is NaN.
+
     Returns:
         The maximum element of ``a``."""
     ...
 
 @over
 def max(a: Scalar, b: Scalar) -> Scalar:
-    """Compute the maximum value."""
+    """Compute the maximum value.
+
+    On float types, NaN is treated as missing (C ``fmax`` semantics): the
+    operation returns the non-NaN operand when exactly one is NaN, and NaN
+    only when both are NaN."""
     ...
 
 def clamp(x: Scalar, low: Scalar, high: Scalar) -> Scalar:
-    """Clamp the value of ``x`` to the range [low, high]."""
+    """Clamp the value of ``x`` to the range [low, high].
+
+    Equivalent to ``wp.min(wp.max(low, x), high)``. On float types this means
+    NaN values of ``x`` produce ``wp.min(low, high)`` rather than propagating
+    NaN."""
     ...
 
 @over
@@ -1990,11 +2010,17 @@ def ddot(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Scalar:
     ...
 
 def argmin(a: Vector[Scalar, Any]) -> uint32:
-    """Compute the index of the minimum element of vector ``a``."""
+    """Compute the index of the minimum element of vector ``a``.
+
+    On float types, NaN elements are skipped; the result is the index of the
+    smallest non-NaN element. If every element is NaN, returns ``0``."""
     ...
 
 def argmax(a: Vector[Scalar, Any]) -> uint32:
-    """Compute the index of the maximum element of vector ``a``."""
+    """Compute the index of the maximum element of vector ``a``.
+
+    On float types, NaN elements are skipped; the result is the index of the
+    largest non-NaN element. If every element is NaN, returns ``0``."""
     ...
 
 def outer(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]:

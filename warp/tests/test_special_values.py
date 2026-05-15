@@ -4,6 +4,8 @@
 import math
 import unittest
 
+import numpy as np
+
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -229,6 +231,390 @@ def test_is_special_mat(test, device, dtype, register_kernels=False):
     test.assertFalse(outputs_bool_cpu[8], "wp.isnan(inf_mat) is not False")
 
 
+def assert_float_eq(test, actual, expected, msg):
+    """Compare two floats, treating NaN as equal to NaN and distinguishing signed zeros."""
+    actual_f = float(actual)
+    expected_f = float(expected)
+    test.assertEqual(
+        math.isnan(actual_f),
+        math.isnan(expected_f),
+        f"{msg}: NaN mismatch (actual={actual_f}, expected={expected_f})",
+    )
+    if not math.isnan(expected_f):
+        test.assertEqual(actual_f, expected_f, f"{msg}: value mismatch (actual={actual_f}, expected={expected_f})")
+        if expected_f == 0.0:
+            test.assertEqual(
+                math.copysign(1.0, actual_f),
+                math.copysign(1.0, expected_f),
+                f"{msg}: signed-zero mismatch (actual={actual_f}, expected={expected_f})",
+            )
+
+
+def test_minmax_scalar(test, device, dtype, register_kernels=False):
+    # wp.min / wp.max / wp.clamp follow C fmin/fmax semantics on float types
+    # (NaN-as-missing, symmetric). NumPy's np.fmin / np.fmax match this
+    # exactly for the NaN cases.
+
+    def check_minmax(
+        a: wp.array(dtype=dtype),
+        b: wp.array(dtype=dtype),
+        mn: wp.array(dtype=dtype),
+        mx: wp.array(dtype=dtype),
+        cmn: wp.array(dtype=dtype),
+        cmx: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        mn[i] = wp.min(a[i], b[i])
+        mx[i] = wp.max(a[i], b[i])
+        # clamp uses min/max internally and inherits the same NaN semantics.
+        cmn[i] = wp.clamp(a[i], dtype(-1.0), dtype(1.0))
+        cmx[i] = wp.clamp(b[i], dtype(-1.0), dtype(1.0))
+
+    kernel = getkernel(check_minmax, suffix="minmax_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+    # NaN-only probes -- C99 leaves signed-zero ties implementation-defined,
+    # so don't include ±0 cases here.
+    inputs_a = [-1.0, nan, nan, -1.0, nan, 2.0]
+    inputs_b = [nan, -1.0, nan, 2.0, 2.0, nan]
+    # np.fmin / np.fmax are exact NumPy oracles for C fmin/fmax NaN handling.
+    expected_min = [float(np.fmin(np.float64(a), np.float64(b))) for a, b in zip(inputs_a, inputs_b, strict=True)]
+    expected_max = [float(np.fmax(np.float64(a), np.float64(b))) for a, b in zip(inputs_a, inputs_b, strict=True)]
+    # clamp(x, -1, 1) with NaN-as-missing semantics resolves NaN inputs to a
+    # finite bound; finite inputs clamp normally.
+    expected_clamp_a = [float(np.fmin(np.fmax(np.float64(a), -1.0), 1.0)) for a in inputs_a]
+    expected_clamp_b = [float(np.fmin(np.fmax(np.float64(b), -1.0), 1.0)) for b in inputs_b]
+
+    n = len(inputs_a)
+    # The module hash caches the resolved options; flipping a global flag
+    # mid-session requires explicit invalidation so the new flag value is
+    # picked up at the next launch.
+    a = wp.array(inputs_a, dtype=dtype, device=device)
+    b = wp.array(inputs_b, dtype=dtype, device=device)
+    mn = wp.empty(n, dtype=dtype, device=device)
+    mx = wp.empty(n, dtype=dtype, device=device)
+    cmn = wp.empty(n, dtype=dtype, device=device)
+    cmx = wp.empty(n, dtype=dtype, device=device)
+    wp.launch(kernel, dim=n, inputs=[a, b], outputs=[mn, mx, cmn, cmx], device=device)
+    actual_min = mn.to("cpu").list()
+    actual_max = mx.to("cpu").list()
+    actual_clamp_a = cmn.to("cpu").list()
+    actual_clamp_b = cmx.to("cpu").list()
+    for i in range(n):
+        assert_float_eq(test, actual_min[i], expected_min[i], f"wp.min({inputs_a[i]}, {inputs_b[i]})")
+        assert_float_eq(test, actual_max[i], expected_max[i], f"wp.max({inputs_a[i]}, {inputs_b[i]})")
+        assert_float_eq(test, actual_clamp_a[i], expected_clamp_a[i], f"wp.clamp({inputs_a[i]}, -1, 1)")
+        assert_float_eq(test, actual_clamp_b[i], expected_clamp_b[i], f"wp.clamp({inputs_b[i]}, -1, 1)")
+
+
+def test_minmax_vec(test, device, dtype, register_kernels=False):
+    # Element-wise vec wp.min / wp.max applies fmin/fmax per component.
+    # Vector reduction folds with fmin/fmax so any non-NaN value wins
+    # regardless of position.
+    vec3_t = wp.types.vector(3, dtype)
+
+    def check_vec_elementwise(
+        a: wp.array(dtype=vec3_t),
+        b: wp.array(dtype=vec3_t),
+        mn: wp.array(dtype=vec3_t),
+        mx: wp.array(dtype=vec3_t),
+    ):
+        i = wp.tid()
+        mn[i] = wp.min(a[i], b[i])
+        mx[i] = wp.max(a[i], b[i])
+
+    def check_vec_reduce(
+        a: wp.array(dtype=vec3_t),
+        red_mn: wp.array(dtype=dtype),
+        red_mx: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        red_mn[i] = wp.min(a[i])
+        red_mx[i] = wp.max(a[i])
+
+    kernel_elem = getkernel(check_vec_elementwise, suffix="standard_" + dtype.__name__)
+    kernel_red = getkernel(check_vec_reduce, suffix="standard_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+
+    # Element-wise inputs: focus on NaN behavior. C99 leaves signed-zero ties
+    # implementation-defined for fmin/fmax, so don't include ±0 cases.
+    elem_a = [
+        [-1.0, nan, nan],
+        [-1.0, 2.0, 3.0],
+    ]
+    elem_b = [
+        [nan, -1.0, nan],
+        [2.0, -1.0, 1.0],
+    ]
+    elem_a_np = np.array(elem_a, dtype=np.float64)
+    elem_b_np = np.array(elem_b, dtype=np.float64)
+    expected_elem_mn = np.fmin(elem_a_np, elem_b_np)
+    expected_elem_mx = np.fmax(elem_a_np, elem_b_np)
+
+    # Reduction inputs: NaN never wins unless every element is NaN.
+    red_a = [
+        [nan, -1.0, 2.0],  # NaN first -> -1 (min) / 2 (max) (NaN ignored)
+        [-1.0, nan, 2.0],
+        [-1.0, 2.0, nan],
+        [-1.0, 2.0, 0.5],
+    ]
+    expected_red_mn = [-1.0, -1.0, -1.0, -1.0]
+    expected_red_mx = [2.0, 2.0, 2.0, 2.0]
+
+    n_elem = len(elem_a)
+    a_arr = wp.array(elem_a, dtype=vec3_t, device=device)
+    b_arr = wp.array(elem_b, dtype=vec3_t, device=device)
+    mn = wp.empty(n_elem, dtype=vec3_t, device=device)
+    mx = wp.empty(n_elem, dtype=vec3_t, device=device)
+    wp.launch(kernel_elem, dim=n_elem, inputs=[a_arr, b_arr], outputs=[mn, mx], device=device)
+    actual_mn = mn.numpy()
+    actual_mx = mx.numpy()
+
+    n_red = len(red_a)
+    red_arr = wp.array(red_a, dtype=vec3_t, device=device)
+    red_mn = wp.empty(n_red, dtype=dtype, device=device)
+    red_mx = wp.empty(n_red, dtype=dtype, device=device)
+    wp.launch(kernel_red, dim=n_red, inputs=[red_arr], outputs=[red_mn, red_mx], device=device)
+    actual_red_mn = red_mn.to("cpu").list()
+    actual_red_mx = red_mx.to("cpu").list()
+    for i in range(n_elem):
+        for j in range(3):
+            assert_float_eq(test, actual_mn[i][j], float(expected_elem_mn[i][j]), f"wp.min(vec3, vec3)[{i}][{j}]")
+            assert_float_eq(test, actual_mx[i][j], float(expected_elem_mx[i][j]), f"wp.max(vec3, vec3)[{i}][{j}]")
+    for i in range(n_red):
+        assert_float_eq(test, actual_red_mn[i], expected_red_mn[i], f"wp.min(vec3)[row {i}]")
+        assert_float_eq(test, actual_red_mx[i], expected_red_mx[i], f"wp.max(vec3)[row {i}]")
+
+
+def test_clamp_adjoint(test, device, dtype, register_kernels=False):
+    # adj_clamp follows the chain rule of min(max(a, x), b): when an input
+    # is NaN, the gradient routes to whichever of x/a/b the forward output
+    # depended on (rather than being silently dropped). E.g. clamp(NaN, a, b)
+    # returns min(a, b), so the gradient flows to that surviving bound.
+
+    def kern(
+        x: wp.array(dtype=dtype),
+        a: wp.array(dtype=dtype),
+        b: wp.array(dtype=dtype),
+        out: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        out[i] = wp.clamp(x[i], a[i], b[i])
+
+    kernel = getkernel(kern, suffix="clamp_adj_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+    # (x, a, b, expected_grad_x, expected_grad_a, expected_grad_b).
+    rows = [
+        (nan, -1.0, 1.0, 0.0, 1.0, 0.0),  # forward = min(-1, 1) = -1; depends on a
+        (nan, 1.0, -1.0, 0.0, 0.0, 1.0),  # forward = min(1, -1) = -1; depends on b
+        (0.5, nan, 1.0, 1.0, 0.0, 0.0),  # forward = min(max(NaN, 0.5), 1) = 0.5; depends on x
+        (2.0, nan, 1.0, 0.0, 0.0, 1.0),  # forward = min(2, 1) = 1; depends on b
+        (-2.0, -1.0, nan, 0.0, 1.0, 0.0),  # forward = max(-1, -2) = -1; depends on a
+        (0.5, -1.0, 1.0, 1.0, 0.0, 0.0),  # forward = 0.5; depends on x (no NaN)
+    ]
+
+    n = len(rows)
+    x = wp.array([r[0] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    a = wp.array([r[1] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    b = wp.array([r[2] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    out = wp.zeros(n, dtype=dtype, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=n, inputs=[x, a, b], outputs=[out], device=device)
+    out.grad.fill_(dtype(1.0))
+    tape.backward()
+    actual_grad_x = x.grad.numpy()
+    actual_grad_a = a.grad.numpy()
+    actual_grad_b = b.grad.numpy()
+    for i, (xi, ai, bi, gx, ga, gb) in enumerate(rows):
+        assert_float_eq(test, actual_grad_x[i], gx, f"adj_clamp x[{i}] (x={xi}, a={ai}, b={bi})")
+        assert_float_eq(test, actual_grad_a[i], ga, f"adj_clamp a[{i}] (x={xi}, a={ai}, b={bi})")
+        assert_float_eq(test, actual_grad_b[i], gb, f"adj_clamp b[{i}] (x={xi}, a={ai}, b={bi})")
+
+
+def test_minmax_reduction_adjoint(test, device, dtype, register_kernels=False):
+    # The reduction adjoint adj_min(vec) / adj_max(vec) must route the
+    # gradient to the index the forward picked. Critically, when v[0] is NaN,
+    # the forward fmin reduction skips NaN and picks the first non-NaN
+    # extremum; the adjoint must do the same (i.e. NOT route to slot 0).
+    vec3_t = wp.types.vector(3, dtype)
+
+    def reduce_kern(
+        v: wp.array(dtype=vec3_t),
+        out_min: wp.array(dtype=dtype),
+        out_max: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        out_min[i] = wp.min(v[i])
+        out_max[i] = wp.max(v[i])
+
+    kernel = getkernel(reduce_kern, suffix="reduce_adj_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+    # The forward fmin reduction returns -1 (slot 2 for min) / 2 (slot 1 for
+    # max). The gradient must route there, NOT to slot 0 (the NaN slot).
+    rows = [
+        [nan, 2.0, -1.0],
+    ]
+    expected_grad_min = [
+        [0.0, 0.0, 1.0],  # min picks v[2]=-1
+    ]
+    expected_grad_max = [
+        [0.0, 1.0, 0.0],  # max picks v[1]=2
+    ]
+
+    n = len(rows)
+    v = wp.array(rows, dtype=vec3_t, device=device, requires_grad=True)
+    out_min = wp.zeros(n, dtype=dtype, device=device, requires_grad=True)
+    out_max = wp.zeros(n, dtype=dtype, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=n, inputs=[v], outputs=[out_min, out_max], device=device)
+    # Use a sum-of-outputs loss so each row contributes adj_ret = 1 to its
+    # own min and max output.
+    out_min.grad.fill_(dtype(1.0))
+    out_max.grad.fill_(dtype(1.0))
+    tape.backward()
+    actual_grad = v.grad.numpy()
+    # Combined expected gradient: min and max contribute independently.
+    for i in range(len(rows)):
+        for j in range(3):
+            expected = expected_grad_min[i][j] + expected_grad_max[i][j]
+            assert_float_eq(
+                test,
+                actual_grad[i][j],
+                expected,
+                f"adj_min+adj_max v[{i}][{j}]",
+            )
+
+
+def test_atomic_minmax_adjoint(test, device, dtype, register_kernels=False):
+    # adj_atomic_min / adj_atomic_max accumulate the gradient onto `value`
+    # whenever the forward op committed `value`'s payload to the slot --
+    # including when both operands were NaN. The standard `value == *addr`
+    # check returns false for NaN==NaN, so adj_atomic_minmax in builtin.h
+    # has an explicit both-NaN branch to catch that case.
+
+    def kern(
+        slot: wp.array(dtype=dtype),
+        value: wp.array(dtype=dtype),
+        out: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        out[i] = wp.atomic_min(slot, i, value[i])
+
+    kernel = getkernel(kern, suffix="atomic_min_adj_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+    # (slot, value, expected_grad_value)
+    # - slot=NaN, value=NaN: forward writes value's payload (slot ends up NaN).
+    #   Without the both-NaN branch the adjoint would drop the gradient.
+    # - slot=NaN, value=2: forward writes 2 (slot was NaN). value won; full grad.
+    # - slot=2,   value=NaN: forward keeps slot=2. value lost; zero grad.
+    # - slot=5,   value=2:   forward writes 2. value won; full grad.
+    # - slot=2,   value=5:   forward keeps slot=2. value lost; zero grad.
+    rows = [
+        (nan, nan, 1.0),
+        (nan, 2.0, 1.0),
+        (2.0, nan, 0.0),
+        (5.0, 2.0, 1.0),
+        (2.0, 5.0, 0.0),
+    ]
+
+    n = len(rows)
+    slot = wp.array([r[0] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    value = wp.array([r[1] for r in rows], dtype=dtype, device=device, requires_grad=True)
+    out = wp.zeros(n, dtype=dtype, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=n, inputs=[slot, value], outputs=[out], device=device)
+    slot.grad.fill_(dtype(1.0))
+    tape.backward()
+    actual_grad_value = value.grad.numpy()
+    for i, (s, v, expected) in enumerate(rows):
+        assert_float_eq(test, actual_grad_value[i], expected, f"adj_atomic_min grad value[{i}] (slot={s}, value={v})")
+
+
+def test_atomic_minmax(test, device, dtype, register_kernels=False):
+    # wp.atomic_min / wp.atomic_max behave like their non-atomic counterparts:
+    # a NaN already in the array is overwritten by a finite value, and a NaN
+    # value leaves the array unchanged when the slot holds a finite number.
+    # atomic_min / atomic_max do not support float16, so this test runs on
+    # float32 / float64 only.
+
+    def kern(
+        a: wp.array(dtype=dtype),
+        b: wp.array(dtype=dtype),
+        in_min: wp.array(dtype=dtype),
+        in_max: wp.array(dtype=dtype),
+        ret_min: wp.array(dtype=dtype),
+        ret_max: wp.array(dtype=dtype),
+    ):
+        i = wp.tid()
+        # a[i] is the array slot, b[i] is the value passed to atomic_min/max.
+        # Copy a into in_min/in_max so each test row has its own slot.
+        in_min[i] = a[i]
+        in_max[i] = a[i]
+        ret_min[i] = wp.atomic_min(in_min, i, b[i])
+        ret_max[i] = wp.atomic_max(in_max, i, b[i])
+
+    kernel = getkernel(kern, suffix="atomic_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    nan = float("nan")
+    # Each row pairs (a, b): a is the initial array slot, b is the value passed
+    # to atomic_min/atomic_max. The post-call slot should equal np.fmin(a, b)
+    # / np.fmax(a, b).
+    rows_a = [-1.0, nan, nan, -1.0, nan, 2.0]
+    rows_b = [nan, -1.0, nan, 2.0, 2.0, nan]
+    expected_min = [float(np.fmin(np.float64(a), np.float64(b))) for a, b in zip(rows_a, rows_b, strict=True)]
+    expected_max = [float(np.fmax(np.float64(a), np.float64(b))) for a, b in zip(rows_a, rows_b, strict=True)]
+
+    n = len(rows_a)
+    a = wp.array(rows_a, dtype=dtype, device=device)
+    b = wp.array(rows_b, dtype=dtype, device=device)
+    in_min = wp.empty(n, dtype=dtype, device=device)
+    in_max = wp.empty(n, dtype=dtype, device=device)
+    ret_min = wp.empty(n, dtype=dtype, device=device)
+    ret_max = wp.empty(n, dtype=dtype, device=device)
+    wp.launch(kernel, dim=n, inputs=[a, b], outputs=[in_min, in_max, ret_min, ret_max], device=device)
+    # Post-call array slot is what atomic_min/max wrote.
+    actual_post_min = in_min.to("cpu").list()
+    actual_post_max = in_max.to("cpu").list()
+    # Returned value is the *old* slot (= rows_a[i]).
+    actual_ret_min = ret_min.to("cpu").list()
+    actual_ret_max = ret_max.to("cpu").list()
+    for i in range(n):
+        # Final slot should match non-atomic min<nan_as_missing>(a, b).
+        assert_float_eq(test, actual_post_min[i], expected_min[i], f"atomic_min slot[{i}]")
+        assert_float_eq(test, actual_post_max[i], expected_max[i], f"atomic_max slot[{i}]")
+        # Returned value must be the prior slot value (a[i]).
+        assert_float_eq(test, actual_ret_min[i], rows_a[i], f"atomic_min ret[{i}]")
+        assert_float_eq(test, actual_ret_max[i], rows_a[i], f"atomic_max ret[{i}]")
+
+
 def test_is_special_quat(test, device, dtype, register_kernels=False):
     quat_type = wp.types.quaternion(dtype)
 
@@ -270,25 +656,6 @@ def test_is_special_quat(test, device, dtype, register_kernels=False):
     test.assertFalse(outputs_bool_cpu[6], "wp.isfinite(inf_quat) is not False")
     test.assertTrue(outputs_bool_cpu[7], "wp.isinf(inf_quat) is not True")
     test.assertFalse(outputs_bool_cpu[8], "wp.isnan(inf_quat) is not False")
-
-
-def assert_float_eq(test, actual, expected, msg):
-    """Compare two floats, treating NaN as equal to NaN and distinguishing signed zeros."""
-    actual_f = float(actual)
-    expected_f = float(expected)
-    test.assertEqual(
-        math.isnan(actual_f),
-        math.isnan(expected_f),
-        f"{msg}: NaN mismatch (actual={actual_f}, expected={expected_f})",
-    )
-    if not math.isnan(expected_f):
-        test.assertEqual(actual_f, expected_f, f"{msg}: value mismatch (actual={actual_f}, expected={expected_f})")
-        if expected_f == 0.0:
-            test.assertEqual(
-                math.copysign(1.0, actual_f),
-                math.copysign(1.0, expected_f),
-                f"{msg}: signed-zero mismatch (actual={actual_f}, expected={expected_f})",
-            )
 
 
 def test_copysign(test, device, dtype, register_kernels=False):
@@ -415,6 +782,34 @@ for dtype in [wp.float16, wp.float32, wp.float64]:
     )
     add_function_test_register_kernel(
         TestSpecialValues,
+        f"test_minmax_scalar_{dtype.__name__}",
+        test_minmax_scalar,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_minmax_vec_{dtype.__name__}",
+        test_minmax_vec,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_minmax_reduction_adjoint_{dtype.__name__}",
+        test_minmax_reduction_adjoint,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_clamp_adjoint_{dtype.__name__}",
+        test_clamp_adjoint,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
         f"test_copysign_{dtype.__name__}",
         test_copysign,
         devices=devices,
@@ -424,6 +819,23 @@ for dtype in [wp.float16, wp.float32, wp.float64]:
         TestSpecialValues,
         f"test_copysign_adjoint_{dtype.__name__}",
         test_copysign_adjoint,
+        devices=devices,
+        dtype=dtype,
+    )
+
+# atomic_min / atomic_max do not support float16 -- skip it here.
+for dtype in [wp.float32, wp.float64]:
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_atomic_minmax_{dtype.__name__}",
+        test_atomic_minmax,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_atomic_minmax_adjoint_{dtype.__name__}",
+        test_atomic_minmax_adjoint,
         devices=devices,
         dtype=dtype,
     )

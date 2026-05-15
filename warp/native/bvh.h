@@ -29,6 +29,32 @@
 
 namespace wp {
 
+// std_min() / std_max() follow C++ std::min() / std::max() semantics: first-argument wins on tie and on unordered
+// comparison. Faster than wp::min / wp::max when inputs are known to be finite (BVH/mesh builders, refit loops, AABB
+// queries on real geometry).
+template <typename T> CUDA_CALLABLE inline T std_min(T a, T b) { return (b < a) ? b : a; }
+template <typename T> CUDA_CALLABLE inline T std_max(T a, T b) { return (b > a) ? b : a; }
+
+template <unsigned Length, typename Type>
+CUDA_CALLABLE inline vec_t<Length, Type> std_min(const vec_t<Length, Type>& a, const vec_t<Length, Type>& b)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i = 0; i < Length; ++i) {
+        ret[i] = std_min(a[i], b[i]);
+    }
+    return ret;
+}
+
+template <unsigned Length, typename Type>
+CUDA_CALLABLE inline vec_t<Length, Type> std_max(const vec_t<Length, Type>& a, const vec_t<Length, Type>& b)
+{
+    vec_t<Length, Type> ret;
+    for (unsigned i = 0; i < Length; ++i) {
+        ret[i] = std_max(a[i], b[i]);
+    }
+    return ret;
+}
+
 struct bounds3 {
     CUDA_CALLABLE inline bounds3()
         : lower(FLT_MAX)
@@ -94,8 +120,8 @@ struct bounds3 {
 
     CUDA_CALLABLE inline void add_point(const vec3& p)
     {
-        lower = min(lower, p);
-        upper = max(upper, p);
+        lower = std_min(lower, p);
+        upper = std_max(upper, p);
     }
 
     CUDA_CALLABLE inline void add_bounds(const vec3& lower_other, const vec3& upper_other)
@@ -103,8 +129,8 @@ struct bounds3 {
         // lower_other will only impact the lower of the new bounds
         // upper_other will only impact the upper of the new bounds
         // this costs only half of the computation of adding lower_other and upper_other separately
-        lower = min(lower, lower_other);
-        upper = max(upper, upper_other);
+        lower = std_min(lower, lower_other);
+        upper = std_max(upper, upper_other);
     }
 
     CUDA_CALLABLE inline float area() const
@@ -119,17 +145,17 @@ struct bounds3 {
 
 CUDA_CALLABLE inline bounds3 bounds_union(const bounds3& a, const vec3& b)
 {
-    return bounds3(min(a.lower, b), max(a.upper, b));
+    return bounds3(std_min(a.lower, b), std_max(a.upper, b));
 }
 
 CUDA_CALLABLE inline bounds3 bounds_union(const bounds3& a, const bounds3& b)
 {
-    return bounds3(min(a.lower, b.lower), max(a.upper, b.upper));
+    return bounds3(std_min(a.lower, b.lower), std_max(a.upper, b.upper));
 }
 
 CUDA_CALLABLE inline bounds3 bounds_intersection(const bounds3& a, const bounds3& b)
 {
-    return bounds3(max(a.lower, b.lower), min(a.upper, b.upper));
+    return bounds3(std_max(a.lower, b.lower), std_min(a.upper, b.upper));
 }
 
 struct BVHPackedNodeHalf {

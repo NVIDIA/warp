@@ -146,6 +146,7 @@ precompute_triangle_solid_angle_props(const vec3& a, const vec3& b, const vec3& 
     const float area2 = length_sq(N);
     const float area = sqrtf(area2);
     const vec3 P = (a + b + c) / 3.0f;
+    my_data.box = bounds3();
     my_data.box.add_point(a);
     my_data.box.add_point(b);
     my_data.box.add_point(c);

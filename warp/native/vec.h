@@ -1217,13 +1217,14 @@ template <unsigned Length, typename Type> inline bool CUDA_CALLABLE isinf(vec_t<
     return false;
 }
 
-// These two functions seem to compile very slowly
+// Element-wise vec min/max. Forwards to scalar min/max, which on float types
+// uses C fmin/fmax semantics (NaN-as-missing).
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, Type> min(vec_t<Length, Type> a, vec_t<Length, Type> b)
 {
     vec_t<Length, Type> ret;
     for (unsigned i = 0; i < Length; ++i) {
-        ret[i] = a[i] < b[i] ? a[i] : b[i];
+        ret[i] = min(a[i], b[i]);
     }
     return ret;
 }
@@ -1233,17 +1234,19 @@ inline CUDA_CALLABLE vec_t<Length, Type> max(vec_t<Length, Type> a, vec_t<Length
 {
     vec_t<Length, Type> ret;
     for (unsigned i = 0; i < Length; ++i) {
-        ret[i] = a[i] > b[i] ? a[i] : b[i];
+        ret[i] = max(a[i], b[i]);
     }
     return ret;
 }
 
+// Reduction min/max over a vector. On float types each step uses fmin/fmax,
+// so NaN slots are silently skipped; if every element is NaN, the result is
+// NaN (equal to v[0]).
 template <unsigned Length, typename Type> inline CUDA_CALLABLE Type min(vec_t<Length, Type> v)
 {
     Type ret = v[0];
     for (unsigned i = 1; i < Length; ++i) {
-        if (v[i] < ret)
-            ret = v[i];
+        ret = min(ret, v[i]);
     }
     return ret;
 }
@@ -1252,16 +1255,25 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE Type max(vec_t<Le
 {
     Type ret = v[0];
     for (unsigned i = 1; i < Length; ++i) {
-        if (v[i] > ret)
-            ret = v[i];
+        ret = max(ret, v[i]);
     }
     return ret;
 }
 
+// argmin / argmax skip NaN slots and return the index of the first non-NaN
+// extremum. When every element is NaN, return 0 -- matching the forward
+// reduction's choice of v[0]. For integer Type the `::isnan(float(...))`
+// check is always false, so the loop degrades to the natural argmin/argmax.
 template <unsigned Length, typename Type> inline CUDA_CALLABLE unsigned argmin(vec_t<Length, Type> v)
 {
     unsigned ret = 0;
-    for (unsigned i = 1; i < Length; ++i) {
+    while (ret < Length && ::isnan(float(v[ret])))
+        ++ret;
+    if (ret == Length)
+        return 0;
+    for (unsigned i = ret + 1; i < Length; ++i) {
+        if (::isnan(float(v[i])))
+            continue;
         if (v[i] < v[ret])
             ret = i;
     }
@@ -1271,7 +1283,13 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE unsigned argmin(v
 template <unsigned Length, typename Type> inline CUDA_CALLABLE unsigned argmax(vec_t<Length, Type> v)
 {
     unsigned ret = 0;
-    for (unsigned i = 1; i < Length; ++i) {
+    while (ret < Length && ::isnan(float(v[ret])))
+        ++ret;
+    if (ret == Length)
+        return 0;
+    for (unsigned i = ret + 1; i < Length; ++i) {
+        if (::isnan(float(v[i])))
+            continue;
         if (v[i] > v[ret])
             ret = i;
     }
@@ -1961,10 +1979,7 @@ inline CUDA_CALLABLE void adj_min(
 )
 {
     for (unsigned i = 0; i < Length; ++i) {
-        if (a[i] < b[i])
-            adj_a[i] += adj_ret[i];
-        else
-            adj_b[i] += adj_ret[i];
+        adj_min(a[i], b[i], adj_a[i], adj_b[i], adj_ret[i]);
     }
 }
 
@@ -1978,10 +1993,7 @@ inline CUDA_CALLABLE void adj_max(
 )
 {
     for (unsigned i = 0; i < Length; ++i) {
-        if (a[i] > b[i])
-            adj_a[i] += adj_ret[i];
-        else
-            adj_b[i] += adj_ret[i];
+        adj_max(a[i], b[i], adj_a[i], adj_b[i], adj_ret[i]);
     }
 }
 

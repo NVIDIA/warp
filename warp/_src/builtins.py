@@ -84,7 +84,11 @@ add_builtin(
     "min",
     input_types={"a": Scalar, "b": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="""Compute the minimum value.""",
+    doc="""Compute the minimum value.
+
+    On float types, NaN is treated as missing (C ``fmin`` semantics): the
+    operation returns the non-NaN operand when exactly one is NaN, and NaN
+    only when both are NaN.""",
     group="Scalar Math",
 )
 
@@ -92,7 +96,11 @@ add_builtin(
     "max",
     input_types={"a": Scalar, "b": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="""Compute the maximum value.""",
+    doc="""Compute the maximum value.
+
+    On float types, NaN is treated as missing (C ``fmax`` semantics): the
+    operation returns the non-NaN operand when exactly one is NaN, and NaN
+    only when both are NaN.""",
     group="Scalar Math",
 )
 
@@ -100,7 +108,11 @@ add_builtin(
     "clamp",
     input_types={"x": Scalar, "low": Scalar, "high": Scalar},
     value_func=sametypes_create_value_func(Scalar),
-    doc="Clamp the value of ``x`` to the range [low, high].",
+    doc="""Clamp the value of ``x`` to the range [low, high].
+
+    Equivalent to ``wp.min(wp.max(low, x), high)``. On float types this means
+    NaN values of ``x`` produce ``wp.min(low, high)`` rather than propagating
+    NaN.""",
     group="Scalar Math",
 )
 
@@ -646,6 +658,10 @@ add_builtin(
     value_func=scalar_sametypes_value_func,
     doc="""Compute the minimum value.
 
+    On float types, NaN elements are treated as missing (C ``fmin`` semantics);
+    the reduction returns the smallest non-NaN element, or NaN only if every
+    element is NaN.
+
     Returns:
         The minimum element of ``a``.""",
     group="Vector Math",
@@ -656,6 +672,10 @@ add_builtin(
     value_func=scalar_sametypes_value_func,
     doc="""Compute the maximum value.
 
+    On float types, NaN elements are treated as missing (C ``fmax`` semantics);
+    the reduction returns the largest non-NaN element, or NaN only if every
+    element is NaN.
+
     Returns:
         The maximum element of ``a``.""",
     group="Vector Math",
@@ -665,7 +685,10 @@ add_builtin(
     "argmin",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_func=lambda arg_types, arg_values: warp.uint32,
-    doc="Compute the index of the minimum element of vector ``a``.",
+    doc="""Compute the index of the minimum element of vector ``a``.
+
+    On float types, NaN elements are skipped; the result is the index of the
+    smallest non-NaN element. If every element is NaN, returns ``0``.""",
     group="Vector Math",
     is_differentiable=False,
 )
@@ -673,7 +696,10 @@ add_builtin(
     "argmax",
     input_types={"a": vector(length=Any, dtype=Scalar)},
     value_func=lambda arg_types, arg_values: warp.uint32,
-    doc="Compute the index of the maximum element of vector ``a``.",
+    doc="""Compute the index of the maximum element of vector ``a``.
+
+    On float types, NaN elements are skipped; the result is the index of the
+    largest non-NaN element. If every element is NaN, returns ``0``.""",
     group="Vector Math",
     is_differentiable=False,
 )

@@ -76,6 +76,13 @@
 - Build the native library with `-Og -g` instead of `-O0 -g -fkeep-inline-functions` on Linux/macOS debug builds.
   This enables debug-friendly optimizations, restores `-Wuninitialized` dataflow analysis, and avoids leaking
   unused inline function bodies from `<Python.h>` ([GH-1414](https://github.com/NVIDIA/warp/issues/1414)).
+- Change `wp.min`, `wp.max`, `wp.clamp`, `wp.atomic_min`, `wp.atomic_max` (and their vector / matrix overloads) on
+  float arguments to use NaN-as-missing semantics matching C `fmin` / `fmax`: the operation returns the non-NaN
+  operand when exactly one is NaN, and NaN only when both are NaN. Vector reductions and `argmin` / `argmax`
+  skip NaN slots. Adjoint and atomic variants are updated consistently to route gradients to whichever operand
+  the forward picked. Integer overloads are unchanged (no NaN to handle). Users who relied on the previous
+  asymmetric `a < b ? a : b` form can write that ternary inline in their kernel
+  ([GH-1376](https://github.com/NVIDIA/warp/issues/1376)).
 - The differentiated `tile_cholesky` GPU path on builds without libmathdx now uses the cooperative
   shared-memory adjoint instead of the prior thread-0 scalar adjoint with local scratch. Behaviour
   and accuracy are preserved, but the path now allocates two `__shared__ T[n*n]` scratch buffers
