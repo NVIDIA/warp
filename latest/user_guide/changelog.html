@@ -609,6 +609,8 @@ propagate gradients instead of silently dropping them.
 concurrently from multiple threads (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1415">GH-1415</a>).</p></li>
 <li><p>Fix Warp warning emission overriding user warning filters, making deprecation warnings unsuppressible via
 <code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
+<li><p>Fix retained Python module references when repeated <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> kernel declarations reuse an existing unique
+module (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1462">GH-1462</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
