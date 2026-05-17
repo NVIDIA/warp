@@ -141,7 +141,12 @@ def test_unified_memory_can_access(test, device):
 
 
 def test_unified_memory_record_cmd_skips_default_access_check(test, device):
-    """Command recording should not restore the old unconditional same-device check."""
+    """Command recording should not restore the old unconditional same-device check.
+
+    This covers the non-executing ``record_cmd=True`` path, which used to run the
+    same array packing validation as an immediate launch. Relaxed mode should
+    still allow the command object to be created with mixed CPU/CUDA arguments.
+    """
 
     src = wp.array(np.arange(4, dtype=np.float32), dtype=wp.float32, device="cpu")
     dst = wp.empty(4, dtype=wp.float32, device=device)
@@ -167,7 +172,12 @@ def test_unified_memory_verify_rejects_gpu_reading_cpu_when_unsupported(test, de
 
 
 def test_unified_memory_verify_rejects_cpu_reading_gpu_when_unsupported(test, device):
-    """Warp default CUDA allocations are not treated as CPU-accessible managed memory."""
+    """Warp default CUDA allocations are not treated as CPU-accessible managed memory.
+
+    CUDA exposes a host-to-managed-memory capability, but Warp's built-in CUDA
+    arrays are allocated with default device allocation APIs. Checked launch
+    verification must therefore reject CPU launches that receive those arrays.
+    """
 
     src = wp.array(np.arange(4, dtype=np.float32), dtype=wp.float32, device=device)
     dst = wp.empty(4, dtype=wp.float32, device="cpu")
@@ -272,7 +282,12 @@ def test_unified_memory_cuda_launch_writes_pinned_cpu_array_when_uva_supported(t
 
 
 def test_unified_memory_array_view_allocator_lookup_uses_parent_array(test, device):
-    """Array views must use the base allocation when launch verification checks access."""
+    """Array views must use the base allocation when launch verification checks access.
+
+    Sliced arrays do not own the allocation and may not carry an allocator
+    directly. Launch verification needs to walk back to the parent array so
+    slices inherit the same cross-device access rules as the storage owner.
+    """
 
     src = wp.array(np.arange(8, dtype=np.float32), dtype=wp.float32, device=device)
     src_slice = src[1:]
@@ -287,7 +302,13 @@ cuda_devices = get_cuda_test_devices()
 class TestUnifiedMemory(unittest.TestCase):
     @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
     def test_unified_memory_checked_warns_once_for_custom_allocator(self):
-        """CHECKED warns once for unknown custom allocator provenance."""
+        """CHECKED warns once for unknown custom allocator provenance.
+
+        The delegating allocator returns an ordinary CUDA pointer, but the
+        launch verifier only sees an unknown custom allocator. Checked mode
+        should warn about the unverified cross-device launch pattern without
+        warning again for the same kernel/argument/device combination.
+        """
 
         device = wp.get_device("cuda:0")
         cpu = wp.get_device("cpu")
@@ -314,7 +335,12 @@ class TestUnifiedMemory(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
     def test_unified_memory_strict_rejects_custom_allocator_cross_device(self):
-        """STRICT still rejects cross-device arrays with custom allocators."""
+        """STRICT still rejects cross-device arrays with custom allocators.
+
+        Strict mode intentionally restores Warp's old same-device policy before
+        allocator-specific reachability matters. This keeps custom allocator
+        provenance from creating a loophole in strict validation.
+        """
 
         device = wp.get_device("cuda:0")
         cpu = wp.get_device("cpu")
@@ -331,7 +357,12 @@ class TestUnifiedMemory(unittest.TestCase):
 
     @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
     def test_unified_memory_relaxed_does_not_warn_for_custom_allocator(self):
-        """RELAXED keeps passing unknown custom allocator launches through silently."""
+        """RELAXED keeps passing unknown custom allocator launches through silently.
+
+        Relaxed mode is the default pass-through policy for users who already
+        know their hardware and allocation are valid. Unknown custom allocator
+        provenance should not emit the checked-mode diagnostic in this mode.
+        """
 
         device = wp.get_device("cuda:0")
         cpu = wp.get_device("cpu")
@@ -354,7 +385,13 @@ class TestUnifiedMemory(unittest.TestCase):
 
     @unittest.skipUnless(get_cuda_device_pair_with_peer_access_support(), "Requires devices with peer access support")
     def test_unified_memory_verify_uses_peer_access_for_default_cuda_allocations(self):
-        """Default CUDA allocations use peer-access state for cross-GPU verification."""
+        """Default CUDA allocations use peer-access state for cross-GPU verification.
+
+        Peer access and mempool access are separate CUDA capabilities. When the
+        source array was allocated through Warp's default CUDA allocator,
+        checked launch verification should accept the launch based on peer
+        access even if mempool access is disabled.
+        """
 
         target_device, peer_device = get_cuda_device_pair_with_peer_access_support()
         n = 8
@@ -384,7 +421,12 @@ class TestUnifiedMemory(unittest.TestCase):
 
     @unittest.skipUnless(get_cuda_device_pair_with_peer_access_support(), "Requires devices with peer access support")
     def test_unified_memory_verify_uses_parent_allocator_for_default_cuda_slices(self):
-        """Slices of default CUDA allocations should follow the base array's allocator."""
+        """Slices of default CUDA allocations should follow the base array's allocator.
+
+        This exercises the same peer-access path as a full default CUDA array,
+        but through a view that does not own storage. The verifier must inspect
+        the parent allocation instead of treating the slice as unknown.
+        """
 
         target_device, peer_device = get_cuda_device_pair_with_peer_access_support()
         n = 8
@@ -417,7 +459,13 @@ class TestUnifiedMemory(unittest.TestCase):
         get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support"
     )
     def test_unified_memory_device_can_access_uses_mempool_state_when_target_mempools_enabled(self):
-        """Device.can_access() follows the target device's current built-in allocator mode."""
+        """Device.can_access() follows the target device's current built-in allocator mode.
+
+        This is a coarse device-level query, not an existing-allocation query.
+        If the target device would currently allocate through CUDA mempools, the
+        answer must come from mempool access state even when peer access is
+        enabled for default CUDA allocations.
+        """
 
         target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
 
@@ -442,7 +490,12 @@ class TestUnifiedMemory(unittest.TestCase):
         get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support"
     )
     def test_unified_memory_verify_uses_mempool_access_for_cuda_mempool_allocations(self):
-        """CUDA mempool allocations use mempool-access state for cross-GPU verification."""
+        """CUDA mempool allocations use mempool-access state for cross-GPU verification.
+
+        An array allocated while the source device's mempool is enabled needs
+        the CUDA mempool access predicate. This test keeps peer access disabled
+        so acceptance can only come from the allocation-specific mempool rule.
+        """
 
         target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
         n = 8
@@ -474,7 +527,12 @@ class TestUnifiedMemory(unittest.TestCase):
         get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support"
     )
     def test_unified_memory_verify_uses_parent_allocator_for_cuda_mempool_slices(self):
-        """Slices of CUDA mempool allocations should follow the base array's allocator."""
+        """Slices of CUDA mempool allocations should follow the base array's allocator.
+
+        This covers the view case for CUDA mempool-backed storage. Checked
+        verification must follow the slice's parent allocation and then apply
+        mempool access rules, rather than falling back to unknown provenance.
+        """
 
         target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
         n = 8
@@ -507,7 +565,13 @@ class TestUnifiedMemory(unittest.TestCase):
         get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support"
     )
     def test_unified_memory_verify_rejects_mempool_allocation_without_mempool_access(self):
-        """Peer access alone should not validate cross-GPU CUDA mempool allocations."""
+        """Peer access alone should not validate cross-GPU CUDA mempool allocations.
+
+        Default CUDA allocations and CUDA mempool allocations have different
+        cross-device access switches. A mempool-backed source array should be
+        rejected in checked mode when mempool access is disabled, even if normal
+        peer access between the devices is enabled.
+        """
 
         target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
         n = 8

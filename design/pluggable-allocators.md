@@ -208,9 +208,9 @@ alive until all arrays allocated through it are garbage-collected.
 The native allocation tracker (added in [GH-1269](https://github.com/NVIDIA/warp/issues/1269))
 only records allocations that flow through the `wp_alloc_*` / `wp_free_*` entry points.
 Custom allocators bypass those, so allocations made via `set_cuda_allocator` /
-`set_device_allocator` do not appear in tracker reports. A follow-up change will
-introduce a richer allocator protocol that lets custom allocators participate in
-tracking without leaking framework internals into the allocator surface.
+`set_device_allocator` do not appear in tracker reports. Future allocator tracking
+support needs to let custom allocators participate without leaking framework
+internals into the allocator surface.
 
 #### Launch Verification Interaction
 
@@ -226,23 +226,22 @@ mode and then proceed. Using `wp.LaunchVerificationMode.RELAXED` leaves access
 legality to the hardware without the diagnostic, matching the default launch
 path.
 
-Proposed solution:
+Future solutions must provide enough allocation provenance for
+`wp.can_access(device, array)` and `wp.LaunchVerificationMode.CHECKED` to make
+the same conservative decisions they make for Warp-owned allocations. At a
+minimum, Warp needs to distinguish the owning device and memory class for
+allocations that participate in cross-device launch verification, including
+default CUDA device memory, CUDA memory pools, managed memory, pinned host
+memory, and allocator-defined external memory.
 
-- Add an optional allocation metadata query:
-  `describe_allocation(ptr) -> AllocationInfo | None`.
-- Have `AllocationInfo` identify the owning device and allocation kind:
-  default CUDA device memory, CUDA memory pool, managed memory, pinned host
-  memory, or an allocator-defined external kind.
-- Keep the query optional so simple allocators can continue returning pointers
-  without exposing framework-specific internals.
-
-`wp.can_access(device, array)` and `wp.LaunchVerificationMode.CHECKED` should
-map each `AllocationInfo` kind to the same access predicates they use for
-Warp-owned allocations: peer access for default CUDA memory, memory-pool
-access for CUDA pool allocations, CPU/GPU coherence checks for managed or
-pinned host allocations, and an unknown result when `describe_allocation`
-returns `None` or an unknown kind. This keeps the basic allocator surface small
-while giving advanced allocators a path to participate in launch verification.
+Any future mechanism must remain backward compatible with simple custom
+allocators, preserve an "unknown" result when allocation provenance is
+unavailable or unrecognized, and avoid exposing framework-specific internals as
+part of the basic allocator surface. It also needs to keep launch verification
+compatible with CUDA graph capture and use the same access predicates as
+Warp-owned allocations: peer access for default CUDA memory, memory-pool access
+for CUDA pool allocations, and CPU/GPU coherence checks for managed or pinned
+host allocations.
 
 #### Built-in RMM Adapter
 
