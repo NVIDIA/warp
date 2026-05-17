@@ -275,6 +275,11 @@ autosummary_filename_map = {
     "warp.optim.linear.gmres": "warp.optim.linear.gmres_function",
 }
 
+AUTOSUMMARY_ANNOTATION_OVERRIDES = {
+    "warp.config.launch_verification_mode": ": LaunchVerificationMode = warp.LaunchVerificationMode.RELAXED",
+    "warp.config.log_level": ": int = warp.LOG_INFO",
+}
+
 # Map internal builtin function paths to public names for output filenames.
 # Autosummary generates stubs under ``warp._src.lang.<func>`` because that is
 # where builtins are defined; this mapping rewrites filenames to ``warp.<func>``
@@ -348,6 +353,8 @@ class AutosummaryRenderer(AutosummaryRenderer):
     BUILTINS_TEMPLATE_FILE = "builtins.rst"
 
     def render(self, template_name, context):
+        context["wp_annotation_override"] = AUTOSUMMARY_ANNOTATION_OVERRIDES.get(context.get("fullname"))
+
         if template_name == self.BUILTINS_TEMPLATE_FILE:
             fullname = context["fullname"]
             symbol = fullname.split(".")[-1]

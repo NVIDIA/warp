@@ -195,6 +195,7 @@ warp/examples/tile
 
     deep_dive/codegen
     deep_dive/allocators
+    deep_dive/memory_access
     deep_dive/concurrency
     deep_dive/profiling
 
