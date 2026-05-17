@@ -104,6 +104,8 @@ JAX_CALLABLE_INTEROP_SYMBOLS = (
     "set_jax_callable_default_graph_cache_max",
 )
 
+ROOT_REEXPORTS_DOCUMENTED_IN_ROOT = ("LaunchVerificationMode",)
+
 
 # Mock Dependencies
 # -----------------------------------------------------------------------------
@@ -735,6 +737,7 @@ def run():
                     for x in symbols
                     if x in other_symbols
                     and getattr(module, x) is getattr(other_module, x)
+                    and not (module_name == "warp" and x in ROOT_REEXPORTS_DOCUMENTED_IN_ROOT)
                     and not (
                         module_name == "warp" and other_module_name == "warp.jax" and x in JAX_ARRAY_INTEROP_SYMBOLS
                     )

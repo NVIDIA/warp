@@ -200,6 +200,8 @@ from warp._src.texture import TextureAddressMode as TextureAddressMode
 
 # category: Runtime
 
+from warp.config import LaunchVerificationMode as LaunchVerificationMode
+
 from warp._src.context import init as init
 
 from warp._src.context import is_cpu_available as is_cpu_available
@@ -273,6 +275,7 @@ from warp._src.context import unmap_cuda_device as unmap_cuda_device
 
 from warp._src.context import get_device as get_device
 from warp._src.context import set_device as set_device
+from warp._src.context import can_access as can_access
 
 from warp._src.context import synchronize_device as synchronize_device
 

@@ -7,16 +7,6 @@ import warp as wp
 from warp.tests.unittest_utils import *
 
 
-def get_device_pair_with_mempool_access_support():
-    devices = wp.get_cuda_devices()
-    for target_device in devices:
-        for peer_device in devices:
-            if target_device != peer_device:
-                if wp.is_mempool_access_supported(target_device, peer_device):
-                    return (target_device, peer_device)
-    return None
-
-
 def get_device_pair_without_mempool_access_support():
     devices = wp.get_cuda_devices()
     for target_device in devices:
@@ -128,9 +118,9 @@ def test_mempool_access_self(test, device):
     test.assertTrue(enabled)
 
 
-@unittest.skipUnless(get_device_pair_with_mempool_access_support(), "Requires devices with mempool access support")
+@unittest.skipUnless(get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support")
 def test_mempool_access(test, _):
-    target_device, peer_device = get_device_pair_with_mempool_access_support()
+    target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
 
     was_enabled = wp.is_mempool_access_enabled(target_device, peer_device)
 

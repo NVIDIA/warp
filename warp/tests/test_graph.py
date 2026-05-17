@@ -15,6 +15,8 @@ import warp as wp
 from warp.tests.unittest_utils import (
     add_function_test,
     assert_np_equal,
+    get_cuda_device_pair_with_mempool_access_support,
+    get_cuda_device_pair_with_peer_access_support,
     get_selected_cuda_test_devices_with_mempool,
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
@@ -68,6 +70,9 @@ def accum_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
     a[tid] = a[tid] + b[tid]
 
 
+graph_module_load_devices = get_test_devices_with_cuda_graph_module_load("all")
+
+
 class TestGraph(unittest.TestCase):
     def test_cuda_graph_memory_bindings(self):
         core = wp._src.context.runtime.core
@@ -100,13 +105,11 @@ def test_graph_single_kernel(test, device):
 
     # Launch and verify
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(output_arr.numpy(), expected)
 
     # Reset and replay
     output_arr.zero_()
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(output_arr.numpy(), expected)
 
 
@@ -124,14 +127,12 @@ def test_graph_multiple_kernels(test, device):
 
     # c = a + b = 4.0, d = c * 10 = 40.0
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(d.numpy(), np.full(n, 40.0))
 
     # Reset and replay
     c.zero_()
     d.zero_()
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(d.numpy(), np.full(n, 40.0))
 
 
@@ -148,7 +149,6 @@ def test_graph_replay_multiple(test, device):
     for _i in range(100):
         wp.capture_launch(capture.graph)
 
-    wp.synchronize_device(device)
     np.testing.assert_allclose(output_arr.numpy(), np.full(n, 100.0))
 
 
@@ -162,13 +162,11 @@ def test_graph_memcpy(test, device):
         wp.copy(dst, src)
 
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(dst.numpy(), src.numpy())
 
     # Replay copies from original src (pointers are baked into the graph)
     dst.zero_()
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(dst.numpy(), np.arange(n, dtype=np.float32))
 
 
@@ -182,15 +180,100 @@ def test_graph_memset(test, device):
 
     # Launch to execute the captured zero_()
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(arr.numpy(), np.zeros(n))
 
     # Fill with non-zero, then replay to zero again
     arr.fill_(1.0)
     np.testing.assert_allclose(arr.numpy(), np.ones(n))
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(arr.numpy(), np.zeros(n))
+
+
+def test_graph_launch_verification_mode_checked_cuda_capture(test, device):
+    n = 64
+    input_arr = wp.array(np.arange(n, dtype=np.float32), device=device)
+    output_arr = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+
+    launch_verification_mode_saved = wp.config.launch_verification_mode
+    wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED
+    try:
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=n, inputs=[input_arr, output_arr, 2.0], device=device)
+
+        wp.capture_launch(capture.graph)
+        np.testing.assert_allclose(output_arr.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+    finally:
+        wp.config.launch_verification_mode = launch_verification_mode_saved
+
+
+@unittest.skipUnless(
+    get_cuda_device_pair_with_peer_access_support(graph_module_load_devices),
+    "Requires devices with peer access and CUDA graph module-load support",
+)
+def test_graph_launch_verification_mode_checked_peer_access_cuda_capture(test, _):
+    target_device, peer_device = get_cuda_device_pair_with_peer_access_support(graph_module_load_devices)
+    n = 64
+    with wp.ScopedMempool(target_device, False), wp.ScopedMempool(peer_device, False):
+        input_arr = wp.array(np.arange(n, dtype=np.float32), device=target_device)
+        output_arr = wp.zeros(n, dtype=float, device=peer_device)
+
+    test.assertEqual(type(input_arr._allocator).__name__, "CudaDefaultAllocator")
+
+    wp.load_module(device=peer_device)
+
+    peer_access_saved = wp.is_peer_access_enabled(target_device, peer_device)
+    launch_verification_mode_saved = wp.config.launch_verification_mode
+    try:
+        wp.set_peer_access_enabled(target_device, peer_device, True)
+        test.assertTrue(wp.is_peer_access_enabled(target_device, peer_device))
+
+        wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED
+        # The peer graph reads input_arr from target_device; wait for its H2D initialization.
+        wp.synchronize_device(target_device)
+        with wp.ScopedCapture(device=peer_device, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=n, inputs=[input_arr, output_arr, 2.0], device=peer_device)
+
+        wp.capture_launch(capture.graph)
+        np.testing.assert_allclose(output_arr.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+    finally:
+        wp.config.launch_verification_mode = launch_verification_mode_saved
+        wp.set_peer_access_enabled(target_device, peer_device, peer_access_saved)
+
+
+@unittest.skipUnless(
+    get_cuda_device_pair_with_mempool_access_support(graph_module_load_devices),
+    "Requires devices with mempool access and CUDA graph module-load support",
+)
+def test_graph_launch_verification_mode_checked_mempool_access_cuda_capture(test, _):
+    target_device, peer_device = get_cuda_device_pair_with_mempool_access_support(graph_module_load_devices)
+    n = 64
+    with wp.ScopedMempool(target_device, True):
+        input_arr = wp.array(np.arange(n, dtype=np.float32), device=target_device)
+    output_arr = wp.zeros(n, dtype=float, device=peer_device)
+
+    test.assertEqual(type(input_arr._allocator).__name__, "CudaMempoolAllocator")
+
+    wp.load_module(device=peer_device)
+
+    mempool_access_saved = wp.is_mempool_access_enabled(target_device, peer_device)
+    launch_verification_mode_saved = wp.config.launch_verification_mode
+    try:
+        wp.set_mempool_access_enabled(target_device, peer_device, True)
+        test.assertTrue(wp.is_mempool_access_enabled(target_device, peer_device))
+
+        wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED
+        # The peer graph reads input_arr from target_device; wait for its H2D initialization.
+        wp.synchronize_device(target_device)
+        with wp.ScopedCapture(device=peer_device, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=n, inputs=[input_arr, output_arr, 2.0], device=peer_device)
+
+        wp.capture_launch(capture.graph)
+        np.testing.assert_allclose(output_arr.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+    finally:
+        wp.config.launch_verification_mode = launch_verification_mode_saved
+        wp.set_mempool_access_enabled(target_device, peer_device, mempool_access_saved)
 
 
 def test_graph_alloc(test, device):
@@ -207,14 +290,12 @@ def test_graph_alloc(test, device):
 
     # tmp = input*2, output = tmp + input = input*3
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     expected = (np.arange(n, dtype=np.float32) + 1.0) * 3.0
     np.testing.assert_allclose(output_arr.numpy(), expected)
 
     # Replay — should produce same result
     output_arr.zero_()
     wp.capture_launch(capture.graph)
-    wp.synchronize_device(device)
     np.testing.assert_allclose(output_arr.numpy(), expected)
 
 
@@ -1183,6 +1264,7 @@ def test_cuda_graph_topo_alloc_free_serializes_dependent_streams_only(test, devi
 devices = get_test_devices()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
 devices_with_mempool_and_cuda_graph_module_load = get_test_devices_with_mempool_and_cuda_graph_module_load()
+cuda_devices_with_cuda_graph_module_load = [device for device in devices_with_cuda_graph_module_load if device.is_cuda]
 
 add_function_test(
     TestGraph,
@@ -1204,6 +1286,22 @@ add_function_test(
 )
 add_function_test(TestGraph, "test_graph_memcpy", test_graph_memcpy, devices=devices)
 add_function_test(TestGraph, "test_graph_memset", test_graph_memset, devices=devices)
+add_function_test(
+    TestGraph,
+    "test_graph_launch_verification_mode_checked_cuda_capture",
+    test_graph_launch_verification_mode_checked_cuda_capture,
+    devices=cuda_devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_launch_verification_mode_checked_peer_access_cuda_capture",
+    test_graph_launch_verification_mode_checked_peer_access_cuda_capture,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_launch_verification_mode_checked_mempool_access_cuda_capture",
+    test_graph_launch_verification_mode_checked_mempool_access_cuda_capture,
+)
 add_function_test(
     TestGraph,
     "test_graph_alloc",

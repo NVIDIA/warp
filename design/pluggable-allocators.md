@@ -212,6 +212,38 @@ Custom allocators bypass those, so allocations made via `set_cuda_allocator` /
 introduce a richer allocator protocol that lets custom allocators participate in
 tracking without leaking framework internals into the allocator surface.
 
+#### Launch Verification Interaction
+
+Current limitation: `wp.can_access(device, array)` and
+`warp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED`
+remain conservative for arrays allocated through custom allocators.
+Same-device launches are accepted, but cross-device launches require Warp to
+know whether the allocation uses default CUDA memory, CUDA memory pools,
+pinned host memory, managed memory, or another memory type. The current custom
+allocator protocol only returns a pointer, so cross-device arrays backed by
+custom or externally wrapped allocators warn once per launch pattern in checked
+mode and then proceed. Using `wp.LaunchVerificationMode.RELAXED` leaves access
+legality to the hardware without the diagnostic, matching the default launch
+path.
+
+Proposed solution:
+
+- Add an optional allocation metadata query:
+  `describe_allocation(ptr) -> AllocationInfo | None`.
+- Have `AllocationInfo` identify the owning device and allocation kind:
+  default CUDA device memory, CUDA memory pool, managed memory, pinned host
+  memory, or an allocator-defined external kind.
+- Keep the query optional so simple allocators can continue returning pointers
+  without exposing framework-specific internals.
+
+`wp.can_access(device, array)` and `wp.LaunchVerificationMode.CHECKED` should
+map each `AllocationInfo` kind to the same access predicates they use for
+Warp-owned allocations: peer access for default CUDA memory, memory-pool
+access for CUDA pool allocations, CPU/GPU coherence checks for managed or
+pinned host allocations, and an unknown result when `describe_allocation`
+returns `None` or an unknown kind. This keeps the basic allocator surface small
+while giving advanced allocators a path to participate in launch verification.
+
 #### Built-in RMM Adapter
 
 New module `warp/_src/rmm_allocator.py`:
