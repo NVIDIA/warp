@@ -33,8 +33,9 @@ deterministic without algorithm rewrites.
 **Non-goals**:
 - ``atomic_cas``/``atomic_exch`` determinism (inherently order-dependent).
 - Tile-level atomic operations (``tile_atomic_add``).
-- Kernels where counter contributions depend on scratch array writes within the
-  same kernel (Phase 0 suppresses all side effects; documented limitation).
+- Kernels where counter contributions depend on ordinary global array writes
+  earlier in the same kernel. Phase 0 suppresses normal global output stores,
+  but it preserves local/scratch stores and stores to known counter targets.
 
 ## User Configuration
 
@@ -143,18 +144,23 @@ record slot, deterministic scatter launches are limited to at most
 **Pattern B --- Two-Pass Execution** (counter/allocator, return value used):
 
 The kernel runs twice:
-1. *Phase 0 (counting)*: The kernel executes with all side effects suppressed.
-   Counter atomics record each reservation as ``(counter_flat_index,
-   deterministic_record_order, value)`` instead of performing the actual
-   atomic.
-2. *Sort and segmented prefix scan*: CUB radix sort groups reservations by
-   counter element and deterministic record order. A segmented prefix scan
-   computes the value each consumed-return atomic should receive.
-3. *Counter total writeback*: the scan postpass publishes the total count for
-   each touched counter element to the user's counter array.
-4. *Phase 1 (execution)*: The kernel re-executes. Counter atomics return the
-   deterministic offset from the prefix scan. All other operations (including
-   Pattern A scatters) execute normally.
+1. *Phase 0 (recording/counting)*: The kernel executes with selective side
+   effects. Consumed-return counter atomics record each reservation as
+   ``(counter_flat_index, deterministic_record_order, value)`` instead of
+   performing the actual atomic. Ordinary global output stores are suppressed,
+   but local/scratch stores and stores into known counter target arrays are
+   preserved so control flow and in-kernel counter resets match normal
+   execution.
+2. *Counter base snapshot, sort, and segmented prefix scan*: after Phase 0,
+   Warp snapshots the reachable spans of the counter arrays, sorts
+   reservations by counter element and deterministic record order, and computes
+   both the value each consumed-return atomic should receive and the final
+   counter totals.
+3. *Phase 1 (execution)*: The kernel re-executes. Counter atomics return the
+   deterministic offset from the prefix scan. Normal global stores execute, and
+   Pattern A scatters are enabled.
+4. *Counter total writeback*: after Phase 1, Warp publishes the final totals
+   back to the user's counter arrays.
 
 This mirrors the well-established count-scan-write pattern already used by
 ``warp/_src/marching_cubes.py`` and the FEM geometry code, but applied
@@ -168,18 +174,23 @@ automatically.
 | Per-thread output arrays | ``O(threads * output_size)`` memory; doesn't scale |
 | Serialized atomics (mutex) | Prohibitively slow on GPU |
 | Kahan compensated summation | Reduces error but does not guarantee determinism |
-| Taint-based selective side-effect suppression for Phase 0 | Significant codegen complexity for an edge case; deferred to a future version |
+| Full taint-based side-effect analysis for Phase 0 | Significant codegen complexity. Warp instead uses a simpler address-space and counter-target store guard. |
 
 ### Key Implementation Details
 
 **Atomic classification** happens in ``Adjoint._emit_deterministic_atomic()``
-during the codegen build phase. The ``_det_in_assign`` flag on the ``Adjoint``
-(set by ``emit_Assign``, cleared after) distinguishes Pattern B (return consumed
-in an assignment like ``slot = wp.atomic_add(...)``) from Pattern A (return
-discarded, as in ``arr[i] += val`` or bare ``wp.atomic_add(...)``). Only
-``atomic_add``, ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are
-intercepted. Integer atomics with unused return values are skipped entirely
-(already deterministic).
+during the codegen build phase. The ``_det_atomic_return_discarded`` flag on
+the ``Adjoint`` distinguishes Pattern A (return discarded, as in ``arr[i] +=
+val`` or a bare ``wp.atomic_add(...)`` statement) from Pattern B (return
+consumed in any other context: assignment, ``if`` condition, function
+argument, ``return``, nested atomic, ...). The flag is set on the AST node
+by ``emit_Expr`` for bare-statement atomics and directly on the ``Adjoint``
+by ``emit_AugAssign`` for ``+=``/``-=`` lowering; ``emit_Call`` reads the
+node tag and save/restores the ``Adjoint`` flag so nested calls evaluate
+their arguments under the parent's context. Only ``atomic_add``,
+``atomic_sub``, ``atomic_min``, and ``atomic_max`` are intercepted. Integer
+atomics with unused return values are skipped entirely (already
+deterministic).
 
 **CPU/CUDA dual compilation** is handled inside deterministic atomic lowering.
 On CUDA, generated code uses the deterministic scatter or two-pass path. On
@@ -190,8 +201,9 @@ remains unchanged and sequentially deterministic.
 
 - **Raw kernel-entry parameters**: CUDA kernels still receive raw launch-time
   pointers and scalars appended after the user arguments. These include shared
-  execution state (phase, debug flag, one overflow flag) plus the raw storage
-  for each deterministic target.
+  execution state (phase, debug flag, one overflow flag), the counter-target
+  pointer/size table used by the Phase 0 store guard, plus the raw storage for
+  each deterministic target.
 - **Structured helper objects**: immediately inside the generated kernel body,
   Warp constructs small helper objects with readable names:
   - ``det_ctx`` for shared execution state
@@ -200,6 +212,14 @@ remains unchanged and sequentially deterministic.
 
 This keeps kernel launches compatible with ctypes/raw parameter packing while
 making generated function calls much easier to read and propagate.
+
+**Phase 0 store handling** is implemented by lowering array stores in kernels
+with a consumed-return counter atomic through ``WP_DET_STORE_IF_ACTIVE``. In
+Phase 1 this helper always performs the store. In Phase 0 it performs the
+store only when the destination is not CUDA global memory (for example local
+scratch storage) or when the destination pointer falls inside one of the known
+counter target arrays. Ordinary global output stores are skipped during Phase
+0 so the recording pass does not write user-visible outputs twice.
 
 **Deterministic ``@wp.func`` support** is implemented by threading the helper
 objects through the generated function signature, similar in spirit to how Warp
@@ -271,23 +291,26 @@ call returns. The native sort/reduce and counter-scan entry points receive
 explicit workspace pointers and sizes; they do not allocate temporary CUB
 scratch storage inside the captured native calls.
 
-**Counter total writeback**: after the segmented prefix scan in Phase 0, the
-launch system writes the final total for each touched counter element back to
-the actual counter array so user code that reads it post-launch sees the
-correct value. The current implementation treats counters as allocation
-counters initialized for the launch; it writes the total reserved slots for
-each touched element rather than adding to a pre-existing nonzero counter.
+**Counter base snapshot and total writeback**: Phase 0 may execute stores into
+known counter arrays, such as ``counter[0] = 0`` before an append loop. After
+Phase 0, the launcher snapshots the reachable counter spans into
+``counter_bases``. The segmented scan reads those bases and writes final totals
+into ``counter_totals``; it does not publish them to the user's counter array
+yet because Phase 1 may execute the same counter stores again. After Phase 1,
+``run_counter_writeback()`` writes ``counter_totals`` back to the actual
+counter arrays. This preserves both pre-existing nonzero counter values and
+in-kernel counter resets.
 
 **Files added/modified**:
 
 | File | Role |
 | --- | --- |
 | ``warp/config.py`` | ``deterministic`` global flag |
-| ``warp/_src/deterministic.py`` | Dataclasses, deterministic buffer/workspace allocation, sort-reduce orchestration |
-| ``warp/_src/codegen.py`` | Atomic classification, scatter/phase codegen, hidden forward/backward kernel params |
-| ``warp/_src/context.py`` | Module option, ``_launch_deterministic()`` orchestrator, ctypes bindings |
-| ``warp/native/deterministic.h`` | ``wp::det_ctx``, ``wp::det_scatter_buf<T>``, ``wp::det_counter_buf``, and device-side ``wp::deterministic::scatter()`` |
-| ``warp/native/deterministic.cu`` | CUB workspace size queries, radix sort + ``ReduceByKey`` / segmented reduce kernels |
+| ``warp/_src/deterministic.py`` | Dataclasses, deterministic buffer/workspace allocation, counter base snapshots, sort-reduce orchestration |
+| ``warp/_src/codegen.py`` | Atomic classification, scatter/phase codegen, Phase 0 store guards, hidden forward/backward kernel params |
+| ``warp/_src/context.py`` | Module option, ``_launch_deterministic()`` orchestrator, counter target table setup, ctypes bindings |
+| ``warp/native/deterministic.h`` | ``wp::det_ctx``, ``wp::det_scatter_buf<T>``, ``wp::det_counter_buf``, Phase 0 store guard helpers, and device-side ``wp::deterministic::scatter()`` |
+| ``warp/native/deterministic.cu`` | CUB workspace size queries, radix sort + ``ReduceByKey`` / segmented reduce kernels, counter prefix scan/writeback kernels |
 | ``warp/native/deterministic.cpp`` | CPU stubs (linker satisfaction when CUDA unavailable) |
 
 ## Current Limitations
@@ -301,11 +324,12 @@ each touched element rather than adding to a pre-existing nonzero counter.
   same family; ``min`` and ``max`` are separate. Mixing families such as
   ``atomic_add(out, ...)`` and ``atomic_max(out, ...)`` on the same array in
   deterministic mode is a compile-time error.
-- Phase 0 of the counter path suppresses normal side effects. Kernels whose
-  correctness depends on writes performed during the counting pass are outside
-  the supported model. This suppression is applied conservatively when the
-  kernel's statically reachable ``@wp.func`` call graph contains a consumed
-  counter atomic.
+- Phase 0 of the counter path suppresses ordinary global output stores while
+  preserving local/scratch stores and stores to known counter target arrays.
+  Kernels whose counter reservations depend on ordinary global array writes
+  earlier in the same kernel remain outside the supported model. This
+  suppression is applied conservatively when the kernel's statically reachable
+  ``@wp.func`` call graph contains a consumed counter atomic.
 - The consumed-return counter path currently supports only ``atomic_add`` on
   ``int32`` counter arrays. Counter indices may be constant, data-dependent, or
   supplied through sliced counter views.
@@ -313,9 +337,6 @@ each touched element rather than adding to a pre-existing nonzero counter.
   accumulation is expressed in Warp code with supported atomic patterns, such
   as ``wp.adjoint[arr][i] += value``. Native C++ adjoint helpers or unsupported
   atomics remain outside the automatic rewrite.
-- The consumed-return counter path treats counters as allocation counters
-  initialized for the launch. Pre-existing nonzero counter values are not added
-  to the returned slots or final totals.
 - The consumed-return counter path is limited to launches of at most
   ``2**31 - 1`` threads because the per-thread contribution and prefix buffers
   store ``int32`` values.
@@ -389,15 +410,15 @@ The suite in ``warp/tests/test_deterministic.py`` covers:
   full scatter capacity outside CUDA graph capture.
 - **Counter reproducibility** (Pattern B): ``slot = atomic_add(counter, index, 1);
   output[slot] = data[tid]`` produces identical output arrays across 10 runs.
-- **Phase 0 side-effect suppression**: non-counter array writes are skipped in
-  the counting pass, including pure write helper calls and stores that occur
-  before helper calls whose reachable call graph contains a consumed-return
-  counter.
+- **Phase 0 store handling**: ordinary global output writes are skipped in the
+  counting pass, including pure write helper calls and stores that occur before
+  helper calls whose reachable call graph contains a consumed-return counter.
+  Local scratch writes and stores into known counter targets are preserved.
 - **Counter correctness**: verifies counter value equals N and output is a
   permutation of input, variable per-thread contributions whose final thread
   contributes zero, fixed nonzero counter indices, data-dependent counter
-  indices, sliced counter views, and dynamic loops with multiple reservations
-  per thread.
+  indices, sliced counter views, pre-existing nonzero counter values, in-kernel
+  counter resets, and dynamic loops with multiple reservations per thread.
 - **Conditional counter**: stream compaction (only elements above threshold),
   verifying correct count and reproducible output.
 - **Mixed pattern**: both counter and accumulation in one kernel.

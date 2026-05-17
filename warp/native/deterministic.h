@@ -39,6 +39,9 @@ struct det_ctx {
     int debug;
     size_t idx;
     int* overflow;
+    uint64_t* counter_target_ptrs;
+    int* counter_target_sizes;
+    int counter_target_count;
 };
 
 namespace deterministic {
@@ -138,6 +141,79 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
 #endif
 }
 
+inline CUDA_CALLABLE bool is_counter_store_target(det_ctx& ctx, const void* ptr)
+{
+#ifdef __CUDA_ARCH__
+    if (ctx.counter_target_ptrs == nullptr || ctx.counter_target_sizes == nullptr) {
+        return false;
+    }
+
+    uint64_t addr = reinterpret_cast<uint64_t>(ptr);
+    for (int i = 0; i < ctx.counter_target_count; ++i) {
+        uint64_t start = ctx.counter_target_ptrs[i];
+        int size = ctx.counter_target_sizes[i];
+        if (start == 0 || size <= 0) {
+            continue;
+        }
+
+        uint64_t end = start + static_cast<uint64_t>(size) * sizeof(int);
+        if (addr >= start && addr < end) {
+            return true;
+        }
+    }
+#else
+    (void)ctx;
+    (void)ptr;
+#endif
+    return false;
+}
+
+inline CUDA_CALLABLE bool is_global_store_target(const void* ptr)
+{
+#ifdef __CUDA_ARCH__
+    return __isGlobal(ptr) != 0;
+#else
+    (void)ptr;
+    return true;
+#endif
+}
+
+template <template <typename> class A, typename T>
+inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, int i, T value)
+{
+    T* ptr = wp::address(buf, i);
+    if (ctx.phase != 0 || !is_global_store_target(ptr) || is_counter_store_target(ctx, ptr)) {
+        wp::array_store(buf, i, value);
+    }
+}
+
+template <template <typename> class A, typename T>
+inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, int i, int j, T value)
+{
+    T* ptr = wp::address(buf, i, j);
+    if (ctx.phase != 0 || !is_global_store_target(ptr) || is_counter_store_target(ctx, ptr)) {
+        wp::array_store(buf, i, j, value);
+    }
+}
+
+template <template <typename> class A, typename T>
+inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, int i, int j, int k, T value)
+{
+    T* ptr = wp::address(buf, i, j, k);
+    if (ctx.phase != 0 || !is_global_store_target(ptr) || is_counter_store_target(ctx, ptr)) {
+        wp::array_store(buf, i, j, k, value);
+    }
+}
+
+template <template <typename> class A, typename T>
+inline CUDA_CALLABLE void array_store_if_active(det_ctx& ctx, const A<T>& buf, int i, int j, int k, int l, T value)
+{
+    T* ptr = wp::address(buf, i, j, k, l);
+    if (ctx.phase != 0 || !is_global_store_target(ptr) || is_counter_store_target(ctx, ptr)) {
+        wp::array_store(buf, i, j, k, l, value);
+    }
+}
+
 }  // namespace deterministic
 }  // namespace wp
 
@@ -158,9 +234,7 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
 
 #define WP_DET_STORE_IF_ACTIVE(det_ctx, ...) \
     do { \
-        if ((det_ctx).phase != 0) { \
-            wp::array_store(__VA_ARGS__); \
-        } \
+        wp::deterministic::array_store_if_active((det_ctx), __VA_ARGS__); \
     } while (0)
 
 #define WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, ...) \

@@ -200,20 +200,25 @@ def _deterministic_has_consumed_atomic_impl(tree, adj, seen):
 
     local_names = _deterministic_local_names(tree)
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign) and _deterministic_contains_atomic_call(node.value):
-            return True
+    stack = [(tree, None)]
+    while stack:
+        node, parent = stack.pop()
 
         if isinstance(node, ast.Call):
-            func = _deterministic_resolve_static_call(adj, node.func, local_names)
-            if isinstance(func, warp._src.context.Function) and not func.is_builtin():
-                func_id = id(func)
-                if func_id in seen:
-                    continue
-
-                seen.add(func_id)
-                if _deterministic_has_consumed_atomic_impl(func.adj.tree, func.adj, seen):
+            if _deterministic_call_name(node.func) in _DET_INTERCEPTABLE_ATOMICS:
+                if not (isinstance(parent, ast.Expr) and parent.value is node):
                     return True
+            else:
+                func = _deterministic_resolve_static_call(adj, node.func, local_names)
+                if isinstance(func, warp._src.context.Function) and not func.is_builtin():
+                    func_id = id(func)
+                    if func_id not in seen:
+                        seen.add(func_id)
+                        if _deterministic_has_consumed_atomic_impl(func.adj.tree, func.adj, seen):
+                            return True
+
+        for child in ast.iter_child_nodes(node):
+            stack.append((child, node))
 
     return False
 
@@ -1512,7 +1517,7 @@ class Adjoint:
             adj.det_registry = None
             adj._det_has_consumed_atomic = False
             adj._det_has_side_effect_store = False
-        adj._det_in_assign = False
+        adj._det_atomic_return_discarded = False
 
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
@@ -2240,9 +2245,9 @@ class Adjoint:
         # Determine if the return value is actually consumed by the caller.
         # When called from emit_AugAssign (arr[i] += val) or a bare expression,
         # the return is discarded and the atomic can be handled by scatter/reduce.
-        # When called from emit_Assign (slot = wp.atomic_add(...)),
-        # the return is captured and must be handled by a deterministic counter.
-        return_is_consumed = getattr(adj, "_det_in_assign", False)
+        # Any other expression context consumes the return value.
+        return_is_discarded = getattr(adj, "_det_atomic_return_discarded", False)
+        return_is_consumed = not return_is_discarded
 
         value_ctype = Var.dtype_to_ctype(value_dtype)
         scalar_ctype = warp_type_to_ctype(scalar_dtype)
@@ -2325,7 +2330,9 @@ class Adjoint:
                     f"Deterministic mode could not build a generated target expression for {func.key} "
                     f"on '{target_root_label}'."
                 )
-            flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key)
+            flat_idx_expr = _deterministic_flat_index_expr(
+                adj, target_expr, idx_loaded_list, func.key, target.value_ctype
+            )
 
             adj.add_forward(
                 f"WP_DET_COUNTER_OR_FALLBACK(var_{output}, det_ctx, {helper_name}, {flat_idx_expr}, "
@@ -2364,7 +2371,7 @@ class Adjoint:
                 f"on '{target_root_label}'."
             )
 
-        flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key)
+        flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key, target.value_ctype)
 
         val_expr = val_loaded.emit()
         if func.key == "atomic_sub":
@@ -3380,6 +3387,16 @@ class Adjoint:
         adj.add_forward(f"goto start_{adj.loop_blocks[-1].label};")
 
     def emit_Expr(adj, node):
+        if (
+            adj.det_meta is not None
+            and isinstance(node.value, ast.Call)
+            and _deterministic_call_name(node.value.func) in _DET_INTERCEPTABLE_ATOMICS
+        ):
+            node.value._det_atomic_return_discarded = True
+            try:
+                return adj.eval(node.value)
+            finally:
+                del node.value._det_atomic_return_discarded
         return adj.eval(node.value)
 
     def check_tid_in_func_error(adj, node):
@@ -3649,7 +3666,13 @@ class Adjoint:
         # Evaluate keyword arguments.
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
-        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+        return_is_discarded = bool(getattr(node, "_det_atomic_return_discarded", False))
+        previous_return_is_discarded = adj._det_atomic_return_discarded
+        adj._det_atomic_return_discarded = return_is_discarded
+        try:
+            out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+        finally:
+            adj._det_atomic_return_discarded = previous_return_is_discarded
 
         if adj.builder_options.get("verify_autograd_array_access", False):
             # Extract the types and values passed as arguments to the function call.
@@ -3860,16 +3883,10 @@ class Adjoint:
             node.value.expects = len(lhs.elts)
 
         # evaluate rhs
-        # Mark that return values are consumed so deterministic atomics know
-        # whether they need counter semantics or scatter/reduce semantics.
-        adj._det_in_assign = True
-        try:
-            if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
-                rhs = [adj.eval(v) for v in node.value.elts]
-            else:
-                rhs = adj.eval(node.value)
-        finally:
-            adj._det_in_assign = False
+        if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
+            rhs = [adj.eval(v) for v in node.value.elts]
+        else:
+            rhs = adj.eval(node.value)
 
         # handle the case where we are assigning multiple output variables
         if isinstance(lhs, ast.Tuple):
@@ -4579,39 +4596,44 @@ class Adjoint:
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
 
-                if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("atomic_add", [target, *indices, rhs])
+                previous_return_is_discarded = adj._det_atomic_return_discarded
+                adj._det_atomic_return_discarded = True
+                try:
+                    if isinstance(node.op, ast.Add):
+                        adj.add_builtin_call("atomic_add", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.Sub):
+                        adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.BitAnd):
-                    adj.add_builtin_call("atomic_and", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.BitAnd):
+                        adj.add_builtin_call("atomic_and", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.BitOr):
-                    adj.add_builtin_call("atomic_or", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.BitOr):
+                        adj.add_builtin_call("atomic_or", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.BitXor):
-                    adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.BitXor):
+                        adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
-                else:
-                    log_debug(f"Warning: in-place op {node.op} is not differentiable")
-                    augassign_subscript(target, indices)
-                    return
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    else:
+                        log_debug(f"Warning: in-place op {node.op} is not differentiable")
+                        augassign_subscript(target, indices)
+                        return
+                finally:
+                    adj._det_atomic_return_discarded = previous_return_is_discarded
 
             elif (
                 type_is_vector(target_type)
@@ -6036,6 +6058,9 @@ def _deterministic_kernel_args(adj):
         "int _wp_det_phase",
         "int _wp_det_debug",
         "int* _wp_det_overflow",
+        "uint64_t* _wp_det_counter_target_ptrs",
+        "int* _wp_det_counter_target_sizes",
+        "int _wp_det_counter_target_count",
     ]
     for target in adj.det_meta.counter_targets:
         names = kernel_raw_counter_param_names(target)
@@ -6055,7 +6080,8 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
 
     if device == "cuda" and use_launch_buffers:
         decls = [
-            "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow};",
+            "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, "
+            "_wp_det_counter_target_ptrs, _wp_det_counter_target_sizes, _wp_det_counter_target_count};",
         ]
         for target in adj.det_meta.counter_targets:
             names = kernel_raw_counter_param_names(target)
@@ -6065,7 +6091,7 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
             decls.append(f"auto& {target.helper_name} = {names['buf']};")
     else:
         decls = [
-            "wp::det_ctx det_ctx{1, 0, 0, nullptr};",
+            "wp::det_ctx det_ctx{1, 0, 0, nullptr, nullptr, nullptr, 0};",
         ]
         for target in adj.det_meta.counter_targets:
             decls.append(
@@ -6252,36 +6278,24 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
     if target_expr is None:
         return fallback_call
 
-    flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, "address")
+    flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, "address", target.value_ctype)
     adj_output = output_list[0].emit_adj()
     return f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {target.helper_name}, {flat_idx_expr}, {adj_output}, {fallback_call});"
 
 
-def _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func_key):
-    """Return a generated row-major flat index expression for deterministic buffers."""
+def _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func_key, value_ctype):
+    """Element offset from ``ptr`` via ``strides``, so non-contiguous views work."""
     del adj
 
     ndim = len(idx_loaded_list)
-    if ndim == 1:
-        return f"var_{idx_loaded_list[0]}"
-    if ndim == 2:
-        return f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] + var_{idx_loaded_list[1]})"
-    if ndim == 3:
-        return (
-            f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] "
-            f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] + var_{idx_loaded_list[2]})"
-        )
-    if ndim == 4:
-        return (
-            f"(var_{idx_loaded_list[0]} * {target_expr}.shape[1] * {target_expr}.shape[2] * {target_expr}.shape[3] "
-            f"+ var_{idx_loaded_list[1]} * {target_expr}.shape[2] * {target_expr}.shape[3] "
-            f"+ var_{idx_loaded_list[2]} * {target_expr}.shape[3] + var_{idx_loaded_list[3]})"
+    if ndim < 1 or ndim > 4:
+        raise WarpCodegenError(
+            f"Deterministic mode currently supports arrays up to 4 dimensions, got {ndim}D indexing for "
+            f"{func_key} on {target_expr}."
         )
 
-    raise WarpCodegenError(
-        f"Deterministic mode currently supports arrays up to 4 dimensions, got {ndim}D indexing for "
-        f"{func_key} on {target_expr}."
-    )
+    terms = " + ".join(f"var_{idx_loaded_list[k]} * {target_expr}.strides[{k}]" for k in range(ndim))
+    return f"(({terms}) / static_cast<int>(sizeof({value_ctype})))"
 
 
 def _deterministic_bound_target(bound_var, extra_attr_path=()):

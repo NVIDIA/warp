@@ -28,8 +28,35 @@ import operator
 import re
 from dataclasses import dataclass, field
 
+import numpy as np
+
 import warp
 from warp._src import utils as warp_utils
+from warp._src.types import type_size_in_bytes
+
+
+def _det_dest_size_elements(arr) -> int:
+    """Upper bound on element offsets reachable from ``arr.ptr`` for any stride layout.
+
+    ``arr.capacity`` underestimates the span for transposed/non-row-major views.
+    Compute the byte offset of the last reachable element from the view pointer
+    instead.  Fully broadcast zero-stride views still address one physical
+    element.
+    """
+    if arr.ndim == 0 or arr.size == 0:
+        return 0
+
+    element_size = type_size_in_bytes(arr.dtype)
+    max_offset_bytes = 0
+    for k in range(arr.ndim):
+        stride = arr.strides[k]
+        if stride > 0:
+            max_offset_bytes += (arr.shape[k] - 1) * stride
+
+    if max_offset_bytes == 0:
+        return 1
+    return int(max_offset_bytes // element_size) + 1
+
 
 # Reduction operation constants (must match C++ ReduceOp enum in deterministic.cu).
 REDUCE_OP_ADD = 0
@@ -510,6 +537,57 @@ def get_counter_record_count(counter_buffer, stream_is_capturing=False):
     return min(emitted_count, capacity)
 
 
+def allocate_counter_state_buffers(runtime, counter_arrays, device, stream):
+    """Snapshot raw counter spans and allocate delayed writeback totals."""
+    buffers = []
+    element_size = type_size_in_bytes(warp.int32)
+
+    for counter_arr in counter_arrays:
+        if counter_arr is None:
+            buffers.append((None, None, 0))
+            continue
+
+        counter_size_elements = _det_dest_size_elements(counter_arr)
+        if counter_size_elements <= 0:
+            buffers.append((None, None, 0))
+            continue
+
+        bases = warp.empty(shape=(counter_size_elements,), dtype=warp.int32, device=device)
+        totals = warp.empty(shape=(counter_size_elements,), dtype=warp.int32, device=device)
+        bytes_to_copy = counter_size_elements * element_size
+        if not runtime.core.wp_memcpy_d2d(
+            device.context, bases.ptr, counter_arr.ptr, bytes_to_copy, stream.cuda_stream
+        ):
+            raise RuntimeError(f"Warp deterministic counter snapshot error: {runtime.get_error_string()}")
+
+        buffers.append((bases, totals, counter_size_elements))
+
+    return buffers
+
+
+def allocate_counter_target_table(counter_arrays, device):
+    """Allocate the device table used to recognize counter stores in phase 0."""
+    target_ptrs = []
+    target_sizes = []
+
+    for counter_arr in counter_arrays:
+        if counter_arr is None:
+            target_ptrs.append(0)
+            target_sizes.append(0)
+            continue
+
+        counter_size_elements = _det_dest_size_elements(counter_arr)
+        target_ptrs.append(counter_arr.ptr if counter_size_elements > 0 else 0)
+        target_sizes.append(counter_size_elements)
+
+    if not target_ptrs or not any(target_ptrs):
+        return None, None, 0
+
+    ptrs = warp.array(np.asarray(target_ptrs, dtype=np.uint64), dtype=warp.uint64, device=device)
+    sizes = warp.array(np.asarray(target_sizes, dtype=np.int32), dtype=warp.int32, device=device)
+    return ptrs, sizes, len(target_ptrs)
+
+
 def allocate_counter_buffers(counter_targets, meta, dim_size, device, max_records=0, initialize_unused=False):
     """Allocate record buffers for deterministic consumed-return counters."""
     buffers = []
@@ -573,12 +651,13 @@ def run_sort_reduce(
         workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
         workspaces.append(workspace)
 
+        dest_size_elements = _det_dest_size_elements(dest_arr)
         runtime.core.wp_deterministic_sort_reduce_device(
             keys.ptr,
             values.ptr,
             record_count,
             dest_arr.ptr,
-            dest_arr.size,
+            dest_size_elements,
             target.reduce_op,
             scalar_type_id,
             components,
@@ -590,16 +669,19 @@ def run_sort_reduce(
     return workspaces
 
 
-def run_counter_scan(runtime, counter_buffers, counter_arrays, device, record_counts=None):
+def run_counter_scan(runtime, counter_buffers, counter_arrays, counter_state_buffers, device, record_counts=None):
     """Compute deterministic consumed-return prefixes for counter records."""
     workspaces = []
 
     for i, counter_buffer in enumerate(counter_buffers):
         keys, values, prefixes, _record_slots, _cursors, _count, capacity, _records_per_thread = counter_buffer
         counter_arr = counter_arrays[i]
+        counter_bases, counter_totals, counter_size_elements = counter_state_buffers[i]
         record_count = capacity if record_counts is None else record_counts[i]
 
         if counter_arr is None:
+            continue
+        if counter_bases is None or counter_totals is None:
             continue
         if record_count <= 0:
             continue
@@ -613,10 +695,33 @@ def run_counter_scan(runtime, counter_buffers, counter_arrays, device, record_co
             values.ptr,
             record_count,
             prefixes.ptr,
-            counter_arr.ptr,
-            counter_arr.size,
+            counter_bases.ptr,
+            counter_totals.ptr,
+            counter_size_elements,
             workspace.ptr,
             workspace_size,
         )
 
     return workspaces
+
+
+def run_counter_writeback(runtime, counter_buffers, counter_arrays, counter_state_buffers, record_counts=None):
+    """Publish deterministic counter totals after phase 1 replay."""
+    for i, counter_buffer in enumerate(counter_buffers):
+        keys, _values, _prefixes, _record_slots, _cursors, _count, capacity, _records_per_thread = counter_buffer
+        counter_arr = counter_arrays[i]
+        _counter_bases, counter_totals, counter_size_elements = counter_state_buffers[i]
+        record_count = capacity if record_counts is None else record_counts[i]
+
+        if counter_arr is None or counter_totals is None:
+            continue
+        if record_count <= 0:
+            continue
+
+        runtime.core.wp_deterministic_counter_writeback_device(
+            keys.ptr,
+            record_count,
+            counter_totals.ptr,
+            counter_arr.ptr,
+            counter_size_elements,
+        )

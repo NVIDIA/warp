@@ -280,6 +280,11 @@ def _det_counter_write(counter: wp.array(dtype=wp.int32), output: wp.array(dtype
 
 
 @wp.func
+def _det_set_int_scratch(scratch: wp.array(dtype=wp.int32), index: int, value: int):
+    scratch[index] = value
+
+
+@wp.func
 def _det_increment_array(output: wp.array(dtype=wp.float32), index: int):
     output[index] = output[index] + 1.0
 
@@ -541,6 +546,23 @@ def counter_side_effect_kernel(
     slot = wp.atomic_add(counter, 0, 1)
     scratch[tid] = scratch[tid] + 1.0
     output[slot] = float(tid)
+
+
+@wp.kernel(deterministic=True, module="unique")
+def local_scratch_counter_kernel(
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+):
+    """Local scratch stores must execute in phase 0 when they control counters."""
+    tid = wp.tid()
+    scratch = wp.zeros(shape=(2,), dtype=wp.int32)
+    _det_set_int_scratch(scratch, 0, 1)
+    _det_set_int_scratch(scratch, 1, 1)
+
+    for i in range(2):
+        if scratch[i] != 0:
+            slot = wp.atomic_add(counter, 0, 1)
+            output[slot] = tid * 2 + i
 
 
 @wp.func
@@ -1063,6 +1085,166 @@ def test_sliced_3d_array_atomic_add(test, device):
         np.testing.assert_array_equal(results[0], results[i])
 
 
+def test_strided_1d_view_atomic_add(test, device):
+    """Atomic add through a non-contiguous ``base[::2]`` view: odd slots untouched."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 1024
+    base_size = 128
+    view_size = base_size // 2
+    rng = np.random.default_rng(303)
+
+    data_np = rng.random(n, dtype=np.float32)
+    dest_np = rng.integers(0, view_size, size=n, dtype=np.int32)
+
+    expected_view = np.zeros(view_size, dtype=np.float32)
+    for i in range(n):
+        expected_view[dest_np[i]] = np.float32(expected_view[dest_np[i]] + data_np[i])
+
+    sentinel = np.float32(-7777.0)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    dest = wp.array(dest_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(3):
+        base = wp.full(shape=(base_size,), value=sentinel, dtype=wp.float32, device=device)
+        view = base[::2]
+        test.assertFalse(view.is_contiguous)
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[view], device=device)
+        results.append(base.numpy().copy())
+
+    for result in results:
+        even = result[0::2]
+        odd = result[1::2]
+        np.testing.assert_allclose(even, sentinel + expected_view, rtol=1e-5, atol=1e-5)
+        np.testing.assert_array_equal(odd, np.full(view_size, sentinel, dtype=np.float32))
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_zero_stride_view_atomic_add(test, device):
+    """Atomic add through a zero-stride view reduces to the one physical slot."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 1024
+    logical_size = 8
+    rng = np.random.default_rng(306)
+
+    data_np = rng.random(n, dtype=np.float32)
+    dest_np = rng.integers(0, logical_size, size=n, dtype=np.int32)
+
+    sentinel = np.float32(-11.0)
+    expected = sentinel
+    for value in data_np:
+        expected = np.float32(expected + value)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    dest = wp.array(dest_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(3):
+        base = wp.full(shape=(1,), value=sentinel, dtype=wp.float32, device=device)
+        view = wp.array(
+            ptr=base.ptr,
+            dtype=wp.float32,
+            shape=(logical_size,),
+            strides=(0,),
+            capacity=4,
+            device=device,
+        )
+        test.assertFalse(view.is_contiguous)
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[view], device=device)
+        results.append(base.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(result, np.array([expected], dtype=np.float32), rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_column_slice_atomic_add(test, device):
+    """Atomic add through a non-contiguous ``base[:, col]`` view: other columns untouched."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 1024
+    rows, cols = 64, 4
+    target_col = 2
+    rng = np.random.default_rng(304)
+
+    data_np = rng.random(n, dtype=np.float32)
+    dest_np = rng.integers(0, rows, size=n, dtype=np.int32)
+
+    expected_col = np.zeros(rows, dtype=np.float32)
+    for i in range(n):
+        expected_col[dest_np[i]] = np.float32(expected_col[dest_np[i]] + data_np[i])
+
+    sentinel = np.float32(-3333.0)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    dest = wp.array(dest_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(3):
+        base = wp.full(shape=(rows, cols), value=sentinel, dtype=wp.float32, device=device)
+        view = base[:, target_col]
+        test.assertFalse(view.is_contiguous)
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[view], device=device)
+        results.append(base.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(result[:, target_col], sentinel + expected_col, rtol=1e-5, atol=1e-5)
+        other_cols = np.delete(result, target_col, axis=1)
+        np.testing.assert_array_equal(other_cols, np.full(other_cols.shape, sentinel, dtype=np.float32))
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_transposed_2d_atomic_add(test, device):
+    """Atomic add through a transposed 2D view: ``view[i, j]`` writes to ``base[j, i]``."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 2048
+    base_rows, base_cols = 16, 8
+    view_rows, view_cols = base_cols, base_rows
+    rng = np.random.default_rng(305)
+
+    data_np = rng.random(n, dtype=np.float32)
+    row_np = rng.integers(0, view_rows, size=n, dtype=np.int32)
+    col_np = rng.integers(0, view_cols, size=n, dtype=np.int32)
+
+    expected_view = np.zeros((view_rows, view_cols), dtype=np.float32)
+    for i in range(n):
+        expected_view[row_np[i], col_np[i]] = np.float32(expected_view[row_np[i], col_np[i]] + data_np[i])
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    row_idx = wp.array(row_np, dtype=wp.int32, device=device)
+    col_idx = wp.array(col_np, dtype=wp.int32, device=device)
+
+    results = []
+    for _ in range(3):
+        base = wp.zeros(shape=(base_rows, base_cols), dtype=wp.float32, device=device)
+        view = base.transpose([1, 0])
+        test.assertFalse(view.is_contiguous)
+        wp.launch(
+            atomic_add_2d_kernel,
+            dim=n,
+            inputs=[data, row_idx, col_idx],
+            outputs=[view],
+            device=device,
+        )
+        results.append(base.numpy().copy())
+
+    for result in results:
+        np.testing.assert_allclose(result, expected_view.T, rtol=1e-5, atol=1e-5)
+    for i in range(1, len(results)):
+        np.testing.assert_array_equal(results[0], results[i])
+
+
 def test_atomic_half_deterministic(test, device):
     """Verify deterministic mode with float16 atomics."""
     if device.is_cpu:
@@ -1491,6 +1673,21 @@ def test_counter_phase0_suppresses_helper_array_writes(test, device):
     test.assertEqual(int(counter.numpy()[0]), n)
 
 
+def test_counter_phase0_preserves_local_scratch_writes(test, device):
+    """Verify phase 0 executes local scratch stores that affect counter calls."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 64
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(2 * n, value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(local_scratch_counter_kernel, dim=n, inputs=[counter], outputs=[output], device=device)
+
+    test.assertEqual(int(counter.numpy()[0]), 2 * n)
+    np.testing.assert_array_equal(output.numpy(), np.arange(2 * n, dtype=np.int32))
+
+
 def test_counter_correctness(test, device):
     """Verify consumed-return counters write all data (no lost elements)."""
     n = 512
@@ -1516,6 +1713,80 @@ def test_counter_correctness(test, device):
     result = sorted(output.numpy().tolist())
     expected = sorted(data_np.tolist())
     np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+
+def test_counter_nonzero_initial_value(test, device):
+    """Verify consumed-return counters preserve a non-zero initial value.
+
+    Before the fix to ``make_counter_prefix_states_kernel`` the deterministic
+    prefix scan started from zero, ignoring the counter's existing value.  In
+    real multi-launch workloads (e.g. particle emission across timesteps) this
+    silently overwrote slots from earlier launches and produced a wrong final
+    count.
+    """
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 64
+    k = 20  # non-zero initial counter value
+
+    rng = np.random.default_rng(777)
+    data_np = rng.random(n, dtype=np.float32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+
+    counter = wp.full(1, value=k, dtype=wp.int32, device=device)
+    sentinel = np.float32(-7.0)
+    output = wp.full(k + n, value=sentinel, dtype=wp.float32, device=device)
+
+    wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+
+    # Counter must reflect the seed plus the n new allocations.
+    test.assertEqual(int(counter.numpy()[0]), k + n)
+
+    # Slots [0, K) must be untouched.
+    np.testing.assert_array_equal(
+        output.numpy()[:k],
+        np.full(k, sentinel, dtype=np.float32),
+        err_msg="Initial slots were overwritten -- counter scan ignored its seed.",
+    )
+
+    # Slots [K, K+n) must contain a permutation of the input data.
+    written = sorted(output.numpy()[k:].tolist())
+    expected = sorted(data_np.tolist())
+    np.testing.assert_allclose(written, expected, rtol=1e-6)
+
+
+def test_counter_multi_launch_accumulates(test, device):
+    """Verify consumed-return counters accumulate correctly across launches.
+
+    Realistic multi-launch use case (e.g. emitting particles over several
+    timesteps): each launch must append its allocations on top of the previous
+    launches' slots, not overwrite them.
+    """
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    n = 32
+    num_launches = 3
+    capacity = n * num_launches
+
+    rng = np.random.default_rng(778)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(capacity, value=np.float32(-1.0), dtype=wp.float32, device=device)
+
+    all_data = []
+    for _ in range(num_launches):
+        data_np = rng.random(n, dtype=np.float32)
+        all_data.append(data_np)
+        data = wp.array(data_np, dtype=wp.float32, device=device)
+        wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+
+    test.assertEqual(int(counter.numpy()[0]), capacity)
+
+    # All n*num_launches values must be present in the output, none overwritten.
+    written = sorted(output.numpy().tolist())
+    expected = sorted(np.concatenate(all_data).tolist())
+    np.testing.assert_allclose(written, expected, rtol=1e-6)
 
 
 def test_counter_variable_total_writeback(test, device):
@@ -1719,6 +1990,88 @@ def test_counter_non_add_atomic_rejected(test, device):
         counter = wp.zeros(1, dtype=wp.int32, device=device)
         output = wp.zeros(8, dtype=wp.float32, device=device)
         wp.launch(counter_max_kernel, dim=8, inputs=[counter], outputs=[output], device=device)
+
+
+def test_float_atomic_consumed_return_rejected(test, device):
+    """Verify float atomics with consumed-not-assigned returns fail clearly."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    pattern = "consumed-return counter atomics only for int32 counter arrays"
+
+    with test.assertRaisesRegex(Exception, pattern):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def float_leader_if_kernel(
+            total: wp.array(dtype=wp.float32),
+            log: wp.array(dtype=wp.int32),
+        ):
+            """Return consumed by an ``if`` test."""
+            tid = wp.tid()
+            if wp.atomic_add(total, 0, 1.0) == 0.0:
+                log[0] = tid
+
+        total = wp.zeros(1, dtype=wp.float32, device=device)
+        log = wp.zeros(1, dtype=wp.int32, device=device)
+        wp.launch(float_leader_if_kernel, dim=8, inputs=[total], outputs=[log], device=device)
+
+    with test.assertRaisesRegex(Exception, pattern):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def float_nested_call_in_if_kernel(
+            total: wp.array(dtype=wp.float32),
+            out: wp.array(dtype=wp.float32),
+        ):
+            """Return consumed by a nested call inside an ``if`` test."""
+            tid = wp.tid()
+            if wp.abs(wp.atomic_add(total, 0, 1.0)) > 0.0:
+                out[tid] = 1.0
+
+        total = wp.zeros(1, dtype=wp.float32, device=device)
+        out = wp.zeros(8, dtype=wp.float32, device=device)
+        wp.launch(float_nested_call_in_if_kernel, dim=8, inputs=[total], outputs=[out], device=device)
+
+    with test.assertRaisesRegex(Exception, pattern):
+
+        @wp.kernel(deterministic=True, module="unique")
+        def float_nested_bare_atomic_kernel(
+            total: wp.array(dtype=wp.float32),
+            other: wp.array(dtype=wp.float32),
+        ):
+            """Return consumed as the value argument of a bare atomic statement."""
+            wp.atomic_add(total, 0, wp.atomic_add(other, 0, 1.0))
+
+        total = wp.zeros(1, dtype=wp.float32, device=device)
+        other = wp.zeros(1, dtype=wp.float32, device=device)
+        wp.launch(float_nested_bare_atomic_kernel, dim=8, inputs=[total], outputs=[other], device=device)
+
+
+def test_float_atomic_bare_statement_allowed(test, device):
+    """Verify bare-statement float atomics still lower to the scatter path."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    @wp.kernel(deterministic=True, module="unique")
+    def bare_float_accum_kernel(
+        contribs: wp.array(dtype=wp.float32),
+        accum: wp.array(dtype=wp.float32),
+    ):
+        tid = wp.tid()
+        wp.atomic_add(accum, tid % 4, contribs[tid])
+
+    n = 32
+    rng = np.random.default_rng(0)
+    contribs_np = rng.random(n, dtype=np.float32)
+    contribs = wp.array(contribs_np, dtype=wp.float32, device=device)
+    accum = wp.zeros(4, dtype=wp.float32, device=device)
+
+    wp.launch(bare_float_accum_kernel, dim=n, inputs=[contribs], outputs=[accum], device=device)
+
+    expected = np.zeros(4, dtype=np.float32)
+    for i in range(n):
+        expected[i % 4] += contribs_np[i]
+
+    np.testing.assert_allclose(accum.numpy(), expected, rtol=0, atol=1e-5)
 
 
 def test_scatter_capacity_overflow_rejected(test, device):
@@ -2871,6 +3224,16 @@ add_function_test(
     TestDeterministic, "test_sliced_3d_array_atomic_add", test_sliced_3d_array_atomic_add, devices=cuda_devices
 )
 add_function_test(
+    TestDeterministic, "test_strided_1d_view_atomic_add", test_strided_1d_view_atomic_add, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic, "test_zero_stride_view_atomic_add", test_zero_stride_view_atomic_add, devices=cuda_devices
+)
+add_function_test(TestDeterministic, "test_column_slice_atomic_add", test_column_slice_atomic_add, devices=cuda_devices)
+add_function_test(
+    TestDeterministic, "test_transposed_2d_atomic_add", test_transposed_2d_atomic_add, devices=cuda_devices
+)
+add_function_test(
     TestDeterministic, "test_atomic_half_deterministic", test_atomic_half_deterministic, devices=cuda_devices
 )
 add_function_test(
@@ -2960,7 +3323,25 @@ add_function_test(
     test_counter_phase0_suppresses_helper_array_writes,
     devices=cuda_devices,
 )
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_preserves_local_scratch_writes",
+    test_counter_phase0_preserves_local_scratch_writes,
+    devices=cuda_devices,
+)
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)
+add_function_test(
+    TestDeterministic,
+    "test_counter_nonzero_initial_value",
+    test_counter_nonzero_initial_value,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_multi_launch_accumulates",
+    test_counter_multi_launch_accumulates,
+    devices=cuda_devices,
+)
 add_function_test(
     TestDeterministic,
     "test_counter_variable_total_writeback",
@@ -3001,6 +3382,18 @@ add_function_test(
     TestDeterministic,
     "test_counter_non_add_atomic_rejected",
     test_counter_non_add_atomic_rejected,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_float_atomic_consumed_return_rejected",
+    test_float_atomic_consumed_return_rejected,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_float_atomic_bare_statement_allowed",
+    test_float_atomic_bare_statement_allowed,
     devices=cuda_devices,
 )
 add_function_test(

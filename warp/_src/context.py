@@ -5533,11 +5533,20 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_uint64,
                 ctypes.c_uint64,
+                ctypes.c_uint64,
                 ctypes.c_int,
                 ctypes.c_uint64,
                 ctypes.c_size_t,
             ]
             self.core.wp_deterministic_counter_scan_device.restype = None
+            self.core.wp_deterministic_counter_writeback_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_counter_writeback_device.restype = None
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
             self.core.wp_bvh_create_host.argtypes = [
@@ -9219,11 +9228,14 @@ def _launch_deterministic(
     """
     from warp._src.deterministic import (  # noqa: PLC0415
         allocate_counter_buffers,
+        allocate_counter_state_buffers,
+        allocate_counter_target_table,
         allocate_scatter_buffers,
         get_counter_record_count,
         get_scatter_record_count,
         normalize_deterministic_mode,
         run_counter_scan,
+        run_counter_writeback,
         run_sort_reduce,
     )
 
@@ -9384,6 +9396,10 @@ def _launch_deterministic(
     overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if scatter_bufs or counter_bufs else None
     sort_reduce_workspaces = []
     counter_scan_workspaces = []
+    counter_state_buffers = []
+    counter_target_ptrs = None
+    counter_target_sizes = None
+    counter_target_count = 0
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
     def build_det_params(phase, use_scatter):
@@ -9391,6 +9407,9 @@ def _launch_deterministic(
             ctypes.c_int(phase),
             ctypes.c_int(det_debug),
             ctypes.c_void_p(overflow_buf.ptr if overflow_buf is not None else 0),
+            ctypes.c_void_p(counter_target_ptrs.ptr if counter_target_ptrs is not None else 0),
+            ctypes.c_void_p(counter_target_sizes.ptr if counter_target_sizes is not None else 0),
+            ctypes.c_int(counter_target_count),
         ]
         for ct in det_meta.counter_targets:
             counter_buf = counter_bufs_by_target.get(ct)
@@ -9437,7 +9456,27 @@ def _launch_deterministic(
     if active_counter_targets:
         # === Two-pass execution ===
 
+        counter_arrays = []
+        for ct in active_counter_targets:
+            counter_arr = resolve_det_target_array(ct)
+            if counter_arr is None:
+                counter_arrays.append(None)
+                continue
+            if not hasattr(counter_arr, "ptr"):
+                raise RuntimeError(
+                    "Deterministic counter target "
+                    f"{ct.target_label!r} resolved to non-array object "
+                    f"({type(counter_arr).__name__})"
+                )
+            if getattr(counter_arr, "ptr", None) is None or getattr(counter_arr, "size", 0) <= 0:
+                counter_arrays.append(None)
+                continue
+            counter_arrays.append(counter_arr)
+
         with warp.ScopedStream(stream, sync_enter=False):
+            counter_target_ptrs, counter_target_sizes, counter_target_count = allocate_counter_target_table(
+                counter_arrays, device
+            )
             for counter_buf in counter_bufs:
                 keys, values, _prefixes, record_slots, cursors, count, _capacity, _records_per_thread = counter_buf
                 count.zero_()
@@ -9454,12 +9493,14 @@ def _launch_deterministic(
         params_p0 = [*user_params, *det_params_p0]
         do_cuda_launch(launch_hook, params_p0)
 
+        with warp.ScopedStream(stream, sync_enter=False):
+            counter_state_buffers = allocate_counter_state_buffers(runtime, counter_arrays, device, stream)
+
         # Sort counter records by destination and deterministic record order,
         # then compute the exclusive prefix each atomic should return.
-        counter_arrays = []
         counter_record_counts = []
-        for i, ct in enumerate(active_counter_targets):
-            counter_arr = resolve_det_target_array(ct)
+        for i, counter_arr in enumerate(counter_arrays):
+            ct = active_counter_targets[i]
             if counter_arr is None:
                 if not stream_is_capturing:
                     _keys, _values, _prefixes, _record_slots, _cursors, count, _capacity, _records_per_thread = (
@@ -9471,20 +9512,8 @@ def _launch_deterministic(
                             f"Deterministic counter target {ct.target_label!r} resolved to None "
                             f"but emitted {emitted_count} records."
                         )
-                counter_arrays.append(None)
                 counter_record_counts.append(0)
                 continue
-            if not hasattr(counter_arr, "ptr"):
-                raise RuntimeError(
-                    "Deterministic counter target "
-                    f"{ct.target_label!r} resolved to non-array object "
-                    f"({type(counter_arr).__name__})"
-                )
-            if getattr(counter_arr, "ptr", None) is None or getattr(counter_arr, "size", 0) <= 0:
-                counter_arrays.append(None)
-                counter_record_counts.append(0)
-                continue
-            counter_arrays.append(counter_arr)
             if stream_is_capturing:
                 record_count = get_counter_record_count(counter_bufs[i], stream_is_capturing=True)
             else:
@@ -9511,6 +9540,7 @@ def _launch_deterministic(
                 runtime,
                 counter_bufs,
                 counter_arrays,
+                counter_state_buffers,
                 device,
                 record_counts=counter_record_counts,
             )
@@ -9522,6 +9552,15 @@ def _launch_deterministic(
         det_params_p1 = build_det_params(phase=1, use_scatter=True)
         params_p1 = [*user_params, *det_params_p1]
         do_cuda_launch(launch_hook, params_p1)
+
+        with warp.ScopedStream(stream, sync_enter=False):
+            run_counter_writeback(
+                runtime,
+                counter_bufs,
+                counter_arrays,
+                counter_state_buffers,
+                record_counts=counter_record_counts,
+            )
 
     else:
         # === Single-pass (scatter only, or inactive deterministic params only) ===
@@ -9573,8 +9612,11 @@ def _launch_deterministic(
                 *scatter_bufs,
                 *counter_bufs,
                 overflow_buf,
+                counter_target_ptrs,
+                counter_target_sizes,
                 *sort_reduce_workspaces,
                 *counter_scan_workspaces,
+                *(array for state_buffer in counter_state_buffers for array in state_buffer[:2] if array is not None),
             )
             if buffer is not None
         )

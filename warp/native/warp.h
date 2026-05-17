@@ -370,10 +370,14 @@ WP_API void wp_deterministic_counter_scan_device(
     uint64_t values,
     int count,
     uint64_t prefixes,
-    uint64_t counters,
+    uint64_t counter_bases,
+    uint64_t counter_totals,
     int counter_size,
     uint64_t workspace,
     size_t workspace_size
+);
+WP_API void wp_deterministic_counter_writeback_device(
+    uint64_t keys, int count, uint64_t counter_totals, uint64_t counters, int counter_size
 );
 
 WP_API void wp_bsr_matrix_from_triplets_host(

@@ -114,7 +114,9 @@ __global__ void make_counter_prefix_states_kernel(
     const int64_t* __restrict__ sorted_keys,
     const int* __restrict__ sorted_indices,
     const int* __restrict__ values,
+    const int* __restrict__ counter_bases,
     CounterPrefixState* __restrict__ states,
+    int counter_size,
     int count
 )
 {
@@ -125,6 +127,14 @@ __global__ void make_counter_prefix_states_kernel(
     int dest = dest_index_from_key(sorted_keys[tid]);
     int original_slot = sorted_indices[tid];
     int value = dest < 0 ? 0 : values[original_slot];
+
+    if (dest >= 0 && dest < counter_size) {
+        bool is_head = (tid == 0) || (dest_index_from_key(sorted_keys[tid - 1]) != dest);
+        if (is_head) {
+            value += counter_bases[dest];
+        }
+    }
+
     states[tid] = CounterPrefixState { dest, value };
 }
 
@@ -134,7 +144,7 @@ __global__ void scatter_counter_prefixes_kernel(
     const int* __restrict__ values,
     const CounterPrefixState* __restrict__ inclusive_prefixes,
     int* __restrict__ prefixes,
-    int* __restrict__ counters,
+    int* __restrict__ counter_totals,
     int counter_size,
     int count
 )
@@ -154,7 +164,25 @@ __global__ void scatter_counter_prefixes_kernel(
 
     bool is_tail = (tid == count - 1) || (dest_index_from_key(sorted_keys[tid + 1]) != dest);
     if (is_tail && dest < counter_size) {
-        counters[dest] = inclusive;
+        counter_totals[dest] = inclusive;
+    }
+}
+
+__global__ void writeback_counter_totals_kernel(
+    const int64_t* __restrict__ keys,
+    int count,
+    const int* __restrict__ counter_totals,
+    int* __restrict__ counters,
+    int counter_size
+)
+{
+    int tid;
+    if (!deterministic_thread_index(count, tid))
+        return;
+
+    int dest = dest_index_from_key(keys[tid]);
+    if (dest >= 0 && dest < counter_size) {
+        counters[dest] = counter_totals[dest];
     }
 }
 
@@ -531,7 +559,8 @@ void deterministic_counter_scan_device(
     int* values,
     int count,
     int* prefixes,
-    int* counters,
+    const int* counter_bases,
+    int* counter_totals,
     int counter_size,
     void* workspace,
     size_t workspace_size
@@ -579,7 +608,7 @@ void deterministic_counter_scan_device(
     );
 
     make_counter_prefix_states_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
-        d_keys.Current(), d_indices.Current(), values, states, count
+        d_keys.Current(), d_indices.Current(), values, counter_bases, states, counter_size, count
     );
     if (!check_kernel_launch())
         return;
@@ -590,7 +619,24 @@ void deterministic_counter_scan_device(
     );
 
     scatter_counter_prefixes_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
-        d_keys.Current(), d_indices.Current(), values, inclusive_prefixes, prefixes, counters, counter_size, count
+        d_keys.Current(), d_indices.Current(), values, inclusive_prefixes, prefixes, counter_totals, counter_size, count
+    );
+    check_kernel_launch();
+}
+
+void deterministic_counter_writeback_device(
+    int64_t* keys, int count, const int* counter_totals, int* counters, int counter_size
+)
+{
+    if (count <= 0)
+        return;
+
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    const int num_blocks = deterministic_num_blocks(count);
+    writeback_counter_totals_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
+        keys, count, counter_totals, counters, counter_size
     );
     check_kernel_launch();
 }
@@ -707,7 +753,8 @@ void wp_deterministic_counter_scan_device(
     uint64_t values,
     int count,
     uint64_t prefixes,
-    uint64_t counters,
+    uint64_t counter_bases,
+    uint64_t counter_totals,
     int counter_size,
     uint64_t workspace,
     size_t workspace_size
@@ -715,6 +762,17 @@ void wp_deterministic_counter_scan_device(
 {
     deterministic_counter_scan_device(
         reinterpret_cast<int64_t*>(keys), reinterpret_cast<int*>(values), count, reinterpret_cast<int*>(prefixes),
-        reinterpret_cast<int*>(counters), counter_size, reinterpret_cast<void*>(workspace), workspace_size
+        reinterpret_cast<int*>(counter_bases), reinterpret_cast<int*>(counter_totals), counter_size,
+        reinterpret_cast<void*>(workspace), workspace_size
+    );
+}
+
+void wp_deterministic_counter_writeback_device(
+    uint64_t keys, int count, uint64_t counter_totals, uint64_t counters, int counter_size
+)
+{
+    deterministic_counter_writeback_device(
+        reinterpret_cast<int64_t*>(keys), count, reinterpret_cast<int*>(counter_totals),
+        reinterpret_cast<int*>(counters), counter_size
     );
 }
