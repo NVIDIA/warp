@@ -84,6 +84,7 @@ from warp._src.texture import TextureResourceFlags as TextureResourceFlags
 from warp._src.texture import GLTextureResource as GLTextureResource
 from warp._src.texture import TextureFilterMode as TextureFilterMode
 from warp._src.texture import TextureAddressMode as TextureAddressMode
+from warp.config import LaunchVerificationMode as LaunchVerificationMode
 from warp._src.context import init as init
 from warp._src.context import is_cpu_available as is_cpu_available
 from warp._src.context import is_cubql_available as is_cubql_available
@@ -132,6 +133,7 @@ from warp._src.context import map_cuda_device as map_cuda_device
 from warp._src.context import unmap_cuda_device as unmap_cuda_device
 from warp._src.context import get_device as get_device
 from warp._src.context import set_device as set_device
+from warp._src.context import can_access as can_access
 from warp._src.context import synchronize_device as synchronize_device
 from warp._src.context import set_module_options as set_module_options
 from warp._src.context import get_module_options as get_module_options

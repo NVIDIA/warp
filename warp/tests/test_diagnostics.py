@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import importlib.metadata
+import io
 import subprocess
 import sys
 import textwrap
@@ -20,12 +22,18 @@ from warp._src.context import (
 class TestDiagnostics(unittest.TestCase):
     """Tests for wp.print_diagnostics() and related version query functions."""
 
+    def get_print_diagnostics_output(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            info = wp.print_diagnostics()
+        return info, output.getvalue()
+
     def test_print_diagnostics_returns_dict(self):
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         self.assertIsInstance(info, dict)
 
     def test_print_diagnostics_has_required_keys(self):
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         required_keys = [
             "warp_python",
             "warp_native",
@@ -53,7 +61,7 @@ class TestDiagnostics(unittest.TestCase):
             self.assertIn(key, info, f"Missing key: {key}")
 
     def test_print_diagnostics_version_strings(self):
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         self.assertIsInstance(info["warp_python"], str)
         self.assertRegex(info["warp_python"], r"^\d+\.\d+\.\d+")
         self.assertIsInstance(info["warp_native"], str)
@@ -63,17 +71,17 @@ class TestDiagnostics(unittest.TestCase):
         self.assertIsInstance(info["platform"], str)
 
     def test_print_diagnostics_build_flags(self):
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         self.assertIsInstance(info["debug"], bool)
         self.assertIsInstance(info["verify_fp"], bool)
         self.assertIsInstance(info["fast_math"], bool)
 
     def test_print_diagnostics_cubql_enabled(self):
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         self.assertIsInstance(info["cubql_enabled"], bool)
 
     def test_print_diagnostics_devices(self):
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         devices = info["devices"]
         self.assertIsInstance(devices, list)
         self.assertGreaterEqual(len(devices), 1)
@@ -82,7 +90,7 @@ class TestDiagnostics(unittest.TestCase):
 
     def test_print_diagnostics_optional_frameworks(self):
         """Optional framework keys match installed packages."""
-        info = wp.print_diagnostics()
+        info, _ = self.get_print_diagnostics_output()
         for pkg in ("torch", "jax", "jaxlib"):
             try:
                 expected = importlib.metadata.version(pkg)
@@ -93,17 +101,30 @@ class TestDiagnostics(unittest.TestCase):
                 self.assertEqual(info[pkg], expected)
 
     def test_print_diagnostics_cuda_device_structure(self):
-        info = wp.print_diagnostics()
+        info, diagnostics_output = self.get_print_diagnostics_output()
         devices = info["devices"]
         if wp.is_cuda_available():
             self.assertGreaterEqual(len(devices), 2, "CUDA available but no CUDA device in list")
             cuda_dev = devices[1]
+            warp_dev = wp.get_device(cuda_dev["alias"])
             self.assertRegex(cuda_dev["arch"], r"^sm_\d+$")
             self.assertIsInstance(cuda_dev["sm_count"], int)
             self.assertGreater(cuda_dev["sm_count"], 0)
             self.assertIsInstance(cuda_dev["memory_gb"], float)
             self.assertIsInstance(cuda_dev["mempool_enabled"], bool)
             self.assertRegex(cuda_dev["pci_bus_id"], r"^[0-9A-F]+:[0-9A-F]+:[0-9A-F]+$")
+            for key in (
+                "is_cpu_memory_access_from_gpu_supported",
+                "is_gpu_memory_access_from_cpu_supported",
+                "is_cpu_gpu_atomic_supported",
+            ):
+                self.assertIn(key, cuda_dev)
+                self.assertIsInstance(cuda_dev[key], bool)
+                self.assertEqual(cuda_dev[key], getattr(warp_dev, key))
+
+            self.assertIn("GPU->CPU mem:", diagnostics_output)
+            self.assertIn("CPU->GPU mem:", diagnostics_output)
+            self.assertIn("CPU/GPU atomics:", diagnostics_output)
 
     def test_print_diagnostics_suppresses_init_banner_with_deprecated_verbose(self):
         script = textwrap.dedent(
