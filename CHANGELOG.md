@@ -127,6 +127,10 @@
   weights ([GH-1437](https://github.com/NVIDIA/warp/issues/1437)).
 - Fix tile reassignment from shared storage to register storage
   ([GH-1440](https://github.com/NVIDIA/warp/issues/1440)).
+- Accept parenthesized multi-line lambda bodies (the default formatting produced by ruff v0.15+)
+  in `wp.utils.create_warp_function()` and `wp.map()`. Previously such bodies raised
+  `IndentationError` when re-emitted as a `return` expression
+  ([GH-1351](https://github.com/NVIDIA/warp/issues/1351)).
 
 ### Documentation
 

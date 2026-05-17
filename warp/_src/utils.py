@@ -659,7 +659,10 @@ def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context
         if body is None:
             raise ValueError("Could not extract lambda source code")
         key = unique_name(body)
-        source = f"def {key}({', '.join(argspec.args)}):\n  return {body}"
+        # Wrap the body in parentheses so multi-line lambda bodies (e.g. the
+        # parenthesized formatting produced by ruff v0.15+) remain syntactically
+        # valid when re-emitted as a `return` expression (GH-1351).
+        source = f"def {key}({', '.join(argspec.args)}):\n  return ({body})"
     else:
         # use the qualname of the function as the key
         key = getattr(func, "__qualname__", key)
