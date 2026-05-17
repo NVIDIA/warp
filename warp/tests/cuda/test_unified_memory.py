@@ -19,6 +19,7 @@ from unittest.mock import patch
 import numpy as np
 
 import warp as wp
+import warp._src.context as warp_context
 from warp.tests.unittest_utils import *
 
 
@@ -300,6 +301,27 @@ cuda_devices = get_cuda_test_devices()
 
 
 class TestUnifiedMemory(unittest.TestCase):
+    def test_unified_memory_unknown_access_warning_cache_is_bounded(self):
+        """Unknown-access warning deduplication should not grow without bound."""
+
+        cache = warp_context._launch_array_access_warnings_seen
+        saved_cache = cache.copy()
+        cache.clear()
+        try:
+            kernel = type("Kernel", (), {"key": "warning-cache-bounds"})()
+            value = wp.empty(1, dtype=wp.float32, device="cpu")
+            device = wp.get_device("cpu")
+            cache_size = warp_context._LAUNCH_ARRAY_ACCESS_WARNING_CACHE_SIZE
+
+            with patch("warp._src.context.log_warning"):
+                for i in range(cache_size + 1):
+                    warp_context._warn_unknown_launch_array_access(kernel, f"arg{i}", value, device)
+
+            self.assertLessEqual(len(cache), cache_size)
+        finally:
+            cache.clear()
+            cache.update(saved_cache)
+
     @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
     def test_unified_memory_checked_warns_once_for_custom_allocator(self):
         """CHECKED warns once for unknown custom allocator provenance.

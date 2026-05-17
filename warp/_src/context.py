@@ -3343,7 +3343,8 @@ class _ArrayAccessStatus(enum.Enum):
     UNKNOWN = enum.auto()
 
 
-_launch_array_access_warnings_seen: set[tuple[str, str, str, str]] = set()
+_LAUNCH_ARRAY_ACCESS_WARNING_CACHE_SIZE = 1024
+_launch_array_access_warnings_seen: collections.OrderedDict[tuple[str, str, str, str], None] = collections.OrderedDict()
 
 
 def _validate_allocator(allocator):
@@ -7912,9 +7913,13 @@ def _raise_launch_array_access_error(kernel, arg_name: str, value: warp.array, d
 def _warn_unknown_launch_array_access(kernel, arg_name: str, value: warp.array, device: Device) -> None:
     key = (kernel.key, arg_name, value.device.alias, device.alias)
     if key in _launch_array_access_warnings_seen:
+        _launch_array_access_warnings_seen.move_to_end(key)
         return
 
-    _launch_array_access_warnings_seen.add(key)
+    _launch_array_access_warnings_seen[key] = None
+    if len(_launch_array_access_warnings_seen) > _LAUNCH_ARRAY_ACCESS_WARNING_CACHE_SIZE:
+        _launch_array_access_warnings_seen.popitem(last=False)
+
     log_warning(
         f"LaunchVerificationMode.CHECKED cannot verify cross-device access for kernel '{kernel.key}' "
         f"argument '{arg_name}' from device={value.device} to launch device='{device}'. "
