@@ -1575,7 +1575,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // backward of inplace scalar AND
-    inline CUDA_CALLABLE void adj_bit_and_inplace(const typename Layout::Coord& c, Type& adj_x) { }
+    inline CUDA_CALLABLE void adj_bit_and_inplace(const typename Layout::Coord& c, Type& adj_x)
+    {
+        // nop: integer atomic suppressor (bitwise ops on integer tiles have no gradient)
+    }
 
 
     // perform OR between a scalar value and a single tile element
@@ -1589,7 +1592,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // backward of inplace scalar OR
-    inline CUDA_CALLABLE void adj_bit_or_inplace(const typename Layout::Coord& c, Type& adj_x) { }
+    inline CUDA_CALLABLE void adj_bit_or_inplace(const typename Layout::Coord& c, Type& adj_x)
+    {
+        // nop: integer atomic suppressor (bitwise ops on integer tiles have no gradient)
+    }
 
     // perform XOR between a scalar value and a single tile element
     inline CUDA_CALLABLE void bit_xor_inplace(const typename Layout::Coord& c, const Type& x)
@@ -1602,7 +1608,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // backward of inplace scalar XOR
-    inline CUDA_CALLABLE void adj_bit_xor_inplace(const typename Layout::Coord& c, Type& adj_x) { }
+    inline CUDA_CALLABLE void adj_bit_xor_inplace(const typename Layout::Coord& c, Type& adj_x)
+    {
+        // nop: integer atomic suppressor (bitwise ops on integer tiles have no gradient)
+    }
 
     // copy register tile to shared
     template <typename Tile> inline CUDA_CALLABLE void assign(const Tile& tile)
@@ -2209,19 +2218,9 @@ template <typename T, typename L, bool O> inline CUDA_CALLABLE int len(const til
     return L::Shape::dim(0);
 }
 
-template <typename T, typename L, bool O, typename AdjTile>
-inline CUDA_CALLABLE void adj_len(const tile_shared_t<T, L, O>& t, const AdjTile& a, int& adj_ret)
-{
-}
-
 template <typename T, typename L> inline CUDA_CALLABLE int len(const tile_register_t<T, L>& t)
 {
     return L::Shape::dim(0);
-}
-
-template <typename T, typename L, typename AdjTile>
-inline CUDA_CALLABLE void adj_len(const tile_register_t<T, L>& t, const AdjTile& a, int& adj_ret)
-{
 }
 
 // where specialization for register/shared tiles
@@ -2668,6 +2667,8 @@ template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void
 adj_tile_arange(T start, T stop, T step, T& adj_start, T& adj_stop, T& adj_step, AdjTile& adj_ret)
 {
+    // MISSINGADJOINT: output[i] = start + i*step, so adj_start += sum(adj_ret) and adj_step +=
+    // sum(i * adj_ret[i]); stop is non-differentiable
 }
 
 // entry point for load operations, these just return a reference to a global memory array + coordinate
@@ -4172,31 +4173,16 @@ template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_bit_and
     return tile_binary_map(bit_and, a, b);
 }
 
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_bit_and(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
-{
-}
-
 // tile | tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_bit_or(TileA& a, TileB& b)
 {
     return tile_binary_map(bit_or, a, b);
 }
 
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_bit_or(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
-{
-}
-
 // tile ^ tile
 template <typename TileA, typename TileB> inline CUDA_CALLABLE auto tile_bit_xor(TileA& a, TileB& b)
 {
     return tile_binary_map(bit_xor, a, b);
-}
-
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_bit_xor(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b, AdjTile& adj_c)
-{
 }
 
 
@@ -4375,11 +4361,6 @@ template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_bit_and
     a.assign(a_reg);
 }
 
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_bit_and_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
-{
-}
-
 template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_bit_or_inplace(TileA& a, TileB& b)
 {
     using ShapeA = typename TileA::Layout::Shape;
@@ -4408,11 +4389,6 @@ template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_bit_or_
     a.assign(a_reg);
 }
 
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_bit_or_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
-{
-}
-
 template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_bit_xor_inplace(TileA& a, TileB& b)
 {
     using ShapeA = typename TileA::Layout::Shape;
@@ -4439,11 +4415,6 @@ template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_bit_xor
     }
 
     a.assign(a_reg);
-}
-
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_bit_xor_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
-{
 }
 
 
@@ -5209,162 +5180,6 @@ void adj_tile_sub_inplace(
     adj_t.adj_sub_inplace(tile_coord(i, j, k, l), adj_value);
 }
 
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_and_inplace(
-    Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_and_inplace(
-    Tile& t,
-    int i,
-    int j,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_and_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_and_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    int l,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    typename Tile::Type& adj_value
-)
-{
-}
-
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_or_inplace(
-    Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_or_inplace(
-    Tile& t,
-    int i,
-    int j,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_or_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_or_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    int l,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    typename Tile::Type& adj_value
-)
-{
-}
-
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_xor_inplace(
-    Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_xor_inplace(
-    Tile& t,
-    int i,
-    int j,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_xor_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    typename Tile::Type& adj_value
-)
-{
-}
-template <typename Tile, typename AdjTile>
-void adj_tile_bit_xor_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    int l,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    typename Tile::Type& adj_value
-)
-{
-}
-
 
 // FFT / IFFT macros and implementations live in tile_fft.h. They forward to
 // `wp::tile_fft_entry`, which selects between CPU sequential, GPU cooperative,
@@ -6020,6 +5835,7 @@ template <typename TileA, typename TileB, typename TileC, typename AdjTileA, typ
 inline CUDA_CALLABLE void
 adj_tile_diag_add(TileA& a, TileB& b, TileC& c, AdjTileA& adj_a, AdjTileB& adj_b, AdjTileC& adj_c, AdjTileC& adj_ret)
 {
+    // MISSINGADJOINT: adj_a += adj_ret (element-wise); adj_b += diagonal of adj_ret
 }
 
 
@@ -6096,11 +5912,6 @@ template <typename T, int Capacity> inline CUDA_CALLABLE tile_stack_t<T, Capacit
 template <typename T, int Capacity> inline CUDA_CALLABLE int tile_stack_init() { return int {}; }
 
 template <typename T, int Capacity>
-inline CUDA_CALLABLE void adj_tile_stack_init(tile_stack_t<T, Capacity>&, tile_stack_t<T, Capacity>&)
-{
-}
-
-template <typename T, int Capacity>
 inline CUDA_CALLABLE int tile_stack_push(tile_stack_t<T, Capacity>& s, T value, bool has_value)
 {
     // Leading barrier: ensures any preceding tile_stack_count reads of s.count
@@ -6126,19 +5937,6 @@ inline CUDA_CALLABLE int tile_stack_push(tile_stack_t<T, Capacity>& s, T value, 
 }
 
 template <typename T, int Capacity>
-inline CUDA_CALLABLE void adj_tile_stack_push(
-    tile_stack_t<T, Capacity>& s,
-    T value,
-    bool has_value,
-    tile_stack_t<T, Capacity>& adj_s,
-    T& adj_value,
-    bool& adj_has_value,
-    int& adj_ret
-)
-{
-}
-
-template <typename T, int Capacity>
 inline CUDA_CALLABLE void tile_stack_pop(tile_stack_t<T, Capacity>& s, T& out_value, int& out_slot)
 {
     // Leading barrier: see tile_stack_push comment.
@@ -6159,18 +5957,6 @@ inline CUDA_CALLABLE void tile_stack_pop(tile_stack_t<T, Capacity>& s, T& out_va
     WP_TILE_SYNC();
 }
 
-template <typename T, int Capacity>
-inline CUDA_CALLABLE void adj_tile_stack_pop(
-    tile_stack_t<T, Capacity>& s,
-    T& out_value,
-    int& out_slot,
-    tile_stack_t<T, Capacity>& adj_s,
-    T& adj_out_value,
-    int& adj_out_slot
-)
-{
-}
-
 template <typename T, int Capacity> inline CUDA_CALLABLE void tile_stack_clear(tile_stack_t<T, Capacity>& s)
 {
     // Leading barrier: see tile_stack_push comment.
@@ -6178,11 +5964,6 @@ template <typename T, int Capacity> inline CUDA_CALLABLE void tile_stack_clear(t
     if (WP_TILE_THREAD_IDX == 0)
         *s.count = 0;
     WP_TILE_SYNC();
-}
-
-template <typename T, int Capacity>
-inline CUDA_CALLABLE void adj_tile_stack_clear(tile_stack_t<T, Capacity>& s, tile_stack_t<T, Capacity>& adj_s)
-{
 }
 
 template <typename T, int Capacity> inline CUDA_CALLABLE int tile_stack_count(tile_stack_t<T, Capacity>& s)
@@ -6198,12 +5979,6 @@ template <typename T, int Capacity> inline CUDA_CALLABLE int tile_stack_count(ti
     // is not cooperative: it may be called by a single thread or from within
     // a divergent branch without deadlocking.
     return *s.count;
-}
-
-template <typename T, int Capacity>
-inline CUDA_CALLABLE void
-adj_tile_stack_count(tile_stack_t<T, Capacity>& s, tile_stack_t<T, Capacity>& adj_s, int& adj_ret)
-{
 }
 
 }  // namespace wp

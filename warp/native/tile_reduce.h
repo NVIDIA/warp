@@ -594,26 +594,27 @@ template <typename Tile, typename Op, typename OpTrack> auto tile_arg_reduce_imp
 
 #endif  // !defined(__CUDA_ARCH__)
 
-inline void adj_tile_reduce_impl()
-{
-    // todo: general purpose reduction gradients not implemented
-}
-
-inline void adj_tile_reduce_axis_impl()
-{
-    // todo: axis-specific reduction gradients not implemented
-}
-
 // entry point for Python code-gen, wraps op in a lambda to perform overload resolution
 #define tile_reduce(op, t) tile_reduce_impl([](auto x, auto y) { return op(x, y);}, t)
-#define adj_tile_reduce(op, t, adj_op, adj_t, adj_ret) adj_tile_reduce_impl()
+
+template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
+void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t, AdjRet& adj_ret)
+{
+    // MISSINGADJOINT: for differentiable ops, distribute adj_ret to all input elements via
+    // op's adjoint
+}
 
 #define tile_arg_reduce(op, opTrack, t) tile_arg_reduce_impl([](auto x, auto y) { return op(x, y);}, [](auto a, auto b, auto c, auto d) { return opTrack(a, b, c, d); }, t)
-#define adj_tile_arg_reduce(op, t, adj_op, adj_t, adj_ret) adj_tile_arg_reduce_impl()
 
 // axis-specific reduction entry points
 #define tile_reduce_axis(op, t, axis) tile_reduce_axis_impl<axis>([](auto x, auto y) { return op(x, y);}, t)
-#define adj_tile_reduce_axis(op, t, axis, adj_op, adj_t, adj_axis, adj_ret) adj_tile_reduce_axis_impl()
+
+template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
+void adj_tile_reduce_axis(Op op, Tile& t, int axis, AdjOp& adj_op, AdjTile& adj_t, int& adj_axis, AdjRet& adj_ret)
+{
+    // MISSINGADJOINT: for differentiable ops, distribute adj_ret along the reduction axis
+    // via op's adjoint
+}
 
 // convenience methods for specific reductions
 
@@ -879,30 +880,20 @@ template <typename Tile> auto tile_max(Tile& t) { return tile_reduce(max, t); }
 
 template <typename Tile, typename AdjTile> void adj_tile_max(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
-    // todo: not implemented
+    // MISSINGADJOINT: subgradient: route adj_ret to the index of the maximum element
 }
 
 template <typename Tile> auto tile_min(Tile& t) { return tile_reduce(min, t); }
 
 template <typename Tile, typename AdjTile> void adj_tile_min(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 {
-    // todo: not implemented
+    // MISSINGADJOINT: subgradient: route adj_ret to the index of the minimum element
 }
 
 
 template <typename Tile> auto tile_argmax(Tile& t) { return tile_arg_reduce(max, argmax_tracker, t); }
 
-template <typename Tile, typename AdjTile> void adj_tile_argmax(Tile& t, Tile& adj_t, AdjTile& adj_ret)
-{
-    // todo: not implemented
-}
-
 template <typename Tile> auto tile_argmin(Tile& t) { return tile_arg_reduce(min, argmin_tracker, t); }
-
-template <typename Tile, typename AdjTile> void adj_tile_argmin(Tile& t, Tile& adj_t, AdjTile& adj_ret)
-{
-    // todo: not implemented
-}
 
 
 }  // namespace wp

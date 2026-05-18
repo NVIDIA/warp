@@ -502,22 +502,6 @@ CUDA_CALLABLE inline bvh_query_t bvh_query_ray(uint64_t id, const vec3& start, c
     return bvh_query(id, true, start, 1.0f / dir, root);
 }
 
-// Stub
-CUDA_CALLABLE inline void adj_bvh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper, int root, uint64_t, vec3&, vec3&, int&, bvh_query_t&
-)
-{
-}
-
-
-CUDA_CALLABLE inline void
-adj_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir, int root, uint64_t, vec3&, vec3&, int&, bvh_query_t&)
-{
-}
-
-CUDA_CALLABLE inline void adj_bvh_get_group_root(uint64_t id, int group_id, uint64_t&, int&, int&) { }
-
-
 CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const float& max_dist)
 {
     BVH bvh = query.bvh;
@@ -598,15 +582,6 @@ CUDA_CALLABLE inline bvh_query_t iter_reverse(const bvh_query_t& query)
 {
     // can't reverse BVH queries, users should not rely on traversal ordering
     return query;
-}
-
-CUDA_CALLABLE inline void adj_iter_reverse(const bvh_query_t& query, bvh_query_t& adj_query, bvh_query_t& adj_ret) { }
-
-
-// stub
-CUDA_CALLABLE inline void
-adj_bvh_query_next(bvh_query_t& query, int& index, const float& max_dist, bvh_query_t&, int&, float&, bool&)
-{
 }
 
 CUDA_CALLABLE bool bvh_get_descriptor(uint64_t id, BVH& bvh);

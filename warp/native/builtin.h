@@ -800,9 +800,15 @@ inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
     else \
         adj_b += adj_ret; \
 } \
-inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
+inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
+} \
 inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret){ adj_a += adj_ret; }\
-inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) { }\
+inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
+}\
 inline CUDA_CALLABLE void adj_copysign(T x, T y, T& adj_x, T& adj_y, T adj_ret) \
 { \
     /* copysign(x, y) = |x| * sign(y). d/dx is +1 when signs of x and y agree, */ \
@@ -815,8 +821,14 @@ inline CUDA_CALLABLE void adj_copysign(T x, T y, T& adj_x, T& adj_y, T adj_ret) 
     else \
         adj_x -= adj_ret; \
 } \
-inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) { }\
-inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { }\
+inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
+}\
+inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
+}\
 inline CUDA_CALLABLE void adj_clamp(T x, T a, T b, T& adj_x, T& adj_a, T& adj_b, T adj_ret)\
 {\
     /* Forward expands to fmin(fmax(a, x), b). Apply the chain rule via the */ \
@@ -848,10 +860,7 @@ inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret
         printf("%s:%d - adj_div(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, float(a), float(b), float(adj_a), float(adj_b), float(adj_ret));\
         assert(0);\
     })\
-}\
-inline CUDA_CALLABLE void adj_isnan(const T&, T&, bool) { }\
-inline CUDA_CALLABLE void adj_isinf(const T&, T&, bool) { }\
-inline CUDA_CALLABLE void adj_isfinite(const T&, T&, bool) { }
+}
 
 // copysign(x, y) returns x with the sign bit of y. Lowers to a single
 // instruction on CUDA (libdevice __nv_copysign) and on Clang/GCC (compiler
@@ -1754,12 +1763,30 @@ inline CUDA_CALLABLE void adj_radians(T x, T& adj_x, T adj_ret)\
 {\
     adj_x += T(DEG_TO_RAD) * adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_trunc(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_floor(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret){ }\
-inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret){ }
+inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at half-integer points) */ \
+}\
+inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at half-integer points) */ \
+}\
+inline CUDA_CALLABLE void adj_trunc(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
+}\
+inline CUDA_CALLABLE void adj_floor(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
+}\
+inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
+}\
+inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret) \
+{ \
+    /* MISSINGADJOINT: gradient is 1 between integers (subgradient at integer points) */ \
+}
 
 DECLARE_ADJOINTS(float16)
 #ifndef WP_NO_BFLOAT16
@@ -1859,7 +1886,6 @@ template <typename T> CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, co
 
 // unary boolean negation
 template <typename T> CUDA_CALLABLE inline bool unot(const T& b) { return !b; }
-template <typename T> CUDA_CALLABLE inline void adj_unot(const T& b, T& adj_b, const bool& adj_ret) { }
 
 const int LAUNCH_MAX_DIMS = 4;  // should match types.py
 
@@ -2524,12 +2550,6 @@ template <typename T> inline CUDA_CALLABLE T atomic_xor(T* buf, T value)
 }
 
 
-// for bitwise operations we do not accumulate gradients
-template <typename T> CUDA_CALLABLE inline void adj_atomic_and(T* buf, T* adj_buf, T& value, T& adj_value) { }
-template <typename T> CUDA_CALLABLE inline void adj_atomic_or(T* buf, T* adj_buf, T& value, T& adj_value) { }
-template <typename T> CUDA_CALLABLE inline void adj_atomic_xor(T* buf, T* adj_buf, T& value, T& adj_value) { }
-
-
 }  // namespace wp
 
 
@@ -2728,11 +2748,6 @@ template <typename T> inline CUDA_CALLABLE void expect_eq(const T& actual, const
     }
 }
 
-template <typename T> inline CUDA_CALLABLE void adj_expect_eq(const T& a, const T& b, T& adj_a, T& adj_b)
-{
-    // nop
-}
-
 template <typename T> inline CUDA_CALLABLE void expect_neq(const T& actual, const T& expected)
 {
     if (actual == expected) {
@@ -2742,11 +2757,6 @@ template <typename T> inline CUDA_CALLABLE void expect_neq(const T& actual, cons
         printf("\t Actual: ");
         print(actual);
     }
-}
-
-template <typename T> inline CUDA_CALLABLE void adj_expect_neq(const T& a, const T& b, T& adj_a, T& adj_b)
-{
-    // nop
 }
 
 template <typename T> inline CUDA_CALLABLE void expect_near(const T& actual, const T& expected, const T& tolerance)
@@ -2778,22 +2788,6 @@ inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, 
         print(diff);
     }
 }
-
-template <typename T>
-inline CUDA_CALLABLE void adj_expect_near(
-    const T& actual, const T& expected, const T& tolerance, T& adj_actual, T& adj_expected, T& adj_tolerance
-)
-{
-    // nop
-}
-
-inline CUDA_CALLABLE void adj_expect_near(
-    const vec3& actual, const vec3& expected, float tolerance, vec3& adj_actual, vec3& adj_expected, float adj_tolerance
-)
-{
-    // nop
-}
-
 
 }  // namespace wp
 

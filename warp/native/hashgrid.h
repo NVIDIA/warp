@@ -209,14 +209,6 @@ template <typename Type> CUDA_CALLABLE inline hash_grid_query_t<Type> iter_rever
     return query;
 }
 
-template <typename Type>
-CUDA_CALLABLE inline void adj_iter_reverse(
-    const hash_grid_query_t<Type>& query, hash_grid_query_t<Type>& adj_query, hash_grid_query_t<Type>& adj_ret
-)
-{
-}
-
-
 // hash_grid_point_id is not templated because it only accesses point_ids (int*)
 // which is at the same offset in all HashGrid_t<Type> instantiations
 CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
@@ -225,31 +217,6 @@ CUDA_CALLABLE inline int hash_grid_point_id(uint64_t id, int& index)
     if (grid->point_ids == nullptr)
         return -1;
     return grid->point_ids[index];
-}
-
-template <typename Type>
-CUDA_CALLABLE inline void adj_hash_grid_query(
-    uint64_t id,
-    vec_t<3, Type> pos,
-    Type radius,
-    uint64_t& adj_id,
-    vec_t<3, Type>& adj_pos,
-    Type& adj_radius,
-    hash_grid_query_t<Type>& adj_res
-)
-{
-}
-
-template <typename Type>
-CUDA_CALLABLE inline void adj_hash_grid_query_next(
-    hash_grid_query_t<Type>& query, int& index, hash_grid_query_t<Type>& adj_query, int& adj_index, bool& adj_res
-)
-{
-}
-
-CUDA_CALLABLE inline void
-adj_hash_grid_point_id(uint64_t id, int& index, uint64_t& adj_id, int& adj_index, int& adj_res)
-{
 }
 
 

@@ -85,29 +85,6 @@ inline CUDA_CALLABLE float randn(uint32& state)
     return sqrt(-2.f * log(randf(state) + RANDN_EPSILON)) * cos(2.f * M_PI_F * randf(state));
 }
 
-inline CUDA_CALLABLE void adj_rand_init(int seed, int& adj_seed, uint32 adj_ret) { }
-inline CUDA_CALLABLE void adj_rand_init(int seed, int offset, int& adj_seed, int& adj_offset, uint32 adj_ret) { }
-
-inline CUDA_CALLABLE void adj_randi(uint32& state, uint32& adj_state, int adj_ret) { }
-inline CUDA_CALLABLE void
-adj_randi(uint32& state, int min, int max, uint32& adj_state, int& adj_min, int& adj_max, int adj_ret)
-{
-}
-
-inline CUDA_CALLABLE void adj_randu(uint32& state, uint32& adj_state, uint32 adj_ret) { }
-inline CUDA_CALLABLE void
-adj_randu(uint32& state, uint32 min, uint32 max, uint32& adj_state, uint32& adj_min, uint32& adj_max, uint32 adj_ret)
-{
-}
-
-inline CUDA_CALLABLE void adj_randf(uint32& state, uint32& adj_state, float adj_ret) { }
-inline CUDA_CALLABLE void
-adj_randf(uint32& state, float min, float max, uint32& adj_state, float& adj_min, float& adj_max, float adj_ret)
-{
-}
-
-inline CUDA_CALLABLE void adj_randn(uint32& state, uint32& adj_state, float adj_ret) { }
-
 inline CUDA_CALLABLE int sample_cdf(uint32& state, const array_t<float>& cdf)
 {
     float u = randf(state);
@@ -207,21 +184,6 @@ inline CUDA_CALLABLE vec4 sample_unit_hypercube(uint32& state)
     float d = randf(state) - 0.5f;
     return vec4(a, b, c, d);
 }
-
-inline CUDA_CALLABLE void
-adj_sample_cdf(uint32& state, const array_t<float>& cdf, uint32& adj_state, array_t<float>& adj_cdf, const int& adj_ret)
-{
-}
-inline CUDA_CALLABLE void adj_sample_triangle(uint32& state, uint32& adj_state, const vec2& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_ring(uint32& state, uint32& adj_state, const vec2& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_disk(uint32& state, uint32& adj_state, const vec2& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_sphere_surface(uint32& state, uint32& adj_state, const vec3& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_sphere(uint32& state, uint32& adj_state, const vec3& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_hemisphere_surface(uint32& state, uint32& adj_state, const vec3& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_hemisphere(uint32& state, uint32& adj_state, const vec3& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_square(uint32& state, uint32& adj_state, const vec2& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_cube(uint32& state, uint32& adj_state, const vec3& adj_ret) { }
-inline CUDA_CALLABLE void adj_sample_unit_hypercube(uint32& state, uint32& adj_state, const vec4& adj_ret) { }
 
 /*
  * log-gamma function to support some of these distributions. The
@@ -337,20 +299,6 @@ inline CUDA_CALLABLE uint32 poisson(uint32& state, float lam)
     } else {
         return random_poisson_mult(state, lam);
     }
-}
-
-inline CUDA_CALLABLE void adj_random_loggam(float x, float& adj_x, const float adj_ret) { }
-inline CUDA_CALLABLE void
-random_poisson_mult(uint32& state, float lam, uint32& adj_state, float& adj_lam, const uint32& adj_ret)
-{
-}
-inline CUDA_CALLABLE void
-adj_random_poisson(uint32& state, float lam, uint32& adj_state, float& adj_lam, const uint32& adj_ret)
-{
-}
-inline CUDA_CALLABLE void
-adj_poisson(uint32& state, float lam, uint32& adj_state, float& adj_lam, const uint32& adj_ret)
-{
 }
 
 }  // namespace wp

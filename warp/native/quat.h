@@ -99,29 +99,14 @@ template <typename Type> inline bool CUDA_CALLABLE isfinite(const quat_t<Type>& 
     return isfinite(q.x) && isfinite(q.y) && isfinite(q.z) && isfinite(q.w);
 }
 
-template <typename Type>
-inline void CUDA_CALLABLE adj_isfinite(const quat_t<Type>& q, quat_t<Type>& adj_q, const bool& adj_ret)
-{
-}
-
 template <typename Type> inline bool CUDA_CALLABLE isnan(const quat_t<Type>& q)
 {
     return isnan(q.x) || isnan(q.y) || isnan(q.z) || isnan(q.w);
 }
 
-template <typename Type>
-inline void CUDA_CALLABLE adj_isnan(const quat_t<Type>& q, quat_t<Type>& adj_q, const bool& adj_ret)
-{
-}
-
 template <typename Type> inline bool CUDA_CALLABLE isinf(const quat_t<Type>& q)
 {
     return isinf(q.x) || isinf(q.y) || isinf(q.z) || isinf(q.w);
-}
-
-template <typename Type>
-inline void CUDA_CALLABLE adj_isinf(const quat_t<Type>& q, quat_t<Type>& adj_q, const bool& adj_ret)
-{
 }
 
 template <typename Type> inline CUDA_CALLABLE quat_t<Type> atomic_add(quat_t<Type>* addr, quat_t<Type> value)
@@ -1629,11 +1614,6 @@ template <typename Type = float32> inline CUDA_CALLABLE quat_t<Type> quat_identi
 template <typename Type> CUDA_CALLABLE inline int len(const quat_t<Type>& x) { return 4; }
 
 template <typename Type>
-CUDA_CALLABLE inline void adj_len(const quat_t<Type>& x, quat_t<Type>& adj_x, const int& adj_ret)
-{
-}
-
-template <typename Type>
 inline CUDA_CALLABLE void expect_near(const quat_t<Type>& actual, const quat_t<Type>& expected, const Type& tolerance)
 {
     Type diff(0);
@@ -1650,19 +1630,6 @@ inline CUDA_CALLABLE void expect_near(const quat_t<Type>& actual, const quat_t<T
         printf("    Max absolute difference: ");
         print(diff);
     }
-}
-
-template <typename Type>
-inline CUDA_CALLABLE void adj_expect_near(
-    const quat_t<Type>& actual,
-    const quat_t<Type>& expected,
-    Type tolerance,
-    quat_t<Type>& adj_actual,
-    quat_t<Type>& adj_expected,
-    Type adj_tolerance
-)
-{
-    // nop
 }
 
 }  // namespace wp

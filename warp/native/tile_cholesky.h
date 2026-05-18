@@ -484,10 +484,12 @@ template <bool Upper, typename Fwd, typename TileA> CUDA_CALLABLE void tile_chol
     tile_cholesky_inplace_impl<Upper>(fun_forward, A);
 }
 
-#define adj_tile_cholesky_inplace(function_name, A, adj_function_name, adj_A) \
-     do { \
-         assert(false); \
-     } while (0)
+template <bool Upper, typename Fwd, typename TileA, typename AdjFwd, typename AdjTileA>
+void adj_tile_cholesky_inplace(Fwd fun_forward, TileA& A, AdjFwd adj_fun_forward, AdjTileA& adj_A)
+{
+    // MISSINGADJOINT: apply Murray 2016 derivative in place; on entry A holds L
+    // (lower) or U (upper), adj_A holds adj_L/adj_U; on exit adj_A holds adj of the original symmetric input
+}
 
 
 }  // namespace wp

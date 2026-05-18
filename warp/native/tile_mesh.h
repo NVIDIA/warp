@@ -358,33 +358,6 @@ tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
     return mesh_query_aabb_thread_block_impl(id, lower, upper);
 }
 
-// Stub
-CUDA_CALLABLE inline void adj_tile_mesh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_thread_block_t&
-)
-{
-}
-
-// stub
-template <int Length>
-CUDA_CALLABLE inline void adj_tile_mesh_query_aabb_next_impl(
-    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile<int>(0))&
-)
-{
-}
-
-// stub for the wrapper
-CUDA_CALLABLE inline void adj_tile_mesh_query_aabb_next(
-    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile<int>(0))&
-)
-{
-}
-
-CUDA_CALLABLE inline void
-adj_tile_query_valid(const mesh_query_aabb_thread_block_t&, mesh_query_aabb_thread_block_t&, bool&)
-{
-}
-
 #else
 
 // CPU implementation: falls back to single-threaded query, returns index only in first element
@@ -423,30 +396,6 @@ inline mesh_query_aabb_thread_block_t tile_mesh_query_aabb(uint64_t id, const ve
     // On CPU, this is just mesh_query_aabb since mesh_query_aabb_thread_block_t = mesh_query_aabb_t
     return mesh_query_aabb(id, lower, upper);
 }
-
-// Stub
-inline void adj_tile_mesh_query_aabb(
-    uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_thread_block_t&
-)
-{
-}
-
-// stub
-template <int Length>
-inline void adj_tile_mesh_query_aabb_next_impl(
-    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile_register<int, Length>())&
-)
-{
-}
-
-// stub for the wrapper
-inline void adj_tile_mesh_query_aabb_next(
-    mesh_query_aabb_thread_block_t& query, mesh_query_aabb_thread_block_t&, decltype(tile_register<int, 1>())&
-)
-{
-}
-
-inline void adj_tile_query_valid(const mesh_query_aabb_thread_block_t&, mesh_query_aabb_thread_block_t&, bool&) { }
 
 #endif  // __CUDA_ARCH__
 

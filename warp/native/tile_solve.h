@@ -207,15 +207,40 @@ void tile_lower_solve_inplace(Fwd fun_forward, TileL& L, TileY& y)
 #endif
 }
 
-#define adj_tile_lower_solve(function_name, L, y, z, adj_function_name, adj_L, adj_y, adj_z, adj_ret) \
-     do { \
-         assert(false); \
-     } while (0)
+template <
+    typename Fwd,
+    typename TileL,
+    typename TileY,
+    typename TileZ,
+    typename AdjFwd,
+    typename AdjTileL,
+    typename AdjTileY,
+    typename AdjTileZ,
+    typename AdjRet>
+void adj_tile_lower_solve(
+    Fwd fun_forward,
+    TileL& L,
+    TileY& y,
+    TileZ& z,
+    AdjFwd adj_fun_forward,
+    AdjTileL& adj_L,
+    AdjTileY& adj_y,
+    AdjTileZ& adj_z,
+    AdjRet& adj_ret
+)
+{
+    // MISSINGADJOINT: adjoint is the transposed (upper) solve L^T x = adj_ret; then adj_y
+    // += x and adj_L -= outer(x, z)
+}
 
-#define adj_tile_lower_solve_inplace(function_name, L, y, adj_function_name, adj_L, adj_y) \
-     do { \
-         assert(false); \
-     } while (0)
+template <typename Fwd, typename TileL, typename TileY, typename AdjFwd, typename AdjTileL, typename AdjTileY>
+void adj_tile_lower_solve_inplace(
+    Fwd fun_forward, TileL& L, TileY& y, AdjFwd adj_fun_forward, AdjTileL& adj_L, AdjTileY& adj_y
+)
+{
+    // MISSINGADJOINT: same math as adj_tile_lower_solve but operating in place on
+    // adj_y; adj_L -= outer(adj_y_new, y_pre_solve)
+}
 
 
 template <typename Fwd, typename TileU, typename TileZ, typename TileX>
@@ -263,15 +288,40 @@ void tile_upper_solve_inplace(Fwd fun_forward, TileU& U, TileZ& z)
 #endif
 }
 
-#define adj_tile_upper_solve(function_name, U, z, x, adj_function_name, adj_U, adj_z, adj_x, adj_ret) \
-     do { \
-         assert(false); \
-     } while (0)
+template <
+    typename Fwd,
+    typename TileU,
+    typename TileZ,
+    typename TileX,
+    typename AdjFwd,
+    typename AdjTileU,
+    typename AdjTileZ,
+    typename AdjTileX,
+    typename AdjRet>
+void adj_tile_upper_solve(
+    Fwd fun_forward,
+    TileU& U,
+    TileZ& z,
+    TileX& x,
+    AdjFwd adj_fun_forward,
+    AdjTileU& adj_U,
+    AdjTileZ& adj_z,
+    AdjTileX& adj_x,
+    AdjRet& adj_ret
+)
+{
+    // MISSINGADJOINT: adjoint is the transposed (lower) solve U^T y = adj_ret; then adj_z
+    // += y and adj_U -= outer(x, y)
+}
 
-#define adj_tile_upper_solve_inplace(function_name, U, z, adj_function_name, adj_U, adj_z) \
-     do { \
-         assert(false); \
-     } while (0)
+template <typename Fwd, typename TileU, typename TileZ, typename AdjFwd, typename AdjTileU, typename AdjTileZ>
+void adj_tile_upper_solve_inplace(
+    Fwd fun_forward, TileU& U, TileZ& z, AdjFwd adj_fun_forward, AdjTileU& adj_U, AdjTileZ& adj_z
+)
+{
+    // MISSINGADJOINT: same math as adj_tile_upper_solve but operating in place on
+    // adj_z; adj_U -= outer(z_post_solve, adj_z_new)
+}
 
 
 template <bool Upper, typename Fwd, typename TileA, typename TileY, typename TileX>
@@ -312,15 +362,48 @@ void tile_cholesky_solve_inplace(Fwd fun_forward, TileA& A, TileY& Y)
 #endif
 }
 
-#define adj_tile_cholesky_solve(function_name, A, Y, X, adj_function_name, adj_A, adj_Y, adj_X, adj_ret) \
-     do { \
-         assert(false); \
-     } while (0)
+template <
+    bool Upper,
+    typename Fwd,
+    typename TileA,
+    typename TileY,
+    typename TileX,
+    typename AdjFwd,
+    typename AdjTileA,
+    typename AdjTileY,
+    typename AdjTileX,
+    typename AdjRet>
+void adj_tile_cholesky_solve(
+    Fwd fun_forward,
+    TileA& A,
+    TileY& Y,
+    TileX& X,
+    AdjFwd adj_fun_forward,
+    AdjTileA& adj_A,
+    AdjTileY& adj_Y,
+    AdjTileX& adj_X,
+    AdjRet& adj_ret
+)
+{
+    // MISSINGADJOINT: implicit differentiation through A X = Y: solve A Z = adj_ret,
+    // then adj_Y += Z and adj_A -= sym(outer(Z, X))
+}
 
-#define adj_tile_cholesky_solve_inplace(function_name, A, Y, adj_function_name, adj_A, adj_Y) \
-     do { \
-         assert(false); \
-     } while (0)
+template <
+    bool Upper,
+    typename Fwd,
+    typename TileA,
+    typename TileY,
+    typename AdjFwd,
+    typename AdjTileA,
+    typename AdjTileY>
+void adj_tile_cholesky_solve_inplace(
+    Fwd fun_forward, TileA& A, TileY& Y, AdjFwd adj_fun_forward, AdjTileA& adj_A, AdjTileY& adj_Y
+)
+{
+    // MISSINGADJOINT: same math as adj_tile_cholesky_solve operating in place
+    // on adj_Y; adj_A -= sym(outer(adj_Y_new, Y_post_solve))
+}
 
 
 }  // namespace wp

@@ -1033,14 +1033,16 @@ template <typename TileK, typename TileV> void tile_sort(TileK& t, TileV& t2, in
 
 template <typename TileK, typename TileV> inline void adj_tile_sort(TileK& t, TileV& t2, TileK& adj_t1, TileV& adj_t2)
 {
-    // todo: general purpose sort gradients not implemented
+    // MISSINGADJOINT: track permutation indices in forward pass, apply inverse permutation to
+    // adj outputs
 }
 
 template <typename TileK, typename TileV>
 inline void
 adj_tile_sort(TileK& t, TileV& t2, int start, int length, TileK& adj_t1, TileV& adj_t2, int adj_start, int adj_length)
 {
-    // todo: general purpose sort gradients not implemented
+    // MISSINGADJOINT: track permutation indices in forward pass, apply inverse
+    // permutation to adj outputs within [start, start+length)
 }
 
 }  // namespace wp

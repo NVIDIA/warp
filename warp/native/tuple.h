@@ -64,11 +64,6 @@ template <int Index, typename... Args> CUDA_CALLABLE inline auto extract(const t
 
 template <typename... Args> CUDA_CALLABLE inline int len(const tuple_t<Args...>& t) { return t.size(); }
 
-template <typename... Args>
-CUDA_CALLABLE inline void adj_len(const tuple_t<Args...>& t, tuple_t<Args...>& adj_t, int adj_ret)
-{
-}
-
 template <typename... Args> CUDA_CALLABLE inline void print(const tuple_t<Args...>& t)
 {
     t.apply([&](auto a) { print(a); });
@@ -93,6 +88,7 @@ CUDA_CALLABLE inline tuple_t<Head, Tail...> add(const tuple_t<Head, Tail...>& a,
 CUDA_CALLABLE inline void
 adj_add(const tuple_t<>& a, const tuple_t<>& b, tuple_t<>& adj_a, tuple_t<>& adj_b, const tuple_t<>& adj_ret)
 {
+    // nop: base case for empty tuple recursion
 }
 
 template <typename Head, typename... Tail>

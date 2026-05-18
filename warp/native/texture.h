@@ -804,19 +804,23 @@ template <typename T> CUDA_CALLABLE T texture_sample(const texture3d_t& tex, flo
     return texture_sample_helper<T>::sample_3d(tex, u, v, w);
 }
 
-// Adjoint stubs for texture sampling (non-differentiable for now)
+// Adjoint stubs for texture sampling
 template <typename T>
 CUDA_CALLABLE void
 adj_texture_sample(const texture1d_t& tex, float u, texture1d_t& adj_tex, float& adj_u, const T& adj_ret)
 {
-    // Texture sampling is not differentiable in this implementation
+    // MISSINGADJOINT: differentiable for linear interpolation;
+    // route adj_ret to neighboring texels (weighted by interpolation factors) and to adj_u
+    // (via the interpolation derivative along U).
 }
 
 template <typename T>
 CUDA_CALLABLE void
 adj_texture_sample(const texture2d_t& tex, const vec2f& uv, texture2d_t& adj_tex, vec2f& adj_uv, const T& adj_ret)
 {
-    // Texture sampling is not differentiable in this implementation
+    // MISSINGADJOINT: differentiable for linear interpolation;
+    // route adj_ret to the four neighboring texels (weighted by bilinear interpolation factors)
+    // and to adj_uv (via the interpolation derivatives along U and V).
 }
 
 template <typename T>
@@ -824,14 +828,18 @@ CUDA_CALLABLE void adj_texture_sample(
     const texture2d_t& tex, float u, float v, texture2d_t& adj_tex, float& adj_u, float& adj_v, const T& adj_ret
 )
 {
-    // Texture sampling is not differentiable in this implementation
+    // MISSINGADJOINT: differentiable for linear interpolation;
+    // route adj_ret to the four neighboring texels (weighted by bilinear interpolation factors)
+    // and to adj_u/adj_v (via the interpolation derivatives along each axis).
 }
 
 template <typename T>
 CUDA_CALLABLE void
 adj_texture_sample(const texture3d_t& tex, const vec3f& uvw, texture3d_t& adj_tex, vec3f& adj_uvw, const T& adj_ret)
 {
-    // Texture sampling is not differentiable in this implementation
+    // MISSINGADJOINT: differentiable for linear interpolation;
+    // route adj_ret to the eight neighboring texels (weighted by trilinear interpolation factors)
+    // and to adj_uvw (via the interpolation derivatives along U, V, and W).
 }
 
 template <typename T>
@@ -847,7 +855,9 @@ CUDA_CALLABLE void adj_texture_sample(
     const T& adj_ret
 )
 {
-    // Texture sampling is not differentiable in this implementation
+    // MISSINGADJOINT: differentiable for linear interpolation;
+    // route adj_ret to the eight neighboring texels (weighted by trilinear interpolation factors)
+    // and to adj_u/adj_v/adj_w (via the interpolation derivatives along each axis).
 }
 
 // Type aliases for code generation

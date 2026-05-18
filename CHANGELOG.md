@@ -90,6 +90,9 @@
   (e.g. 16 KiB at `n=32`, 64 KiB at `n=64` in `float64`), so large differentiated Cholesky tiles can
   hit shared-memory limits where the previous path would not
   ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
+- Remove placeholder adjoints for built-ins that are not mathematically differentiable. No
+  user-visible behavior change for code that respects the `is_differentiable=False` contract
+  ([GH-988](https://github.com/NVIDIA/warp/issues/988)).
 
 ### Fixed
 

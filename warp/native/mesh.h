@@ -2368,40 +2368,6 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
     );
 }
 
-CUDA_CALLABLE inline void adj_mesh_get_group_root(uint64_t id, int group_id, uint64_t&, int&, int&) { }
-
-CUDA_CALLABLE inline void adj_mesh_query_ray_anyhit(
-    uint64_t id,
-    const vec3& start,
-    const vec3& dir,
-    float max_t,
-    int root,
-    const bool& ret,
-    uint64_t adj_id,
-    vec3& adj_start,
-    vec3& adj_dir,
-    float& adj_max_t,
-    int& adj_root,
-    bool& adj_ret
-)
-{
-}
-
-CUDA_CALLABLE inline void adj_mesh_query_ray_count_intersections(
-    uint64_t id,
-    const vec3& start,
-    const vec3& dir,
-    int root,
-    const int& ret,
-    uint64_t adj_id,
-    vec3& adj_start,
-    vec3& adj_dir,
-    int& adj_root,
-    int& adj_ret
-)
-{
-}
-
 // Stores the result of querying the closest point on a mesh.
 struct mesh_query_ray_t {
     CUDA_CALLABLE mesh_query_ray_t()
@@ -2633,12 +2599,6 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& 
     return query;
 }
 
-// Stub
-CUDA_CALLABLE inline void
-adj_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
-{
-}
-
 CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
 {
     Mesh mesh = query.mesh;
@@ -2715,19 +2675,6 @@ CUDA_CALLABLE inline mesh_query_aabb_t iter_reverse(const mesh_query_aabb_t& que
     // can't reverse BVH queries, users should not rely on neighbor ordering
     return query;
 }
-
-CUDA_CALLABLE inline void
-adj_iter_reverse(const mesh_query_aabb_t& query, mesh_query_aabb_t& adj_query, mesh_query_aabb_t& adj_ret)
-{
-}
-
-
-// stub
-CUDA_CALLABLE inline void
-adj_mesh_query_aabb_next(mesh_query_aabb_t& query, int& index, mesh_query_aabb_t&, int&, bool&)
-{
-}
-
 
 CUDA_CALLABLE inline vec3 mesh_eval_position(uint64_t id, int tri, float u, float v)
 {
@@ -2855,7 +2802,8 @@ CUDA_CALLABLE inline vec3 mesh_eval_face_normal(uint64_t id, int tri)
 CUDA_CALLABLE inline void
 adj_mesh_eval_face_normal(uint64_t id, int tri, uint64_t& adj_id, int& adj_tri, const vec3& adj_ret)
 {
-    // no-op
+    // MISSINGADJOINT: backprop through normalize(cross(q-p, r-p)) to
+    // mesh.points.grad slots for the three face vertex indices
 }
 
 CUDA_CALLABLE inline vec3 mesh_get_point(uint64_t id, int index)
@@ -2879,7 +2827,8 @@ CUDA_CALLABLE inline vec3 mesh_get_point(uint64_t id, int index)
 CUDA_CALLABLE inline void
 adj_mesh_get_point(uint64_t id, int index, uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
 {
-    // no-op
+    // MISSINGADJOINT: atomic-add adj_ret into mesh.points.grad[index] when the gradient
+    // buffer is allocated
 }
 
 CUDA_CALLABLE inline vec3 mesh_get_velocity(uint64_t id, int index)
@@ -2903,7 +2852,8 @@ CUDA_CALLABLE inline vec3 mesh_get_velocity(uint64_t id, int index)
 CUDA_CALLABLE inline void
 adj_mesh_get_velocity(uint64_t id, int index, uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
 {
-    // no-op
+    // MISSINGADJOINT: atomic-add adj_ret into mesh.velocities.grad[index] when the
+    // gradient buffer is allocated
 }
 
 CUDA_CALLABLE inline int mesh_get_index(uint64_t id, int face_vertex_index)
@@ -2916,12 +2866,6 @@ CUDA_CALLABLE inline int mesh_get_index(uint64_t id, int face_vertex_index)
     assert(face_vertex_index < mesh.num_tris * 3);
 
     return mesh.indices[face_vertex_index];
-}
-
-CUDA_CALLABLE inline void
-adj_mesh_get_index(uint64_t id, int index, uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
-{
-    // no-op
 }
 
 CUDA_CALLABLE bool mesh_get_descriptor(uint64_t id, Mesh& mesh);
