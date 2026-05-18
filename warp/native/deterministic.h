@@ -171,7 +171,14 @@ inline CUDA_CALLABLE bool is_counter_store_target(det_ctx& ctx, const void* ptr)
 inline CUDA_CALLABLE bool is_global_store_target(const void* ptr)
 {
 #ifdef __CUDA_ARCH__
+#if defined(__clang__)
+    uint64_t addr = reinterpret_cast<uint64_t>(ptr);
+    unsigned int result = 0;
+    asm volatile("{ .reg .pred p; isspacep.global p, %1; selp.u32 %0, 1, 0, p; }" : "=r"(result) : "l"(addr));
+    return result != 0;
+#else
     return __isGlobal(ptr) != 0;
+#endif
 #else
     (void)ptr;
     return true;
