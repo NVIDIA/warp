@@ -615,6 +615,8 @@ propagate gradients instead of silently dropping them.
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1430">GH-1430</a>).</p></li>
 <li><p>Fix tile reassignment from register storage to shared storage after <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1439">GH-1439</a>).</p></li>
+<li><p>Fix lambda source extraction for parenthesized multi-line lambda bodies
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1351">GH-1351</a>).</p></li>
 <li><p>Fix memory leak with retained graph allocations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1429">GH-1429</a>).</p></li>
 <li><p>Fix a data race in <code class="docutils literal notranslate"><span class="pre">wp.ScopedMemoryTracker.report()</span></code> that could corrupt the report when called
 concurrently from multiple threads (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1415">GH-1415</a>).</p></li>
