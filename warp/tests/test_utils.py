@@ -338,10 +338,29 @@ def test_array_cast_error_unsupported_partial_cast(test, device):
         wp.utils.array_cast(values, result, count=1)
 
 
+def parenthesized_multiline_lambda():
+    # qd is intentionally unused to match a two-argument callback signature.
+    # fmt: off
+    return lambda q, qd: (
+        q[0] == 0.0
+        and q[1] == 0.0
+    )
+    # fmt: on
+
+
 devices = get_test_devices()
 
 
 class TestUtils(unittest.TestCase):
+    def test_create_warp_function_parenthesized_multiline_lambda(self):
+        original_fn = parenthesized_multiline_lambda()
+        created_fn, _ = wp.utils.create_warp_function(original_fn)
+
+        self.assertTrue(callable(created_fn))
+        q = (0.0, 0.0)
+        qd = (0.0, 0.0)
+        self.assertEqual(original_fn(q, qd), created_fn(q, qd))
+
     def test_warn(self):
         # Clear any state from prior tests in the same process.
         from warp._src import logger as _logger  # noqa: PLC0415

@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import sys
 import unittest
 
@@ -21,6 +22,16 @@ def test_expect():
 
     wp.expect_eq(wp.mat22(1.0, 2.0, 3.0, 4.0), wp.mat22(1.0, 2.0, 3.0, 4.0))
     wp.expect_neq(wp.mat22(1.0, 2.0, 3.0, 4.0), wp.mat22(2.0, 3.0, 4.0, 5.0))
+
+
+def parenthesized_multiline_lambda():
+    # qd is intentionally unused to match a two-argument callback signature.
+    # fmt: off
+    return lambda q, qd: (
+        q[0] == 0.0
+        and q[1] == 0.0
+    )
+    # fmt: on
 
 
 @wp.kernel
@@ -1311,7 +1322,17 @@ def test_augassign_no_double_eval_both(test, device):
 
 
 class TestCodeGen(unittest.TestCase):
-    pass
+    def test_extract_lambda_source_parenthesized_multiline_body(self):
+        from warp._src.codegen import Adjoint  # noqa: PLC0415
+
+        body = Adjoint.extract_lambda_source(parenthesized_multiline_lambda(), only_body=True)
+
+        self.assertIsNotNone(body)
+        self.assertIn("\n", body)
+        self.assertTrue(body.strip().startswith("("))
+        self.assertTrue(body.strip().endswith(")"))
+        self.assertIn("q[0] == 0.0", body)
+        ast.parse(f"def generated(q, qd):\n    return {body}\n")
 
 
 devices = get_test_devices()

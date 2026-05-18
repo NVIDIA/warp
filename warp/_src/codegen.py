@@ -4172,6 +4172,12 @@ class Adjoint:
                 if only_body:
                     # extract the body of the lambda function
                     lambda_source = Adjoint.extract_node_source_from_lines(source_lines, node.body)
+                    if lambda_source is not None and "\n" in lambda_source:
+                        try:
+                            # Probe parseability; missing outer parentheses are the only fixable case.
+                            ast.parse(lambda_source, mode="eval")
+                        except SyntaxError:
+                            lambda_source = f"({lambda_source})"
                 else:
                     # extract the entire lambda function
                     lambda_source = Adjoint.extract_node_source_from_lines(source_lines, node)
