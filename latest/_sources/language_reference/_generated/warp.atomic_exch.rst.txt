@@ -43,7 +43,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
    
@@ -92,7 +91,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
    
@@ -141,7 +139,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Atomically exchange ``value`` with ``arr[i,j,k,l]`` and return the old value.
    

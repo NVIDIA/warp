@@ -8,6 +8,5 @@
 
       * Kernel
       * Python
-      * Differentiable
 
    Sample the :class:`warp.int32` volume given by ``id`` at the volume local-space point ``uvw``.

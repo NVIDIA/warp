@@ -7,7 +7,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -24,7 +23,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -41,7 +39,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -58,7 +55,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -75,7 +71,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -92,7 +87,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -109,7 +103,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -126,7 +119,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -143,7 +135,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``cond`` is ``False`` then return ``value_if_false``, otherwise return ``value_if_true``.
    
@@ -160,7 +151,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Select between two arguments, if ``arr`` is null then return ``value_if_false``, otherwise return ``value_if_true``.
    
