@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # CHANGELOG Language Review Examples
 
 Loaded during Phase 5a of the skill. Use these examples to calibrate the language-review pass (which renders as the **CHANGELOG Review Notes** appendix in the report): flagging entries whose language would confuse end users.

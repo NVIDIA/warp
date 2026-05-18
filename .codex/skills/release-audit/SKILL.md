@@ -1,4 +1,6 @@
 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 name: release-audit
 description: "Generate a Warp release audit report (pre-release or RC, auto-detected from version string and head ref)."
 ---

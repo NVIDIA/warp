@@ -1,4 +1,6 @@
 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 name: release-notes
 description: "Generate a starting-point GitHub release notes draft for an upcoming Warp release (feature or bugfix, auto-detected from the version). Run from a release branch, or pass a branch / git ref as the argument."
 ---

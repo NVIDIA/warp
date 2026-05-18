@@ -1,4 +1,6 @@
 ---
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 name: changelog-audit
 description: "Audit Warp CHANGELOG.md before a release: recover lost entries, sort by user impact, refine entry language, line-wrap, and (release-branch mode) bump compare refs."
 ---

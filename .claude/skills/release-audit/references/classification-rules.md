@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Classification Helpers
 
 This reference is loaded during Phases 3, 4, and 5 of the skill. It defines concrete path and naming rules Claude relies on when analyzing commits and CHANGELOG entries.

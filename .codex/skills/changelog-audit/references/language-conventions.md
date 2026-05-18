@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # CHANGELOG Language Conventions
 
 Loaded during the language pass phase specified in `SKILL.md`. Defines what belongs in CHANGELOG.md and what doesn't, the symbol formatting conventions, the markdown-vs-RST backtick rule, the experimental-feature flag convention, the imperative-mood rule, hyphenation guidance, the GH-link tail position, the internal-jargon flag list, the user-perspective subagent prompt, and worked rewrite examples.

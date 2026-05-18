@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Impact Sorting Rubric
 
 Loaded by Phase 4. Use these criteria to score each CHANGELOG entry's user-impact when sorting within a subsection. Sort high → mid → low; within a tier, prefer topic clustering as a soft tie-breaker.

@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Report Rendering Rules
 
 Loaded during Phase 6b. These are hard constraints on the generated report — every rule applies to every line of output Claude writes.

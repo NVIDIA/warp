@@ -1,4 +1,7 @@
 <!--
+SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+SPDX-License-Identifier: Apache-2.0
+
 Bugfix release template (X.Y.Z, Z > 0). Fill in every {{PLACEHOLDER}}; drop
 sections whose placeholders resolve to "no content" rather than leaving an empty
 heading.
