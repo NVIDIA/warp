@@ -68,14 +68,6 @@ CUDA_CALLABLE inline range_t range(int start, int end, int step)
 }
 
 
-CUDA_CALLABLE inline void adj_range(int end, int adj_end, range_t& adj_ret) { }
-CUDA_CALLABLE inline void adj_range(int start, int end, int adj_start, int adj_end, range_t& adj_ret) { }
-CUDA_CALLABLE inline void
-adj_range(int start, int end, int step, int adj_start, int adj_end, int adj_step, range_t& adj_ret)
-{
-}
-
-
 CUDA_CALLABLE inline int iter_next(range_t& r)
 {
     int iter = r.i;
@@ -120,7 +112,5 @@ CUDA_CALLABLE inline range_t iter_reverse(const range_t& r)
 
     return rev;
 }
-
-CUDA_CALLABLE inline void adj_iter_reverse(const range_t& r, range_t& adj_r, range_t& adj_ret) { }
 
 }  // namespace wp

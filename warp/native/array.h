@@ -160,8 +160,6 @@ struct shape_t {
 
 CUDA_CALLABLE inline int extract(const shape_t& s, int i) { return s.dims[i]; }
 
-CUDA_CALLABLE inline void adj_extract(const shape_t& s, int i, const shape_t& adj_s, int adj_i, int adj_ret) { }
-
 inline CUDA_CALLABLE void print(shape_t s)
 {
     // todo: only print valid dims, currently shape has a fixed size

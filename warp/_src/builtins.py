@@ -726,6 +726,7 @@ add_builtin(
     Returns:
         -1 for negative elements of ``x`` and 1 otherwise.""",
     group="Vector Math",
+    is_differentiable=False,
 )
 
 
@@ -1046,6 +1047,7 @@ for t in scalar_types_all:
             group="Scalar Math",
             export=False,
             namespace="wp::" if t is not bool else "",
+            is_differentiable=type_is_float(t),
         )
 
 
@@ -6749,6 +6751,7 @@ add_builtin(
     doc="",
     group="Utility",
     hidden=True,
+    is_differentiable=False,
 )
 
 
@@ -6818,6 +6821,7 @@ add_builtin(
     doc="WIP",
     group="Utility",
     hidden=True,
+    is_differentiable=False,
 )
 
 
@@ -8352,9 +8356,23 @@ add_builtin(
 # ---------------------------------
 # Ranges
 
-add_builtin("range", input_types={"end": int}, value_type=range_t, group="Utility", export=False, hidden=True)
 add_builtin(
-    "range", input_types={"start": int, "end": int}, value_type=range_t, group="Utility", export=False, hidden=True
+    "range",
+    input_types={"end": int},
+    value_type=range_t,
+    group="Utility",
+    export=False,
+    hidden=True,
+    is_differentiable=False,
+)
+add_builtin(
+    "range",
+    input_types={"start": int, "end": int},
+    value_type=range_t,
+    group="Utility",
+    export=False,
+    hidden=True,
+    is_differentiable=False,
 )
 add_builtin(
     "range",
@@ -8363,6 +8381,7 @@ add_builtin(
     group="Utility",
     export=False,
     hidden=True,
+    is_differentiable=False,
 )
 
 # ---------------------------------
@@ -8659,6 +8678,7 @@ add_builtin(
     value_type=int,
     group="Volumes",
     doc="""Sample the :class:`warp.int32` volume given by ``id`` at the volume local-space point ``uvw``.""",
+    is_differentiable=False,
 )
 
 add_builtin(
@@ -9559,6 +9579,7 @@ add_builtin(
 
     .. deprecated:: 1.7""",
     group="Utility",
+    is_differentiable=False,
 )
 for t in int_types:
     add_builtin(
@@ -9573,6 +9594,7 @@ for t in int_types:
 
     .. deprecated:: 1.7""",
         group="Utility",
+        is_differentiable=False,
     )
 add_builtin(
     "select",
@@ -9586,6 +9608,7 @@ add_builtin(
 
     .. deprecated:: 1.7""",
     group="Utility",
+    is_differentiable=False,
 )
 
 
@@ -10400,6 +10423,7 @@ for array_type in array_types:
         The operation is only atomic on a per-component basis for vectors and matrices.""",
         group="Utility",
         skip_replay=True,
+        is_differentiable=False,
     )
 
     add_builtin(
@@ -10712,7 +10736,14 @@ add_builtin(
     group="Utility",
 )
 
-add_builtin("extract", input_types={"s": shape_t, "i": int}, value_type=int, hidden=True, group="Utility")
+add_builtin(
+    "extract",
+    input_types={"s": shape_t, "i": int},
+    value_type=int,
+    hidden=True,
+    group="Utility",
+    is_differentiable=False,
+)
 
 
 def vector_index_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):

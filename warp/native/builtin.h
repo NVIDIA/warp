@@ -561,15 +561,6 @@ CUDA_CALLABLE inline void adj_cast_float(float64 x, float64& adj_x, float adj_re
 
 template <typename T> CUDA_CALLABLE inline void adj_cast_int(T x, T& adj_x, int adj_ret) { }
 
-template <typename T> CUDA_CALLABLE inline void adj_int8(T, T&, int8) { }
-template <typename T> CUDA_CALLABLE inline void adj_uint8(T, T&, uint8) { }
-template <typename T> CUDA_CALLABLE inline void adj_int16(T, T&, int16) { }
-template <typename T> CUDA_CALLABLE inline void adj_uint16(T, T&, uint16) { }
-template <typename T> CUDA_CALLABLE inline void adj_int32(T, T&, int32) { }
-template <typename T> CUDA_CALLABLE inline void adj_uint32(T, T&, uint32) { }
-template <typename T> CUDA_CALLABLE inline void adj_int64(T, T&, int64) { }
-template <typename T> CUDA_CALLABLE inline void adj_uint64(T, T&, uint64) { }
-
 
 template <typename T> CUDA_CALLABLE inline void adj_float16(T x, T& adj_x, float16 adj_ret) { adj_x += T(adj_ret); }
 #ifndef WP_NO_BFLOAT16
@@ -2541,17 +2532,6 @@ template <typename T> CUDA_CALLABLE inline void adj_atomic_xor(T* buf, T* adj_bu
 
 }  // namespace wp
 
-
-// bool and printf are defined outside of the wp namespace in crt.h, hence
-// their adjoint counterparts are also defined in the global namespace.
-template <typename T> CUDA_CALLABLE inline void adj_bool(T, T&, bool) { }
-// Variadic functions are not supported in CUDA device code when compiled with Clang.
-// Since adj_printf is a no-op, we use a template overload to accept and ignore any arguments.
-#if defined(__clang__) && defined(__CUDA__)
-template <typename... Args> inline CUDA_CALLABLE void adj_printf(const char* fmt, Args...) { }
-#else
-inline CUDA_CALLABLE void adj_printf(const char* fmt, ...) { }
-#endif
 
 // clang-format off
 // These includes must remain in this order due to dependencies

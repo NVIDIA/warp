@@ -1318,6 +1318,14 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE vec_t<Length, Typ
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void
+adj_sign(const vec_t<Length, Type>& v, vec_t<Length, Type>& adj_v, const vec_t<Length, Type>& adj_ret)
+{
+    // MISSINGADJOINT: element-wise subgradient; gradient is zero almost everywhere with subgradient
+    // at v[i] = 0
+}
+
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE void
 expect_near(const vec_t<Length, Type>& actual, const vec_t<Length, Type>& expected, const Type& tolerance)
 {
     Type diff(0);
@@ -2014,19 +2022,6 @@ inline CUDA_CALLABLE void adj_max(const vec_t<Length, Type>& v, vec_t<Length, Ty
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void
 adj_abs(const vec_t<Length, Type>& v, vec_t<Length, Type>& adj_v, const vec_t<Length, Type>& adj_ret)
-{
-    for (unsigned i = 0; i < Length; ++i) {
-        if (v[i] < Type(0)) {
-            adj_v[i] -= adj_ret[i];
-        } else {
-            adj_v[i] += adj_ret[i];
-        }
-    }
-}
-
-template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void
-adj_sign(const vec_t<Length, Type>& v, vec_t<Length, Type>& adj_v, const vec_t<Length, Type>& adj_ret)
 {
     for (unsigned i = 0; i < Length; ++i) {
         if (v[i] < Type(0)) {

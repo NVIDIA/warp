@@ -127,6 +127,10 @@
   weights ([GH-1437](https://github.com/NVIDIA/warp/issues/1437)).
 - Fix tile reassignment from shared storage to register storage
   ([GH-1440](https://github.com/NVIDIA/warp/issues/1440)).
+- Fix autodiff metadata for built-ins that previously compiled backward passes through no-op
+  placeholder adjoints, so unsupported gradients no longer appear to be implemented for APIs
+  such as vector `wp.sign()`, `wp.volume_sample_i()`, and the 4-D `wp.atomic_exch()` overload
+  ([GH-1466](https://github.com/NVIDIA/warp/issues/1466)).
 
 ### Documentation
 

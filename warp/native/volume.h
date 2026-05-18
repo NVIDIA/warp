@@ -660,12 +660,6 @@ CUDA_CALLABLE inline void adj_volume_sample_v(
     adj_volume_sample(id, uvw, sampling_mode, adj_id, adj_uvw, adj_sampling_mode, adj_ret);
 }
 
-CUDA_CALLABLE inline void
-adj_volume_sample_i(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const int32_t& adj_ret)
-{
-    // NOP
-}
-
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
 CUDA_CALLABLE inline float volume_sample_grad_f(uint64_t id, vec3 uvw, int sampling_mode, vec3& grad)
 {
