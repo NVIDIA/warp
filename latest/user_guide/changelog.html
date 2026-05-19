@@ -596,6 +596,9 @@ and accuracy are preserved, but the path now allocates two <code class="docutils
 (e.g. 16 KiB at <code class="docutils literal notranslate"><span class="pre">n=32</span></code>, 64 KiB at <code class="docutils literal notranslate"><span class="pre">n=64</span></code> in <code class="docutils literal notranslate"><span class="pre">float64</span></code>), so large differentiated Cholesky tiles can
 hit shared-memory limits where the previous path would not
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1402">GH-1402</a>).</p></li>
+<li><p>Template <code class="docutils literal notranslate"><span class="pre">launch_bounds_t</span></code> on dimensionality (<code class="docutils literal notranslate"><span class="pre">launch_bounds_t&lt;N&gt;</span></code>) so <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code> avoids runtime
+dimension checks while preserving existing launch-dimension aliasing behavior
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1270">GH-1270</a>).</p></li>
 <li><p>Remove placeholder adjoints for built-ins that are not mathematically differentiable. No
 user-visible behavior change for code that respects the <code class="docutils literal notranslate"><span class="pre">is_differentiable=False</span></code> contract
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/988">GH-988</a>).</p></li>
