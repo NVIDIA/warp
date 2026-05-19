@@ -192,5 +192,5 @@ for (int iter = 0; iter < N_ITERATIONS; iter++) {
 
 ## See Also
 
-- [Warp Autodiff Guide](https://nvidia.github.io/warp/autodiff.html)
+- [Warp Autodiff Guide](https://nvidia.github.io/warp/stable/user_guide/differentiability.html)
 - Example `00_cubin_launch` - Runtime CUBIN loading approach

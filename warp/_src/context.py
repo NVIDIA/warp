@@ -6149,7 +6149,7 @@ class Runtime:
                     f"The minimum required CUDA driver version is {self.min_driver_version[0]}.{self.min_driver_version[1]}, "
                     f"but the installed CUDA driver version is {self.driver_version[0]}.{self.driver_version[1]}."
                 )
-                msg.append("Visit https://nvidia.github.io/warp/user_guide/installation.html for guidance.")
+                msg.append("Visit https://nvidia.github.io/warp/stable/user_guide/installation.html for guidance.")
                 log_warning("\n   ".join(msg))
 
     def _get_or_create_pch_dir(self) -> str:
@@ -6319,7 +6319,7 @@ class Runtime:
                 raise RuntimeError(
                     f"Failed to load the shared library '{dll_path}'.\n"
                     "The execution environment's libstdc++ runtime is older than the version the Warp library was built for.\n"
-                    "See https://nvidia.github.io/warp/user_guide/installation.html#conda-environments for details."
+                    "See https://nvidia.github.io/warp/stable/user_guide/installation.html#conda-environments for details."
                 ) from e
             else:
                 raise RuntimeError(f"Failed to load the shared library '{dll_path}'") from e

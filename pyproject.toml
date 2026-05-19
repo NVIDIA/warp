@@ -32,7 +32,7 @@ dynamic = ["version", "readme"]
 
 [project.urls]
 Homepage = "https://developer.nvidia.com/warp-python"
-Documentation = "https://nvidia.github.io/warp"
+Documentation = "https://nvidia.github.io/warp/stable/"
 Repository = "https://github.com/NVIDIA/warp"
 Issues = "https://github.com/NVIDIA/warp/issues"
 Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
