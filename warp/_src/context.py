@@ -7922,10 +7922,10 @@ def _warn_unknown_launch_array_access(kernel, arg_name: str, value: warp.array, 
 
     log_warning(
         f"LaunchVerificationMode.CHECKED cannot verify cross-device access for kernel '{kernel.key}' "
-        f"argument '{arg_name}' from device={value.device} to launch device='{device}'. "
-        f"The launch will proceed because the array uses an unknown allocator or externally wrapped "
-        f"allocation. Use LaunchVerificationMode.STRICT to reject this launch, or "
-        f"LaunchVerificationMode.RELAXED to suppress this diagnostic.",
+        f"argument '{arg_name}' from device={value.device} to launch device='{device}': the array uses "
+        "an unknown allocator or externally wrapped allocation. The launch will proceed but may result "
+        "in errors. Use LaunchVerificationMode.STRICT to reject this launch, or "
+        "LaunchVerificationMode.RELAXED to suppress this diagnostic.",
         category=UserWarning,
         stacklevel=3,
     )
