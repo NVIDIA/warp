@@ -305,6 +305,46 @@ def test_tile_binary_map(test, device):
         run(tile_binary_map_user_func, dtype)
 
 
+@wp.kernel
+def tile_binary_map_nondifferentiable_builtin_func(
+    input_a: wp.array[wp.vec3i], input_b: wp.array[wp.vec3i], output: wp.array[wp.vec3i]
+):
+    a = wp.tile_load(input_a, shape=(TILE_M,))
+    b = wp.tile_load(input_b, shape=(TILE_M,))
+
+    sa = wp.tile_map(wp.bit_and, a, b)
+
+    wp.tile_store(output, sa)
+
+
+def test_tile_binary_map_nondifferentiable_builtin(test, device):
+    a_np = np.arange(TILE_M * 3, dtype=np.int32).reshape(TILE_M, 3)
+    b_np = np.flip(a_np, axis=0).copy()
+    output_np = np.bitwise_and(a_np, b_np)
+
+    a = wp.array(a_np, dtype=wp.vec3i, requires_grad=True, device=device)
+    b = wp.array(b_np, dtype=wp.vec3i, requires_grad=True, device=device)
+    output = wp.zeros(TILE_M, dtype=wp.vec3i, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_binary_map_nondifferentiable_builtin_func,
+            dim=1,
+            inputs=[a, b],
+            outputs=[output],
+            block_dim=TILE_DIM,
+            device=device,
+        )
+
+    assert_np_equal(output.numpy(), output_np)
+
+    output.grad = wp.ones_like(output)
+    tape.backward()
+
+    assert_np_equal(a.grad.numpy(), np.zeros_like(a_np))
+    assert_np_equal(b.grad.numpy(), np.zeros_like(b_np))
+
+
 @wp.func
 def binary_func_mixed_types(x: int, y: float) -> float:
     return wp.sin(float(x)) + y
@@ -3104,6 +3144,12 @@ add_function_test(TestTile, "test_tile_copy_2d", test_tile_copy_2d, devices=devi
 add_function_test(TestTile, "test_tile_unary_map", test_tile_unary_map, devices=devices)
 add_function_test(TestTile, "test_tile_unary_map_mixed_types", test_tile_unary_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_binary_map", test_tile_binary_map, devices=devices)
+add_function_test(
+    TestTile,
+    "test_tile_binary_map_nondifferentiable_builtin",
+    test_tile_binary_map_nondifferentiable_builtin,
+    devices=devices,
+)
 add_function_test(TestTile, "test_tile_binary_map_mixed_types", test_tile_binary_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_n_map", test_tile_n_map, devices=devices)
 add_function_test(TestTile, "test_tile_n_map_mixed_types", test_tile_n_map_mixed_types, devices=devices)

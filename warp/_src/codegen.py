@@ -1769,8 +1769,13 @@ class Adjoint:
         # Skip reverse call generation for functions that use warp.grad() - they don't have
         # meaningful adjoints (the gradient of a gradient call is not supported).
         skip_reverse = not func.is_builtin() and func.adj.uses_grad_call
+        # Higher-order built-ins pass callable args to native adjoint helpers.
+        # Only generate the reverse call when those callables have adjoints.
+        has_nondifferentiable_callable_arg = any(
+            isinstance(arg, warp._src.context.Function) and not arg.is_differentiable for arg in func_args
+        )
 
-        if func.is_differentiable and func_args and not skip_reverse:
+        if func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg:
             adj_args = tuple(strip_reference(x) for x in func_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1

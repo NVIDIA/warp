@@ -224,6 +224,27 @@ def test_gradient(test, device):
     assert_np_equal(a.grad.numpy(), expected * 2.0)
 
 
+def test_nondifferentiable_builtin_gradient(test, device):
+    a_np = np.arange(24, dtype=np.int32).reshape(8, 3)
+    b_np = np.flip(a_np, axis=0).copy()
+    output_np = np.bitwise_and(a_np, b_np)
+
+    a = wp.array(a_np, dtype=wp.vec3i, requires_grad=True, device=device)
+    b = wp.array(b_np, dtype=wp.vec3i, requires_grad=True, device=device)
+    output = wp.empty(8, dtype=wp.vec3i, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.map(wp.bit_and, a, b, out=output)
+
+    assert_np_equal(output.numpy(), output_np)
+
+    output.grad = wp.ones_like(output)
+    tape.backward()
+
+    assert_np_equal(a.grad.numpy(), np.zeros_like(a_np))
+    assert_np_equal(b.grad.numpy(), np.zeros_like(b_np))
+
+
 def test_array_ops(test, device):
     a = wp.array(np.arange(10, dtype=np.float32), device=device)
     b = wp.array(np.arange(1, 11, dtype=np.float32), device=device)
@@ -597,6 +618,9 @@ add_function_test(TestMap, "test_multiple_return_values", test_multiple_return_v
 add_function_test(TestMap, "test_custom_struct_operator", test_custom_struct_operator, devices=devices)
 add_function_test(TestMap, "test_name_clash", test_name_clash, devices=devices)
 add_function_test(TestMap, "test_gradient", test_gradient, devices=devices)
+add_function_test(
+    TestMap, "test_nondifferentiable_builtin_gradient", test_nondifferentiable_builtin_gradient, devices=devices
+)
 add_function_test(TestMap, "test_array_ops", test_array_ops, devices=devices)
 add_function_test(TestMap, "test_indexedarrays", test_indexedarrays, devices=devices)
 add_function_test(TestMap, "test_broadcasting", test_broadcasting, devices=devices)
