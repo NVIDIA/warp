@@ -495,7 +495,7 @@
 <h1>warp.fem.GeometryDomain<a class="headerlink" href="#warp-fem-geometrydomain" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.GeometryDomain">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">GeometryDomain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L26-L151"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.GeometryDomain" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">GeometryDomain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L26-L154"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.GeometryDomain" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for domains, i.e. (partial) views of elements in a <a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp.fem.Geometry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geometry</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -607,6 +607,9 @@
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.GeometryDomain.element_partition_lookup" title="warp.fem.GeometryDomain.element_partition_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_partition_lookup</span></code></a></p></td>
 <td><p>Device function returning the sample point in the domain's geometry partition corresponding to a world position.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.GeometryDomain.element_environment_index" title="warp.fem.GeometryDomain.element_environment_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_environment_index</span></code></a></p></td>
+<td><p>Device function returning the environment index for an element.</p></td>
 </tr>
 </tbody>
 </table>
@@ -808,9 +811,15 @@
 <dd><p>Device function returning the sample point in the domain’s geometry partition corresponding to a world position.</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.GeometryDomain.element_environment_index">
+<span class="sig-name descname"><span class="pre">element_environment_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="headerlink" href="#warp.fem.GeometryDomain.element_environment_index" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning the environment index for an element.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.GeometryDomain.notify_operator_usage">
-<span class="sig-name descname"><span class="pre">notify_operator_usage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ops</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L135-L138"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.GeometryDomain.notify_operator_usage" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">notify_operator_usage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ops</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L138-L141"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.GeometryDomain.notify_operator_usage" title="Link to this definition">#</a></dt>
 <dd><p>Makes the Domain aware that the operators <cite>ops</cite> will be applied</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -905,6 +914,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.GeometryDomain.element_coordinates"><code class="docutils literal notranslate"><span class="pre">element_coordinates</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.GeometryDomain.element_lookup"><code class="docutils literal notranslate"><span class="pre">element_lookup</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.GeometryDomain.element_partition_lookup"><code class="docutils literal notranslate"><span class="pre">element_partition_lookup</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.GeometryDomain.element_environment_index"><code class="docutils literal notranslate"><span class="pre">element_environment_index</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.GeometryDomain.notify_operator_usage"><code class="docutils literal notranslate"><span class="pre">notify_operator_usage()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.GeometryDomain.DomainArg"><code class="docutils literal notranslate"><span class="pre">DomainArg</span></code></a></li>
 </ul>

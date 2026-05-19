@@ -502,9 +502,11 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/quadmesh.py#L576-L580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadmesh2D" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/quadmesh.py#L608-L612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadmesh2D" title="Link to this definition">#</a></dt>
 <dd><p>Two-dimensional quadrilateral mesh.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -513,6 +515,8 @@
 <li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
 <li><p><strong>build_bvh</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -525,9 +529,11 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/quadmesh.py#L78-L131"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadmesh2D.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/quadmesh.py#L80-L140"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadmesh2D.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Construct a D-dimensional quadrilateral mesh.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -535,6 +541,8 @@
 <li><p><strong>quad_vertex_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – warp array of shape (num_tris, 4) containing vertex indices for each quad, in counter-clockwise order</p></li>
 <li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – warp array of shape (num_vertices, D) containing the position of each vertex</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
+<li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional per-cell environment indices. If provided, <code class="docutils literal notranslate"><span class="pre">env_count</span></code> must also be provided.</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of environments represented by <code class="docutils literal notranslate"><span class="pre">cell_env</span></code>.</p></li>
 <li><p><strong>build_bvh</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
 </ul>
 </dd>
@@ -559,8 +567,14 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
+<td><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
 <td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
+<td><p>Return per-cell environment indices for geometry argument structs.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code>(args, s)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
@@ -571,64 +585,67 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_normal</span></code>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code>(args, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code>()</p></td>
+<td><p>Number of topologically independent environments represented by this geometry.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code>(args, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_topo_arg</span></code>(args, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_topo_arg</span></code>(args, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code>(args, device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code>(args, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(args, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(args, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_topo_arg</span></code>(args, device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_topo_arg</span></code>(args, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
 <td><p>Create a filtered cell lookup function.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
 <td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
 <td><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code>(side_arg)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code>(side_arg)</p></td>
 <td><p>Device function converting a side-related argument value to a cell-related argument value, for promoting trace samples to the full space</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
 <td><p>Return whether cell lookups are supported on the given device.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -658,6 +675,12 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_dimension</span></code></p></td>
 <td><p>Manifold dimension of the geometry cells</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env</span></code></p></td>
+<td><p>Optional per-cell environment indices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_environment_index</span></code></p></td>
+<td><p></p></td>
+</tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_lookup</span></code></p></td>
 <td><p>Device function for looking up the closest cell to a position.</p></td>
 </tr>
@@ -667,31 +690,37 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">coords_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_cell_bvh_groups</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">coords_type</span></code></p></td>
 <td><p>Warp vector type for element coordinates matching this geometry's scalar precision.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dimension</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dimension</span></code></p></td>
 <td><p>Dimension of the embedding space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_quad_indices</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_quad_indices</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_vertex_indices</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_vertex_indices</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
-<td><p>Name of the geometry, including scalar type suffix for non-default precision.</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>Name of the geometry, including environment and scalar type suffixes.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_type</span></code></p></td>
 <td><p>Warp struct type for samples matching this geometry's scalar precision.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_closest_point</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_closest_point</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_environment_index</span></code></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code></p></td>

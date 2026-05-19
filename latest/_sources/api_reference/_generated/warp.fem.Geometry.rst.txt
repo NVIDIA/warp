@@ -19,12 +19,15 @@
       ~Geometry.build_bvh
       ~Geometry.bvh_id
       ~Geometry.cell_arg_value
+      ~Geometry.cell_bvh_groups
       ~Geometry.cell_count
       ~Geometry.cell_deformation_gradient
+      ~Geometry.cell_env_arg_value
       ~Geometry.cell_inverse_deformation_gradient
       ~Geometry.cell_measure
       ~Geometry.cell_normal
       ~Geometry.cell_position
+      ~Geometry.environment_count
       ~Geometry.fill_cell_arg
       ~Geometry.fill_side_arg
       ~Geometry.fill_side_index_arg
@@ -60,13 +63,17 @@
    
       ~Geometry.base
       ~Geometry.cell_dimension
+      ~Geometry.cell_env
+      ~Geometry.cell_environment_index
       ~Geometry.cell_lookup
       ~Geometry.cell_measure_ratio
+      ~Geometry.compute_cell_bvh_groups
       ~Geometry.coords_type
       ~Geometry.dimension
       ~Geometry.name
       ~Geometry.sample_type
       ~Geometry.scalar_type
+      ~Geometry.side_environment_index
       ~Geometry.CellArg
       ~Geometry.SideArg
       ~Geometry.SideIndexArg

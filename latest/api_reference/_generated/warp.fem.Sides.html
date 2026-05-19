@@ -495,7 +495,7 @@
 <h1>warp.fem.Sides<a class="headerlink" href="#warp-fem-sides" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Sides">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Sides</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L300-L444"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Sides</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L321-L470"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides" title="Link to this definition">#</a></dt>
 <dd><p>A Domain containing all (interior and boundary) sides of the geometry or geometry partition.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -504,7 +504,7 @@
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L303-L309"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L324-L330"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>geometry</strong> (<a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><em>Geometry</em></a><em> | </em><a class="reference internal" href="warp.fem.GeometryPartition.html#warp.fem.GeometryPartition" title="warp._src.fem.geometry.partition.GeometryPartition"><em>GeometryPartition</em></a>)</p>
@@ -584,52 +584,55 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_deformation_gradient" title="warp.fem.Sides.element_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_deformation_gradient</span></code></a></p></td>
 <td><p>Device function returning element deformation gradients.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_index" title="warp.fem.Sides.element_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_index</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_environment_index" title="warp.fem.Sides.element_environment_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_environment_index</span></code></a></p></td>
+<td><p>Device function returning element environment indices.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_index" title="warp.fem.Sides.element_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_index</span></code></a></p></td>
 <td><p>Device function mapping partition indices to element indices.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_inner_cell_coords" title="warp.fem.Sides.element_inner_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_inner_cell_coords</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_inner_cell_coords" title="warp.fem.Sides.element_inner_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_inner_cell_coords</span></code></a></p></td>
 <td><p>Device function returning inner-cell coordinates of side points.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_inner_cell_index" title="warp.fem.Sides.element_inner_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_inner_cell_index</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_inner_cell_index" title="warp.fem.Sides.element_inner_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_inner_cell_index</span></code></a></p></td>
 <td><p>Device function returning inner cell indices for sides.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_kind" title="warp.fem.Sides.element_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_kind</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_kind" title="warp.fem.Sides.element_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_kind</span></code></a></p></td>
 <td><p>Kind of elements contained in the domain.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_measure" title="warp.fem.Sides.element_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_measure</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_measure" title="warp.fem.Sides.element_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_measure</span></code></a></p></td>
 <td><p>Device function returning element measures.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_measure_ratio" title="warp.fem.Sides.element_measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_measure_ratio</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_measure_ratio" title="warp.fem.Sides.element_measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_measure_ratio</span></code></a></p></td>
 <td><p>Device function returning element measure ratios.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_normal" title="warp.fem.Sides.element_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_normal</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_normal" title="warp.fem.Sides.element_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_normal</span></code></a></p></td>
 <td><p>Device function returning element normals.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_outer_cell_coords" title="warp.fem.Sides.element_outer_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_outer_cell_coords</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_outer_cell_coords" title="warp.fem.Sides.element_outer_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_outer_cell_coords</span></code></a></p></td>
 <td><p>Device function returning outer-cell coordinates of side points.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_outer_cell_index" title="warp.fem.Sides.element_outer_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_outer_cell_index</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_outer_cell_index" title="warp.fem.Sides.element_outer_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_outer_cell_index</span></code></a></p></td>
 <td><p>Device function returning outer cell indices for sides.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Sides.element_position" title="warp.fem.Sides.element_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_position</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Sides.element_position" title="warp.fem.Sides.element_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_position</span></code></a></p></td>
 <td><p>Device function returning element positions.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
 <td><p>Unique name of the domain.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">geometry_partition</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">geometry_partition</span></code></p></td>
 <td><p>Geometry partition containing the elements of the domain.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">geometry</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">geometry</span></code></p></td>
 <td><p>Underlying geometry.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_partition_index</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_partition_index</span></code></p></td>
 <td><p>Device function for retrieving linearized index in the domain's partition from an <a class="reference internal" href="warp.fem.ElementIndex.html#warp.fem.ElementIndex" title="warp.fem.ElementIndex"><code class="xref py py-class docutils literal notranslate"><span class="pre">ElementIndex</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_lookup</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_lookup</span></code></p></td>
 <td><p>Device function returning the sample point in the domain's geometry corresponding to a world position.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_partition_lookup</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_partition_lookup</span></code></p></td>
 <td><p>Device function returning the sample point in the domain's geometry partition corresponding to a world position.</p></td>
 </tr>
 </tbody>
@@ -637,25 +640,25 @@
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.supports_lookup">
-<span class="sig-name descname"><span class="pre">supports_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L310-L313"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.supports_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L331-L334"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.supports_lookup" title="Link to this definition">#</a></dt>
 <dd><p>Return whether element lookup is supported on the given device.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_kind">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L314-L318"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_kind" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L335-L339"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_kind" title="Link to this definition">#</a></dt>
 <dd><p>Kind of elements contained in the domain.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.dimension">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L319-L323"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.dimension" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L340-L344"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.dimension" title="Link to this definition">#</a></dt>
 <dd><p>Dimension of elements in the domain.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.reference_element">
-<span class="sig-name descname"><span class="pre">reference_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L324-L327"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.reference_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L345-L348"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.reference_element" title="Link to this definition">#</a></dt>
 <dd><p>Reference element for the domain sides.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -666,7 +669,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_count">
-<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L328-L331"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L349-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of elements in the domain.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -677,7 +680,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.geometry_element_count">
-<span class="sig-name descname"><span class="pre">geometry_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L332-L335"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.geometry_element_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">geometry_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L353-L356"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.geometry_element_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of elements in the underlying geometry.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -688,13 +691,13 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.ElementIndexArg">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ElementIndexArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L336-L340"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.ElementIndexArg" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ElementIndexArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L357-L361"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.ElementIndexArg" title="Link to this definition">#</a></dt>
 <dd><p>Structure containing arguments for element indexing.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_index_arg_value">
-<span class="sig-name descname"><span class="pre">element_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L341-L344"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_index_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L362-L365"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_index_arg_value" title="Link to this definition">#</a></dt>
 <dd><p>Value of the element index arguments for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -708,7 +711,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.fill_element_index_arg">
-<span class="sig-name descname"><span class="pre">fill_element_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L345-L348"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.fill_element_index_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_element_index_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L366-L369"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.fill_element_index_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the element index arguments for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -722,19 +725,19 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_index">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L349-L353"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_index" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L370-L374"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function mapping partition indices to element indices.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.ElementArg">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ElementArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L354-L358"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.ElementArg" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ElementArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L375-L379"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.ElementArg" title="Link to this definition">#</a></dt>
 <dd><p>Structure containing arguments for element geometry.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_arg_value">
-<span class="sig-name descname"><span class="pre">element_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L359-L362"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L380-L383"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_arg_value" title="Link to this definition">#</a></dt>
 <dd><p>Value of the element arguments for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -748,7 +751,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.fill_element_arg">
-<span class="sig-name descname"><span class="pre">fill_element_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L363-L366"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.fill_element_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_element_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L384-L387"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.fill_element_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the element arguments for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -762,73 +765,79 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_position">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L367-L371"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_position" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L388-L392"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_position" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning element positions.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_deformation_gradient">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_deformation_gradient</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L372-L376"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_deformation_gradient" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_deformation_gradient</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L393-L397"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning element deformation gradients.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_measure">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_measure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L377-L381"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_measure" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_measure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L398-L402"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_measure" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning element measures.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_measure_ratio">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_measure_ratio</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L382-L386"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_measure_ratio" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_measure_ratio</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L403-L407"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_measure_ratio" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning element measure ratios.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_normal">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_normal</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L387-L391"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_normal" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_normal</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L408-L412"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_normal" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning element normals.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_closest_point">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_closest_point</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L392-L396"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_closest_point" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_closest_point</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L413-L417"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_closest_point" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning closest points on elements.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_coordinates">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_coordinates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L397-L401"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_coordinates" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_coordinates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L418-L422"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_coordinates" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning element coordinates for a position.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_inner_cell_index">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_inner_cell_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L402-L406"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_inner_cell_index" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_inner_cell_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L423-L427"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_inner_cell_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning inner cell indices for sides.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_outer_cell_index">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_outer_cell_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L407-L411"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_outer_cell_index" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_outer_cell_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L428-L432"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_outer_cell_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning outer cell indices for sides.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_inner_cell_coords">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_inner_cell_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L412-L416"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_inner_cell_coords" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_inner_cell_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L433-L437"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_inner_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning inner-cell coordinates of side points.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.element_outer_cell_coords">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_outer_cell_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L417-L421"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_outer_cell_coords" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_outer_cell_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L438-L442"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_outer_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning outer-cell coordinates of side points.</p>
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.Sides.element_environment_index">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_environment_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L443-L447"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.element_environment_index" title="Link to this definition">#</a></dt>
+<dd><p>Device function returning element environment indices.</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Sides.cell_to_element_coords">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_to_element_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L422-L426"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.cell_to_element_coords" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_to_element_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L448-L452"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.cell_to_element_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function converting cell coordinates to side coordinates.</p>
 </dd></dl>
 
@@ -840,7 +849,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Sides.cell_domain">
-<span class="sig-name descname"><span class="pre">cell_domain</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L441-L444"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.cell_domain" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_domain</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/domain.py#L467-L470"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Sides.cell_domain" title="Link to this definition">#</a></dt>
 <dd><p>Return the corresponding cell domain.</p>
 </dd></dl>
 
@@ -923,6 +932,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.element_outer_cell_index"><code class="docutils literal notranslate"><span class="pre">element_outer_cell_index</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.element_inner_cell_coords"><code class="docutils literal notranslate"><span class="pre">element_inner_cell_coords</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.element_outer_cell_coords"><code class="docutils literal notranslate"><span class="pre">element_outer_cell_coords</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.element_environment_index"><code class="docutils literal notranslate"><span class="pre">element_environment_index</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.cell_to_element_coords"><code class="docutils literal notranslate"><span class="pre">cell_to_element_coords</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.domain_cell_arg"><code class="docutils literal notranslate"><span class="pre">domain_cell_arg</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Sides.cell_domain"><code class="docutils literal notranslate"><span class="pre">cell_domain()</span></code></a></li>

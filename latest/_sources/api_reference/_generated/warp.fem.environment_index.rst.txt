@@ -1,0 +1,7 @@
+﻿warp.fem.environment\_index
+===========================
+
+.. currentmodule:: warp.fem
+
+
+.. autodata:: environment_index

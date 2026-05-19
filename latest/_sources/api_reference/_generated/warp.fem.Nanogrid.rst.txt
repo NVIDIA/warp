@@ -18,11 +18,15 @@
       ~Nanogrid.build_bvh
       ~Nanogrid.bvh_id
       ~Nanogrid.cell_arg_value
+      ~Nanogrid.cell_bvh_groups
       ~Nanogrid.cell_count
+      ~Nanogrid.cell_env_arg_value
       ~Nanogrid.edge_count
+      ~Nanogrid.environment_count
       ~Nanogrid.fill_cell_arg
       ~Nanogrid.fill_side_arg
       ~Nanogrid.fill_side_index_arg
+      ~Nanogrid.from_environment_voxels
       ~Nanogrid.make_filtered_cell_lookup
       ~Nanogrid.reference_cell
       ~Nanogrid.reference_side
@@ -54,6 +58,8 @@
       ~Nanogrid.cell_coordinates
       ~Nanogrid.cell_deformation_gradient
       ~Nanogrid.cell_dimension
+      ~Nanogrid.cell_env
+      ~Nanogrid.cell_environment_index
       ~Nanogrid.cell_grid
       ~Nanogrid.cell_inverse_deformation_gradient
       ~Nanogrid.cell_lookup
@@ -61,15 +67,18 @@
       ~Nanogrid.cell_measure_ratio
       ~Nanogrid.cell_normal
       ~Nanogrid.cell_position
+      ~Nanogrid.compute_cell_bvh_groups
       ~Nanogrid.coords_type
       ~Nanogrid.dimension
       ~Nanogrid.edge_grid
+      ~Nanogrid.env_offsets
       ~Nanogrid.face_grid
       ~Nanogrid.name
       ~Nanogrid.sample_type
       ~Nanogrid.scalar_type
       ~Nanogrid.side_closest_point
       ~Nanogrid.side_coordinates
+      ~Nanogrid.side_environment_index
       ~Nanogrid.side_from_cell_coords
       ~Nanogrid.side_inner_cell_coords
       ~Nanogrid.side_inner_cell_index

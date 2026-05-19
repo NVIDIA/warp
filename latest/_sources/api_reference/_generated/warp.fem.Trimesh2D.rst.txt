@@ -18,10 +18,13 @@
       ~Trimesh2D.build_bvh
       ~Trimesh2D.bvh_id
       ~Trimesh2D.cell_arg_value
+      ~Trimesh2D.cell_bvh_groups
       ~Trimesh2D.cell_count
+      ~Trimesh2D.cell_env_arg_value
       ~Trimesh2D.cell_inverse_deformation_gradient
       ~Trimesh2D.cell_measure
       ~Trimesh2D.cell_normal
+      ~Trimesh2D.environment_count
       ~Trimesh2D.fill_cell_arg
       ~Trimesh2D.fill_side_arg
       ~Trimesh2D.fill_side_index_arg
@@ -57,9 +60,12 @@
       ~Trimesh2D.cell_closest_point
       ~Trimesh2D.cell_deformation_gradient
       ~Trimesh2D.cell_dimension
+      ~Trimesh2D.cell_env
+      ~Trimesh2D.cell_environment_index
       ~Trimesh2D.cell_lookup
       ~Trimesh2D.cell_measure_ratio
       ~Trimesh2D.cell_position
+      ~Trimesh2D.compute_cell_bvh_groups
       ~Trimesh2D.coords_type
       ~Trimesh2D.dimension
       ~Trimesh2D.edge_tri_indices
@@ -69,6 +75,7 @@
       ~Trimesh2D.scalar_type
       ~Trimesh2D.side_closest_point
       ~Trimesh2D.side_deformation_gradient
+      ~Trimesh2D.side_environment_index
       ~Trimesh2D.side_from_cell_coords
       ~Trimesh2D.side_inner_cell_coords
       ~Trimesh2D.side_inner_cell_index

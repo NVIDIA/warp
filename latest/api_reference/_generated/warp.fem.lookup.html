@@ -497,12 +497,30 @@
 <dt class="sig sig-object py" id="warp.fem.lookup">
 <span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">lookup</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;warp._src.fem.operator.Operator</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#warp.fem.lookup" title="Link to this definition">#</a></dt>
 <dd><p>Look up the sample point corresponding to a world position <code class="docutils literal notranslate"><span class="pre">x</span></code>, projecting to the closest point on the geometry.</p>
+<p>Supported call forms include:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">max_dist)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">guess)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">env_index)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">max_dist,</span> <span class="pre">env_index)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">filter_array,</span> <span class="pre">filter_target)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">max_dist,</span> <span class="pre">filter_array,</span> <span class="pre">filter_target)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">filter_array,</span> <span class="pre">filter_target,</span> <span class="pre">env_index)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x,</span> <span class="pre">max_dist,</span> <span class="pre">filter_array,</span> <span class="pre">filter_target,</span> <span class="pre">env_index)</span></code></p></li>
+</ul>
+<p>For multi-environment geometries, pass an explicit <code class="docutils literal notranslate"><span class="pre">env_index</span></code> to disambiguate the query. Calling
+<code class="docutils literal notranslate"><span class="pre">lookup(domain,</span> <span class="pre">x)</span></code> without an environment index is only supported for single-environment geometries and raises
+an exception for multi-environment geometries. Lookup with a <code class="docutils literal notranslate"><span class="pre">guess</span></code> sample preserves the guess environment when the
+geometry supports multiple environments. Side-sample hints are ambiguous, so side-domain integrands that need a cell
+lookup should use the explicit <code class="docutils literal notranslate"><span class="pre">env_index</span></code> overload.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>x</strong> (<em>vec3</em>) – world position of the point to look-up in the geometry</p></li>
+<li><p><strong>x</strong> (<em>vec3</em>) – world position of the point to look up in the geometry</p></li>
 <li><p><strong>max_dist</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – maximum distance to look for a closest point</p></li>
 <li><p><strong>guess</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample</span></code></a>) – initial guess, may help perform the query</p></li>
+<li><p><strong>env_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – environment index to query in a multi-environment geometry</p></li>
 <li><p><strong>filter_array</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a>) – Used in conjunction with <code class="docutils literal notranslate"><span class="pre">filter_target</span></code>. Only cells such that <code class="docutils literal notranslate"><span class="pre">filter_array[element_index]</span> <span class="pre">==</span> <span class="pre">filter_target</span></code> will be considered.</p></li>
 <li><p><strong>filter_target</strong> (<em>Any</em>) – See <code class="docutils literal notranslate"><span class="pre">filter_array</span></code></p></li>
 </ul>

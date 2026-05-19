@@ -18,13 +18,16 @@
       ~Hexmesh.build_bvh
       ~Hexmesh.bvh_id
       ~Hexmesh.cell_arg_value
+      ~Hexmesh.cell_bvh_groups
       ~Hexmesh.cell_count
       ~Hexmesh.cell_deformation_gradient
+      ~Hexmesh.cell_env_arg_value
       ~Hexmesh.cell_inverse_deformation_gradient
       ~Hexmesh.cell_measure
       ~Hexmesh.cell_normal
       ~Hexmesh.cell_position
       ~Hexmesh.edge_count
+      ~Hexmesh.environment_count
       ~Hexmesh.fill_cell_arg
       ~Hexmesh.fill_side_arg
       ~Hexmesh.fill_side_index_arg
@@ -60,8 +63,11 @@
       ~Hexmesh.cell_bounds
       ~Hexmesh.cell_bvh_id
       ~Hexmesh.cell_dimension
+      ~Hexmesh.cell_env
+      ~Hexmesh.cell_environment_index
       ~Hexmesh.cell_lookup
       ~Hexmesh.cell_measure_ratio
+      ~Hexmesh.compute_cell_bvh_groups
       ~Hexmesh.coords_type
       ~Hexmesh.dimension
       ~Hexmesh.face_hex_indices
@@ -72,6 +78,7 @@
       ~Hexmesh.sample_type
       ~Hexmesh.scalar_type
       ~Hexmesh.side_deformation_gradient
+      ~Hexmesh.side_environment_index
       ~Hexmesh.side_from_cell_coords
       ~Hexmesh.side_inner_cell_coords
       ~Hexmesh.side_inner_cell_index

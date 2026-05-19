@@ -18,10 +18,13 @@
       ~Tetmesh.build_bvh
       ~Tetmesh.bvh_id
       ~Tetmesh.cell_arg_value
+      ~Tetmesh.cell_bvh_groups
       ~Tetmesh.cell_count
+      ~Tetmesh.cell_env_arg_value
       ~Tetmesh.cell_measure
       ~Tetmesh.cell_normal
       ~Tetmesh.edge_count
+      ~Tetmesh.environment_count
       ~Tetmesh.fill_cell_arg
       ~Tetmesh.fill_side_arg
       ~Tetmesh.fill_side_index_arg
@@ -56,10 +59,13 @@
       ~Tetmesh.cell_closest_point
       ~Tetmesh.cell_deformation_gradient
       ~Tetmesh.cell_dimension
+      ~Tetmesh.cell_env
+      ~Tetmesh.cell_environment_index
       ~Tetmesh.cell_inverse_deformation_gradient
       ~Tetmesh.cell_lookup
       ~Tetmesh.cell_measure_ratio
       ~Tetmesh.cell_position
+      ~Tetmesh.compute_cell_bvh_groups
       ~Tetmesh.coords_type
       ~Tetmesh.dimension
       ~Tetmesh.face_tet_indices
@@ -70,6 +76,7 @@
       ~Tetmesh.scalar_type
       ~Tetmesh.side_closest_point
       ~Tetmesh.side_deformation_gradient
+      ~Tetmesh.side_environment_index
       ~Tetmesh.side_from_cell_coords
       ~Tetmesh.side_inner_cell_coords
       ~Tetmesh.side_inner_cell_index

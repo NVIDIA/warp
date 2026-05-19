@@ -498,7 +498,7 @@
 <h1>warp.fem.geometry.DeformedGeometry<a class="headerlink" href="#warp-fem-geometry-deformedgeometry" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">DeformedGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L19-L279"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.geometry.</span></span><span class="sig-name descname"><span class="pre">DeformedGeometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L19-L314"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry" title="Link to this definition">#</a></dt>
 <dd><p>Geometry obtained by deforming a base geometry with a displacement field.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -511,7 +511,7 @@
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L46-L89"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_bvh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L48-L91"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Construct a Deformed Geometry from a displacement or absolute position field defined over a base geometry.
 The deformation field does not need to be isoparameteric.</p>
 <p>See also: <a class="reference internal" href="warp.fem.GeometryField.html#warp.fem.GeometryField.make_deformed_geometry" title="warp.fem.GeometryField.make_deformed_geometry"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.fem.GeometryField.make_deformed_geometry()</span></code></a></p>
@@ -547,11 +547,17 @@ The deformation field does not need to be isoparameteric.</p>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
+<td><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
 <td><p>Number of cells in the geometry</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_deformation_gradient</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_deformation_gradient</span></code>(args, s)</p></td>
 <td><p>Device function returning the transpose of the gradient of world position with respect to reference cell</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
+<td><p>Return per-cell environment indices for geometry argument structs.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code>(args, s)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
@@ -565,76 +571,79 @@ The deformation field does not need to be isoparameteric.</p>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code>(args, s)</p></td>
 <td><p>Device function returning the world position of a cell sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg" title="warp.fem.geometry.DeformedGeometry.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.environment_count" title="warp.fem.geometry.DeformedGeometry.environment_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg" title="warp.fem.geometry.DeformedGeometry.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
 <td><p>Fill arguments for cell-related device functions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg" title="warp.fem.geometry.DeformedGeometry.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(args, device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg" title="warp.fem.geometry.DeformedGeometry.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(args, device)</p></td>
 <td><p>Fill arguments for side-related device functions.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(args, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(args, device)</p></td>
 <td><p>Fill the arguments to be passed to side-related device functions</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
 <td><p>Create a filtered cell lookup function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
 <td><p>Prototypical element for a cell</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
 <td><p>Prototypical element for a side</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
 <td><p>Number of sides in the geometry</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code>(args, s)</p></td>
 <td><p>Device function returning the gradient of world position with respect to reference side</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code>(args, side_index, ...)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code>(args, side_index, ...)</p></td>
 <td><p>Device function converting coordinates on a cell to coordinates on a side, or <a class="reference internal" href="warp.fem.OUTSIDE.html#warp.fem.OUTSIDE" title="warp.fem.OUTSIDE"><code class="xref py py-data docutils literal notranslate"><span class="pre">warp.fem.OUTSIDE</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_coords</span></code>(args, side_index, ...)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_coords</span></code>(args, side_index, ...)</p></td>
 <td><p>Device function returning the coordinates of a point on a side in the inner cell</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_index</span></code>(args, side_index)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_index</span></code>(args, side_index)</p></td>
 <td><p>Device function returning the inner cell index for a given side</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
 <td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
 <td><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_coords</span></code>(args, side_index, ...)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_coords</span></code>(args, side_index, ...)</p></td>
 <td><p>Device function returning the coordinates of a point on a side in the outer cell</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_index</span></code>(args, side_index)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_index</span></code>(args, side_index)</p></td>
 <td><p>Device function returning the outer cell index for a given side</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_position</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_position</span></code>(args, s)</p></td>
 <td><p>Device function returning the side position at a sample point</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code>(side_arg)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code>(side_arg)</p></td>
 <td><p>Device function converting a side-related argument value to a cell-related argument value, for promoting trace samples to the full space</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
 <td><p>Return whether cell lookups are supported on the given device.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
 </tbody>
@@ -649,25 +658,37 @@ The deformation field does not need to be isoparameteric.</p>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_dimension</span></code></p></td>
 <td><p>Manifold dimension of the geometry cells</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.cell_env" title="warp.fem.geometry.DeformedGeometry.cell_env"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_environment_index</span></code></p></td>
+<td><p></p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_lookup</span></code></p></td>
 <td><p>Device function for looking up the closest cell to a position.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure_ratio</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">coords_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_cell_bvh_groups</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">coords_type</span></code></p></td>
 <td><p>Warp vector type for element coordinates matching this geometry's scalar precision.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dimension</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dimension</span></code></p></td>
 <td><p>Dimension of the embedding space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.name" title="warp.fem.geometry.DeformedGeometry.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.name" title="warp.fem.geometry.DeformedGeometry.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p>Unique name of the deformed geometry.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_type</span></code></p></td>
 <td><p>Warp struct type for samples matching this geometry's scalar precision.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.scalar_type" title="warp.fem.geometry.DeformedGeometry.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.geometry.DeformedGeometry.scalar_type" title="warp.fem.geometry.DeformedGeometry.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_environment_index</span></code></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">CellArg</span></code></p></td>
@@ -684,24 +705,34 @@ The deformation field does not need to be isoparameteric.</p>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.name">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L90-L95"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.name" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L92-L101"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.name" title="Link to this definition">#</a></dt>
 <dd><p>Unique name of the deformed geometry.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.base">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L96-L100"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.base" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L102-L106"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.base" title="Link to this definition">#</a></dt>
 <dd><p>Base geometry prior to deformation.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.scalar_type">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L101-L104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.scalar_type" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L107-L110"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.scalar_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.environment_count">
+<span class="sig-name descname"><span class="pre">environment_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L111-L113"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.environment_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.cell_env">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L114-L117"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.cell_env" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L116-L121"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L129-L134"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill arguments for cell-related device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -712,7 +743,7 @@ The deformation field does not need to be isoparameteric.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.geometry.DeformedGeometry.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L160-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/deformed_geometry.py#L173-L179"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill arguments for side-related device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -779,6 +810,8 @@ The deformation field does not need to be isoparameteric.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.name"><code class="docutils literal notranslate"><span class="pre">name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.base"><code class="docutils literal notranslate"><span class="pre">base</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.scalar_type"><code class="docutils literal notranslate"><span class="pre">scalar_type</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.environment_count"><code class="docutils literal notranslate"><span class="pre">environment_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.cell_env"><code class="docutils literal notranslate"><span class="pre">cell_env</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.fill_cell_arg"><code class="docutils literal notranslate"><span class="pre">fill_cell_arg()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.geometry.DeformedGeometry.fill_side_arg"><code class="docutils literal notranslate"><span class="pre">fill_side_arg()</span></code></a></li>
 </ul>

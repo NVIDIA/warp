@@ -42,6 +42,7 @@
       ~Cells.element_closest_point
       ~Cells.element_coordinates
       ~Cells.element_deformation_gradient
+      ~Cells.element_environment_index
       ~Cells.element_index
       ~Cells.element_kind
       ~Cells.element_lookup

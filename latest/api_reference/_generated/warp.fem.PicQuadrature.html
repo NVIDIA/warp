@@ -501,28 +501,31 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">measures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">use_domain_element_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L28-L473"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L28-L513"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature" title="Link to this definition">#</a></dt>
 <dd><p>Particle-based quadrature formula, using a global set of points unevenly spread out over geometry elements.</p>
 <p>Useful for Particle-In-Cell and derived methods (Material Point Method, Generalized Interpolation Material Point Method, etc).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>domain</strong> (<a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>) – Underlying domain for the quadrature</p></li>
-<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=ElementIndex</em><em>)</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=Coords</em><em>)</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>(</em><em>dtype=ElementIndex</em><em>)</em><em>, </em><a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>(</em><em>dtype=Coords</em><em>)</em><em>, </em><a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>(</em><em>dtype=float</em><em>)</em><em>]</em>) – <p>Defines the location of the quadrature points. Cane be:</p>
+<li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=ElementIndex</em><em>)</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=Coords</em><em>)</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>(</em><em>dtype=ElementIndex</em><em>)</em><em>, </em><a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>(</em><em>dtype=Coords</em><em>)</em><em>, </em><a class="reference internal" href="warp.array2d.html#warp.array2d" title="warp.array2d"><em>warp.array2d</em></a><em>(</em><em>dtype=float</em><em>)</em><em>]</em>) – <p>Defines the location of the quadrature points. Can be:</p>
 <ul>
 <li><p>an array containing the world positions of all particles</p></li>
 <li><p>a tuple of arrays containing the cell indices and coordinates for each particle.</p></li>
 <li><p>for GIMP-style integration where particle can span multiple elements: A tuple of 2d array the element indices for each particle</p></li>
 </ul>
 </p></li>
-<li><p><strong>measures</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=float</em><em>) </em><em>| </em><em>None</em>) – Array containing the measure (area/volume) of each particle, used to defined the integration weights.
+<li><p><strong>measures</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=float</em><em>) </em><em>| </em><em>None</em>) – Array containing the measure (area/volume) of each particle, used to define the integration weights.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, defaults to the cell measure divided by the number of particles in the cell.</p></li>
+<li><p><strong>env_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=int</em><em>) </em><em>| </em><em>None</em>) – Environment index for each particle when <code class="docutils literal notranslate"><span class="pre">positions</span></code> contains world positions.
+Used to disambiguate colocated multi-environment geometries.</p></li>
 <li><p><strong>max_dist</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – When providing world positions that fall outside of the domain’s geometry partition, maximum distance to look up for embedding cells</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether gradients should be allocated for the computed quantities</p></li>
 <li><p><strong>use_domain_element_indices</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to use the domain element indices instead of the full geometry cell indices. This reduces memory usage,
@@ -539,19 +542,21 @@ but prevents changing the quadrature domain a-posteriori.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">measures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">use_domain_element_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L50-L108"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L52-L111"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>domain</strong> (<a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><em>GeometryDomain</em></a>)</p></li>
 <li><p><strong>positions</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=vec3f</em><em>)</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=2</em><em>, </em><em>dtype=int32</em><em>)</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=2</em><em>, </em><em>dtype=vec3f</em><em>)</em><em>, </em><a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=2</em><em>, </em><em>dtype=float32</em><em>)</em><em>]</em>)</p></li>
 <li><p><strong>measures</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=float32</em><em>) </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>env_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>) </em><em>| </em><em>None</em>)</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
 <li><p><strong>max_dist</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
 <li><p><strong>use_domain_element_indices</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
@@ -638,7 +643,7 @@ but prevents changing the quadrature domain a-posteriori.</p></li>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.name">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L109-L113"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.name" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L112-L117"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.name" title="Link to this definition">#</a></dt>
 <dd><p>Unique name of the quadrature rule.</p>
 </dd></dl>
 
@@ -650,50 +655,50 @@ but prevents changing the quadrature domain a-posteriori.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.fill_arg">
-<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L142-L148"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L146-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the quadrature argument structure for device functions.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.total_point_count">
-<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L149-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.total_point_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L153-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.total_point_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of unique quadrature points.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.evaluation_point_count">
-<span class="sig-name descname"><span class="pre">evaluation_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L153-L158"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.evaluation_point_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">evaluation_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L157-L162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.evaluation_point_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of locations at which the quadrature rule is evaluated.
 Quadrature points belonging to multiple cells are counted multiple times.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.active_cell_count">
-<span class="sig-name descname"><span class="pre">active_cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L159-L162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.active_cell_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">active_cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L163-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.active_cell_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of cells containing at least one particle</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.max_points_per_element">
-<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L163-L176"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L167-L180"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
 <dd><p>Maximum number of quadrature points per element.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.cell_particle_offsets">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_offsets</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L177-L181"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_offsets" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_offsets</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L181-L185"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_offsets" title="Link to this definition">#</a></dt>
 <dd><p>Postfix sum of the number of particles in each cell</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.cell_particle_indices">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_indices</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L182-L186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_indices" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_indices</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L186-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_indices" title="Link to this definition">#</a></dt>
 <dd><p>Indices of the particles in each cell</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.fill_element_mask">
-<span class="sig-name descname"><span class="pre">fill_element_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L254-L267"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_element_mask" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_element_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/pic_quadrature.py#L258-L271"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_element_mask" title="Link to this definition">#</a></dt>
 <dd><p>Fills a mask array such that all non-empty elements are set to 1, all empty elements to zero.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
