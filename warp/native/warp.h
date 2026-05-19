@@ -59,7 +59,7 @@ WP_API void wp_free_host(void* ptr);
 WP_API void wp_free_pinned(void* ptr);
 WP_API void wp_free_device(void* context, void* ptr);  // uses cudaFreeAsync() if supported, cudaFree() otherwise
 WP_API void wp_free_device_default(void* context, void* ptr);  // uses cudaFree()
-WP_API void wp_free_device_async(void* context, void* ptr);  // uses cudaFreeAsync()
+WP_API void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret = nullptr);  // uses cudaFreeAsync()
 
 WP_API bool wp_memcpy_h2h(void* dest, void* src, size_t n);
 WP_API bool wp_memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream = WP_CURRENT_STREAM);
@@ -512,6 +512,12 @@ WP_API bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst,
 WP_API bool wp_cuda_graph_update_memcpy_batch(
     void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
 );
+
+WP_API void* wp_cuda_graph_insert_alloc_node(void* context, size_t size);
+WP_API void* wp_cuda_graph_insert_free_node(void* context, void* alloc_node);
+WP_API void* wp_cuda_graph_insert_empty_node(void* context);
+WP_API int wp_cuda_graph_node_depends_on(void* argument, void* referent);
+WP_API int wp_cuda_graph_alloc_query(void* alloc, void* arg);
 
 WP_API size_t wp_cuda_compile_program(
     const char* cuda_src,

@@ -966,7 +966,7 @@ void wp_free_device(void* context, void* ptr) { }
 
 void wp_free_device_default(void* context, void* ptr) { }
 
-void wp_free_device_async(void* context, void* ptr) { }
+void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret) { }
 
 bool wp_memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream) { return false; }
 
@@ -1116,6 +1116,12 @@ WP_API bool wp_cuda_graph_update_memcpy_batch(
 {
     return false;
 }
+
+WP_API void* wp_cuda_graph_insert_alloc_node(void* context, size_t size) { return NULL; }
+WP_API void* wp_cuda_graph_insert_free_node(void* context, void* alloc_node) { return NULL; }
+WP_API void* wp_cuda_graph_insert_empty_node(void* context) { return NULL; }
+WP_API int wp_cuda_graph_node_depends_on(void* argument, void* referent) { return -1; }
+WP_API int wp_cuda_graph_alloc_query(void* alloc, void* arg) { return -1; }
 
 WP_API size_t wp_cuda_compile_program(
     const char* cuda_src,

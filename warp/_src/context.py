@@ -3488,7 +3488,7 @@ class CudaMempoolAllocator:
         return ptr
 
     def deallocate(self, ptr, size_in_bytes):
-        runtime.core.wp_free_device_async(self.device.context, ptr)
+        runtime.core.wp_free_device_async(self.device.context, ptr, None)
 
 
 class ContextGuard:
@@ -4687,7 +4687,7 @@ class Runtime:
             self.core.wp_free_device.restype = None
             self.core.wp_free_device_default.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_free_device_default.restype = None
-            self.core.wp_free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_free_device_async.restype = None
 
             self.core.wp_alloc_tracker_enable.argtypes = [ctypes.c_int]
@@ -5679,6 +5679,17 @@ class Runtime:
                 ctypes.c_int,
             ]
             self.core.wp_cuda_graph_update_memcpy_batch.restype = ctypes.c_bool
+
+            self.core.wp_cuda_graph_insert_alloc_node.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+            self.core.wp_cuda_graph_insert_alloc_node.restype = ctypes.c_void_p
+            self.core.wp_cuda_graph_insert_free_node.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_insert_free_node.restype = ctypes.c_void_p
+            self.core.wp_cuda_graph_insert_empty_node.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_graph_insert_empty_node.restype = ctypes.c_void_p
+            self.core.wp_cuda_graph_node_depends_on.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_node_depends_on.restype = ctypes.c_int
+            self.core.wp_cuda_graph_alloc_query.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_cuda_graph_alloc_query.restype = ctypes.c_int
 
             self.core.wp_cuda_compile_program.argtypes = [
                 ctypes.c_char_p,  # cuda_src

@@ -15,8 +15,9 @@
 #include <dlfcn.h>
 #endif
 
-#include <set>
-#include <stack>
+#include <queue>
+#include <unordered_set>
+#include <vector>
 
 // the minimum CUDA version required from the driver
 #define WP_CUDA_DRIVER_VERSION 12000
@@ -384,6 +385,182 @@ bool get_graph_leaf_nodes(cudaGraph_t graph, std::vector<cudaGraphNode_t>& leaf_
     return true;
 }
 
+// get all leaf nodes that depend on the given ancestor node
+bool get_dependent_leaf_nodes(cudaGraphNode_t ancestor, std::vector<cudaGraphNode_t>& leaf_nodes_ret)
+{
+    if (!ancestor)
+        return false;
+
+    std::queue<cudaGraphNode_t> frontier { { ancestor } };
+    std::unordered_set<cudaGraphNode_t> visited { ancestor };
+    std::vector<cudaGraphNode_t> deps;
+
+    leaf_nodes_ret.clear();
+
+    while (!frontier.empty()) {
+        cudaGraphNode_t node = frontier.front();
+        frontier.pop();
+
+        size_t dep_count = 0;
+        if (!check_cu(cuGraphNodeGetDependentNodes_f(node, NULL, &dep_count)))
+            return false;
+
+        if (dep_count == 0) {
+            leaf_nodes_ret.push_back(node);
+        } else {
+            deps.resize(dep_count);
+            if (!check_cu(cuGraphNodeGetDependentNodes_f(node, deps.data(), &dep_count)))
+                return false;
+            for (cudaGraphNode_t dep : deps) {
+                if (visited.insert(dep).second) {
+                    frontier.push(dep);
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+// whether argument node depends on referent node
+NodeDependencyResult graph_node_depends_on(cudaGraphNode_t argument, cudaGraphNode_t referent)
+{
+    if (!argument || !referent)
+        return NODE_DEPENDENCY_RESULT_ERROR;
+
+    std::queue<cudaGraphNode_t> frontier { { referent } };
+    std::unordered_set<cudaGraphNode_t> visited { referent };
+    std::vector<cudaGraphNode_t> deps;
+
+    while (!frontier.empty()) {
+        cudaGraphNode_t node = frontier.front();
+        frontier.pop();
+
+        if (node == argument)
+            return NODE_DEPENDENCY_RESULT_DEPENDENT;
+
+        size_t dep_count = 0;
+        if (!check_cu(cuGraphNodeGetDependentNodes_f(node, NULL, &dep_count)))
+            return NODE_DEPENDENCY_RESULT_ERROR;
+
+        if (dep_count > 0) {
+            deps.resize(dep_count);
+            if (!check_cu(cuGraphNodeGetDependentNodes_f(node, deps.data(), &dep_count)))
+                return NODE_DEPENDENCY_RESULT_ERROR;
+            for (cudaGraphNode_t dep : deps) {
+                if (visited.insert(dep).second) {
+                    frontier.push(dep);
+                }
+            }
+        }
+    }
+
+    return NODE_DEPENDENCY_RESULT_INDEPENDENT;
+}
+
+// determine the status of an allocation at the given query node
+GraphAllocQueryResult graph_alloc_query(cudaGraphNode_t alloc_node, cudaGraphNode_t query_node)
+{
+    if (!alloc_node || !query_node)
+        return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+
+    CUgraphNodeType alloc_node_type;
+    if (!check_cu(cuGraphNodeGetType_f(alloc_node, &alloc_node_type)))
+        return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+    if (alloc_node_type != CU_GRAPH_NODE_TYPE_MEM_ALLOC)
+        return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+
+    // get the allocation pointer so we can locate the matching free node (if any)
+    cudaMemAllocNodeParams alloc_params;
+    if (!check_cuda(cudaGraphMemAllocNodeGetParams(alloc_node, &alloc_params)))
+        return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+    void* alloc_ptr = alloc_params.dptr;
+
+    // BFS from the alloc node to locate the matching free node and to
+    // determine whether the query node is a descendant of the alloc.
+    std::queue<cudaGraphNode_t> frontier { { alloc_node } };
+    std::unordered_set<cudaGraphNode_t> visited { alloc_node };
+    std::vector<cudaGraphNode_t> deps;
+    cudaGraphNode_t free_node = NULL;
+    bool query_reachable = false;
+
+    while (!frontier.empty()) {
+        cudaGraphNode_t node = frontier.front();
+        frontier.pop();
+
+        // record if the query node is reachable from the alloc
+        if (node == query_node)
+            query_reachable = true;
+
+        // record the first free node that matches the alloc pointer
+        // - there should only be one free for this alloc, we're not tackling
+        //   double-free errors here.
+        // - after the alloc is freed, subsequent alloc and free nodes can reuse
+        //   the same pointer value, but we don't care about those.
+        if (!free_node && node != alloc_node) {
+            CUgraphNodeType node_type;
+            if (!check_cu(cuGraphNodeGetType_f(node, &node_type)))
+                return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+            if (node_type == CU_GRAPH_NODE_TYPE_MEM_FREE) {
+                void* free_ptr = NULL;
+                if (!check_cuda(cudaGraphMemFreeNodeGetParams(node, &free_ptr)))
+                    return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+                if (free_ptr == alloc_ptr)
+                    free_node = node;
+            }
+        }
+
+        size_t dep_count = 0;
+        if (!check_cu(cuGraphNodeGetDependentNodes_f(node, NULL, &dep_count)))
+            return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+
+        if (dep_count > 0) {
+            deps.resize(dep_count);
+            if (!check_cu(cuGraphNodeGetDependentNodes_f(node, deps.data(), &dep_count)))
+                return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+            for (cudaGraphNode_t dep : deps) {
+                if (visited.insert(dep).second)
+                    frontier.push(dep);
+            }
+        }
+    }
+
+    if (!query_reachable) {
+        // query node does not depend on alloc, so allocation is inaccessible
+        return GRAPH_ALLOC_QUERY_RESULT_INACCESSIBLE;
+    }
+
+    if (!free_node) {
+        // alloc is never freed in the graph
+        return GRAPH_ALLOC_QUERY_RESULT_AVAILABLE;
+    }
+
+    // Query node depends on the alloc and a free node was found, so we need to check
+    // the relationship between the query node and the free node:
+    // - If the query node depends on the free node, then the allocation is guaranteed
+    //   to be freed before the query node is reached.
+    // - If the free node depends on the query node, then the allocation is guaranteed
+    //   to be available when the query node is reached.
+    // - If the query node and free node are independent, then they can execute
+    //   concurrently leading to potential use-after-free errors.
+
+    // check if the query node executes after the free node
+    NodeDependencyResult q_after_f = graph_node_depends_on(query_node, free_node);
+    if (q_after_f == NODE_DEPENDENCY_RESULT_ERROR)
+        return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+    if (q_after_f == NODE_DEPENDENCY_RESULT_DEPENDENT)
+        return GRAPH_ALLOC_QUERY_RESULT_FREED;
+
+    // check if the free node executes after the query node
+    NodeDependencyResult f_after_q = graph_node_depends_on(free_node, query_node);
+    if (f_after_q == NODE_DEPENDENCY_RESULT_ERROR)
+        return GRAPH_ALLOC_QUERY_RESULT_ERROR;
+    if (f_after_q == NODE_DEPENDENCY_RESULT_DEPENDENT)
+        return GRAPH_ALLOC_QUERY_RESULT_AVAILABLE;
+
+    // free is independent of the query node, potentially causing use-after-free errors
+    return GRAPH_ALLOC_QUERY_RESULT_USE_AFTER_FREE;
+}
 
 #define DRIVER_ENTRY_POINT_ERROR driver_entry_point_error(__FUNCTION__)
 

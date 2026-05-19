@@ -217,6 +217,26 @@ inline CUgraph get_capture_graph(CUstream stream)
 bool get_capture_dependencies(CUstream stream, std::vector<CUgraphNode>& dependencies_ret);
 
 bool get_graph_leaf_nodes(cudaGraph_t graph, std::vector<cudaGraphNode_t>& leaf_nodes_ret);
+bool get_dependent_leaf_nodes(cudaGraphNode_t ancestor, std::vector<cudaGraphNode_t>& leaf_nodes_ret);
+
+enum NodeDependencyResult {
+    NODE_DEPENDENCY_RESULT_DEPENDENT = 0,  // argument node depends on referent node
+    NODE_DEPENDENCY_RESULT_INDEPENDENT = 1,  // argument node does not depend on referent node
+    NODE_DEPENDENCY_RESULT_ERROR = -1,  // an error occurred
+};
+
+NodeDependencyResult graph_node_depends_on(cudaGraphNode_t argument, cudaGraphNode_t referent);
+
+enum GraphAllocQueryResult {
+    GRAPH_ALLOC_QUERY_RESULT_AVAILABLE = 0,  // query node can safely access the alloc
+    GRAPH_ALLOC_QUERY_RESULT_FREED = 1,  // alloc is freed before query node is reached
+    GRAPH_ALLOC_QUERY_RESULT_INACCESSIBLE = 2,  // alloc is not accessible by query node
+    GRAPH_ALLOC_QUERY_RESULT_ERROR = -1,  // an error occurred
+    GRAPH_ALLOC_QUERY_RESULT_USE_AFTER_FREE = -2,  // query node depends on the alloc, but the free
+                                                   // is independent of the query node
+};
+
+GraphAllocQueryResult graph_alloc_query(cudaGraphNode_t alloc_node, cudaGraphNode_t query_node);
 
 inline CUcontext get_stream_context(CUstream stream)
 {
