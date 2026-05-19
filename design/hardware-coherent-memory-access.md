@@ -1,6 +1,14 @@
 # Hardware-Coherent Cross-Device Memory Access
 
-**Status**: Proposed
+**Status**: In Progress
+
+**Tracking issues**:
+
+- Phase 1: [GH-1461](https://github.com/NVIDIA/warp/issues/1461)
+- Future phases: Track with follow-up GitHub issues as they are scheduled.
+
+**Implementation status**: Phase 1 is implemented. Phases 2--5 remain future
+work.
 
 ## Motivation
 
@@ -244,15 +252,15 @@ No phase requires a minimum toolkit version beyond CUDA 12.0. Degradation on old
 
 ### Overview: What Each Phase Introduces
 
-Each phase introduces only the device attributes, native functions, and Python APIs that it directly consumes. No phase adds speculative API surface for a future phase to use.
+Each phase introduces only the device attributes, native functions, and Python APIs it consumes or exposes as part of that phase. No phase adds speculative API surface solely for a future phase to use.
 
-| Phase | What it delivers | Attributes introduced | Native functions introduced |
-|---|---|---|---|
-| 1 | Remove device check from `wp.launch()`, add verification mode, redesign `Device.can_access()`, add `wp.can_access(device, array)`, add allocation-aware launch verification for Warp-owned arrays | Native: `pageable_memory_access`, `direct_managed_mem_access_from_host`, `host_native_atomic_supported`; Python: `is_cpu_memory_access_from_gpu_supported`, `is_gpu_memory_access_from_cpu_supported`, `is_cpu_gpu_atomic_supported` | Three `wp_cuda_device_get_*` accessors |
-| 2 | `wp.prefetch()` for explicit data placement | `pageable_memory_access_uses_host_page_tables` (to distinguish HMM from host-page-table ATS for warning/no-op behavior) | `wp_cuda_mem_prefetch_async` |
-| 3 | Auto-prefetch in `wp.launch()` | `is_integrated` (to avoid pointless prefetches on shared-DRAM SoCs) | None |
-| 4 | `wp.copy()` staging-buffer optimization | None (reuses Phase 1 access predicates) | None |
-| 5 | Expand `wp.can_access()` to additional resources and richer managed/custom allocation metadata | `concurrent_managed_access` (to distinguish limited vs. full managed memory) | None |
+| Phase | Status | What it delivers | Attributes introduced | Native functions introduced |
+|---|---|---|---|---|
+| 1 | Implemented | Remove device check from `wp.launch()`, add verification mode, redesign `Device.can_access()`, add `wp.can_access(device, array)`, add allocation-aware launch verification for Warp-owned arrays | Native: `pageable_memory_access`, `direct_managed_mem_access_from_host`, `host_native_atomic_supported`; Python: `is_cpu_memory_access_from_gpu_supported`, `is_gpu_memory_access_from_cpu_supported`, `is_cpu_gpu_atomic_supported` | Three `wp_cuda_device_get_*` accessors |
+| 2 | Future | `wp.prefetch()` for explicit data placement | `pageable_memory_access_uses_host_page_tables` (to distinguish HMM from host-page-table ATS for warning/no-op behavior) | `wp_cuda_mem_prefetch_async` |
+| 3 | Future | Auto-prefetch in `wp.launch()` | `is_integrated` (to avoid pointless prefetches on shared-DRAM SoCs) | None |
+| 4 | Future | `wp.copy()` staging-buffer optimization | None (reuses Phase 1 access predicates) | None |
+| 5 | Future | Expand `wp.can_access()` to additional resources and richer managed/custom allocation metadata | `concurrent_managed_access` (to distinguish limited vs. full managed memory) | None |
 
 ### Phase 1: Cross-Device Launch Support
 
@@ -557,7 +565,7 @@ if value.device != device:
     _raise_launch_array_access_error(kernel, arg_name, value, device)
 ```
 
-`LaunchVerificationMode.CHECKED` checks the actual Warp array allocation where Warp can determine it. Known-inaccessible allocations raise before launch. Unknown custom allocator or externally wrapped allocations warn once per `(kernel, argument name, source device, launch device)` pattern and proceed, leaving legality to the user and hardware.
+`LaunchVerificationMode.CHECKED` checks the actual Warp array allocation where Warp can determine it. Known-inaccessible allocations raise before launch. Unknown custom allocator or externally wrapped allocations warn through a bounded cache keyed by `(kernel, argument name, source device, launch device)` and then proceed, leaving legality to the user and hardware.
 
 The policy helper is responsible for mode validation:
 
@@ -568,10 +576,10 @@ def _validate_launch_array_access(kernel, arg_name, value, device):
     if value.device == device:
         return
 
-    if mode == warp.LaunchVerificationMode.STRICT:
+    if mode == warp.config.LaunchVerificationMode.STRICT:
         _raise_launch_array_access_error(kernel, arg_name, value, device)
 
-    if mode == warp.LaunchVerificationMode.CHECKED:
+    if mode == warp.config.LaunchVerificationMode.CHECKED:
         access_status = _classify_array_access_from_device(value, device)
         if access_status == _ArrayAccessStatus.INACCESSIBLE:
             _raise_launch_array_access_error(kernel, arg_name, value, device)
@@ -580,7 +588,7 @@ def _validate_launch_array_access(kernel, arg_name, value, device):
         return
 
     raise ValueError(
-        "warp.config.launch_verification_mode must be a warp.LaunchVerificationMode value"
+        f"warp.config.launch_verification_mode must be a warp.LaunchVerificationMode value, got {mode!r}"
     )
 ```
 
@@ -591,20 +599,20 @@ def _validate_launch_array_access(kernel, arg_name, value, device):
 Add to `warp/config.py`:
 
 ```python
-from enum import IntEnum
+from enum import IntEnum as _IntEnum
 
 
-class LaunchVerificationMode(IntEnum):
-    """Kernel launch array access verification modes."""
+class LaunchVerificationMode(_IntEnum):
+    """Array-access verification modes for kernel launches."""
 
-    STRICT = 0
-    """Require every Warp array argument to be on the launch device."""
+    RELAXED = 0
+    """Perform no launch array access checks before launching kernels."""
 
-    RELAXED = 1
-    """Perform no launch array access checks and pass pointers through."""
+    CHECKED = 1
+    """Detect cross-device Warp array access issues before launching kernels where possible."""
 
-    CHECKED = 2
-    """Check cross-device Warp array accessibility before launch where possible."""
+    STRICT = 2
+    """Require every Warp array argument to be allocated on the launch device."""
 
 
 launch_verification_mode: LaunchVerificationMode = LaunchVerificationMode.RELAXED
@@ -617,7 +625,7 @@ to be on the launch device, matching Warp's original behavior.
 arguments are accessible from the launch device before passing their pointers to
 the kernel. For Warp-owned arrays, checked mode uses the array's allocation type
 where Warp can determine it. Unknown custom or externally wrapped allocation
-provenance warns once per launch pattern and then proceeds.
+provenance warns through a bounded per-launch-pattern cache and then proceeds.
 
 Unlike ``verify_cuda``, this setting can be used during CUDA graph capture
 because checks run before each launch is recorded. For cross-GPU graph capture,
@@ -672,7 +680,7 @@ Strict mode (`LaunchVerificationMode.STRICT`): every cross-device Warp array arg
 | `cpu` | `cuda:0` | **RuntimeError** |
 | `cuda:0` | `cuda:1` | **RuntimeError** |
 
-Checked mode (`LaunchVerificationMode.CHECKED`): each Warp-owned array argument is checked with allocation-aware launch verification where Warp can determine the allocator. Unknown custom or external allocation provenance warns once per launch pattern and then proceeds.
+Checked mode (`LaunchVerificationMode.CHECKED`): each Warp-owned array argument is checked with allocation-aware launch verification where Warp can determine the allocator. Unknown custom or external allocation provenance warns through a bounded per-launch-pattern cache and then proceeds.
 
 | Launch device | Array device | Discrete GPU (no HMM) | HMM system | Jetson Thor | Host-page-table ATS (DGX Spark / GB10 observed) |
 |---|---|---|---|---|---|
@@ -790,7 +798,9 @@ int wp_cuda_mem_prefetch_async(void* ptr, size_t size_in_bytes,
 }
 ```
 
-This pattern follows the existing convention in `cuda_util.cpp` (e.g., `cuMemcpyBatchAsync` at line 234 uses the same `#if CUDA_VERSION >= 12080` / `driver_version >= 12080` pattern).
+This pattern follows the existing `cuMemcpyBatchAsync` convention in
+`cuda_util.cpp`, which uses the same `#if CUDA_VERSION >= 12080` /
+`driver_version >= 12080` dispatch pattern.
 
 **Compile-time / runtime compatibility matrix for Phase 2:**
 
@@ -1022,7 +1032,7 @@ Add a test module `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 - With `LaunchVerificationMode.STRICT`: verify that any cross-device Warp array argument raises `RuntimeError`, including cases that `CHECKED` would allow, such as pinned CPU arrays on UVA CUDA devices or ordinary CPU arrays on HMM / host-page-table ATS systems.
 - With `LaunchVerificationMode.CHECKED` on a discrete GPU without HMM: verify that launching with a CPU array raises `RuntimeError` (not a CUDA fault).
 - With `LaunchVerificationMode.CHECKED` on an HMM / host-page-table ATS system: verify that GPU launches with CPU arrays still succeed (no false positive).
-- With `LaunchVerificationMode.CHECKED`: verify that cross-device arrays backed by custom or externally wrapped CUDA allocations warn once per `(kernel, argument name, source device, launch device)` pattern and proceed.
+- With `LaunchVerificationMode.CHECKED`: verify that cross-device arrays backed by custom or externally wrapped CUDA allocations warn through a bounded cache keyed by `(kernel, argument name, source device, launch device)` and proceed.
 - With `LaunchVerificationMode.CHECKED` during CUDA graph capture: capture and replay a same-device CUDA launch successfully.
 - On multi-GPU systems with a peer-access-supported pair: allocate with CUDA memory pools disabled, enable peer access before capture, pass an array from the source GPU to a kernel launched on the peer GPU with `LaunchVerificationMode.CHECKED`, capture and replay the graph, and verify the results. Skip cleanly when no peer-access pair exists.
 - On multi-GPU systems with a memory-pool-access-supported pair: allocate with CUDA memory pools enabled, enable memory-pool access before capture, pass an array from the source GPU to a kernel launched on the peer GPU with `LaunchVerificationMode.CHECKED`, capture and replay the graph, and verify the results.
