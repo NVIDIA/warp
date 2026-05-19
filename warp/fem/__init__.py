@@ -99,6 +99,7 @@ from warp._src.fem.operator import element_closest_point as element_closest_poin
 from warp._src.fem.operator import element_coordinates as element_coordinates
 from warp._src.fem.operator import element_index as element_index
 from warp._src.fem.operator import element_partition_index as element_partition_index
+from warp._src.fem.operator import environment_index as environment_index
 from warp._src.fem.operator import grad as grad
 from warp._src.fem.operator import grad_average as grad_average
 from warp._src.fem.operator import grad_jump as grad_jump

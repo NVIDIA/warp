@@ -18,7 +18,7 @@ from warp._src.fem.types import (
     make_free_sample,
 )
 from warp._src.fem.utils import compress_node_indices
-from warp.types import is_array
+from warp.types import is_array, type_is_int
 
 from .quadrature import Quadrature
 
@@ -32,14 +32,16 @@ class PicQuadrature(Quadrature):
 
     Args:
         domain: Underlying domain for the quadrature
-        positions: Defines the location of the quadrature points. Cane be:
+        positions: Defines the location of the quadrature points. Can be:
 
          - an array containing the world positions of all particles
          - a tuple of arrays containing the cell indices and coordinates for each particle.
          - for GIMP-style integration where particle can span multiple elements: A tuple of 2d array the element indices for each particle
 
-        measures: Array containing the measure (area/volume) of each particle, used to defined the integration weights.
+        measures: Array containing the measure (area/volume) of each particle, used to define the integration weights.
          If ``None``, defaults to the cell measure divided by the number of particles in the cell.
+        env_indices: Environment index for each particle when ``positions`` contains world positions.
+            Used to disambiguate colocated multi-environment geometries.
         max_dist: When providing world positions that fall outside of the domain's geometry partition, maximum distance to look up for embedding cells
         requires_grad: Whether gradients should be allocated for the computed quantities
         use_domain_element_indices: Whether to use the domain element indices instead of the full geometry cell indices. This reduces memory usage,
@@ -63,6 +65,7 @@ class PicQuadrature(Quadrature):
             ],
         ],
         measures: Optional["wp.array(dtype=float)"] = None,
+        env_indices: Optional["wp.array(dtype=int)"] = None,
         requires_grad: bool = False,
         max_dist: float = 0.0,
         use_domain_element_indices: bool = False,
@@ -91,7 +94,7 @@ class PicQuadrature(Quadrature):
         """Maximum number of particles per cell. Computed on-demand"""
 
         self.Arg = self._make_arg_type()
-        self._bin_particles(positions, measures, max_dist=max_dist, temporary_store=temporary_store)
+        self._bin_particles(positions, measures, env_indices, max_dist=max_dist, temporary_store=temporary_store)
 
         if self._use_domain_element_indices:
             self.point_count = self._point_count_domain
@@ -109,7 +112,8 @@ class PicQuadrature(Quadrature):
     @property
     def name(self):
         """Unique name of the quadrature rule."""
-        return self.__class__.__name__
+        index_scope = "domain" if self._use_domain_element_indices else "geometry"
+        return f"{self.__class__.__name__}_{index_scope}"
 
     @Quadrature.domain.setter
     def domain(self, domain: GeometryDomain):
@@ -273,18 +277,36 @@ class PicQuadrature(Quadrature):
         i = wp.tid()
         element_mask[i] = wp.where(element_particle_offsets[i] == element_particle_offsets[i + 1], 0, 1)
 
-    def _bin_particles(self, positions, measures, max_dist: float, temporary_store: TemporaryStore):
+    def _bin_particles(self, positions, measures, env_indices, max_dist: float, temporary_store: TemporaryStore):
         if is_array(positions):
+            if env_indices is None and self.domain.geometry.environment_count() > 1:
+                raise ValueError(
+                    "World-space PicQuadrature over a multi-environment geometry requires explicit environment indices"
+                )
+            if env_indices is not None:
+                if not is_array(env_indices):
+                    raise ValueError("Environment indices must be a Warp array")
+                if env_indices.shape != (positions.shape[0],):
+                    raise ValueError("Environment indices must have one entry per particle position")
+                if not type_is_int(env_indices.dtype):
+                    raise ValueError("Environment indices must have an integer dtype")
+                if env_indices.device != positions.device:
+                    env_indices = env_indices.to(positions.device)
+
             self.cell_indices, self.particle_coords = self._compute_cell_indices_from_positions(
-                positions, max_dist, temporary_store
+                positions, env_indices, max_dist, temporary_store
             )
             self.particle_fraction = None
         elif len(positions) == 2:
+            if env_indices is not None:
+                raise ValueError("Environment indices can only be provided with world-space particle positions")
             self.cell_indices, self.particle_coords = positions
             self.particle_fraction = None
             if self.cell_indices.shape != self.particle_coords.shape:
                 raise ValueError("Cell index and coordinates arrays must have the same shape")
         elif len(positions) == 3:
+            if env_indices is not None:
+                raise ValueError("Environment indices can only be provided with world-space particle positions")
             self.cell_indices, self.particle_coords, self.particle_fraction = positions
             if (
                 self.cell_indices.shape != self.particle_coords.shape
@@ -308,7 +330,9 @@ class PicQuadrature(Quadrature):
 
         self._finalize_cell_particle_data(measures, temporary_store)
 
-    def _compute_cell_indices_from_positions(self, positions, max_dist: float, temporary_store: TemporaryStore):
+    def _compute_cell_indices_from_positions(
+        self, positions, env_indices, max_dist: float, temporary_store: TemporaryStore
+    ):
         device = positions.device
         if not self.domain.supports_lookup(device):
             raise RuntimeError(
@@ -318,18 +342,33 @@ class PicQuadrature(Quadrature):
 
         cell_lookup = self.domain.element_partition_lookup
         cell_coordinates = self.domain.element_coordinates
+        has_env_indices = env_indices is not None
+        env_index_dtype = env_indices.dtype if has_env_indices else int
 
-        @dynamic_kernel(suffix=f"{self.domain.name}{self._use_domain_element_indices}")
+        @dynamic_kernel(
+            suffix=f"{self.domain.name}{self._use_domain_element_indices}{has_env_indices}{env_index_dtype.__name__}"
+        )
         def bin_particles(
             cell_arg_value: self.domain.ElementArg,
             domain_index_arg_value: self.domain.ElementIndexArg,
             positions: wp.array(dtype=positions.dtype),
+            particle_env_indices: wp.array(dtype=env_index_dtype),
             max_dist: float,
             cell_index: wp.array(dtype=ElementIndex),
             cell_coords: wp.array(dtype=self._coords_type),
         ):
             p = wp.tid()
-            sample = cell_lookup(self.domain.DomainArg(cell_arg_value, domain_index_arg_value), positions[p], max_dist)
+            if wp.static(not has_env_indices):
+                sample = cell_lookup(
+                    self.domain.DomainArg(cell_arg_value, domain_index_arg_value), positions[p], max_dist
+                )
+            else:
+                sample = cell_lookup(
+                    self.domain.DomainArg(cell_arg_value, domain_index_arg_value),
+                    positions[p],
+                    max_dist,
+                    int(particle_env_indices[p]),
+                )
 
             if wp.static(self._use_domain_element_indices):
                 cell_index[p] = self.domain.element_partition_index(domain_index_arg_value, sample.element_index)
@@ -357,6 +396,7 @@ class PicQuadrature(Quadrature):
                 self.domain.element_arg_value(device),
                 self.domain.element_index_arg_value(device),
                 positions,
+                env_indices,
                 max_dist,
             ],
             outputs=[

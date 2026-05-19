@@ -29,6 +29,8 @@ class DeformedGeometry(Geometry):
         "side_deformation_gradient": lambda obj: obj._make_side_deformation_gradient(),
         "side_inner_cell_index": lambda obj: obj._make_side_inner_cell_index(),
         "side_outer_cell_index": lambda obj: obj._make_side_outer_cell_index(),
+        "cell_environment_index": lambda obj: obj._make_cell_environment_index(),
+        "side_environment_index": lambda obj: obj._make_side_environment_index(),
         "side_inner_cell_coords": lambda obj: obj._make_side_inner_cell_coords(),
         "side_outer_cell_coords": lambda obj: obj._make_side_outer_cell_coords(),
         "side_from_cell_coords": lambda obj: obj._make_side_from_cell_coords(),
@@ -90,8 +92,12 @@ class DeformedGeometry(Geometry):
     @property
     def name(self) -> str:
         """Unique name of the deformed geometry."""
-        suffix = "_f64" if self.scalar_type != wp.float32 else ""
-        return f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}{suffix}"
+        name = f"DefGeo_{self.field.name}_{'rel' if self._relative else 'abs'}"
+        if self.environment_count() > 1:
+            name = f"{name}_env"
+        if self.scalar_type != wp.float32:
+            name = f"{name}_f64"
+        return name
 
     @property
     def base(self) -> Geometry:
@@ -101,6 +107,13 @@ class DeformedGeometry(Geometry):
     @property
     def scalar_type(self):
         return self.base.scalar_type
+
+    def environment_count(self):
+        return self.base.environment_count()
+
+    @property
+    def cell_env(self):
+        return self.base.cell_env
 
     # Geometry device interface
 
@@ -209,6 +222,28 @@ class DeformedGeometry(Geometry):
             return self.base.side_outer_cell_index(args.base_arg, side_index)
 
         return side_outer_cell_index
+
+    def _make_cell_environment_index(self):
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def cell_environment_index(args: self.CellArg, cell_index: ElementIndex):
+            return self.base.cell_environment_index(args.base_arg, cell_index)
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def cell_environment_index(args: self.CellArg, s: self.sample_type):
+            return self.base.cell_environment_index(args.base_arg, s)
+
+        return cell_environment_index
+
+    def _make_side_environment_index(self):
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def side_environment_index(args: self.SideArg, side_index: ElementIndex):
+            return self.base.side_environment_index(args.base_arg, side_index)
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def side_environment_index(args: self.SideArg, s: self.sample_type):
+            return self.base.side_environment_index(args.base_arg, s)
+
+        return side_environment_index
 
     def _make_side_inner_cell_coords(self):
         @cache.dynamic_func(suffix=self.name)

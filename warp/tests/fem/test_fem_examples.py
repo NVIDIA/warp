@@ -130,6 +130,12 @@ add_fem_example_test(
 )
 add_fem_example_test(
     TestFemExamples,
+    name="fem.example_apic_fluid_multi_env",
+    devices=cuda_devices,
+    test_options={"num_frames": 1, "env_count": 2, "voxel_size": 4.0, "stage_path": None},
+)
+add_fem_example_test(
+    TestFemExamples,
     name="fem.example_adaptive_grid",
     devices=cuda_devices,
     test_options={"headless": True, "div_conforming": True},

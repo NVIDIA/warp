@@ -18,6 +18,7 @@ from warp._src.fem.types import (
     cached_sample_type,
     make_free_sample,
 )
+from warp._src.types import is_array
 
 from .element import Element
 
@@ -75,6 +76,15 @@ class Geometry:
         """Number of boundary sides (sides with a single neighbour cell) in the geometry"""
         raise NotImplementedError
 
+    def environment_count(self):
+        """Number of topologically independent environments represented by this geometry."""
+        return getattr(self, "_env_count", 1)
+
+    @property
+    def cell_env(self):
+        """Optional per-cell environment indices."""
+        return getattr(self, "_cell_env", None)
+
     def reference_cell(self) -> Element:
         """Prototypical element for a cell"""
         raise NotImplementedError
@@ -95,8 +105,10 @@ class Geometry:
 
     @property
     def name(self) -> str:
-        """Name of the geometry, including scalar type suffix for non-default precision."""
+        """Name of the geometry, including environment and scalar type suffixes."""
         base = self.__class__.__name__
+        if self.environment_count() > 1:
+            base = f"{base}_env"
         if self.scalar_type != wp.float32:
             return f"{base}_f64"
         return base
@@ -163,6 +175,16 @@ class Geometry:
 
         For elements with the same dimension as the embedding space, this will be zero."""
         raise NotImplementedError
+
+    @wp.func
+    def cell_environment_index(args: Any, cell_index: ElementIndex):
+        """Device function returning the environment index for a cell."""
+        return 0
+
+    @wp.func
+    def cell_environment_index(args: Any, s: Sample):
+        """Device function returning the environment index for a cell sample."""
+        return 0
 
     @cache.cached_arg_value
     def side_arg_value(self, device) -> "Geometry.SideArg":
@@ -233,6 +255,16 @@ class Geometry:
     def side_normal(args: "Geometry.SideArg", s: "Sample"):
         """Device function returning the element normal at a sample point"""
         raise NotImplementedError
+
+    @wp.func
+    def side_environment_index(args: Any, side_index: ElementIndex):
+        """Device function returning the environment index for a side."""
+        return 0
+
+    @wp.func
+    def side_environment_index(args: Any, s: Sample):
+        """Device function returning the environment index for a side sample."""
+        return 0
 
     @staticmethod
     def side_inner_cell_index(args: "Geometry.SideArg", side_index: ElementIndex):
@@ -620,8 +652,15 @@ class Geometry:
         CoordsType = self.coords_type
         scalar = self.scalar_type
 
-        @cache.dynamic_func(suffix=suffix)
-        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, filter_data: Any, filter_target: Any):
+        @cache.dynamic_func(suffix=(suffix, "root"))
+        def cell_lookup_root(
+            args: self.CellArg,
+            pos: pos_type,
+            max_dist: float,
+            filter_data: Any,
+            filter_target: Any,
+            root: int,
+        ):
             closest_cell = int(NULL_ELEMENT_INDEX)
             closest_coords = CoordsType(scalar(OUTSIDE))
 
@@ -632,7 +671,7 @@ class Geometry:
                 # query with increasing bbox size until we find an element
                 # or reach the max distance bound
                 while closest_cell == NULL_ELEMENT_INDEX:
-                    query = wp.bvh_query_aabb(bvh_id, _bvh_vec(pos) - wp.vec3(pad), _bvh_vec(pos) + wp.vec3(pad))
+                    query = wp.bvh_query_aabb(bvh_id, _bvh_vec(pos) - wp.vec3(pad), _bvh_vec(pos) + wp.vec3(pad), root)
                     cell_index = int(0)
                     closest_dist = float(pad * pad)
 
@@ -653,6 +692,31 @@ class Geometry:
 
             return make_free_sample(closest_cell, closest_coords)
 
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, filter_data: Any, filter_target: Any):
+                return cell_lookup_root(args, pos, max_dist, filter_data, filter_target, -1)
+
+        @cache.dynamic_func(suffix=suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            max_dist: float,
+            filter_data: Any,
+            filter_target: Any,
+            env_index: int,
+        ):
+            bvh_id = self.cell_bvh_id(args)
+            root = int(-1)
+            if bvh_id != _NULL_BVH_ID:
+                root = wp.bvh_get_group_root(bvh_id, env_index)
+                if wp.static(self.environment_count() > 1):
+                    if root == -1:
+                        return make_free_sample(int(NULL_ELEMENT_INDEX), CoordsType(scalar(OUTSIDE)))
+
+            return cell_lookup_root(args, pos, max_dist, filter_data, filter_target, root)
+
         return cell_lookup
 
     @cached_property
@@ -666,36 +730,84 @@ class Geometry:
 
         pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
         SampleType = self.sample_type
+        lookup_suffix = (self.name, self.environment_count() > 1)
 
-        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
-            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+        if self.environment_count() <= 1:
 
-        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, env_index: int):
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type, guess: SampleType):
             guess_pos = self.cell_position(args, guess)
             max_dist = wp.length(guess_pos - pos)
-            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+            if wp.static(self.environment_count() <= 1):
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
 
-        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_lookup(args: self.CellArg, pos: pos_type):
+            env_index = self.cell_environment_index(args, guess.element_index)
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type):
+                max_dist = 0.0
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, env_index: int):
             max_dist = 0.0
-            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
 
         # array filtering variants
         filtered_cell_lookup = self.make_filtered_cell_lookup(filter_func=_array_load)
         pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
 
-        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_lookup(
-            args: self.CellArg, pos: pos_type, max_dist: float, filter_array: wp.array(dtype=Any), filter_target: Any
-        ):
-            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+        if self.environment_count() <= 1:
 
-        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_lookup(args: self.CellArg, pos: pos_type, filter_array: wp.array(dtype=Any), filter_target: Any):
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(
+                args: self.CellArg,
+                pos: pos_type,
+                max_dist: float,
+                filter_array: wp.array(dtype=Any),
+                filter_target: Any,
+            ):
+                return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            max_dist: float,
+            filter_array: wp.array(dtype=Any),
+            filter_target: Any,
+            env_index: int,
+        ):
+            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target, env_index)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, filter_array: wp.array(dtype=Any), filter_target: Any):
+                max_dist = 0.0
+                return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            filter_array: wp.array(dtype=Any),
+            filter_target: Any,
+            env_index: int,
+        ):
             max_dist = 0.0
-            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target, env_index)
 
         return cell_lookup
 
@@ -789,10 +901,58 @@ class Geometry:
         if self._bvhs is None:
             self._bvhs = {}
 
-        self._bvhs[device.ordinal] = wp.Bvh(lowers, uppers)
+        self._bvhs[device.ordinal] = wp.Bvh(lowers, uppers, groups=self.cell_bvh_groups(device))
 
         Geometry.cell_arg_value.invalidate(self, device)
         Geometry.side_arg_value.invalidate(self, device)
+
+    def cell_bvh_groups(self, device):
+        """Return optional per-cell BVH group indices on ``device``."""
+        device = wp.get_device(device)
+
+        if self.cell_env is not None:
+            return self.cell_env.to(device)
+
+        if self.environment_count() <= 1:
+            return None
+
+        cell_bvh_groups = getattr(self, "_cell_bvh_groups", None)
+        if cell_bvh_groups is None:
+            cell_bvh_groups = {}
+            self._cell_bvh_groups = cell_bvh_groups
+
+        groups = cell_bvh_groups.get(device.ordinal)
+        if groups is None:
+            groups = wp.empty(shape=self.cell_count(), dtype=wp.int32, device=device)
+            wp.launch(
+                self.compute_cell_bvh_groups,
+                dim=self.cell_count(),
+                device=device,
+                inputs=[self.cell_arg_value(device=device)],
+                outputs=[groups],
+            )
+            cell_bvh_groups[device.ordinal] = groups
+
+        return groups
+
+    @cached_property
+    def compute_cell_bvh_groups(self):
+        @cache.dynamic_kernel(suffix=self.name)
+        def compute_cell_bvh_groups(
+            args: self.CellArg,
+            groups: wp.array(dtype=wp.int32),
+        ):
+            cell_index = wp.tid()
+            groups[cell_index] = self.cell_environment_index(args, cell_index)
+
+        return compute_cell_bvh_groups
+
+    def cell_env_arg_value(self, device):
+        """Return per-cell environment indices for geometry argument structs."""
+        if self.cell_env is None:
+            return wp.empty(shape=(0,), dtype=wp.int32, device=device)
+
+        return self.cell_env.to(device)
 
     def bvh_id(self, device):
         """Return the BVH identifier for the given device, or ``0`` if unavailable."""
@@ -828,3 +988,36 @@ def _bvh_vec(v: wp.vec2d):
 @wp.func
 def _array_load(arr: wp.array(dtype=Any), idx: int):
     return arr[idx]
+
+
+def _initialize_cell_environment_indices(
+    cell_env: wp.array | None,
+    env_count: int | None,
+    cell_count: int,
+    device,
+):
+    device = wp.get_device(device)
+
+    if cell_env is None:
+        if env_count not in (None, 1):
+            raise ValueError(
+                "Environment count can only be greater than one when cell environment indices are provided"
+            )
+        return None, 1
+
+    if env_count is None:
+        raise ValueError("Environment count must be provided when cell environment indices are provided")
+    if env_count < 1:
+        raise ValueError("Environment count must be at least one")
+    if not is_array(cell_env):
+        raise ValueError("Cell environment indices must be a Warp array")
+    if cell_env.ndim != 1 or cell_env.shape[0] != cell_count:
+        raise ValueError("Cell environment indices must have one entry per cell")
+    if cell_env.dtype != wp.int32:
+        raise ValueError("Cell environment indices must have dtype wp.int32")
+    if not cell_env.is_contiguous:
+        raise ValueError("Cell environment indices must be contiguous")
+    if cell_env.device != device:
+        raise RuntimeError("Cell environment indices must live on the same device as the geometry")
+
+    return cell_env, env_count

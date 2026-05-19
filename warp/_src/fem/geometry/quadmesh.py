@@ -22,7 +22,7 @@ from warp._src.utils import array_scan
 
 from .closest_point import project_on_seg_at_origin
 from .element import Element
-from .geometry import Geometry
+from .geometry import Geometry, _initialize_cell_environment_indices
 
 _wp_module_name_ = "warp.fem.geometry.quadmesh"
 
@@ -34,6 +34,8 @@ class QuadmeshCellArg:
 
     quad_vertex_indices: wp.array2d(dtype=int)
     quad_bvh: wp.uint64
+    cell_env: wp.array(dtype=wp.int32)
+    env_count: int
 
 
 @wp.struct
@@ -81,6 +83,8 @@ class Quadmesh(Geometry):
         positions: wp.array,
         build_bvh: bool = False,
         temporary_store: TemporaryStore | None = None,
+        cell_env: wp.array | None = None,
+        env_count: int | None = None,
     ):
         """Construct a D-dimensional quadrilateral mesh.
 
@@ -88,10 +92,15 @@ class Quadmesh(Geometry):
             quad_vertex_indices: warp array of shape (num_tris, 4) containing vertex indices for each quad, in counter-clockwise order
             positions: warp array of shape (num_vertices, D) containing the position of each vertex
             temporary_store: shared pool from which to allocate temporary arrays
+            cell_env: Optional per-cell environment indices. If provided, ``env_count`` must also be provided.
+            env_count: Number of environments represented by ``cell_env``.
         """
 
         self.quad_vertex_indices = quad_vertex_indices
         self.positions = positions
+        self._cell_env, self._env_count = _initialize_cell_environment_indices(
+            cell_env, env_count, self.cell_count(), positions.device
+        )
 
         # Infer scalar type and dimension from position array
         self._scalar_type = type_scalar_type(positions.dtype)
@@ -166,6 +175,8 @@ class Quadmesh(Geometry):
     def fill_cell_topo_arg(self, args: QuadmeshCellArg, device):
         args.quad_vertex_indices = self.quad_vertex_indices.to(device)
         args.quad_bvh = self.bvh_id(device)
+        args.cell_env = self.cell_env_arg_value(device)
+        args.env_count = self._env_count
 
     def fill_side_topo_arg(self, args: QuadmeshSideArg, device):
         self.fill_cell_topo_arg(args.cell_arg, device)
@@ -503,6 +514,16 @@ class Quadmesh(Geometry):
         return wp.min(wp.min(p0, p1), wp.min(p2, p3)), wp.max(wp.max(p0, p1), wp.max(p2, p3))
 
     @wp.func
+    def cell_environment_index(args: Any, cell_index: ElementIndex):
+        if args.topology.env_count <= 1:
+            return 0
+        return int(args.topology.cell_env[cell_index])
+
+    @wp.func
+    def cell_environment_index(args: Any, s: Any):
+        return Quadmesh.cell_environment_index(args, s.element_index)
+
+    @wp.func
     def cell_position(args: Any, s: Any):
         quad_idx = args.topology.quad_vertex_indices[s.element_index]
         w_p = s.element_coords
@@ -556,6 +577,17 @@ class Quadmesh(Geometry):
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
         return arg.topology.edge_quad_indices[side_index][1]
+
+    @wp.func
+    def side_environment_index(args: Any, side_index: ElementIndex):
+        cell_index = Quadmesh.side_inner_cell_index(args, side_index)
+        if args.topology.cell_arg.env_count <= 1:
+            return 0
+        return int(args.topology.cell_arg.cell_env[cell_index])
+
+    @wp.func
+    def side_environment_index(args: Any, s: Any):
+        return Quadmesh.side_environment_index(args, s.element_index)
 
     @wp.func
     def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Any):

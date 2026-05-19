@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Sequence
+from functools import cached_property
 from typing import Any, ClassVar
 
 import numpy as np
@@ -8,10 +10,10 @@ import numpy as np
 import warp as wp
 from warp._src.fem import cache, utils
 from warp._src.fem.cache import cached_vec_type
-from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, make_coords, make_free_sample
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, Sample, make_coords, make_free_sample
 
 from .element import Element
-from .geometry import Geometry
+from .geometry import Geometry, _array_load
 
 _wp_module_name_ = "warp.fem.geometry.nanogrid"
 
@@ -35,15 +37,37 @@ class NanogridBase(Geometry):
         node_grid: wp.Volume,
         node_ijk: "wp.array(dtype=wp.vec3i)",
         scalar_type: type = wp.float32,
+        cell_env: wp.array | None = None,
+        env_offsets: wp.array | None = None,
     ):
         self._cell_grid = cell_grid
         self._cell_ijk = cell_ijk
         self._node_grid = node_grid
         self._node_ijk = node_ijk
         self._scalar_type = scalar_type
+        device = cell_grid.device
+
+        if env_offsets is None:
+            env_offsets = wp.array(np.zeros((1, 3), dtype=np.int32), dtype=wp.vec3i, device=device)
+        elif env_offsets.device != device:
+            env_offsets = env_offsets.to(device)
+
+        self._env_offsets = env_offsets
+        self._env_count = env_offsets.shape[0]
+
+        if cell_env is None:
+            cell_env = wp.zeros(shape=cell_ijk.shape, dtype=int, device=device)
+        elif cell_env.device != device:
+            cell_env = cell_env.to(device)
+
+        if cell_env.shape[0] != cell_ijk.shape[0]:
+            raise ValueError("Cell environment array must have one entry per Nanogrid cell")
+
+        self._cell_env = cell_env
 
         self._face_grid = None
         self._face_ijk = None
+        self._face_env = None
         self._boundary_face_indices = None
 
         self._cell_grid_info = cell_grid.get_grid_info()
@@ -98,6 +122,14 @@ class NanogridBase(Geometry):
         self._ensure_face_grid()
         return self._face_grid
 
+    @property
+    def cell_env(self) -> wp.array:
+        return self._cell_env
+
+    @property
+    def env_offsets(self) -> wp.array:
+        return self._env_offsets
+
     def cell_count(self):
         return self._cell_ijk.shape[0]
 
@@ -111,6 +143,9 @@ class NanogridBase(Geometry):
     def boundary_side_count(self):
         self._ensure_face_grid()
         return self._boundary_face_indices.shape[0]
+
+    def environment_count(self):
+        return self._env_count
 
     @wp.struct
     class SideIndexArg:
@@ -130,21 +165,94 @@ class NanogridBase(Geometry):
         vec3_type = cached_vec_type(3, scalar)
         CoordsType = grid_geo.coords_type
 
-        @cache.dynamic_func(suffix=suffix)
-        def cell_lookup(args: grid_geo.CellArg, pos: vec3_type, max_dist: float, filter_data: Any, filter_target: Any):
+        if grid_geo.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=suffix)
+            def cell_lookup_default(
+                args: grid_geo.CellArg, pos: vec3_type, max_dist: float, filter_data: Any, filter_target: Any
+            ):
+                grid = args.cell_grid
+
+                uvw = wp.volume_world_to_index(grid, pos) + vec3_type(scalar(0.5))
+                i, j, k = int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2]))
+                cell_index = grid_geo._lookup_cell_index(args, i, j, k)
+
+                if cell_index != -1:
+                    coords = grid_geo._cell_coordinates_local(args, cell_index, uvw)
+                    if wp.static(filter_func is None):
+                        return make_free_sample(cell_index, coords)
+                    else:
+                        if filter_func(filter_data, cell_index) == filter_target:
+                            return make_free_sample(cell_index, coords)
+
+                cell_size = vec3_type(
+                    wp.length(wp.volume_index_to_world_dir(grid, vec3_type(scalar(1.0), scalar(0.0), scalar(0.0)))),
+                    wp.length(wp.volume_index_to_world_dir(grid, vec3_type(scalar(0.0), scalar(1.0), scalar(0.0)))),
+                    wp.length(wp.volume_index_to_world_dir(grid, vec3_type(scalar(0.0), scalar(0.0), scalar(1.0)))),
+                )
+
+                offset = scalar(0.5)
+                min_cell_size = wp.min(cell_size)
+                max_offset = wp.ceil(max_dist / min_cell_size)
+                scales = wp.cw_div(vec3_type(min_cell_size), vec3_type(cell_size))
+
+                closest_cell = NULL_ELEMENT_INDEX
+                closest_coords = CoordsType()
+
+                while closest_cell == NULL_ELEMENT_INDEX:
+                    uvw_min = wp.vec3i(uvw - offset * scales)
+                    uvw_max = wp.vec3i(uvw + offset * scales) + wp.vec3i(1)
+
+                    closest_dist = min_cell_size * min_cell_size * scalar(offset * offset)
+
+                    for i in range(uvw_min[0], uvw_max[0]):
+                        for j in range(uvw_min[1], uvw_max[1]):
+                            for k in range(uvw_min[2], uvw_max[2]):
+                                cell_index = grid_geo._lookup_cell_index(args, i, j, k)
+                                if cell_index == -1:
+                                    continue
+
+                                if wp.static(filter_func is not None):
+                                    if filter_func(filter_data, cell_index) != filter_target:
+                                        continue
+                                dist, coords = grid_geo._cell_closest_point_local(args, cell_index, uvw)
+
+                                if dist <= closest_dist:
+                                    closest_dist = dist
+                                    closest_coords = coords
+                                    closest_cell = cell_index
+
+                    if offset >= max_offset:
+                        break
+                    offset = wp.min(scalar(3.0) * offset, max_offset)
+
+                return make_free_sample(closest_cell, closest_coords)
+
+        @cache.dynamic_func(suffix=(suffix, "env"))
+        def cell_lookup_env(
+            args: grid_geo.CellArg,
+            pos: vec3_type,
+            max_dist: float,
+            filter_data: Any,
+            filter_target: Any,
+            env_index: int,
+        ):
             grid = args.cell_grid
 
             uvw = wp.volume_world_to_index(grid, pos) + vec3_type(scalar(0.5))
-            i, j, k = int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2]))
+            env_offset = args.env_offsets[env_index]
+            packed_uvw = uvw + vec3_type(env_offset)
+            i, j, k = int(wp.floor(packed_uvw[0])), int(wp.floor(packed_uvw[1])), int(wp.floor(packed_uvw[2]))
             cell_index = grid_geo._lookup_cell_index(args, i, j, k)
 
             if cell_index != -1:
-                coords = grid_geo._cell_coordinates_local(args, cell_index, uvw)
-                if wp.static(filter_func is None):
-                    return make_free_sample(cell_index, coords)
-                else:
-                    if filter_func(filter_data, cell_index) == filter_target:
+                if args.cell_env[cell_index] == env_index:
+                    coords = grid_geo._cell_coordinates_local(args, cell_index, uvw)
+                    if wp.static(filter_func is None):
                         return make_free_sample(cell_index, coords)
+                    else:
+                        if filter_func(filter_data, cell_index) == filter_target:
+                            return make_free_sample(cell_index, coords)
 
             cell_size = vec3_type(
                 wp.length(wp.volume_index_to_world_dir(grid, vec3_type(scalar(1.0), scalar(0.0), scalar(0.0)))),
@@ -161,8 +269,8 @@ class NanogridBase(Geometry):
             closest_coords = CoordsType()
 
             while closest_cell == NULL_ELEMENT_INDEX:
-                uvw_min = wp.vec3i(uvw - offset * scales)
-                uvw_max = wp.vec3i(uvw + offset * scales) + wp.vec3i(1)
+                uvw_min = wp.vec3i(uvw - offset * scales) + env_offset
+                uvw_max = wp.vec3i(uvw + offset * scales) + wp.vec3i(1) + env_offset
 
                 closest_dist = min_cell_size * min_cell_size * scalar(offset * offset)
 
@@ -171,6 +279,9 @@ class NanogridBase(Geometry):
                         for k in range(uvw_min[2], uvw_max[2]):
                             cell_index = grid_geo._lookup_cell_index(args, i, j, k)
                             if cell_index == -1:
+                                continue
+
+                            if args.cell_env[cell_index] != env_index:
                                 continue
 
                             if wp.static(filter_func is not None):
@@ -188,6 +299,114 @@ class NanogridBase(Geometry):
                 offset = wp.min(scalar(3.0) * offset, max_offset)
 
             return make_free_sample(closest_cell, closest_coords)
+
+        if grid_geo.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=suffix, allow_overloads=True)
+            def cell_lookup(
+                args: grid_geo.CellArg, pos: vec3_type, max_dist: float, filter_data: Any, filter_target: Any
+            ):
+                return cell_lookup_default(args, pos, max_dist, filter_data, filter_target)
+
+        @cache.dynamic_func(suffix=suffix, allow_overloads=True)
+        def cell_lookup(
+            args: grid_geo.CellArg,
+            pos: vec3_type,
+            max_dist: float,
+            filter_data: Any,
+            filter_target: Any,
+            env_index: int,
+        ):
+            return cell_lookup_env(args, pos, max_dist, filter_data, filter_target, env_index)
+
+        return cell_lookup
+
+    @cached_property
+    def cell_lookup(self) -> wp.Function:
+        """Device function for looking up the closest cell to a position."""
+        unfiltered_cell_lookup = self.make_filtered_cell_lookup(filter_func=None)
+
+        null_filter_data = 0
+        null_filter_target = 0
+
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
+        SampleType = self.sample_type
+        lookup_suffix = (self.name, self.environment_count() > 1)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, env_index: int):
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, guess: SampleType):
+            guess_pos = self.cell_position(args, guess)
+            max_dist = wp.length(guess_pos - pos)
+            if wp.static(self.environment_count() <= 1):
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+            env_index = self.cell_environment_index(args, guess.element_index)
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type):
+                max_dist = 0.0
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, env_index: int):
+            max_dist = 0.0
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        filtered_cell_lookup = self.make_filtered_cell_lookup(filter_func=_array_load)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(
+                args: self.CellArg,
+                pos: pos_type,
+                max_dist: float,
+                filter_array: wp.array(dtype=Any),
+                filter_target: Any,
+            ):
+                return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            max_dist: float,
+            filter_array: wp.array(dtype=Any),
+            filter_target: Any,
+            env_index: int,
+        ):
+            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target, env_index)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, filter_array: wp.array(dtype=Any), filter_target: Any):
+                max_dist = 0.0
+                return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            filter_array: wp.array(dtype=Any),
+            filter_target: Any,
+            env_index: int,
+        ):
+            max_dist = 0.0
+            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target, env_index)
 
         return cell_lookup
 
@@ -239,6 +458,32 @@ class NanogridBase(Geometry):
     def _get_face_outer_offset(flags: wp.uint8):
         return wp.int32(flags >> NanogridBase.FACE_OUTER_OFFSET_BIT) & 1
 
+    @wp.func
+    def cell_environment_index(args: Any, cell_index: ElementIndex):
+        return args.cell_env[cell_index]
+
+    @wp.func
+    def cell_environment_index(args: Any, s: Sample):
+        return args.cell_env[s.element_index]
+
+    @wp.func
+    def side_environment_index(args: Any, side_index: ElementIndex):
+        return args.face_env[side_index]
+
+    @wp.func
+    def side_environment_index(args: Any, s: Sample):
+        return args.face_env[s.element_index]
+
+    @wp.func
+    def _local_cell_ijk(args: Any, cell_index: ElementIndex):
+        env_index = args.cell_env[cell_index]
+        return args.cell_ijk[cell_index] - args.env_offsets[env_index]
+
+    @wp.func
+    def _local_face_ijk(args: Any, side_index: ElementIndex):
+        env_index = args.face_env[side_index]
+        return args.face_ijk[side_index] - args.cell_arg.env_offsets[env_index]
+
     def _make_face_tangent_vecs(self):
         scalar = self._scalar_type
         vec3_type = cached_vec_type(3, scalar)
@@ -275,6 +520,8 @@ def _make_nanogrid_cell_arg(scalar_type):
     class NanogridCellArg:
         cell_grid: wp.uint64
         cell_ijk: wp.array(dtype=wp.vec3i)
+        cell_env: wp.array(dtype=int)
+        env_offsets: wp.array(dtype=wp.vec3i)
         inverse_transform: mat33_type
         cell_volume: scalar_type
 
@@ -288,6 +535,7 @@ def _make_nanogrid_side_arg(cell_arg_type, scalar_type):
     class NanogridSideArg:
         cell_arg: cell_arg_type
         face_ijk: wp.array(dtype=wp.vec3i)
+        face_env: wp.array(dtype=int)
         face_flags: wp.array(dtype=wp.uint8)
         face_areas: vec3_type
 
@@ -304,11 +552,71 @@ class Nanogrid(NanogridBase):
         **Geometry._dynamic_attribute_constructors,
     }
 
+    @classmethod
+    def from_environment_voxels(
+        cls,
+        cell_ijks: Sequence[wp.array],
+        env_offsets: wp.array | Sequence[Sequence[int]] | None = None,
+        *,
+        guard_cells: int = 3,
+        voxel_size: int | float | Sequence[float] | None = 1.0,
+        translation=(0.0, 0.0, 0.0),
+        transform=None,
+        temporary_store: cache.TemporaryStore | None = None,
+        scalar_type: type = wp.float32,
+        device=None,
+    ):
+        """Construct a sparse grid geometry from per-environment active cell coordinates.
+
+        The per-environment coordinates are interpreted in local FEM index space.
+        They are packed into a single NanoVDB index grid by adding an environment
+        offset, while FEM positions subtract the offset so environments may remain
+        colocated in world space.
+
+        Args:
+            cell_ijks: Sequence of ``wp.vec3i`` arrays, one array per environment.
+            env_offsets: Optional packed-grid offsets, one ``wp.vec3i`` per environment.
+                If omitted, offsets are generated along the x axis with at least one
+                guard region between consecutive environments. Custom offsets are an
+                advanced override for callers that need deterministic packed NanoVDB
+                coordinates, for example to match an externally built volume. They
+                must still keep active cells from different environments from sharing
+                packed-grid faces.
+            guard_cells: Number of empty packed cells between generated environment
+                tiles. The default isolates padded B-spline node grids up to degree 3.
+            voxel_size: Voxel size for the packed NanoVDB volume. Ignored if ``transform`` is provided.
+            translation: Translation between packed index and world spaces.
+            transform: Linear transform between packed index and world spaces.
+            temporary_store: Shared pool from which to allocate temporary arrays.
+            scalar_type: Scalar type for grid coordinates (``wp.float32`` or ``wp.float64``).
+            device: CUDA device on which to build the packed volume.
+        """
+
+        grid, cell_env, env_offsets = _make_environment_cell_grid(
+            cell_ijks,
+            env_offsets=env_offsets,
+            voxel_size=voxel_size,
+            translation=translation,
+            transform=transform,
+            temporary_store=temporary_store,
+            device=device,
+            guard_cells=guard_cells,
+        )
+        return cls(
+            grid,
+            temporary_store=temporary_store,
+            scalar_type=scalar_type,
+            cell_env=cell_env,
+            env_offsets=env_offsets,
+        )
+
     def __init__(
         self,
         grid: wp.Volume,
         temporary_store: cache.TemporaryStore | None = None,
         scalar_type: type = wp.float32,
+        cell_env: wp.array | None = None,
+        env_offsets: wp.array | None = None,
     ):
         """Construct a sparse grid geometry from an in-memory NanoVDB volume.
 
@@ -332,7 +640,15 @@ class Nanogrid(NanogridBase):
         node_ijk = wp.array(shape=(node_count,), dtype=wp.vec3i, device=device)
         node_grid.get_voxels(out=node_ijk)
 
-        super().__init__(grid, cell_ijk, node_grid, node_ijk, scalar_type=scalar_type)
+        super().__init__(
+            grid,
+            cell_ijk,
+            node_grid,
+            node_ijk,
+            scalar_type=scalar_type,
+            cell_env=cell_env,
+            env_offsets=env_offsets,
+        )
 
         self._edge_count = 0
         self._edge_grid = None
@@ -355,6 +671,8 @@ class Nanogrid(NanogridBase):
     def fill_cell_arg(self, arg, device):
         arg.cell_grid = self._cell_grid.id
         arg.cell_ijk = self._cell_ijk
+        arg.cell_env = self._cell_env
+        arg.env_offsets = self._env_offsets
         arg.inverse_transform = self._inverse_transform
         arg.cell_volume = self._cell_volume
 
@@ -362,6 +680,7 @@ class Nanogrid(NanogridBase):
         self._ensure_face_grid()
         self.fill_cell_arg(arg.cell_arg, device)
         arg.face_ijk = self._face_ijk.to(device)
+        arg.face_env = self._face_env.to(device)
         arg.face_flags = self._face_flags.to(device)
         arg.face_areas = self._face_areas
 
@@ -373,7 +692,7 @@ class Nanogrid(NanogridBase):
     @wp.func
     def cell_position(args: Any, s: Any):
         uvw = (
-            type(s.element_coords)(args.cell_ijk[s.element_index])
+            type(s.element_coords)(NanogridBase._local_cell_ijk(args, s.element_index))
             + s.element_coords
             - type(s.element_coords)(s.element_coords.dtype(0.5))
         )
@@ -401,12 +720,12 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def _cell_coordinates_local(args: Any, cell_index: int, uvw: Any):
-        ijk = type(uvw)(args.cell_ijk[cell_index])
+        ijk = type(uvw)(NanogridBase._local_cell_ijk(args, cell_index))
         return uvw - ijk
 
     @wp.func
     def _cell_closest_point_local(args: Any, cell_index: int, uvw: Any):
-        ijk = type(uvw)(args.cell_ijk[cell_index])
+        ijk = type(uvw)(NanogridBase._local_cell_ijk(args, cell_index))
         rel_pos = uvw - ijk
         coords = wp.min(wp.max(rel_pos, type(uvw)(uvw.dtype(0.0))), type(uvw)(uvw.dtype(1.0)))
         return wp.length_sq(wp.volume_index_to_world_dir(args.cell_grid, coords - rel_pos)), coords
@@ -424,7 +743,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_position(args: Any, s: Any):
-        ijk = args.face_ijk[s.element_index]
+        ijk = NanogridBase._local_face_ijk(args, s.element_index)
         flags = args.face_flags[s.element_index]
         axis = NanogridBase._get_face_axis(flags)
         flip = NanogridBase._get_face_inner_offset(flags)
@@ -525,7 +844,10 @@ class Nanogrid(NanogridBase):
         cell_ijk = args.cell_arg.cell_ijk[element_index]
         side_ijk = args.face_ijk[side_index]
 
-        on_side = element_coords.dtype(side_ijk[axis] - cell_ijk[axis]) == element_coords[axis]
+        same_env = NanogridBase.side_environment_index(args, side_index) == NanogridBase.cell_environment_index(
+            args.cell_arg, element_index
+        )
+        on_side = same_env and element_coords.dtype(side_ijk[axis] - cell_ijk[axis]) == element_coords[axis]
         return wp.where(
             on_side,
             NanogridBase._cell_to_side_coords(axis, flip, element_coords),
@@ -538,7 +860,7 @@ class Nanogrid(NanogridBase):
 
     @wp.func
     def side_coordinates(args: Any, side_index: int, pos: Any):
-        ijk = args.face_ijk[side_index]
+        ijk = NanogridBase._local_face_ijk(args, side_index)
         cell_coords = (
             wp.volume_world_to_index(args.cell_arg.cell_grid, pos) + type(pos)(pos.dtype(0.5)) - type(pos)(ijk)
         )
@@ -569,6 +891,7 @@ class Nanogrid(NanogridBase):
         self._face_ijk = wp.array(shape=(face_count,), dtype=wp.vec3i, device=device)
         self._face_grid.get_voxels(out=self._face_ijk)
 
+        self._face_env = wp.array(shape=(face_count,), dtype=int, device=device)
         self._face_flags = wp.array(shape=(face_count,), dtype=wp.uint8, device=device)
         boundary_face_mask = cache.borrow_temporary(temporary_store, shape=(face_count,), dtype=wp.int32, device=device)
 
@@ -576,7 +899,14 @@ class Nanogrid(NanogridBase):
             _build_face_flags,
             dim=face_count,
             device=device,
-            inputs=[self._cell_grid.id, self._face_ijk, self._face_flags, boundary_face_mask],
+            inputs=[
+                self._cell_grid.id,
+                self._cell_env,
+                self._face_ijk,
+                self._face_env,
+                self._face_flags,
+                boundary_face_mask,
+            ],
         )
         boundary_face_indices, _ = utils.masked_indices(boundary_face_mask)
         boundary_face_mask.release()
@@ -589,6 +919,189 @@ class Nanogrid(NanogridBase):
     def _ensure_edge_grid(self):
         if self._edge_grid is None:
             self._build_edge_grid()
+
+
+def _normalize_environment_voxels(cell_ijks: Sequence[wp.array], device):
+    if not cell_ijks:
+        raise ValueError("At least one environment cell array is required")
+
+    if device is None:
+        device = cell_ijks[0].device
+    else:
+        device = wp.get_device(device)
+
+    if not device.is_cuda:
+        raise RuntimeError("NanoVDB environment volumes can only be built on CUDA devices")
+
+    normalized = []
+    for env_index, env_cell_ijk in enumerate(cell_ijks):
+        if env_cell_ijk.dtype != wp.vec3i or env_cell_ijk.ndim != 1:
+            raise ValueError(f"Environment {env_index} cell coordinates must be a 1D wp.vec3i array")
+        normalized_cell_ijk = env_cell_ijk
+        if env_cell_ijk.device != device:
+            normalized_cell_ijk = env_cell_ijk.to(device)
+        normalized.append(normalized_cell_ijk)
+
+    return normalized, device
+
+
+def _ceil_div(num: int, den: int):
+    return -(-num // den)
+
+
+def _compute_environment_offsets(
+    cell_ijks: Sequence[wp.array],
+    *,
+    guard_cells: int,
+    alignment: int = 1,
+    cell_levels: Sequence[wp.array] | None = None,
+):
+    env_offsets = np.zeros((len(cell_ijks), 3), dtype=np.int32)
+    cursor = 0
+
+    for env_index, env_cell_ijk in enumerate(cell_ijks):
+        cell_count = env_cell_ijk.shape[0]
+        if cell_count == 0:
+            env_offsets[env_index, 0] = _ceil_div(cursor, alignment) * alignment
+            cursor += guard_cells
+            continue
+
+        cell_ijk_np = env_cell_ijk.numpy()
+        min_x = int(np.min(cell_ijk_np[:, 0]))
+
+        if cell_levels is None:
+            max_extent_x = int(np.max(cell_ijk_np[:, 0]))
+        else:
+            cell_level_np = cell_levels[env_index].numpy()
+            max_extent_x = int(np.max(cell_ijk_np[:, 0] + (1 << cell_level_np.astype(np.int32)) - 1))
+
+        offset_x = _ceil_div(cursor - min_x, alignment) * alignment
+        env_offsets[env_index, 0] = offset_x
+
+        packed_max_x = max_extent_x + offset_x
+        cursor = packed_max_x + 1 + guard_cells
+
+    return env_offsets
+
+
+def _normalize_environment_offsets(
+    env_offsets: wp.array | Sequence[Sequence[int]] | None,
+    env_count: int,
+    device,
+    *,
+    cell_ijks: Sequence[wp.array],
+    guard_cells: int,
+    alignment: int = 1,
+    cell_levels: Sequence[wp.array] | None = None,
+):
+    if env_offsets is None:
+        env_offsets = _compute_environment_offsets(
+            cell_ijks, guard_cells=guard_cells, alignment=alignment, cell_levels=cell_levels
+        )
+    elif isinstance(env_offsets, wp.array):
+        if env_offsets.dtype != wp.vec3i or env_offsets.ndim != 1:
+            raise ValueError("Environment offsets must be a 1D wp.vec3i array")
+        if env_offsets.device != device:
+            env_offsets = env_offsets.to(device)
+    else:
+        env_offsets = np.array(env_offsets, dtype=np.int32)
+
+    if not isinstance(env_offsets, wp.array):
+        env_offsets = wp.array(env_offsets, dtype=wp.vec3i, device=device)
+
+    if env_offsets.shape[0] != env_count:
+        raise ValueError("Environment offsets must have one entry per environment")
+
+    if alignment > 1:
+        env_offsets_np = env_offsets.numpy()
+        if np.any(env_offsets_np % alignment != 0):
+            raise ValueError(f"Adaptive Nanogrid environment offsets must be aligned to {alignment} fine-grid voxels")
+
+    return env_offsets
+
+
+def _environment_voxel_offsets(cell_ijks: Sequence[wp.array]):
+    voxel_counts = [cell_ijk.shape[0] for cell_ijk in cell_ijks]
+    return np.cumsum(np.array([0, *voxel_counts], dtype=np.int64))
+
+
+def _make_environment_cell_grid(
+    cell_ijks: Sequence[wp.array],
+    env_offsets: wp.array | Sequence[Sequence[int]] | None,
+    *,
+    voxel_size: int | float | Sequence[float] | None = 1.0,
+    translation=(0.0, 0.0, 0.0),
+    transform=None,
+    temporary_store: cache.TemporaryStore | None,
+    device=None,
+    guard_cells: int = 3,
+):
+    cell_ijks, device = _normalize_environment_voxels(cell_ijks, device)
+    env_offsets = _normalize_environment_offsets(
+        env_offsets,
+        len(cell_ijks),
+        device,
+        cell_ijks=cell_ijks,
+        guard_cells=guard_cells,
+    )
+
+    voxel_offsets = _environment_voxel_offsets(cell_ijks)
+    packed_count = int(voxel_offsets[-1])
+    packed_ijks = cache.borrow_temporary(temporary_store, shape=packed_count, dtype=wp.vec3i, device=device)
+
+    for env_index, env_cell_ijk in enumerate(cell_ijks):
+        wp.launch(
+            _pack_environment_voxels,
+            dim=env_cell_ijk.shape[0],
+            device=device,
+            inputs=[env_index, int(voxel_offsets[env_index]), env_cell_ijk, env_offsets, packed_ijks],
+        )
+
+    grid = wp.Volume.allocate_by_voxels(
+        packed_ijks,
+        voxel_size=voxel_size,
+        translation=translation,
+        transform=transform,
+        device=device,
+    )
+    cell_env = wp.empty(shape=(grid.get_voxel_count(),), dtype=int, device=device)
+
+    for env_index, env_cell_ijk in enumerate(cell_ijks):
+        wp.launch(
+            _fill_environment_cell_env,
+            dim=env_cell_ijk.shape[0],
+            device=device,
+            inputs=[grid.id, env_index, int(voxel_offsets[env_index]), packed_ijks, cell_env],
+        )
+
+    packed_ijks.release()
+    return grid, cell_env, env_offsets
+
+
+@wp.kernel
+def _pack_environment_voxels(
+    env_index: int,
+    packed_offset: int,
+    cell_ijk: wp.array(dtype=wp.vec3i),
+    env_offsets: wp.array(dtype=wp.vec3i),
+    packed_ijk: wp.array(dtype=wp.vec3i),
+):
+    cell = wp.tid()
+    packed_ijk[packed_offset + cell] = cell_ijk[cell] + env_offsets[env_index]
+
+
+@wp.kernel
+def _fill_environment_cell_env(
+    cell_grid: wp.uint64,
+    env_index: int,
+    packed_offset: int,
+    packed_ijk: wp.array(dtype=wp.vec3i),
+    cell_env: wp.array(dtype=int),
+):
+    cell = wp.tid()
+    ijk = packed_ijk[packed_offset + cell]
+    cell_index = wp.volume_lookup_index(cell_grid, ijk[0], ijk[1], ijk[2])
+    cell_env[cell_index] = env_index
 
 
 # -- Topology-building kernels (precision-independent) --
@@ -666,7 +1179,9 @@ def _build_edge_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
 @wp.kernel
 def _build_face_flags(
     cell_grid: wp.uint64,
+    cell_env: wp.array(dtype=int),
     face_ijk: wp.array(dtype=wp.vec3i),
+    face_env: wp.array(dtype=int),
     face_flags: wp.array(dtype=wp.uint8),
     boundary_face_mask: wp.array(dtype=int),
 ):
@@ -678,5 +1193,7 @@ def _build_face_flags(
     minus_cell_index = wp.volume_lookup_index(cell_grid, ijk_minus[0], ijk_minus[1], ijk_minus[2])
     face_ijk[face] = ijk
     flags = NanogridBase._make_face_flags(axis, plus_cell_index, minus_cell_index)
+    env_cell_index = wp.where(plus_cell_index == -1, minus_cell_index, plus_cell_index)
+    face_env[face] = cell_env[env_cell_index]
     face_flags[face] = flags
     boundary_face_mask[face] = NanogridBase._get_boundary_mask(flags)

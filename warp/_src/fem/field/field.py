@@ -623,6 +623,10 @@ class NonconformingField(GeometryField):
         self.domain = domain
 
         self.field = field
+        field_env_count = field.geometry.environment_count()
+        domain_env_count = domain.geometry.environment_count()
+        if field_env_count > 1 and domain_env_count > 1 and field_env_count != domain_env_count:
+            raise ValueError("Nonconforming fields with multiple environments must have matching environment counts")
 
         if not isinstance(background, GeometryField):
             background = UniformField(domain, self.dtype(background))
@@ -685,14 +689,19 @@ class NonconformingField(GeometryField):
             return None
 
         cell_lookup = self.field.geometry.cell_lookup
+        use_environment_lookup = self.field.geometry.environment_count() > 1
 
         SampleType = self.domain.geometry.sample_type
 
-        @cache.dynamic_func(suffix=f"{eval_func_name}_{self.name}")
+        @cache.dynamic_func(suffix=(eval_func_name, self.name, use_environment_lookup))
         def eval_nc(args: self.ElementEvalArg, s: SampleType):
             pos = self.domain.element_position(args.elt_arg, s)
             cell_arg = args.eval_arg.field_cell_eval_arg.elt_arg
-            nonconforming_s = cell_lookup(cell_arg, pos, NonconformingField._LOOKUP_EPS)
+            if wp.static(use_environment_lookup):
+                env_index = self.domain.element_environment_index(args.elt_arg, s)
+                nonconforming_s = cell_lookup(cell_arg, pos, NonconformingField._LOOKUP_EPS, env_index)
+            else:
+                nonconforming_s = cell_lookup(cell_arg, pos, NonconformingField._LOOKUP_EPS)
             if nonconforming_s.element_index != NULL_ELEMENT_INDEX:
                 if (
                     wp.length_sq(pos - self.field.geometry.cell_position(cell_arg, nonconforming_s))

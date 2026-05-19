@@ -102,6 +102,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.fem.test_fem_geometry import TestFemGeometry
     from warp.tests.fem.test_fem_integrate import TestFemIntegrate
     from warp.tests.fem.test_fem_linalg import TestFemLinalg
+    from warp.tests.fem.test_fem_multi_env import TestFemMultiEnv
     from warp.tests.fem.test_fem_quadrature import TestFemQuadrature
     from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
@@ -293,6 +294,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFemGeometry,
         TestFemIntegrate,
         TestFemLinalg,
+        TestFemMultiEnv,
         TestFemQuadrature,
         TestFemShape,
         TestFp16,

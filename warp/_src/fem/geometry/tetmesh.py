@@ -21,7 +21,7 @@ from warp._src.utils import array_scan
 
 from .closest_point import project_on_tet_at_origin, project_on_tri_at_origin
 from .element import Element
-from .geometry import Geometry
+from .geometry import Geometry, _initialize_cell_environment_indices
 
 _wp_module_name_ = "warp.fem.geometry.tetmesh"
 
@@ -32,6 +32,8 @@ def _make_tetmesh_cell_arg(pos_vec_type):
         tet_vertex_indices: wp.array2d(dtype=int)
         positions: wp.array(dtype=pos_vec_type)
         tet_bvh: wp.uint64
+        cell_env: wp.array(dtype=wp.int32)
+        env_count: int
 
     return TetmeshCellArg
 
@@ -61,6 +63,8 @@ class Tetmesh(Geometry):
         positions: wp.array,
         build_bvh: bool = False,
         temporary_store: TemporaryStore | None = None,
+        cell_env: wp.array | None = None,
+        env_count: int | None = None,
     ):
         """Construct a tetrahedral mesh.
 
@@ -69,10 +73,15 @@ class Tetmesh(Geometry):
             positions: warp array of shape (num_vertices, 3) containing 3d position for each vertex
             build_bvh: Whether to also build the tet BVH, which is necessary for the global ``fem.lookup`` operator to function without initial guess
             temporary_store: shared pool from which to allocate temporary arrays
+            cell_env: Optional per-cell environment indices. If provided, ``env_count`` must also be provided.
+            env_count: Number of environments represented by ``cell_env``.
         """
 
         self.tet_vertex_indices = tet_vertex_indices
         self.positions = positions
+        self._cell_env, self._env_count = _initialize_cell_environment_indices(
+            cell_env, env_count, self.cell_count(), positions.device
+        )
 
         # Infer scalar type from position array dtype
         self._scalar_type = type_scalar_type(positions.dtype)
@@ -163,6 +172,8 @@ class Tetmesh(Geometry):
         args.tet_vertex_indices = self.tet_vertex_indices.to(device)
         args.positions = self.positions.to(device)
         args.tet_bvh = self.bvh_id(device)
+        args.cell_env = self.cell_env_arg_value(device)
+        args.env_count = self._env_count
 
     @wp.func
     def cell_position(args: Any, s: Any):
@@ -199,6 +210,16 @@ class Tetmesh(Geometry):
 
         dist, coords = project_on_tet_at_origin(q, e1, e2, e3)
         return coords, dist
+
+    @wp.func
+    def cell_environment_index(args: Any, cell_index: ElementIndex):
+        if args.env_count <= 1:
+            return 0
+        return int(args.cell_env[cell_index])
+
+    @wp.func
+    def cell_environment_index(args: Any, s: Any):
+        return Tetmesh.cell_environment_index(args, s.element_index)
 
     @wp.func
     def boundary_side_index(args: SideIndexArg, boundary_side_index: int):
@@ -257,6 +278,17 @@ class Tetmesh(Geometry):
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
         return arg.face_tet_indices[side_index][1]
+
+    @wp.func
+    def side_environment_index(args: Any, side_index: ElementIndex):
+        cell_index = Tetmesh.side_inner_cell_index(args, side_index)
+        if args.cell_arg.env_count <= 1:
+            return 0
+        return int(args.cell_arg.cell_env[cell_index])
+
+    @wp.func
+    def side_environment_index(args: Any, s: Any):
+        return Tetmesh.side_environment_index(args, s.element_index)
 
     @wp.func
     def face_to_tet_coords(args: Any, side_index: ElementIndex, tet_index: ElementIndex, side_coords: Any):

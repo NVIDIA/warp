@@ -132,6 +132,9 @@ class GeometryDomain(Domain):
     element_partition_lookup: wp.Function
     """Device function returning the sample point in the domain's geometry partition corresponding to a world position."""
 
+    element_environment_index: wp.Function
+    """Device function returning the environment index for an element."""
+
     def notify_operator_usage(self, ops: set[Operator]):
         """Makes the Domain aware that the operators `ops` will be applied"""
         pass
@@ -254,6 +257,11 @@ class Cells(GeometryDomain):
         """Device function for looking up elements from positions."""
         return self.geometry.cell_lookup
 
+    @property
+    def element_environment_index(self) -> wp.Function:
+        """Device function returning element environment indices."""
+        return self.geometry.cell_environment_index
+
     @cached_property
     def element_partition_lookup(self) -> wp.Function:
         """Device function for partition-restricted element lookup."""
@@ -268,14 +276,27 @@ class Cells(GeometryDomain):
         # overloads
         filter_target = True
 
-        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_partition_lookup(args: self.DomainArg, pos: pos_type, max_dist: float):
-            return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target)
+        if self.geometry.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+            def cell_partition_lookup(args: self.DomainArg, pos: pos_type, max_dist: float):
+                return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target)
 
         @cache.dynamic_func(suffix=self.name, allow_overloads=True)
-        def cell_partition_lookup(args: self.DomainArg, pos: pos_type):
+        def cell_partition_lookup(args: self.DomainArg, pos: pos_type, max_dist: float, env_index: int):
+            return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target, env_index)
+
+        if self.geometry.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+            def cell_partition_lookup(args: self.DomainArg, pos: pos_type):
+                max_dist = 0.0
+                return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target)
+
+        @cache.dynamic_func(suffix=self.name, allow_overloads=True)
+        def cell_partition_lookup(args: self.DomainArg, pos: pos_type, env_index: int):
             max_dist = 0.0
-            return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target)
+            return filtered_cell_lookup(args.geo, pos, max_dist, args.index, filter_target, env_index)
 
         return cell_partition_lookup
 
@@ -420,6 +441,11 @@ class Sides(GeometryDomain):
         return self.geometry.side_outer_cell_coords
 
     @property
+    def element_environment_index(self) -> wp.Function:
+        """Device function returning element environment indices."""
+        return self.geometry.side_environment_index
+
+    @property
     def cell_to_element_coords(self) -> wp.Function:
         """Device function converting cell coordinates to side coordinates."""
         return self.geometry.side_from_cell_coords
@@ -531,6 +557,7 @@ class Subdomain(GeometryDomain):
         self.element_deformation_gradient = self._domain.element_deformation_gradient
         self.element_lookup = self._domain.element_lookup
         self.element_partition_lookup = self._domain.element_partition_lookup
+        self.element_environment_index = self._domain.element_environment_index
         self.element_normal = self._domain.element_normal
 
     @property

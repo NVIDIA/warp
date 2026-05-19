@@ -32,18 +32,19 @@ class Grid2DSpaceTopology(SpaceTopology):
         self.geometry.fill_side_arg(arg, device)
 
     def node_count(self) -> int:
-        return (
-            self.geometry.vertex_count() * self._shape.VERTEX_NODE_COUNT
-            + self.geometry.side_count() * self._shape.EDGE_NODE_COUNT
-            + self.geometry.cell_count() * self._shape.INTERIOR_NODE_COUNT
+        return self.geometry.environment_count() * (
+            self.geometry._vertex_count_per_environment() * self._shape.VERTEX_NODE_COUNT
+            + self.geometry._side_count_per_environment() * self._shape.EDGE_NODE_COUNT
+            + self.geometry._cell_count_per_environment() * self._shape.INTERIOR_NODE_COUNT
         )
 
     def _make_element_node_index(self):
         VERTEX_NODE_COUNT = self._shape.VERTEX_NODE_COUNT
         EDGE_NODE_COUNT = self._shape.EDGE_NODE_COUNT
         INTERIOR_NODE_COUNT = self._shape.INTERIOR_NODE_COUNT
+        single_env = self.geometry.environment_count() <= 1
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=(self.name, single_env))
         def element_node_index(
             cell_arg: self.geometry.CellArg,
             topo_arg: self.TopologyArg,
@@ -52,36 +53,51 @@ class Grid2DSpaceTopology(SpaceTopology):
         ):
             node_type, type_instance, type_index = self._shape.node_type_and_type_index(node_index_in_elt)
 
+            if wp.static(single_env):
+                local_element_index = element_index
+                env_node_offset = 0
+            else:
+                res = cell_arg.res
+                cell_count = Grid2D.cell_count_per_environment(res)
+                env_index = element_index // cell_count
+                local_element_index = element_index - cell_count * env_index
+                env_node_count = Grid2D.vertex_count_per_environment(res) * VERTEX_NODE_COUNT
+                if wp.static(EDGE_NODE_COUNT > 0):
+                    env_node_count += Grid2D.side_count_per_environment(res) * EDGE_NODE_COUNT
+                if wp.static(INTERIOR_NODE_COUNT > 0):
+                    env_node_count += cell_count * INTERIOR_NODE_COUNT
+                env_node_offset = env_index * env_node_count
+
             if wp.static(VERTEX_NODE_COUNT > 0):
                 if node_type == SquareShapeFunction.VERTEX:
                     return (
-                        Grid2DSpaceTopology._vertex_index(cell_arg, element_index, type_instance) * VERTEX_NODE_COUNT
+                        env_node_offset
+                        + Grid2DSpaceTopology._vertex_index(cell_arg, local_element_index, type_instance)
+                        * VERTEX_NODE_COUNT
                         + type_index
                     )
 
             res = cell_arg.res
-            vertex_count = (res[0] + 1) * (res[1] + 1)
-            global_offset = vertex_count
+            vertex_count = Grid2D.vertex_count_per_environment(res)
+            global_offset = vertex_count * VERTEX_NODE_COUNT
 
             if wp.static(INTERIOR_NODE_COUNT > 0):
                 if node_type == SquareShapeFunction.INTERIOR:
-                    return global_offset + element_index * INTERIOR_NODE_COUNT + type_index
+                    return env_node_offset + global_offset + local_element_index * INTERIOR_NODE_COUNT + type_index
 
-                cell_count = res[0] * res[1]
+                cell_count = Grid2D.cell_count_per_environment(res)
                 global_offset += INTERIOR_NODE_COUNT * cell_count
 
             if wp.static(EDGE_NODE_COUNT > 0):
                 axis = 1 - (node_type - SquareShapeFunction.EDGE_X)
 
-                cell = Grid2D.get_cell(cell_arg.res, element_index)
+                cell = Grid2D.get_cell(cell_arg.res, local_element_index)
                 origin = Grid2D.orient(axis, cell) + wp.vec2i(type_instance, 0)
 
                 side = Grid2D.Side(axis, origin)
                 side_index = self.geometry._side_index(topo_arg, side)
 
-                vertex_count = (res[0] + 1) * (res[1] + 1)
-
-                return global_offset + EDGE_NODE_COUNT * side_index + type_index
+                return env_node_offset + global_offset + EDGE_NODE_COUNT * side_index + type_index
 
             return NULL_NODE_INDEX  # unreachable
 
@@ -109,12 +125,15 @@ class GridBipolynomialSpaceTopology(SpaceTopology):
         self.element_node_index = self._make_element_node_index()
 
     def node_count(self) -> int:
-        return (self.geometry.res[0] * self._shape.ORDER + 1) * (self.geometry.res[1] * self._shape.ORDER + 1)
+        return self.geometry.environment_count() * (
+            (self.geometry.res[0] * self._shape.ORDER + 1) * (self.geometry.res[1] * self._shape.ORDER + 1)
+        )
 
     def _make_element_node_index(self):
         ORDER = self._shape.ORDER
+        single_env = self.geometry.environment_count() <= 1
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=(self.name, single_env))
         def element_node_index(
             cell_arg: self.geometry.CellArg,
             topo_arg: self.TopologyArg,
@@ -122,7 +141,17 @@ class GridBipolynomialSpaceTopology(SpaceTopology):
             node_index_in_elt: int,
         ):
             res = cell_arg.res
-            cell = Grid2D.get_cell(res, element_index)
+            if wp.static(single_env):
+                local_element_index = element_index
+                env_node_offset = 0
+            else:
+                cell_count = Grid2D.cell_count_per_environment(res)
+                env_index = element_index // cell_count
+                local_element_index = element_index - cell_count * env_index
+                node_count = (res[0] * ORDER + 1) * (res[1] * ORDER + 1)
+                env_node_offset = env_index * node_count
+
+            cell = Grid2D.get_cell(res, local_element_index)
 
             node_i = node_index_in_elt // (ORDER + 1)
             node_j = node_index_in_elt - (ORDER + 1) * node_i
@@ -133,7 +162,7 @@ class GridBipolynomialSpaceTopology(SpaceTopology):
             node_pitch = (res[1] * ORDER) + 1
             node_index = node_pitch * node_x + node_y
 
-            return node_index
+            return env_node_offset + node_index
 
         return element_node_index
 
@@ -167,12 +196,15 @@ class GridBSplineSpaceTopology(SpaceTopology):
         self.element_node_index = self._make_element_node_index()
 
     def node_count(self) -> int:
-        return (self.geometry.res[0] + 2 * self._padding + 1) * (self.geometry.res[1] + 2 * self._padding + 1)
+        return self.geometry.environment_count() * (
+            (self.geometry.res[0] + 2 * self._padding + 1) * (self.geometry.res[1] + 2 * self._padding + 1)
+        )
 
     def _make_element_node_index(self):
         PADDING = self._padding
+        single_env = self.geometry.environment_count() <= 1
 
-        @cache.dynamic_func(suffix=self.name)
+        @cache.dynamic_func(suffix=(self.name, single_env))
         def element_node_index(
             cell_arg: self.geometry.CellArg,
             topo_arg: self.TopologyArg,
@@ -180,7 +212,17 @@ class GridBSplineSpaceTopology(SpaceTopology):
             node_index_in_elt: int,
         ):
             res = cell_arg.res
-            cell = Grid2D.get_cell(res, element_index)
+            if wp.static(single_env):
+                local_element_index = element_index
+                env_node_offset = 0
+            else:
+                cell_count = Grid2D.cell_count_per_environment(res)
+                env_index = element_index // cell_count
+                local_element_index = element_index - cell_count * env_index
+                node_count = (res[0] + 2 * PADDING + 1) * (res[1] + 2 * PADDING + 1)
+                env_node_offset = env_index * node_count
+
+            cell = Grid2D.get_cell(res, local_element_index)
 
             node_i, node_j = self._shape._node_ij(node_index_in_elt)
 
@@ -190,7 +232,7 @@ class GridBSplineSpaceTopology(SpaceTopology):
             node_pitch_y = res[1] + 2 * PADDING + 1
             node_index = node_pitch_y * node_x + node_y
 
-            return node_index
+            return env_node_offset + node_index
 
         return element_node_index
 

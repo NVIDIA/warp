@@ -101,6 +101,15 @@ def _test_cell_lookup(s: fem.Sample, domain: fem.Domain, cell_filter: wp.array(d
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
+def _test_guess_lookup_radius(s: fem.Sample, domain: fem.Domain):
+    pos = domain(s)
+    pos[0] += 2.0
+
+    s_guess = fem.lookup(domain, pos, s)
+    wp.expect_neq(s_guess.element_index, fem.NULL_ELEMENT_INDEX)
+
+
+@fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
 def _test_geo_sides(
     s: fem.Sample,
     domain: fem.Domain,
@@ -270,6 +279,16 @@ def test_quad_mesh(test, device):
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
 
 
+def test_mesh_guess_lookup_radius(test, device):
+    with wp.ScopedDevice(device):
+        positions, tri_vidx = _gen_trimesh(1, 1)
+        geo = fem.Trimesh2D(tri_vertex_indices=tri_vidx, positions=positions)
+        geo.build_bvh(device)
+
+        quadrature = fem.RegularQuadrature(fem.Cells(geo), order=1)
+        fem.interpolate(_test_guess_lookup_radius, at=quadrature)
+
+
 def test_grid_3d(test, device):
     N = 3
 
@@ -347,6 +366,16 @@ def test_nanogrid(test, device):
 
     assert_np_equal(side_measures.numpy(), np.full(side_measures.shape, 1.0 / (N**2)), tol=1.0e-4)
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
+
+
+def test_nanogrid_guess_lookup_radius(test, device):
+    with wp.ScopedDevice(device):
+        voxel = wp.array([[0, 0, 0]], dtype=int, device=device)
+        volume = wp.Volume.allocate_by_voxels(voxel, 1.0, device=device)
+        geo = fem.Nanogrid(volume)
+
+        quadrature = fem.RegularQuadrature(fem.Cells(geo), order=1)
+        fem.interpolate(_test_guess_lookup_radius, at=quadrature)
 
 
 @wp.func
@@ -639,10 +668,14 @@ class TestFemGeometry(unittest.TestCase):
 add_function_test(TestFemGeometry, "test_grid_2d", test_grid_2d, devices=devices)
 add_function_test(TestFemGeometry, "test_triangle_mesh", test_triangle_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_quad_mesh", test_quad_mesh, devices=devices)
+add_function_test(TestFemGeometry, "test_mesh_guess_lookup_radius", test_mesh_guess_lookup_radius, devices=devices)
 add_function_test(TestFemGeometry, "test_grid_3d", test_grid_3d, devices=devices)
 add_function_test(TestFemGeometry, "test_tet_mesh", test_tet_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_hex_mesh", test_hex_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_nanogrid", test_nanogrid, devices=cuda_devices)
+add_function_test(
+    TestFemGeometry, "test_nanogrid_guess_lookup_radius", test_nanogrid_guess_lookup_radius, devices=cuda_devices
+)
 add_function_test(TestFemGeometry, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=cuda_devices)
 add_function_test(TestFemGeometry, "test_deformed_geometry", test_deformed_geometry, devices=devices)
 add_function_test(

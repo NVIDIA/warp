@@ -21,7 +21,7 @@ from warp._src.types import type_scalar_type
 from warp._src.utils import array_scan
 
 from .element import Element
-from .geometry import Geometry
+from .geometry import Geometry, _initialize_cell_environment_indices
 
 _wp_module_name_ = "warp.fem.geometry.hexmesh"
 
@@ -32,6 +32,8 @@ class HexmeshCellArg:
     """Arguments for cell topology device functions."""
 
     hex_vertex_indices: wp.array2d(dtype=int)
+    cell_env: wp.array(dtype=wp.int32)
+    env_count: int
 
     # for global cell lookup
     hex_bvh: wp.uint64
@@ -172,6 +174,8 @@ class Hexmesh(Geometry):
         assume_parallelepiped_cells=False,
         build_bvh: bool = False,
         temporary_store: TemporaryStore | None = None,
+        cell_env: wp.array | None = None,
+        env_count: int | None = None,
     ):
         """Construct a hexahedral mesh.
 
@@ -182,11 +186,16 @@ class Hexmesh(Geometry):
             assume_parallelepiped: If true, assume that all cells are parallelepipeds (cheaper position/gradient evaluations)
             build_bvh: Whether to also build the hex BVH, which is necessary for the global ``fem.lookup`` operator
             temporary_store: shared pool from which to allocate temporary arrays
+            cell_env: Optional per-cell environment indices. If provided, ``env_count`` must also be provided.
+            env_count: Number of environments represented by ``cell_env``.
         """
 
         self.hex_vertex_indices = hex_vertex_indices
         self.positions = positions
         self.parallelepiped_cells = assume_parallelepiped_cells
+        self._cell_env, self._env_count = _initialize_cell_environment_indices(
+            cell_env, env_count, self.cell_count(), positions.device
+        )
 
         # Infer scalar type from position array dtype
         self._scalar_type = type_scalar_type(positions.dtype)
@@ -277,6 +286,8 @@ class Hexmesh(Geometry):
     def _fill_cell_topo_arg(self, args: HexmeshCellArg, device):
         args.hex_vertex_indices = self.hex_vertex_indices.to(device)
         args.hex_bvh = self.bvh_id(device)
+        args.cell_env = self.cell_env_arg_value(device)
+        args.env_count = self._env_count
 
     def _fill_side_topo_arg(self, args: HexmeshSideArg, device):
         self._fill_cell_topo_arg(args.cell_arg, device)
@@ -460,6 +471,27 @@ class Hexmesh(Geometry):
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
         return arg.topology.face_hex_indices[side_index][1]
+
+    @wp.func
+    def cell_environment_index(args: Any, cell_index: ElementIndex):
+        if args.topology.env_count <= 1:
+            return 0
+        return int(args.topology.cell_env[cell_index])
+
+    @wp.func
+    def cell_environment_index(args: Any, s: Any):
+        return Hexmesh.cell_environment_index(args, s.element_index)
+
+    @wp.func
+    def side_environment_index(args: Any, side_index: ElementIndex):
+        cell_index = Hexmesh.side_inner_cell_index(args, side_index)
+        if args.topology.cell_arg.env_count <= 1:
+            return 0
+        return int(args.topology.cell_arg.cell_env[cell_index])
+
+    @wp.func
+    def side_environment_index(args: Any, s: Any):
+        return Hexmesh.side_environment_index(args, s.element_index)
 
     @wp.func
     def _hex_local_face_coords(hex_coords: Coords, face_index: int):

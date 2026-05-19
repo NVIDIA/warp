@@ -136,10 +136,29 @@ def deformation_gradient(domain: Domain, s: Sample):
 def lookup(domain: Domain, x: Any) -> Sample:
     """Look up the sample point corresponding to a world position ``x``, projecting to the closest point on the geometry.
 
+    Supported call forms include:
+
+    - ``lookup(domain, x)``
+    - ``lookup(domain, x, max_dist)``
+    - ``lookup(domain, x, guess)``
+    - ``lookup(domain, x, env_index)``
+    - ``lookup(domain, x, max_dist, env_index)``
+    - ``lookup(domain, x, filter_array, filter_target)``
+    - ``lookup(domain, x, max_dist, filter_array, filter_target)``
+    - ``lookup(domain, x, filter_array, filter_target, env_index)``
+    - ``lookup(domain, x, max_dist, filter_array, filter_target, env_index)``
+
+    For multi-environment geometries, pass an explicit ``env_index`` to disambiguate the query. Calling
+    ``lookup(domain, x)`` without an environment index is only supported for single-environment geometries and raises
+    an exception for multi-environment geometries. Lookup with a ``guess`` sample preserves the guess environment when the
+    geometry supports multiple environments. Side-sample hints are ambiguous, so side-domain integrands that need a cell
+    lookup should use the explicit ``env_index`` overload.
+
     Args:
-        x (vec3): world position of the point to look-up in the geometry
+        x (vec3): world position of the point to look up in the geometry
         max_dist (float): maximum distance to look for a closest point
-        guess (:class:`Sample`):  initial guess, may help perform the query
+        guess (:class:`Sample`): initial guess, may help perform the query
+        env_index (int): environment index to query in a multi-environment geometry
         filter_array (wp.array): Used in conjunction with ``filter_target``. Only cells such that ``filter_array[element_index] == filter_target`` will be considered.
         filter_target (Any): See ``filter_array``
     """
@@ -279,6 +298,12 @@ def to_cell_side(domain: Domain, cell_s: Sample, side_index: ElementIndex):
 @operator(resolver=lambda dmn: dmn.element_index, attr="index")
 def element_index(domain: Domain, domain_element_index: ElementIndex):
     """Return the index in the geometry of the ``domain_element_index``'th domain element."""
+    pass
+
+
+@operator(resolver=lambda dmn: dmn.element_environment_index, attr="geo")
+def environment_index(domain: Domain, s: Sample):
+    """Return the environment index of the sample point ``s``."""
     pass
 
 

@@ -44,6 +44,12 @@
   `enable_mathdx_fft` config flag and module option also selects the fallback on GPU builds
   with libmathdx, trading runtime performance for faster kernel compile times
   ([GH-1396](https://github.com/NVIDIA/warp/issues/1396)).
+- Add multi-environment support to `warp.fem` ([GH-1407](https://github.com/NVIDIA/warp/issues/1407)):
+  - Colocated `Grid2D`/`Grid3D` and packed `Nanogrid`/`AdaptiveNanogrid` geometries with environment-aware
+    lookup and `PicQuadrature` environment indices
+  - Per-cell environment metadata for unstructured FEM meshes with grouped-BVH lookup and nonconforming field
+    evaluation
+  - Environment-first space partitions for batched solves, plus a multi-environment APIC fluid example
 
 ### Removed
 

@@ -7,11 +7,11 @@ from typing import Any, ClassVar
 import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.cache import cached_arg_value, cached_vec_type, dynamic_func
-from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, make_coords, make_free_sample
+from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, Sample, make_coords, make_free_sample
 
 from .closest_point import project_on_box_at_origin, project_on_box_at_origin_2d
 from .element import Element
-from .geometry import Geometry
+from .geometry import Geometry, _array_load
 
 _wp_module_name_ = "warp.fem.geometry.grid_3d"
 
@@ -53,6 +53,7 @@ class Grid3D(Geometry):
         bounds_lo: wp.vec3 | None = None,
         bounds_hi: wp.vec3 | None = None,
         scalar_type: type = wp.float32,
+        env_count: int = 1,
     ):
         """Construct a dense 3D grid.
 
@@ -61,7 +62,11 @@ class Grid3D(Geometry):
             bounds_lo: Position of the lower bound of the axis-aligned grid
             bounds_hi: Position of the upper bound of the axis-aligned grid
             scalar_type: Scalar type for grid coordinates (``wp.float32`` or ``wp.float64``)
+            env_count: Number of colocated, topologically independent environments
         """
+
+        if env_count < 1:
+            raise ValueError("Environment count must be at least one")
 
         self._scalar_type = scalar_type
         vec3_type = cached_vec_type(3, scalar_type)
@@ -79,6 +84,7 @@ class Grid3D(Geometry):
         self.bounds_lo = bounds_lo
         self.bounds_hi = bounds_hi
         self._res = res
+        self._env_count = env_count
 
         # Dynamic Arg structs
         self.CellArg = _make_grid3d_cell_arg(scalar_type)
@@ -90,6 +96,10 @@ class Grid3D(Geometry):
     @property
     def scalar_type(self):
         return self._scalar_type
+
+    @property
+    def name(self) -> str:
+        return super().name
 
     @cached_property
     def extents(self):
@@ -111,26 +121,44 @@ class Grid3D(Geometry):
         )
 
     def cell_count(self):
-        return self.res[0] * self.res[1] * self.res[2]
+        return self._env_count * self._cell_count_per_environment()
 
     def vertex_count(self):
-        return (self.res[0] + 1) * (self.res[1] + 1) * (self.res[2] + 1)
+        return self._env_count * self._vertex_count_per_environment()
 
     def side_count(self):
+        return self._env_count * self._side_count_per_environment()
+
+    def edge_count(self):
+        return self._env_count * self._edge_count_per_environment()
+
+    def boundary_side_count(self):
+        return self._env_count * self._boundary_side_count_per_environment()
+
+    def environment_count(self):
+        return self._env_count
+
+    def _cell_count_per_environment(self):
+        return self.res[0] * self.res[1] * self.res[2]
+
+    def _vertex_count_per_environment(self):
+        return (self.res[0] + 1) * (self.res[1] + 1) * (self.res[2] + 1)
+
+    def _side_count_per_environment(self):
         return (
             (self.res[0] + 1) * self.res[1] * self.res[2]
             + self.res[0] * (self.res[1] + 1) * self.res[2]
             + self.res[0] * self.res[1] * (self.res[2] + 1)
         )
 
-    def edge_count(self):
+    def _edge_count_per_environment(self):
         return (
             (self.res[0] + 1) * (self.res[1] + 1) * self.res[2]
             + self.res[0] * (self.res[1] + 1) * (self.res[2] + 1)
             + (self.res[0] + 1) * self.res[1] * (self.res[2] + 1)
         )
 
-    def boundary_side_count(self):
+    def _boundary_side_count_per_environment(self):
         return 2 * (self.res[1] * self.res[2] + self.res[0] * self.res[2] + self.res[0] * self.res[1])
 
     def reference_cell(self) -> Element:
@@ -165,6 +193,74 @@ class Grid3D(Geometry):
     @wp.func
     def _from_3d_index(strides: wp.vec2i, index: wp.vec3i):
         return strides[0] * index[0] + strides[1] * index[1] + index[2]
+
+    @wp.func
+    def cell_count_per_environment(res: wp.vec3i):
+        return res[0] * res[1] * res[2]
+
+    @wp.func
+    def vertex_count_per_environment(res: wp.vec3i):
+        return (res[0] + 1) * (res[1] + 1) * (res[2] + 1)
+
+    @wp.func
+    def side_count_per_environment(res: wp.vec3i):
+        return (res[0] + 1) * res[1] * res[2] + res[0] * (res[1] + 1) * res[2] + res[0] * res[1] * (res[2] + 1)
+
+    @wp.func
+    def edge_count_per_environment(res: wp.vec3i):
+        return (
+            (res[0] + 1) * (res[1] + 1) * res[2]
+            + res[0] * (res[1] + 1) * (res[2] + 1)
+            + (res[0] + 1) * res[1] * (res[2] + 1)
+        )
+
+    @wp.func
+    def boundary_side_count_per_environment(res: wp.vec3i):
+        return 2 * (res[1] * res[2] + res[0] * res[2] + res[0] * res[1])
+
+    @wp.func
+    def cell_env_index(res: wp.vec3i, cell_index: ElementIndex):
+        if cell_index == NULL_ELEMENT_INDEX:
+            return NULL_ELEMENT_INDEX
+
+        cell_count = Grid3D.cell_count_per_environment(res)
+        return cell_index // cell_count
+
+    @wp.func
+    def local_cell_index(res: wp.vec3i, cell_index: ElementIndex):
+        if cell_index == NULL_ELEMENT_INDEX:
+            return NULL_ELEMENT_INDEX
+
+        cell_count = Grid3D.cell_count_per_environment(res)
+        return cell_index - cell_count * (cell_index // cell_count)
+
+    @wp.func
+    def cell_environment_index(args: Any, cell_index: ElementIndex):
+        return Grid3D.cell_env_index(args.res, cell_index)
+
+    @wp.func
+    def cell_environment_index(args: Any, s: Sample):
+        return Grid3D.cell_env_index(args.res, s.element_index)
+
+    @wp.func
+    def side_environment_index(arg: Any, side_index: ElementIndex):
+        if side_index == NULL_ELEMENT_INDEX:
+            return NULL_ELEMENT_INDEX
+
+        side_count = Grid3D.side_count_per_environment(arg.cell_arg.res)
+        return side_index // side_count
+
+    @wp.func
+    def side_environment_index(arg: Any, s: Sample):
+        return Grid3D.side_environment_index(arg, s.element_index)
+
+    @wp.func
+    def local_side_index(arg: Any, side_index: ElementIndex):
+        if side_index == NULL_ELEMENT_INDEX:
+            return NULL_ELEMENT_INDEX
+
+        side_count = Grid3D.side_count_per_environment(arg.cell_arg.res)
+        return side_index - side_count * (side_index // side_count)
 
     @wp.func
     def cell_index(res: wp.vec3i, cell: wp.vec3i):
@@ -210,7 +306,7 @@ class Grid3D(Geometry):
             self.res[0] * self.res[1],
         )
         args.axis_offsets = wp.vec3i(0, axis_dims[0], axis_dims[0] + axis_dims[1])
-        args.cell_count = self.cell_count()
+        args.cell_count = self._cell_count_per_environment()
         args.cell_arg = self.cell_arg_value(device)
         return args
 
@@ -225,15 +321,16 @@ class Grid3D(Geometry):
     @wp.func
     def _get_side(arg: Any, side_index: ElementIndex):
         res = arg.cell_arg.res
+        local_side_index = Grid3D.local_side_index(arg, side_index)
 
-        if side_index < 3 * arg.cell_count:
-            axis = side_index // arg.cell_count
-            cell_index = side_index - axis * arg.cell_count
+        if local_side_index < 3 * arg.cell_count:
+            axis = local_side_index // arg.cell_count
+            cell_index = local_side_index - axis * arg.cell_count
             origin_loc = Grid3D._world_to_local(axis, Grid3D.get_cell(res, cell_index))
             return Grid3D.Side(axis, origin_loc)
 
         axis_offsets = arg.axis_offsets
-        axis_side_index = side_index - 3 * arg.cell_count
+        axis_side_index = local_side_index - 3 * arg.cell_count
         if axis_side_index < axis_offsets[1]:
             axis = 0
         elif axis_side_index < axis_offsets[2]:
@@ -264,6 +361,12 @@ class Grid3D(Geometry):
 
     @wp.func
     def boundary_side_index(args: Any, boundary_side_index: int):
+        res = args.cell_arg.res
+        boundary_side_count = Grid3D.boundary_side_count_per_environment(res)
+        side_count = Grid3D.side_count_per_environment(res)
+        env_index = boundary_side_index // boundary_side_count
+        boundary_side_index = boundary_side_index - env_index * boundary_side_count
+
         axis_side_index = boundary_side_index // 2
         border = boundary_side_index - 2 * axis_side_index
 
@@ -281,11 +384,11 @@ class Grid3D(Geometry):
         altitude = border * args.cell_arg.res[axis]
 
         side = Grid3D.Side(axis, wp.vec3i(altitude, longitude, latitude))
-        return Grid3D._side_index(args, side)
+        return env_index * side_count + Grid3D._side_index(args, side)
 
     @wp.func
     def cell_position(args: Any, s: Any):
-        cell = Grid3D.get_cell(args.res, s.element_index)
+        cell = Grid3D.get_cell(args.res, Grid3D.local_cell_index(args.res, s.element_index))
         return (
             type(args.cell_size)(
                 (args.cell_size.dtype(cell[0]) + s.element_coords[0]) * args.cell_size[0],
@@ -306,12 +409,13 @@ class Grid3D(Geometry):
     @wp.func
     def cell_coordinates(args: Any, cell_index: int, pos: Any):
         uvw = wp.cw_div(pos - args.origin, args.cell_size)
-        ijk = Grid3D.get_cell(args.res, cell_index)
+        ijk = Grid3D.get_cell(args.res, Grid3D.local_cell_index(args.res, cell_index))
         return uvw - type(pos)(ijk)
 
     @wp.func
     def cell_closest_point(args: Any, cell_index: int, pos: Any):
-        ijk_world = wp.cw_mul(type(pos)(Grid3D.get_cell(args.res, cell_index)), args.cell_size) + args.origin
+        local_cell_index = Grid3D.local_cell_index(args.res, cell_index)
+        ijk_world = wp.cw_mul(type(pos)(Grid3D.get_cell(args.res, local_cell_index)), args.cell_size) + args.origin
         dist_sq, coords = project_on_box_at_origin(pos - ijk_world, args.cell_size)
         return coords, dist_sq
 
@@ -396,14 +500,22 @@ class Grid3D(Geometry):
 
     @wp.func
     def side_inner_cell_index(arg: Any, side_index: ElementIndex):
+        if side_index == NULL_ELEMENT_INDEX:
+            return NULL_ELEMENT_INDEX
+
+        env_index = Grid3D.side_environment_index(arg, side_index)
         side = Grid3D._get_side(arg, side_index)
         inner_alt = wp.where(side.origin[0] == 0, 0, side.origin[0] - 1)
         inner_origin = wp.vec3i(inner_alt, side.origin[1], side.origin[2])
         cell = Grid3D._local_to_world(side.axis, inner_origin)
-        return Grid3D.cell_index(arg.cell_arg.res, cell)
+        return env_index * arg.cell_count + Grid3D.cell_index(arg.cell_arg.res, cell)
 
     @wp.func
     def side_outer_cell_index(arg: Any, side_index: ElementIndex):
+        if side_index == NULL_ELEMENT_INDEX:
+            return NULL_ELEMENT_INDEX
+
+        env_index = Grid3D.side_environment_index(arg, side_index)
         side = Grid3D._get_side(arg, side_index)
         alt_axis = Grid3D._local_to_world_axis(side.axis, 0)
         outer_alt = wp.where(
@@ -411,7 +523,7 @@ class Grid3D(Geometry):
         )
         outer_origin = wp.vec3i(outer_alt, side.origin[1], side.origin[2])
         cell = Grid3D._local_to_world(side.axis, outer_origin)
-        return Grid3D.cell_index(arg.cell_arg.res, cell)
+        return env_index * arg.cell_count + Grid3D.cell_index(arg.cell_arg.res, cell)
 
     @wp.func
     def side_inner_cell_coords(args: Any, side_index: ElementIndex, side_coords: Any):
@@ -437,8 +549,14 @@ class Grid3D(Geometry):
         element_index: ElementIndex,
         element_coords: Any,
     ):
+        if side_index == NULL_ELEMENT_INDEX or element_index == NULL_ELEMENT_INDEX:
+            return type(element_coords)(element_coords.dtype(OUTSIDE))
+
         side = Grid3D._get_side(args, side_index)
-        cell = Grid3D.get_cell(args.cell_arg.res, element_index)
+        if Grid3D.side_environment_index(args, side_index) != Grid3D.cell_env_index(args.cell_arg.res, element_index):
+            return type(element_coords)(element_coords.dtype(OUTSIDE))
+
+        cell = Grid3D.get_cell(args.cell_arg.res, Grid3D.local_cell_index(args.cell_arg.res, element_index))
 
         if element_coords.dtype(side.origin[0] - cell[side.axis]) == element_coords[side.axis]:
             long_axis = Grid3D._local_to_world_axis(side.axis, 1)
@@ -488,10 +606,18 @@ class Grid3D(Geometry):
         vec3_type = cached_vec_type(3, scalar)
         CoordsType = self.coords_type
 
-        @dynamic_func(suffix=suffix)
-        def cell_lookup(args: self.CellArg, pos: vec3_type, max_dist: float, filter_data: Any, filter_target: Any):
+        @dynamic_func(suffix=(suffix, "env"))
+        def cell_lookup_env(
+            args: self.CellArg,
+            pos: vec3_type,
+            max_dist: float,
+            filter_data: Any,
+            filter_target: Any,
+            env_index: int,
+        ):
             cell_size = args.cell_size
             res = args.res
+            cell_offset = env_index * Grid3D.cell_count_per_environment(res)
 
             loc_pos = wp.cw_div(pos - args.origin, cell_size)
             x = wp.clamp(loc_pos[0], scalar(0.0), scalar(res[0]))
@@ -503,7 +629,7 @@ class Grid3D(Geometry):
             z_cell = wp.min(wp.floor(z), scalar(res[2]) - scalar(1.0))
 
             coords = CoordsType(x - x_cell, y - y_cell, z - z_cell)
-            cell_index = Grid3D.cell_index(res, Grid3D.Cell(int(x_cell), int(y_cell), int(z_cell)))
+            cell_index = cell_offset + Grid3D.cell_index(res, Grid3D.Cell(int(x_cell), int(y_cell), int(z_cell)))
 
             if wp.static(filter_func is None):
                 return make_free_sample(cell_index, coords)
@@ -533,7 +659,7 @@ class Grid3D(Geometry):
                         for j in range(j_min, j_max):
                             for k in range(k_min, k_max):
                                 ijk = Grid3D.Cell(i, j, k)
-                                cell_index = Grid3D.cell_index(res, ijk)
+                                cell_index = cell_offset + Grid3D.cell_index(res, ijk)
                                 if filter_func(filter_data, cell_index) == filter_target:
                                     rel_pos = wp.cw_mul(loc_pos - vec3_type(ijk), cell_size)
                                     dist, coords = project_on_box_at_origin(rel_pos, cell_size)
@@ -548,5 +674,111 @@ class Grid3D(Geometry):
                     offset = wp.min(scalar(3.0) * offset, max_offset)
 
                 return make_free_sample(closest_cell, closest_coords)
+
+        if self.environment_count() <= 1:
+
+            @dynamic_func(suffix=suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: vec3_type, max_dist: float, filter_data: Any, filter_target: Any):
+                return cell_lookup_env(args, pos, max_dist, filter_data, filter_target, 0)
+
+        @dynamic_func(suffix=suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: vec3_type,
+            max_dist: float,
+            filter_data: Any,
+            filter_target: Any,
+            env_index: int,
+        ):
+            return cell_lookup_env(args, pos, max_dist, filter_data, filter_target, env_index)
+
+        return cell_lookup
+
+    @cached_property
+    def cell_lookup(self) -> wp.Function:
+        """Device function for looking up the closest cell to a position."""
+        unfiltered_cell_lookup = self.make_filtered_cell_lookup(filter_func=None)
+
+        null_filter_data = 0
+        null_filter_target = 0
+
+        pos_type = cache.cached_vec_type(self.dimension, dtype=self.scalar_type)
+        SampleType = self.sample_type
+        lookup_suffix = (self.name, self.environment_count() > 1)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, env_index: int):
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, guess: SampleType):
+            guess_pos = self.cell_position(args, guess)
+            max_dist = wp.length(guess_pos - pos)
+            if wp.static(self.environment_count() <= 1):
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+            env_index = Grid3D.cell_environment_index(args, guess.element_index)
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type):
+                max_dist = 0.0
+                return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(args: self.CellArg, pos: pos_type, env_index: int):
+            max_dist = 0.0
+            return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
+
+        filtered_cell_lookup = self.make_filtered_cell_lookup(filter_func=_array_load)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(
+                args: self.CellArg,
+                pos: pos_type,
+                max_dist: float,
+                filter_array: wp.array(dtype=Any),
+                filter_target: Any,
+            ):
+                return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            max_dist: float,
+            filter_array: wp.array(dtype=Any),
+            filter_target: Any,
+            env_index: int,
+        ):
+            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target, env_index)
+
+        if self.environment_count() <= 1:
+
+            @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+            def cell_lookup(args: self.CellArg, pos: pos_type, filter_array: wp.array(dtype=Any), filter_target: Any):
+                max_dist = 0.0
+                return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target)
+
+        @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
+        def cell_lookup(
+            args: self.CellArg,
+            pos: pos_type,
+            filter_array: wp.array(dtype=Any),
+            filter_target: Any,
+            env_index: int,
+        ):
+            max_dist = 0.0
+            return filtered_cell_lookup(args, pos, max_dist, filter_array, filter_target, env_index)
 
         return cell_lookup
