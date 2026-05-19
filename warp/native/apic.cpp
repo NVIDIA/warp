@@ -21,31 +21,10 @@
 #include "error.h"
 #include "mesh.h"
 
-#include <cstddef>  // offsetof
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
-
-// The APIC record and replay paths (in this file, apic.cu, warp.cpp, and
-// warp.cu) construct launch_bounds_t from serialized fields (shape/ndim/size)
-// and pass it as args[0] to kernel entry points. Lock the expected layout so
-// any future struct change fails at compile time rather than silently breaking
-// the generated kernel's ABI on replay.
-static_assert(sizeof(wp::launch_bounds_t) == 32, "APIC record/replay assumes 32-byte launch_bounds_t; see builtin.h");
-static_assert(
-    offsetof(wp::launch_bounds_t, shape) == 0, "APIC record/replay expects launch_bounds_t::shape at offset 0"
-);
-static_assert(
-    offsetof(wp::launch_bounds_t, ndim) == 16, "APIC record/replay expects launch_bounds_t::ndim at offset 16"
-);
-static_assert(
-    offsetof(wp::launch_bounds_t, size) == 24, "APIC record/replay expects launch_bounds_t::size at offset 24"
-);
-static_assert(
-    APIC_LAUNCH_MAX_DIMS == wp::LAUNCH_MAX_DIMS,
-    "APIC_LAUNCH_MAX_DIMS (apic_types.h) must match wp::LAUNCH_MAX_DIMS (builtin.h)"
-);
 
 // ============================================================================
 // Thread-local Recording State
@@ -879,19 +858,33 @@ static bool apic_cpu_replay_stream(
                 return false;
             }
 
-            // Build launch_bounds_t (see builtin.h) to pass as the kernel's
-            // first argument, matching wp_cpu_launch_kernel's signature.
+            // Build launch_bounds_t<N> with the per-N layout expected by the
+            // generated kernel entry point.
             int ndim = rec->ndim;
             if (ndim < 1)
                 ndim = 1;
             if (ndim > APIC_LAUNCH_MAX_DIMS)
                 ndim = APIC_LAUNCH_MAX_DIMS;
 
-            wp::launch_bounds_t bounds = {};
+            size_t size_offset = apic_detail::launch_bounds_size_offset(ndim);
+            size_t coord_mult_offset = apic_detail::launch_bounds_coord_mult_offset(ndim);
+            size_t bounds_size = apic_detail::launch_bounds_storage_size(ndim);
+
+            constexpr size_t bounds_capacity = apic_detail::launch_bounds_storage_size(APIC_LAUNCH_MAX_DIMS);
+            alignas(wp::launch_bounds_t<APIC_LAUNCH_MAX_DIMS>) uint8_t bounds_buf[bounds_capacity];
+            memset(bounds_buf, 0, bounds_size);
+            uint64_t shape_size = 1;
             for (int d = 0; d < ndim; d++)
-                bounds.shape[d] = rec->shape[d];
-            bounds.ndim = ndim;
-            bounds.size = rec->size;
+                reinterpret_cast<int*>(bounds_buf)[d] = rec->shape[d];
+            for (int d = 0; d < ndim; d++)
+                shape_size *= static_cast<uint64_t>(rec->shape[d]);
+            *reinterpret_cast<size_t*>(bounds_buf + size_offset) = rec->size;
+            size_t coord_mult = 1;
+            if (shape_size > 0 && rec->size > shape_size) {
+                uint64_t mult = rec->size / shape_size;
+                coord_mult = static_cast<size_t>(mult);
+            }
+            *reinterpret_cast<size_t*>(bounds_buf + coord_mult_offset) = coord_mult;
 
             // Build args from param bindings
             const uint8_t* params_ptr = params_start;
@@ -960,7 +953,7 @@ static bool apic_cpu_replay_stream(
             // apic_info=nullptr is safe: g_apic_state is null during replay, so
             // the recording branch in wp_cpu_launch_kernel is a no-op and the
             // execute branch fires.
-            wp_cpu_launch_kernel(func, &bounds, args_buf, /*adj_args=*/nullptr, /*apic_info=*/nullptr);
+            wp_cpu_launch_kernel(func, bounds_buf, args_buf, /*adj_args=*/nullptr, /*apic_info=*/nullptr);
 
             if (args_buf != args_stack)
                 free(args_buf);
@@ -1428,9 +1421,10 @@ APICGraph wp_apic_load_graph(void* context, const char* path, int device_type)
         wp::set_error_string("Invalid WRP file: bad magic");
         return nullptr;
     }
-    if (header->version > APIC_FORMAT_VERSION) {
+    if (header->version < APIC_MIN_SUPPORTED_FORMAT_VERSION || header->version > APIC_FORMAT_VERSION) {
         wp::set_error_string(
-            "Unsupported WRP version: %u (expected %u)", header->version, (unsigned)APIC_FORMAT_VERSION
+            "Unsupported WRP version: %u (supported range %u-%u)", header->version,
+            (unsigned)APIC_MIN_SUPPORTED_FORMAT_VERSION, (unsigned)APIC_FORMAT_VERSION
         );
         return nullptr;
     }

@@ -8,14 +8,67 @@
 // standard C++ compilers, so it must not expose CUDA types outside the
 // __CUDACC__ / WP_ENABLE_CUDA guards.
 
+#include "builtin.h"
+
 #include "apic_types.h"
 
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#ifdef __CUDACC__
+#include <cudaTypedefs.h>
+#endif
+
+namespace apic_detail {
+
+constexpr size_t launch_bounds_align8(size_t offset) { return (offset + 7) & ~size_t(7); }
+
+constexpr size_t launch_bounds_size_offset(int ndim)
+{
+    return launch_bounds_align8(static_cast<size_t>(ndim) * sizeof(int));
+}
+
+constexpr size_t launch_bounds_coord_mult_offset(int ndim) { return launch_bounds_size_offset(ndim) + sizeof(size_t); }
+
+constexpr size_t launch_bounds_storage_size(int ndim)
+{
+    return launch_bounds_align8(launch_bounds_coord_mult_offset(ndim) + sizeof(size_t));
+}
+
+template <int N> constexpr bool launch_bounds_layout_matches_apic_buffer()
+{
+    using Bounds = wp::launch_bounds_t<N>;
+    static_assert(offsetof(Bounds, shape) == 0, "APIC replay expects launch_bounds_t<N>::shape at offset 0");
+    static_assert(
+        offsetof(Bounds, size) == launch_bounds_size_offset(N),
+        "APIC replay size offset must match launch_bounds_t<N>::size"
+    );
+    static_assert(
+        offsetof(Bounds, coord_mult) == launch_bounds_coord_mult_offset(N),
+        "APIC replay coord_mult offset must match launch_bounds_t<N>::coord_mult"
+    );
+    static_assert(
+        sizeof(Bounds) == launch_bounds_storage_size(N),
+        "APIC replay launch-bounds buffer size must match launch_bounds_t<N>"
+    );
+    return true;
+}
+
+static_assert(
+    APIC_LAUNCH_MAX_DIMS == wp::LAUNCH_MAX_DIMS,
+    "APIC_LAUNCH_MAX_DIMS (apic_types.h) must match wp::LAUNCH_MAX_DIMS (builtin.h)"
+);
+static_assert(launch_bounds_layout_matches_apic_buffer<1>(), "APIC launch_bounds_t<1> layout mismatch");
+static_assert(launch_bounds_layout_matches_apic_buffer<2>(), "APIC launch_bounds_t<2> layout mismatch");
+static_assert(launch_bounds_layout_matches_apic_buffer<3>(), "APIC launch_bounds_t<3> layout mismatch");
+static_assert(launch_bounds_layout_matches_apic_buffer<4>(), "APIC launch_bounds_t<4> layout mismatch");
+
+}  // namespace apic_detail
 
 // ============================================================================
 // APIC Internal Structures

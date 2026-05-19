@@ -66,7 +66,7 @@ import warp.config
 from warp._src.codegen import WarpCodegenTypeError, synchronized
 from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
-from warp._src.types import Array, launch_bounds_t, type_repr
+from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
 
@@ -8072,7 +8072,7 @@ class Launch:
         hooks: KernelHooks | None = None,
         params: Sequence[Any] | None = None,
         params_addr: Sequence[ctypes.c_void_p] | None = None,
-        bounds: launch_bounds_t | None = None,
+        bounds: LaunchBounds | None = None,
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
@@ -8086,9 +8086,9 @@ class Launch:
         if not hooks:
             hooks = self.module_exec.get_kernel_hooks(kernel)
 
-        # if not specified set a zero bound
+        # if not specified set a zero bound sized to match the compiled kernel
         if not bounds:
-            bounds = launch_bounds_t(0)
+            bounds = launch_bounds_t((0,) * kernel.adj.kernel_dim)
 
         # if not specified then build a list of default value params for args
         if not params:
@@ -8130,7 +8130,7 @@ class Launch:
         This should not be changed after the launch object is created.
         """
 
-        self.bounds: launch_bounds_t = bounds
+        self.bounds: LaunchBounds = bounds
         """The launch bounds. Update with :meth:`set_dim`."""
 
         self.max_blocks: int = max_blocks
@@ -8148,7 +8148,7 @@ class Launch:
         Args:
             dim: The dimensions of the launch.
         """
-        self.bounds = launch_bounds_t(dim)
+        self.bounds = _build_launch_bounds(dim, self.kernel.adj.kernel_dim)
 
         # launch bounds always at index 0
         self.params[0] = self.bounds
@@ -8289,6 +8289,43 @@ class Launch:
                 )
 
 
+def _canonicalize_dim(dim: int | Sequence[int]) -> tuple[int, ...]:
+    try:
+        return (operator.index(dim),)
+    except TypeError:
+        return tuple(operator.index(extent) for extent in dim)
+
+
+def _validate_launch_dim(dim: tuple[int, ...]) -> None:
+    if len(dim) > LAUNCH_MAX_DIMS:
+        raise ValueError(f"Launch dimensions must have at most {LAUNCH_MAX_DIMS} dimensions")
+
+
+def _build_launch_bounds(dim: int | Sequence[int], kernel_dim: int) -> LaunchBounds:
+    """Build launch bounds while preserving legacy ``wp.tid()`` aliasing.
+
+    Missing trailing dimensions are padded with 1. Extra trailing dimensions
+    are folded into ``coord_mult`` so those threads share the same coordinate
+    tuple, matching the legacy non-templated launch-bounds behavior.
+    """
+    dim = _canonicalize_dim(dim)
+    _validate_launch_dim(dim)
+    padded = dim + (1,) * max(0, kernel_dim - len(dim))
+    kept = padded[:kernel_dim]
+    extras = padded[kernel_dim:]
+
+    bounds = launch_bounds_t(kept)
+    if extras:
+        coord_mult = 1
+        for extent in extras:
+            coord_mult *= extent
+
+        bounds.coord_mult = coord_mult
+        bounds.size *= coord_mult
+
+    return bounds
+
+
 def launch(
     kernel,
     dim: int | Sequence[int],
@@ -8349,22 +8386,13 @@ def launch(
     if warp.config.print_launches:
         get_logger().info(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
-    # construct launch bounds
-    bounds = launch_bounds_t(dim)
+    dim = _canonicalize_dim(dim)
+    _validate_launch_dim(dim)
+    total_dim_size = 1
+    for extent in dim:
+        total_dim_size *= extent
 
-    if bounds.size > 0:
-        # first param is the number of threads
-        params = []
-        params.append(bounds)
-
-        # converts arguments to kernel's expected ctypes and packs into params
-        def pack_args(args, params, adjoint=False):
-            for i, a in enumerate(args):
-                arg_type = kernel.adj.args[i].type
-                arg_name = kernel.adj.args[i].label
-
-                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
-
+    if total_dim_size > 0:
         fwd_args = []
         fwd_args.extend(inputs)
         fwd_args.extend(outputs)
@@ -8399,6 +8427,19 @@ def launch(
 
         if not module_exec:
             return
+
+        bounds = _build_launch_bounds(dim, kernel.adj.kernel_dim)
+
+        # first param is the number of threads
+        params = [bounds]
+
+        # converts arguments to kernel's expected ctypes and packs into params
+        def pack_args(args, params, adjoint=False):
+            for i, a in enumerate(args):
+                arg_type = kernel.adj.args[i].type
+                arg_name = kernel.adj.args[i].label
+
+                params.append(pack_arg(kernel, arg_type, arg_name, a, device, adjoint))
 
         # late bind
         hooks = module_exec.get_kernel_hooks(kernel)
@@ -8639,9 +8680,7 @@ def launch_tiled(*args, **kwargs):
     if device.is_cpu:
         kwargs["block_dim"] = 1
 
-    dim = kwargs["dim"]
-    if not isinstance(dim, list):
-        dim = list(dim) if isinstance(dim, tuple) else [dim]
+    dim = _canonicalize_dim(kwargs["dim"])
 
     if len(dim) > 3:
         raise RuntimeError("wp.launch_tiled() requires a grid with fewer than 4 dimensions")

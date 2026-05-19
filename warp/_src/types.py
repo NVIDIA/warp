@@ -22,6 +22,7 @@ from typing import (
     Literal,
     NamedTuple,
     TypeVar,
+    Union,
     get_args,
     get_origin,
 )
@@ -2222,33 +2223,49 @@ ARRAY_TYPE_FABRIC_INDEXED = 3
 ARRAY_FLAG_RETAIN_GRAD = 1 << 0
 
 
-# represents bounds for kernel launch (number of threads across multiple dimensions)
-class launch_bounds_t(ctypes.Structure):
-    _fields_ = (
-        ("shape", ctypes.c_int32 * LAUNCH_MAX_DIMS),
-        ("ndim", ctypes.c_int32),
-        ("size", ctypes.c_size_t),
-    )
-
+def _make_launch_bounds_class(ndim: int):
     def __init__(self, shape: int | Sequence[int]):
         if isinstance(shape, int):
-            # 1d launch
-            self.ndim = 1
-            self.size = shape
-            self.shape[0] = shape
+            shape = (shape,)
 
-        else:
-            # nd launch
-            self.ndim = len(shape)
-            self.size = 1
+        size = 1
+        for i, extent in enumerate(shape):
+            self.shape[i] = extent
+            size *= extent
 
-            for i in range(self.ndim):
-                self.shape[i] = shape[i]
-                self.size = self.size * shape[i]
+        self.size = size
+        self.coord_mult = 1
 
-        # initialize the remaining dims to 1
-        for i in range(self.ndim, LAUNCH_MAX_DIMS):
-            self.shape[i] = 1
+    return type(
+        f"launch_bounds_{ndim}d_t",
+        (ctypes.Structure,),
+        {
+            "_fields_": (
+                ("shape", ctypes.c_int32 * ndim),
+                ("size", ctypes.c_size_t),
+                ("coord_mult", ctypes.c_size_t),
+            ),
+            "__init__": __init__,
+        },
+    )
+
+
+_launch_bounds_classes = {n: _make_launch_bounds_class(n) for n in range(1, LAUNCH_MAX_DIMS + 1)}
+LaunchBounds = Union[tuple(_launch_bounds_classes.values())]  # noqa: UP007 - dynamic union
+
+
+def launch_bounds_t(dim: int | Sequence[int]) -> LaunchBounds:
+    """Create a launch bounds struct sized for ``dim``."""
+    if isinstance(dim, int):
+        dim = (dim,)
+    elif isinstance(dim, list):
+        dim = tuple(dim)
+
+    cls = _launch_bounds_classes.get(len(dim))
+    if cls is None:
+        raise ValueError(f"Unsupported launch bounds dimensionality: {len(dim)}")
+
+    return cls(dim)
 
 
 INT_WIDTH = ctypes.sizeof(ctypes.c_int) * 8
@@ -7148,7 +7165,7 @@ simple_type_codes = {
     float64: "f8",
     shape_t: "sh",
     range_t: "rg",
-    launch_bounds_t: "lb",
+    **{cls: f"lb{n}" for n, cls in _launch_bounds_classes.items()},
     hash_grid_query_type(float16): "hgqh",
     hash_grid_query_type(float32): "hgq",
     hash_grid_query_type(float64): "hgqd",

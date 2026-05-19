@@ -251,6 +251,7 @@ class APICapture:
         info.is_forward = 0 if adjoint else 1
         info.params = param_array
         info.num_params = num_params
+        info.kernel_dim = kernel.adj.kernel_dim
 
         return info
 

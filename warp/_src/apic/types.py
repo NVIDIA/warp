@@ -62,4 +62,5 @@ class APICLaunchInfo(ctypes.Structure):
         ("_pad", ctypes.c_uint8 * 7),
         ("params", ctypes.POINTER(APICLaunchParamRecord)),
         ("num_params", ctypes.c_int32),
+        ("kernel_dim", ctypes.c_int32),
     ]

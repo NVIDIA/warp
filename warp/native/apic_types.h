@@ -14,7 +14,8 @@ extern "C" {
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 3
+#define APIC_FORMAT_VERSION 4
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 4
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
 
@@ -117,10 +118,11 @@ struct APICOpHeader {
 struct APICLaunchRecord {
     APICOpHeader header;  // op_type = APIC_OP_KERNEL_LAUNCH
 
-    // Launch bounds (embedded)
-    int32_t shape[APIC_LAUNCH_MAX_DIMS];  // Launch shape
-    int32_t ndim;  // Number of dimensions
-    uint64_t size;  // Total threads
+    // Generated kernel launch bounds (embedded). v4 stores the shape and dimensionality
+    // used by launch_bounds_t<N>, not necessarily the original Python wp.launch() rank.
+    int32_t shape[APIC_LAUNCH_MAX_DIMS];  // Shape passed to the generated kernel entry point
+    int32_t ndim;  // Kernel dimensionality used to select launch_bounds_t<N>
+    uint64_t size;  // Total threads, including any folded launch axes
 
     // Launch parameters
     uint64_t dim;  // Total threads
@@ -236,6 +238,7 @@ struct APICLaunchInfo {
     uint8_t _pad[7];  // Align params to 8 bytes
     const APICLaunchParamRecord* params;  // Array of parameter bindings
     int32_t num_params;  // Number of parameter bindings
+    int32_t kernel_dim;  // Kernel launch dimensionality (1-4), from kernel.adj.kernel_dim
 };
 
 // =============================================================================

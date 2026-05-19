@@ -5,6 +5,7 @@
 
 #include "alloc_tracker.h"
 #include "apic.h"
+#include "apic_internal.h"
 #include "array.h"
 #include "error.h"
 #include "exports.h"
@@ -256,21 +257,24 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
         return;
     }
     if (recording_state && apic_info) {
-        // Extract shape/ndim/size from the launch_bounds_t struct (see builtin.h)
-        // for the byte stream record.
+        // Extract shape from launch_bounds_t<N>. kernel_dim gives the exact
+        // dimensionality expected by the generated kernel.
         int shape[APIC_LAUNCH_MAX_DIMS] = {};
-        int ndim = 0;
+        int ndim = apic_info->kernel_dim;
+        if (ndim < 1)
+            ndim = 1;
+        if (ndim > APIC_LAUNCH_MAX_DIMS)
+            ndim = APIC_LAUNCH_MAX_DIMS;
+
         uint64_t launch_size = 0;
-        if (bounds) {
-            const auto* lb = static_cast<const wp::launch_bounds_t*>(bounds);
-            ndim = lb->ndim;
-            if (ndim < 1)
-                ndim = 1;
-            if (ndim > APIC_LAUNCH_MAX_DIMS)
-                ndim = APIC_LAUNCH_MAX_DIMS;
+        if (bounds && ndim > 0) {
+            const int* bounds_shape = static_cast<const int*>(bounds);
             for (int d = 0; d < ndim; d++)
-                shape[d] = lb->shape[d];
-            launch_size = lb->size;
+                shape[d] = bounds_shape[d];
+
+            const size_t size_offset = apic_detail::launch_bounds_size_offset(ndim);
+            const uint8_t* bounds_bytes = static_cast<const uint8_t*>(bounds);
+            launch_size = *reinterpret_cast<const size_t*>(bounds_bytes + size_offset);
         }
 
         apic_record_kernel_launch(

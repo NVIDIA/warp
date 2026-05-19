@@ -272,8 +272,8 @@ static bool apic_rebuild_cuda_graph(APICGraphInternal* graph, CUstream stream)
             std::vector<void*> args;
             std::vector<uint8_t*> arg_storage;
 
-            // Build launch_bounds_t as args[0] (see builtin.h). The buffer is
-            // owned by arg_storage (uint8_t*) for delete[] after launch.
+            // Build launch_bounds_t<N> as args[0]. The buffer is owned by
+            // arg_storage (uint8_t*) for delete[] after launch.
             {
                 int ndim = rec->ndim;
                 if (ndim < 1)
@@ -281,12 +281,27 @@ static bool apic_rebuild_cuda_graph(APICGraphInternal* graph, CUstream stream)
                 if (ndim > APIC_LAUNCH_MAX_DIMS)
                     ndim = APIC_LAUNCH_MAX_DIMS;
 
-                uint8_t* bounds_buf = new uint8_t[sizeof(wp::launch_bounds_t)]();
-                auto* bounds = reinterpret_cast<wp::launch_bounds_t*>(bounds_buf);
-                for (int d = 0; d < ndim; d++)
-                    bounds->shape[d] = rec->shape[d];
-                bounds->ndim = ndim;
-                bounds->size = rec->size;
+                size_t size_offset = apic_detail::launch_bounds_size_offset(ndim);
+                size_t coord_mult_offset = apic_detail::launch_bounds_coord_mult_offset(ndim);
+                size_t bounds_alloc_size = apic_detail::launch_bounds_storage_size(ndim);
+
+                uint8_t* bounds_buf = new uint8_t[bounds_alloc_size];
+                memset(bounds_buf, 0, bounds_alloc_size);
+
+                uint64_t shape_size = 1;
+                int* shape_ptr = reinterpret_cast<int*>(bounds_buf);
+                for (int d = 0; d < ndim; d++) {
+                    shape_ptr[d] = rec->shape[d];
+                    shape_size *= static_cast<uint64_t>(rec->shape[d]);
+                }
+                *reinterpret_cast<size_t*>(bounds_buf + size_offset) = rec->size;
+
+                size_t coord_mult = 1;
+                if (shape_size > 0 && rec->size > shape_size) {
+                    uint64_t mult = rec->size / shape_size;
+                    coord_mult = static_cast<size_t>(mult);
+                }
+                *reinterpret_cast<size_t*>(bounds_buf + coord_mult_offset) = coord_mult;
 
                 args.push_back(bounds_buf);
                 arg_storage.push_back(bounds_buf);

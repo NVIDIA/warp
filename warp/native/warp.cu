@@ -5,6 +5,7 @@
 
 #include "alloc_tracker.h"
 #include "apic.h"
+#include "apic_internal.h"
 #include "cuda_util.h"
 #include "error.h"
 #include "scan.h"
@@ -4690,22 +4691,24 @@ size_t wp_cuda_launch_kernel(
     if (apic_info) {
         APICState state = wp_apic_get_recording_state();
         if (state) {
-            // Read shape/ndim/size from the launch_bounds_t* in args[0] (see builtin.h).
+            // Read shape and size from launch_bounds_t<N> in args[0].
+            int ndim = apic_info->kernel_dim;
+            if (ndim < 1)
+                ndim = 1;
+            if (ndim > APIC_LAUNCH_MAX_DIMS)
+                ndim = APIC_LAUNCH_MAX_DIMS;
+
             int shape[APIC_LAUNCH_MAX_DIMS] = {};
-            int ndim = 0;
             uint64_t launch_size = dim;
             if (args && args[0]) {
-                const auto* lb = static_cast<const wp::launch_bounds_t*>(args[0]);
-                ndim = lb->ndim;
-                if (ndim < 1)
-                    ndim = 1;
-                if (ndim > APIC_LAUNCH_MAX_DIMS)
-                    ndim = APIC_LAUNCH_MAX_DIMS;
+                const int* bounds_shape = static_cast<const int*>(args[0]);
                 for (int d = 0; d < ndim; d++)
-                    shape[d] = lb->shape[d];
-                launch_size = lb->size;
+                    shape[d] = bounds_shape[d];
+
+                const size_t size_offset = apic_detail::launch_bounds_size_offset(ndim);
+                const uint8_t* bounds_bytes = static_cast<const uint8_t*>(args[0]);
+                launch_size = *reinterpret_cast<const size_t*>(bounds_bytes + size_offset);
             } else {
-                ndim = 1;
                 shape[0] = (int)dim;
             }
 

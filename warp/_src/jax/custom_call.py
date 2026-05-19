@@ -5,10 +5,10 @@ import ctypes
 from functools import reduce
 
 import warp as wp
-from warp._src.context import type_str
+from warp._src.context import _build_launch_bounds, type_str
 from warp._src.jax import get_jax_device
 from warp._src.logger import log_warning
-from warp._src.types import array_t, launch_bounds_t, matches_array_class, strides_from_shape
+from warp._src.types import array_t, matches_array_class, strides_from_shape
 
 _wp_module_name_ = "warp.jax.custom_call"
 
@@ -97,7 +97,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
 
     # Parse launch dimensions.
     dims = [int(d) for d in dim_str.split(",")]
-    bounds = launch_bounds_t(dims)
+    bounds = _build_launch_bounds(dims, kernel.adj.kernel_dim)
 
     # Parse arguments.
     arg_strings = args_str.split(";")
