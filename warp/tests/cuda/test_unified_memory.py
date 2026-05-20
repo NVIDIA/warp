@@ -482,7 +482,7 @@ class TestUnifiedMemory(unittest.TestCase):
             self.assertTrue(wp.can_access(peer_device, src))
 
             wp.load_module(device=peer_device)
-            wp.synchronize_device(target_device)
+            peer_device.stream.wait_stream(target_device.stream)
             with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
                 wp.launch(read_cpu_write_gpu, dim=n, inputs=[src], outputs=[dst], device=peer_device)
 
@@ -518,7 +518,7 @@ class TestUnifiedMemory(unittest.TestCase):
             self.assertIs(src._ref, src_base)
 
             wp.load_module(device=peer_device)
-            wp.synchronize_device(target_device)
+            peer_device.stream.wait_stream(target_device.stream)
             with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
                 wp.launch(read_cpu_write_gpu, dim=n, inputs=[src], outputs=[dst], device=peer_device)
 
@@ -565,8 +565,11 @@ class TestUnifiedMemory(unittest.TestCase):
         """CUDA mempool allocations use mempool-access state for cross-GPU verification.
 
         An array allocated while the source device's mempool is enabled needs
-        the CUDA mempool access predicate. This test keeps peer access disabled
-        so acceptance can only come from the allocation-specific mempool rule.
+        the CUDA mempool access predicate. The companion rejection test keeps
+        peer access enabled while mempool access is disabled, so the pair
+        isolates the allocation-specific mempool rule without executing this
+        peer kernel in a recently changed pool-access state with peer access
+        disabled.
         """
 
         target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
@@ -575,7 +578,7 @@ class TestUnifiedMemory(unittest.TestCase):
         peer_access_saved = wp.is_peer_access_enabled(target_device, peer_device)
         mempool_access_saved = wp.is_mempool_access_enabled(target_device, peer_device)
         try:
-            wp.set_peer_access_enabled(target_device, peer_device, False)
+            wp.set_peer_access_enabled(target_device, peer_device, True)
             wp.set_mempool_access_enabled(target_device, peer_device, True)
 
             with wp.ScopedMempool(target_device, True):
@@ -586,7 +589,7 @@ class TestUnifiedMemory(unittest.TestCase):
             self.assertTrue(wp.can_access(peer_device, src))
 
             wp.load_module(device=peer_device)
-            wp.synchronize_device(target_device)
+            peer_device.stream.wait_stream(target_device.stream)
             with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
                 wp.launch(read_cpu_write_gpu, dim=n, inputs=[src], outputs=[dst], device=peer_device)
 
@@ -612,7 +615,7 @@ class TestUnifiedMemory(unittest.TestCase):
         peer_access_saved = wp.is_peer_access_enabled(target_device, peer_device)
         mempool_access_saved = wp.is_mempool_access_enabled(target_device, peer_device)
         try:
-            wp.set_peer_access_enabled(target_device, peer_device, False)
+            wp.set_peer_access_enabled(target_device, peer_device, True)
             wp.set_mempool_access_enabled(target_device, peer_device, True)
 
             with wp.ScopedMempool(target_device, True):
@@ -624,7 +627,7 @@ class TestUnifiedMemory(unittest.TestCase):
             self.assertIs(src._ref, src_base)
 
             wp.load_module(device=peer_device)
-            wp.synchronize_device(target_device)
+            peer_device.stream.wait_stream(target_device.stream)
             with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
                 wp.launch(read_cpu_write_gpu, dim=n, inputs=[src], outputs=[dst], device=peer_device)
 
