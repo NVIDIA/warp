@@ -1540,8 +1540,12 @@ class Adjoint:
             is_deterministic_mode_enabled,
         )
 
-        if is_deterministic_mode_enabled(adj.builder_options.get("deterministic")):
-            adj.det_meta = DeterministicMeta()
+        deterministic_mode = adj.builder_options.get("deterministic")
+        if is_deterministic_mode_enabled(deterministic_mode):
+            adj.det_meta = DeterministicMeta(
+                determinism_mode=deterministic_mode,
+                max_records=adj.builder_options.get("deterministic_max_records", 0),
+            )
             adj.det_registry = DeterministicRegistry()
             adj._det_has_consumed_atomic = _deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None)
             adj._det_has_side_effect_store = adj.is_user_function and _deterministic_has_potential_array_store(adj.tree)

@@ -2291,8 +2291,7 @@ class ModuleHasher:
         from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
 
         if is_deterministic_mode_enabled(resolved_options.get("deterministic")):
-            if getattr(kernel.adj, "det_meta", None) is None:
-                kernel.adj.build(None, resolved_options | {"output_arch": None})
+            kernel.adj.build(None, resolved_options | {"output_arch": None})
         else:
             kernel.adj.det_meta = None
             kernel.adj.det_registry = None
@@ -9203,6 +9202,12 @@ def _launch_deterministic(
             f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
         )
 
+    if runtime._apic_capture is not None:
+        raise RuntimeError(
+            "APIC serialization is not currently supported for deterministic CUDA kernels. "
+            "Capture with apic=False, or disable deterministic mode for kernels captured with apic=True."
+        )
+
     adj_args = [] if adj_args is None else list(adj_args)
 
     def resolve_det_target_array(target):
@@ -9299,21 +9304,14 @@ def _launch_deterministic(
             "counter prefix buffers store per-thread contributions as int32 values."
         )
 
-    options = kernel.module.resolve_options(warp.config)
-    determinism_mode = options["deterministic"]
-    max_records = options["deterministic_max_records"]
+    determinism_mode = det_meta.determinism_mode
+    max_records = det_meta.max_records
     det_debug = int(warp.config.deterministic_debug)
     stream_is_capturing = len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
     capture_graph = None
     if stream_is_capturing:
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
-
-    if runtime._apic_capture is not None:
-        raise RuntimeError(
-            "APIC serialization is not currently supported for deterministic CUDA kernels. "
-            "Capture with apic=False, or disable deterministic mode for kernels captured with apic=True."
-        )
 
     # Allocate buffers.
     scatter_bufs = (

@@ -217,6 +217,8 @@ class DeterministicMeta:
     remap and merge those requirements when emitting the call site.
     """
 
+    determinism_mode: str = DETERMINISTIC_NOT_GUARANTEED
+    max_records: int = 0
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
