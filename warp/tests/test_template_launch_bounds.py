@@ -4,6 +4,7 @@
 """Compatibility tests for launch bounds and ``wp.tid()`` mapping."""
 
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -202,6 +203,73 @@ def test_tiled_accepts_numpy_integer_scalar_dim(test, device):
     test.assertEqual(out.numpy()[0], int(n))
 
 
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+
+    def __index__(self):
+        return self.value
+
+
+def test_canonicalize_dim_contract(test, device):
+    from warp._src import context  # noqa: PLC0415
+
+    dim = (1, 2, 3)
+
+    with mock.patch.object(context.operator, "index", wraps=context.operator.index) as index:
+        test.assertIs(context._canonicalize_dim(dim), dim)
+        test.assertEqual(context._canonicalize_dim([1, 2, 3]), dim)
+        index.assert_not_called()
+
+    test.assertEqual(context._canonicalize_dim(np.int32(5)), (5,))
+    test.assertEqual(context._canonicalize_dim([np.int32(2), np.int64(3), IndexLike(4)]), (2, 3, 4))
+
+    with test.assertRaises(TypeError):
+        context._canonicalize_dim(1.5)
+
+    with test.assertRaises(TypeError):
+        context._canonicalize_dim([1, 2.5])
+
+
+def test_build_launch_bounds_from_tuple_preserves_large_coord_mult(test, device):
+    from warp._src import context  # noqa: PLC0415
+
+    large_mult = 2**33 + 3
+    bounds = context._build_launch_bounds_from_tuple((1, large_mult), 1)
+
+    test.assertEqual(bounds.shape[0], 1)
+    test.assertEqual(bounds.coord_mult, large_mult)
+    test.assertEqual(bounds.size, large_mult)
+
+
+def test_launch_normalizes_dim_once(test, device):
+    from warp._src import context  # noqa: PLC0415
+
+    out = wp.zeros(1, dtype=int, device=device)
+
+    # Protect the launch-dim fast path: launch() should reuse the normalized
+    # tuple instead of canonicalizing again while building launch bounds.
+    with mock.patch.object(context, "_canonicalize_dim", wraps=context._canonicalize_dim) as canonicalize_dim:
+        wp.launch(regular_1d_kernel, dim=(1,), inputs=[out], device=device)
+
+    canonicalize_dim.assert_called_once()
+
+
+def test_launch_rejects_negative_dim(test, device):
+    out = wp.zeros(1, dtype=int, device=device)
+
+    with test.assertRaisesRegex(ValueError, "non-negative"):
+        wp.launch(regular_1d_kernel, dim=-1, inputs=[out], device=device)
+
+    launch = wp.launch(regular_1d_kernel, dim=1, inputs=[out], device=device, record_cmd=True)
+    with test.assertRaisesRegex(ValueError, "non-negative"):
+        launch.set_dim([1, -1])
+
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    with test.assertRaisesRegex(ValueError, "non-negative"):
+        wp.launch_tiled(no_tid_counter, dim=np.int32(-1), inputs=[counter], block_dim=32, device=device)
+
+
 @wp.kernel
 def manual_tiled_kernel(out: wp.array3d[int], m: int, n: int, block_dim: int):
     i, j, t = wp.tid()
@@ -348,6 +416,30 @@ add_function_test(
     TestTemplateLaunchBounds,
     "test_tiled_accepts_numpy_integer_scalar_dim",
     test_tiled_accepts_numpy_integer_scalar_dim,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_canonicalize_dim_contract",
+    test_canonicalize_dim_contract,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_build_launch_bounds_from_tuple_preserves_large_coord_mult",
+    test_build_launch_bounds_from_tuple_preserves_large_coord_mult,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_launch_normalizes_dim_once",
+    test_launch_normalizes_dim_once,
+    devices=["cpu"],
+)
+add_function_test(
+    TestTemplateLaunchBounds,
+    "test_launch_rejects_negative_dim",
+    test_launch_rejects_negative_dim,
     devices=["cpu"],
 )
 add_function_test(TestTemplateLaunchBounds, "test_manual_tiled", test_manual_tiled, devices=devices)

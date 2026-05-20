@@ -8584,10 +8584,33 @@ class Launch:
 
 
 def _canonicalize_dim(dim: int | Sequence[int]) -> tuple[int, ...]:
-    try:
-        return (operator.index(dim),)
-    except TypeError:
+    """Convert a launch dimension into a tuple of Python integers.
+
+    ``dim`` may be a scalar integer-like object or any iterable of integer-like
+    extents. Values that are not already ``int`` are converted with
+    ``operator.index()`` so objects such as NumPy integer scalars are accepted
+    while non-integral values fail with the standard indexing error.
+
+    Args:
+        dim: Scalar or sequence describing the launch extents.
+
+    Returns:
+        A tuple containing one extent per launch dimension.
+    """
+    if isinstance(dim, int):
+        return (dim,)
+
+    if isinstance(dim, tuple):
+        if all(isinstance(extent, int) for extent in dim):
+            return dim
         return tuple(operator.index(extent) for extent in dim)
+
+    try:
+        iterator = iter(dim)
+    except TypeError:
+        return (operator.index(dim),)
+
+    return tuple(extent if isinstance(extent, int) else operator.index(extent) for extent in iterator)
 
 
 def _validate_launch_dim(dim: tuple[int, ...]) -> None:
@@ -8595,15 +8618,43 @@ def _validate_launch_dim(dim: tuple[int, ...]) -> None:
         raise ValueError(f"Launch dimensions must have at most {LAUNCH_MAX_DIMS} dimensions")
 
 
-def _build_launch_bounds(dim: int | Sequence[int], kernel_dim: int) -> LaunchBounds:
+def _normalize_launch_dim(dim: int | Sequence[int]) -> tuple[tuple[int, ...], int]:
+    """Validate launch dimensions and compute the total thread count.
+
+    This is the common normalization path for kernel launches and recorded
+    launch bounds. It first canonicalizes ``dim`` to a tuple, verifies that the
+    number of dimensions fits Warp's launch limit, rejects negative extents, and
+    multiplies the extents to produce the total number of launched threads.
+
+    Args:
+        dim: Scalar or sequence describing the launch extents.
+
+    Returns:
+        A tuple containing the normalized launch extents and their product.
+
+    Raises:
+        ValueError: If too many dimensions are provided or any extent is
+            negative.
+    """
+    dim = _canonicalize_dim(dim)
+    _validate_launch_dim(dim)
+
+    total = 1
+    for extent in dim:
+        if extent < 0:
+            raise ValueError("Launch dimensions must be non-negative")
+        total *= extent
+
+    return dim, total
+
+
+def _build_launch_bounds_from_tuple(dim: tuple[int, ...], kernel_dim: int) -> LaunchBounds:
     """Build launch bounds while preserving legacy ``wp.tid()`` aliasing.
 
     Missing trailing dimensions are padded with 1. Extra trailing dimensions
     are folded into ``coord_mult`` so those threads share the same coordinate
     tuple, matching the legacy non-templated launch-bounds behavior.
     """
-    dim = _canonicalize_dim(dim)
-    _validate_launch_dim(dim)
     padded = dim + (1,) * max(0, kernel_dim - len(dim))
     kept = padded[:kernel_dim]
     extras = padded[kernel_dim:]
@@ -8618,6 +8669,11 @@ def _build_launch_bounds(dim: int | Sequence[int], kernel_dim: int) -> LaunchBou
         bounds.size *= coord_mult
 
     return bounds
+
+
+def _build_launch_bounds(dim: int | Sequence[int], kernel_dim: int) -> LaunchBounds:
+    dim, _ = _normalize_launch_dim(dim)
+    return _build_launch_bounds_from_tuple(dim, kernel_dim)
 
 
 def launch(
@@ -8680,11 +8736,7 @@ def launch(
     if warp.config.print_launches:
         get_logger().info(f"kernel: {kernel.key} dim: {dim} inputs: {inputs} outputs: {outputs} device: {device}")
 
-    dim = _canonicalize_dim(dim)
-    _validate_launch_dim(dim)
-    total_dim_size = 1
-    for extent in dim:
-        total_dim_size *= extent
+    dim, total_dim_size = _normalize_launch_dim(dim)
 
     if total_dim_size > 0:
         fwd_args = []
@@ -8722,7 +8774,7 @@ def launch(
         if not module_exec:
             return
 
-        bounds = _build_launch_bounds(dim, kernel.adj.kernel_dim)
+        bounds = _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim)
 
         # first param is the number of threads
         params = [bounds]
