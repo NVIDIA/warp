@@ -9,6 +9,7 @@ atomic operations across multiple runs.
 
 import gc
 import re
+import sys
 import unittest
 from pathlib import Path
 
@@ -25,6 +26,14 @@ def _reference_scatter_add_float32(data_np, indices_np, out_size):
     for value, index in zip(data_np, indices_np, strict=True):
         expected[index] = np.float32(expected[index] + value)
     return expected
+
+
+def _set_test_module_options(options):
+    wp.set_module_options(options, module=sys.modules[__name__])
+
+
+def _get_test_module_options():
+    return wp.get_module_options(module=sys.modules[__name__])
 
 
 # ---------------------------------------------------------------------------
@@ -226,16 +235,6 @@ def mat33_scatter_add_kernel(
     wp.atomic_add(output, dest_indices[tid], data[tid])
 
 
-@wp.kernel(deterministic="gpu_to_gpu", deterministic_max_records=4096)
-def decorator_deterministic_kernel(
-    data: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
-):
-    """Kernel-level GPU-to-GPU deterministic flag without module options."""
-    tid = wp.tid()
-    wp.atomic_add(output, tid % 8, data[tid])
-
-
 @wp.func
 def _det_closure_transform_a(x: wp.float32) -> wp.float32:
     return x + wp.float32(1.0)
@@ -290,7 +289,7 @@ def _det_increment_array(output: wp.array(dtype=wp.float32), index: int):
 
 
 def _make_deterministic_closure_kernel(transform_func):
-    @wp.kernel(deterministic=True, module="unique")
+    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def _deterministic_closure_kernel(
         data: wp.array(dtype=wp.float32),
         output: wp.array(dtype=wp.float32),
@@ -301,7 +300,7 @@ def _make_deterministic_closure_kernel(transform_func):
     return _deterministic_closure_kernel
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def struct_field_counter_kernel(
     data: wp.array(dtype=wp.float32),
     counts: wp.array(dtype=wp.int32),
@@ -315,7 +314,7 @@ def struct_field_counter_kernel(
             writer.output[base + i] = data[tid] + wp.float32(i) * wp.float32(0.5)
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def struct_field_helper_counter_kernel(
     data: wp.array(dtype=wp.float32),
     flags: wp.array(dtype=wp.int32),
@@ -326,7 +325,7 @@ def struct_field_helper_counter_kernel(
         _det_struct_counter_write(writer, data[tid])
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def helper_counter_side_effect_kernel(
     counter: wp.array(dtype=wp.int32),
     output: wp.array(dtype=wp.float32),
@@ -338,7 +337,7 @@ def helper_counter_side_effect_kernel(
     _det_counter_write(counter, output, float(tid))
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_helper_store_kernel(
     counter: wp.array(dtype=wp.int32),
     output: wp.array(dtype=wp.float32),
@@ -351,7 +350,7 @@ def counter_with_helper_store_kernel(
     output[slot] = float(tid)
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def helper_name_collision_kernel(
     a_b: wp.array(dtype=wp.float32),
     a: _DetNameCollisionStruct,
@@ -395,7 +394,7 @@ def triple_scatter_add_kernel(
     wp.atomic_add(output, 0, val * 3.0)
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=4)
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 4})
 def loop_scatter_add_kernel(
     data: wp.array(dtype=wp.float32),
     counts: wp.array(dtype=wp.int32),
@@ -409,7 +408,7 @@ def loop_scatter_add_kernel(
         wp.atomic_add(output, 0, val)
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=1)
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 1})
 def underprovisioned_loop_scatter_kernel(
     data: wp.array(dtype=wp.float32),
     counts: wp.array(dtype=wp.int32),
@@ -518,7 +517,7 @@ def sliced_counter_kernel(
     output[bin, slot] = values[tid]
 
 
-@wp.kernel(deterministic=True, deterministic_max_records=4)
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 4})
 def loop_indexed_counter_kernel(
     counts: wp.array(dtype=wp.int32),
     bins: wp.array(dtype=wp.int32),
@@ -548,7 +547,7 @@ def counter_side_effect_kernel(
     output[slot] = float(tid)
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def local_scratch_counter_kernel(
     counter: wp.array(dtype=wp.int32),
     output: wp.array(dtype=wp.int32),
@@ -577,7 +576,7 @@ def _replay_det_custom_replay_counter(counter: wp.array(dtype=wp.int32), tids: w
     return tids[tid]
 
 
-@wp.kernel(deterministic=True, module="unique")
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def custom_replay_counter_kernel(
     data: wp.array(dtype=wp.float32),
     counter: wp.array(dtype=wp.int32),
@@ -769,7 +768,7 @@ def test_scatter_add_reproducibility(test, device):
 
 
 def test_gpu_to_gpu_mode_reproducibility(test, device):
-    """Verify the global ``gpu_to_gpu`` mode produces reproducible results."""
+    """Verify the module-level ``gpu_to_gpu`` mode produces reproducible results."""
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
@@ -783,9 +782,9 @@ def test_gpu_to_gpu_mode_reproducibility(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "gpu_to_gpu"
+        _set_test_module_options({"deterministic": "gpu_to_gpu"})
         results = []
         for _ in range(3):
             output = wp.zeros(out_size, dtype=wp.float32, device=device)
@@ -794,7 +793,7 @@ def test_gpu_to_gpu_mode_reproducibility(test, device):
         for i in range(1, len(results)):
             np.testing.assert_array_equal(results[0], results[i])
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
 
 def test_gpu_to_gpu_matches_canonical_float32_reference(test, device):
@@ -827,14 +826,14 @@ def test_gpu_to_gpu_matches_canonical_float32_reference(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "gpu_to_gpu"
+        _set_test_module_options({"deterministic": "gpu_to_gpu"})
         output = wp.zeros(out_size, dtype=wp.float32, device=device)
         wp.launch(scatter_add_kernel, dim=data_np.shape[0], inputs=[data, indices], outputs=[output], device=device)
         result = output.numpy()
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
     np.testing.assert_array_equal(result.view(np.uint32), expected.view(np.uint32))
 
@@ -1496,7 +1495,7 @@ def test_mixed_reduce_ops_same_array(test, device):
 
     with test.assertRaisesRegex(Exception, "does not support mixing"):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def mixed_reduce_op_same_array_local_kernel(
             data: wp.array(dtype=wp.float32),
             output: wp.array(dtype=wp.float32),
@@ -1939,7 +1938,7 @@ def test_counter_int64_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, "int32 counter arrays"):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def counter_int64_kernel(
             counter: wp.array(dtype=wp.int64),
             output: wp.array(dtype=wp.float32),
@@ -1961,7 +1960,7 @@ def test_counter_non_add_atomic_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, "only for atomic_add"):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def counter_sub_kernel(
             counter: wp.array(dtype=wp.int32),
             output: wp.array(dtype=wp.float32),
@@ -1977,7 +1976,7 @@ def test_counter_non_add_atomic_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, "only for atomic_add"):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def counter_max_kernel(
             counter: wp.array(dtype=wp.int32),
             output: wp.array(dtype=wp.float32),
@@ -2001,7 +2000,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, pattern):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def float_leader_if_kernel(
             total: wp.array(dtype=wp.float32),
             log: wp.array(dtype=wp.int32),
@@ -2017,7 +2016,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, pattern):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def float_nested_call_in_if_kernel(
             total: wp.array(dtype=wp.float32),
             out: wp.array(dtype=wp.float32),
@@ -2033,7 +2032,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, pattern):
 
-        @wp.kernel(deterministic=True, module="unique")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def float_nested_bare_atomic_kernel(
             total: wp.array(dtype=wp.float32),
             other: wp.array(dtype=wp.float32),
@@ -2051,7 +2050,7 @@ def test_float_atomic_bare_statement_allowed(test, device):
     if device.is_cpu:
         test.skipTest("CPU execution is already deterministic")
 
-    @wp.kernel(deterministic=True, module="unique")
+    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def bare_float_accum_kernel(
         contribs: wp.array(dtype=wp.float32),
         accum: wp.array(dtype=wp.float32),
@@ -2215,10 +2214,10 @@ def test_module_option_override(test, device):
     data_np = rng.random(n, dtype=np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    # Ensure global config is disabled but per-kernel override still works.
-    old_det = wp.config.deterministic
+    # Ensure the shared module is disabled but the unique module option still works.
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "not_guaranteed"
+        _set_test_module_options({"deterministic": "not_guaranteed"})
         output = wp.zeros(4, dtype=wp.float32, device=device)
         wp.launch(per_kernel_det, dim=n, inputs=[data], outputs=[output], device=device)
         result = output.numpy()
@@ -2228,76 +2227,7 @@ def test_module_option_override(test, device):
             expected_sum = data_np[mask].sum()
             np.testing.assert_allclose(result[bin_idx], expected_sum, rtol=1e-4)
     finally:
-        wp.config.deterministic = old_det
-
-
-def test_kernel_decorator_override(test, device):
-    """Verify ``@wp.kernel(deterministic="gpu_to_gpu")`` works with global config off."""
-    if device.is_cpu:
-        test.skipTest("CPU execution is already deterministic")
-
-    n = 512
-    rng = np.random.default_rng(28)
-    data_np = rng.random(n, dtype=np.float32)
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-
-    old_det = wp.config.deterministic
-    try:
-        wp.config.deterministic = "not_guaranteed"
-        results = []
-        for _ in range(3):
-            output = wp.zeros(8, dtype=wp.float32, device=device)
-            wp.launch(decorator_deterministic_kernel, dim=n, inputs=[data], outputs=[output], device=device)
-            results.append(output.numpy().copy())
-        for i in range(1, len(results)):
-            np.testing.assert_array_equal(results[0], results[i])
-    finally:
-        wp.config.deterministic = old_det
-
-
-def test_deterministic_config_toggle_reloads_module(test, device):
-    """Changing global deterministic mode reloads kernels and updates metadata."""
-    if device.is_cpu:
-        test.skipTest("Deterministic launch switching requires CUDA")
-
-    @wp.kernel(module="unique")
-    def config_toggle_kernel(data: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
-        tid = wp.tid()
-        wp.atomic_add(output, 0, data[tid])
-
-    def launch_and_get_hash():
-        output.zero_()
-        wp.launch(config_toggle_kernel, dim=n, inputs=[data], outputs=[output], device=device)
-        output.numpy()
-        module_exec = config_toggle_kernel.module.execs.get(
-            (device.context, config_toggle_kernel.module.options["block_dim"])
-        )
-        test.assertIsNotNone(module_exec)
-        return module_exec.module_hash
-
-    n = 64
-    data = wp.ones(n, dtype=wp.float32, device=device)
-    output = wp.zeros(1, dtype=wp.float32, device=device)
-
-    old_det = wp.config.deterministic
-    try:
-        wp.config.deterministic = "not_guaranteed"
-        hash_off = launch_and_get_hash()
-        test.assertIsNone(getattr(config_toggle_kernel.adj, "det_meta", None))
-
-        wp.config.deterministic = "run_to_run"
-        hash_on = launch_and_get_hash()
-        test.assertNotEqual(hash_off, hash_on)
-        det_meta = getattr(config_toggle_kernel.adj, "det_meta", None)
-        test.assertIsNotNone(det_meta)
-        test.assertTrue(det_meta.needs_deterministic)
-
-        wp.config.deterministic = "not_guaranteed"
-        hash_off_again = launch_and_get_hash()
-        test.assertEqual(hash_off, hash_off_again)
-        test.assertIsNone(getattr(config_toggle_kernel.adj, "det_meta", None))
-    finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
 
 def test_deterministic_closure_kernel(test, device):
@@ -2474,7 +2404,7 @@ def test_graph_capture_sliced_array(test, device):
 
     # TestDeterministic.setUpClass enables run-to-run deterministic mode for
     # every registered test in this module.
-    test.assertEqual(wp.config.deterministic, "run_to_run")
+    test.assertEqual(_get_test_module_options()["deterministic"], "run_to_run")
 
     n = 256
     rows, cols = 8, 8
@@ -2747,9 +2677,9 @@ def test_deterministic_backward_address_scatter(test, device):
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
     output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "gpu_to_gpu"
+        _set_test_module_options({"deterministic": "gpu_to_gpu"})
         results = []
         for _ in range(3):
             values.grad.zero_()
@@ -2760,7 +2690,7 @@ def test_deterministic_backward_address_scatter(test, device):
             tape.backward(grads={output: output_grad})
             results.append(tape.gradients[values].numpy().copy())
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
     for result in results:
         np.testing.assert_array_equal(result, expected)
@@ -2785,9 +2715,9 @@ def test_deterministic_backward_vec3_address_scatter(test, device):
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
     output_grad = wp.array(grad_np, dtype=wp.vec3, device=device)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "gpu_to_gpu"
+        _set_test_module_options({"deterministic": "gpu_to_gpu"})
         results = []
         for _ in range(3):
             values.grad.zero_()
@@ -2798,7 +2728,7 @@ def test_deterministic_backward_vec3_address_scatter(test, device):
             tape.backward(grads={output: output_grad})
             results.append(tape.gradients[values].numpy().copy())
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
     for result in results:
         np.testing.assert_array_equal(result, expected)
@@ -2824,9 +2754,9 @@ def test_deterministic_backward_missing_adjoint_target(test, device):
     scale = wp.ones(1, dtype=wp.float32, device=device, requires_grad=True)
     output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "gpu_to_gpu"
+        _set_test_module_options({"deterministic": "gpu_to_gpu"})
         results = []
         for _ in range(3):
             scale.grad.zero_()
@@ -2843,7 +2773,7 @@ def test_deterministic_backward_missing_adjoint_target(test, device):
             tape.backward(grads={output: output_grad})
             results.append(tape.gradients[scale].numpy().copy())
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
     for result in results:
         np.testing.assert_array_equal(result, expected)
@@ -2933,9 +2863,9 @@ def test_deterministic_custom_adjoint_gather_atomic(test, device):
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
     output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "gpu_to_gpu"
+        _set_test_module_options({"deterministic": "gpu_to_gpu"})
         results = []
         for _ in range(3):
             values.grad.zero_()
@@ -2948,7 +2878,7 @@ def test_deterministic_custom_adjoint_gather_atomic(test, device):
             tape.backward(grads={output: output_grad})
             results.append(tape.gradients[values].numpy().copy())
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
     for result in results:
         np.testing.assert_array_equal(result, expected)
@@ -2984,9 +2914,9 @@ def test_custom_adjoint_not_guaranteed_mode(test, device):
     indices_np = (np.arange(n, dtype=np.int32) * 3) % value_count
     values_np = np.linspace(0.25, 1.75, value_count, dtype=np.float32)
 
-    old_det = wp.config.deterministic
+    old_det = _get_test_module_options()["deterministic"]
     try:
-        wp.config.deterministic = "not_guaranteed"
+        _set_test_module_options({"deterministic": "not_guaranteed"})
 
         values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
         indices = wp.array(indices_np, dtype=wp.int32, device=device)
@@ -3002,7 +2932,7 @@ def test_custom_adjoint_not_guaranteed_mode(test, device):
         result = tape.gradients[values].numpy()
 
         if not device.is_cpu:
-            wp.config.deterministic = "run_to_run"
+            _set_test_module_options({"deterministic": "run_to_run"})
 
             store_n = 32
             store_values_np = np.linspace(0.5, 2.0, store_n, dtype=np.float32)
@@ -3025,7 +2955,7 @@ def test_custom_adjoint_not_guaranteed_mode(test, device):
             store_scratch_result = store_scratch.numpy()
             store_gradient_result = store_tape.gradients[store_values].numpy()
     finally:
-        wp.config.deterministic = old_det
+        _set_test_module_options({"deterministic": old_det})
 
     expected = np.bincount(indices_np, minlength=value_count).astype(np.float32)
     np.testing.assert_allclose(result, expected, rtol=0, atol=0)
@@ -3185,10 +3115,13 @@ class TestDeterministic(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._old_deterministic = wp.config.deterministic
+        cls._old_module_deterministic = _get_test_module_options()["deterministic"]
         wp.config.deterministic = "run_to_run"
+        _set_test_module_options({"deterministic": "run_to_run"})
 
     @classmethod
     def tearDownClass(cls):
+        _set_test_module_options({"deterministic": cls._old_module_deterministic})
         wp.config.deterministic = cls._old_deterministic
 
 
@@ -3416,15 +3349,6 @@ add_function_test(
 # Passthrough / override tests.
 add_function_test(TestDeterministic, "test_int_atomic_passthrough", test_int_atomic_passthrough, devices=all_devices)
 add_function_test(TestDeterministic, "test_module_option_override", test_module_option_override, devices=all_devices)
-add_function_test(
-    TestDeterministic, "test_kernel_decorator_override", test_kernel_decorator_override, devices=cuda_devices
-)
-add_function_test(
-    TestDeterministic,
-    "test_deterministic_config_toggle_reloads_module",
-    test_deterministic_config_toggle_reloads_module,
-    devices=cuda_devices,
-)
 add_function_test(
     TestDeterministic, "test_deterministic_closure_kernel", test_deterministic_closure_kernel, devices=cuda_devices
 )

@@ -1382,8 +1382,6 @@ def kernel(
     f: Callable | None = None,
     *,
     enable_backward: bool | None = None,
-    deterministic: str | bool | None = None,
-    deterministic_max_records: int | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
@@ -1430,28 +1428,10 @@ def kernel(
             b[tid] = a[tid] + 1.0
 
 
-        @wp.kernel(deterministic="run_to_run", deterministic_max_records=8)
-        def my_kernel_deterministic(a: wp.array(dtype=float), b: wp.array(dtype=float)):
-            # deterministic scatter buffers will assume each thread emits at
-            # most 8 records per target, unless codegen proves a larger lower bound
-            tid = wp.tid()
-            wp.atomic_add(b, tid % 16, a[tid])
-
     Args:
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be
             generated.
-        deterministic: Determinism guarantee for supported atomic operations in
-            this kernel. Accepted values are ``"not_guaranteed"`` (disable the
-            transform), ``"run_to_run"``, and ``"gpu_to_gpu"``. ``True`` and
-            ``False`` are accepted for ease of use and map to
-            ``"run_to_run"`` and ``"not_guaranteed"``, respectively.
-        deterministic_max_records: Optional per-target, per-thread upper
-            bound for the number of deterministic scatter records a thread may
-            emit. Use this when a thread can execute the same atomic site
-            multiple times, for example inside a dynamic loop. Warp still uses
-            the code-generated static record count as a lower bound, so the
-            larger of the two values is used.
         launch_bounds: CUDA ``__launch_bounds__`` attribute for the
             kernel. Can be an int (``maxThreadsPerBlock``) or a tuple
             of 1-2 ints ``(maxThreadsPerBlock,
@@ -1480,21 +1460,8 @@ def kernel(
     def wrapper(f, *args, **kwargs):
         kernel_options = {}
 
-        from warp._src.deterministic import (  # noqa: PLC0415
-            normalize_deterministic_max_records,
-            normalize_deterministic_mode,
-        )
-
         if enable_backward is not None:
             kernel_options["enable_backward"] = enable_backward
-
-        if deterministic is not None:
-            kernel_options["deterministic"] = normalize_deterministic_mode(
-                deterministic, option_name="deterministic", allow_none=True
-            )
-
-        if deterministic_max_records is not None:
-            kernel_options["deterministic_max_records"] = normalize_deterministic_max_records(deterministic_max_records)
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
@@ -1526,18 +1493,6 @@ def kernel(
                     "Use wp.set_module_options() to set module-level options for a shared module."
                 )
             normalized_module_options = dict(module_options)
-            if "deterministic" in normalized_module_options:
-                normalized_module_options["deterministic"] = normalize_deterministic_mode(
-                    normalized_module_options["deterministic"],
-                    option_name="module_options['deterministic']",
-                    allow_none=True,
-                )
-            if "deterministic_max_records" in normalized_module_options:
-                normalized_module_options["deterministic_max_records"] = normalize_deterministic_max_records(
-                    normalized_module_options["deterministic_max_records"],
-                    option_name="module_options['deterministic_max_records']",
-                    allow_none=True,
-                )
 
             if normalized_module_options:
                 unknown = sorted(set(normalized_module_options) - set(m.options))
@@ -2548,15 +2503,10 @@ class ModuleBuilder:
         self.structs[struct] = None
 
     def build_kernel(self, kernel):
-        prev_options = self.options
-        self.options = self.options | kernel.options
-        try:
-            if kernel.options.get("enable_backward", True):
-                kernel.adj.used_by_backward_kernel = True
+        if kernel.options.get("enable_backward", True):
+            kernel.adj.used_by_backward_kernel = True
 
-            kernel.adj.build(self)
-        finally:
-            self.options = prev_options
+        kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
@@ -2874,8 +2824,8 @@ class Module:
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
-            "deterministic": None,
-            "deterministic_max_records": None,
+            "deterministic": warp.config.deterministic,
+            "deterministic_max_records": 0,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2895,8 +2845,8 @@ class Module:
     def resolve_options(self, config, block_dim: int | None = None) -> dict:
         """Return a fully-resolved copy of the module options.
 
-        Resolves ``None`` sentinels by falling back to ``config`` values and
-        hardcoded defaults. Also includes global config flags that affect
+        Resolves supported ``None`` sentinels by falling back to ``config``
+        values and hardcoded defaults. Also includes global config flags that affect
         compilation, so downstream consumers never need to read config directly.
 
         When ``block_dim`` is supplied, it overrides ``self.options["block_dim"]``
@@ -2927,19 +2877,25 @@ class Module:
         if options["enable_mathdx_fft"] is None:
             options["enable_mathdx_fft"] = config.enable_mathdx_fft
 
-        from warp._src.deterministic import (  # noqa: PLC0415
-            normalize_deterministic_max_records,
-            normalize_deterministic_mode,
-        )
+        from warp._src.deterministic import _VALID_DETERMINISTIC_MODES  # noqa: PLC0415
 
-        # Resolve None-means-inherit for deterministic
-        if options["deterministic"] is None:
-            options["deterministic"] = config.deterministic
-        options["deterministic"] = normalize_deterministic_mode(options["deterministic"], option_name="deterministic")
+        if options["deterministic"] not in _VALID_DETERMINISTIC_MODES:
+            valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
+            raise ValueError(f"deterministic must be one of {valid_modes}, got {options['deterministic']!r}")
 
-        options["deterministic_max_records"] = normalize_deterministic_max_records(
-            options["deterministic_max_records"], allow_none=False
-        )
+        deterministic_max_records = options["deterministic_max_records"]
+        if isinstance(deterministic_max_records, bool):
+            raise TypeError("deterministic_max_records must be a non-negative integer, got bool")
+        try:
+            deterministic_max_records = operator.index(deterministic_max_records)
+        except TypeError as e:
+            raise TypeError(
+                "deterministic_max_records must be a non-negative integer, "
+                f"got {type(deterministic_max_records).__name__}"
+            ) from e
+        if deterministic_max_records < 0:
+            raise ValueError(f"deterministic_max_records must be non-negative, got {deterministic_max_records}")
+        options["deterministic_max_records"] = deterministic_max_records
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -3143,13 +3099,10 @@ class Module:
         """Get the hash of the module for a block_dim variant.
 
         If ``block_dim`` is ``None``, use the module-level default. If the
-        variant hash has not been computed yet, or if resolved module/config
-        options have changed, compute and cache it.
+        variant hash has not been computed yet, compute and cache it.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
-
-        options = self.resolve_options(warp.config, block_dim=block_dim)
 
         # Both branches below mutate shared ``@wp.func`` adjoint state
         # (``ModuleBuilder`` runs ``adj.build`` to resolve deferred
@@ -3160,19 +3113,16 @@ class Module:
         # block. Splitting the lock per stage opens a window where
         # another thread can re-run ``adj.build`` on a shared helper
         # and clobber the state this thread is about to hash.
-        if (
-            self.has_unresolved_static_expressions
-            or block_dim not in self.hashers
-            or self.resolved_options.get(block_dim) != options
-        ):
+        if self.has_unresolved_static_expressions or block_dim not in self.hashers:
             with _codegen_lock:
-                options = self.resolve_options(warp.config, block_dim=block_dim)
                 if self.has_unresolved_static_expressions:
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
                     builder_options = options | {"output_arch": None}
                     _ = ModuleBuilder(self, builder_options)
                     self.has_unresolved_static_expressions = False
 
-                if block_dim not in self.hashers or self.resolved_options.get(block_dim) != options:
+                if block_dim not in self.hashers:
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
                     self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
                     self.resolved_options[block_dim] = options
 
@@ -9233,7 +9183,6 @@ def _launch_deterministic(
         allocate_scatter_buffers,
         get_counter_record_count,
         get_scatter_record_count,
-        normalize_deterministic_mode,
         run_counter_scan,
         run_counter_writeback,
         run_sort_reduce,
@@ -9350,9 +9299,9 @@ def _launch_deterministic(
             "counter prefix buffers store per-thread contributions as int32 values."
         )
 
-    options = kernel.module.resolve_options(warp.config) | kernel.options
-    determinism_mode = normalize_deterministic_mode(options.get("deterministic"), option_name="deterministic")
-    max_records = max(0, int(options.get("deterministic_max_records", 0) or 0))
+    options = kernel.module.resolve_options(warp.config)
+    determinism_mode = options["deterministic"]
+    max_records = options["deterministic_max_records"]
     det_debug = int(warp.config.deterministic_debug)
     stream_is_capturing = len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream)
     capture_graph = None
@@ -9794,19 +9743,9 @@ def launch(
                 adjoint=adjoint,
                 module_exec=module_exec,
             )
-            # Record on tape if one is active (same logic as below).
-            if runtime.tape and record_tape:
-                frame = inspect.currentframe().f_back
-                caller = {"file": frame.f_code.co_filename, "lineno": frame.f_lineno, "func": frame.f_code.co_name}
-                runtime.tape.record_launch(
-                    kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata={"caller": caller}
-                )
-                if warp.config.verify_autograd_array_access:
-                    runtime.tape._check_kernel_array_access(kernel, fwd_args)
-            return
 
         # run kernel
-        if device.is_cpu:
+        elif device.is_cpu:
             if adjoint:
                 if hooks.backward is None:
                     raise RuntimeError(
@@ -10725,7 +10664,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
-    * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``"not_guaranteed"``, ``"run_to_run"``, ``"gpu_to_gpu"``, plus ``True``/``False`` for ease of use. If ``None`` (the default), defers to ``warp.config.deterministic`` at compile time.
+    * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``"not_guaranteed"``, ``"run_to_run"``, and ``"gpu_to_gpu"``. Defaults to the value of ``warp.config.deterministic`` when the module is created.
     * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
@@ -10735,22 +10674,6 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
         options: Set of key-value option pairs
     """
-    if "deterministic" in options or "deterministic_max_records" in options:
-        from warp._src.deterministic import (  # noqa: PLC0415
-            normalize_deterministic_max_records,
-            normalize_deterministic_mode,
-        )
-
-        options = dict(options)
-        if "deterministic" in options:
-            options["deterministic"] = normalize_deterministic_mode(
-                options["deterministic"], option_name="deterministic", allow_none=True
-            )
-        if "deterministic_max_records" in options:
-            options["deterministic_max_records"] = normalize_deterministic_max_records(
-                options["deterministic_max_records"], allow_none=True
-            )
-
     if module is None:
         module_name = _get_caller_module_name(stack_level=2)
     else:

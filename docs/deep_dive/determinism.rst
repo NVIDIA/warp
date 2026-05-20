@@ -63,20 +63,12 @@ For a process-wide default, set :attr:`wp.config.deterministic
 
     wp.config.deterministic = "run_to_run"
 
-For one targeted kernel, set the option on the kernel:
-
-.. code:: python
-
-    @wp.kernel(deterministic="run_to_run")
-    def accumulate(...):
-        ...
-
 If you only want to experiment with one kernel in an otherwise shared Python
-module, put that kernel in a unique module:
+module, put that kernel in a unique module and pass module options:
 
 .. code:: python
 
-    @wp.kernel(deterministic="run_to_run", module="unique")
+    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def accumulate(...):
         ...
 
@@ -93,9 +85,6 @@ The accepted modes are:
     Uses a stronger reduction path intended to preserve the same result across
     GPU architectures.  It is more conservative and can be slower.
 
-For ease of use, ``True`` is treated as ``"run_to_run"`` and ``False`` is
-treated as ``"not_guaranteed"``.
-
 Choosing a Scope
 ----------------
 
@@ -107,28 +96,22 @@ Use this rule of thumb:
 * Use :func:`wp.set_module_options() <warp.set_module_options>` when the kernels
   in the current Python file should all share the same deterministic setting.
 * Use :attr:`wp.config.deterministic <warp.config.deterministic>` when you want
-  a global default for a whole application or test run.
-* Use ``@wp.kernel(deterministic=...)`` for a targeted kernel override.
-* Add ``module="unique"`` to that kernel when you want its compiled module and
-  reachable helper functions isolated from other kernels in the same Python
-  file.
+  a global default for modules created later in a whole application or test run.
+* Use ``@wp.kernel(module="unique", module_options={...})`` when one kernel
+  should have its own compiled module and deterministic setting.
 
-The kernel decorator does not turn on determinism for every kernel in the
-Python module.  It stores a kernel-level option, and that option wins over the
-module and global defaults for that kernel.  The nuance is compilation: Warp
-normally compiles the kernels and ``@wp.func`` helpers in a Python module into
-one module binary.  Deterministic lowering can change generated code for a
-kernel's reachable helper functions, especially when supported atomics live in
+The kernel decorator does not accept a direct ``deterministic=...`` shorthand.
+Determinism is a module-level code-generation option because Warp normally
+compiles the kernels and ``@wp.func`` helpers in a Python module into one module
+binary.  Deterministic lowering can change generated code for a kernel's
+reachable helper functions, especially when supported atomics live in
 ``@wp.func`` calls.  ``module="unique"`` gives that kernel its own compiled
 module, so the deterministic and non-deterministic variants do not share helper
 code or module hashes.
 
-If you decorate a kernel with ``deterministic="run_to_run"``, that kernel is
-explicitly deterministic even when ``wp.config.deterministic`` is later set to
-``"not_guaranteed"``.  To toggle an existing program on and off, prefer
-``wp.set_module_options()`` or :attr:`wp.config.deterministic
-<warp.config.deterministic>` instead of hard-coding the decorator on every
-kernel.
+Changing :attr:`wp.config.deterministic <warp.config.deterministic>` after a
+module has been created does not update that module.  To toggle an existing
+module on and off, use ``wp.set_module_options()``.
 
 What Warp Supports
 ------------------
@@ -151,7 +134,7 @@ output arrays, and the atomic return value is ignored:
 
 .. code:: python
 
-    @wp.kernel(deterministic="run_to_run", module="unique")
+    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def bin_values(
         values: wp.array(dtype=wp.float32),
         bins: wp.array(dtype=wp.int32),
@@ -202,7 +185,7 @@ Some kernels use an atomic return value as a slot number:
 
 .. code:: python
 
-    @wp.kernel(deterministic="run_to_run", module="unique")
+    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def compact_positive(
         values: wp.array(dtype=wp.float32),
         count: wp.array(dtype=wp.int32),
@@ -253,7 +236,7 @@ The most common example is a gather in the forward pass:
 
 .. code:: python
 
-    @wp.kernel(deterministic="run_to_run", module="unique")
+    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def gather(
         values: wp.array(dtype=wp.float32),
         indices: wp.array(dtype=wp.int32),
@@ -419,9 +402,8 @@ per-target, per-thread upper bound:
 .. code:: python
 
     @wp.kernel(
-        deterministic="run_to_run",
-        deterministic_max_records=8,
         module="unique",
+        module_options={"deterministic": "run_to_run", "deterministic_max_records": 8},
     )
     def loop_accumulate(
         values: wp.array(dtype=wp.float32),
@@ -524,7 +506,8 @@ The benchmark kernel for Pattern A is deliberately small:
     )
 
 To compare modes, the benchmark uses the same kernel body compiled normally,
-with ``deterministic="run_to_run"``, and with ``deterministic="gpu_to_gpu"``.
+with ``module_options={"deterministic": "run_to_run"}``, and with
+``module_options={"deterministic": "gpu_to_gpu"}``.
 The timed path is CUDA graph replay of the output zeroing plus the kernel launch,
 measured with CUDA events.
 
@@ -651,7 +634,7 @@ Unsupported atomics
 
     .. code:: python
 
-        @wp.kernel(deterministic="run_to_run")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def not_rewritten(lock: wp.array(dtype=wp.int32)):
             # Compare-and-swap is still the ordinary Warp atomic.
             wp.atomic_cas(lock, 0, 0, 1)
@@ -671,7 +654,7 @@ One reduction family per target
 
     .. code:: python
 
-        @wp.kernel(deterministic="run_to_run")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def rejected(values: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)):
             tid = wp.tid()
             wp.atomic_add(out, 0, values[tid])
@@ -681,7 +664,7 @@ One reduction family per target
 
     .. code:: python
 
-        @wp.kernel(deterministic="run_to_run")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def allowed(
             values: wp.array(dtype=wp.float32),
             sum_out: wp.array(dtype=wp.float32),
@@ -700,7 +683,7 @@ Side effects in the counting pass
 
     .. code:: python
 
-        @wp.kernel(deterministic="run_to_run")
+        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def avoid_scratch_dependency(
             values: wp.array(dtype=wp.float32),
             scratch: wp.array(dtype=wp.float32),
@@ -722,7 +705,10 @@ Fixed scatter capacity
 
     .. code:: python
 
-        @wp.kernel(deterministic="run_to_run", deterministic_max_records=4)
+        @wp.kernel(
+            module="unique",
+            module_options={"deterministic": "run_to_run", "deterministic_max_records": 4},
+        )
         def can_overflow(loop_counts: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.float32)):
             tid = wp.tid()
 
@@ -746,8 +732,8 @@ Checklist
 When enabling deterministic mode in a new kernel:
 
 1. Start with ``wp.set_module_options({"deterministic": "run_to_run"})`` for an
-   existing module, or ``@wp.kernel(deterministic="run_to_run")`` for one
-   targeted kernel.
+   existing module, or a unique module with ``module_options`` for one targeted
+   kernel.
 2. Run the kernel several times and compare outputs with
    ``np.testing.assert_array_equal()`` for bit-exact tests.
 3. If the kernel has dynamic loops around deterministic atomics, set

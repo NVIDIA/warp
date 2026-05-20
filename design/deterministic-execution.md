@@ -26,7 +26,7 @@ deterministic without algorithm rewrites.
 | R3  | Both patterns work in the same kernel simultaneously | Must | Real workloads mix accumulation and allocation |
 | R4  | Integer atomics with unused return values incur no overhead | Must | Already associative+commutative |
 | R5  | CPU execution unaffected (already sequential/deterministic) | Must | Zero overhead on CPU |
-| R6  | Per-module and per-kernel granularity via ``module_options`` / unique kernels | Should | Allows selective opt-in |
+| R6  | Per-module granularity via ``module_options`` / unique kernels | Should | Allows selective opt-in |
 | R7  | Generated backward pass (autodiff) gradient accumulation is also deterministic where it uses supported atomics | Should | Includes generated array-read adjoints and supported ``wp.adjoint[...]`` custom-adjoint atomics |
 | R8  | Multiple target arrays in one kernel each get independent buffers | Must | Real kernels write to N arrays |
 
@@ -39,7 +39,7 @@ deterministic without algorithm rewrites.
 
 ## User Configuration
 
-Deterministic mode can be enabled at three scopes:
+Deterministic mode can be enabled through module-level options:
 
 - **Global**: set ``wp.config.deterministic`` to one of:
   - ``"not_guaranteed"``: default behavior, no deterministic transform.
@@ -52,21 +52,13 @@ Deterministic mode can be enabled at three scopes:
 - **Per shared module**: call ``wp.set_module_options({"deterministic": "run_to_run"})``
   in the Python module that defines the kernels, just like other module-level
   options such as ``enable_backward``.
-- **Per kernel**: use ``@wp.kernel(deterministic="run_to_run")`` and optionally set a
-  per-target, per-thread scatter record limit with
-  ``deterministic_max_records=...``. In practice determinism is a compilation
-  mode, so the cleanest way to opt in for only one kernel is to place it in a
-  unique module (for example with ``module="unique"``).
+- **Unique module**: use ``@wp.kernel(module="unique", module_options={...})``
+  to apply deterministic mode, and optionally ``deterministic_max_records``, to
+  the unique module created for one kernel.
 
-For ease of use, ``True`` and ``False`` are still accepted at the
-module and kernel level as aliases for ``"run_to_run"`` and
-``"not_guaranteed"``, respectively.
-
-Like ``enable_backward``, the setting participates in module compilation and
-hashing. A kernel defined in a shared module inherits that module's
-``deterministic`` option; a unique-module kernel can override it independently.
-This matters because deterministic lowering affects both kernels and any
-reachable ``@wp.func`` call graph compiled into the same module.
+Like other module options, the setting participates in module compilation and
+hashing. This matters because deterministic lowering affects both kernels and
+any reachable ``@wp.func`` call graph compiled into the same module.
 
 ## Supported Operators
 
@@ -315,10 +307,10 @@ in-kernel counter resets.
 
 ## Current Limitations
 
-- Deterministic lowering is effectively a module compilation mode. It is
-  supported on shared modules via ``wp.set_module_options(...)`` and per-kernel
-  via unique modules, but mixed deterministic/non-deterministic call graphs
-  inside one shared compiled module are not the intended path.
+- Deterministic lowering is a module compilation mode. It is supported on
+  shared modules via ``wp.set_module_options(...)`` and for targeted kernels via
+  unique modules, but mixed deterministic/non-deterministic call graphs inside
+  one shared compiled module are not the intended path.
 - Within one function or kernel, a given array may participate in only one
   normalized deterministic family. ``atomic_add`` and ``atomic_sub`` share the
   same family; ``min`` and ``max`` are separate. Mixing families such as
@@ -388,8 +380,8 @@ in-kernel counter resets.
 The suite in ``warp/tests/test_deterministic.py`` covers:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
-  with ``deterministic="run_to_run"``, assert ``np.array_equal`` across all
-  runs for
+  with the module ``deterministic`` option set to ``"run_to_run"``, assert
+  ``np.array_equal`` across all runs for
   float32 scatter-add, ``+=`` syntax, float64, and atomic-sub.
 - **Composite leaf types**: deterministic ``wp.vec3`` atomic-add and
   component-wise ``atomic_min``/``atomic_max``, plus deterministic ``wp.mat33``
@@ -426,9 +418,6 @@ The suite in ``warp/tests/test_deterministic.py`` covers:
   transformation; result matches ``np.bincount``.
 - **Per-module override**: ``@wp.kernel(module_options={"deterministic": "gpu_to_gpu"},
   module="unique")`` works with global config off.
-- **Kernel decorator override**: ``@wp.kernel(deterministic="gpu_to_gpu")``
-  works with
-  global config off.
 - **Recorded launch support**: ``wp.launch(..., record_cmd=True)`` works for
   deterministic CUDA kernels.
 - **Graph capture support**: deterministic scatter and counter launches can be

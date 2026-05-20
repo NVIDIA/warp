@@ -436,7 +436,7 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
-deterministic: str | bool = "not_guaranteed"
+deterministic: str = "not_guaranteed"
 """Determinism guarantee for supported atomic operations.
 
 Accepted values are:
@@ -446,9 +446,6 @@ Accepted values are:
   on the same GPU architecture.
 - ``"gpu_to_gpu"``: Use a stronger reduction path intended to preserve the same
   result across GPU architectures as well.
-
-For ease of use, ``True`` and ``False`` are interpreted as ``"run_to_run"``
-and ``"not_guaranteed"``, respectively.
 
 When this setting is stronger than ``"not_guaranteed"``, floating-point atomic
 operations (``atomic_add``, ``atomic_sub``, ``atomic_min``, ``atomic_max``) and
@@ -469,8 +466,8 @@ Kernels where counter contributions depend on earlier scratch array writes withi
 the same kernel may produce incorrect results. Use local variables or read directly
 from input arrays for control flow that determines counter contributions.
 
-This setting can be overridden at the module level by setting the
-``"deterministic"`` module option.
+Set this before module creation/import for it to apply broadly. Existing
+modules can be changed by setting the ``"deterministic"`` module option.
 """
 
 deterministic_debug: bool = False
