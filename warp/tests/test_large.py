@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import math
 import unittest
 from typing import Any
@@ -101,11 +102,18 @@ def test_large_arrays(test, device):
         shape = (dim_x,) * ndim
 
         a1 = wp.zeros(shape, dtype=wp.int8, device=device)
-        a1.fill_(127)
-        wp.launch(kernel, shape, inputs=[a1, wp.int8(127)], device=device)
+        try:
+            a1.fill_(127)
+            wp.launch(kernel, shape, inputs=[a1, wp.int8(127)], device=device)
 
-        a1.zero_()
-        wp.launch(kernel, shape, inputs=[a1, wp.int8(0)], device=device)
+            a1.zero_()
+            wp.launch(kernel, shape, inputs=[a1, wp.int8(0)], device=device)
+        finally:
+            try:
+                wp.synchronize_device(device)
+            finally:
+                del a1
+                gc.collect()
 
 
 def test_large_array_excessive_zeros(test, device):
